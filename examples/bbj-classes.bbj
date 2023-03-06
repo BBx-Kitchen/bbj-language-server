@@ -1,0 +1,39 @@
+CLASS PUBLIC someClass
+
+    FIELD PUBLIC BBjString someInstanceString$
+
+    METHOD PUBLIC STATIC String getSomeString()
+        METHODRET "ABC"
+    METHODEND
+    
+    METHOD PUBLIC String getInstanceString(Boolean something!)
+        print something!
+        METHODRET #someInstanceString$
+    METHODEND
+
+CLASSEND
+
+
+CLASS PUBLIC someOtherClass EXTENDS someClass
+
+    METHOD PRIVATE someOtherClass()
+    METHODEND
+    
+    METHOD PUBLIC someOtherClass(String myString!)
+        #super!.setsomeInstanceString(myString!)
+    METHODEND
+
+CLASSEND
+
+declare someClass a!
+a! = new someClass()
+a!.setsomeInstanceString("TEST")
+? a!.getsomeInstanceString()
+? a!.getSomeString()
+
+? someClass.getSomeString()
+? someOtherClass.getSomeString()
+
+x! = new someOtherClass("ABC")
+? x!.getsomeInstanceString()
+? x!.getSomeString()

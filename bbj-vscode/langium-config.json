@@ -1,0 +1,12 @@
+{
+    "projectName": "BBj",
+    "languages": [{
+        "id": "bbj",
+        "grammar": "src/language/bbj.langium",
+        "fileExtensions": [".bbj"],
+        "textMate": {
+            "out": "syntaxes/bbj.tmLanguage.json"
+        }
+    }],
+    "out": "src/language/generated"
+}

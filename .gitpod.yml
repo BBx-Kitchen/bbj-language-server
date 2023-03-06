@@ -1,0 +1,12 @@
+tasks:
+  - init: |
+      cd $GITPOD_REPO_ROOT/bbj-vscode
+      npm install
+      cd $GITPOD_REPO_ROOT/java-interop
+      ./gradlew assemble
+
+vscode:
+  extensions:
+    - langium.langium-vscode
+    - dbaeumer.vscode-eslint
+    - vscjava.vscode-java-pack
