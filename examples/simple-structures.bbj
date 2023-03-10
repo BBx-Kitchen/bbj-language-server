@@ -1,0 +1,44 @@
+rem this is a comment
+use java.util.HashMap
+rem Variables
+
+some_string$ = "Hello World"
+some_number = 3.14
+some_integer% = 7
+some_object! = new HashMap()
+
+FOR i=1 TO 10
+    PRINT "Number ",i
+NEXT
+
+rem the variable name is optional for the NEXT, we could have written
+rem NEXT i
+
+rem variables that ar not initialized are zero or empty strings
+rem (FWIW - objects would be "null")
+WHILE j<10
+    j=j+1
+WEND
+
+IF some_object! <> NULL() THEN
+    PRINT "some_object is ",str(some_object!)
+    PRINT "some_object is ",some_object!.toString()
+FI
+
+
+GOSUB label_1
+GOTO label_2
+
+label_1:
+    PRINT "we do something and RETURN"
+    RETURN
+
+label_2:
+    
+PRINT "Skipped over it"
+END
+
+
+    
+
+

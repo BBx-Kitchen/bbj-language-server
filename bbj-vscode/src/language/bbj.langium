@@ -41,7 +41,7 @@ SymbolRef:
     symbol=[VariableDecl];
 
 NumberLiteral:
-    value=INT;
+    value=NUMBER;
 
 StringLiteral:
     value=STRING;
@@ -57,9 +57,9 @@ VariableName returns string:
 
 hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /rem [^\n\r]*/;
-// TODO what other suffixes are possible?
-terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!)/;
+terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int
 terminal ID: /[_a-zA-Z][\w_]*/;
-terminal INT returns number: /[0-9]+/;
+terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
+
 terminal STRING: /"[^"]*"|'[^']*'/;
 

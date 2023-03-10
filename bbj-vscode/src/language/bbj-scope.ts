@@ -5,12 +5,13 @@
  ******************************************************************************/
 
 import {
-    AstNode, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, stream
+    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, getContainerOfType, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, stream, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Expression, isConstructorCall, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse, JavaClass
+    Assignment,
+    Expression, isAssignment, isConstructorCall, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, VariableDecl
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -36,8 +37,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     protected getType(expression: Expression): JavaClass | undefined {
         if (isSymbolRef(expression)) {
-            return expression.symbol.ref?.type.ref;
-        } else if(isConstructorCall(expression)) {
+            const reference = expression.symbol.ref
+            if (isAssignment(reference)) {
+                return this.getType((reference as Assignment).value);
+            }
+            return reference?.type.ref;
+        } else if (isConstructorCall(expression)) {
             return expression.class.ref;
         } else if (isMemberRef(expression)) {
             const member = expression.member.ref;
@@ -55,10 +60,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected readonly javaInterop: JavaInteropService;
+    protected readonly astNodeLocator: AstNodeLocator;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
+        this.astNodeLocator = services.workspace.AstNodeLocator;
     }
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
@@ -85,6 +92,20 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const program = node.$container;
             const simpleName = node.className.substring(node.className.lastIndexOf('.') + 1);
             scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
+        } else if (isAssignment(node) && node.variable && !isVariableDecl(node.variable)) {
+            const program = getContainerOfType(node, isProgram)
+            if (program) {
+                if (scopes.get(program).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
+                    scopes.add(program, {
+                        name: node.variable.$refText,
+                        nameSegment: toDocumentSegment(node.variable.$refNode),
+                        selectionSegment: toDocumentSegment(node.variable.$refNode),
+                        type: VariableDecl,
+                        documentUri: document.uri,
+                        path: this.astNodeLocator.getAstNodePath(node)
+                    })
+                }
+            }
         } else {
             super.processNode(node, document, scopes);
         }
