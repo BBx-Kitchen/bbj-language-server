@@ -1,3 +1,9 @@
+use java.lang.String
+use java.lang.Boolean
+
+CLASS PUBLIC BBjString
+CLASSEND
+
 CLASS PUBLIC someClass
 
     FIELD PUBLIC BBjString someInstanceString$
@@ -6,7 +12,7 @@ CLASS PUBLIC someClass
         METHODRET "ABC"
     METHODEND
     
-    METHOD PUBLIC String getInstanceString(Boolean something!)
+    METHOD PUBLIC String getInstanceString(Boolean something!, String some_string)
         print something!
         METHODRET #someInstanceString$
     METHODEND

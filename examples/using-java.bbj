@@ -1,4 +1,5 @@
 use java.util.HashMap
+use java.util.HashSet
 use java.util.TreeMap
 
 rem if we declare today, our Eclipse Plug-In Produces Suggestions:
@@ -12,6 +13,6 @@ tm! = new TreeMap()
 tm!.put("KEY","VALUE")
 ?tm! 
 
-hs! = new java.util.HashSet()
+hs! = new HashSet()
 hs!.add("TEST")
 ? hs!

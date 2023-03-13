@@ -4,6 +4,7 @@
         "id": "bbj",
         "grammar": "src/language/bbj.langium",
         "fileExtensions": [".bbj"],
+        "caseInsensitive": true,
         "textMate": {
             "out": "syntaxes/bbj.tmLanguage.json"
         }

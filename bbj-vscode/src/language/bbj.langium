@@ -9,21 +9,42 @@ import './java-types'
 
 entry Program:
     uses+=Use*
-    statements+=Statement*;
+    statements+=(Statement | ClassDecl)*;
 
 Use:
     'use' className=QualifiedClassName;
 
-Statement: VariableDecl | Assignment | PrintValue | ExpressionStatement;
+Statement:
+    VariableDecl | Assignment | PrintValue | ExpressionStatement;
 
-VariableDecl:
-    'declare' type=[JavaClass:ID] name=VariableName;
+VariableDecl returns Field:
+    'declare' type=[Class:ID] name=VariableName;
 
 Assignment:
-    variable=[VariableDecl] '=' value=Expression;
+    variable=[Field:VariableName] '=' value=Expression;
 
 PrintValue:
-    '?' value=Expression;
+    ('?' | 'PRINT') value=Expression;
+
+ClassDecl returns BbjClass:
+    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])?
+    members+=(FieldDecl | MethodDecl)*
+    'CLASSEND'
+;
+FieldDecl returns Field:
+    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName
+;
+
+MethodDecl:
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+        body+=Statement*
+        ('METHODRET' return=Expression)?
+    'METHODEND'
+;
+
+ParameterDecl returns Field:
+    type=[Class:QualifiedClassName] name=VariableName
+;
 
 ExpressionStatement:
     expression=Expression;
@@ -38,7 +59,7 @@ PrimaryExpression:
     SymbolRef | NumberLiteral | StringLiteral | ConstructorCall;
 
 SymbolRef:
-    symbol=[VariableDecl];
+    instanceAccess?='#'? symbol=[Field:VariableName];
 
 NumberLiteral:
     value=NUMBER;
@@ -47,7 +68,7 @@ StringLiteral:
     value=STRING;
 
 ConstructorCall:
-    'new' class=[JavaClass:ID] '(' (args+=Expression (',' args+=Expression)*)? ')';
+    'new' class=[Class:QualifiedClassName] '(' (args+=Expression (',' args+=Expression)*)? ')';
 
 QualifiedClassName returns string:
     ID ('.' ID)*;
@@ -55,11 +76,30 @@ QualifiedClassName returns string:
 VariableName returns string:
     ID | ID_WITH_SUFFIX;
 
+Visibility returns string:
+    'PUBLIC'|'PRIVATE';
+
 hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /rem [^\n\r]*/;
+
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int
 terminal ID: /[_a-zA-Z][\w_]*/;
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
 
 terminal STRING: /"[^"]*"|'[^']*'/;
 
+// Types
+
+interface Field {
+    type: @Class
+    name: string
+    visibility?: string
+}
+
+interface BbjClass extends Class {
+    visibility?: string
+    superType?: @Class
+    members: ClassMember[]
+}
+
+type ClassMember = Field | MethodDecl

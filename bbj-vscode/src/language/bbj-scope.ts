@@ -5,13 +5,12 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, getContainerOfType, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, stream, toDocumentSegment
+    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, getContainerOfType, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Assignment,
-    Expression, isAssignment, isConstructorCall, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, VariableDecl
+    Assignment, BbjClass, Class, ClassMember, Expression, Field, isAssignment, isBbjClass, isConstructorCall, isField, isJavaClass, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -30,12 +29,24 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             if (!receiverType) {
                 return EMPTY_SCOPE;
             }
-            return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
+            if (isJavaClass(receiverType)) {
+                return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
+            } else if (isBbjClass(receiverType)) {
+                return this.createScopeForNodes(this.collectMembers(receiverType).filter(member => member.visibility === 'PUBLIC' && member.type));
+            }
         }
         return super.getScope(context);
     }
 
-    protected getType(expression: Expression): JavaClass | undefined {
+    protected collectMembers(clazz: BbjClass): Stream<ClassMember> {
+        const members = stream(clazz.members)
+        if (isBbjClass(clazz.superType?.ref)) {
+            return members.concat(this.collectMembers(clazz.superType!.ref))
+        }
+        return members
+    }
+
+    protected getType(expression: Expression): Class | undefined {
         if (isSymbolRef(expression)) {
             const reference = expression.symbol.ref
             if (isAssignment(reference)) {
@@ -92,7 +103,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const program = node.$container;
             const simpleName = node.className.substring(node.className.lastIndexOf('.') + 1);
             scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
-        } else if (isAssignment(node) && node.variable && !isVariableDecl(node.variable)) {
+        } else if (isAssignment(node) && node.variable && !isField(node.variable)) {
             const program = getContainerOfType(node, isProgram)
             if (program) {
                 if (scopes.get(program).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
@@ -100,7 +111,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                         name: node.variable.$refText,
                         nameSegment: toDocumentSegment(node.variable.$refNode),
                         selectionSegment: toDocumentSegment(node.variable.$refNode),
-                        type: VariableDecl,
+                        type: Field,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)
                     })
