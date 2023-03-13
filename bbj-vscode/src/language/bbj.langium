@@ -15,7 +15,9 @@ Use:
     'use' className=QualifiedClassName;
 
 Statement:
-    VariableDecl | Assignment | PrintValue | ExpressionStatement;
+    VariableDecl | Assignment | PrintValue | ExpressionStatement
+    | ForStatement | IfStatement | WhileStatement | GotoStatement | ExitStatement | LabelDecl
+;
 
 VariableDecl returns Field:
     'declare' type=[Class:ID] name=VariableName;
@@ -24,7 +26,8 @@ Assignment:
     variable=[Field:VariableName] '=' value=Expression;
 
 PrintValue:
-    ('?' | 'PRINT') value=Expression;
+    ('?' | 'PRINT') value+=Expression (',' value+=Expression)*
+;
 
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])?
@@ -46,10 +49,48 @@ ParameterDecl returns Field:
     type=[Class:QualifiedClassName] name=VariableName
 ;
 
+ForStatement:
+    'FOR' init=Assignment 'TO' to=Expression
+    body+=Statement*
+    'NEXT'
+;
+IfStatement:
+    'IF' condition=Expression 'THEN'
+    body+=Statement*
+    'FI'
+;
+WhileStatement:
+    'WHILE' condition=Expression 
+    body+=Statement*
+    'WEND'
+;
+
+GotoStatement:
+    kind=('GOTO' | 'GOSUB') target=[LabelDecl]
+;
+
+ExitStatement:
+    kind=('RETURN' | 'END')
+;
+
+LabelDecl:
+    name=ID':'
+;
+
+
 ExpressionStatement:
     expression=Expression;
 
+
+EXPR_OPERATOR returns string:
+    '+' | '-' | '*' | '/' | '<>' | '==' | '>=' | '<=' | '>' | '<'
+;
+
 Expression:
+    MemberCall ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=MemberCall)?
+;
+
+MemberCall:
     PrimaryExpression (
         {infer MemberRef.receiver=current} '.' member=[JavaMember:ID]
         (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
@@ -59,7 +100,8 @@ PrimaryExpression:
     SymbolRef | NumberLiteral | StringLiteral | ConstructorCall;
 
 SymbolRef:
-    instanceAccess?='#'? symbol=[Field:VariableName];
+    instanceAccess?='#'? symbol=[Field:VariableName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+;
 
 NumberLiteral:
     value=NUMBER;

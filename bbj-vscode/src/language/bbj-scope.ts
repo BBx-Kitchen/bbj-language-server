@@ -10,7 +10,7 @@ import {
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Assignment, BbjClass, Class, ClassMember, Expression, Field, isAssignment, isBbjClass, isConstructorCall, isField, isJavaClass, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse
+    Assignment, BbjClass, Class, ClassMember, Expression, Field, isAssignment, isBbjClass, isClass, isConstructorCall, isField, isJavaClass, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -51,8 +51,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const reference = expression.symbol.ref
             if (isAssignment(reference)) {
                 return this.getType((reference as Assignment).value);
+            } else if(isClass(reference)) {
+                return reference
             }
-            return reference?.type.ref;
+            return reference?.type?.ref;
         } else if (isConstructorCall(expression)) {
             return expression.class.ref;
         } else if (isMemberRef(expression)) {
@@ -116,6 +118,17 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                         path: this.astNodeLocator.getAstNodePath(node)
                     })
                 }
+            }
+        } else if (isBbjClass(node)) {
+            if(node.superType?.ref) {
+                scopes.add(node, {
+                    name: 'super!',
+                    nameSegment: toDocumentSegment(node.superType?.$refNode),
+                    selectionSegment: toDocumentSegment(node.superType?.$refNode),
+                    type: Field,
+                    documentUri: document.uri,
+                    path: this.astNodeLocator.getAstNodePath(node.superType?.ref)
+                })
             }
         } else {
             super.processNode(node, document, scopes);

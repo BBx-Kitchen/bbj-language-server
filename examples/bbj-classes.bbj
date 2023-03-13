@@ -27,12 +27,13 @@ CLASS PUBLIC someOtherClass EXTENDS someClass
     
     METHOD PUBLIC someOtherClass(String myString!)
         #super!.setsomeInstanceString(myString!)
+        str = #super!.getInstanceString()
     METHODEND
 
 CLASSEND
 
 declare someClass a!
-a! = new someClass()
+a! = new someClass() 
 a!.setsomeInstanceString("TEST")
 ? a!.getsomeInstanceString()
 ? a!.getSomeString()
