@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, getContainerOfType, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, toDocumentSegment
+    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
@@ -106,18 +106,16 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const simpleName = node.className.substring(node.className.lastIndexOf('.') + 1);
             scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
         } else if (isAssignment(node) && node.variable && !isField(node.variable)) {
-            const program = getContainerOfType(node, isProgram)
-            if (program) {
-                if (scopes.get(program).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
-                    scopes.add(program, {
-                        name: node.variable.$refText,
-                        nameSegment: toDocumentSegment(node.variable.$refNode),
-                        selectionSegment: toDocumentSegment(node.variable.$refNode),
-                        type: Field,
-                        documentUri: document.uri,
-                        path: this.astNodeLocator.getAstNodePath(node)
-                    })
-                }
+            const scopeHolder = node.$container
+            if (scopes.get(scopeHolder).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
+                scopes.add(scopeHolder, {
+                    name: node.variable.$refText,
+                    nameSegment: toDocumentSegment(node.variable.$refNode),
+                    selectionSegment: toDocumentSegment(node.variable.$refNode),
+                    type: Field,
+                    documentUri: document.uri,
+                    path: this.astNodeLocator.getAstNodePath(node)
+                })
             }
         } else if (isBbjClass(node)) {
             if(node.superType?.ref) {

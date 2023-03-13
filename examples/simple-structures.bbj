@@ -10,7 +10,7 @@ some_integer% = 7
 some_object! = new HashMap()
 
 FOR i=1 TO 10
-    PRINT "Number ",i
+    PRINT "Number ", i
 NEXT
 
 rem the variable name is optional for the NEXT, we could have written
@@ -18,8 +18,9 @@ rem NEXT i
 
 rem variables that ar not initialized are zero or empty strings
 rem (FWIW - objects would be "null")
-WHILE j<10
-    j=j+1
+WHILE j < 10
+    j = j + 1
+    PRINT j
 WEND
 
 IF some_object! <> NULL() THEN
