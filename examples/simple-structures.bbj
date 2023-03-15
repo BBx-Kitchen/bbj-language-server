@@ -1,9 +1,9 @@
 rem this is a comment
 use java.util.HashMap
+
 rem Variables
 NULL = ""
 str=""
-
 some_string$ = "Hello World"
 some_number = 3.14
 some_integer% = 7

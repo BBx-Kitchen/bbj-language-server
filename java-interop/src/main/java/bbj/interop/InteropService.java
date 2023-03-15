@@ -19,7 +19,7 @@ import bbj.interop.data.MethodInfo;
 import bbj.interop.data.ParameterInfo;
 
 public class InteropService {
-    
+
     @JsonRequest
     public CompletableFuture<ClassInfo> getClassInfo(ClassInfoParams params) {
         var classInfo = new ClassInfo();
@@ -30,18 +30,18 @@ public class InteropService {
             classInfo.fields = Stream.of(clazz.getFields()).map(f -> {
                 var fi = new FieldInfo();
                 fi.name = f.getName();
-                fi.type = f.getType().getName();
+                fi.type = getProperTypeName(f.getType());
                 return fi;
             }).collect(Collectors.toList());
 
             classInfo.methods = Stream.of(clazz.getMethods()).map(m -> {
                 var mi = new MethodInfo();
                 mi.name = m.getName();
-                mi.returnType = m.getReturnType().getName();
+                mi.returnType = getProperTypeName(m.getReturnType());
                 mi.parameters = Stream.of(m.getParameters()).map(p -> {
                     var pi = new ParameterInfo();
                     pi.name = p.getName();
-                    pi.type = p.getType().getName();
+                    pi.type = getProperTypeName(p.getType());
                     return pi;
                 }).collect(Collectors.toList());
                 return mi;
@@ -54,4 +54,10 @@ public class InteropService {
         return CompletableFuture.completedFuture(classInfo);
     }
 
+    private String getProperTypeName(Class<?> clazz) {
+        if (clazz.isArray()) {
+            return clazz.getComponentType().getCanonicalName();
+        }
+        return clazz.getCanonicalName();
+    }
 }
