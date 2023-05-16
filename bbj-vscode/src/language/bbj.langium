@@ -15,8 +15,13 @@ Use:
     'use' className=QualifiedClassName;
 
 Statement:
+   SingleStatement ( {infer CompoundStatement.statements += current } ';' statements += SingleStatement+)?;
+
+
+SingleStatement:
     VariableDecl | Assignment | PrintValue | ExpressionStatement
-    | ForStatement | IfStatement | WhileStatement | GotoStatement | ExitStatement | LabelDecl
+    | ForStatement | IfStatement | EndIfStatement | WhileStatement | WhileEndStatement
+    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
 ;
 
 VariableDecl returns Field:
@@ -50,20 +55,27 @@ ParameterDecl returns Field:
 ;
 
 ForStatement:
-    'FOR' init=Assignment 'TO' to=Expression
-    body+=Statement*
-    'NEXT'
+    'FOR' init=Assignment 'TO' to=Expression  ('STEP' step=Expression)?
 ;
+
+NextStatement:
+    'NEXT' (variable=[Field:VariableName])?
+;
+
 IfStatement:
-    'IF' condition=Expression 'THEN'
-    body+=Statement*
-    'FI'
+    'IF' condition=Expression 'THEN' then += Statement+ ('ELSE' else += Statement+ )?
 ;
+
+EndIfStatement:
+    {infer EndIfStatement} 'ENDIF' | 'FI'
+;
+
 WhileStatement:
-    'WHILE' condition=Expression 
-    body+=Statement*
-    'WEND'
+    'WHILE' condition=Expression
 ;
+
+WhileEndStatement:
+    'WEND' {infer WhileEndStatement};
 
 GotoStatement:
     kind=('GOTO' | 'GOSUB') target=[LabelDecl]
@@ -73,17 +85,22 @@ ExitStatement:
     kind=('RETURN' | 'END')
 ;
 
+ExitToStatement:
+    'EXITTO' target=[LabelDecl]
+;
+
 LabelDecl:
     name=ID':'
 ;
 
 
+// TODO as a program statement literal expressions are not allowed
+// Only membercalls to variables
 ExpressionStatement:
-    expression=Expression;
-
+    expression=MemberCall;
 
 EXPR_OPERATOR returns string:
-    '+' | '-' | '*' | '/' | '<>' | '==' | '>=' | '<=' | '>' | '<'
+    '^' | '*' |  '/' | '+' | '-' | '<' | '>' | '=' | '<=' | '>=' | '<>' | 'AND' | 'OR' // from the BBx docu
 ;
 
 Expression:
@@ -107,7 +124,7 @@ NumberLiteral:
     value=NUMBER;
 
 StringLiteral:
-    value=STRING;
+    value=STRING | HEX_STRING;
 
 ConstructorCall:
     'new' class=[Class:QualifiedClassName] '(' (args+=Expression (',' args+=Expression)*)? ')';
@@ -124,11 +141,15 @@ Visibility returns string:
 hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /rem [^\n\r]*/;
 
-terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int
-terminal ID: /[_a-zA-Z][\w_]*/;
-terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
+// terminal STATEMENT_TERMINATOR: /[\n\r]+/;
 
-terminal STRING: /"[^"]*"|'[^']*'/;
+terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
+terminal ID: /[_a-zA-Z][\w_]*/;
+
+terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
+terminal STRING: /"([^"]|"{2})*"/; // check this
+terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
+
 
 // Types
 

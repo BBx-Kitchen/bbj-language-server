@@ -1,0 +1,9 @@
+some_object! = "" a!
+next 
+
+IF some_object! <> 3 THEN PRINT "some_object is ", "str(some_object!)"; PRINT "some_object is ", "some_object!.toString()"
+
+IF some_object! <> 3 THEN
+    PRINT "some_object is "
+    PRINT "some_object is "
+FI  

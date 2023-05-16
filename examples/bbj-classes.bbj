@@ -12,8 +12,8 @@ CLASS PUBLIC someClass
         METHODRET "ABC"
     METHODEND
     
-    METHOD PUBLIC String getInstanceString(Boolean something!, String some_string)
-        print something!
+    METHOD PUBLIC String getInstanceString(Boolean something!, String some_string!)
+        print something!, some_string!
         METHODRET #someInstanceString$
     METHODEND
 
@@ -31,6 +31,13 @@ CLASS PUBLIC someOtherClass EXTENDS someClass
     METHODEND
 
 CLASSEND
+
+rem missing: 
+rem          static access, getter/setter, import other files,
+rem          using FQN in declaration. Types System + Validierung.
+rem          Show method signatures. Validate method calls.
+rem Nice to have:
+rem          Javadoc in hover.
 
 declare someClass a!
 a! = new someClass() 
