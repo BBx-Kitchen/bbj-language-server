@@ -41,7 +41,7 @@
     },
     "dependencies": {
         "chevrotain": "^10.4.2",
-        "langium": "~1.1.0",
+        "langium": "~1.2.0",
         "vscode-jsonrpc": "~8.0.2",
         "vscode-languageclient": "~8.0.2",
         "vscode-uri": "^3.0.2"
@@ -52,7 +52,7 @@
         "@typescript-eslint/eslint-plugin": "^5.28.0",
         "@typescript-eslint/parser": "^5.28.0",
         "eslint": "^8.17.0",
-        "langium-cli": "~1.1.0",
+        "langium-cli": "~1.2.0",
         "typescript": "^4.9.4"
     }
 }

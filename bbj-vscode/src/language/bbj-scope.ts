@@ -10,7 +10,7 @@ import {
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Assignment, BbjClass, Class, ClassMember, Expression, Field, isAssignment, isBbjClass, isClass, isConstructorCall, isField, isJavaClass, isJavaField, isJavaMethod, isMemberRef, isProgram, isSymbolRef, isUse
+    Assignment, BbjClass, Class, ClassMember, Expression, FieldDecl, isAssignment, isBbjClass, isClass, isConstructorCall, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMemberCall, isProgram, isSymbolRef, isUse
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -24,7 +24,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if (isMemberRef(context.container) && context.property === 'member') {
+        if (isMemberCall(context.container) && context.property === 'member') {
             const receiverType = this.getType(context.container.receiver);
             if (!receiverType) {
                 return EMPTY_SCOPE;
@@ -57,7 +57,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return reference?.type?.ref;
         } else if (isConstructorCall(expression)) {
             return expression.class.ref;
-        } else if (isMemberRef(expression)) {
+        } else if (isMemberCall(expression)) {
             const member = expression.member.ref;
             if (isJavaField(member)) {
                 return member.resolvedType?.ref;
@@ -105,14 +105,14 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const program = node.$container;
             const simpleName = node.className.substring(node.className.lastIndexOf('.') + 1);
             scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
-        } else if (isAssignment(node) && node.variable && !isField(node.variable)) {
+        } else if (isAssignment(node) && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = node.$container
             if (scopes.get(scopeHolder).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
                 scopes.add(scopeHolder, {
                     name: node.variable.$refText,
                     nameSegment: toDocumentSegment(node.variable.$refNode),
                     selectionSegment: toDocumentSegment(node.variable.$refNode),
-                    type: Field,
+                    type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)
                 })
@@ -123,7 +123,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     name: 'super!',
                     nameSegment: toDocumentSegment(node.superType?.$refNode),
                     selectionSegment: toDocumentSegment(node.superType?.$refNode),
-                    type: Field,
+                    type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node.superType?.ref)
                 })

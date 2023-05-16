@@ -1,11 +1,14 @@
 rem this is a comment
 use java.util.HashMap
 
+dim A[1,4]
+
+number = A[1];
 rem Variables
 NULL = ""
 str=""
-some_string$ = "Hello World"
-some_number = 3.14
+some_string$ = "Hello ""World"""
+some_number = 3.14 - +1
 some_integer% = 7
 some_object! = new HashMap()
 
@@ -19,7 +22,7 @@ rem NEXT i
 rem variables that ar not initialized are zero or empty strings
 rem (FWIW - objects would be "null")
 WHILE j < 10
-    j = j + 1
+    j = j +1
     PRINT j
 WEND
 
