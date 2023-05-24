@@ -14,16 +14,17 @@ entry Program:
 
 // Main programm
 Use:
-    'use' className=QualifiedClassName;
+    'use' className=QualifiedClassName STATEMENT_TERMINATOR+
+;
 
 Statement:
-   SingleStatement ( {infer CompoundStatement.statements += current } ';' statements += SingleStatement+)?;
+   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)? STATEMENT_TERMINATOR+;
 
 
 SingleStatement:
     VariableDecl | Assignment | ArrayDeclarationStatement
     | PrintValue | ExpressionStatement
-    | ForStatement | IfStatement | EndIfStatement | WhileStatement | WhileEndStatement
+    | ForStatement | IfStatement | WhileStatement | WhileEndStatement
     | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
 ;
 
@@ -38,20 +39,20 @@ PrintValue:
 ;
 
 ClassDecl returns BbjClass:
-    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])?
+    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])? STATEMENT_TERMINATOR*
     members+=(FieldDecl | MethodDecl)*
-    'CLASSEND'
+    'CLASSEND' STATEMENT_TERMINATOR*
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName
+    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName STATEMENT_TERMINATOR*
 ;
 
 MethodDecl:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' STATEMENT_TERMINATOR*
         body+=Statement*
-        ('METHODRET' return=Expression)?
-    'METHODEND'
+        ('METHODRET' return=Expression STATEMENT_TERMINATOR*)?
+    'METHODEND' STATEMENT_TERMINATOR*
 ;
 
 ParameterDecl returns VariableDecl:
@@ -67,11 +68,19 @@ NextStatement:
 ;
 
 IfStatement:
-    'IF' condition=Expression 'THEN' then += Statement+ ('ELSE' else += Statement+ )?
+   SLIfStatement | MLIfStatement
 ;
 
-EndIfStatement:
-    {infer EndIfStatement} 'ENDIF' | 'FI'
+SLIfStatement:
+    'IF' condition=Expression 'THEN' then += SingleStatement (';' then += SingleStatement)*
+        ('ELSE' else += SingleStatement (';'else += SingleStatement)* )?
+;
+
+MLIfStatement:
+    'IF' condition=Expression 'THEN' STATEMENT_TERMINATOR+
+    then += Statement+
+    ('ELSE' else += Statement+ )?
+    ('ENDIF' | 'FI')
 ;
 
 WhileStatement:
@@ -153,23 +162,23 @@ Visibility returns string:
 
 // BBx Library
 Library: 
-    'library'
+    'library' STATEMENT_TERMINATOR*
     declarations+=LibFunction*
 ;
 
 LibFunction returns LibFunction:
     // CHR(int{,ERR=lineref})
-    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
+    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID STATEMENT_TERMINATOR*
 ;
 
 LibParameter returns LibParameter:
     name=ID optional?='?'? ('=' type=ID)?
 ;
 
-hidden terminal WS: /\s+/;
-hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*/;
+hidden terminal WS: /[^\S\r\n]+/;
+hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*[\n\r]+/;
 
-// terminal STATEMENT_TERMINATOR: /[\n\r]+/;
+terminal STATEMENT_TERMINATOR: /[\n\r]+/;
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
@@ -179,7 +188,7 @@ terminal NUMBER returns number: /(\+|-)?[0-9]+(\.[0-9]*)?/; // TODO create unary
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
 
-hidden terminal ML_COMMENT: /\/\*[\s\S]*?\*\//;
+hidden terminal ML_COMMENT: /\/\*[\s\S]*?\*\/[\n\r]*/;
 
 
 // Types

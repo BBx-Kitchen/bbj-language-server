@@ -14,17 +14,19 @@ CLASS PUBLIC someClass
     
     METHOD PUBLIC String getInstanceString(Boolean something!, String some_string!)
         print something!, some_string!
+         
         METHODRET #someInstanceString$
+    
     METHODEND
 
 CLASSEND
 
-
-CLASS PUBLIC someOtherClass EXTENDS someClass
+ 
+  CLASS PUBLIC someOtherClass EXTENDS someClass
 
     METHOD PRIVATE someOtherClass()
     METHODEND
-    
+      
     METHOD PUBLIC someOtherClass(String myString!)
         #super!.setsomeInstanceString(myString!)
         str = #super!.getInstanceString()

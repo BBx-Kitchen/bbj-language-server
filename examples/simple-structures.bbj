@@ -3,7 +3,7 @@ use java.util.HashMap
 
 dim A[1,4]
 
-number = A[1];
+number = A[1]
 rem Variables
 
 some_string$ = "Hello ""World"""
@@ -21,7 +21,7 @@ rem NEXT i
 rem variables that ar not initialized are zero or empty strings
 rem (FWIW - objects would be "null")
 WHILE j < 10
-    j = j +1
+    j = j + 1
     PRINT j
 WEND
 
@@ -43,7 +43,4 @@ label_2:
 PRINT "Skipped over it"
 END
 
-
-    
-
-
+  

@@ -1,9 +1,17 @@
-some_object! = "" a!
+some_object! = ""
+a!
 next 
 
-IF some_object! <> 3 THEN PRINT "some_object is ", STR(some_object!); PRINT "some_object is ", "some_object!.toString()"; rem af
+IF some_object! <> 3 THEN ?"x", STR(some_object!); ?"y"; ? "z"; rem af
 
 IF some_object! <> 3 THEN
     PRINT "some_object is "
     PRINT "some_object is "
-FI  
+ENDIF
+
+next 
+
+DIM sss[1]
+
+
+
