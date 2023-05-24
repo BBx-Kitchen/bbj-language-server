@@ -35,7 +35,8 @@
         "vscode:prepublish": "npm run build && npm run lint",
         "build": "tsc -b tsconfig.json",
         "watch": "tsc -b tsconfig.json --watch",
-        "lint": "eslint src --ext ts",
+        "lint": "eslint src test --ext ts",
+        "test": "vitest",
         "langium:generate": "langium generate",
         "langium:watch": "langium generate --watch"
     },
@@ -53,6 +54,7 @@
         "@typescript-eslint/parser": "^5.28.0",
         "eslint": "^8.17.0",
         "langium-cli": "~1.2.0",
-        "typescript": "^4.9.4"
+        "typescript": "^4.9.4",
+        "vitest": "~0.28.4"
     }
 }

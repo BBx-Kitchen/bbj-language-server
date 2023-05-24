@@ -97,6 +97,7 @@ ArrayDeclarationStatement returns ArrayDecl:
     'DIM' name = ID '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
 ;
 
+
 LabelDecl:
     name=ID':'
 ;
@@ -125,7 +126,7 @@ PrimaryExpression:
     SymbolRef | Literal | ConstructorCall;
 
 SymbolRef:
-    instanceAccess?='#'? symbol=[VariableDecl:VariableName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+    instanceAccess?='#'? symbol=[NamedElement:VariableName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
 ;
 
 Literal:
@@ -158,20 +159,15 @@ Library:
 
 LibFunction returns LibFunction:
     // CHR(int{,ERR=lineref})
-    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=PrimitiveType
+    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
 ;
 
 LibParameter returns LibParameter:
-    name=ID optional?='?' ('=' type=PrimitiveType)?
+    name=ID optional?='?'? ('=' type=ID)?
 ;
-
-PrimitiveType returns string:
-    'int' | 'string' | 'lineref'
-;
-
 
 hidden terminal WS: /\s+/;
-hidden terminal SL_COMMENT: /rem [^\n\r]*/;
+hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*/;
 
 // terminal STATEMENT_TERMINATOR: /[\n\r]+/;
 
@@ -183,10 +179,15 @@ terminal NUMBER returns number: /(\+|-)?[0-9]+(\.[0-9]*)?/; // TODO create unary
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
 
+hidden terminal ML_COMMENT: /\/\*[\s\S]*?\*\//;
+
 
 // Types
-interface VariableDecl {
+interface NamedElement {
     name: string
+}
+
+interface VariableDecl extends NamedElement {
     type?: @Class
 }
 
@@ -204,16 +205,15 @@ interface BbjClass extends Class {
     members: ClassMember[]
 }
 
-interface LibFunction extends VariableDecl {
+interface LibFunction extends NamedElement {
     parameters: LibParameter[]
-    returnType: PrimitiveType
+    returnType: string
+    docu?: string
 }
 
-interface LibParameter {
-    name: string
-    type: PrimitiveType
+interface LibParameter extends NamedElement {
+    type: string
     optional: boolean
 }
 
-type PrimitiveType = 'int' | 'string' | 'lineref'
 type ClassMember = FieldDecl | MethodDecl

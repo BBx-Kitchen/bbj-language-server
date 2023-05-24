@@ -26,7 +26,7 @@ WHILE j < 10
 WEND
 
 IF some_object! <> NULL() THEN
-    PRINT "some_object is ",str(some_object!)
+    PRINT "some_object is ",STR(some_object!)
     PRINT "some_object is ",some_object!.toString()
 FI
 

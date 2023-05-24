@@ -37,6 +37,17 @@
             "request": "launch",
             "projectName": "java-interop",
             "mainClass": "bbj.interop.SocketServiceApp"
-        }
+        },
+        {
+            "name": "Vitest: Run All",
+            "type": "node",
+            "request": "launch",
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "program": "${workspaceRoot}/bbj-vscode/node_modules/vitest/vitest.mjs",
+            "args": ["run", "--no-color", "--no-coverage", "--no-watch"],
+            "smartStep": true,
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/bbj-vscode"
+        },
     ]
 }

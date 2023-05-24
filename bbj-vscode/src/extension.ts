@@ -9,11 +9,13 @@ import * as path from 'path';
 import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
+import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider';
 
 let client: LanguageClient;
 
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
+    BBjLibraryFileSystemProvider.register(context);
     client = startLanguageClient(context);
 }
 

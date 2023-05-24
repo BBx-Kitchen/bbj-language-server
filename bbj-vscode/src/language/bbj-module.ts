@@ -5,13 +5,14 @@
  ******************************************************************************/
 
 import {
-    createDefaultModule, createDefaultSharedModule, DefaultSharedModuleContext, inject,
+    createDefaultModule, createDefaultSharedModule, DeepPartial, DefaultSharedModuleContext, inject,
     LangiumServices, LangiumSharedServices, Module, PartialLangiumServices
 } from 'langium';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
 import { BBjValidator, registerValidationChecks } from './bbj-validator';
 import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
+import { BBjWorkspaceManager } from './lib/ws-manager';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -49,6 +50,12 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     }
 };
 
+export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
+    workspace: {
+        WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services)
+    },
+}
+
 /**
  * Create the full set of services required by Langium.
  *
@@ -70,7 +77,8 @@ export function createBBjServices(context: DefaultSharedModuleContext): {
 } {
     const shared = inject(
         createDefaultSharedModule(context),
-        BBjGeneratedSharedModule
+        BBjGeneratedSharedModule,
+        BBjSharedModule
     );
     const BBj = inject(
         createDefaultModule({ shared }),
