@@ -3,7 +3,7 @@
     "languages": [{
         "id": "bbj",
         "grammar": "src/language/bbj.langium",
-        "fileExtensions": [".bbj"],
+        "fileExtensions": [".bbj", ".bbl"],
         "caseInsensitive": true,
         "textMate": {
             "out": "syntaxes/bbj.tmLanguage.json"

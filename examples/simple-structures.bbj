@@ -5,8 +5,7 @@ dim A[1,4]
 
 number = A[1];
 rem Variables
-NULL = ""
-str=""
+
 some_string$ = "Hello ""World"""
 some_number = 3.14 - +1
 some_integer% = 7

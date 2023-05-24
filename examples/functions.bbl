@@ -1,0 +1,8 @@
+library
+
+ASC(param=string, ERR?=lineref): int
+
+CHR(param=int, ERR?=lineref): string
+
+NULL():string
+

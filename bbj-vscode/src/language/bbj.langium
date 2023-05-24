@@ -8,9 +8,11 @@ grammar BBj
 import './java-types'
 
 entry Program:
-    uses+=Use*
-    statements+=(Statement | ClassDecl)*;
+    Library |
+    (uses+=Use* statements+=(Statement | ClassDecl)*)
+;
 
+// Main programm
 Use:
     'use' className=QualifiedClassName;
 
@@ -148,6 +150,26 @@ VariableName returns string:
 Visibility returns string:
     'PUBLIC'|'PRIVATE';
 
+// BBx Library
+Library: 
+    'library'
+    declarations+=LibFunction*
+;
+
+LibFunction returns LibFunction:
+    // CHR(int{,ERR=lineref})
+    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=PrimitiveType
+;
+
+LibParameter returns LibParameter:
+    name=ID optional?='?' ('=' type=PrimitiveType)?
+;
+
+PrimitiveType returns string:
+    'int' | 'string' | 'lineref'
+;
+
+
 hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /rem [^\n\r]*/;
 
@@ -182,4 +204,16 @@ interface BbjClass extends Class {
     members: ClassMember[]
 }
 
+interface LibFunction extends VariableDecl {
+    parameters: LibParameter[]
+    returnType: PrimitiveType
+}
+
+interface LibParameter {
+    name: string
+    type: PrimitiveType
+    optional: boolean
+}
+
+type PrimitiveType = 'int' | 'string' | 'lineref'
 type ClassMember = FieldDecl | MethodDecl
