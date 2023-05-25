@@ -13,6 +13,7 @@ import { BBjValidator, registerValidationChecks } from './bbj-validator';
 import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './lib/ws-manager';
+import { BBjHoverProvider } from './bbj-provider';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -47,6 +48,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     java: {
         JavaInteropService: (services) => new JavaInteropService(services)
+    },
+    lsp: {
+        HoverProvider: (services) => new BBjHoverProvider(services)
     }
 };
 

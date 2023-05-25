@@ -175,7 +175,7 @@ Library:
 ;
 
 LibFunction returns LibFunction:
-    docu = Documentation?
+    (docu = DOCU LINE_BREAK+)?
     name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
 ;
 
@@ -183,9 +183,6 @@ LibParameter returns LibParameter:
     name=ID optional?='?'? ('=' type=ID)?
 ;
 
-Documentation: 
-    text = DOCU LINE_BREAK+
-;
 
 hidden terminal WS: /[^\S\r\n]+/;
 hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*[\n\r]+/; // TODO make REM case insensetive
@@ -230,7 +227,7 @@ interface BbjClass extends Class {
 interface LibFunction extends NamedElement {
     parameters: LibParameter[]
     returnType: string
-    docu?: Documentation
+    docu?: string
 }
 
 interface LibParameter extends NamedElement {

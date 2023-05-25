@@ -57,7 +57,7 @@ describe('Parser Tests', () => {
         expect(isLibrary(lib.parseResult.value)).true
         const func = (lib.parseResult.value as Library).declarations[0]
         expect(func.name).equal('NULL')
-        expect(func.docu?.text).equal('/* Function comment here */') // FIXME remove "/**/"
+        expect(func.docu).equal('/* Function comment here */') // FIXME remove "/**/"
     })
 
     test('Empty library parsed', async () => {

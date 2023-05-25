@@ -28,6 +28,8 @@ WEND
 IF some_object! <> NULL() THEN
     PRINT "some_object is ",STR(some_object!)
     PRINT "some_object is ",some_object!.toString()
+ELSE 
+    ? ASC()
 FI
 
 
