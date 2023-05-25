@@ -17,7 +17,6 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         folders: WorkspaceFolder[],
         collector: (document: LangiumDocument<AstNode>) => void
     ): Promise<void> {
-        console.warn('Loading bbjlib:///functions.bbl')
         // Load library
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
     }

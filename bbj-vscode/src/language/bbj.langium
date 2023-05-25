@@ -7,18 +7,22 @@ grammar BBj
 
 import './java-types'
 
-entry Program:
-    Library |
-    (uses+=Use* statements+=(Statement | ClassDecl)*)
+entry Model:
+   Library | Program
 ;
 
 // Main programm
+Program:
+    uses+=Use? (LINE_BREAK+ uses+=Use?)* // FIXME use should become a statement
+    statements+=(Statement | ClassDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl)?)*
+;
+
 Use:
-    'use' className=QualifiedClassName STATEMENT_TERMINATOR+
+    'use' className=QualifiedClassName
 ;
 
 Statement:
-   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)? STATEMENT_TERMINATOR+;
+   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
 
 
 SingleStatement:
@@ -39,20 +43,24 @@ PrintValue:
 ;
 
 ClassDecl returns BbjClass:
-    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])? STATEMENT_TERMINATOR*
-    members+=(FieldDecl | MethodDecl)*
-    'CLASSEND' STATEMENT_TERMINATOR*
+    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])? LINE_BREAK+
+    members+=ClassMember? (LINE_BREAK+ members+=ClassMember?)*
+    'CLASSEND'
+;
+
+ClassMember returns ClassMember:
+    FieldDecl | MethodDecl
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName STATEMENT_TERMINATOR*
+    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName
 ;
 
 MethodDecl:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' STATEMENT_TERMINATOR*
-        body+=Statement*
-        ('METHODRET' return=Expression STATEMENT_TERMINATOR*)?
-    'METHODEND' STATEMENT_TERMINATOR*
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' LINE_BREAK+
+        body+=Statement? (LINE_BREAK+ body+=Statement?)*
+        ('METHODRET' return=Expression LINE_BREAK+)?
+    'METHODEND'
 ;
 
 ParameterDecl returns VariableDecl:
@@ -77,10 +85,10 @@ SLIfStatement:
 ;
 
 MLIfStatement:
-    'IF' condition=Expression 'THEN' STATEMENT_TERMINATOR+
-    then += Statement+
-    ('ELSE' else += Statement+ )?
-    ('ENDIF' | 'FI')
+    'IF' condition=Expression 'THEN' LINE_BREAK+
+    then += Statement? (LINE_BREAK+ then += Statement?)*
+    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement (LINE_BREAK+ else += Statement?)* )?
+    (LINE_BREAK+ 'ENDIF' | 'FI')
 ;
 
 WhileStatement:
@@ -162,23 +170,28 @@ Visibility returns string:
 
 // BBx Library
 Library: 
-    'library' STATEMENT_TERMINATOR*
-    declarations+=LibFunction*
+    LINE_BREAK* 'library'
+    declarations+=LibFunction? (LINE_BREAK+ declarations+=LibFunction?)* 
 ;
 
 LibFunction returns LibFunction:
-    // CHR(int{,ERR=lineref})
-    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID STATEMENT_TERMINATOR*
+    docu = Documentation?
+    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
 ;
 
 LibParameter returns LibParameter:
     name=ID optional?='?'? ('=' type=ID)?
 ;
 
-hidden terminal WS: /[^\S\r\n]+/;
-hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*[\n\r]+/;
+Documentation: 
+    text = DOCU LINE_BREAK+
+;
 
-terminal STATEMENT_TERMINATOR: /[\n\r]+/;
+hidden terminal WS: /[^\S\r\n]+/;
+hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*[\n\r]+/; // TODO make REM case insensetive
+
+terminal LINE_BREAK: /[\n\r]+/;
+
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
@@ -188,7 +201,7 @@ terminal NUMBER returns number: /(\+|-)?[0-9]+(\.[0-9]*)?/; // TODO create unary
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
 
-hidden terminal ML_COMMENT: /\/\*[\s\S]*?\*\/[\n\r]*/;
+terminal DOCU:  /\/\*[\s\S]*?\*\//;
 
 
 // Types
@@ -217,7 +230,7 @@ interface BbjClass extends Class {
 interface LibFunction extends NamedElement {
     parameters: LibParameter[]
     returnType: string
-    docu?: string
+    docu?: Documentation
 }
 
 interface LibParameter extends NamedElement {

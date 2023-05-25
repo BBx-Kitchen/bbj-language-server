@@ -7,11 +7,10 @@ IF some_object! <> 3 THEN ?"x", STR(some_object!); ?"y"; ? "z"; rem af
 IF some_object! <> 3 THEN
     PRINT "some_object is "
     PRINT "some_object is "
+ELSE
+    PRINT "some_object is " 
 ENDIF
 
 next 
 
 DIM sss[1]
-
-
-

@@ -28,7 +28,7 @@
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceFolder}/bbj-vscode/out/**/*.js",
-                "${workspaceFolder}/bbj-vscode/node_modules/langium"
+                "${workspaceFolder}/bbj-vscode/node_modules/langium/**/*.js"
             ]
         },
         {
