@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, toDocumentSegment
+    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, stream, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
@@ -38,10 +38,16 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         return super.getScope(context);
     }
 
-    protected collectMembers(clazz: BbjClass): Stream<ClassMember> {
-        const members = stream(clazz.members)
-        if (isBbjClass(clazz.superType?.ref)) {
-            return members.concat(this.collectMembers(clazz.superType!.ref))
+    protected collectMembers(clazz: BbjClass): ClassMember[] {
+        let members = clazz.members
+        if (isBbjClass(clazz.extends?.length > 0)) {
+            clazz.extends.forEach((superType) => {
+                // TODO handle JavaClass as well
+                if(isBbjClass(superType!.ref)) {
+                    members = members.concat(this.collectMembers(superType!.ref))
+                }
+            });
+            return members
         }
         return members
     }
@@ -124,14 +130,15 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 })
             }
         } else if (isBbjClass(node)) {
-            if(node.superType?.ref) {
+            if(node.extends.length > 0 && node.extends[0].ref) {
+                const superType = node.extends[0]
                 scopes.add(node, {
                     name: 'super!',
-                    nameSegment: toDocumentSegment(node.superType?.$refNode),
-                    selectionSegment: toDocumentSegment(node.superType?.$refNode),
+                    nameSegment: toDocumentSegment(superType.$refNode),
+                    selectionSegment: toDocumentSegment(superType.$refNode),
                     type: FieldDecl,
                     documentUri: document.uri,
-                    path: this.astNodeLocator.getAstNodePath(node.superType?.ref)
+                    path: this.astNodeLocator.getAstNodePath(superType.ref!)
                 })
             }
         } else {

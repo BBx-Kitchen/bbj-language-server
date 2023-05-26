@@ -14,7 +14,7 @@ entry Model:
 // Main programm
 Program:
     uses+=Use? (LINE_BREAK+ uses+=Use?)* // FIXME use should become a statement
-    statements+=(Statement | ClassDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl)?)*
+    statements+=(Statement | ClassDecl | InterfaceDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl | InterfaceDecl)?)*
 ;
 
 Use:
@@ -27,44 +27,63 @@ Statement:
 
 SingleStatement:
     VariableDecl | Assignment | ArrayDeclarationStatement
-    | PrintValue | ExpressionStatement
+    | PrintValue 
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
     | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
+    | ReturnStatement | ExpressionStatement
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' type=[Class:ID] name=VariableName;
+    'declare' type=[Class:ID] name=FeatureName;
 
 Assignment:
-    variable=[VariableDecl:VariableName] '=' value=Expression;
+    instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
 
 PrintValue:
     ('?' | 'PRINT') value+=Expression (',' value+=Expression)*
 ;
 
 ClassDecl returns BbjClass:
-    'CLASS' visibility=Visibility name=ID ('EXTENDS' superType=[Class:QualifiedClassName])? LINE_BREAK+
-    members+=ClassMember? (LINE_BREAK+ members+=ClassMember?)*
-    'CLASSEND'
+    'CLASS' visibility=Visibility name=ID 
+        Extends
+        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*
+    (LINE_BREAK+ members+=ClassMember?)*
+    LINE_BREAK+ 'CLASSEND'
+;
+InterfaceDecl returns BbjClass:
+    interface ?= 'INTERFACE' visibility=Visibility name=ID Extends
+    (LINE_BREAK+ members+=ClassMember?)*
+     LINE_BREAK+ 'INTERFACEEND'
+;
+
+fragment Extends: 
+    ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)? 
 ;
 
 ClassMember returns ClassMember:
-    FieldDecl | MethodDecl
+    FieldDecl | MethodDecl | MethodDef
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=VariableName
+    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
 ;
 
 MethodDecl:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' LINE_BREAK+
-        body+=Statement? (LINE_BREAK+ body+=Statement?)*
-        ('METHODRET' return=Expression LINE_BREAK+)?
-    'METHODEND'
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+;
+MethodDef:
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+        (LINE_BREAK+ body+=Statement)*
+    LINE_BREAK+'METHODEND'
+;
+
+
+ReturnStatement:
+    'METHODRET' return=Expression
 ;
 
 ParameterDecl returns VariableDecl:
-    type=[Class:QualifiedClassName] name=VariableName
+    type=[Class:QualifiedClassName] name=FeatureName
 ;
 
 ForStatement:
@@ -72,7 +91,7 @@ ForStatement:
 ;
 
 NextStatement:
-    'NEXT' (variable=[VariableDecl:VariableName])?
+    'NEXT' (variable=[VariableDecl:FeatureName])?
 ;
 
 IfStatement:
@@ -85,7 +104,7 @@ SLIfStatement:
 ;
 
 MLIfStatement:
-    'IF' condition=Expression 'THEN' LINE_BREAK+
+    'IF' condition=Expression 'THEN'? LINE_BREAK+
     then += Statement? (LINE_BREAK+ then += Statement?)*
     (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement (LINE_BREAK+ else += Statement?)* )?
     (LINE_BREAK+ 'ENDIF' | 'FI')
@@ -135,15 +154,15 @@ Expression:
 
 MemberCall infers Expression:
     PrimaryExpression (
-        {infer MemberCall.receiver=current} '.' member=[JavaMember:ID] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
     )*;
 
-PrimaryExpression:
-    SymbolRef | Literal | ConstructorCall;
+PrimaryExpression infers Expression:
+    '(' Expression ')' | SymbolRef | Literal | ConstructorCall;
 
 SymbolRef:
-    instanceAccess?='#'? symbol=[NamedElement:VariableName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+    (instanceAccess?='#' | '*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
 ;
 
 Literal:
@@ -162,9 +181,12 @@ ConstructorCall:
 QualifiedClassName returns string:
     ID ('.' ID)*;
 
-VariableName returns string:
-    ID | ID_WITH_SUFFIX;
+FeatureName returns string:
+    ValidId | ID_WITH_SUFFIX | ID;
 
+ValidId returns string:
+    'NEXT'
+;
 Visibility returns string:
     'PUBLIC'|'PRIVATE';
 
@@ -185,7 +207,7 @@ LibParameter returns LibParameter:
 
 
 hidden terminal WS: /[^\S\r\n]+/;
-hidden terminal SL_COMMENT: /(rem|REM) [^\n\r]*[\n\r]+/; // TODO make REM case insensetive
+hidden terminal SL_COMMENT: /([rR][eE][mM]) [^\n\r]*[\n\r]+/;
 
 terminal LINE_BREAK: /[\n\r]+/;
 
@@ -198,7 +220,7 @@ terminal NUMBER returns number: /(\+|-)?[0-9]+(\.[0-9]*)?/; // TODO create unary
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
 
-terminal DOCU:  /\/\*[\s\S]*?\*\//;
+terminal DOCU:  /\/@@[\s\S]*?@\//;
 
 
 // Types
@@ -212,6 +234,7 @@ interface VariableDecl extends NamedElement {
 
 interface FieldDecl extends VariableDecl {
     visibility?: string
+    init?: Expression
 }
 
 interface ArrayDecl extends VariableDecl {
@@ -220,7 +243,9 @@ interface ArrayDecl extends VariableDecl {
 
 interface BbjClass extends Class {
     visibility?: string
-    superType?: @Class
+    interface: boolean
+    extends?: @Class[]
+    implements?: @Class[]
     members: ClassMember[]
 }
 
@@ -235,4 +260,4 @@ interface LibParameter extends NamedElement {
     optional: boolean
 }
 
-type ClassMember = FieldDecl | MethodDecl
+type ClassMember = FieldDecl | MethodDecl | MethodDef

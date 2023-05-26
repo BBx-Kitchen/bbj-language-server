@@ -1,13 +1,22 @@
 {
     "projectName": "BBj",
-    "languages": [{
-        "id": "bbj",
-        "grammar": "src/language/bbj.langium",
-        "fileExtensions": [".bbj", ".bbl"],
-        "caseInsensitive": true,
-        "textMate": {
-            "out": "syntaxes/bbj.tmLanguage.json"
+    "languages": [
+        {
+            "id": "bbj",
+            "grammar": "src/language/bbj.langium",
+            "fileExtensions": [
+                ".bbj",
+                ".bbl"
+            ],
+            "caseInsensitive": true,
+            "textMate": {
+                "out": "syntaxes/bbj.tmLanguage.json"
+            }
         }
-    }],
-    "out": "src/language/generated"
+    ],
+    "out": "src/language/generated",
+    "chevrotainParserConfig": {
+        "recoveryEnabled": true,
+        "nodeLocationTracking": "full"
+    }
 }

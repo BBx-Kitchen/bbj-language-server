@@ -41,7 +41,7 @@ describe('Parser Tests', () => {
         library
         ASC(param=string, ERR?=lineref): int
 
-        /* Function comment here */
+        /@@ Function comment here @/
         NULL():string
     `)
         expect(lib.parseResult.lexerErrors).toHaveLength(0)
@@ -51,13 +51,13 @@ describe('Parser Tests', () => {
     test('Library parsed', async () => {
         const lib = await parse(`
         library
-        /* Function comment here */
+        /@@ Function comment here @/
         NULL():string
         `)
         expect(isLibrary(lib.parseResult.value)).true
         const func = (lib.parseResult.value as Library).declarations[0]
         expect(func.name).equal('NULL')
-        expect(func.docu).equal('/* Function comment here */') // FIXME remove "/**/"
+        expect(func.docu).equal('/@@ Function comment here @/') // TODO remove "/@@@/"
     })
 
     test('Empty library parsed', async () => {

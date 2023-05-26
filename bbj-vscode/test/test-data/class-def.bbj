@@ -1,0 +1,320 @@
+REM Copied from https://github.com/BBj-Plugins/BBjGridExWidget/blob/dev/GxRenderers.bbj
+
+
+rem /**
+rem  *  The package contains the classes of all supported CellRenderer components
+rem  */
+rem package GxRenderers
+rem /**
+rem  * This file is part of the BBjGridExWidget plugin.
+rem  * (c) Basis Europe <eu@basis.cloud>
+rem  *
+rem  * For the full copyright and license information, please view the LICENSE
+rem  * file that was distributed with this source code.
+rem  */
+use java.util.HashSet
+use com.google.gson.Gson
+use com.google.gson.JsonObject
+use com.google.gson.JsonArray
+REM FIXME use ::BBjGridExWidget/GxExpressions.bbj::GxExpressionInterface
+REM FIXME use ::BBjGridExWidget/GxExpressions.bbj::GxExpression
+REM FIXME use ::BBjGridExWidget/GxOptions.bbj::GxOptionsBoolean
+REM /**
+REM  * GxRendererInterface
+REM  *
+REM  * @author Hyyan Abo Fakher
+REM  */
+interface public GxRendererInterface
+    rem /**
+    rem  * A constant which holds the client renderer real name
+    rem  */
+
+    method public static BBjString getCellRendererName()
+    rem /**
+    rem  * Convert the renderer definition to Json Object
+    rem  *
+    rem  * @return JsonObject The renderer as JsonObject
+    rem  */
+
+    method public JsonObject getAsJsonObject()
+    rem /**
+    rem  * Compare two cell renderers
+    rem  *
+    rem  * @param cellRenderer! - Another cell renderer instance to compare with
+    rem  *
+    rem  * @return bool - true when they are equal , false otherwise
+    rem  */
+
+    method public boolean equals(GxRendererInterface cellRenderer!)
+
+interfaceend
+rem /**
+rem  * Compare two cell renderers components
+rem  *
+rem  * @author Hyyan Abo Fakher
+rem  */
+class public GxCellRendererComparator
+    rem /**
+    rem  * Compare two cell renderers
+    rem  *
+    rem  * @param one! - First cell renderer instance
+    rem  * @param two! - Second cell renderer instance
+    rem  *
+    rem  * @return boolean true when they are equal , false otherwise
+    rem  */
+    method public static boolean compare(GxRendererInterface one! , GxRendererInterface two!)
+        if(one!.getCellRendererName() <> two!.getCellRendererName())
+            methodret BBjAPI.FALSE
+        FI
+
+        methodret one!.getAsJsonObject().equals(two!.getAsJsonObject())
+    methodend
+
+classend
+rem /**
+rem  * Abstract implementation for GxRendererInterface
+rem  * 
+rem  * @author Hyyan Abo Fakher
+rem  */
+class public GxRendererAbstract implements GxRendererInterface
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public boolean equals(GxRendererInterface cellRenderer!)
+        methodret GxCellRendererComparator.compare(#this!,cellRenderer!)
+    methodend
+
+classend
+rem /**
+rem  * The class represents a boolean cell renderer
+rem  *
+REM  * @author Hyyan Abo Fakher
+rem  */
+class public GxRendererBoolean extends GxOptionsBoolean implements GxRendererInterface
+    rem /**
+    rem  * The value to use when when the component needs to render true values.
+    rem  * in case it is null() then we use the first item in PossibleTrueValues!
+    rem  */
+    field public BBjString TrueValue! = null()
+    rem /**
+    rem  * The value to use when when the component needs to render false values.
+    rem  * in case it is null() then we use the first item in PossibleFalseValues!
+    rem  */
+    field public BBjString FalseValue! = null()
+    rem /**
+    rem  * A special html string which uses the switch button to render true/false values
+    rem  */
+    method public static BBjString SWITCH_RENDERER()
+        methodret "switch"
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public static BBjString getCellRendererName()
+        methodret "BooleanRenderer"
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public JsonObject getAsJsonObject()
+        declare JsonObject json!
+
+        json! = #super!.getAsJsonObject()
+        json!.addProperty("booleanTrueRenderValue",#getTrueValue(), err=*next)
+        json!.addProperty("booleanFalseRenderValue",#getFalseValue(), err=*next)
+        methodret json!
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public boolean equals(GxRendererInterface cellRenderer!)
+        methodret GxCellRendererComparator.compare(#this!,cellRenderer!)
+    methodend
+
+classend
+rem /**
+rem  * The class can render a custom html using lodash string templates.
+rem  *
+rem  * Inside the template you will have access to the <i>params</i> object
+rem  * which contains value, valueFormatted, ...
+rem  *
+rem  * Use This render if you want to render the data with a custom html.
+rem  *
+rem  * @see <a href="https://lodash.com/docs/4.17.15#template">Lodash Templates</a>
+rem  *
+REM  * @author Hyyan Abo Fakher
+rem  */
+class public GxRendererCustomHTML extends GxRendererAbstract
+    rem /**
+    rem  * String template which will be compiled in the client.<br>
+    rem  * <pre>
+    rem  * <code>
+    rem  *  <%= '<strong style=\'color:red\'>' + (params.valueFormatted || params.value)  + '</strong>' %>
+    rem  * </code>
+    rem  * </pre>
+    rem  */
+    field public BBjString Template! = null()
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public static BBjString getCellRendererName()
+        methodret "TemplateRenderer"
+    methodend
+    rem /**
+    rem  * Construct new GxRendererCustomHTML
+    rem  *
+    rem  * @param BBjString template! The string template
+    rem  *
+    rem  * i.e
+    rem  * <pre>
+    rem  * <code>
+    rem  *  <%= '<strong style=\'color:red\'>' + (params.valueFormatted || '')  + '</strong>' %>
+    rem  * </code>
+    rem  * </pre>
+    rem  */
+    method public GxRendererCustomHTML(BBjString template!)
+        #Template! = template!
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public JsonObject getAsJsonObject()
+        declare JsonObject json!
+
+        json! = new JsonObject()
+        json!.addProperty("renderTemplate" , #getTemplate(),err=*next)
+        methodret json!
+    methodend
+
+classend
+rem /**
+rem  * The renderer can be used to display a list of images based on the cells values using a json object
+rem  *
+REM  * @author Hyyan Abo Fakher
+rem  */
+class public GxRendererImageRenderer extends GxRendererAbstract
+    rem /**
+    rem  * The image's width
+    rem  */
+    field public BBjString Width! = null()
+    rem /**
+    rem  * The image's height
+    rem  */
+    field public BBjString Height! = null()
+    rem /**
+    rem  * A json object
+    rem  */
+    field public JsonObject List! = new JsonObject()
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public static BBjString getCellRendererName()
+        methodret "ImageRenderer"
+    methodend
+    rem /**
+    rem  * Construct new GxRendererImageRenderer
+    rem  *
+    rem  * @param JsonObject list! The images list
+    rem  */
+    method public GxRendererImageRenderer(JsonObject list!)
+        #List! = list!
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public JsonObject getAsJsonObject()
+        declare JsonObject json!
+
+        json! = new JsonObject()
+        json!.addProperty("imageRendererWidth" , #getWidth(),err=*next)
+        json!.addProperty("imageRendererHeight" , #getHeight(),err=*next)
+        json!.        add("imageRendererList" , #getList(),err=*next)
+        methodret json!
+    methodend
+
+classend
+rem /**
+rem  * If you are grouping in the grid, then you will need to provide a group cell renderer as the group cell renderer is what provides the user with the expand and collapse functionality.
+rem  *
+REM  * @author Hyyan Abo Fakher
+rem  */
+class public GxRendererGroupCellRenderer extends GxRendererAbstract
+    rem /**
+    rem  * When true show row counts, hide otherwise
+    rem  */
+    field public BBjNumber SuppressCount! = null()
+    rem /**
+    rem  * When true disable double-click for expand, enable otherwise
+    rem  */
+    field public BBjNumber SuppressDoubleClickExpand! = null()
+    rem /**
+    rem  * When true enable checkbox selection, disable otherwise
+    rem  */
+    field public BBjNumber Checkbox! = null()
+    rem /**
+    rem  * Provide an inner renderer
+    rem  */
+    field public GxRendererInterface InnerRenderer! = null()
+    rem /**
+    rem  * Provide a footer value getter expression
+    rem  */
+    field public GxExpressionInterface FooterValueGetterExpression! = null()
+    rem /**
+    rem  * Construct new GxRendererGroupCellRenderer
+    rem  *
+    rem  * @param GxExpressionInterface footerValueGetterExpression! an expression
+    rem  */
+    method public GxRendererGroupCellRenderer(GxExpressionInterface footerValueGetterExpression!)
+        #FooterValueGetterExpression! = footerValueGetterExpression!
+    methodend
+    rem /**
+    rem  * Construct new GxRendererGroupCellRenderer
+    rem  *
+    rem  * @param BBjString footerValueGetterExpression! an expression
+    rem  */
+    method public GxRendererGroupCellRenderer(BBjString footerValueGetterExpression!)
+        #setFooterValueGetterExpression(footerValueGetterExpression!)
+    methodend
+    rem /**
+    rem  * Create a GxExpression from string and set it a footer value getter
+    rem  *
+    rem  * @param BBjString expression! Javascript expression
+    rem  */
+    method public void setFooterValueGetterExpression(BBjString expression!)
+        #FooterValueGetterExpression! = new GxExpression(expression!)
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public static BBjString getCellRendererName()
+        methodret "agGroupCellRenderer"
+    methodend
+    rem /**
+    rem  * {@inheritDoc}
+    rem  */
+    method public JsonObject getAsJsonObject()
+        declare JsonObject json!
+
+        json! = new JsonObject()
+        json!.addProperty("suppressCount" , #getSuppressCount().booleanValue(),err=*next)
+        json!.addProperty("suppressDoubleClickExpand" , #getSuppressDoubleClickExpand().booleanValue(),err=*next)
+        json!.addProperty("checkbox" , #getCheckbox().booleanValue(),err=*next)
+        json!.addProperty("footerValueGetter" , #getFooterValueGetterExpression().toString(),err=*next)
+
+        if(#getInnerRenderer() <> null()) then
+            json!.addProperty("innerRenderer" , #getInnerRenderer().getCellRendererName(),err=*next)
+
+            declare JsonObject innerJson!
+
+            innerJson! = #getInnerRenderer().getAsJsonObject()
+            it! = innerJson!.entrySet().iterator()
+            WHILE (it!.hasNext())
+                next! = it!.next()
+                json!.addProperty(str(next!.getKey()) , str(next!.getValue()),err=*next)
+            WEND
+        FI
+
+        methodret json!
+    methodend
+
+classend

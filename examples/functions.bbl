@@ -1,6 +1,6 @@
 library
 
-/*
+/@@
 Documentation
-*/
+@/
 HELP(foo=int): string
