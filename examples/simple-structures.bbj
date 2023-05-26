@@ -1,6 +1,8 @@
 rem this is a comment
 use java.util.HashMap
 
+LET x = 1, y = 2
+
 dim A[1,4]
 
 number = A[1]

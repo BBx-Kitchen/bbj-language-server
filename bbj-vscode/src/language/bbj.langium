@@ -26,11 +26,11 @@ Statement:
 
 
 SingleStatement:
-    VariableDecl | Assignment | ArrayDeclarationStatement
+    VariableDecl | Assignment | LetStatement | ArrayDeclarationStatement
     | PrintValue 
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
-    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
-    | ReturnStatement | ExpressionStatement
+    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl | MethodReturnStatement
+    | ExpressionStatement
 ;
 
 VariableDecl returns VariableDecl:
@@ -38,6 +38,10 @@ VariableDecl returns VariableDecl:
 
 Assignment:
     instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
+
+LetStatement:
+    'LET' assigments+=Assignment (',' assigments+=Assignment)*
+;
 
 PrintValue:
     ('?' | 'PRINT') value+=Expression (',' value+=Expression)*
@@ -78,7 +82,7 @@ MethodDef:
 ;
 
 
-ReturnStatement:
+MethodReturnStatement:
     'METHODRET' return=Expression
 ;
 
@@ -133,7 +137,6 @@ ArrayDeclarationStatement returns ArrayDecl:
     'DIM' name = ID '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
 ;
 
-
 LabelDecl:
     name=ID':'
 ;
@@ -149,7 +152,7 @@ EXPR_OPERATOR returns string:
 ;
 
 Expression:
-    MemberCall ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=MemberCall)?
+    MemberCall ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
 ;
 
 MemberCall infers Expression:
