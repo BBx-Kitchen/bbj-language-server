@@ -39,7 +39,7 @@ describe('Parser Tests', () => {
     test('Library definition test', async () => {
         const lib = await parse(`
         library
-        ASC(param=string, ERR?=lineref): int
+        ASC(param:string, ERR?:lineref): int
 
         /@@ Function comment here @/
         NULL():string

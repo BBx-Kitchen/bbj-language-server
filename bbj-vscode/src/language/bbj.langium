@@ -202,12 +202,12 @@ LibFunction returns LibFunction:
 ;
 
 LibParameter returns LibParameter:
-    name=ID optional?='?'? ('=' type=ID)?
+    name=ID optional?='?'? (':' type=ID)?
 ;
 
 
 hidden terminal WS: /[^\S\r\n]+/;
-hidden terminal SL_COMMENT: /([rR][eE][mM]) [^\n\r]*[\n\r]+/;
+hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
 terminal LINE_BREAK: /[\n\r]+/;
 

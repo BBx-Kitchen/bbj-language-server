@@ -10,7 +10,7 @@
             ],
             "caseInsensitive": true,
             "textMate": {
-                "out": "syntaxes/bbj.tmLanguage.json"
+                "out": "syntaxes/gen-bbj.tmLanguage.json"
             }
         }
     ],
