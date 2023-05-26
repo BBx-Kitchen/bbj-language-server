@@ -14,7 +14,7 @@ hm!.put("KEY","VALUE")
    
 rem we don't have to declare
 tm! = new TreeMap()
-tm!.put("KEY","VALUE")
+tM!.put("KEY","VALUE")
 ?tm! 
 
 hs! = new HashSet()

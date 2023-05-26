@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, stream, toDocumentSegment
+    AstNode, AstNodeDescription, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, StreamScope, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
@@ -37,7 +37,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         }
         return super.getScope(context);
     }
+    
+    protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
+        return new StreamScope(elements, outerScope,  { caseInsensitive: true });
+    }
 
+    protected override getGlobalScope(referenceType: string, _context: ReferenceInfo): Scope {
+        return new StreamScope(this.indexManager.allElements(referenceType), undefined, { caseInsensitive: true });
+    }
+    
     protected collectMembers(clazz: BbjClass): ClassMember[] {
         let members = clazz.members
         if (isBbjClass(clazz.extends?.length > 0)) {
