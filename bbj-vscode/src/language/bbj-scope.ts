@@ -10,7 +10,7 @@ import {
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Assignment, BbjClass, Class, ClassMember, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass, isClass, isConstructorCall, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMemberCall, isProgram, isSymbolRef, isUse
+    Assignment, BbjClass, Class, ClassMember, Expression, FieldDecl, Use, isArrayDecl, isAssignment, isBbjClass, isClass, isConstructorCall, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMemberCall, isProgram, isSymbolRef, isUse
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -100,9 +100,12 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
         const rootNode = document.parseResult.value;
         if (isProgram(rootNode) && rootNode.$type === 'Program') {
-            for (const use of rootNode.uses) {
-                if (use.className) {
-                    await this.javaInterop.resolveClass(use.className);
+            for (const use of rootNode.statements.filter(statement => statement.$type == Use)) {
+                const className = (use as Use).className
+                if (className != null) {
+                    if (!className.startsWith('::', 0)) {
+                        await this.javaInterop.resolveClass((use as Use).className);
+                    }
                 }
             }
         }

@@ -13,7 +13,6 @@ entry Model:
 
 // Main programm
 Program:
-    uses+=Use? (LINE_BREAK+ uses+=Use?)* // FIXME use should become a statement
     statements+=(Statement | ClassDecl | InterfaceDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl | InterfaceDecl)?)*
 ;
 
@@ -30,7 +29,7 @@ SingleStatement:
     | PrintValue 
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
     | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl | MethodReturnStatement
-    | ExpressionStatement
+    | ExpressionStatement | Use
 ;
 
 VariableDecl returns VariableDecl:
@@ -179,10 +178,17 @@ StringLiteral:
     value=STRING | HEX_STRING;
 
 ConstructorCall:
+    // TODO: Possibly use ID instead of QualifiedClassName
     'new' class=[Class:QualifiedClassName] '(' (args+=Expression (',' args+=Expression)*)? ')';
 
 QualifiedClassName returns string:
+    QualifiedBBjClassName | QualifiedJavaClassName;
+
+QualifiedJavaClassName returns string:
     ID ('.' ID)*;
+
+QualifiedBBjClassName returns string:
+    '::' BBjFilePath '::' ID;
 
 FeatureName returns string:
     ValidId | ID_WITH_SUFFIX | ID;
@@ -208,12 +214,12 @@ LibParameter returns LibParameter:
     name=ID optional?='?'? (':' type=ID)?
 ;
 
-
 hidden terminal WS: /[^\S\r\n]+/;
 hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
-terminal LINE_BREAK: /[\n\r]+/;
+terminal BBjFilePath: /([A-Z]:)?[\/,\\]?([\w_]*[\/,\\])*[\w_]*.bbj/;
 
+terminal LINE_BREAK: /[\n\r]+/;
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
