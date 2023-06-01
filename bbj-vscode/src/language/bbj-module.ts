@@ -13,7 +13,7 @@ import { BBjValidator, registerValidationChecks } from './bbj-validator';
 import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './lib/ws-manager';
-import { BBjHoverProvider } from './bbj-provider';
+import { BBjHoverProvider } from './bbj-hover';
 
 /**
  * Declaration of custom services - add your own service classes here.

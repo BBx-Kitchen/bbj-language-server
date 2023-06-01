@@ -1,8 +1,10 @@
+
 use java.util.HashMap
 use java.util.HashSet
-  
-  
 use java.util.TreeMap
+use ::bbj-classes.bbj::someClass
+  
+testBbj! = new someClass()
 
 rem if we declare today, our Eclipse Plug-In Produces Suggestions:
 declare HashMap hm!

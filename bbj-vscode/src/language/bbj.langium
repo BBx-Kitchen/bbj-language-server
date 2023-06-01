@@ -16,24 +16,26 @@ Program:
     statements+=(Statement | ClassDecl | InterfaceDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl | InterfaceDecl)?)*
 ;
 
-Use:
-    'use' className=QualifiedClassName
-;
-
 Statement:
    SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
 
 
 SingleStatement:
-    VariableDecl | Assignment | LetStatement | ArrayDeclarationStatement
-    | PrintValue 
+    VariableDecl | Assignment | LetStatement | ArrayDeclarationStatement | MethodReturnStatement
+    | PrintValue | SetErrorStatement
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
-    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl | MethodReturnStatement
-    | ExpressionStatement | Use
+    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
+    | Use
+    | ExpressionStatement
+;
+
+Use:
+    'use' (bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName]) | 
+    'use' className=QualifiedJavaClassName
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' type=[Class:ID] name=FeatureName;
+    'declare' type=[Class:QualifiedClassName] name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
@@ -43,7 +45,7 @@ LetStatement:
 ;
 
 PrintValue:
-    ('?' | 'PRINT') value+=Expression (',' value+=Expression)*
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? value+=Expression (',' value+=Expression)* (':' mask=STRING)?
 ;
 
 ClassDecl returns BbjClass:
@@ -72,21 +74,21 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
+    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
 ;
 
 MethodDecl:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
 ;
 MethodDef:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
         (LINE_BREAK+ body+=Statement)*
     LINE_BREAK+'METHODEND'
 ;
 
 
 MethodReturnStatement:
-    'METHODRET' return=Expression
+    'METHODRET' return=Expression?
 ;
 
 ParameterDecl returns VariableDecl:
@@ -134,6 +136,10 @@ ExitStatement:
 
 ExitToStatement:
     'EXITTO' target=[LabelDecl]
+;
+
+SetErrorStatement:
+    'SETERR'  target=[LabelDecl]
 ;
 
 ArrayDeclarationStatement returns ArrayDecl:
@@ -195,7 +201,7 @@ QualifiedJavaClassName returns string:
     ID ('.' ID)*;
 
 QualifiedBBjClassName returns string:
-    '::' BBjFilePath '::' ID;
+    BBjFilePath ID;
 
 FeatureName returns string:
     ValidId | ID_WITH_SUFFIX | ID;
@@ -228,7 +234,7 @@ LibParameter returns LibParameter:
 hidden terminal WS: /[^\S\r\n]+/;
 hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
-terminal BBjFilePath: /([A-Z]:)?[\/,\\]?([\w_]*[\/,\\])*[\w_]*.bbj/;
+terminal BBjFilePath: /::.*::/;
 
 terminal LINE_BREAK: /[\n\r]+/;
 
@@ -254,6 +260,7 @@ interface VariableDecl extends NamedElement {
 
 interface FieldDecl extends VariableDecl {
     visibility?: string
+    static?: boolean
     init?: Expression
 }
 

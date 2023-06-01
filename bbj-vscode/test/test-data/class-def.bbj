@@ -16,9 +16,10 @@ use java.util.HashSet
 use com.google.gson.Gson
 use com.google.gson.JsonObject
 use com.google.gson.JsonArray
-REM FIXME use ::BBjGridExWidget/GxExpressions.bbj::GxExpressionInterface
-REM FIXME use ::BBjGridExWidget/GxExpressions.bbj::GxExpression
-REM FIXME use ::BBjGridExWidget/GxOptions.bbj::GxOptionsBoolean
+use ::BBjGridExWidget/GxExpressions.bbj::GxExpressionInterface
+use ::BBjGridExWidget/GxExpressions.bbj::GxExpression
+use ::BBjGridExWidget/GxOptions.bbj::GxOptionsBoolean
+
 REM /**
 REM  * GxRendererInterface
 REM  *

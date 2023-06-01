@@ -1,0 +1,647 @@
+REM /**
+REM  * GridConfigurationWidget.bbj
+REM  * @author jcorea
+REM  * Configuration widget to save/load a state of a component in a VKEYED file.
+REM  *
+REM  */
+
+use ::BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget
+use ::BBjWidget/BBjWidget.bbj::BBjWidget
+use ::BBjGridExWidget/BBjGridExWidgetState.bbj::BBjGridExWidgetState
+use ::ConfigurationWidget/CustomConfigurationsBC.bbj::CustomConfigurationsBC
+use ::ConfigurationWidget/ConfigurationStateHandler.bbj::ConfigurationStateHandler
+use ::ConfigurationWidget/IPersistentState.bbj::IPersistentState 
+use com.basiscomponents.bc.IConfigurationsBC
+use com.basiscomponents.db.DataRow
+use com.basiscomponents.db.ResultSet
+use java.util.UUID
+use java.io.File
+
+class public ConfigurationWidget extends BBjWidget
+
+    field protected BBjWindow container!
+    field protected BBjButton buttonDelete!
+    field protected BBjButton buttonSave!
+    field protected BBjButton buttonAdmin!
+    
+    field protected Boolean buttonSaveEnabled! = Boolean.FALSE
+    field protected Boolean buttonDeleteEnabled! = Boolean.FALSE
+    field protected Boolean buttonAdminEnabled! = Boolean.FALSE
+    
+    field protected Boolean popupMode! = Boolean.FALSE
+    
+    
+    field protected BBjMenuButton popupButton!
+    field protected BBjPopupMenu popupMenu!
+    field protected BBjMenuItem menuDelete!
+    field protected BBjMenuItem menuSave!
+    field protected BBjCheckableMenuItem menuAdmin!
+    
+    
+    
+    field protected BBjListEdit listEditOptions!
+    field protected ResultSet availableConfigs!
+    field protected IConfigurationsBC bc!
+    field protected Boolean adminModeEnabled!
+    field protected Boolean allowAdmin!
+    field protected Boolean bcInitialized! = Boolean.FALSE
+    
+    field protected String realm!
+    field protected String keyx!
+    field protected String userName!
+    
+    field protected static BBjColor ADMIN_ENABLED_COLOR! = BBJAPI().makeColor(0,250,0)
+    field protected static BBjColor ADMIN_DISABLED_COLOR!  = BBJAPI().makeColor(100,100,100)
+
+    field protected static String ON_STATE_CHANGE! = "STATE_CHANGE"
+    field protected static String ON_CONFIGURATION_CHANGE! = "CONFIGURATION_CHANGE"
+    
+    field protected String iconButtonDelete! =          "ConfigurationWidget\icon\ic_close_black_24dp.png"
+    field protected String iconButtonSave! =            "ConfigurationWidget\icon\ic_save_black_24dp.png"
+    field protected String iconButtonAdminEnabled! =    "ConfigurationWidget\icon\ic_person_black_24dp.png"
+    field protected String iconButtonAdminDisabled! =   "ConfigurationWidget\icon\ic_person_white_24dp.png"
+    
+    
+    field protected BBjNumber selectedIndex = -1
+    field protected String widgetID! = UUID.randomUUID().toString()
+    field protected ConfigurationStateHandler stateHandler!
+    
+    field protected BBjNumber minPaddingLeft = 0
+    
+    rem /**
+    rem  * default constructor disabled
+    rem  */
+    method private ConfigurationWidget()
+    methodend
+    
+    method public ConfigurationWidget(BBjWindow container!, BBjNumber id, BBjNumber x, BBjNumber y, IPersistentState statePersistable!, Boolean allowAdmin!)
+        #this!(container!, id, x, y, statePersistable!, allowAdmin!, "", "", null())
+    methodend
+
+    method public ConfigurationWidget(BBjWindow container!, BBjNumber id, BBjNumber x, BBjNumber y, IPersistentState statePersistable!, Boolean allowAdmin!, String realm!, String keyx!, IConfigurationsBC bc!)
+        #super!()
+        #adminModeEnabled! = Boolean.FALSE
+        #allowAdmin! = allowAdmin!
+        #realm! = realm!
+        #keyx! = keyx!
+        #container! = container!
+        if bc! <> null() then
+            #bc! = bc!
+            #userName! = #bc!.getUserName()
+        else 
+            #userName! = ""
+        endif
+        #stateHandler! = new ConfigurationStateHandler(statePersistable!, #this!)
+        #create(container!,id,x,y,160,20)
+    methodend
+    
+    rem /**
+    rem  * sets the bc and the userName from the bc and redraws, which triggers an init
+    rem  */
+    method public void setBC(IConfigurationsBC bc!)
+        #bcInitialized! = Boolean.FALSE
+        #bc! = bc!
+        #setUserName(#bc!.getUserName())
+        #redraw(0)
+    methodend
+    
+    method protected void createPopupButton()
+        #popupButton! = #getCanvas().addMenuButton(#getCanvas().getAvailableControlID(), 100,0,20,20, "")
+        #popupMenu! = #popupButton!.addDropdownMenu()
+REM         #listEditOptions!.setPopupMenu(#popupMenu!)
+REM         #popupMenu!.setLocation(#buttonDelete!.getX(), #buttonDelete!.getY()) 
+        
+REM         #popupMenu! = BBjAPI().getSysGui().addDropdownMenu()
+        #menuDelete! = #popupMenu!.insertMenuItem(0, 1000, "Delete")
+        #menuDelete!.setCallback(BBjPopupMenu.ON_POPUP_ITEM_SELECT, #this!, "deleteButtonPush")
+        #menuSave!   = #popupMenu!.insertMenuItem(1, 1100, "Save")
+        #menuSave!.setCallback(BBjPopupMenu.ON_POPUP_ITEM_SELECT, #this!, "saveButtonPush")
+        
+        if #allowAdmin! then
+            #menuAdmin! = #popupMenu!.insertCheckableMenuItem(2, 1200, "Admin",#adminModeEnabled!)
+REM             #menuAdmin!.setCallback(#menuAdmin!.ON_MENU_ITEM_SELECT, #this!, "adminButtonPush")
+        endif
+    methodend
+    
+    method protected void togglePopupMode(Boolean popupVisible!)
+        #popupMode! = popupVisible!
+        #updateButtons()
+    methodend
+    
+    method protected void updateButtons()
+        if #popupMode! then
+            #popupButton!.setVisible(1)
+REM             #listEditOptions!.setPopupMenu(#popupMenu!)
+REM             #popupMenu!.setVisible(Boolean.TRUE)
+            
+            #buttonDelete!.setVisible(Boolean.FALSE)
+            #buttonSave!.setVisible(Boolean.FALSE)
+            if #allowAdmin! then #buttonAdmin!.setVisible(Boolean.FALSE)
+        else
+            #popupButton!.setVisible(0)
+REM             #listEditOptions!.removePopupMenu()
+REM             #popupMenu!.setVisible(Boolean.TRUE)
+            
+            #buttonDelete!.setVisible(#buttonDeleteEnabled!)
+            #buttonSave!.setVisible(#buttonSaveEnabled!)
+            if #allowAdmin! then #buttonAdmin!.setVisible(Boolean.TRUE)
+        endif
+    methodend
+    
+    rem /**
+    rem  * sets the username in the widget and also in the bc depending if admin mode is enabled
+    rem  */
+    method public void setUserName(String userName!)
+        #userName! = userName!
+        if #bc! = null() then methodret
+        if #adminModeEnabled! then
+            #bc!.setUserName(#bc!.getAdminUser())
+        else
+            #bc!.setUserName(userName!)
+        endif
+    methodend
+    
+    method public void setRealm(String realm!)
+        #realm! = realm!
+    methodend
+    
+    method public void setKeyX(String keyx!)
+        #keyx! = keyx!
+    methodend
+    
+    method public String getRealm()
+        methodret #realm!
+    methodend
+    
+    method public String getUserName()
+        methodret #realm!
+    methodend
+    
+    method public String getKeyX()
+        methodret #keyx!
+    methodend
+    
+    
+    method public void setIconButtonDelete(String iconButtonDelete!)
+        #iconButtonDelete! = iconButtonDelete!
+        #setIcons()
+    methodend
+    
+    method public void setIconButtonSave(String iconButtonSave!)
+        #iconButtonSave! = iconButtonSave!
+        #setIcons()
+    methodend
+    
+    method public void setIconButtonAdminEnabled(String iconButtonAdminEnabled!)
+        #iconButtonSave! = iconButtonSave!
+        #setIcons()
+    methodend
+    
+    method public void setIconButtonAdminDisabled(String iconButtonAdminDisabled!)
+        #iconButtonAdminDisabled! = iconButtonAdminDisabled!
+        #setIcons()
+    methodend
+    
+    method public void setMinPaddingLeft(BBjNumber minPaddingLeft)
+        #minPaddingLeft = minPaddingLeft
+    methodend
+    
+    method public BBjNumber getMinPaddingLeft()
+        methodret #minPaddingLeft
+    methodend
+    
+    rem /**
+    rem  * @Override
+    rem  * This method is called whenever the widget needs to be rendered
+    rem  * @param Boolean f_init!: if TRUE the control is rendered for the first time so this method has to perform initial rendering
+    rem  */
+    method public void redraw(Boolean f_init!)
+        if (f_init!) then
+            #listEditOptions!   = #getCanvas().addListEdit(#getCanvas().getAvailableControlID(), 0, 1, 100, 20, "")
+            #listEditOptions!.setFieldHeight(18)
+            #buttonDelete!      = #getCanvas().addButton(#getCanvas().getAvailableControlID(), 100,0,20,20,"")
+            #buttonSave!        = #getCanvas().addButton(#getCanvas().getAvailableControlID(), 120,0,20,20,"")
+            #buttonDelete!.setShortCue("delete configuration")
+            #buttonSave!.setShortCue("save")
+            if #allowAdmin! then
+                #buttonAdmin!       = #getCanvas().addButton(#getCanvas().getAvailableControlID(), 140,0,20,20,"")
+                #buttonAdmin!.setShortCue("Admin mode (currently disabled)")
+            endif
+            #createPopupButton()
+            #toggleSaveButton(Boolean.FALSE)
+REM             #togglePopupMode(Boolean.FALSE)
+        FI
+        if !#bcInitialized! and #bc!<> null() then
+            #init()
+            #bcInitialized! = Boolean.TRUE
+        endif
+        
+        xEnd = #getX() + 160 
+        if xEnd > #container!.getWidth() then xEnd = #container!.getWidth()
+        xStart = xEnd - 160
+        if xStart < #minPaddingLeft then xStart = #minPaddingLeft
+        totalLength = xEnd - xStart
+        if totalLength < 100 then totalLength = 100
+        buttonsX = 100
+        buttonsY = 0
+        #getCanvas().setLocation(xStart,#getY())
+        #listEditOptions!.setLocation(0,1)
+        #listEditOptions!.setSize(100,100)
+        #buttonDelete!.setLocation(buttonsX,buttonsY)
+        #buttonDelete!.setSize(20,20)
+        #buttonSave!.setLocation(buttonsX + 20,buttonsY)
+        #buttonSave!.setSize(20,20)
+        if #allowAdmin! then
+            #buttonAdmin!.setLocation(buttonsX + 40,buttonsY)
+            #buttonAdmin!.setSize(20,20)
+        endif
+        if totalLength < 160 then
+            #togglePopupMode(Boolean.TRUE)
+REM             buttonsX = 0
+REM             buttonsY = 20
+REM             #getCanvas().setSize(#getCanvas().getWidth(),40)
+        else
+            #togglePopupMode(Boolean.FALSE)
+REM             buttonsX = 100
+REM             buttonsY = 0
+REM             #getCanvas().setSize(#getCanvas().getWidth(),20)
+        endif
+        
+    methodend
+    
+    rem /**
+    rem  * sets the ConfigurationStateHandler to handle communication between the widget and the stateful component
+    rem  */
+    method public void setStateHandler(ConfigurationStateHandler stateHandler!)
+        #stateHandler! = stateHandler!
+    methodend
+    
+    method public ConfigurationStateHandler getStateHandler()
+        methodret #stateHandler!
+    methodend
+    
+    rem /**
+    rem  * initialisation method. will be called by the state handler. sets icons, callbacks and loads/applies the availlable configurations
+    rem  */
+    method public void init()
+        #setIcons()
+        #fetchAndFillOptionListEdit()
+        #setCallbacks()
+        if !#availableConfigs!.isEmpty() then 
+            #selectedIndex = 0
+            #listEditOptions!.selectIndex(#selectedIndex)
+            #fireConfigurationChangeEvent()
+        endif
+    methodend
+    
+    
+    method public String getOnStateChangeEventName()
+        methodret #widgetID! + #ON_STATE_CHANGE!
+    methodend
+    
+    method public String getOnConfigurationChangeEventName()
+        methodret #widgetID! + #ON_CONFIGURATION_CHANGE!
+    methodend
+    
+    rem /**
+    rem  * sets the images for the buttons
+    rem  */
+    method protected void setIcons()
+        #buttonDelete!.setImageFile(    #iconButtonDelete!)
+        #buttonDelete!.setImageSize(20,20)
+        #buttonSave!.setImageFile(      #iconButtonSave!)
+        #buttonSave!.setImageSize(20,20)
+        if #allowAdmin! then
+            #buttonAdmin!.setImageFile( #iconButtonAdminDisabled!)
+            #buttonAdmin!.setImageSize(20,20)
+        endif
+    methodend
+    
+    rem /**
+    rem  * fetches the available configs from the bc and updates the options list-edit
+    rem  */
+    method protected void fetchAndFillOptionListEdit()
+        dr! = new DataRow()
+        dr!.setFieldValue(#bc!.getFieldNameRealm(), #realm!)
+        dr!.setFieldValue(#bc!.getFieldNameKeyx(), #keyx!)
+        dr!.setFieldValue(#bc!.getFieldNameUserid(), #userName!)
+        #bc!.setFilter(dr!)
+        #availableConfigs! = #bc!.getAvaillableConfigurations()
+        #fillOptionListEdit()
+    methodend
+    
+    rem /**
+    rem  * only updates the options list-edit without fetching new configurations from the bc
+    rem  */
+    method protected void fillOptionListEdit()
+        #listEditOptions!.removeAllItems()
+        if #availableConfigs! = null() OR #availableConfigs!.isEmpty() then
+            methodret
+        endif
+        for i=0 to #availableConfigs!.size() - 1
+            currentConfig! = #availableConfigs!.get(i)
+            userID! = currentConfig!.getFieldAsString(#bc!.getFieldNameUserid())
+            userSettingName! = currentConfig!.getFieldAsString(#bc!.getFieldNameSetting())
+            description! = ""
+            if !userID!.trim().equals("") then
+                description! = "(" + userID!.trim() + ")"
+            else
+                description! = "(default)"
+            endif
+            description! = description! + " " + userSettingName!.trim()
+            #listEditOptions!.addItem(description!)
+        next i
+        #listEditOptions!.addItem("")
+    methodend
+    
+    rem /**
+    rem  * returns the configuration as datarow which is currently selected in the list edit
+    rem  */
+    method protected DataRow getSelectedConfig()
+        if #availableConfigs! = null() or #availableConfigs!.isEmpty() or #selectedIndex < 0 then
+            methodret null()
+        endif
+        if #selectedIndex >= #availableConfigs!.size() then methodret null()
+        methodret #availableConfigs!.get(#selectedIndex)
+    methodend
+    
+    rem /**
+    rem  * sets callbacks for the grid, buttons and listedit
+    rem  */
+    method protected void setCallbacks()
+        #listEditOptions!.setCallback(BBjAPI.ON_EDIT_MODIFY, #this!, "listEditOptionsModify")
+        #listEditOptions!.setCallback(BBjAPI.ON_LIST_SELECT, #this!,    "configsListEditSelect")
+        #buttonDelete!.setCallback(BBjAPI.ON_BUTTON_PUSH, #this!,   "deleteButtonPush")
+        #buttonSave!.setCallback(  BBjAPI.ON_BUTTON_PUSH, #this!, "saveButtonPush")
+        if #allowAdmin! then
+            #buttonAdmin!.setCallback( BBjAPI.ON_BUTTON_PUSH, #this!, "adminButtonPush")
+        endif
+REM         BBjAPI().setCustomEventCallback(#getOnStateChangeEventName(), #this!,"onColumnStateChange")
+    methodend
+    
+    rem /**
+    rem  * Control validation for the list edit. 
+    rem  * Makes sure, setting name is saved after user typed it in the list edit
+    rem  * Only when admin mode is enabled, user should be able to save default settings
+    rem  */
+    method public void listEditOptionsModify(BBjEvent ev!)
+        #toggleSaveButton(Boolean.TRUE)
+    methodend
+    
+    rem /**
+    rem  * in the listEdit, selects the index related to the given data row. only key fields are being considered.
+    rem  */
+    method protected void selectDataRowInOptions(DataRow dr!)
+        if dr! = null() or dr!.isEmpty() or #availableConfigs! = null() or #availableConfigs!.isEmpty() then
+            goto deselect
+        endif
+        seterr deselect
+        userid!     = dr!.getFieldAsString(#bc!.getFieldNameUserid()).trim()
+        realm!      = dr!.getFieldAsString(#bc!.getFieldNameRealm()).trim()
+        keyx!       = dr!.getFieldAsString(#bc!.getFieldNameKeyx()).trim()
+        setting!    = dr!.getFieldAsString(#bc!.getFieldNameSetting()).trim()
+        for i=0 to #availableConfigs!.size() - 1
+            seterr nexti
+            currentDR! = #availableConfigs!.get(i)
+            currentUserid!     = currentDR!.getFieldAsString(#bc!.getFieldNameUserid()).trim()
+            currentRealm!      = currentDR!.getFieldAsString(#bc!.getFieldNameRealm()).trim()
+            currentKeyx!       = currentDR!.getFieldAsString(#bc!.getFieldNameKeyx()).trim()
+            currentSetting!    = currentDR!.getFieldAsString(#bc!.getFieldNameSetting()).trim()
+            if userid!.equals(currentUserid!) and realm!.equals(currentRealm!) and keyx!.equals(currentKeyx!) and setting!.equals(currentSetting!) then
+                #selectedIndex = i
+                #listEditOptions!.selectIndex(#selectedIndex)
+                #fireConfigurationChangeEvent()
+                methodret
+            endif
+            nexti:
+        next i
+        #fireConfigurationChangeEvent()
+        methodret
+        deselect:
+            #selectedIndex = -1
+            #listEditOptions!.deselect()
+            #fireConfigurationChangeEvent()
+    methodend
+    
+    rem /**
+    rem  * @return returns whether the given DataRow would overwrite an existing config when using this datarow in bc.write().
+    rem  * when false, this datarow would create a new entry. 
+    rem  * @param dr! datarow which is to be checked
+    rem  */
+    method protected Boolean wouldWriteOverrideOtherConfig(DataRow dr!)
+        dr! = dr!.clone()
+        if !#adminModeEnabled! then
+            dr!.setFieldValue(#bc!.getFieldNameUserid(), #userName!)
+        endif
+        previousFilter! = new DataRow()
+        previousFilter! = #bc!.getFilter(err=*next)
+        #bc!.setFilter(dr!)
+        rs! = #bc!.retrieve()
+        #bc!.setFilter(previousFilter!)
+        if rs!.size() > 0 then methodret Boolean.TRUE
+        methodret Boolean.FALSE
+    methodend
+    
+    rem /**
+    rem  * returns the text of the list edit without the preceding user tag "(default)" or "(user)"
+    rem  */
+    method protected String getListEditOptionText()
+        text! = #listEditOptions!.getEditText()
+        if text! = null() or text!.trim().equals("") then methodret ""
+        adminPrefix! = "(default)"
+        userPrefix! = "(" + #userName!+ ")"
+        if text!.startsWith(adminPrefix!) then
+            methodret text!.substring(adminPrefix!.length()).trim()
+        endif
+        if text!.startsWith(userPrefix!) then
+            methodret text!.substring(userPrefix!.length()).trim()
+        endif
+        methodret text!.trim()
+    methodend
+    
+    rem /**
+    rem  * event handler for delete button push
+    rem  * deletes the currently selected configuration and selects the successor (or predecessor if last).
+    rem  */
+    method public void deleteButtonPush(BBjEvent ev!)
+        seterr removalerror
+        toBeDeletedDR! = #getSelectedConfig()
+        if toBeDeletedDR! = null() or toBeDeletedDR!.isEmpty() then methodret
+        #bc!.remove(toBeDeletedDR!)
+        #fetchAndFillOptionListEdit()
+        if #availableConfigs! = null() or #availableConfigs!.size() < 1 then
+            #selectedIndex = -1
+            #listEditOptions!.deselect()
+        else
+            if #selectedIndex >= #availableConfigs!.size() then
+                #selectedIndex = #availableConfigs!.size() - 1
+            endif
+            #listEditOptions!.selectIndex(#selectedIndex)
+            #fireConfigurationChangeEvent()
+        endif
+        #updateButtonDelete()
+        methodret
+        removalerror:
+            exc! = BBjAPI().getLastJavaException()
+            if exc! <> null() then
+                a = msgbox(exc!.getMessage())
+            endif
+    methodend
+    
+    rem /**
+    rem  * onclick event for the admin button. toggles mode and image
+    rem  */
+    method public void adminButtonPush(BBjEvent ev!)
+        if #adminModeEnabled! then
+            #adminModeEnabled! = Boolean.FALSE
+REM             #buttonAdmin!.setForeColor(#ADMIN_DISABLED_COLOR!)
+            #buttonAdmin!.setImageFile(#iconButtonAdminDisabled!)
+            #buttonAdmin!.setShortCue("Admin mode (currently disabled)")
+            #menuAdmin!.setSelected(Boolean.FALSE)
+            #bc!.setUserName(#userName!)
+        else
+            #adminModeEnabled! = Boolean.TRUE
+REM             #buttonAdmin!.setForeColor(#ADMIN_ENABLED_COLOR!)
+            #buttonAdmin!.setImageFile(#iconButtonAdminEnabled!)
+            #buttonAdmin!.setShortCue("Admin mode (currently enabled)")
+            #menuAdmin!.setSelected(Boolean.TRUE)
+            #bc!.setUserName(#bc!.getAdminUser())
+        endif
+        #updateButtonDelete()
+    methodend
+    
+    rem /**
+    rem  * event handler for save button push
+    rem  */
+    method public void saveButtonPush(BBjEvent ev!)
+        #saveConfiguration()
+    methodend
+    
+    rem /**
+    rem  * event handler for config list edit selection
+    rem  * disables the save button, fires change event and shows/unshows delete button
+    rem  * if selected row did not change, do nothing
+    rem  */
+    method public void configsListEditSelect(BBjListSelectEvent ev!)
+        if ev!.getSelectedIndex() = #selectedIndex then methodret
+        #selectedIndex = ev!.getSelectedIndex()
+        selectedConf! = #getSelectedConfig()
+        #toggleSaveButton(Boolean.FALSE)
+        #fireConfigurationChangeEvent()
+        #updateButtonDelete()
+    methodend
+    
+    rem /**
+    rem  * if a configuration is selected and the user has permission to delete this configuration, enables the delete button.
+    rem  * otherwise the deletebutton is not enabled (not visible)
+    rem  */
+    method protected void updateButtonDelete()
+        selectedConf! = #getSelectedConfig()
+        if selectedConf! = null() or selectedConf!.isEmpty() then
+            #toggleDeleteButton(Boolean.FALSE)
+            methodret
+        endif
+        #toggleDeleteButton(#bc!.canModify(selectedConf!))
+    methodend
+    
+    rem /**
+    rem  * defines what should happen when the state of the component changes.
+    rem  * right now, the save button will enable
+    rem  */
+    method public void stateChange()
+        #toggleSaveButton(Boolean.TRUE)
+    methodend
+    
+    method public void toggleMenuSaveButton(Boolean visible!)
+        if visible! and #menuSave! <> null() then methodret
+        if !visible! and #menuSave! = null() then methodret
+        #popupMenu!.removeMenuItem(#menuSave!,err=*next)
+        #menuSave! = null()
+        if visible! then
+            #menuSave! = #popupMenu!.insertMenuItem(1, 1100, "Save")
+            #menuSave!.setCallback(BBjPopupMenu.ON_POPUP_ITEM_SELECT, #this!, "saveButtonPush")
+        endif
+    methodend
+    
+    
+    method public void toggleMenuDeleteButton(Boolean visible!)
+        if visible! and #menuDelete! <> null() then methodret
+        if !visible! and #menuDelete! = null() then methodret
+        #popupMenu!.removeMenuItem(#menuDelete!,err=*next)
+        #menuDelete! = null()
+        if visible! then
+            #menuDelete! = #popupMenu!.insertMenuItem(0, 1100, "Delete")
+            #menuDelete!.setCallback(BBjPopupMenu.ON_POPUP_ITEM_SELECT, #this!, "deleteButtonPush")
+        endif
+    methodend
+    
+    method public void toggleSaveButton(Boolean visible!)
+        if visible! then
+            #buttonSaveEnabled! = Boolean.TRUE
+        else
+            #buttonSaveEnabled! = Boolean.FALSE
+        endif
+        #toggleMenuSaveButton(visible!)
+        #updateButtons()
+    methodend
+    
+    method public void toggleDeleteButton(Boolean visible!)
+        if visible! then
+            #buttonDeleteEnabled! = Boolean.TRUE
+        else
+            #buttonDeleteEnabled! = Boolean.FALSE
+        endif
+        #toggleMenuDeleteButton(visible!)
+        #updateButtons()
+    methodend
+    
+    
+    rem /**
+    rem  * notifies the state handler that a configuration has changed. the statehandler will then apply this new config to the component.
+    rem  */
+    method public void fireConfigurationChangeEvent()
+        entry! = #getSelectedConfig()
+        if entry! = null() then methodret
+        config! = entry!.getFieldAsString(#bc!.getFieldNameConfig(), err=*next)
+        if config! = null() or config!.trim().equals("") then methodret
+        #stateHandler!.configurationChange(config!)
+    methodend
+    
+    rem /**
+    rem  * saves the configuration and refetches the configurations in the listEdit. also disables the save button.
+    rem  * 
+    rem  */
+    method public void saveConfiguration()
+REM         if #currentConfig!.equals("") then methodret
+REM         gridstate! = #grid!.getColumnState()
+        selectedConfig! = #getDataRowForWrite()
+        #bc!.write(selectedConfig!)
+        #fetchAndFillOptionListEdit()
+        #selectDataRowInOptions(selectedConfig!)
+REM         #currentConfig! = ""
+        #toggleSaveButton(Boolean.FALSE)
+        #updateButtonDelete()
+    methodend
+    
+    rem /**
+    rem  * returns a new dataRow with the right keys depending on user listedit input and admin mode
+    rem  */
+    method protected DataRow getDataRowForWrite()
+        selectedConfig! = #getSelectedConfig()
+        if selectedConfig! = null() then 
+            selectedConfig! = new DataRow()
+            selectedConfig!.setFieldValue(#bc!.getFieldNameKeyx(), #keyx!)
+            selectedConfig!.setFieldValue(#bc!.getFieldNameRealm(), #realm!)
+        endif
+        selectedConfig!.setFieldValue(#bc!.getFieldNameSetting(), #getListEditOptionText())
+        selectedConfig!.setFieldValue(#bc!.getFieldNameConfig(), #stateHandler!.getState())
+        if #adminModeEnabled! then
+            selectedConfig!.setFieldValue(#bc!.getFieldNameUserid(), #bc!.getAdminUser())
+        else
+            selectedConfig!.setFieldValue(#bc!.getFieldNameUserid(), #userName!)
+        endif
+        methodret selectedConfig!
+    methodend
+
+
+classend

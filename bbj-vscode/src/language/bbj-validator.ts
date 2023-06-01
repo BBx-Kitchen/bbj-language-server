@@ -34,10 +34,10 @@ export class BBjValidator {
 
     checkUsedClassExists(use: Use, accept: ValidationAcceptor): void {
         const className = use.className
-        if (!(className.startsWith('::', 0))) {
-            const resolvedClass = this.javaInterop.getResolvedClass(use.className);
+        if (className) {
+            const resolvedClass = this.javaInterop.getResolvedClass(className);
             if (!resolvedClass || resolvedClass.error) {
-                accept('error', `Class ${use.className} is not in the class path.`, { node: use });
+                accept('error', `Class ${className} is not in the class path.`, { node: use });
             }
         }
     }
