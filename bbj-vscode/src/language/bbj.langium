@@ -47,16 +47,20 @@ PrintValue:
 ;
 
 ClassDecl returns BbjClass:
-    'CLASS' visibility=Visibility name=ID 
+    'CLASS' visibility=Visibility Static name=ValidName 
         Extends
         ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*
-    (LINE_BREAK+ members+=ClassMember?)*
+    (LINE_BREAK+ members+=ClassMember)*
     LINE_BREAK+ 'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
-    interface ?= 'INTERFACE' visibility=Visibility name=ID Extends
-    (LINE_BREAK+ members+=ClassMember?)*
+    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends
+    (LINE_BREAK+ members+=MethodDecl)*
      LINE_BREAK+ 'INTERFACEEND'
+;
+
+fragment Static:
+    static?='STATIC'?
 ;
 
 fragment Extends: 
@@ -72,10 +76,10 @@ FieldDecl returns FieldDecl:
 ;
 
 MethodDecl:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
 ;
 MethodDef:
-    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ID '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    'METHOD' visibility=Visibility static?='STATIC'? type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
         (LINE_BREAK+ body+=Statement)*
     LINE_BREAK+'METHODEND'
 ;
@@ -133,7 +137,7 @@ ExitToStatement:
 ;
 
 ArrayDeclarationStatement returns ArrayDecl:
-    'DIM' name = ID '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
+    'DIM' name = FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
 ;
 
 LabelDecl:
@@ -144,15 +148,18 @@ LabelDecl:
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
 ExpressionStatement:
-    expression=MemberCall;
+    expression=PrefixExpression;
 
 EXPR_OPERATOR returns string:
     '^' | '*' |  '/' | '+' | '-' | '<' | '>' | '=' | '<=' | '>=' | '<>' | 'AND' | 'OR' // from the BBx docu
 ;
 
 Expression:
-    MemberCall ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
+    PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
 ;
+PrefixExpression infers Expression:
+	{infer PrefixExpression} operator="!" expression=MemberCall
+	| MemberCall;
 
 MemberCall infers Expression:
     PrimaryExpression (
@@ -193,11 +200,15 @@ QualifiedBBjClassName returns string:
 FeatureName returns string:
     ValidId | ID_WITH_SUFFIX | ID;
 
+ValidName returns string:
+    ValidId | ID
+;
+
 ValidId returns string:
-    'NEXT'
+    'NEXT' | 'PRINT'
 ;
 Visibility returns string:
-    'PUBLIC'|'PRIVATE';
+    'PUBLIC'|'PRIVATE'|'PROTECTED';
 
 // BBx Library
 Library: 
@@ -252,6 +263,7 @@ interface ArrayDecl extends VariableDecl {
 
 interface BbjClass extends Class {
     visibility?: string
+    static?: boolean
     interface: boolean
     extends?: @Class[]
     implements?: @Class[]
