@@ -15,6 +15,7 @@ import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './lib/ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
 import { BbjLexer } from './bbj-lexer';
+import { BBjValueConverter} from './bbj-value-converter';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -54,7 +55,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         HoverProvider: (services) => new BBjHoverProvider(services)
     },
     parser: {
-        Lexer: (services) => new BbjLexer(services)
+        Lexer: (services) => new BbjLexer(services),
+        ValueConverter: () => new BBjValueConverter
     }
 };
 
