@@ -1,14 +1,19 @@
 import { describe, expect, test } from 'vitest';
 import { parseDocument, parseHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
-import { EmptyFileSystem } from 'langium';
+import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { isLibrary, isProgram, Library, Model, Program } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
 const parse = parseHelper<Model>(services.BBj);
-
 describe('Parser Tests', () => {
+    
+    function expectNoParserLexerErrors(document: LangiumDocument) {
+        expect(document.parseResult.lexerErrors.length).toBe(0)
+        expect(document.parseResult.parserErrors.length).toBe(0)
+    }
+    
     test('Program definition test', async () => {
         const program = await parse(`
         REM arrays
@@ -34,6 +39,7 @@ describe('Parser Tests', () => {
         expect(isProgram(result.parseResult.value)).true
         const prog = result.parseResult.value as Program
         expect(prog.statements.length).toBe(1)
+        expectNoParserLexerErrors(result)
     })
 
     test('Library definition test', async () => {
@@ -44,8 +50,7 @@ describe('Parser Tests', () => {
         /@@ Function comment here @/
         NULL():string
     `)
-        expect(lib.parseResult.lexerErrors).toHaveLength(0)
-        expect(lib.parseResult.parserErrors).toHaveLength(0)
+        expectNoParserLexerErrors(lib)
     })
 
     test('Library parsed', async () => {
@@ -90,6 +95,15 @@ describe('Parser Tests', () => {
             METHODEND
 
         CLASSEND
+        `)
+        expect(isProgram(result.parseResult.value)).true
+        expect(result.parseResult.lexerErrors).toHaveLength(0)
+        expect(result.parseResult.parserErrors).toHaveLength(0)
+    })
+
+    test('Parse namedParameter Decl', async () => {
+        const result = await parse(`
+        BBjAPI().removeTimer("onLoadFallback", err= *next)
         `)
         expect(isProgram(result.parseResult.value)).true
         expect(result.parseResult.lexerErrors).toHaveLength(0)

@@ -1,6 +1,4 @@
 library
-
-/@@ 
-    Documentation
- @/
-HELP(foo: int): string
+ASC(param:string, ERR?:lineref): int
+/@@ Function comment here @/
+NULL():string

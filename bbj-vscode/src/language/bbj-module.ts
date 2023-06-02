@@ -14,6 +14,7 @@ import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './lib/ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
+import { BbjLexer } from './bbj-lexer';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -51,6 +52,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     lsp: {
         HoverProvider: (services) => new BBjHoverProvider(services)
+    },
+    parser: {
+        Lexer: (services) => new BbjLexer(services)
     }
 };
 

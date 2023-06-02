@@ -13,11 +13,15 @@ entry Model:
 
 // Main programm
 Program:
-    statements+=(Statement | ClassDecl | InterfaceDecl)? (LINE_BREAK+ statements+=(Statement | ClassDecl | InterfaceDecl)?)*
+    LINE_BREAK*
+    Statements* 
 ;
 
+fragment Statements: statements+=(Statement  | ClassDecl | InterfaceDecl);
+
 Statement:
-   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
+   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)? LINE_BREAK+
+;
 
 
 SingleStatement:
@@ -25,7 +29,7 @@ SingleStatement:
     | PrintValue | SetErrorStatement
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
     | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
-    | OpenStatement | ReadStatement | CloseStatement | Wait
+    | OpenStatement | ReadStatement | CloseStatement | WaitStatement | ThrowStatement
     | Use
     | ExpressionStatement
 ;
@@ -55,14 +59,14 @@ PrintValue:
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
         Extends
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*
-    (LINE_BREAK+ members+=ClassMember)*
-    LINE_BREAK+ 'CLASSEND'
+        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])* LINE_BREAK+
+        members+=ClassMember*
+    'CLASSEND'LINE_BREAK+
 ;
 InterfaceDecl returns BbjClass:
-    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends
-    (LINE_BREAK+ members+=MethodDecl)*
-     LINE_BREAK+ 'INTERFACEEND'
+    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends LINE_BREAK+
+        members+=MethodDecl*
+    'INTERFACEEND'LINE_BREAK+
 ;
 
 fragment Static:
@@ -74,21 +78,21 @@ fragment Extends:
 ;
 
 ClassMember returns ClassMember:
-    FieldDecl | MethodDecl | MethodDef
+    FieldDecl | MethodDecl
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
+    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)? LINE_BREAK+
 ;
 
 MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    (LINE_BREAK+
+        body+=Statement*
+        'METHODEND'
+    )? LINE_BREAK+ 
 ;
-MethodDef:
-    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
-        (LINE_BREAK+ body+=Statement)*
-    LINE_BREAK+'METHODEND'
-;
+
 
 MethodReturnStatement:
     'METHODRET' return=Expression?
@@ -127,9 +131,9 @@ SLIfStatement:
 
 MLIfStatement:
     'IF' condition=Expression 'THEN'? LINE_BREAK+
-    then += Statement? (LINE_BREAK+ then += Statement?)*
-    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement (LINE_BREAK+ else += Statement?)* )?
-    (LINE_BREAK+ 'ENDIF' | 'FI')
+    (then += Statement)*
+    ('ELSE' LINE_BREAK+ (else += Statement)*) ?
+    ( 'ENDIF' | 'FI' )
 ;
 
 WhileStatement:
@@ -157,7 +161,7 @@ SetErrorStatement:
 
 OpenStatement:
     // TODO check channelno is int and fileid is string
-    'OPEN' '(' channelno=Expression? (',' 'ERR=' err=[LabelDecl])?')'fileid=Expression
+    'OPEN' '(' channelno=Expression? (',' 'ERR' '=' err=[LabelDecl])?')'fileid=Expression
 ;
 
 // NOTE:INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
@@ -166,7 +170,7 @@ ReadStatement:
 ;
 
 fragment Options:
-   (',' option+=Option)* (',' 'ERR=' err=[LabelDecl])?
+   (',' option+=Option)* (',' 'ERR' '=' err=[LabelDecl])?
 ;
 
 Option:
@@ -177,11 +181,14 @@ CloseStatement:
     'CLOSE' '(' channelno=Expression? Options?')'
 ;
 
-Wait:
+WaitStatement:
     // In BBj, num can be a fractional number accurate to a millisecond.
     'WAIT' time=Expression
 ;
 
+ThrowStatement:
+    'THROW' expression=Expression (',' number= NumberLiteral)? (',' 'ERR' '=' err=[LabelDecl])?
+;
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
 ExpressionStatement:
@@ -200,9 +207,13 @@ PrefixExpression infers Expression:
 
 MemberCall infers Expression:
     PrimaryExpression (
-        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=Expression (',' ('err' '=')? args+=Expression)* )? ')')?
+        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? ')')?
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
     )*;
+
+ParameterCall:
+    'err='? expression = Expression
+;
 
 PrimaryExpression infers Expression:
     '(' Expression ')' | SymbolRef | Literal | ConstructorCall;
@@ -242,7 +253,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' | 'PRINT' | 'AND' | 'OR'
+    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
@@ -259,7 +270,7 @@ LibFunction returns LibFunction:
 ;
 
 LibParameter returns LibParameter:
-    name=ID optional?='?'? (':' type=ID)?
+    name=ValidName optional?='?'? (':' type=ID)?
 ;
 
 hidden terminal WS: /[^\S\r\n]+/;
@@ -267,12 +278,12 @@ hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space
 
 terminal BBjFilePath: /::.*::/;
 
-terminal LINE_BREAK: /[\n\r]+/;
+terminal LINE_BREAK: /(\r?\n)+/;
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
 
-terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/; // TODO create unary operators
+terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
 
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
@@ -320,4 +331,4 @@ interface LibParameter extends NamedElement {
     optional: boolean
 }
 
-type ClassMember = FieldDecl | MethodDecl | MethodDef
+type ClassMember = FieldDecl | MethodDecl
