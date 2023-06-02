@@ -11,12 +11,22 @@
     },
     {
       "name": "keyword.control.bbj",
-      "match": "\\b([aA][nN][dD]|[cC][lL][aA][sS][sS]|[cC][lL][aA][sS][sS][eE][nN][dD]|[dD][iI][mM]|[eE][lL][sS][eE]|[eE][nN][dD]|[eE][nN][dD][iI][fF]|[eE][xX][iI][tT][tT][oO]|[eE][xX][tT][eE][nN][dD][sS]|[fF][iI]|[fF][iI][eE][lL][dD]|[fF][oO][rR]|[gG][oO][sS][uU][bB]|[gG][oO][tT][oO]|[iI][fF]|[iI][mM][pP][lL][eE][mM][eE][nN][tT][sS]|[iI][nN][tT][eE][rR][fF][aA][cC][eE]|[iI][nN][tT][eE][rR][fF][aA][cC][eE][eE][nN][dD]|[lL][eE][tT]|[mM][eE][tT][hH][oO][dD]|[mM][eE][tT][hH][oO][dD][eE][nN][dD]|[mM][eE][tT][hH][oO][dD][rR][eE][tT]|[nN][eE][xX][tT]|[oO][rR]|[pP][rR][iI][nN][tT]|[pP][rR][iI][vV][aA][tT][eE]|[pP][rR][oO][tT][eE][cC][tT][eE][dD]|[pP][uU][bB][lL][iI][cC]|[rR][eE][tT][uU][rR][nN]|[sS][tT][aA][tT][iI][cC]|[sS][tT][eE][pP]|[tT][hH][eE][nN]|[tT][oO]|[wW][eE][nN][dD]|[wW][hH][iI][lL][eE]|[dD][eE][cC][lL][aA][rR][eE]|[lL][iI][bB][rR][aA][rR][yY]|[nN][eE][wW]|[uU][sS][eE])\\b"
+      "match": "\\b([aA][nN][dD]|[bB][yY][eE]|[cC][lL][aA][sS][sS]|[cC][lL][aA][sS][sS][eE][nN][dD]|[dD][iI][mM]|[eE][lL][sS][eE]|[eE][nN][dD]|[eE][nN][dD][iI][fF]|[eE][xX][iI][tT]|[eE][xX][iI][tT][tT][oO]|[eE][xX][tT][eE][nN][dD][sS]|[fF][iI]|[fF][iI][eE][lL][dD]|[fF][oO][rR]|[gG][oO][sS][uU][bB]|[gG][oO][tT][oO]|[iI][fF]|[iI][mM][pP][lL][eE][mM][eE][nN][tT][sS]|[iI][nN][tT][eE][rR][fF][aA][cC][eE]|[iI][nN][tT][eE][rR][fF][aA][cC][eE][eE][nN][dD]|[lL][eE][tT]|[mM][eE][tT][hH][oO][dD]|[mM][eE][tT][hH][oO][dD][eE][nN][dD]|[mM][eE][tT][hH][oO][dD][rR][eE][tT]|[nN][eE][xX][tT]|[oO][rR]|[pP][rR][iI][nN][tT]|[pP][rR][iI][vV][aA][tT][eE]|[pP][rR][oO][tT][eE][cC][tT][eE][dD]|[pP][uU][bB][lL][iI][cC]|[rR][eE][cC][oO][rR][dD]|[rR][eE][tT][uU][rR][nN]|[sS][eE][tT][eE][rR][rR]|[sS][tT][aA][tT][iI][cC]|[sS][tT][eE][pP]|[tT][hH][eE][nN]|[tT][oO]|[wW][eE][nN][dD]|[wW][hH][iI][lL][eE]|[wW][rR][iI][tT][eE]|[aA][uU][tT][oO]|[dD][eE][cC][lL][aA][rR][eE]|[lL][iI][bB][rR][aA][rR][yY]|[nN][eE][wW]|[uU][sS][eE])\\b"
     },
     {
       "name": "string.quoted.double.bbj",
       "begin": "\"",
       "end": "\"",
+      "patterns": [
+        {
+          "include": "#string-character-escape"
+        }
+      ]
+    },
+    {
+      "name": "string.quoted.single.bbj",
+      "begin": "'",
+      "end": "'",
       "patterns": [
         {
           "include": "#string-character-escape"

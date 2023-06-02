@@ -25,17 +25,20 @@ SingleStatement:
     | PrintValue | SetErrorStatement
     | ForStatement | IfStatement | WhileStatement | WhileEndStatement
     | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
+    | OpenStatement | ReadStatement | CloseStatement | Wait
     | Use
     | ExpressionStatement
 ;
 
 Use:
-    'use' (bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName]) | 
-    'use' className=QualifiedJavaClassName
+    'use' (
+        (bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName])
+        | className=QualifiedJavaClassName
+    )
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' type=[Class:QualifiedClassName] name=FeatureName;
+    'declare' 'auto'? type=[Class:QualifiedClassName] name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
@@ -45,7 +48,8 @@ LetStatement:
 ;
 
 PrintValue:
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? value+=Expression (',' value+=Expression)* (':' mask=STRING)?
+    // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))* (':' mask=STRING)?
 ;
 
 ClassDecl returns BbjClass:
@@ -86,7 +90,6 @@ MethodDef:
     LINE_BREAK+'METHODEND'
 ;
 
-
 MethodReturnStatement:
     'METHODRET' return=Expression?
 ;
@@ -95,7 +98,17 @@ ParameterDecl returns VariableDecl:
     type=[Class:QualifiedClassName] name=FeatureName
 ;
 
+
+ArrayDeclarationStatement returns ArrayDecl:
+    'DIM' name = FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
+;
+
+LabelDecl:
+    name=ID':'
+;
+
 ForStatement:
+    // TODO check to evaluates to a number
     'FOR' init=Assignment 'TO' to=Expression  ('STEP' step=Expression)?
 ;
 
@@ -131,7 +144,7 @@ GotoStatement:
 ;
 
 ExitStatement:
-    kind=('RETURN' | 'END')
+    kind=('RETURN' | 'END' | 'BYE' | 'EXIT')
 ;
 
 ExitToStatement:
@@ -142,14 +155,32 @@ SetErrorStatement:
     'SETERR'  target=[LabelDecl]
 ;
 
-ArrayDeclarationStatement returns ArrayDecl:
-    'DIM' name = FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
+OpenStatement:
+    // TODO check channelno is int and fileid is string
+    'OPEN' '(' channelno=Expression? (',' 'ERR=' err=[LabelDecl])?')'fileid=Expression
 ;
 
-LabelDecl:
-    name=ID':'
+// NOTE:INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
+ReadStatement:
+    'READ' (record = 'RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
 ;
 
+fragment Options:
+   (',' option+=Option)* (',' 'ERR=' err=[LabelDecl])?
+;
+
+Option:
+    key=ValidName '=' value=Expression
+;
+
+CloseStatement:
+    'CLOSE' '(' channelno=Expression? Options?')'
+;
+
+Wait:
+    // In BBj, num can be a fractional number accurate to a millisecond.
+    'WAIT' time=Expression
+;
 
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
@@ -164,12 +195,12 @@ Expression:
     PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
 ;
 PrefixExpression infers Expression:
-	{infer PrefixExpression} operator="!" expression=MemberCall
+	{infer PrefixExpression} operator=('!'|'-'|'+') expression=MemberCall
 	| MemberCall;
 
 MemberCall infers Expression:
     PrimaryExpression (
-        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=Expression (',' ('err' '=')? args+=Expression)* )? ')')?
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
     )*;
 
@@ -204,14 +235,14 @@ QualifiedBBjClassName returns string:
     BBjFilePath ID;
 
 FeatureName returns string:
-    ValidId | ID_WITH_SUFFIX | ID;
+    EscapeId | ID_WITH_SUFFIX | ID;
 
 ValidName returns string:
-    ValidId | ID
+    EscapeId | ID
 ;
 
-ValidId returns string:
-    'NEXT' | 'PRINT'
+EscapeId returns string:
+    'NEXT' | 'PRINT' | 'AND' | 'OR'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
@@ -241,10 +272,11 @@ terminal LINE_BREAK: /[\n\r]+/;
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
 
-terminal NUMBER returns number: /(\+|-)?[0-9]+(\.[0-9]*)?/; // TODO create unary operators
+terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/; // TODO create unary operators
 
 terminal STRING: /"([^"]|"{2})*"/; // check this
 terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
+terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
 

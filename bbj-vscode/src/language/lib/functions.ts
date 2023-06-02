@@ -2,6 +2,9 @@ export const builtinFunctions = `
 library
 
 /@@
+
+AND(left:string, right:string, ERR:?lineref)
+
 #### Syntax
 \`ASC(string{,ERR:lineref})\`
 
@@ -31,3 +34,4 @@ NULL():string
 @/
 STR(objexpr:string, ERR?:lineref): string
 `.trimLeft();
+
