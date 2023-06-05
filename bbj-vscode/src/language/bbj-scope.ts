@@ -41,11 +41,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         } else if(isUse(context.container)) {
             const filePath = context.container.bbjFilePath
             if(filePath && filePath.length > 4) {
-                // TODO use value converter
-                const trimmedPath = filePath.slice(2,-2)
                 const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
                     // TODO compare with path relative to project root
-                    return bbjClass.documentUri.path.endsWith(trimmedPath)
+                    return bbjClass.documentUri.path.endsWith(filePath)
                 });
                 return new StreamScope(stream(bbjClasses), undefined);
             }

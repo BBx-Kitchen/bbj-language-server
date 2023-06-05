@@ -10,7 +10,7 @@ import { AbstractRule } from "langium/lib/grammar/generated/ast";
 export class BBjValueConverter extends DefaultValueConverter {
     protected override runConverter(rule: AbstractRule, input:string, cstNode: CstNode): ValueType {
         if (rule.name.toUpperCase() === 'BBJFILEPATH') {
-            return input.replace('::', '');
+            return input.replaceAll('::', '');
         }
         return super.runConverter(rule, input, cstNode)
     }
