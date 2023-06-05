@@ -33,11 +33,13 @@ export class BBjValidator {
     }
 
     checkUsedClassExists(use: Use, accept: ValidationAcceptor): void {
-        const className = use.className
+        const className = use.javaClassName
         if (className) {
             const resolvedClass = this.javaInterop.getResolvedClass(className);
-            if (!resolvedClass || resolvedClass.error) {
+            if (!resolvedClass) {
                 accept('error', `Class ${className} is not in the class path.`, { node: use });
+            } else if(resolvedClass.error) {
+                accept('error', `Error when loading ${className}: ${resolvedClass.error}`, { node: use });
             }
         }
     }

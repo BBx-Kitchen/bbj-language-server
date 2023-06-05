@@ -63,7 +63,14 @@ export class JavaInteropService {
         const connection = await this.connect();
         return connection.sendRequest(getClassInfoRequest, { className }, token);
     }
-
+    
+    public async loadClasspath(confFile: string, token?: CancellationToken): Promise<boolean> {
+        const entries = confFile.split(/\r?\n/).map( entry => 'file:' + entry);
+        console.warn("Load classpath from: " + confFile)
+        const connection = await this.connect();
+        return connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
+    }
+    
     async resolveClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
@@ -72,10 +79,10 @@ export class JavaInteropService {
         const classpath = this.classpath;
         let javaClass: Mutable<JavaClass>;
         javaClass = await this.getRawClass(className, token);
+        this.resolvedClasses.set(className, javaClass); // add class event if it has an error
         if(javaClass.error) {
             return javaClass;
         }
-        this.resolvedClasses.set(className, javaClass);
         for (const field of javaClass.fields) {
             (field as Mutable<JavaField>).$type = JavaField;
             field.resolvedType = {
@@ -122,7 +129,12 @@ export class JavaInteropService {
 }
 
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
+const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
 
 interface ClassInfoParams {
     className: string
+}
+
+interface ClassPathInfoParams {
+    classPathEntries: string[]
 }

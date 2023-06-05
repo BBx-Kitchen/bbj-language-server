@@ -5,7 +5,7 @@
  ******************************************************************************/
 package bbj.interop.data;
 
-public class FieldInfo {
+public class FieldInfo extends WithError{
     
     public String name;
 

@@ -16,7 +16,7 @@ Program:
    Statements? (LINE_BREAK+ Statements?)*
 ;
 
-fragment Statements: statements+=(Statement  | ClassDecl | InterfaceDecl);
+fragment Statements: statements+=(Statement | ClassDecl | InterfaceDecl);
 
 Statement:
    SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
@@ -33,10 +33,8 @@ SingleStatement:
 ;
 
 Use:
-    'use' (
-        (bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName])
-        | className=QualifiedJavaClassName
-    )
+    'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
+    'use' javaClassName=QualifiedJavaClassName
 ;
 
 VariableDecl returns VariableDecl:
@@ -76,7 +74,7 @@ fragment Extends:
 ;
 
 ClassMember returns ClassMember:
-    FieldDecl | MethodDecl | MethodDef
+    FieldDecl | MethodDecl
 ;
 
 FieldDecl returns FieldDecl:
@@ -85,11 +83,8 @@ FieldDecl returns FieldDecl:
 
 MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
-;
-MethodDef:
-    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
-        (LINE_BREAK* body+=Statement)*
-    LINE_BREAK*'METHODEND'
+    ((LINE_BREAK* body+=Statement)*
+        LINE_BREAK* 'METHODEND')?
 ;
 
 MethodReturnStatement:
@@ -214,7 +209,10 @@ ParameterCall:
 ;
 
 PrimaryExpression infers Expression:
-    '(' Expression ')' | SymbolRef | Literal | ConstructorCall;
+    '(' Expression ')'
+    | SymbolRef
+    | Literal
+    | ConstructorCall;
 
 SymbolRef:
     (instanceAccess?='#' | '*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
@@ -291,9 +289,6 @@ terminal DOCU:  /\/@@[\s\S]*?@\//;
 
 
 // Types
-interface NamedElement {
-    name: string
-}
 
 interface VariableDecl extends NamedElement {
     type?: @Class
@@ -329,4 +324,4 @@ interface LibParameter extends NamedElement {
     optional: boolean
 }
 
-type ClassMember = FieldDecl | MethodDecl | MethodDef
+type ClassMember = FieldDecl | MethodDecl

@@ -40,7 +40,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
         } else if(isUse(context.container)) {
             const filePath = context.container.bbjFilePath
-            if(filePath && filePath.length > 4) {
+            if(filePath) {
                 const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
                     // TODO compare with path relative to project root
                     return bbjClass.documentUri.path.endsWith(filePath)
@@ -120,11 +120,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         const rootNode = document.parseResult.value;
         if (isProgram(rootNode) && rootNode.$type === 'Program') {
             for (const use of rootNode.statements.filter(statement => statement.$type == Use)) {
-                const className = (use as Use).className
+                const className = (use as Use).javaClassName
                 if (className != null) {
-                    if (!isBBjClassPath(className)) {
-                        await this.javaInterop.resolveClass(className);
-                    }
+                    await this.javaInterop.resolveClass(className);
                 }
             }
         }
@@ -136,12 +134,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if(node.bbjClass?.ref) {
                 scopes.add(node.$container, this.descriptions.createDescription(node.bbjClass?.ref, node.bbjClass?.ref.name))
             }
-            const classPath = node.className;
-            if (!classPath) {
-                return;
-            }
-            if (!isBBjClassPath(classPath)) {
-                const javaClass = this.javaInterop.getResolvedClass(classPath);
+            if (node.javaClassName) {
+                const javaClass = this.javaInterop.getResolvedClass(node.javaClassName);
                 if (!javaClass) {
                     return;
                 }
@@ -150,7 +144,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     return;
                 }
                 const program = node.$container;
-                const simpleName = classPath.substring(classPath.lastIndexOf('.') + 1);
+                const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
                 scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
             }
         } else if (isAssignment(node) && node.variable && !isFieldDecl(node.variable)) {
@@ -191,9 +185,4 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             super.processNode(node, document, scopes);
         }
     }
-
-}
-
-function isBBjClassPath(path: string) {
-    return path.startsWith('::');
 }

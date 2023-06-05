@@ -8,8 +8,11 @@ interface Classpath {
     classes: JavaClass[]
 }
 
-interface Class {
+interface NamedElement {
     name: string
+}
+
+interface Class extends NamedElement {
 }
 
 interface JavaClass extends Class {

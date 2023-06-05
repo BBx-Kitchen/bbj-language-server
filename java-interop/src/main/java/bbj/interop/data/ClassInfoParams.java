@@ -10,3 +10,4 @@ public class ClassInfoParams {
     public String className;
     
 }
+

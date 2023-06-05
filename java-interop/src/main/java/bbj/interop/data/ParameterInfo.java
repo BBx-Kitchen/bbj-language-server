@@ -5,7 +5,7 @@
  ******************************************************************************/
 package bbj.interop.data;
 
-public class ParameterInfo {
+public class ParameterInfo extends WithError{
 
     public String name;
 
