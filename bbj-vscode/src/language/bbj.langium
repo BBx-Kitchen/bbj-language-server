@@ -253,7 +253,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD'
+    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';

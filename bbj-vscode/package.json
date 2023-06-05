@@ -13,7 +13,7 @@
         "languages": [{
             "id": "bbj",
             "aliases": ["BBj", "bbj"],
-            "extensions": [".bbj", ".bbl"],
+            "extensions": [".bbj", ".bbl", ".bbjt"],
             "configuration": "./language-configuration.json"
         }],
         "grammars": [{

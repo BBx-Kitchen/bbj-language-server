@@ -6,7 +6,8 @@
             "grammar": "src/language/bbj.langium",
             "fileExtensions": [
                 ".bbj",
-                ".bbl"
+                ".bbl",
+                ".bbjt"
             ],
             "caseInsensitive": true,
             "textMate": {

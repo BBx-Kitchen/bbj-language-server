@@ -68,12 +68,14 @@ export class JavaInteropService {
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
         }
-    
+
         const classpath = this.classpath;
         let javaClass: Mutable<JavaClass>;
         javaClass = await this.getRawClass(className, token);
+        if(javaClass.error) {
+            return javaClass;
+        }
         this.resolvedClasses.set(className, javaClass);
-
         for (const field of javaClass.fields) {
             (field as Mutable<JavaField>).$type = JavaField;
             field.resolvedType = {
@@ -103,7 +105,14 @@ export class JavaInteropService {
         javaClass.$containerProperty = 'classes';
         javaClass.$containerIndex = classpath.classes.length;
         classpath.classes.push(javaClass);
-
+        if(className.startsWith('java.lang.')) {
+            // add as implicit java.lang.* import
+            const simpleNameCopy = {...javaClass}
+            simpleNameCopy.name = className.replace('java.lang.','')
+            simpleNameCopy.$containerIndex = classpath.classes.length;
+            classpath.classes.push(simpleNameCopy);
+            this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+        }
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
