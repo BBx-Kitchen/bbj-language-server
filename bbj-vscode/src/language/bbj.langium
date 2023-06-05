@@ -13,15 +13,13 @@ entry Model:
 
 // Main programm
 Program:
-    LINE_BREAK*
-    Statements* 
+   Statements? (LINE_BREAK+ Statements?)*
 ;
 
 fragment Statements: statements+=(Statement  | ClassDecl | InterfaceDecl);
 
 Statement:
-   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)? LINE_BREAK+
-;
+   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
 
 
 SingleStatement:
@@ -59,14 +57,14 @@ PrintValue:
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
         Extends
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])* LINE_BREAK+
-        members+=ClassMember*
-    'CLASSEND'LINE_BREAK+
+        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*
+    (LINE_BREAK* members+=ClassMember)*
+    LINE_BREAK* 'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
-    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends LINE_BREAK+
-        members+=MethodDecl*
-    'INTERFACEEND'LINE_BREAK+
+    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends
+    (LINE_BREAK* members+=MethodDecl)*
+     LINE_BREAK* 'INTERFACEEND'
 ;
 
 fragment Static:
@@ -78,21 +76,21 @@ fragment Extends:
 ;
 
 ClassMember returns ClassMember:
-    FieldDecl | MethodDecl
+    FieldDecl | MethodDecl | MethodDef
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)? LINE_BREAK+
+    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
 ;
 
 MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
-    (LINE_BREAK+
-        body+=Statement*
-        'METHODEND'
-    )? LINE_BREAK+ 
 ;
-
+MethodDef:
+    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+        (LINE_BREAK* body+=Statement)*
+    LINE_BREAK*'METHODEND'
+;
 
 MethodReturnStatement:
     'METHODRET' return=Expression?
@@ -131,9 +129,9 @@ SLIfStatement:
 
 MLIfStatement:
     'IF' condition=Expression 'THEN'? LINE_BREAK+
-    (then += Statement)*
-    ('ELSE' LINE_BREAK+ (else += Statement)*) ?
-    ( 'ENDIF' | 'FI' )
+    then += Statement? (LINE_BREAK+ then += Statement?)*
+    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement (LINE_BREAK+ else += Statement?)* )?
+    (LINE_BREAK+ 'ENDIF' | 'FI')
 ;
 
 WhileStatement:
@@ -331,4 +329,4 @@ interface LibParameter extends NamedElement {
     optional: boolean
 }
 
-type ClassMember = FieldDecl | MethodDecl
+type ClassMember = FieldDecl | MethodDecl | MethodDef
