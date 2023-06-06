@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { parseDocument, parseHelper } from 'langium/test';
+import { parseHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { isLibrary, isProgram, Library, Model, Program } from '../src/language/generated/ast';
@@ -124,7 +124,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result)
         expect(isProgram(result.parseResult.value)).true
     })
-    
+
     test('Parse string mask', async () => {
         const result = await parse(`
         PRINT "String":"mask"
@@ -133,4 +133,5 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result)
         expect(isProgram(result.parseResult.value)).true
     })
+   
 });
