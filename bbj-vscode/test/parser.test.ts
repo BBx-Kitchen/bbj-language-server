@@ -30,8 +30,7 @@ describe('Parser Tests', () => {
             PRINT "Number ", i
         NEXT
     `)
-        expect(program.parseResult.lexerErrors.length).toBe(0)
-        expect(program.parseResult.parserErrors.length).toBe(0)
+        expectNoParserLexerErrors(program)
     })
 
     test('Program parsed', async () => {
@@ -96,17 +95,42 @@ describe('Parser Tests', () => {
 
         CLASSEND
         `)
+        expectNoParserLexerErrors(result)
         expect(isProgram(result.parseResult.value)).true
-        expect(result.parseResult.lexerErrors).toHaveLength(0)
-        expect(result.parseResult.parserErrors).toHaveLength(0)
+    })
+
+    test('Parse Interface Decl', async () => {
+        const result = await parse(`
+        interface public ResolverInterface
+            method public Boolean resolve(String term!, Integer column!)
+        interfaceend
+        `)
+        expectNoParserLexerErrors(result)
+        expect(isProgram(result.parseResult.value)).true
     })
 
     test('Parse namedParameter Decl', async () => {
         const result = await parse(`
         BBjAPI().removeTimer("onLoadFallback", err= *next)
         `)
+        expectNoParserLexerErrors(result)
         expect(isProgram(result.parseResult.value)).true
-        expect(result.parseResult.lexerErrors).toHaveLength(0)
-        expect(result.parseResult.parserErrors).toHaveLength(0)
+    })
+
+    test('Parse hex string in expression', async () => {
+        const result = await parse(`
+        filter$ = "Image Files"+$0a$+"*.png;*.jpg;*.jpeg;*.gif"
+        `)
+        expectNoParserLexerErrors(result)
+        expect(isProgram(result.parseResult.value)).true
+    })
+    
+    test('Parse string mask', async () => {
+        const result = await parse(`
+        PRINT "String":"mask"
+        s! = str(p_color!.getRed():"##0")
+        `)
+        expectNoParserLexerErrors(result)
+        expect(isProgram(result.parseResult.value)).true
     })
 });

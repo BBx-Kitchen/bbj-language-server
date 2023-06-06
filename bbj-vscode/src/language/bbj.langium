@@ -49,7 +49,7 @@ LetStatement:
 
 PrintValue:
     // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))* (':' mask=STRING)?
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))* (':' mask=STRING)?)?
 ;
 
 ClassDecl returns BbjClass:
@@ -83,8 +83,10 @@ FieldDecl returns FieldDecl:
 
 MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
-    ((LINE_BREAK* body+=Statement)*
-        LINE_BREAK* 'METHODEND')?
+    (
+        (LINE_BREAK* body+=Statement)*
+        LINE_BREAK* 'METHODEND' //FIXME doesn't work for interfaces
+    )?
 ;
 
 MethodReturnStatement:
@@ -124,8 +126,8 @@ SLIfStatement:
 
 MLIfStatement:
     'IF' condition=Expression 'THEN'? LINE_BREAK+
-    then += Statement? (LINE_BREAK+ then += Statement?)*
-    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement (LINE_BREAK+ else += Statement?)* )?
+    then += Statement? (LINE_BREAK+ then += Statement)*
+    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement? (LINE_BREAK+ else += Statement)* )?
     (LINE_BREAK+ 'ENDIF' | 'FI')
 ;
 
@@ -141,7 +143,7 @@ GotoStatement:
 ;
 
 ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'EXIT')
+    kind=('RETURN' | 'END' | 'BYE' | 'EXIT' | 'RELEASE')
 ;
 
 ExitToStatement:
@@ -281,8 +283,8 @@ terminal ID: /[_a-zA-Z][\w_]*/;
 
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/;
 
-terminal STRING: /"([^"]|"{2})*"/; // check this
-terminal HEX_STRING: /\$[0-9A-F]*\$/;  // $0A1E$, $$ = Null string
+terminal STRING: /"([^"]|"{2})*"/; // TODO check this. Also support \ as a plain non escape char
+terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
