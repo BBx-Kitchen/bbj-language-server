@@ -5,9 +5,18 @@
  ******************************************************************************/
 package bbj.interop;
 
+import java.io.File;
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -70,8 +79,28 @@ public class InteropService {
 		params.classPathEntries.forEach(entry -> {
 			try {
 				System.out.println("Add to classpath: " + entry);
-				classLoader.addUrl(new URL(entry));
-			} catch (MalformedURLException e) {
+				if (entry != null && entry.endsWith("/*")) {
+					File file = Path.of(new URI(entry.substring(0, entry.length() - 1))).toFile();
+					if (file.exists() && file.isDirectory()) {
+						try {
+							Files.walkFileTree(file.toPath(), new SimpleFileVisitor<Path>() {
+								@Override
+								public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+										throws IOException {
+									if (file.toString().endsWith(".jar")) {
+										classLoader.addUrl(file.toUri().toURL());
+									}
+									return super.visitFile(file, attrs);
+								}
+							});
+						} catch (IOException e) {
+							e.printStackTrace();
+						}
+					}
+				} else {
+					classLoader.addUrl(new URL(entry));
+				}
+			} catch (MalformedURLException | URISyntaxException e) {
 				e.printStackTrace();
 			}
 		});

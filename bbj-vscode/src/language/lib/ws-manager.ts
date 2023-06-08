@@ -54,9 +54,13 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
 export function parseSettings(input: string): { prefixes: string[], classpath: string } {
     const props = getProperties(input)
-    return { prefixes: collectPrefixes(props.PREFIX), classpath: props.classpath };
+    return { prefixes: collectPrefixes(props.PREFIX), classpath: resolveTilde(props.classpath) };
 }
 
 export function collectPrefixes(input: string): string[] {
-    return input.split(" ").map(entry => entry.trim().slice(1, -1).replace('~', os.homedir()))
+    return input.split(" ").map(entry => resolveTilde(entry.trim().slice(1, -1)))
+}
+
+export function resolveTilde(input: string) : string {
+    return input.replace('~', os.homedir())
 }
