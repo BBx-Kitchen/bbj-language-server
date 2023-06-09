@@ -2,9 +2,9 @@ import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFacto
 import { CancellationToken } from "vscode";
 import { WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
-import { BBjServices } from "../bbj-module";
-import { JavaInteropService } from "../java-interop";
-import { builtinFunctions } from "./functions";
+import { BBjServices } from "./bbj-module";
+import { JavaInteropService } from "./java-interop";
+import { builtinFunctions } from "./lib/functions";
 import { getProperties } from 'properties-file'
 import os from 'os'
 import fs from 'fs';

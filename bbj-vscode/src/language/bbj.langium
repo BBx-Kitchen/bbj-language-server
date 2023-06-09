@@ -81,7 +81,7 @@ FieldDecl returns FieldDecl:
     'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
 ;
 
-MethodDecl:
+MethodDecl returns MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
     (
         (LINE_BREAK* body+=Statement)*
@@ -300,6 +300,14 @@ interface FieldDecl extends VariableDecl {
     visibility?: string
     static?: boolean
     init?: Expression
+}
+
+interface MethodDecl extends NamedElement {
+    visibility?: string
+    static?: boolean
+    type?: @Class
+    params: VariableDecl[]
+    body: Statement[]
 }
 
 interface ArrayDecl extends VariableDecl {

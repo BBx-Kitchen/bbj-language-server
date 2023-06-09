@@ -5,15 +5,17 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, findNodeForProperty,
+    AstNode, AstNodeDescription, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, findNodeForProperty, getDocument,
+    isAstNode,
     LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, StreamScope, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
-    Assignment, BbjClass, Class, ClassMember, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
+    Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isMemberCall,
-    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, Use
+    isMethodDecl,
+    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -21,10 +23,12 @@ import { JavaInteropService } from './java-interop';
 export class BbjScopeProvider extends DefaultScopeProvider {
 
     protected readonly javaInterop: JavaInteropService;
+    protected readonly astNodeLocator: AstNodeLocator;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
+        this.astNodeLocator = services.workspace.AstNodeLocator;
     }
 
     override getScope(context: ReferenceInfo): Scope {
@@ -36,23 +40,30 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             if (isJavaClass(receiverType)) {
                 return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
             } else if (isBbjClass(receiverType)) {
-                return this.createScopeForNodes(this.collectMembers(receiverType).filter(member => member.visibility === 'PUBLIC' && member.type));
+                return this.createBBjClassMemberScope(receiverType);
             }
-        } else if(isUse(context.container)) {
+        } else if (isUse(context.container)) {
             const filePath = context.container.bbjFilePath
-            if(filePath) {
+            if (filePath) {
                 const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
-                    // TODO compare with path relative to project root
+                    // FIXME 
+                    // 1. load first files in same folder
+                    // 2. try resolve with path relative to project root
+                    // 3. Access PREFIX folder information and load the first match 
                     return bbjClass.documentUri.path.endsWith(filePath)
                 });
                 return new StreamScope(stream(bbjClasses), undefined);
             }
             return EMPTY_SCOPE
+        } else if(isSymbolRef(context.container)) {
+            // TODO handle #getName() here for super  classes access
+            return super.getScope(context);
         }
         return super.getScope(context);
     }
 
     protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
+        // By default scope is case insensitive
         return new StreamScope(elements, outerScope, { caseInsensitive: true });
     }
 
@@ -66,19 +77,54 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         }
     }
 
-    protected collectMembers(clazz: BbjClass): ClassMember[] {
-        let members = clazz.members
-        if (isBbjClass(clazz.extends?.length > 0)) {
-            clazz.extends.forEach((superType) => {
-                // TODO handle JavaClass as well
+    protected createBBjClassMemberScope(bbjType: BbjClass): Scope {
+        return this.createCaseSensitiveScope(this.bbjAllClassMembers(bbjType))
+    }
+
+    protected bbjAllClassMembers(bbjType: BbjClass): (AstNode | AstNodeDescription)[] {
+        let members: (AstNode | AstNodeDescription)[] = bbjType.members.map((member, idx, array) => {
+            if (isFieldDecl(member)) {
+                const accessors: AstNodeDescription[] = []
+                const methods = array.filter(ele => isMethodDecl(ele))
+                const createAccessor = (setter: boolean = false) => {
+                    // TODO if there is a getter, check getter has no parameter
+                    if (methods.filter(member => member.name == toAccessorName(member.name, setter)).length === 0) {
+                        accessors.push(createAccessorDescription(this.astNodeLocator, member, setter))
+                    }
+                }
+                createAccessor();
+                createAccessor(true);
+                return [member, ...accessors]
+            }
+            return member
+        }).flat()
+        if (bbjType.extends?.length > 0) {
+            bbjType.extends.forEach((superType) => {
+                // TODO handle JavaClass as well?
                 if (isBbjClass(superType!.ref)) {
-                    members = members.concat(this.collectMembers(superType!.ref))
+                    members.push(...this.bbjAllClassMembers(superType!.ref))
                 }
             });
             return members
         }
         return members
     }
+
+    protected createCaseSensitiveScope(elements: (AstNode | AstNodeDescription)[]): Scope {
+        const s = stream(elements).map(e => {
+            if (isAstNode(e)) {
+                const name = this.nameProvider.getName(e);
+                if (name) {
+                    return this.descriptions.createDescription(e, name);
+                }
+                return undefined;
+            }
+            return e
+        }).nonNullable();
+        return new StreamScope(s);
+    }
+
+
 
     protected getType(expression: Expression): Class | undefined {
         if (isSymbolRef(expression)) {
@@ -131,7 +177,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
         if (isUse(node)) {
-            if(node.bbjClass?.ref) {
+            if (node.bbjClass?.ref) {
                 scopes.add(node.$container, this.descriptions.createDescription(node.bbjClass?.ref, node.bbjClass?.ref.name))
             }
             if (node.javaClassName) {
@@ -181,8 +227,33 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     path: this.astNodeLocator.getAstNodePath(node)
                 })
             }
+            // local getter and setter.
+            // TODO Probably better to move to ScopeProvider as super getter and setter can not be accessed.
+            node.members.filter(member => isFieldDecl(member)).forEach(member => {
+                if (!node.members.find(member => member.name === toAccessorName(member.name))) {
+                    scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl));
+                }
+                if (!node.members.find(member => member.name === toAccessorName(member.name, true))) {
+                    scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, true));
+                }
+            });
         } else {
             super.processNode(node, document, scopes);
         }
+    }
+}
+
+function toAccessorName(field: string, setter: boolean = false): string {
+    return (setter ? 'set' : 'get') + (new RegExp("[!|\$|%]$").test(field) ? field.slice(0, -1) : field);
+}
+
+
+function createAccessorDescription(astNodeLocator: AstNodeLocator, member: FieldDecl, setter: boolean = false): AstNodeDescription {
+    return {
+        name: toAccessorName(member.name, setter),
+        nameSegment: toDocumentSegment(findNodeForProperty(member.$cstNode, 'name')),
+        type: MethodDecl,
+        documentUri: getDocument(member).uri,
+        path: astNodeLocator.getAstNodePath(member)
     }
 }

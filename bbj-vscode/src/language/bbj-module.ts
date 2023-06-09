@@ -12,10 +12,11 @@ import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module
 import { BBjValidator, registerValidationChecks } from './bbj-validator';
 import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
-import { BBjWorkspaceManager } from './lib/ws-manager';
+import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
 import { BbjLexer } from './bbj-lexer';
 import { BBjValueConverter} from './bbj-value-converter';
+import { BbjLinker } from './bbj-linker';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -43,7 +44,8 @@ export type BBjServices = LangiumServices & BBjAddedServices
 export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedServices> = {
     references: {
         ScopeComputation: (services) => new BbjScopeComputation(services),
-        ScopeProvider: (services) => new BbjScopeProvider(services)
+        ScopeProvider: (services) => new BbjScopeProvider(services),
+        Linker: (services) => new BbjLinker(services)
     },
     validation: {
         BBjValidator: (services) => new BBjValidator(services)

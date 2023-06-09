@@ -1,0 +1,74 @@
+
+rem ' Payroll
+declare String void
+declare String BBjNumber
+
+e1! = new Salaried()
+e1!.setID(1)
+e1!.setName("Mary Jones")
+e1!.setMonthlySalary(5000)
+e1!.print()
+print "GL Account:",e1!.account()
+
+e2! = new Hourly()
+e2!.setID(2)
+e2!.setName("John Smith")
+e2!.setHourlyRate(15)
+e2!.setHoursWorked(168)
+e2!.print()
+print "GL Account:",e2!.account()
+
+interface public Address
+  method public void address()
+  METHODEND
+interfaceend
+
+interface public Pay
+  method public void print()
+  METHODEND
+interfaceend
+
+interface public GL
+  method public BBjNumber account()
+  METHODEND
+interfaceend
+
+interface public Payable extends Pay, GL
+  method public BBjNumber pay()
+  METHODEND
+interfaceend
+
+class public Employee
+  field public BBjNumber ID
+  field public BBjString Name$
+classend
+
+class public Salaried extends Employee implements Payable
+  field public BBjNumber MonthlySalary
+  
+  method public BBjNumber pay()
+    methodret #MonthlySalary
+  methodend
+  method public void print()
+    print "Employee",#getID(),": ",#getName() 
+    print #pay():"($###,###.00)"
+  methodend
+  method public BBjNumber account()
+    methodret 11111
+  methodend
+classend
+
+class public Hourly extends Employee implements Payable
+  field public BBjNumber HourlyRate
+  field public BBjNumber HoursWorked
+  method public BBjNumber pay()
+    methodret #HourlyRate*#HoursWorked
+  methodend
+  method public void print()
+    print "Employee",#getID(),": ",#getName()
+    print #pay():"($###,###.00)"
+  methodend
+  method public BBjNumber account()
+   methodret 22222
+  methodend
+classend
