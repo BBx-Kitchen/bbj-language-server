@@ -17,6 +17,7 @@ import { BBjHoverProvider } from './bbj-hover';
 import { BbjLexer } from './bbj-lexer';
 import { BBjValueConverter} from './bbj-value-converter';
 import { BbjLinker } from './bbj-linker';
+import { BBjTokenBuilder } from './bbj-token-builder';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -58,7 +59,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     parser: {
         Lexer: (services) => new BbjLexer(services),
-        ValueConverter: () => new BBjValueConverter
+        ValueConverter: () => new BBjValueConverter(),
+        TokenBuilder: () => new BBjTokenBuilder()
     }
 };
 

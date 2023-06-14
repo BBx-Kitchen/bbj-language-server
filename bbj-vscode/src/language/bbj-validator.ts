@@ -4,10 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { ValidationAcceptor, ValidationChecks } from 'langium';
-import { BBjAstType, Use } from './generated/ast';
+import { AstNode, CstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
+import { BBjAstType, Use, isBbjClass, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isStatement } from './generated/ast';
 import type { BBjServices } from './bbj-module';
 import { JavaInteropService } from './java-interop';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { Range } from 'vscode-languageserver-types';
 
 /**
  * Register custom validation checks.
@@ -16,10 +18,13 @@ export function registerValidationChecks(services: BBjServices) {
     const registry = services.validation.ValidationRegistry;
     const validator = services.validation.BBjValidator;
     const checks: ValidationChecks<BBjAstType> = {
+        AstNode: validator.checkLinebreaks,
         Use: validator.checkUsedClassExists
     };
     registry.register(checks, validator);
 }
+
+type LinebreakMap = [(node: AstNode) => boolean, string[] | boolean, string[] | boolean, string[] | boolean][]
 
 /**
  * Implementation of custom validations.
@@ -27,9 +32,131 @@ export function registerValidationChecks(services: BBjServices) {
 export class BBjValidator {
 
     protected readonly javaInterop: JavaInteropService;
+    protected readonly linebreakMap: LinebreakMap = [
+        [isFieldDecl,
+            ['FIELD'],
+            true,
+            false],
+        [isMethodDecl,
+            ['METHOD'],
+            false,
+            ['METHODEND']],
+        [isBbjClass,
+            ['CLASS', 'INTERFACE'],
+            false,
+            ['CLASSEND', 'INTERFACEEND']],
+        [isLibFunction,
+            false,
+            false,
+            true],
+        [isIfStatement,
+            ['IF'],
+            ['MLTHENFirst'],
+            ['ENDIF', 'FI']],
+        [this.isStandaloneStatement,
+            false,
+            false,
+            true],
+    ];
 
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
+    }
+
+    private isStandaloneStatement(node: AstNode): boolean {
+        if (isStatement(node)) {
+            if (isCompoundStatement(node.$container)
+                || (isIfStatement(node.$container) && !node.$container.isMultiline)
+                || isLetStatement(node.$container)
+                || isForStatement(node.$container)) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    checkLinebreaks(node: AstNode, accept: ValidationAcceptor): void {
+        const textDocument = getDocument(node).textDocument;
+        for (const [predicate, before, after, both] of this.linebreakMap) {
+            if (node.$cstNode && predicate(node)) {
+                if (before) {
+                    const beforeNodes = this.getCstNodes(node.$cstNode, before);
+                    for (const cst of beforeNodes) {
+                        if (!this.hasLinebreakBefore(cst, textDocument)) {
+                            accept('error', 'This line needs to be preceeded by a line break.', {
+                                node,
+                                range: cst.range
+                            });
+                        }
+                    }
+                }
+                if (after) {
+                    const afterNodes = this.getCstNodes(node.$cstNode, after);
+                    for (const cst of afterNodes) {
+                        if (!this.hasLinebreakAfter(cst, textDocument)) {
+                            accept('error', 'This line needs to be succeeded by a line break.', {
+                                node,
+                                range: cst.range
+                            });
+                        }
+                    }
+                }
+                if (both) {
+                    const cstNodes = this.getCstNodes(node.$cstNode, both);
+                    for (const cst of cstNodes) {
+                        if (!this.hasLinebreakAfter(cst, textDocument) || !this.hasLinebreakBefore(cst, textDocument)) {
+                            accept('error', 'This line needs to be wrapped by line breaks.', {
+                                node,
+                                range: cst.range
+                            });
+                        }
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    private getCstNodes(node: CstNode, features: string[] | boolean): CstNode[] {
+        if (Array.isArray(features)) {
+            const nodes: CstNode[] = [];
+            for (const feature of features) {
+                nodes.push(...findNodesForKeyword(node, feature));
+            }
+            return nodes;
+        } else {
+            return [node];
+        }
+    }
+
+    private lineStartRegex = /^\s*$/;
+    private lineEndRegex = /^\s*(rem[ \t][^\n\r]*)?(\r?\n)?$/;
+
+    private hasLinebreakBefore(node: CstNode, textDocument: TextDocument): boolean {
+        const nodeStart = node.range.start;
+        const textRange: Range = {
+            start: {
+                line: nodeStart.line,
+                character: 0
+            },
+            end: nodeStart
+        };
+        const text = textDocument.getText(textRange);
+        return this.lineStartRegex.test(text);
+    }
+
+    private hasLinebreakAfter(node: CstNode, textDocument: TextDocument): boolean {
+        const nodeEnd = node.range.end;
+        const textRange: Range = {
+            start: nodeEnd,
+            end: {
+                line: nodeEnd.line + 1,
+                character: 0
+            }
+        };
+        const text = textDocument.getText(textRange);
+        return this.lineEndRegex.test(text);
     }
 
     checkUsedClassExists(use: Use, accept: ValidationAcceptor): void {
