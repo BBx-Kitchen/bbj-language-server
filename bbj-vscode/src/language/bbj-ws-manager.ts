@@ -6,6 +6,9 @@ import { BBjServices } from "./bbj-module";
 import { JavaInteropService } from "./java-interop";
 import { builtinFunctions } from "./lib/functions";
 import { getProperties } from 'properties-file'
+
+// TODO extend the FileSystemAccess or add an additional service
+// to not use 'fs' and 'os' here 
 import os from 'os'
 import fs from 'fs';
 
@@ -24,8 +27,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
         try {
-            const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
-            const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+        const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
+        const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
             if (confFile) {
                 this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
                 await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
@@ -42,6 +45,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     ): Promise<void> {
         // Load library
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
+        
+        // Load additional files configured with the PREFIX property
         if (this.settings?.prefixes) {
             this.settings.prefixes.forEach(async prefixPath => {
                 console.warn('Add to additional files: ' + prefixPath.toString())

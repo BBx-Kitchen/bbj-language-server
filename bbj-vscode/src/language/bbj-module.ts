@@ -17,6 +17,7 @@ import { BBjHoverProvider } from './bbj-hover';
 import { BbjLexer } from './bbj-lexer';
 import { BBjValueConverter} from './bbj-value-converter';
 import { BbjLinker } from './bbj-linker';
+import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjTokenBuilder } from './bbj-token-builder';
 
 /**
@@ -66,6 +67,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     workspace: {
+        DocumentBuilder:  (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
         WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services)
     },
 }

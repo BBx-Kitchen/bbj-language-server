@@ -221,7 +221,7 @@ MemberCall infers Expression:
     )*;
 
 ParameterCall:
-    'err='? expression=Expression
+    expression = Expression
 ;
 
 PrimaryExpression infers Expression:
