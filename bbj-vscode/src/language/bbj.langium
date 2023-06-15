@@ -107,7 +107,7 @@ MethodDecl returns MethodDecl:
 ;
 
 MethodReturnStatement:
-    'METHODRET' return=Expression?
+    'METHODRET' (return=Expression | LINE_BREAK)
 ;
 
 ParameterDecl returns VariableDecl:
@@ -289,6 +289,7 @@ hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
 terminal NEXT_TOKEN: /_next/;
+terminal LINE_BREAK: /_linebreak/;
 
 terminal BBjFilePath: /::.*::/;
 
