@@ -33,7 +33,7 @@ export class BBjValidator {
 
     protected readonly javaInterop: JavaInteropService;
     protected readonly linebreakMap: LinebreakMap = [
-        [(node => isFieldDecl(node) && !isParameterDecl(node)),
+        [isFieldDecl,
             ['FIELD'],
             true,
             false],
@@ -64,7 +64,7 @@ export class BBjValidator {
     }
 
     private isStandaloneStatement(node: AstNode): boolean {
-        if (isStatement(node)) {
+        if (isStatement(node) && !isParameterDecl(node)) {
             if (isCompoundStatement(node.$container)
                 || (isIfStatement(node.$container) && !node.$container.isMultiline)
                 || isLetStatement(node.$container)
