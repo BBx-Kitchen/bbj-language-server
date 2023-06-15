@@ -134,7 +134,7 @@ NextStatement:
 
 IfStatement:
     'IF' condition=Expression (
-        'SLTHEN' 
+        'SLTHEN'?
             then+=Statement
         ('ELSE' else+=Statement)?
     |   

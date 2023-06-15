@@ -209,7 +209,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     path: this.astNodeLocator.getAstNodePath(node)
                 })
             }
-        } else if (isBbjClass(node)) {
+        } else if (isBbjClass(node) && node.name) {
             scopes.add(node.$container, this.descriptions.createDescription(node, node.name))
             const classNameNode = findNodeForProperty(node.$cstNode, 'name')
             scopes.add(node, {

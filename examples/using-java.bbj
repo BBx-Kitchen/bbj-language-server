@@ -5,6 +5,8 @@ use java.util.TreeMap
 use ::bbj-classes.bbj::someClass
   
 testBbj! = new someClass()
+testBbj!.setsomeInstanceString("")
+
 
 rem if we declare today, our Eclipse Plug-In Produces Suggestions:
 declare HashMap hm!

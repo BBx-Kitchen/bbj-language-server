@@ -1,12 +1,21 @@
-import { AstNode, BuildOptions, DefaultDocumentBuilder, LangiumDocument } from "langium";
+import { AstNode, BuildOptions, DefaultDocumentBuilder, LangiumDocument, LangiumSharedServices, WorkspaceManager } from "langium";
+import { BBjWorkspaceManager } from "./bbj-ws-manager";
 
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
+    wsManager: () => WorkspaceManager;
+    
+    constructor(services: LangiumSharedServices) {
+        super(services);
+        this.wsManager = () => services.workspace.WorkspaceManager;
+    }
+    
     protected override shouldValidate(_document: LangiumDocument<AstNode>, options: BuildOptions): boolean {
-        return super.shouldValidate(_document, options) && isWorkspaceDocument(_document);
+        if(this.wsManager() instanceof BBjWorkspaceManager) {
+            return super.shouldValidate(_document, options)
+                && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
+        }
+        return super.shouldValidate(_document, options);
     }
 }
 
-function isWorkspaceDocument(_document: LangiumDocument<AstNode>): boolean {
-    return !_document.uri.path.includes('/Users/dhuebner/BBJ');
-}

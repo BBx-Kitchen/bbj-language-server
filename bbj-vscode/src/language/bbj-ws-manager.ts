@@ -11,6 +11,7 @@ import { getProperties } from 'properties-file'
 // to not use 'fs' and 'os' here 
 import os from 'os'
 import fs from 'fs';
+import path from 'path';
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -57,6 +58,22 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 }
             })
         }
+    }
+
+    public getSettings() {
+        return this.settings;
+    }
+
+    public isExternalDocument(documentUri: URI): boolean {
+        if(this.settings?.prefixes) {
+            for (const prefix of this.settings?.prefixes) {
+                // TODO check that document is part of the workspace folders
+                if (documentUri.fsPath.startsWith(path.normalize(prefix))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
 

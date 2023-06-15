@@ -14,11 +14,11 @@ import { JavaInteropService } from './java-interop';
 import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
-import { BbjLexer } from './bbj-lexer';
 import { BBjValueConverter} from './bbj-value-converter';
 import { BbjLinker } from './bbj-linker';
 import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjTokenBuilder } from './bbj-token-builder';
+import { BBjIndexManager } from './bbj-index-manager';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -59,7 +59,6 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         HoverProvider: (services) => new BBjHoverProvider(services)
     },
     parser: {
-        Lexer: (services) => new BbjLexer(services),
         ValueConverter: () => new BBjValueConverter(),
         TokenBuilder: () => new BBjTokenBuilder()
     }
@@ -68,7 +67,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     workspace: {
         DocumentBuilder:  (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
-        WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services)
+        WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services),
+        IndexManager:  (services: LangiumSharedServices) => new BBjIndexManager(services)
     },
 }
 
