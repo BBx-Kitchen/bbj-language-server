@@ -111,7 +111,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    type=[Class:QualifiedClassName] name=FeatureName
+    {infer ParameterDecl} type=[Class:QualifiedClassName] name=FeatureName
 ;
 
 

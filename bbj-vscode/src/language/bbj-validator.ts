@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { AstNode, CstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
-import { BBjAstType, Use, isBbjClass, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isStatement } from './generated/ast';
+import { BBjAstType, Use, isBbjClass, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import type { BBjServices } from './bbj-module';
 import { JavaInteropService } from './java-interop';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -64,7 +64,7 @@ export class BBjValidator {
     }
 
     private isStandaloneStatement(node: AstNode): boolean {
-        if (isStatement(node)) {
+        if (isStatement(node) && !isParameterDecl(node)) {
             if (isCompoundStatement(node.$container)
                 || (isIfStatement(node.$container) && !node.$container.isMultiline)
                 || isLetStatement(node.$container)

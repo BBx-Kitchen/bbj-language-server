@@ -25,7 +25,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         if (terminal.name === 'NEXT_TOKEN') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)?\r\n)/i),
+                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)?\r?\n)/i),
                 LINE_BREAKS: true
             };
             return token;
