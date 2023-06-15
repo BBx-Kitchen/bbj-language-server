@@ -23,12 +23,15 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
-        const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
-        const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
-        if (confFile) {
-            this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
-            await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
-
+        try {
+            const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
+            const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+            if (confFile) {
+                this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
+                await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
+            }
+        } catch {
+            // all fine
         }
         return super.initializeWorkspace(folders, cancelToken);
     }

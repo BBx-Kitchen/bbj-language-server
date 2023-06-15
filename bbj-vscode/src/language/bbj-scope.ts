@@ -168,7 +168,11 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             for (const use of rootNode.statements.filter(statement => statement.$type == Use)) {
                 const className = (use as Use).javaClassName
                 if (className != null) {
-                    await this.javaInterop.resolveClass(className);
+                    try {
+                        await this.javaInterop.resolveClass(className);
+                    } catch {
+
+                    }
                 }
             }
         }

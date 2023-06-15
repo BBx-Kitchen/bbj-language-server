@@ -8,28 +8,45 @@ grammar BBj
 import './java-types'
 
 entry Model:
-   Library | Program
+    Library | Program
 ;
 
 // Main programm
 Program:
-   Statements? (LINE_BREAK+ Statements?)*
+    Statements*
 ;
 
-fragment Statements: statements+=(Statement | ClassDecl | InterfaceDecl);
+fragment Statements:
+    statements+=(Statement | ClassDecl | InterfaceDecl);
 
 Statement:
-   SingleStatement ({infer CompoundStatement.statements += current } (';' statements += SingleStatement)+)?;
+    SingleStatement ({infer CompoundStatement.statements+=current} (';' statements+=SingleStatement)+)?;
 
 
 SingleStatement:
-    VariableDecl | Assignment | LetStatement | ArrayDeclarationStatement | MethodReturnStatement
-    | PrintValue | SetErrorStatement
-    | ForStatement | IfStatement | WhileStatement | WhileEndStatement
-    | GotoStatement | ExitStatement | ExitToStatement | NextStatement | LabelDecl
-    | OpenStatement | ReadStatement | CloseStatement | WaitStatement | ThrowStatement
-    | Use
-    | ExpressionStatement
+    VariableDecl |
+    Assignment |
+    LetStatement |
+    ArrayDeclarationStatement |
+    MethodReturnStatement |
+    PrintValue |
+    SetErrorStatement |
+    ForStatement |
+    IfStatement |
+    WhileStatement |
+    WhileEndStatement |
+    GotoStatement |
+    ExitStatement |
+    ExitToStatement |
+    NextStatement |
+    LabelDecl |
+    OpenStatement |
+    ReadStatement |
+    CloseStatement |
+    WaitStatement |
+    ThrowStatement |
+    Use |
+    ExpressionStatement
 ;
 
 Use:
@@ -54,23 +71,23 @@ PrintValue:
 
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
-        Extends
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*
-    (LINE_BREAK* members+=ClassMember)*
-    LINE_BREAK* 'CLASSEND'
+        Extends?
+        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])* 
+    (members+=ClassMember)*
+    'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
-    interface ?= 'INTERFACE' visibility=Visibility name=ValidName Extends
-    (LINE_BREAK* members+=MethodDecl)*
-     LINE_BREAK* 'INTERFACEEND'
+    interface?='INTERFACE' visibility=Visibility name=ValidName Extends? 
+    (members+=MethodDecl)*
+     'INTERFACEEND'
 ;
 
 fragment Static:
     static?='STATIC'?
 ;
 
-fragment Extends: 
-    ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)? 
+fragment Extends:
+    ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)
 ;
 
 ClassMember returns ClassMember:
@@ -84,8 +101,8 @@ FieldDecl returns FieldDecl:
 MethodDecl returns MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
     (
-        (LINE_BREAK* body+=Statement)*
-        LINE_BREAK* 'METHODEND' //FIXME doesn't work for interfaces
+        (body+=Statement)*
+        'METHODEND'//FIXME doesn't work for interfaces
     )?
 ;
 
@@ -99,7 +116,7 @@ ParameterDecl returns VariableDecl:
 
 
 ArrayDeclarationStatement returns ArrayDecl:
-    'DIM' name = FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
+    'DIM' name=FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
 ;
 
 LabelDecl:
@@ -112,23 +129,20 @@ ForStatement:
 ;
 
 NextStatement:
-    'NEXT' (variable=[VariableDecl:FeatureName])?
+    NEXT_TOKEN (variable=[VariableDecl:FeatureName])?
 ;
 
 IfStatement:
-   SLIfStatement | MLIfStatement
-;
-
-SLIfStatement:
-    'IF' condition=Expression 'THEN' then += SingleStatement (';' then += SingleStatement)*
-        ('ELSE' else += SingleStatement (';'else += SingleStatement)* )?
-;
-
-MLIfStatement:
-    'IF' condition=Expression 'THEN'? LINE_BREAK+
-    then += Statement? (LINE_BREAK+ then += Statement)*
-    (LINE_BREAK+ 'ELSE' LINE_BREAK+ else += Statement? (LINE_BREAK+ else += Statement)* )?
-    (LINE_BREAK+ 'ENDIF' | 'FI')
+    'IF' condition=Expression (
+        'SLTHEN' 
+            then+=Statement
+        ('ELSE' else+=Statement)?
+    |   
+        isMultiline?='MLTHENFirst'
+            (then+=Statement)*
+        ('ELSE'  (else+=Statement)*)?
+    ('ENDIF' | 'FI')
+    )
 ;
 
 WhileStatement:
@@ -161,11 +175,11 @@ OpenStatement:
 
 // NOTE:INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
 ReadStatement:
-    'READ' (record = 'RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
+    'READ' (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
 ;
 
 fragment Options:
-   (',' option+=Option)* (',' 'ERR' '=' err=[LabelDecl])?
+    (',' option+=Option)* (',' 'ERR' '=' err=[LabelDecl])?
 ;
 
 Option:
@@ -182,7 +196,7 @@ WaitStatement:
 ;
 
 ThrowStatement:
-    'THROW' expression=Expression (',' number= NumberLiteral)? (',' 'ERR' '=' err=[LabelDecl])?
+    'THROW' expression=Expression (',' number=NumberLiteral)? (',' 'ERR' '=' err=[LabelDecl])?
 ;
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
@@ -197,7 +211,7 @@ Expression:
     PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
 ;
 PrefixExpression infers Expression:
-	{infer PrefixExpression} operator=('!'|'-'|'+') expression=MemberCall
+    {infer PrefixExpression} operator=('!'|'-'|'+') expression=MemberCall
 	| MemberCall;
 
 MemberCall infers Expression:
@@ -207,7 +221,7 @@ MemberCall infers Expression:
     )*;
 
 ParameterCall:
-    'err='? expression = Expression
+    'err='? expression=Expression
 ;
 
 PrimaryExpression infers Expression:
@@ -251,32 +265,32 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE'
+    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
 
 // BBx Library
-Library: 
-    LINE_BREAK* 'library'
-    declarations+=LibFunction? (LINE_BREAK+ declarations+=LibFunction?)* 
+Library:
+    'library' 
+    (declarations+=LibFunction)*
 ;
 
 LibFunction returns LibFunction:
-    (docu = DOCU LINE_BREAK+)?
-    name = ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
+    (docu=DOCU)?
+    name=ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
 ;
 
 LibParameter returns LibParameter:
     name=ValidName optional?='?'? (':' type=ID)?
 ;
 
-hidden terminal WS: /[^\S\r\n]+/;
+hidden terminal WS: /\s+/;
 hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
-terminal BBjFilePath: /::.*::/;
+terminal NEXT_TOKEN: /_next/;
 
-terminal LINE_BREAK: /(\r?\n)+/;
+terminal BBjFilePath: /::.*::/;
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
