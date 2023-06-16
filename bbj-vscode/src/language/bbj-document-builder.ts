@@ -11,6 +11,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
     
     protected override shouldValidate(_document: LangiumDocument<AstNode>, options: BuildOptions): boolean {
+        if(_document.uri.toString() === 'classpath:/bbj.class') {
+            // never validate programmatically created classpath document
+            return false;
+        }
         if(this.wsManager() instanceof BBjWorkspaceManager) {
             return super.shouldValidate(_document, options)
                 && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)

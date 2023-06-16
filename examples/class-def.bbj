@@ -5,8 +5,8 @@ REM  * Configuration widget to save/load a state of a component in a VKEYED file
 REM  *
 REM  */
 
-use ::BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget
 use ::BBjWidget/BBjWidget.bbj::BBjWidget
+use ::BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget
 use ::BBjGridExWidget/BBjGridExWidgetState.bbj::BBjGridExWidgetState
 use ::ConfigurationWidget/CustomConfigurationsBC.bbj::CustomConfigurationsBC
 use ::ConfigurationWidget/ConfigurationStateHandler.bbj::ConfigurationStateHandler
@@ -16,6 +16,7 @@ use com.basiscomponents.db.DataRow
 use com.basiscomponents.db.ResultSet
 use java.util.UUID
 use java.io.File
+
 
 class public ConfigurationWidget extends BBjWidget
 
@@ -50,8 +51,8 @@ class public ConfigurationWidget extends BBjWidget
     field protected String keyx!
     field protected String userName!
     
-    field protected static BBjColor ADMIN_ENABLED_COLOR! = BBJAPI().makeColor(0,250,0)
-    field protected static BBjColor ADMIN_DISABLED_COLOR!  = BBJAPI().makeColor(100,100,100)
+    field protected static BBjColor ADMIN_ENABLED_COLOR! = BBjAPI().makeColor(0,250,0)
+    field protected static BBjColor ADMIN_DISABLED_COLOR!  = BBjAPI().makeColor(100,100,100)
 
     field protected static String ON_STATE_CHANGE! = "STATE_CHANGE"
     field protected static String ON_CONFIGURATION_CHANGE! = "CONFIGURATION_CHANGE"
@@ -326,7 +327,7 @@ REM             #getCanvas().setSize(#getCanvas().getWidth(),20)
         dr!.setFieldValue(#bc!.getFieldNameKeyx(), #keyx!)
         dr!.setFieldValue(#bc!.getFieldNameUserid(), #userName!)
         #bc!.setFilter(dr!)
-        #availableConfigs! = #bc!.getAvaillableConfigurations()
+        #availableConfigs! = #bc!.getAvailableConfigurations()
         #fillOptionListEdit()
     methodend
     

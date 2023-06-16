@@ -5,16 +5,10 @@
  ******************************************************************************/
 package bbj.interop.data;
 
-import java.util.List;
+public class PackageInfoParams {
 
-public class ClassInfo extends WithError {
-
-    public String name;
-    
-    public String simpleName;
-
-    public List<FieldInfo> fields;
-
-    public List<MethodInfo> methods;
+    public String packageName;
     
 }
+
+

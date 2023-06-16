@@ -12,6 +12,10 @@ export class BBjIndexManager extends DefaultIndexManager {
     }
 
     protected override isAffected(document: LangiumDocument<AstNode>, changed: URI): boolean {
+        if(document.uri.toString() === 'classpath:/bbj.class') {
+            // only affected by ClassPath changes
+            return false;
+        }
         if (this.wsManager() instanceof BBjWorkspaceManager) {
             if (document.references.some(e => e.error !== undefined)) {
                 // don't rebuild external documents that has errors

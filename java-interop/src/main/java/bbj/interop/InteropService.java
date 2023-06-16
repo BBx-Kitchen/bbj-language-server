@@ -7,7 +7,6 @@ package bbj.interop;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -17,31 +16,82 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
+
+import com.google.common.base.Stopwatch;
+import com.google.common.primitives.Primitives;
+import com.google.common.reflect.ClassPath;
 
 import bbj.interop.data.ClassInfo;
 import bbj.interop.data.ClassInfoParams;
 import bbj.interop.data.ClassPathInfoParams;
 import bbj.interop.data.FieldInfo;
 import bbj.interop.data.MethodInfo;
+import bbj.interop.data.PackageInfoParams;
 import bbj.interop.data.ParameterInfo;
 
 public class InteropService {
 
-	private BbjClassLoader classLoader = new BbjClassLoader(new URL[] {}, InteropService.class.getClassLoader());
+	private BbjClassLoader classLoader = new BbjClassLoader(new URL[] {}, ClassLoader.getPlatformClassLoader());
+	private ClassPath classPath = null;
+
+	public ClassPath getClassPath() {
+		if (classPath == null) {
+			try {
+				classPath = ClassPath.from(classLoader);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+		return classPath;
+	}
+
+	@JsonRequest
+	public CompletableFuture<List<ClassInfo>> getClassInfos(PackageInfoParams params) {
+		return CompletableFuture.completedFuture(collectClassesByPackage(params.packageName));
+	}
+
+	private List<ClassInfo> collectClassesByPackage(String packageName) {
+		var sw = Stopwatch.createStarted();
+		Stream<ClassInfo> collected;
+		if ("java.lang".equals(packageName)) {
+			collected = Arrays.asList(JAVA_LANG).stream().map(className -> loadClassInfo("java.lang." + className));
+		} else {
+			var topLevelClasses = getClassPath().getTopLevelClasses(packageName);
+			collected = topLevelClasses.stream().filter(info -> !info.getSimpleName().contains("-"))
+					.map(info -> loadClassInfo(info.getName()));
+		}
+		var result = collected.collect(Collectors.toList());
+		System.out.println("Loaded " + result.size() + " classes from package " + packageName + " took "
+				+ sw.stop().elapsed(TimeUnit.MILLISECONDS) + "ms");
+		return result;
+	}
 
 	@JsonRequest
 	public CompletableFuture<ClassInfo> getClassInfo(ClassInfoParams params) {
-		var classInfo = new ClassInfo();
-		classInfo.name = params.className;
-		try {
-			var clazz = Class.forName(params.className, false, classLoader);
+		var classInfo = loadClassInfo(params.className);
+		return CompletableFuture.completedFuture(classInfo);
+	}
 
+	private ClassInfo loadClassInfo(String className) {
+
+		var classInfo = new ClassInfo();
+		classInfo.name = className;
+		try {
+			Optional<Class<?>> primitiv = Primitives.allPrimitiveTypes().stream()
+					.filter(it -> it.getSimpleName().equals(className)).findFirst();
+			var clazz = primitiv.isPresent() ? primitiv.get() : Class.forName(className, false, classLoader);
+
+			classInfo.simpleName = clazz.getCanonicalName();
 			classInfo.fields = Stream.of(clazz.getFields()).map(f -> {
 				var fi = new FieldInfo();
 				fi.name = f.getName();
@@ -64,13 +114,13 @@ public class InteropService {
 		} catch (ClassNotFoundException exc) {
 			classInfo.fields = Collections.emptyList();
 			classInfo.methods = Collections.emptyList();
-			classInfo.error = "Class not found: " + params.className;
+			classInfo.error = "Class not found: " + className;
 		} catch (NoClassDefFoundError error) {
 			classInfo.fields = Collections.emptyList();
 			classInfo.methods = Collections.emptyList();
 			classInfo.error = "No class definition found: " + error.getMessage();
 		}
-		return CompletableFuture.completedFuture(classInfo);
+		return classInfo;
 	}
 
 	@JsonRequest
@@ -100,7 +150,8 @@ public class InteropService {
 				} else {
 					classLoader.addUrl(new URL(entry));
 				}
-			} catch (MalformedURLException | URISyntaxException e) {
+				classPath = ClassPath.from(classLoader);
+			} catch (IOException | URISyntaxException e) {
 				e.printStackTrace();
 			}
 		});
@@ -124,4 +175,110 @@ public class InteropService {
 			super.addURL(url);
 		}
 	}
+
+	public final static String[] JAVA_LANG = (
+			// interfaces
+			"Appendable\n"
+			+ "AutoCloseable\n"
+			+ "CharSequence\n"
+			+ "Cloneable\n"
+			+ "Comparable\n"
+			+ "Iterable\n"
+			+ "ProcessHandle\n"
+			+ "Readable\n"
+			+ "Runnable\n"
+			// classes
+			+ "Boolean\n"
+			+ "Byte\n"
+			+ "Character\n"
+			+ "Class\n"
+			+ "ClassLoader\n"
+			+ "ClassValue\n"
+			+ "Compiler\n"
+			+ "Double\n"
+			+ "Enum\n"
+			+ "Float\n"
+			+ "InheritableThreadLocal\n"
+			+ "Integer\n"
+			+ "Long\n"
+			+ "Math\n"
+			+ "Module\n"
+			+ "ModuleLayer\n"
+			+ "Number\n"
+			+ "Object\n"
+			+ "Package\n"
+			+ "Process\n"
+			+ "ProcessBuilder\n"
+			+ "Record\n"
+			+ "Runtime\n"
+			+ "RuntimePermission\n"
+			+ "SecurityManager\n"
+			+ "Short\n"
+			+ "StackTraceElement\n"
+			+ "StackWalker\n"
+			+ "StrictMath\n"
+			+ "String\n"
+			+ "StringBuffer\n"
+			+ "StringBuilder\n"
+			+ "System\n"
+			+ "Thread\n"
+			+ "ThreadGroup\n"
+			+ "ThreadLocal\n"
+			+ "Throwable\n"
+			+ "Void\\n"
+			// exceptions
+			+"ArithmeticException\n"
+			+ "ArrayIndexOutOfBoundsException\n"
+			+ "ArrayStoreException\n"
+			+ "ClassCastException\n"
+			+ "ClassNotFoundException\n"
+			+ "CloneNotSupportedException\n"
+			+ "EnumConstantNotPresentException\n"
+			+ "Exception\n"
+			+ "IllegalAccessException\n"
+			+ "IllegalArgumentException\n"
+			+ "IllegalCallerException\n"
+			+ "IllegalMonitorStateException\n"
+			+ "IllegalStateException\n"
+			+ "IllegalThreadStateException\n"
+			+ "IndexOutOfBoundsException\n"
+			+ "InstantiationException\n"
+			+ "InterruptedException\n"
+			+ "LayerInstantiationException\n"
+			+ "NegativeArraySizeException\n"
+			+ "NoSuchFieldException\n"
+			+ "NoSuchMethodException\n"
+			+ "NullPointerException\n"
+			+ "NumberFormatException\n"
+			+ "ReflectiveOperationException\n"
+			+ "RuntimeException\n"
+			+ "SecurityException\n"
+			+ "StringIndexOutOfBoundsException\n"
+			+ "TypeNotPresentException\n"
+			+ "UnsupportedOperationException\n"
+			//errors
+			+ "AbstractMethodError\n"
+			+ "AssertionError\n"
+			+ "BootstrapMethodError\n"
+			+ "ClassCircularityError\n"
+			+ "ClassFormatError\n"
+			+ "Error\n"
+			+ "ExceptionInInitializerError\n"
+			+ "IllegalAccessError\n"
+			+ "IncompatibleClassChangeError\n"
+			+ "InstantiationError\n"
+			+ "InternalError\n"
+			+ "LinkageError\n"
+			+ "NoClassDefFoundError\n"
+			+ "NoSuchFieldError\n"
+			+ "NoSuchMethodError\n"
+			+ "OutOfMemoryError\n"
+			+ "StackOverflowError\n"
+			+ "ThreadDeath\n"
+			+ "UnknownError\n"
+			+ "UnsatisfiedLinkError\n"
+			+ "UnsupportedClassVersionError\n"
+			+ "VerifyError\n"
+			+ "VirtualMachineError"
+			).split("\\n");
 }

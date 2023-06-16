@@ -1,7 +1,5 @@
 
 rem ' Payroll
-declare String void
-declare String BBjNumber
 
 e1! = new Salaried()
 e1!.setID(1)

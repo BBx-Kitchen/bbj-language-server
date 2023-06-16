@@ -28,8 +28,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
         try {
-        const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
-        const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+            const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
+            const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
             if (confFile) {
                 this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
                 await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
@@ -37,6 +37,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         } catch {
             // all fine
         }
+        await this.javaInterop.loadImplicitImports(cancelToken)
         return super.initializeWorkspace(folders, cancelToken);
     }
 
@@ -46,12 +47,12 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     ): Promise<void> {
         // Load library
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
-        
+
         // Load additional files configured with the PREFIX property
         if (this.settings?.prefixes) {
             this.settings.prefixes.forEach(async prefixPath => {
                 console.warn('Add to additional files: ' + prefixPath.toString())
-                if(fs.existsSync(prefixPath)) {
+                if (fs.existsSync(prefixPath)) {
                     await this.traverseFolder({ name: "", uri: "" }, URI.file(prefixPath), ['.bbj'], collector)
                 } else {
                     console.warn(`${prefixPath} is not a directory. Skipped.`)
@@ -65,7 +66,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     public isExternalDocument(documentUri: URI): boolean {
-        if(this.settings?.prefixes) {
+        if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
                 if (documentUri.fsPath.startsWith(path.normalize(prefix))) {
@@ -86,6 +87,6 @@ export function collectPrefixes(input: string): string[] {
     return input.split(" ").map(entry => resolveTilde(entry.trim().slice(1, -1)))
 }
 
-export function resolveTilde(input: string) : string {
+export function resolveTilde(input: string): string {
     return input.replace('~', os.homedir())
 }

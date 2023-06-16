@@ -1,9 +1,3 @@
-use java.lang.String
-use java.lang.Boolean
-
-CLASS PUBLIC BBjString
-CLASSEND
-
 CLASS PUBLIC someClass
 
     FIELD PUBLIC BBjString someInstanceString$

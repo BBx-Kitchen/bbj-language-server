@@ -15,10 +15,11 @@ import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from
 
 const DEFAULT_PORT = 5008;
 
+const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui' ,'com.basis.startup.type.sysgui']
 export class JavaInteropService {
 
     private connection?: MessageConnection;
-    
+
     private readonly langiumDocuments: LangiumDocuments;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
     private readonly classpathDocument: LangiumDocument<Classpath>;
@@ -63,43 +64,71 @@ export class JavaInteropService {
         const connection = await this.connect();
         return connection.sendRequest(getClassInfoRequest, { className }, token);
     }
-    
+
     public async loadClasspath(confFile: string, token?: CancellationToken): Promise<boolean> {
-        const entries = confFile.split(/\r?\n/).map( entry => 'file:' + entry);
+        const entries = confFile.split(/\r?\n/).map(entry => 'file:' + entry);
         console.warn("Load classpath from: " + confFile)
         const connection = await this.connect();
         return connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
     }
-    
-    async resolveClass(className: string, token?: CancellationToken): Promise<JavaClass> {
+
+    public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
+        console.warn("Load package classes: " + implicitJavaImports.join(', '))
+        const connection = await this.connect();
+        await Promise.all(implicitJavaImports.map(async pack => {
+            const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
+            await Promise.all(classInfos.map(async javaClass => {
+                await this.resolveClass(javaClass, token)
+                // add as implicit Java package import
+                const simpleNameCopy = { ...javaClass }
+                simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
+                simpleNameCopy.$containerIndex = this.classpath.classes.length;
+                this.classpath.classes.push(simpleNameCopy);
+                this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+            }))
+        }))
+        return true;
+    }
+
+    async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
         }
+        const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
+        return await this.resolveClass(javaClass, token);
+    }
 
+    async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
+        const className = javaClass.name
+        if (this.resolvedClasses.has(className)) {
+            return this.resolvedClasses.get(className)!;
+        }
+        if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
+            this.langiumDocuments.addDocument(this.classpathDocument);
+        }
         const classpath = this.classpath;
-        let javaClass: Mutable<JavaClass>;
-        javaClass = await this.getRawClass(className, token);
+
         this.resolvedClasses.set(className, javaClass); // add class event if it has an error
-        if(javaClass.error) {
+        if (javaClass.error) {
             return javaClass;
         }
         for (const field of javaClass.fields) {
             (field as Mutable<JavaField>).$type = JavaField;
             field.resolvedType = {
-                ref: await this.resolveClass(field.type, token),
+                ref: await this.resolveClassByName(field.type, token),
                 $refText: field.type
             };
         }
         for (const method of javaClass.methods) {
             (method as Mutable<JavaMethod>).$type = JavaMethod;
             method.resolvedReturnType = {
-                ref: await this.resolveClass(method.returnType, token),
+                ref: await this.resolveClassByName(method.returnType, token),
                 $refText: method.returnType
             };
             for (const parameter of method.parameters) {
                 (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
                 parameter.resolvedType = {
-                    ref: await this.resolveClass(parameter.type, token),
+                    ref: await this.resolveClassByName(parameter.type, token),
                     $refText: parameter.type
                 };
             }
@@ -112,27 +141,20 @@ export class JavaInteropService {
         javaClass.$containerProperty = 'classes';
         javaClass.$containerIndex = classpath.classes.length;
         classpath.classes.push(javaClass);
-        if(className.startsWith('java.lang.')) {
-            // add as implicit java.lang.* import
-            const simpleNameCopy = {...javaClass}
-            simpleNameCopy.name = className.replace('java.lang.','')
-            simpleNameCopy.$containerIndex = classpath.classes.length;
-            classpath.classes.push(simpleNameCopy);
-            this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
-        }
-        if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
-            this.langiumDocuments.addDocument(this.classpathDocument);
-        }
         return javaClass;
     }
 
 }
 
-const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
+const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
+const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
 
 interface ClassInfoParams {
     className: string
+}
+interface PackageInfoParams {
+    packageName: string
 }
 
 interface ClassPathInfoParams {

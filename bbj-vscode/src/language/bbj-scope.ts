@@ -139,7 +139,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return this.getType((reference as Assignment).value);
             } else if (isClass(reference)) {
                 return reference
-            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)) {
+            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)|| isMethodDecl(reference)) {
                 return reference?.type?.ref
             }
             return undefined;
@@ -175,9 +175,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const className = (use as Use).javaClassName
                 if (className != null) {
                     try {
-                        await this.javaInterop.resolveClass(className);
-                    } catch {
-
+                        await this.javaInterop.resolveClassByName(className, cancelToken);
+                    } catch(e){
+                        console.error(e)
                     }
                 }
             }
