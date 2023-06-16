@@ -5,8 +5,7 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, findNodeForProperty, getDocument,
-    isAstNode,
+    AstNode, AstNodeDescription, AstNodeLocator, DefaultScopeComputation, DefaultScopeProvider, EMPTY_SCOPE, findNodeForProperty, getContainerOfType, getDocument, isAstNode,
     LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, StreamScope, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-jsonrpc';
@@ -15,7 +14,7 @@ import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isMemberCall,
     isMethodDecl,
-    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, Use
+    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, NamedElement, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -55,9 +54,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScope(stream(bbjClasses), undefined);
             }
             return EMPTY_SCOPE
-        } else if(isSymbolRef(context.container)) {
-            // TODO handle #getName() here for super  classes access
-            return super.getScope(context);
+        } else if (isSymbolRef(context.container)) {
+            const bbjType = getContainerOfType(context.container, isBbjClass)
+            if (bbjType) {
+                return this.createCaseSensitiveScope(this.bbjAllClassMembers(bbjType), super.getScope(context));
+            }
         }
         return super.getScope(context);
     }
@@ -72,6 +73,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             case Class: {
                 // when looking for classes return only JavaClasses. References are case sensitive
                 return new StreamScope(this.indexManager.allElements(JavaClass), undefined);
+            }
+            case NamedElement: {
+                if (isSymbolRef(_context.container) && _context.property === 'symbol')
+                    // when looking Symbols consider JavaClasses. References are case sensitive
+                    return new StreamScope(this.indexManager.allElements(LibFunction), new StreamScope(this.indexManager.allElements(JavaClass)),  { caseInsensitive: true });
             }
             default: return new StreamScope(this.indexManager.allElements(LibFunction), undefined, { caseInsensitive: true });
         }
@@ -110,7 +116,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         return members
     }
 
-    protected createCaseSensitiveScope(elements: (AstNode | AstNodeDescription)[]): Scope {
+    protected createCaseSensitiveScope(elements: (AstNode | AstNodeDescription)[], outerScope?: Scope): Scope {
         const s = stream(elements).map(e => {
             if (isAstNode(e)) {
                 const name = this.nameProvider.getName(e);
@@ -121,7 +127,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return e
         }).nonNullable();
-        return new StreamScope(s);
+        return new StreamScope(s, outerScope);
     }
 
 

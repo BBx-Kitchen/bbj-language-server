@@ -102,7 +102,7 @@ MethodDecl returns MethodDecl:
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
     (
         (body+=Statement)*
-        'METHODEND'//FIXME doesn't work for interfaces
+        'METHODEND'//FIXME Need to be forbiden for interfaces
     )?
 ;
 
@@ -265,7 +265,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE'
+    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
@@ -278,7 +278,7 @@ Library:
 
 LibFunction returns LibFunction:
     (docu=DOCU)?
-    name=ID '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
+    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
 ;
 
 LibParameter returns LibParameter:

@@ -9,7 +9,7 @@ export class BBjHoverProvider extends MultilineCommentHoverProvider {
             return {
                 contents: {
                     kind: 'markdown',
-                    value: node.docu.substring(3, node.docu.length - 2).trim()
+                    value: node.docu.substring(3, node.docu.length - 2).replaceAll('\\`', '`').trim()
                 }
             };
         }
