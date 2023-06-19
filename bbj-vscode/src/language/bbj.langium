@@ -46,7 +46,8 @@ SingleStatement:
     WaitStatement |
     ThrowStatement |
     Use |
-    ExpressionStatement
+    ExpressionStatement |
+    SwitchStatement
 ;
 
 Use:
@@ -138,7 +139,7 @@ IfStatement:
             then+=Statement
         ('ELSE' else+=Statement)?
     |   
-        isMultiline?='MLTHENFirst'
+        isMultiline?='MLTHENFirst'?
             (then+=Statement)*
         ('ELSE'  (else+=Statement)*)?
     ('ENDIF' | 'FI')
@@ -152,12 +153,18 @@ WhileStatement:
 WhileEndStatement:
     'WEND' {infer WhileEndStatement};
 
+SwitchStatement:
+    'SWITCH' value=Expression cases+=SwitchCase* ('CASE' 'DEFAULT' (';')? (defaultCase +=Statement)*)? 'SWEND';
+
+SwitchCase:
+    LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
+
 GotoStatement:
     kind=('GOTO' | 'GOSUB') target=[LabelDecl]
 ;
 
 ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'EXIT' | 'RELEASE')
+    kind=('RETURN' | 'END' | 'BYE' | 'EXIT' | 'RELEASE' | 'BREAK')
 ;
 
 ExitToStatement:
