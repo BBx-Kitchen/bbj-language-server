@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { parseHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
-import { isLibrary, isProgram, Library, Model, Program } from '../src/language/generated/ast';
+import { CompoundStatement, isCommentStatement, isCompoundStatement, isLibrary, isPrintValue, isProgram, Library, Model, Program } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -133,5 +133,66 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result)
         expect(isProgram(result.parseResult.value)).true
     })
+
+    test('Parse multiple assignments with "LET"', async () => {
+        const result = await parse(`
+        LET a = 1, b = 2, c = 3
+        PRINT a
+        `);
+        expectNoParserLexerErrors(result);
+    })
+
+    test('Parse multiple assignments wihtout "LET"', async () => {
+        const result = await parse(`
+        a = 1, b = 2, c = 3
+        PRINT a
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Parse "METHODRET" in a single line "IF"', async () => {
+        const result = await parse(`
+        IF true THEN METHODRET
+
+        IF true THEN METHODRET 1
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Parse "METHODRET" in a multi line "IF"', async () => {
+        const result = await parse(`
+        IF true THEN
+            METHODRET 2
+        ELSE
+            METHODRET
+        ENDIF
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Parse "REM" as independent statement on own line', async () => {
+        const result = await parse(`
+        REM single line rem
+        `);
+        expectNoParserLexerErrors(result);
+        const model = result.parseResult.value;
+        expect(isProgram(model)).toBeTruthy();
+        expect(isCommentStatement((model as Program).statements[0])).toBeTruthy();
+    });
+
+    test('Parse "REM" as independent statement in compound statement', async () => {
+        const result = await parse(`
+        PRINT 1; REM compound rem
+        PRINT 2
+        `);
+        expectNoParserLexerErrors(result);
+        const model = result.parseResult.value;
+        expect(isProgram(model)).toBeTruthy();
+        const compound = (model as Program).statements[0] as CompoundStatement;
+        expect(isCompoundStatement(compound)).toBeTruthy();
+        expect(compound.statements).toHaveLength(2);
+        expect(isPrintValue(compound.statements[0])).toBeTruthy();
+        expect(isCommentStatement(compound.statements[1])).toBeTruthy();
+    });
    
 });
