@@ -24,8 +24,8 @@ Statement:
 
 
 SingleStatement:
+    CommentStatement |
     VariableDecl |
-    Assignment |
     LetStatement |
     ArrayDeclarationStatement |
     MethodReturnStatement |
@@ -50,6 +50,8 @@ SingleStatement:
     SwitchStatement
 ;
 
+CommentStatement: comment=COMMENT;
+
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
     'use' javaClassName=QualifiedJavaClassName
@@ -62,7 +64,7 @@ Assignment:
     instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
 
 LetStatement:
-    'LET' assigments+=Assignment (',' assigments+=Assignment)*
+    'LET'? assignments+=Assignment (',' assignments+=Assignment)*
 ;
 
 PrintValue:
@@ -108,7 +110,7 @@ MethodDecl returns MethodDecl:
 ;
 
 MethodReturnStatement:
-    'METHODRET' (return=Expression | LINE_BREAK)
+    METHODRET_END | ('METHODRET' return=Expression)
 ;
 
 ParameterDecl returns VariableDecl:
@@ -293,10 +295,10 @@ LibParameter returns LibParameter:
 ;
 
 hidden terminal WS: /\s+/;
-hidden terminal SL_COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
+terminal COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
 terminal NEXT_TOKEN: /_next/;
-terminal LINE_BREAK: /_linebreak/;
+terminal METHODRET_END: /_methodret_end/;
 
 terminal BBjFilePath: /::.*::/;
 

@@ -6,7 +6,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
-        this.spliceToken(tokens, 'LINE_BREAK', 0);
+        this.spliceToken(tokens, 'METHODRET_END', 1);
         return tokens;
     }
 
@@ -34,11 +34,11 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: true
             };
             return token;
-        } else if (terminal.name === 'LINE_BREAK') {
+        } else if (terminal.name === 'METHODRET_END') {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more expceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*methodret)([ \t]*(\r?\n|rem[ \t][^\n\r]*\r?\n))/i),
+                PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n|rem[ \t]))/i),
                 LINE_BREAKS: true
             };
             return token;
