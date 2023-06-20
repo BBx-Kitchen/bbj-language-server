@@ -34,10 +34,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
                 await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
             }
+            await this.javaInterop.loadImplicitImports(cancelToken);
         } catch {
             // all fine
         }
-        await this.javaInterop.loadImplicitImports(cancelToken)
         return super.initializeWorkspace(folders, cancelToken);
     }
 

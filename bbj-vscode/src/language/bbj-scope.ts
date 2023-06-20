@@ -12,7 +12,7 @@ import { CancellationToken } from 'vscode-jsonrpc';
 import { BBjServices } from './bbj-module';
 import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
-    isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isMemberCall,
+    isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement, isMemberCall,
     isMethodDecl,
     isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, NamedElement, Use
 } from './generated/ast';
@@ -204,7 +204,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
             }
         } else if (isAssignment(node) && node.variable && !isFieldDecl(node.variable)) {
-            const scopeHolder = isForStatement(node.$container) ? node.$container.$container : node.$container
+            const scopeHolder = isForStatement(node.$container) || isLetStatement(node.$container) ? node.$container.$container : node.$container
             if (scopes.get(scopeHolder).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
                 scopes.add(scopeHolder, {
                     name: node.variable.$refText,

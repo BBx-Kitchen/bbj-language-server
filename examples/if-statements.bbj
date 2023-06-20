@@ -1,8 +1,12 @@
+x = 1, z = 2
+
 some_object! = ""
 a!
 next 
 
 IF some_object! <> 3 THEN ?"x", STR(some_object!); ?"y"; ? "z"; rem af
+
+if some_object! = null() then methodret 
 
 IF some_object! <> 3 THEN
     PRINT "some_object is "
