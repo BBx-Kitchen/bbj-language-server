@@ -1,4 +1,5 @@
 export const builtinFunctions = `
+
 library
 
 /@@
@@ -33,13 +34,6 @@ In BBj, the STR() function accepts arguments of any type. If the argument evalua
 BBj STR() function supports the 'U' mask character.
 @/
 STR(objexpr:string, ERR?:lineref): string
-
-REM /@@
-REM \`!(numexp{, ERR:lineref})\`
-REM 
-REM The !() function inverts the logical meaning of the enclosed numeric expression.
-REM @/
-REM FIXME !(param:int, ERR?:lineref): boolean
 
 /@@
 \`ABS(num{, ERR:lineref})\`

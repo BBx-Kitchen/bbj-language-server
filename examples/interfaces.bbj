@@ -15,8 +15,11 @@ e2!.setHoursWorked(168)
 e2!.print()
 print "GL Account:",e2!.account()
 
-interface public Address
-  method public void address()
+REM some comment
+interface public Address; REM some comment
+  REM some comment
+  method public void address(); REM some comment
+  REM some comment
 interfaceend
 
 interface public Pay
@@ -50,12 +53,19 @@ class public Salaried extends Employee implements Payable
   methodend
 classend
 
-class public Hourly extends Employee implements Payable
-  field public BBjNumber HourlyRate
+REM some comment
+class public Hourly extends Employee implements Payable; REM some comment
+  REM some comment
+  field public BBjNumber HourlyRate; REM some comment
   field public BBjNumber HoursWorked
-  method public BBjNumber pay()
+  
+  REM some comment
+  method public BBjNumber pay();REM some comment
+    REM some comment
     methodret #HourlyRate*#HoursWorked
+    REM some comment
   methodend
+
   method public void print()
     print "Employee",#getID(),": ",#getName()
     print #pay():"($###,###.00)"
@@ -63,4 +73,5 @@ class public Hourly extends Employee implements Payable
   method public BBjNumber account()
    methodret 22222
   methodend
+  REM some comment
 classend

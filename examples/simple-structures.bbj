@@ -8,6 +8,11 @@ dim A[1,4]
 number = A[1]
 rem Variables
 
+declare String s!
+declare String p_color!
+
+s! = str((p_color!.toString() + ""):"##0")
+ 
 some_string$ = "Hello ""World"""
 some_number = 3.14 - +1
 some_integer% = 7
@@ -31,7 +36,7 @@ IF some_object! <> NULL() THEN
     PRINT "some_object is ",StR(some_object!)
     PRINT "some_object is ",some_object!.toString()
 ELSE 
-    ? ASC()
+    ? ASC("")
 FI
 
 

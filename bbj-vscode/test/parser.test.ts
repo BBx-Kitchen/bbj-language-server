@@ -109,6 +109,37 @@ describe('Parser Tests', () => {
         expect(isProgram(result.parseResult.value)).true
     })
 
+    test('Parse Class Decl with comments', async () => {
+        const result = await parse(`
+        REM class comment
+        CLASS PUBLIC someClass; REM class comment
+            REM field comment
+            FIELD PUBLIC BBjString someInstanceString$;REM field comment
+            
+            REM meth comment
+            METHOD PUBLIC STATIC String getSomeString(); REM meth comment
+                METHODRET "ABC"
+            METHODEND
+            REM class body comment
+        CLASSEND
+        `)
+        expectNoParserLexerErrors(result)
+        expect(isProgram(result.parseResult.value)).true
+    })
+
+    test('Parse Interface Decl with comments', async () => {
+        const result = await parse(`
+        REM class comment
+        interface public ResolverInterface; REM class comment
+            REM meth comment
+            method public Boolean resolve(String term!, Integer column!); REM meth comment
+            REM class body comment
+        interfaceend
+        `)
+        expectNoParserLexerErrors(result)
+        expect(isProgram(result.parseResult.value)).true
+    })
+
     test('Parse namedParameter Decl', async () => {
         const result = await parse(`
         BBjAPI().removeTimer("onLoadFallback", err= *next)

@@ -75,14 +75,16 @@ PrintValue:
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
         Extends?
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])* 
+        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*  (';' comments+=CommentStatement)?
     (members+=ClassMember)*
+    Comments?
     'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
-    interface?='INTERFACE' visibility=Visibility name=ValidName Extends? 
-    (members+=MethodDecl)*
-     'INTERFACEEND'
+    interface?='INTERFACE' visibility=Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
+        (members+=MethodDecl)*
+        Comments?
+    'INTERFACEEND'
 ;
 
 fragment Static:
@@ -93,16 +95,22 @@ fragment Extends:
     ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)
 ;
 
+fragment Comments:
+    comments+=CommentStatement+
+;
+
 ClassMember returns ClassMember:
     FieldDecl | MethodDecl
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?
+    Comments?
+    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')'
+    Comments?
+    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
     (
         (body+=Statement)*
         'METHODEND'//FIXME Need to be forbiden for interfaces
@@ -213,15 +221,21 @@ ExpressionStatement:
     expression=PrefixExpression;
 
 EXPR_OPERATOR returns string:
-    '^' | '*' |  '/' | '+' | '-' | '<' | '>' | '=' | '<=' | '>=' | '<>' | 'AND' | 'OR' // from the BBx docu
+    '^' | '*' |  '/' | '+' | '-' | '<' | '>' | '=' | '<=' | '>=' | '<>' | 'AND' | 'OR'// from the BBx docu
 ;
 
 Expression:
-    PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
+    BinaryExpression ({infer StringMask.left=current} ':' right=Expression)?
 ;
+
+BinaryExpression infers Expression:
+     PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
+;
+
 PrefixExpression infers Expression:
     {infer PrefixExpression} operator=('!'|'-'|'+') expression=MemberCall
-	| MemberCall;
+    | MemberCall
+;
 
 MemberCall infers Expression:
     PrimaryExpression (
@@ -295,7 +309,7 @@ LibParameter returns LibParameter:
 ;
 
 hidden terminal WS: /\s+/;
-terminal COMMENT: /([rR][eE][mM])[ \t][^\n\r]*[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
+terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
@@ -324,12 +338,14 @@ interface FieldDecl extends VariableDecl {
     visibility?: string
     static?: boolean
     init?: Expression
+    comments: CommentStatement[]
 }
 
 interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
     type?: @Class
+    comments: CommentStatement[]
     params: VariableDecl[]
     body: Statement[]
 }
@@ -344,6 +360,7 @@ interface BbjClass extends Class {
     interface: boolean
     extends?: @Class[]
     implements?: @Class[]
+    comments: CommentStatement[]
     members: ClassMember[]
 }
 
