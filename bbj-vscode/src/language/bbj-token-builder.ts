@@ -5,6 +5,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
+        this.spliceToken(tokens, 'MLTHEN', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
         return tokens;
@@ -19,8 +20,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     protected override buildKeywordPattern(keyword: GrammarAST.Keyword, caseInsensitive: boolean): TokenPattern {
         if (keyword.value === 'SLTHEN') {
             return /then/i;
-        } else if (keyword.value === 'MLTHENFirst') {
-            return /then(?=[ \t]*(\r?\n|rem[ \t][^\n\r]*\r?\n))/i;
+        } else if (keyword.value === 'MLTHEN') {
+            return /then(?=[ \t]*(\r?\n|;))/i;
         } else {
             return super.buildKeywordPattern(keyword, caseInsensitive);
         }
@@ -31,15 +32,15 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             const token: TokenType = {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)?\r?\n)/i),
-                LINE_BREAKS: true
+                LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'METHODRET_END') {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more expceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n|rem[ \t]))/i),
-                LINE_BREAKS: true
+                PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
+                LINE_BREAKS: false
             };
             return token;
         } else {

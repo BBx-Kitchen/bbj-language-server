@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { AstNode, CstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
-import { BBjAstType, Use, isBbjClass, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import type { BBjServices } from './bbj-module';
 import { JavaInteropService } from './java-interop';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -19,7 +19,8 @@ export function registerValidationChecks(services: BBjServices) {
     const validator = services.validation.BBjValidator;
     const checks: ValidationChecks<BBjAstType> = {
         AstNode: validator.checkLinebreaks,
-        Use: validator.checkUsedClassExists
+        Use: validator.checkUsedClassExists,
+        CommentStatement: validator.checkCommentNewLines
     };
     registry.register(checks, validator);
 }
@@ -64,7 +65,7 @@ export class BBjValidator {
     }
 
     private isStandaloneStatement(node: AstNode): boolean {
-        if (isStatement(node) && !isParameterDecl(node)) {
+        if (isStatement(node) && !isParameterDecl(node) && !isCommentStatement(node)) {
             if (isCompoundStatement(node.$container)
                 || (isIfStatement(node.$container) && !node.$container.isMultiline)
                 || isLetStatement(node.$container)
@@ -74,6 +75,24 @@ export class BBjValidator {
             return true;
         }
         return false;
+    }
+
+    checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
+        if (node.$cstNode) {
+            const text = node.$cstNode.root.text;
+            const offset = node.$cstNode.offset;
+            for (let i = offset - 1; i >= 0; i--) {
+                const char = text.charAt(i);
+                if (char === '\n' || char === ';') {
+                    return;
+                } else if (char !== ' ' && char !== '\t') {
+                    accept('error', "Comments need to be separated by line breaks or ';'.", {
+                        node
+                    });
+                    return;
+                }
+            }
+        }
     }
 
     checkLinebreaks(node: AstNode, accept: ValidationAcceptor): void {

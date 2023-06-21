@@ -77,14 +77,12 @@ ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
         Extends?
         ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*  (';' comments+=CommentStatement)?
-    (members+=ClassMember)*
-    Comments?
+    (members+=ClassMember | Comments)*
     'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' visibility=Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
-        (members+=MethodDecl)*
-        Comments?
+        (members+=MethodDecl | Comments)*
     'INTERFACEEND'
 ;
 
@@ -105,13 +103,12 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    Comments?
     'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
-    Comments?
     'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    Comments?
     (
         (body+=Statement)*
         'METHODEND'//FIXME Need to be forbiden for interfaces
@@ -150,7 +147,7 @@ IfStatement:
             then+=Statement
         ('ELSE' else+=Statement)?
     |   
-        isMultiline?='MLTHENFirst'?
+        isMultiline?='MLTHEN'?
             (then+=Statement)*
         ('ELSE'  (else+=Statement)*)?
     ('ENDIF' | 'FI')

@@ -125,6 +125,9 @@ describe('Parser Tests', () => {
             METHOD PUBLIC STATIC String getSomeString2(); REM meth comment
                 METHODRET "ABC"
             METHODEND
+
+            METHOD PUBLIC String getSomeString3(); REM meth comment
+            REM class body comment without METHODEND
             
             REM class body comment
         CLASSEND
