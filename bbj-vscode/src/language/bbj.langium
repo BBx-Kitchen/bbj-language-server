@@ -46,11 +46,12 @@ SingleStatement:
     WaitStatement |
     ThrowStatement |
     Use |
+    ProcessEvent |
     ExpressionStatement |
     SwitchStatement
 ;
 
-CommentStatement: comment=COMMENT;
+CommentStatement: {infer CommentStatement} COMMENT; // add content back hen we need to show comment
 
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
@@ -69,7 +70,7 @@ LetStatement:
 
 PrintValue:
     // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))* (':' mask=STRING)?)?
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))*)?
 ;
 
 ClassDecl returns BbjClass:
@@ -215,6 +216,12 @@ WaitStatement:
 ThrowStatement:
     'THROW' expression=Expression (',' number=NumberLiteral)? (',' 'ERR' '=' err=[LabelDecl])?
 ;
+
+ProcessEvent:
+    // TODO add later?  {,TIM=int}{,ERR=lineref}
+    {infer ProcessEvent} 'PROCESS_EVENTS'
+;
+
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
 ExpressionStatement:

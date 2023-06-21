@@ -14,7 +14,7 @@ import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement, isMemberCall,
     isMethodDecl,
-    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, NamedElement, Use
+    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, NamedElement, Program, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -57,10 +57,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         } else if (isSymbolRef(context.container)) {
             const bbjType = getContainerOfType(context.container, isBbjClass)
             if (bbjType) {
-                return this.createCaseSensitiveScope(this.bbjAllClassMembers(bbjType), super.getScope(context));
+                return this.createCaseSensitiveScope(
+                    this.bbjAllClassMembers(bbjType),
+                    super.getScope(context)
+                );
             }
         }
         return super.getScope(context);
+    }
+
+    protected importedBBjClasses(root: Program | undefined): AstNodeDescription[] {
+        if (root) {
+            return root.statements.filter(it => isUse(it) && it.bbjClass?.ref)
+                .map(it => (it as Use).bbjClass!.ref)
+                .map(bbjClazz => this.descriptions.createDescription(bbjClazz!, bbjClazz!.name));
+        }
+        return []
     }
 
     protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
@@ -72,12 +84,14 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         switch (referenceType) {
             case Class: {
                 // when looking for classes return only JavaClasses. References are case sensitive
-                return new StreamScope(this.indexManager.allElements(JavaClass), undefined);
+                // Temporally add imported BBjClasses
+                const program = getContainerOfType(_context.container, isProgram)
+                return new StreamScope(stream(this.importedBBjClasses(program)), new StreamScope(this.indexManager.allElements(JavaClass)));
             }
             case NamedElement: {
                 if (isSymbolRef(_context.container) && _context.property === 'symbol')
                     // when looking Symbols consider JavaClasses. References are case sensitive
-                    return new StreamScope(this.indexManager.allElements(LibFunction), new StreamScope(this.indexManager.allElements(JavaClass)),  { caseInsensitive: true });
+                    return new StreamScope(this.indexManager.allElements(LibFunction), new StreamScope(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
             }
             default: return new StreamScope(this.indexManager.allElements(LibFunction), undefined, { caseInsensitive: true });
         }
@@ -139,7 +153,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return this.getType((reference as Assignment).value);
             } else if (isClass(reference)) {
                 return reference
-            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)|| isMethodDecl(reference)) {
+            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference) || isMethodDecl(reference)) {
                 return reference?.type?.ref
             }
             return undefined;
@@ -176,7 +190,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 if (className != null) {
                     try {
                         await this.javaInterop.resolveClassByName(className, cancelToken);
-                    } catch(e){
+                    } catch (e) {
                         console.error(e)
                     }
                 }
@@ -187,9 +201,6 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
         if (isUse(node)) {
-            if (node.bbjClass?.ref) {
-                scopes.add(node.$container, this.descriptions.createDescription(node.bbjClass?.ref, node.bbjClass?.ref.name))
-            }
             if (node.javaClassName) {
                 const javaClass = this.javaInterop.getResolvedClass(node.javaClassName);
                 if (!javaClass) {

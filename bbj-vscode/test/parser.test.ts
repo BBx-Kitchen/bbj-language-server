@@ -120,6 +120,12 @@ describe('Parser Tests', () => {
             METHOD PUBLIC STATIC String getSomeString(); REM meth comment
                 METHODRET "ABC"
             METHODEND
+
+            REM meth comment
+            METHOD PUBLIC STATIC String getSomeString2(); REM meth comment
+                METHODRET "ABC"
+            METHODEND
+            
             REM class body comment
         CLASSEND
         `)
@@ -133,6 +139,8 @@ describe('Parser Tests', () => {
         interface public ResolverInterface; REM class comment
             REM meth comment
             method public Boolean resolve(String term!, Integer column!); REM meth comment
+            REM meth comment
+            method public Boolean resolve2(String term!, Integer column!); REM meth comment
             REM class body comment
         interfaceend
         `)
