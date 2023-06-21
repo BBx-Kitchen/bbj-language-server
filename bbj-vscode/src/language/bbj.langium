@@ -48,7 +48,9 @@ SingleStatement:
     Use |
     ProcessEvent |
     ExpressionStatement |
-    SwitchStatement
+    SwitchStatement |
+    ClipFromStrStatement |
+    AddrStaatement
 ;
 
 CommentStatement: {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -193,8 +195,20 @@ ReadStatement:
     'READ' (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
 ;
 
+AddrStaatement:
+    'ADDR' fileid=StringLiteral Err?
+;
+
+ClipFromStrStatement:
+    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression (',' ERR=[LabelDecl])?
+;
+
+fragment Err:
+    (',' 'ERR' '=' err=[LabelDecl])
+;
+
 fragment Options:
-    (',' option+=Option)* (',' 'ERR' '=' err=[LabelDecl])?
+    (',' option+=Option)* Err?
 ;
 
 Option:
@@ -292,7 +306,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END'
+    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
