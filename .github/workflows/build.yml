@@ -38,7 +38,7 @@ jobs:
         npm i -g @vscode/vsce
         vsce package
     - name: Upload Artifacts
-        uses: actions/upload-artifact@v3 
-        with: 
-          name: vscode-extension
-          path: ./bbj-vscode/*.vsix
+      uses: actions/upload-artifact@v3 
+      with: 
+        name: vscode-extension
+        path: ./bbj-vscode/*.vsix
