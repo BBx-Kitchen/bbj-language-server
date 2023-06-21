@@ -2,3 +2,4 @@
 .vscode-test/**
 .gitignore
 langium-quickstart.md
+node_modules

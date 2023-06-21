@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: BBj CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - name: Build
+      shell: bash
+      run: |
+        cd bbj-vscode
+        npm ci
+        npm run build
+    - name: Test
+      if: success() || failure()
+      shell: bash
+      run: |
+        cd bbj-vscode
+        npm run test
+    - name: Bundle Extension
+      shell: bash
+        cd bbj-vscode
+        npm i -g @vscode/vsce
+        vsce package
+    - name: Upload Artifacts
+        uses: actions/upload-artifact@v3 
+        with: 
+          name: vscode-extension
+          path: ./bbj-vscode/*.vsix

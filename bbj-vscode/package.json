@@ -9,6 +9,11 @@
     "categories": [
         "Programming Languages"
     ],
+    "repository": {
+        "url": "https://github.com/BBx-Kitchen/bbj-language-server/",
+        "type": "git",
+        "directory": "bbj-vscode"
+    },
     "contributes": {
         "languages": [{
             "id": "bbj",
@@ -32,9 +37,9 @@
     "main": "./out/extension.js",
     "scripts": {
         "prepare": "npm run langium:generate && npm run build",
-        "vscode:prepublish": "npm run build && npm run lint",
-        "build": "tsc -b tsconfig.json",
-        "watch": "tsc -b tsconfig.json --watch",
+        "vscode:prepublish": "shx cp ../LICENSE ./LICENSE && npm run build && npm run lint",
+        "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
+        "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
         "lint": "eslint src test --ext ts",
         "test": "vitest",
         "langium:generate": "langium generate",
@@ -53,8 +58,11 @@
         "@types/vscode": "^1.56.0",
         "@typescript-eslint/eslint-plugin": "^5.28.0",
         "@typescript-eslint/parser": "^5.28.0",
+        "concurrently": "^8.2.0",
+        "esbuild": "^0.18.6",
         "eslint": "^8.17.0",
         "langium-cli": "~1.2.0",
+        "shx": "^0.3.4",
         "typescript": "^4.9.4",
         "vitest": "~0.28.4"
     }
