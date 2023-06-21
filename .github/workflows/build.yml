@@ -34,6 +34,7 @@ jobs:
         npm run test
     - name: Bundle Extension
       shell: bash
+      run: |
         cd bbj-vscode
         npm i -g @vscode/vsce
         vsce package
