@@ -4,7 +4,7 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, CstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
+import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
 import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import type { BBjServices } from './bbj-module';
 import { JavaInteropService } from './java-interop';
@@ -79,7 +79,7 @@ export class BBjValidator {
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
         if (node.$cstNode) {
-            const text = node.$cstNode.root.text;
+            const text = (node.$cstNode.root as RootCstNode).fullText;
             const offset = node.$cstNode.offset;
             for (let i = offset - 1; i >= 0; i--) {
                 const char = text.charAt(i);
