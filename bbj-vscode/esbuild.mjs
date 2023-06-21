@@ -20,5 +20,5 @@ if (watch) {
     await ctx.watch();
 } else {
     await ctx.rebuild();
+    ctx.dispose();
 }
-ctx.dispose();
