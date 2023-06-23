@@ -42,29 +42,29 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScope(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
             }
         } else if (isUse(context.container)) {
-            const filePath = context.container.bbjFilePath
+            const filePath = context.container.bbjFilePath?.toLowerCase()
             if (filePath) {
                 const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
                     // FIXME 
                     // 1. load first files in same folder
                     // 2. try resolve with path relative to project root
                     // 3. Access PREFIX folder information and load the first match 
-                    return bbjClass.documentUri.path.endsWith(filePath)
+                    return bbjClass.documentUri.path.toLowerCase().endsWith(filePath)
                 });
                 return new StreamScope(stream(bbjClasses), undefined);
             }
             return EMPTY_SCOPE
         } else if (isSymbolRef(context.container)) {
             const bbjType = getContainerOfType(context.container, isBbjClass)
+            var memberScope = EMPTY_STREAM;
             if (bbjType) {
-                var memberScope = EMPTY_STREAM;
                 if (context.container.instanceAccess) {
                     memberScope = this.createBBjClassMemberScope(bbjType, context.container.isMethodCall).getAllElements()
                 }
-                const memberAndImports = memberScope
-                    .concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram)))
-                return new StreamScope(memberAndImports, super.getScope(context))
             }
+            const memberAndImports = memberScope
+                .concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram)))
+            return new StreamScope(memberAndImports, super.getScope(context))
         }
         if (!context.container.$container && context.container.$cstNode?.element.$container) {
             // FIXME HACK for orphaned AST Instances
