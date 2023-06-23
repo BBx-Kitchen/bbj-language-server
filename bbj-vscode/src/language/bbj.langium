@@ -37,6 +37,7 @@ SingleStatement:
     WhileEndStatement |
     GotoStatement |
     ExitStatement |
+    ExitWithNumberStatement |
     ExitToStatement |
     NextStatement |
     LabelDecl |
@@ -175,8 +176,11 @@ GotoStatement:
 
 // FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
 ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'EXIT' | 'RELEASE' | 'BREAK')
+    kind=('RETURN' | 'END' | 'BYE' | 'BREAK')
 ;
+
+ExitWithNumberStatement:
+    kind = 'EXIT' | 'RELEASE' exitVal = NUMBER?;
 
 ExitToStatement:
     'EXITTO' target=[LabelDecl]

@@ -58,7 +58,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const bbjType = getContainerOfType(context.container, isBbjClass)
             if (bbjType) {
                 var memberScope = EMPTY_STREAM;
-                if(context.container.instanceAccess) {
+                if (context.container.instanceAccess) {
                     memberScope = this.createBBjClassMemberScope(bbjType, context.container.isMethodCall).getAllElements()
                 }
                 const memberAndImports = memberScope
@@ -66,9 +66,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScope(memberAndImports, super.getScope(context))
             }
         }
-        if(!context.container.$container && context.container.$cstNode?.element.$container) {
-            // FIXME orphaned Instance
-            return EMPTY_SCOPE;
+        if (!context.container.$container && context.container.$cstNode?.element.$container) {
+            // FIXME HACK for orphaned AST Instances
+            return super.getScope({ ...context, container: context.container.$cstNode?.element });
         }
         return super.getScope(context);
     }
@@ -148,12 +148,16 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return expression.class.ref;
         } else if (isMemberCall(expression)) {
             const member = expression.member.ref;
-            if (isJavaField(member)) {
-                return member.resolvedType?.ref;
-            } else if (isJavaMethod(member)) {
-                return member.resolvedReturnType?.ref;
+            if (member) {
+                if (isJavaField(member)) {
+                    return member.resolvedType?.ref;
+                } else if (isJavaMethod(member)) {
+                    return member.resolvedReturnType?.ref;
+                } else {
+                    return member.type?.ref
+                }
             } else {
-                return member?.type?.ref
+                return undefined
             }
         }
         return undefined;
@@ -207,7 +211,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
                 scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
             }
-        } else if (isAssignment(node) && node.variable && !isFieldDecl(node.variable)) {
+        } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = (isForStatement(node.$container) || isLetStatement(node.$container)) ? node.$container.$container : node.$container
             if (scopes.get(scopeHolder).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
                 scopes.add(scopeHolder, {
@@ -257,7 +261,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (program) {
                 // fake ref to *next
                 const exists = scopes.get(program).find(descr => descr.name === '*next')
-                if(!exists) {
+                if (!exists) {
                     scopes.add(program, {
                         name: '*next',
                         type: FieldDecl,
