@@ -6,7 +6,7 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BinaryExpression, isBBjClassMember, isMethodDecl, isSymbolRef, MethodDecl, ParameterCall, VariableDecl } from './generated/ast';
+import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -50,17 +50,18 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
-        if (isSymbolRef(refInfo.container)) {
-            if (refInfo.container.symbolicLabel && refInfo.reference.$refText === 'next') {
+        if (refInfo.container.$type === SymbolRef) {
+            const symbolRef = refInfo.container as SymbolRef;
+            if (symbolRef.symbolicLabel && refInfo.reference.$refText === 'next') {
                 const scope = this.scopeProvider.getScope(refInfo);
                 // handle next symbolic links. TODO add other
                 const description = scope.getElement('*' + refInfo.reference.$refText);
                 return description ?? this.createLinkingError(refInfo);
-            } else if (!refInfo.container.isMethodCall) {
+            } else if (!symbolRef.isMethodCall) {
                 if (refInfo.reference.$refText === 'err'
-                    && refInfo.container.$container.$type === BinaryExpression
-                    && refInfo.container.$containerProperty === 'left'
-                    && refInfo.container.$container.$container.$type === ParameterCall) {
+                    && symbolRef.$container.$type === BinaryExpression
+                    && symbolRef.$containerProperty === 'left'
+                    && (symbolRef.$container.$container.$type === ParameterCall || symbolRef.$container.$container.$type === ConstructorCall)) {
                     // Error param case: addProperty("prop" , err=*next)
                     return BbjLinker.ERR_PARAM;
                 }
