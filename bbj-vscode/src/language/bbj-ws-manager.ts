@@ -38,9 +38,28 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         } catch {
             // all fine
         }
-        return super.initializeWorkspace(folders, cancelToken);
+        return await super.initializeWorkspace(folders, cancelToken);
     }
 
+    protected override async traverseFolder(workspaceFolder: WorkspaceFolder, folderPath: URI, fileExtensions: string[], collector: (document: LangiumDocument) => void): Promise<void> {
+        const content = await this.fileSystemProvider.readDirectory(folderPath);
+        await Promise.all(content.map(async entry => {
+            if (this.includeEntry(workspaceFolder, entry, fileExtensions)) {
+                if (entry.isDirectory) {
+                    await this.traverseFolder(workspaceFolder, entry.uri, fileExtensions, collector);
+                } else if (entry.isFile) {
+                    // TODO Read from stream
+                    const file = await this.fileSystemProvider.readFile(entry.uri);
+                    if(!file.startsWith('<<bbj>>')) {
+                        const document = this.langiumDocuments.getOrCreateDocument(entry.uri);
+                        collector(document);
+                    } else {
+                        console.warn(`Skipped binary file from index: ${entry.uri}`)
+                    }
+                }
+            }
+        }));
+    }
     protected override async loadAdditionalDocuments(
         folders: WorkspaceFolder[],
         collector: (document: LangiumDocument<AstNode>) => void

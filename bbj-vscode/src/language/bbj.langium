@@ -173,6 +173,7 @@ GotoStatement:
     kind=('GOTO' | 'GOSUB') target=[LabelDecl]
 ;
 
+// FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
 ExitStatement:
     kind=('RETURN' | 'END' | 'BYE' | 'EXIT' | 'RELEASE' | 'BREAK')
 ;
@@ -392,5 +393,5 @@ interface LibParameter extends NamedElement {
     type: string
     optional: boolean
 }
-
-type ClassMember = FieldDecl | MethodDecl | JavaMember
+type BBjClassMember = FieldDecl | MethodDecl
+type ClassMember =  BBjClassMember | JavaMember

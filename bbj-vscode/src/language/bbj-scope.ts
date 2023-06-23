@@ -8,7 +8,7 @@ import {
     AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider, DefaultScopeComputation, DefaultScopeProvider, DocumentSegment, EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, isAstNode,
     LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, streamContents, StreamScope, toDocumentSegment
 } from 'langium';
-import { CancellationToken } from 'vscode-jsonrpc';
+import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
 import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
