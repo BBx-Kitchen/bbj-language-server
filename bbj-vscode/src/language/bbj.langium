@@ -176,7 +176,7 @@ GotoStatement:
 
 // FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
 ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'BREAK')
+    kind=('RETURN' | 'END' | 'BYE' | 'BREAK' | 'CONTINUE')
 ;
 
 ExitWithNumberStatement:
@@ -311,7 +311,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR'
+    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
