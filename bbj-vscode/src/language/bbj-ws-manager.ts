@@ -50,14 +50,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
         // Load additional files configured with the PREFIX property
         if (this.settings?.prefixes) {
-            this.settings.prefixes.forEach(async prefixPath => {
+            Promise.all(this.settings.prefixes.map(async prefixPath => {
                 console.warn('Add to additional files: ' + prefixPath.toString())
                 if (fs.existsSync(prefixPath)) {
                     await this.traverseFolder({ name: "", uri: "" }, URI.file(prefixPath), ['.bbj'], collector)
                 } else {
                     console.warn(`${prefixPath} is not a directory. Skipped.`)
                 }
-            })
+            }))
         }
     }
 

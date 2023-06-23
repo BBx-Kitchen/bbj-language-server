@@ -12,14 +12,20 @@ export class BBjIndexManager extends DefaultIndexManager {
     }
 
     protected override isAffected(document: LangiumDocument<AstNode>, changed: URI): boolean {
-        if(document.uri.toString() === 'classpath:/bbj.class') {
+        if(document.uri.toString() === 'classpath:/bbj.class' || document.uri.toString() === 'bbjlib:/functions.bbl') {
             // only affected by ClassPath changes
             return false;
         }
         if (this.wsManager() instanceof BBjWorkspaceManager) {
+            const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
+            const isExternal = bbjWsManager.isExternalDocument(document.uri)
             if (document.references.some(e => e.error !== undefined)) {
                 // don't rebuild external documents that has errors
-                return !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(document.uri)
+                return !isExternal
+            }
+            if(!bbjWsManager.isExternalDocument(changed) && isExternal) {
+                // don't rebuild external documents if ws document changed
+                return false;
             }
         }
         return super.isAffected(document, changed);

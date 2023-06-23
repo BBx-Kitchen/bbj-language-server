@@ -11,7 +11,7 @@ import {
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
 import { BBjValidator, registerValidationChecks } from './bbj-validator';
 import { JavaInteropService } from './java-interop';
-import { BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
+import { BbjNameProvider, BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
 import { BBjValueConverter} from './bbj-value-converter';
@@ -47,6 +47,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     references: {
         ScopeComputation: (services) => new BbjScopeComputation(services),
         ScopeProvider: (services) => new BbjScopeProvider(services),
+        NameProvider: () => new BbjNameProvider(),
         Linker: (services) => new BbjLinker(services)
     },
     validation: {

@@ -257,7 +257,7 @@ PrefixExpression infers Expression:
 
 MemberCall infers Expression:
     PrimaryExpression (
-        {infer MemberCall.receiver=current} '.' member=[JavaMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? ')')?
+        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? ')')?
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
     )*;
 
@@ -272,7 +272,7 @@ PrimaryExpression infers Expression:
     | ConstructorCall;
 
 SymbolRef:
-    (instanceAccess?='#' | '*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+    (instanceAccess?='#' | symbolicLabel?='*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
 ;
 
 Literal:
@@ -393,4 +393,4 @@ interface LibParameter extends NamedElement {
     optional: boolean
 }
 
-type ClassMember = FieldDecl | MethodDecl
+type ClassMember = FieldDecl | MethodDecl | JavaMember
