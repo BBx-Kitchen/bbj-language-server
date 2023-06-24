@@ -51,7 +51,11 @@ SingleStatement:
     ExpressionStatement |
     SwitchStatement |
     ClipFromStrStatement |
-    AddrStaatement
+    AddrStatement |
+    SqlOpenStatement |
+    SqlPrepStatement |
+    SqlExecStatement |
+    SqlCloseStatement
 ;
 
 CommentStatement: {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -200,12 +204,28 @@ ReadStatement:
     'READ' (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
 ;
 
-AddrStaatement:
+AddrStatement:
     'ADDR' fileid=StringLiteral Err?
 ;
 
 ClipFromStrStatement:
     'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression (',' ERR=[LabelDecl])?
+;
+
+SqlOpenStatement:
+    'SQLOPEN' '(' sqlchan= Expression (',' 'MODE' mode=StringLiteral Err?)? ')' datasourcename=Expression
+;
+
+SqlPrepStatement:
+    'SQLPREP' '(' sqlchan=Expression Err? ')' str=Expression
+;
+
+SqlCloseStatement:
+    'SQLCLOSE' '(' sqlchan=Expression Err? ')'
+;
+
+SqlExecStatement:
+    'SQLEXEC' '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
 ;
 
 fragment Err:
@@ -311,7 +331,7 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE'
+    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
