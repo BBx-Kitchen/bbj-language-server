@@ -65,11 +65,11 @@ export class JavaInteropService {
         return connection.sendRequest(getClassInfoRequest, { className }, token);
     }
 
-    public async loadClasspath(confFile: string, token?: CancellationToken): Promise<boolean> {
-        const entries = confFile.split(/\r?\n/).map(entry => 'file:' + entry);
-        console.warn("Load classpath from: " + confFile)
+    public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
+        const entries = classPath.map(entry => 'file:' + entry);
+        console.warn("Load classpath from: " + classPath.join(', '))
         const connection = await this.connect();
-        return connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
+        return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
     }
 
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {

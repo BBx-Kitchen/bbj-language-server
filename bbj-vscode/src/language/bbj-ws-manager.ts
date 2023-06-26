@@ -17,7 +17,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
-    private settings: { prefixes: string[], classpath: string } | undefined = undefined;
+    private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
 
     constructor(services: LangiumSharedServices) {
         super(services);
@@ -97,9 +97,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 }
 
-export function parseSettings(input: string): { prefixes: string[], classpath: string } {
+export function parseSettings(input: string): { prefixes: string[], classpath: string[] } {
     const props = getProperties(input)
-    return { prefixes: collectPrefixes(props.PREFIX), classpath: resolveTilde(props.classpath) };
+    return { prefixes: collectPrefixes(props.PREFIX), classpath: resolveTilde(props.classpath).split(':') };
 }
 
 export function collectPrefixes(input: string): string[] {
@@ -107,5 +107,5 @@ export function collectPrefixes(input: string): string[] {
 }
 
 export function resolveTilde(input: string): string {
-    return input.replace('~', os.homedir())
+    return input.replaceAll('~', os.homedir())
 }
