@@ -38,8 +38,20 @@ jobs:
         cd bbj-vscode
         npm i -g @vscode/vsce
         vsce package
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'adopt'
+    - name: Bundle Java App
+      shell: bash
+      run: |
+        cd ../java-interop
+        ./gradlew distZip
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3 
       with: 
         name: vscode-extension
-        path: ./bbj-vscode/*.vsix
+        path: |
+          ./bbj-vscode/*.vsix
+          ./build/distributions/*.zip
