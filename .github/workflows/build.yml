@@ -46,7 +46,8 @@ jobs:
     - name: Bundle Java App
       shell: bash
       run: |
-        cd ../java-interop
+        pwd
+        cd java-interop
         ./gradlew distZip
     - name: Upload Artifacts
       uses: actions/upload-artifact@v3 
@@ -54,4 +55,4 @@ jobs:
         name: vscode-extension
         path: |
           ./bbj-vscode/*.vsix
-          ./build/distributions/*.zip
+          ./java-interop/build/distributions/*.zip
