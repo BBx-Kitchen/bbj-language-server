@@ -11,12 +11,27 @@ import {
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider';
 
+const DocumentFormatter = require("./Formatters/DocumentFormatter.js");
+const Commands = require("./Commands/Commands.js");
+
 let client: LanguageClient;
 
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     client = startLanguageClient(context);
+    vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
+    vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
+    vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager);
+    vscode.commands.registerCommand("bbj.run", Commands.run);
+    vscode.commands.registerCommand("bbj.runBUI", Commands.runBUI);
+    vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);
+
+    vscode.languages.registerDocumentFormattingEditProvider(
+        "bbj",
+        DocumentFormatter
+    );
+
 }
 
 // This function is called when the extension is deactivated.

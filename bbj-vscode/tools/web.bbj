@@ -1,0 +1,43 @@
+? 'HIDE'
+
+isDWC!      = iff(ARGV(1) = "DWC", 1, 0) 
+name!       = ARGV(2)
+programme!  = ARGV(3)
+wd!         = ARGV(4)
+username!   = ARGV(5,err=*next)
+password!   = ARGV(6,err=*next)
+
+if (username! = null()) username! = "admin"
+if (password!= null()) password! = "admin123"
+
+admin! = BBjAdminFactory.getBBjAdmin(username!, password!)
+configuration! = admin!.getRemoteConfiguration()
+
+rem check the app is not created yet
+app! = null()
+apps! = configuration!.getApplications()
+it! = apps!.iterator()
+while(it!.hasNext())
+    currentApp! = it!.next()
+    appName! = currentApp!.getString(currentApp!.NAME)
+
+    if(appName! = name!)
+        app! = currentApp!
+    fi
+wend
+
+if(app! = null()) then
+    rem create the app
+    app! = configuration!.createApplication()
+fi
+
+app!.setString(app!.NAME, name!)
+app!.setString(app!.PROGRAM, programme!)
+app!.setString(app!.WORKING_DIRECTORY , wd!)
+app!.commit()
+
+rem open the app in the browser
+url! = iff(isDWC!, app!.getDwcUrl(0), app!.getBuiUrl(0))
+BBjAPI().getThinClient().browse(url!)
+
+release
