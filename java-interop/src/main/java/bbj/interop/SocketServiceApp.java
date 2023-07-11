@@ -10,23 +10,24 @@ import java.net.InetSocketAddress;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.Channels;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Logger;
 
 import org.eclipse.lsp4j.jsonrpc.Launcher;
 
-public class SocketServiceApp {
+public class SocketServiceApp extends Thread{
 
     protected final Logger logger = Logger.getLogger(SocketServiceApp.class.getName());
 
     public static void main(String[] args) {
         try {
-            new SocketServiceApp().run();
+            new Thread(new SocketServiceApp()).run();
         } catch (Exception exc) {
             exc.printStackTrace();
         }
     }
 
-    public void run() throws Exception {
+    public void run()  {
         var address = new InetSocketAddress("localhost", 5008);
         try (
             var serverSocket = AsynchronousServerSocketChannel.open().bind(address)
@@ -42,6 +43,9 @@ public class SocketServiceApp {
                     exc.printStackTrace();
                 }
             }
+        } catch (IOException | InterruptedException | ExecutionException e) {
+            logger.severe(e.getMessage());
+            e.printStackTrace();
         }
     }
 

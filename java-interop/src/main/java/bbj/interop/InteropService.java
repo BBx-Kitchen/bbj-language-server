@@ -82,6 +82,7 @@ public class InteropService {
 		return CompletableFuture.completedFuture(classInfo);
 	}
 
+
 	private ClassInfo loadClassInfo(String className) {
 
 		var classInfo = new ClassInfo();

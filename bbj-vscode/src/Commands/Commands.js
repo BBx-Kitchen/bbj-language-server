@@ -47,6 +47,27 @@ const runWeb = (params, client) => {
   });
 };
 
+const initInterop = (params) => {
+  const home = getBBjHome();
+  if (!home) return;
+
+  const webConfig = vscode.workspace.getConfiguration("bbj.web");
+  const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
+  const webRunnerWorkingDir = path.resolve(`${__dirname}/../java-interop`);
+  const username = vscode.workspace.getConfiguration("bbj").web.username;
+  const password = vscode.workspace.getConfiguration("bbj").web.password;
+  const active = vscode.window.activeTextEditor;
+
+  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/java-interop.bbj - "${username}" "${password}"`;
+
+  exec(cmd, (err, stdout, stderr) => {
+    if (err) {
+      window.showErrorMessage(`Failed to run "${programme}"`);
+      return;
+    }
+  });
+};
+
 const Commands = {
   openConfigFile: function () {
     const home = getBBjHome();
@@ -105,6 +126,10 @@ const Commands = {
 
   runDWC: function (params) {
     runWeb(params, "DWC");
+  },
+
+  initInterop: function (params) {
+    initInterop(params);
   }
 };
 

@@ -2,8 +2,8 @@
     "name": "bbj-vscode",
     "displayName": "BBj",
     "description": "VSCode Extension for the BBj language.",
-    "version": "0.0.1",
-    "publisher": "basis-international",
+    "version": "0.0.2-pre",
+    "publisher": "BEU",
     "displayName": " BBj Language Support",
     "description": "BBj Language Support for Visual Studio Code",
     "license": "MIT",
@@ -43,6 +43,11 @@
             }
         ],
         "commands": [
+            {
+                "category": "BBj",
+                "command": "bbj.initInterop",
+                "title": "Iitialize BBj Interop in BBj Service"
+            },
             {
                 "category": "BBj",
                 "command": "bbj.config",
@@ -228,7 +233,8 @@
         "onCommand:bbj.run",
         "onCommand:bbj.runBUI",
         "onCommand:bbj.runDWC",
-        "onCommand:bbj.autoComment"
+        "onCommand:bbj.autoComment",
+        "onCommand:bbj.initInterop"
     ],
     "files": [
         "out",
@@ -287,6 +293,11 @@
             }
         ],
         "commands": [
+            {
+                "category": "BBj",
+                "command": "bbj.initInterop",
+                "title": "Initialize BBj interop service"
+            },
             {
                 "category": "BBj",
                 "command": "bbj.config",
