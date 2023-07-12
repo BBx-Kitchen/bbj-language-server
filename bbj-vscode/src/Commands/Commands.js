@@ -8,7 +8,7 @@ const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
 
   if (!home) {
-    window.showErrorMessage(
+    vscode.window.showErrorMessage(
       "bbj.home settings cannot be found - you must add this to the configuration"
     );
     return "";
@@ -41,7 +41,7 @@ const runWeb = (params, client) => {
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      window.showErrorMessage(`Failed to run "${programme}"`);
+      vscode.window.showErrorMessage(`Failed to run "${programme}"`);
       return;
     }
   });
@@ -62,7 +62,7 @@ const initInterop = (params) => {
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      window.showErrorMessage(`Failed to run "${programme}"`);
+      vscode.window.showErrorMessage(`Failed to run "${programme}"`);
       return;
     }
   });
@@ -113,7 +113,7 @@ const Commands = {
 
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
-          window.showErrorMessage(`Failed to run "${fileName}"`);
+          vscode.window.showErrorMessage(`Failed to run "${fileName}"`);
           return;
         }
       });
