@@ -1,7 +1,7 @@
 {
     "name": "bbj-vscode",
     "description": "VSCode Extension for the BBj language.",
-    "version": "0.0.2",
+    "version": "0.0.3-SNAPSHOT",
     "publisher": "BEU",
     "displayName": " BBj Language Support",
     "description": "BBj Language Support for Visual Studio Code",
