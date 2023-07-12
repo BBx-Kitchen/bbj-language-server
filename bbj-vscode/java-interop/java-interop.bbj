@@ -1,0 +1,94 @@
+use com.basis.api.admin.BBjAdminAppDeploymentApplication
+use com.basis.api.admin.BBjAdminAppDeploymentConfiguration
+use com.basis.api.admin.BBjAdminBase
+use com.basis.api.admin.BBjAdminException
+use com.basis.api.admin.BBjAdminFactory
+use com.basis.api.admin.BBjAdminTaskGroup
+use com.basis.api.admin.BBjAdminTask
+use com.basis.api.admin.BBjAdminBBjTask
+use java.util.ArrayList
+
+r$ = BBjAPI().getGlobalNamespace().getValue("vscode-interop",err=*next)
+if r$="running" then
+    System.out.println("vscode service already running!")
+    release
+fi 
+
+if pos("-CPvscode"=str(BBjAPI().getConfig().getCurrentCommandLineObject()))>0 then
+    goto service
+fi
+
+args! = BBjAPI().getConfig().getCurrentCommandLineObject().getProgramArgs()
+
+if pos("autorun" = str(args!))>0 then
+    System.out.println("received autorun without correct classpath")
+    cmd$="bbj -CPvscode -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
+    a=scall(cmd$)
+    release
+fi
+
+System.out.println(str(cp!))
+
+cpdir! = dir("")+"lib/*"
+api! = BBjAdminFactory.getBBjAdmin("admin", "admin123")
+
+cpEntries! = new ArrayList()
+cpEntries!.add("(bbj_default)")
+cpEntries!.add(cpdir!)
+
+api!.setClasspath("vscode", cpEntries!)
+api!.commit()
+
+cmd$="bbj -CPvscode -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
+a=scall(cmd$)
+
+newtask=0
+
+taskGroup! = api!.getTaskQueue().getTaskGroup("vscode",err=*next)
+
+if taskGroup! = null() then
+    taskGroup! = api!.newTaskGroup()
+    taskGroup!.setBoolean(BBjAdminTaskGroup.AUTORUN, 1)
+   taskGroup!.setString(BBjAdminTaskGroup.NAME, "vscode")
+   task! = taskGroup!.newTask(BBjAdminTask.TaskType.BBJ_PROGRAM)
+   newtask=1
+
+ELSE
+    task! = taskGroup!.getTasks().get(0,err=*next)
+    if task! = null() then
+        task! = taskGroup!.newTask(BBjAdminTask.TaskType.BBJ_PROGRAM)
+        newtask=1
+    fi
+fi
+
+task!.setString(BBjAdminBBjTask.PROGRAM, pgm(-1))
+task!.setString(BBjAdminBBjTask.WORKING_DIR, dir(""))
+task!.setString(BBjAdminBBjTask.CLASSPATH,"vscode")
+task!.setString(BBjAdminBBjTask.ARGUMENTS,"autorun")
+
+
+if newtask then
+    taskGroup!.getTasks().add(task!)
+FI
+
+taskGroup!.commit()
+
+
+RELEASE
+
+service:
+
+System.out.println("vscode java interop service started")
+
+BBjAPI().getGlobalNamespace().setValue("vscode-interop","running")
+
+Class.forName("bbj.interop.SocketServiceApp")
+
+new bbj.interop.SocketServiceApp().start()
+
+
+RELEASE
+
+isrunning:
+    System.out.println("vscode java interop service already running")
+    RELEASE
