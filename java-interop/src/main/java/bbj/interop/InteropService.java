@@ -126,7 +126,16 @@ public class InteropService {
 
 	@JsonRequest
 	public CompletableFuture<Boolean> loadClasspath(ClassPathInfoParams params) {
-		System.out.println("Load additional jars");
+		System.out.println("Load additional jars...");
+
+		if (params.classPathEntries.size()== 1 && params.classPathEntries.get(0).equals("file:")) {
+			System.out.println("Classpath empty. Defaulting to BBj's lib directory.");
+			params.classPathEntries.clear();
+			params.classPathEntries.add("file:"+System.getProperty("basis.BBjHome")+"/lib/*");
+		} else {
+			System.out.println("Requested Classpath: "+params.classPathEntries.toString());
+		}
+
 		params.classPathEntries.forEach(entry -> {
 			try {
 				System.out.println("Add to classpath: " + entry);
