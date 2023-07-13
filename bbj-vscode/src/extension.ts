@@ -71,7 +71,8 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
         synchronize: {
             // Notify the server about file changes to files contained in the workspace
             fileEvents: fileSystemWatcher
-        }
+        },
+        initializationOptions:  vscode.workspace.getConfiguration("bbj").home
     };
 
     // Create the language client and start the client.

@@ -18,9 +18,13 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
+    private bbjdir = "";
 
     constructor(services: LangiumSharedServices) {
         super(services);
+        services.lsp.LanguageServer.onInitialize(params => {
+            this.bbjdir = params.initializationOptions;
+        });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
@@ -30,11 +34,18 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         try {
             const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+            var propcontents = "";
             if (confFile) {
-                this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
-            } else {
-                this.settings = parseSettings("")
+                propcontents = this.fileSystemProvider.readFileSync(confFile.uri);
+            } 
+
+            const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir+"/cfg/"));
+            const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
+            var prefixfromconfig = "" ;
+            if (configbbx) {
+                prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
             }
+            this.settings = parseSettings(this.bbjdir,propcontents, prefixfromconfig)
             await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
             await this.javaInterop.loadImplicitImports(cancelToken);
         } catch {
@@ -86,6 +97,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         return this.settings;
     }
 
+    public getBBjDir() {
+        return this.bbjdir;
+    }
+
     public isExternalDocument(documentUri: URI): boolean {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
@@ -99,10 +114,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 }
 
-export function parseSettings(input: string): { prefixes: string[], classpath: string[] } {
+export function parseSettings(bbjdir: string, input: string, prefixfromconfigbbx: string): { prefixes: string[], classpath: string[] } {
     const props = getProperties(input)
-    console.warn("get props: ",props);
-    
     var cp="";
     if (props.classpath) {
         cp = resolveTilde(props.classpath);
@@ -111,7 +124,8 @@ export function parseSettings(input: string): { prefixes: string[], classpath: s
     var pfx=""
     if (props.PREFIX) {
         pfx = props.PREFIX;
-    }
+    } else
+    pfx = prefixfromconfigbbx;
 
     return { prefixes: collectPrefixes(pfx), classpath: cp.split(":")};
 }
@@ -123,3 +137,4 @@ export function collectPrefixes(input: string): string[] {
 export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
 }
+
