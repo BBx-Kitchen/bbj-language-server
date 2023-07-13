@@ -8,12 +8,6 @@ use com.basis.api.admin.BBjAdminTask
 use com.basis.api.admin.BBjAdminBBjTask
 use java.util.ArrayList
 
-r$ = BBjAPI().getGlobalNamespace().getValue("vscode-interop",err=*next)
-if r$="running" then
-    System.out.println("vscode service already running!")
-    release
-fi 
-
 if pos("-CPvscode"=str(BBjAPI().getConfig().getCurrentCommandLineObject()))>0 then
     goto service
 fi
@@ -27,17 +21,34 @@ if pos("autorun" = str(args!))>0 then
     release
 fi
 
-System.out.println(str(cp!))
+admin$="admin"
+pw$="admin123"
+if argc=3 then
+    admin$=argv(1)
+    pw$=argv(2)
+fi
 
 cpdir! = dir("")+"lib/*"
-api! = BBjAdminFactory.getBBjAdmin("admin", "admin123")
+api! = BBjAdminFactory.getBBjAdmin(admin$,pw$)
 
 cpEntries! = new ArrayList()
 cpEntries!.add("(bbj_default)")
 cpEntries!.add(cpdir!)
 
+System.out.println("updating vscode classpath with "+str(cpEntries!))
+
+api!.setClasspath("vscode", null())
+api!.commit()
+
 api!.setClasspath("vscode", cpEntries!)
 api!.commit()
+
+rem we need to probably hash the working directory and make sure that this program always runs with different versions of the plugin
+r$ = BBjAPI().getGlobalNamespace().getValue("vscode-interop",err=*next)
+if r$="running" then
+    System.out.println("vscode interop already running. In case of an extension update you may need to restart the service.")
+    release
+fi
 
 cmd$="bbj -CPvscode -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
 a=scall(cmd$)
@@ -83,9 +94,7 @@ System.out.println("vscode java interop service started")
 BBjAPI().getGlobalNamespace().setValue("vscode-interop","running")
 
 Class.forName("bbj.interop.SocketServiceApp")
-
 new bbj.interop.SocketServiceApp().start()
-
 
 RELEASE
 
