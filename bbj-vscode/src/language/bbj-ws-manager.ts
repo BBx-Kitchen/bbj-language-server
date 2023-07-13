@@ -32,8 +32,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
             if (confFile) {
                 this.settings = parseSettings(this.fileSystemProvider.readFileSync(confFile.uri))
-                await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
+            } else {
+                this.settings = parseSettings("")
             }
+            await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
             await this.javaInterop.loadImplicitImports(cancelToken);
         } catch {
             // all fine
@@ -99,7 +101,19 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
 export function parseSettings(input: string): { prefixes: string[], classpath: string[] } {
     const props = getProperties(input)
-    return { prefixes: collectPrefixes(props.PREFIX), classpath: resolveTilde(props.classpath).split(':') };
+    console.warn("get props: ",props);
+    
+    var cp="";
+    if (props.classpath) {
+        cp = resolveTilde(props.classpath);
+    }
+
+    var pfx=""
+    if (props.PREFIX) {
+        pfx = props.PREFIX;
+    }
+
+    return { prefixes: collectPrefixes(pfx), classpath: cp.split(":")};
 }
 
 export function collectPrefixes(input: string): string[] {
