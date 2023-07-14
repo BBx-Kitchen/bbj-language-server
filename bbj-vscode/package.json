@@ -1,6 +1,6 @@
 {
     "name": "bbj-vscode",
-    "version": "0.0.4-SNAPSHOT",
+    "version": "0.0.5-SNAPSHOT",
     "publisher": "BEU",
     "displayName": " BBj Language Support",
     "description": "BBj Language Support for Visual Studio Code",
@@ -241,14 +241,19 @@
     "main": "./out/extension.js",
     "scripts": {
         "prepare": "npm run langium:generate && npm run build",
-        "vscode:prepublish": "shx cp ../LICENSE ./LICENSE && npm run build && npm run lint",
+        "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
         "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
         "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
         "lint": "eslint src test --ext ts",
         "test": "vitest",
+        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+        "esbuild": "npm run esbuild-base -- --sourcemap",
+        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+        "test-compile": "tsc -p ./",
         "langium:generate": "langium generate",
         "langium:watch": "langium generate --watch"
     },
+
     "dependencies": {
         "chevrotain": "^10.4.2",
         "langium": "~1.2.0",
@@ -264,7 +269,7 @@
         "@typescript-eslint/eslint-plugin": "^5.28.0",
         "@typescript-eslint/parser": "^5.28.0",
         "concurrently": "^8.2.0",
-        "esbuild": "^0.18.6",
+        "esbuild": "^0.18.12",
         "eslint": "^8.17.0",
         "langium-cli": "~1.2.0",
         "shx": "^0.3.4",
