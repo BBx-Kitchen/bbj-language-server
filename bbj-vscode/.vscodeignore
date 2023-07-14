@@ -2,4 +2,10 @@
 .vscode-test/**
 .gitignore
 langium-quickstart.md
+nodecd
+_modules
+.vscode
 node_modules
+src/
+tsconfig.json
+webpack.config.js
