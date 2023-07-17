@@ -1,6 +1,6 @@
 # BBj Language Support for BBj
 
-This extension adds support for the BBj language. It allows you to locate your local
+This extension adds support for the BBj language. It allows you to locate your local BBj installation for resolution of Classpath and PREFIX, running your code from the editor, and to host the Java-part of the language server.
 
 ## Disclaimer
 
@@ -56,5 +56,5 @@ Altenatively, the Java interop part can be run isolated from BBj as described un
 
 Special thanks to https://github.com/hyyan who initially created some parts to integrate with BBj in an earlier VS Code extension, which we decided to scavenge for this extension.
 
-We also thank the team behind at https://www.typefox.io/ and behind https://langium.org/ for their ongoing support in making this extension possible.
+We also thank the team at https://www.typefox.io/ and https://langium.org/ for their ongoing support in making this extension possible.
 
