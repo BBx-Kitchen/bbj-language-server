@@ -16,7 +16,7 @@ args! = BBjAPI().getConfig().getCurrentCommandLineObject().getProgramArgs()
 
 if pos("autorun" = str(args!))>0 then
     System.out.println("received autorun without correct classpath")
-    cmd$="bbj -CPvscode -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
+    cmd$="bbj -CPvscode -tIO -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
     a=scall(cmd$)
     release
 fi
@@ -50,7 +50,7 @@ if r$="running" then
     release
 fi
 
-cmd$="bbj -CPvscode -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
+cmd$="bbj -CPvscode -tIO -WD"""+dsk("")+dir("")+""" """+pgm(-1)+"""&"
 a=scall(cmd$)
 
 newtask=0
@@ -60,10 +60,9 @@ taskGroup! = api!.getTaskQueue().getTaskGroup("vscode",err=*next)
 if taskGroup! = null() then
     taskGroup! = api!.newTaskGroup()
     taskGroup!.setBoolean(BBjAdminTaskGroup.AUTORUN, 1)
-   taskGroup!.setString(BBjAdminTaskGroup.NAME, "vscode")
-   task! = taskGroup!.newTask(BBjAdminTask.TaskType.BBJ_PROGRAM)
-   newtask=1
-
+    taskGroup!.setString(BBjAdminTaskGroup.NAME, "vscode")
+    task! = taskGroup!.newTask(BBjAdminTask.TaskType.BBJ_PROGRAM)
+    newtask=1
 ELSE
     task! = taskGroup!.getTasks().get(0,err=*next)
     if task! = null() then
@@ -73,7 +72,8 @@ ELSE
 fi
 
 task!.setString(BBjAdminBBjTask.PROGRAM, pgm(-1))
-task!.setString(BBjAdminBBjTask.WORKING_DIR, dir(""))
+task!.setString(BBjAdminBBjTask.WORKING_DIR, dsk("")+dir(""))
+task!.setString(BBjAdminBBjTask.TERMINAL, "IO")
 task!.setString(BBjAdminBBjTask.CLASSPATH,"vscode")
 task!.setString(BBjAdminBBjTask.ARGUMENTS,"autorun")
 
