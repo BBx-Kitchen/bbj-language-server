@@ -126,12 +126,15 @@ public class InteropService {
 
 	@JsonRequest
 	public CompletableFuture<Boolean> loadClasspath(ClassPathInfoParams params) {
-		System.out.println("Load additional jars...");
+		System.out.println("Load additional jars for "+params.toString()+"...");
 
 		if (params.classPathEntries.size()== 1 && params.classPathEntries.get(0).equals("file:")) {
 			System.out.println("Classpath empty. Defaulting to BBj's lib directory.");
 			params.classPathEntries.clear();
-			params.classPathEntries.add("file:"+System.getProperty("basis.BBjHome")+"/lib/*");
+			String homedir = System.getProperty("basis.BBjHome") + "/lib/*";
+			if (homedir.substring(1,2).equals(":"))
+				homedir = homedir.substring(2).replace("\\","/");
+			params.classPathEntries.add("file:" + homedir);
 		} else {
 			System.out.println("Requested Classpath: "+params.classPathEntries.toString());
 		}
@@ -186,7 +189,7 @@ public class InteropService {
 		}
 	}
 
-	public final static String[] JAVA_LANG = (
+	public static final String[] JAVA_LANG = (
 			// interfaces
 			"Appendable\n"
 			+ "AutoCloseable\n"
