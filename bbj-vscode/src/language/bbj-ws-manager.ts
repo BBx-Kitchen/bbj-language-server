@@ -5,7 +5,7 @@ import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module";
 import { JavaInteropService } from "./java-interop";
 import { builtinFunctions } from "./lib/functions";
-import { getProperties } from 'properties-file'
+import {getProperties, KeyValuePairObject} from 'properties-file'
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
@@ -34,14 +34,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         try {
             const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
-            var propcontents = "";
+            let propcontents = "";
             if (confFile) {
                 propcontents = this.fileSystemProvider.readFileSync(confFile.uri);
             } 
 
             const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir+"/cfg/"));
             const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
-            var prefixfromconfig = "" ;
+            let prefixfromconfig = "" ;
             if (configbbx) {
                 prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
             }
@@ -115,13 +115,15 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 }
 
 export function parseSettings(bbjdir: string, input: string, prefixfromconfigbbx: string): { prefixes: string[], classpath: string[] } {
-    const props = getProperties(input)
-    var cp="";
+
+    let props: KeyValuePairObject;
+    props = getProperties(input);
+    let cp="";
     if (props.classpath) {
         cp = resolveTilde(props.classpath);
     }
 
-    var pfx=""
+    let pfx=""
     if (props.PREFIX) {
         pfx = props.PREFIX;
     } else
