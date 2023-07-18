@@ -1,16 +1,17 @@
 import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, LangiumSharedServices } from "langium";
+import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken } from "vscode";
 import { WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module";
 import { JavaInteropService } from "./java-interop";
 import { builtinFunctions } from "./lib/functions";
-import {getProperties, KeyValuePairObject} from 'properties-file'
+import { builtinVariables } from "./lib/variables";
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
-import os from 'os'
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
@@ -79,6 +80,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     ): Promise<void> {
         // Load library
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
+        collector(this.documentFactory.fromString(builtinVariables, URI.parse('bbjlib:///variables.bbl')));
 
         // Load additional files configured with the PREFIX property
         if (this.settings?.prefixes) {

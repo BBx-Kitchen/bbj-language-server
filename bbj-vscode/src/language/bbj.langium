@@ -339,7 +339,11 @@ Visibility returns string:
 // BBx Library
 Library:
     'library' 
-    (declarations+=LibFunction)*
+    (declarations+=LibMember)*
+;
+
+LibMember:
+    LibFunction | LibVariable
 ;
 
 LibFunction returns LibFunction:
@@ -349,6 +353,11 @@ LibFunction returns LibFunction:
 
 LibParameter returns LibParameter:
     name=ValidName optional?='?'? (':' type=ID)?
+;
+
+LibVariable returns LibVariable:
+    (docu=DOCU)?
+    'var' name=ValidName (':' type=ID)?
 ;
 
 hidden terminal WS: /\s+/;
@@ -417,5 +426,11 @@ interface LibParameter extends NamedElement {
     type: string
     optional: boolean
 }
+
+interface LibVariable extends NamedElement {
+    docu?: string
+    type?: string
+}
+
 type BBjClassMember = FieldDecl | MethodDecl
 type ClassMember =  BBjClassMember | JavaMember

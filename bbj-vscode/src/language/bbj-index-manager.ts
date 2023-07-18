@@ -12,7 +12,7 @@ export class BBjIndexManager extends DefaultIndexManager {
     }
 
     protected override isAffected(document: LangiumDocument<AstNode>, changed: URI): boolean {
-        if(document.uri.toString() === 'classpath:/bbj.class' || document.uri.toString() === 'bbjlib:/functions.bbl') {
+        if(document.uri.toString() === 'classpath:/bbj.class' || document.uri.scheme === 'bbjlib') {
             // only affected by ClassPath changes
             return false;
         }

@@ -13,7 +13,7 @@ export class BbjLinker extends DefaultLinker {
     static ERR_PARAM: AstNodeDescription = {
         type: VariableDecl,
         name: 'err',
-        documentUri: URI.parse('bbjlib:///functions.bbl'),
+        documentUri: URI.parse('bbjlib:///variables.bbl'),
         path: ''
     };
 
