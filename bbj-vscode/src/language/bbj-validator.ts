@@ -5,11 +5,11 @@
  ******************************************************************************/
 
 import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
-import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
-import type { BBjServices } from './bbj-module';
-import { JavaInteropService } from './java-interop';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
+import type { BBjServices } from './bbj-module';
+import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { JavaInteropService } from './java-interop';
 
 /**
  * Register custom validation checks.
