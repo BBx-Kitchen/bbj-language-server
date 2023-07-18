@@ -1,0 +1,20 @@
+PRINT ERR,TCB(5),
+REM this is perfectly valid, a line can end with a comma!
+
+
+
+REM do I need A$=""?
+REM the missing reference should be a warning, not a hard error
+
+INPUT A$
+PRINT A$
+
+PRINT A
+
+PRINT C
+
+
+rem multiline statement
+X! = "TEST"+
+: "TEST123"+
+: "jhgjgj"
