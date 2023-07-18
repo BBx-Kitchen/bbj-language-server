@@ -6,7 +6,7 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
+import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -66,8 +66,8 @@ export class BbjLinker extends DefaultLinker {
                     return BbjLinker.ERR_PARAM;
                 }
                 const scope = this.scopeProvider.getScope(refInfo);
-                // Don't link to a constructor when Type reference is expected 
-                const filtered = scope.getAllElements().find(descr => descr.type !== MethodDecl && descr.name === refInfo.reference.$refText)
+                // Don't link to methods or a constructor when not a method call is  expected 
+                const filtered = scope.getAllElements().find(descr => descr.type !== MethodDecl && descr.type !== LibFunction && descr.name === refInfo.reference.$refText)
                 return filtered ?? this.createLinkingError(refInfo);
             }
         }

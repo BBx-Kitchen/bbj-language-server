@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { builtinFunctions } from './functions';
+import { builtinVariables } from './variables';
 
 export class BBjLibraryFileSystemProvider implements vscode.FileSystemProvider {
 
@@ -16,13 +17,21 @@ export class BBjLibraryFileSystemProvider implements vscode.FileSystemProvider {
         return {
             ctime: date,
             mtime: date,
-            size: builtinFunctions.length,
+            size: this.stringContent(uri).length,
             type: vscode.FileType.File
         };
     }
 
+    stringContent(uri: vscode.Uri) {
+        switch (uri.path) {
+            case '/functions.bbl': return builtinFunctions;
+            case '/variables.bbl': return builtinVariables;
+            default: return '';
+        }
+    }
+
     readFile(uri: vscode.Uri): Uint8Array {
-        return new Uint8Array(Buffer.from(builtinFunctions));
+        return new Uint8Array(Buffer.from(this.stringContent(uri)));
     }
 
     /* Interface impl */

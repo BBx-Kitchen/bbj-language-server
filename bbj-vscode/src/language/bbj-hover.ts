@@ -1,11 +1,11 @@
 import { AstNode, MaybePromise, MultilineCommentHoverProvider } from "langium";
 import { Hover } from "vscode-languageclient";
-import { isLibFunction } from "./generated/ast";
+import { isLibMember } from "./generated/ast";
 
 export class BBjHoverProvider extends MultilineCommentHoverProvider {
 
     protected override getAstNodeHoverContent(node: AstNode): MaybePromise<Hover | undefined> {
-        if (isLibFunction(node) && node.docu && node.docu.length > 5) {
+        if (isLibMember(node) && node.docu && node.docu.length > 5) {
             return {
                 contents: {
                     kind: 'markdown',

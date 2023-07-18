@@ -5,16 +5,18 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider, DefaultScopeComputation, DefaultScopeProvider, DocumentSegment, EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, isAstNode,
+    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider, DefaultScopeComputation, DefaultScopeProvider, DocumentSegment, EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, IndexManager, isAstNode,
     LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, streamContents, StreamScope, toDocumentSegment
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
 import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
-    isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement, isLibFunction, isMemberCall,
+    isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement,
+    isLibMember, isMemberCall,
     isMethodDecl,
-    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass, LibFunction, MethodDecl, NamedElement, Program, Use
+    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    LibMember, MethodDecl, NamedElement, Program, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -80,6 +82,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     protected override getGlobalScope(referenceType: string, _context: ReferenceInfo): Scope {
+
+        function libraryIndex(indexManager: IndexManager): Stream<AstNodeDescription> {
+            return indexManager.allElements(LibMember);
+        }
         switch (referenceType) {
             case Class: {
                 const program = getContainerOfType(_context.container, isProgram)
@@ -89,13 +95,16 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             case NamedElement: {
                 if (isSymbolRef(_context.container) && _context.property === 'symbol')
-                    // when looking Symbols consider JavaClasses. References are case sensitive
-                    return new StreamScope(this.indexManager.allElements(LibFunction), new StreamScope(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
+                    // when looking for NamedElement Symbols consider JavaClasses (case sensitive) and LibMembers (case insensitive)
+                    return new StreamScope(libraryIndex(this.indexManager), new StreamScope(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
             }
-            default: return new StreamScope(this.indexManager.allElements(LibFunction), undefined, { caseInsensitive: true });
+            default:
+                return new StreamScope(libraryIndex(this.indexManager), undefined, { caseInsensitive: true });
         }
-    }
 
+
+    }
+    
     importedBBjClasses(root: Program | undefined): AstNodeDescription[] {
         if (root) {
             return root.statements.filter(it => isUse(it) && it.bbjClass?.ref)
@@ -176,7 +185,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     }
 
     override async computeExports(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
-        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibFunction(child)), cancelToken);
+        // Only make classes and library elements globally "visible" in index
+        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibMember(child)), cancelToken);
     }
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {

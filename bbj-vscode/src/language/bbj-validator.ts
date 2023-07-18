@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
-import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibFunction, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import type { BBjServices } from './bbj-module';
 import { JavaInteropService } from './java-interop';
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -46,7 +46,7 @@ export class BBjValidator {
             ['CLASS', 'INTERFACE'],
             false,
             ['CLASSEND', 'INTERFACEEND']],
-        [isLibFunction,
+        [isLibMember,
             false,
             false,
             true],
