@@ -281,7 +281,7 @@ export class BbjNameProvider extends DefaultNameProvider {
     static called = new Map<string | undefined, number>
 
     override getNameNode(node: AstNode): CstNode | undefined {
-        if (!node.$document) {
+        if (!getDocument(node)) {
             // synthetic nodes
             return undefined
         }

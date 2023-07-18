@@ -19,6 +19,7 @@ import { BbjLinker } from './bbj-linker';
 import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjTokenBuilder } from './bbj-token-builder';
 import { BBjIndexManager } from './bbj-index-manager';
+import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -57,7 +58,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         JavaInteropService: (services) => new JavaInteropService(services)
     },
     lsp: {
-        HoverProvider: (services) => new BBjHoverProvider(services)
+        HoverProvider: (services) => new BBjHoverProvider(services),
+        DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services)
     },
     parser: {
         ValueConverter: () => new BBjValueConverter(),
