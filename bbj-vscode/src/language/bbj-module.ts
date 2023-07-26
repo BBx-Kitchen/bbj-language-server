@@ -14,13 +14,14 @@ import { JavaInteropService } from './java-interop';
 import { BbjNameProvider, BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BBjHoverProvider } from './bbj-hover';
-import { BBjValueConverter} from './bbj-value-converter';
+import { BBjValueConverter } from './bbj-value-converter';
 import { BbjLinker } from './bbj-linker';
 import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjTokenBuilder } from './bbj-token-builder';
 import { BBjIndexManager } from './bbj-index-manager';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
 import { BBjDocumentValidator } from './bbj-document-validator';
+import { BBjCompletionProvider } from './bbj-completion-provider';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -61,7 +62,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     lsp: {
         HoverProvider: (services) => new BBjHoverProvider(services),
-        DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services)
+        DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),
+        CompletionProvider: (services) => new BBjCompletionProvider(services)
     },
     parser: {
         ValueConverter: () => new BBjValueConverter(),
@@ -71,9 +73,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     workspace: {
-        DocumentBuilder:  (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
+        DocumentBuilder: (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
         WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services),
-        IndexManager:  (services: LangiumSharedServices) => new BBjIndexManager(services)
+        IndexManager: (services: LangiumSharedServices) => new BBjIndexManager(services)
     },
 }
 

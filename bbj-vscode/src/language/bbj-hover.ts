@@ -1,6 +1,6 @@
 import { AstNode, MaybePromise, MultilineCommentHoverProvider } from "langium";
 import { Hover } from "vscode-languageclient";
-import { isLibMember } from "./generated/ast";
+import { JavaClass, isClass, isJavaClass, isLibMember } from "./generated/ast";
 
 export class BBjHoverProvider extends MultilineCommentHoverProvider {
 
@@ -13,6 +13,17 @@ export class BBjHoverProvider extends MultilineCommentHoverProvider {
                 }
             };
         }
-        return super.getAstNodeHoverContent(node);
+        const docu = super.getAstNodeHoverContent(node);
+        if(!docu) {
+            if(isClass(node)) {
+                return {
+                    contents: {
+                        kind: 'markdown',
+                        value: `${node.$type}: ${(node as any)['simpleName']?(node as any)['simpleName']:node.name}`
+                    }
+                };
+            }
+        }
+        return docu;
     }
 }
