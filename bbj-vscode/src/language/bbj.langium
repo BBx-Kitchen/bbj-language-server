@@ -201,8 +201,12 @@ OpenStatement:
 
 // NOTE:INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
 ReadStatement:
-    'READ' (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
+    kind = READ_KINDS (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
 ;
+
+READ_KINDS returns string:
+    'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
+; 
 
 AddrStatement:
     'ADDR' fileid=StringLiteral Err?
@@ -332,6 +336,7 @@ ValidName returns string:
 
 EscapeId returns string:
     'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
+    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
