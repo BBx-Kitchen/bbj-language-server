@@ -20,6 +20,7 @@ import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjTokenBuilder } from './bbj-token-builder';
 import { BBjIndexManager } from './bbj-index-manager';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
+import { BBjDocumentValidator } from './bbj-document-validator';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -52,7 +53,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         Linker: (services) => new BbjLinker(services)
     },
     validation: {
-        BBjValidator: (services) => new BBjValidator(services)
+        BBjValidator: (services) => new BBjValidator(services),
+        DocumentValidator: (services) => new BBjDocumentValidator(services)
     },
     java: {
         JavaInteropService: (services) => new JavaInteropService(services)

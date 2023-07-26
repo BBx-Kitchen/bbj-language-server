@@ -13,7 +13,7 @@ const bbjdir = "/bbx/";
 describe('Paths handling tests', () => {
 
 
-    const parsed = parseSettings(bbjdir,exampleInput,prefixfromconfigbbx)
+    const parsed = parseSettings(exampleInput, prefixfromconfigbbx)
 
     test('Parse prefixes paths test', async () => {
         const expectVal = '~/git/bbj-language-server/examples/lib/com.google.guava_30.1.0.v20221112-0806.jar:~/someOtherPath.jar:~/someOtherPath2.jar'

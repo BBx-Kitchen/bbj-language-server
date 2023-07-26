@@ -1,7 +1,7 @@
 import { DocumentValidator, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { describe, expect, test } from 'vitest';
-import { Diagnostic } from 'vscode-languageserver';
+import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module';
 import { Model } from '../src/language/generated/ast';
 
@@ -39,6 +39,16 @@ describe('Linking Tests', async () => {
         const linkingErr = findLinkingErrors(document)
         expect(linkingErr.length).toBe(1)
         expect(linkingErr[0].message).toBe("Could not resolve reference to NamedElement named 'STR'.")
+    })
+
+    test('Linking errors are warnings', async () => {
+        const document = await validate(`
+            field = xYz_DoesNotExists
+        `)
+        const linkingErr = findLinkingErrors(document)
+        expect(linkingErr.length).toBe(1)
+        expect(linkingErr[0].severity).toBe(DiagnosticSeverity.Warning)
+        
     })
 
 });
