@@ -66,28 +66,38 @@ export class JavaInteropService {
     }
 
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
-        const entries = classPath.map(entry => 'file:' + entry);
         console.warn("Load classpath from: " + classPath.join(', '))
-        const connection = await this.connect();
-        return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
+        try {
+            const entries = classPath.map(entry => 'file:' + entry);
+            const connection = await this.connect();
+            return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
+        } catch (e) {
+            console.error(e)
+            return false;
+        }
     }
 
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
         console.warn("Load package classes: " + implicitJavaImports.join(', '))
-        const connection = await this.connect();
-        await Promise.all(implicitJavaImports.map(async pack => {
-            const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
-            await Promise.all(classInfos.map(async javaClass => {
-                await this.resolveClass(javaClass, token)
-                // add as implicit Java package import
-                const simpleNameCopy = { ...javaClass }
-                simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
-                simpleNameCopy.$containerIndex = this.classpath.classes.length;
-                this.classpath.classes.push(simpleNameCopy);
-                this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+        try {
+            const connection = await this.connect();
+            await Promise.all(implicitJavaImports.map(async pack => {
+                const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
+                await Promise.all(classInfos.map(async javaClass => {
+                    await this.resolveClass(javaClass, token)
+                    // add as implicit Java package import
+                    const simpleNameCopy = { ...javaClass }
+                    simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
+                    simpleNameCopy.$containerIndex = this.classpath.classes.length;
+                    this.classpath.classes.push(simpleNameCopy);
+                    this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                }))
             }))
-        }))
-        return true;
+            return true;
+        } catch (e) {
+            console.error(e)
+            return false;
+        }
     }
 
     async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {

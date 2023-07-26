@@ -39,18 +39,22 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             if (confFile) {
                 propcontents = this.fileSystemProvider.readFileSync(confFile.uri);
             } 
-
-            const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir+"/cfg/"));
-            const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
-            let prefixfromconfig = "" ;
-            if (configbbx) {
-                prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+            let prefixfromconfig;
+            if(this.bbjdir) {
+                const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir+"/cfg/"));
+                const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
+                if (configbbx) {
+                    prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                }
+            } else {
+                console.warn("No bbjdir set. No classpath and prefixes loaded.")
             }
-            this.settings = parseSettings(this.bbjdir,propcontents, prefixfromconfig)
+            this.settings = parseSettings(propcontents, prefixfromconfig)
             await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
             await this.javaInterop.loadImplicitImports(cancelToken);
-        } catch {
+        } catch (e) {
             // all fine
+            console.error(e);
         }
         return await super.initializeWorkspace(folders, cancelToken);
     }
@@ -116,7 +120,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 }
 
-export function parseSettings(bbjdir: string, input: string, prefixfromconfigbbx: string): { prefixes: string[], classpath: string[] } {
+export function parseSettings(input: string, prefixfromconfigbbx: string | undefined): { prefixes: string[], classpath: string[] } {
 
     let props: KeyValuePairObject;
     props = getProperties(input);
@@ -128,8 +132,8 @@ export function parseSettings(bbjdir: string, input: string, prefixfromconfigbbx
     let pfx=""
     if (props.PREFIX) {
         pfx = props.PREFIX;
-    } else
-    pfx = prefixfromconfigbbx;
+    } else if(prefixfromconfigbbx)
+        pfx = prefixfromconfigbbx;
 
     return { prefixes: collectPrefixes(pfx), classpath: cp.split(":")};
 }

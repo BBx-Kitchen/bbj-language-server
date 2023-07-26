@@ -41,7 +41,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             if (isJavaClass(receiverType)) {
                 return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
             } else if (isBbjClass(receiverType)) {
-                return new StreamScope(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
+                return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
             }
         } else if (isUse(context.container)) {
             const filePath = context.container.bbjFilePath?.toLowerCase()
@@ -53,7 +53,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     // 3. Access PREFIX folder information and load the first match 
                     return bbjClass.documentUri.path.toLowerCase().endsWith(filePath)
                 });
-                return new StreamScope(stream(bbjClasses), undefined);
+                return new StreamScopeWithPredicate(stream(bbjClasses), undefined);
             }
             return EMPTY_SCOPE
         } else if (isSymbolRef(context.container)) {
@@ -66,7 +66,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             const memberAndImports = memberScope
                 .concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram)))
-            return new StreamScope(memberAndImports, super.getScope(context))
+            return new StreamScopeWithPredicate(memberAndImports, super.getScope(context))
         }
         if (!context.container.$container && context.container.$cstNode?.element.$container) {
             // FIXME HACK for orphaned AST Instances
@@ -78,7 +78,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
         // By default scope is case insensitive
-        return new StreamScope(elements, outerScope, { caseInsensitive: true });
+        return new StreamScopeWithPredicate(elements, outerScope, { caseInsensitive: true });
     }
 
     protected override getGlobalScope(referenceType: string, _context: ReferenceInfo): Scope {
@@ -91,15 +91,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 const program = getContainerOfType(_context.container, isProgram)
                 // when looking for classes return only JavaClasses. References are case sensitive
                 // Temporally add imported BBjClasses
-                return new StreamScope(stream(this.importedBBjClasses(program)), new StreamScope(this.indexManager.allElements(JavaClass)));
+                return new StreamScopeWithPredicate(stream(this.importedBBjClasses(program)), new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass)));
             }
             case NamedElement: {
                 if (isSymbolRef(_context.container) && _context.property === 'symbol')
                     // when looking for NamedElement Symbols consider JavaClasses (case sensitive) and LibMembers (case insensitive)
-                    return new StreamScope(libraryIndex(this.indexManager), new StreamScope(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
+                    return new StreamScopeWithPredicate(libraryIndex(this.indexManager), new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
             }
             default:
-                return new StreamScope(libraryIndex(this.indexManager), undefined, { caseInsensitive: true });
+                return new StreamScopeWithPredicate(libraryIndex(this.indexManager), undefined, { caseInsensitive: true });
         }
 
 
@@ -137,7 +137,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return e
         }).nonNullable();
-        return new StreamScope(s, outerScope);
+        return new StreamScopeWithPredicate(s, outerScope);
     }
 
 
@@ -167,6 +167,26 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 }
             } else {
                 return undefined
+            }
+        }
+        return undefined;
+    }
+}
+
+export class StreamScopeWithPredicate extends StreamScope {
+
+    override getElement(name: string, predicate: (descr: AstNodeDescription) => boolean = () => true): AstNodeDescription | undefined {
+        const local = this.caseInsensitive
+            ? this.elements.find(e => e.name.toLowerCase() === name.toLowerCase() && predicate(e))
+            : this.elements.find(e => e.name === name && predicate(e));
+        if (local) {
+            return local;
+        }
+        if (this.outerScope) {
+            if (this.outerScope instanceof StreamScopeWithPredicate) {
+                return this.outerScope.getElement(name, predicate);
+            } else {
+                return this.outerScope.getElement(name);
             }
         }
         return undefined;
