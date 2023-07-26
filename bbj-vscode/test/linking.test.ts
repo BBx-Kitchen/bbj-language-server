@@ -51,4 +51,12 @@ describe('Linking Tests', async () => {
         
     })
 
+    test('String literal is of type java.lang.String type', async () => {
+        const document = await validate(`
+            foo$ = "TEST"
+            foo$.charAt(1)  REM <== no linking error here
+        `)
+        expectNoErrors(document)
+    })
+
 });

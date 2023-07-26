@@ -15,7 +15,7 @@ import {
     isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement,
     isLibMember, isMemberCall,
     isMethodDecl,
-    isProgram, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    isProgram, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
     LibMember, MethodDecl, NamedElement, Program, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
@@ -168,6 +168,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             } else {
                 return undefined
             }
+        } else if (isStringLiteral(expression)) {
+            return this.javaInterop.getResolvedClass('java.lang.String')
         }
         return undefined;
     }
