@@ -1,13 +1,15 @@
 
 import {
     AstNodeDescription,
-    DefaultLinker, DocumentState, interruptAndCheck, LangiumDocument, LangiumServices, LinkingError, ReferenceInfo, streamAst, streamReferences, WorkspaceManager
+    DefaultLinker, DocumentState, interruptAndCheck,
+    LangiumDocument, LangiumServices, LinkingError,
+    ReferenceInfo, streamAst, streamReferences, WorkspaceManager
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
+import { StreamScopeWithPredicate } from './bbj-scope';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
-import { StreamScopeWithPredicate } from './bbj-scope';
 
 export class BbjLinker extends DefaultLinker {
 

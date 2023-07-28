@@ -2,10 +2,10 @@ import { DocumentValidator, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjTestServices } from './bbj-test-module';
 import { Model } from '../src/language/generated/ast';
 
-const services = createBBjServices(EmptyFileSystem);
+const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, {validationChecks: 'all'});
 
 describe('Linking Tests', async () => {
@@ -18,7 +18,7 @@ describe('Linking Tests', async () => {
     function expectNoErrors(document: LangiumDocument) {
         expect(document.parseResult.lexerErrors.length).toBe(0)
         expect(document.parseResult.parserErrors.length).toBe(0)
-        expect(findLinkingErrors(document).length ?? 0).toBe(0)
+        expect(findLinkingErrors(document).map(err => err.message).join('\n') ?? '').toBe('')
     }
 
     test('Library definitions test', async () => {

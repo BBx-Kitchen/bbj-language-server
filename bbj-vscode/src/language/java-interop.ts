@@ -19,10 +19,10 @@ const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.b
 export class JavaInteropService {
 
     private connection?: MessageConnection;
-
-    private readonly langiumDocuments: LangiumDocuments;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
-    private readonly classpathDocument: LangiumDocument<Classpath>;
+
+    protected readonly langiumDocuments: LangiumDocuments;
+    protected readonly classpathDocument: LangiumDocument<Classpath>;
 
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
