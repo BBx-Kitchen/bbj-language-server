@@ -1,6 +1,6 @@
 import { AstNode, MaybePromise, MultilineCommentHoverProvider } from "langium";
 import { Hover } from "vscode-languageclient";
-import { JavaClass, isClass, isJavaClass, isLibMember } from "./generated/ast";
+import { isClass, isLibMember } from "./generated/ast";
 
 export class BBjHoverProvider extends MultilineCommentHoverProvider {
 
