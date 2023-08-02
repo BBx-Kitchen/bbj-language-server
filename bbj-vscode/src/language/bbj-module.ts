@@ -22,6 +22,7 @@ import { BBjIndexManager } from './bbj-index-manager';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
 import { BBjDocumentValidator } from './bbj-document-validator';
 import { BBjCompletionProvider } from './bbj-completion-provider';
+import { BbjLexer } from './bbj-lexer';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -67,7 +68,8 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     parser: {
         ValueConverter: () => new BBjValueConverter(),
-        TokenBuilder: () => new BBjTokenBuilder()
+        TokenBuilder: () => new BBjTokenBuilder(),
+        Lexer: services => new BbjLexer(services)
     }
 };
 
