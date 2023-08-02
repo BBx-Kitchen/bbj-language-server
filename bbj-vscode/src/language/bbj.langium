@@ -77,7 +77,7 @@ LetStatement:
 
 PrintValue:
     // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))*)?
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))*)? ENDLINE_PRINT_COMMA?
 ;
 
 ClassDecl returns BbjClass:
@@ -367,6 +367,8 @@ LibVariable returns LibVariable:
 
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
+
+terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
 
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
