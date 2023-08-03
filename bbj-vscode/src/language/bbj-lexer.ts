@@ -15,7 +15,7 @@ export class BbjLexer extends DefaultLexer {
             let lineIndex = start;
             let nextLine = lines[lineIndex];
             let end = 0;
-            while (nextLine.charAt(0) === ':') {
+            while (nextLine && nextLine.charAt(0) === ':') {
                 end = lineIndex;
                 nextLine = lines[++lineIndex];
             }
