@@ -8,6 +8,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'MLTHEN', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
+        this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
         return tokens;
     }
 
@@ -41,6 +42,14 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 // Add more expceptional tokens here if an explicit line break token is needed
                 PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
                 LINE_BREAKS: false
+            };
+            return token;
+        } else if (terminal.name === 'ENDLINE_PRINT_COMMA') {
+            const token: TokenType = {
+                name: terminal.name,
+                // Add more expceptional tokens here if an explicit line break token is needed
+                PATTERN: this.regexPatternFunction(/,(?=(\r?\n))/i),
+                LINE_BREAKS: true
             };
             return token;
         } else {
