@@ -30,7 +30,8 @@ export class BbjLexer extends DefaultLexer {
                 i = end;
             }
         }
-        return lines.join(windowsEol ? '\r\n' : '\n');
+        const eol = windowsEol ? '\r\n' : '\n';
+        return lines.join(eol) + eol;
     }
 
 }
