@@ -10,8 +10,8 @@ const parse = parseHelper<Model>(services.BBj);
 describe('Parser Tests', () => {
     
     function expectNoParserLexerErrors(document: LangiumDocument) {
-        expect(document.parseResult.lexerErrors.length).toBe(0)
-        expect(document.parseResult.parserErrors.length).toBe(0)
+        expect(document.parseResult.lexerErrors).toHaveLength(0)
+        expect(document.parseResult.parserErrors).toHaveLength(0)
     }
     
     test('Program definition test', async () => {
@@ -235,6 +235,13 @@ describe('Parser Tests', () => {
         expect(compound.statements).toHaveLength(2);
         expect(isPrintValue(compound.statements[0])).toBeTruthy();
         expect(isCommentStatement(compound.statements[1])).toBeTruthy();
+    });
+
+    test('Allow trailing comma in print',async () => {
+        const result = await parse(`
+        PRINT X$,
+        PRINT ERR,TCB(5),`); // no line break at the end
+        expect(result.parseResult.parserErrors).toHaveLength(0);
     });
    
 });
