@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { parseHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjServices } from '../src/language/bbj-node-module';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { CompoundStatement, isCommentStatement, isCompoundStatement, isLibrary, isPrintValue, isProgram, Library, Model, Program } from '../src/language/generated/ast';
 

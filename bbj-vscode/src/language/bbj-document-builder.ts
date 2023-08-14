@@ -1,6 +1,5 @@
 import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, LangiumDocument, LangiumSharedServices, WorkspaceManager } from "langium";
-import { BBjWorkspaceManager } from "./bbj-ws-manager";
-
+import { BBjWsManager } from "./bbj-ws-manager";
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     wsManager: () => WorkspaceManager;
@@ -16,9 +15,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             _document.state = DocumentState.Validated;
             return false;
         }
-        if (this.wsManager() instanceof BBjWorkspaceManager) {
+        const wsManager = this.wsManager();
+        if (BBjWsManager.is(wsManager)) {
             const validate = super.shouldValidate(_document, options)
-                && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
+                && !wsManager.isExternalDocument(_document.uri)
             if (!validate) {
                 // mark as validated to avoid rebuilding
                 _document.state = DocumentState.Validated;

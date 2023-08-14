@@ -4,7 +4,7 @@ import * as esbuild from 'esbuild';
 const watch = process.argv.includes('--watch');
 const minify = process.argv.includes('--minify');
 
-const ctx = await esbuild.context({
+const nodeCtx = await esbuild.context({
     entryPoints: ['src/extension.ts', 'src/language/main.ts'],
     outdir: 'out',
     bundle: true,
@@ -16,9 +16,29 @@ const ctx = await esbuild.context({
     minify
 });
 
+const browserCtx = await esbuild.context({
+    entryPoints: ['src/language/main-browser.ts', 'src/editor/monaco-editor.ts'],
+    outdir: 'public',
+    bundle: true,
+    target: "es6",
+    format: 'iife',
+    loader: {
+        '.ts': 'ts',
+        '.ttf': 'dataurl',
+    },
+    platform: 'browser',
+    sourcemap: !minify,
+    minify
+});
+
 if (watch) {
-    await ctx.watch();
+    Promise.all([
+        nodeCtx.watch(),
+        browserCtx.watch()
+    ]);
 } else {
-    await ctx.rebuild();
-    ctx.dispose();
+    await nodeCtx.rebuild();
+    await browserCtx.rebuild();
+    nodeCtx.dispose();
+    browserCtx.dispose();
 }

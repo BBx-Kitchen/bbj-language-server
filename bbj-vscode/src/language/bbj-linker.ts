@@ -8,8 +8,8 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { StreamScopeWithPredicate } from './bbj-scope';
-import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
+import { BBjWsManager } from './bbj-ws-manager';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -29,8 +29,7 @@ export class BbjLinker extends DefaultLinker {
 
     override async link(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
         const wsManager = this.wsManager()
-        const externalDoc = (wsManager instanceof BBjWorkspaceManager)
-            && (wsManager as BBjWorkspaceManager).isExternalDocument(document.uri)
+        const externalDoc = BBjWsManager.is(wsManager) && wsManager.isExternalDocument(document.uri)
 
         const treeIter = streamAst(document.parseResult.value).iterator()
         for (const node of treeIter) {

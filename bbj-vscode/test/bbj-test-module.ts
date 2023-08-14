@@ -1,6 +1,7 @@
 import { DeepPartial, DefaultSharedModuleContext, LangiumSharedServices, Module, PartialLangiumServices, createDefaultModule, createDefaultSharedModule, inject } from "langium";
-import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module";
+import { BBjAddedServices, BBjModule, BBjServices } from "../src/language/bbj-module";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module";
+import { BBjSharedModule } from "../src/language/bbj-node-module";
 import { registerValidationChecks } from "../src/language/bbj-validator";
 import { JavaInteropService } from "../src/language/java-interop";
 import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast";
