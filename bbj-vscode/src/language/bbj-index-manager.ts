@@ -1,6 +1,6 @@
 import { AstNode, DefaultIndexManager, LangiumDocument, LangiumSharedServices, WorkspaceManager } from "langium";
 import { URI } from "vscode-uri";
-import { BBjWorkspaceManager } from "./bbj-ws-manager";
+import { BBjWsManager } from "./bbj-ws-manager";
 
 export class BBjIndexManager extends DefaultIndexManager {
 
@@ -16,14 +16,14 @@ export class BBjIndexManager extends DefaultIndexManager {
             // only affected by ClassPath changes
             return false;
         }
-        if (this.wsManager() instanceof BBjWorkspaceManager) {
-            const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
-            const isExternal = bbjWsManager.isExternalDocument(document.uri)
+        const wsManager = this.wsManager();
+        if (BBjWsManager.is(wsManager)) {
+            const isExternal = wsManager.isExternalDocument(document.uri)
             if (document.references.some(e => e.error !== undefined)) {
                 // don't rebuild external documents that has errors
                 return !isExternal
             }
-            if(!bbjWsManager.isExternalDocument(changed) && isExternal) {
+            if(!wsManager.isExternalDocument(changed) && isExternal) {
                 // don't rebuild external documents if ws document changed
                 return false;
             }

@@ -5,10 +5,10 @@
  ******************************************************************************/
 
 import { LangiumDocument, LangiumDocuments, linkContentToContainer, Mutable } from 'langium';
-import { Socket } from 'net';
+import { RawData, WebSocket } from 'ws';
 import {
-    CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
-} from 'vscode-jsonrpc/node';
+    CancellationToken, createMessageConnection, DataCallback, Disposable, Emitter, Event, Message, MessageConnection, MessageReader, MessageWriter, PartialMessageInfo, RequestType
+} from 'vscode-jsonrpc';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast';
@@ -37,18 +37,17 @@ export class JavaInteropService {
             return this.connection;
         }
         const socket = await this.createSocket();
-        const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+        const connection = createMessageConnection(new WebSocketMessageReader(socket), new WebSocketMessageWriter(socket));
         connection.listen();
         this.connection = connection;
         return connection;
     }
 
-    protected createSocket(): Promise<Socket> {
+    protected createSocket(): Promise<WebSocket> {
         return new Promise((resolve, reject) => {
-            const socket = new Socket();
+            const socket = new WebSocket('127.0.0.1:' + DEFAULT_PORT);
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
-            socket.connect(DEFAULT_PORT, '127.0.0.1');
         });
     }
 
@@ -152,6 +151,83 @@ export class JavaInteropService {
         javaClass.$containerIndex = classpath.classes.length;
         classpath.classes.push(javaClass);
         return javaClass;
+    }
+
+}
+
+class WebSocketMessageReader implements MessageReader {
+
+    constructor(readonly socket: WebSocket) {
+        this.socket.on('error', e => {
+            this.onErrorEmitter.fire(e);
+        });
+        this.socket.on('close', () => {
+            this.onCloseEmitter.fire();
+        });
+    }
+
+    private onErrorEmitter = new Emitter<Error>();
+    private onCloseEmitter = new Emitter<void>();
+    private decoder = new TextDecoder();
+
+    get onError(): Event<Error> {
+        return this.onErrorEmitter.event;
+    }
+    get onClose(): Event<void> {
+        return this.onCloseEmitter.event;
+    }
+    get onPartialMessage(): Event<PartialMessageInfo> {
+        return Event.None;
+    }
+    listen(callback: DataCallback): Disposable {
+        const socketCallback = ((data: RawData) => {
+            if (!Array.isArray(data)) {
+                const stringValue = this.decoder.decode(data);
+                const json = JSON.parse(stringValue);
+                callback(json);
+            }
+        }).bind(this);
+        this.socket.on('message', socketCallback);
+        return Disposable.create(() => {
+            this.socket.off('message', socketCallback);
+        });
+    }
+    dispose(): void {
+        this.socket.close();
+    }
+}
+
+class WebSocketMessageWriter implements MessageWriter {
+
+    constructor(readonly socket: WebSocket) {
+        this.socket.on('error', e => {
+            this.onErrorEmitter.fire([e, undefined, undefined]);
+        });
+        this.socket.on('close', () => {
+            this.onCloseEmitter.fire();
+        });
+    }
+
+    private onErrorEmitter = new Emitter<[Error, undefined, undefined]>();
+    private onCloseEmitter = new Emitter<void>();
+    private encoder = new TextEncoder();
+
+    get onError(): Event<[Error, Message | undefined, number | undefined]> {
+        return this.onErrorEmitter.event;
+    }
+    get onClose(): Event<void> {
+        return this.onCloseEmitter.event;
+    }
+    async write(msg: Message): Promise<void> {
+        const json = JSON.stringify(msg);
+        const encoded = this.encoder.encode(json);
+        this.socket.send(encoded);
+    }
+    end(): void {
+        this.socket.close();
+    }
+    dispose(): void {
+        this.socket.close();
     }
 
 }
