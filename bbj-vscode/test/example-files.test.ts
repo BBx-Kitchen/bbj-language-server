@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import path from 'path';
 import fs from 'fs';
 import { describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
+import { createBBjServices } from '../src/language/bbj-node-module';
 import { Model } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
