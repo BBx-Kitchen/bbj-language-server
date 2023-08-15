@@ -243,5 +243,25 @@ describe('Parser Tests', () => {
         PRINT ERR,TCB(5),`); // no line break at the end
         expect(result.parseResult.parserErrors).toHaveLength(0);
     });
+
+    test('Number syntax',async () => {
+        const result = await parse(`
+        x = 23
+        y = 0.1234
+        z = .123345
+        `);
+        expect(result.parseResult.parserErrors).toHaveLength(0);
+    });
+   
+    test('Number syntax - invalid',async () => {
+        const result = await parse(`
+            y = 0.1234.1
+            z = .123345.12
+        `, {validationChecks: 'all'});
+        // currently parsed as two numbers 0.1234 and .1
+        expect(result.parseResult.parserErrors).toHaveLength(0);
+        // validation complains about missing linebreaks between 0.1234 and .1
+        expect(result.diagnostics).toHaveLength(4);
+    });
    
 });

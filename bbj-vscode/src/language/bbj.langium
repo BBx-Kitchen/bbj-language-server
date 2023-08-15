@@ -378,7 +378,7 @@ terminal BBjFilePath: /::.*::/;
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
 terminal ID: /[_a-zA-Z][\w_]*/;
 
-terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?/; // TODO .001 is also allowed
+terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also supported
 
 terminal STRING: /"([^"]|"{2})*"/; // TODO check this. Also support \ as a plain non escape char
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
