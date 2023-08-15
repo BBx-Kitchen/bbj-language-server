@@ -380,7 +380,8 @@ terminal ID: /[_a-zA-Z][\w_]*/;
 
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also supported
 
-terminal STRING: /"([^"]|"{2})*"/; // TODO check this. Also support \ as a plain non escape char
+// "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter
+terminal STRING: /"([^"]|"{2})*"/;
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 

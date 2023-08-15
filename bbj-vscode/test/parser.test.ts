@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { parseHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
-import { CompoundStatement, isCommentStatement, isCompoundStatement, isLibrary, isPrintValue, isProgram, Library, Model, Program } from '../src/language/generated/ast';
+import { CompoundStatement, isCommentStatement, isCompoundStatement, isLibrary, isPrintValue, isProgram, LetStatement, Library, Model, Program, StringLiteral } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -241,7 +241,7 @@ describe('Parser Tests', () => {
         const result = await parse(`
         PRINT X$,
         PRINT ERR,TCB(5),`); // no line break at the end
-        expect(result.parseResult.parserErrors).toHaveLength(0);
+        expectNoParserLexerErrors(result);
     });
 
     test('Number syntax',async () => {
@@ -250,7 +250,7 @@ describe('Parser Tests', () => {
         y = 0.1234
         z = .123345
         `);
-        expect(result.parseResult.parserErrors).toHaveLength(0);
+        expectNoParserLexerErrors(result);
     });
    
     test('Number syntax - invalid',async () => {
@@ -259,7 +259,7 @@ describe('Parser Tests', () => {
             z = .123345.12
         `, {validationChecks: 'all'});
         // currently parsed as two numbers 0.1234 and .1
-        expect(result.parseResult.parserErrors).toHaveLength(0);
+        expectNoParserLexerErrors(result);
         // validation complains about missing linebreaks between 0.1234 and .1
         expect(result.diagnostics).toHaveLength(4);
     });
@@ -279,8 +279,19 @@ describe('Parser Tests', () => {
         byebye:
             bye
         `, {validationChecks: 'all'});
-        expect(result.parseResult.parserErrors).toHaveLength(0);
+        expectNoParserLexerErrors(result);
         expect(result.diagnostics).toHaveLength(0);
+    });
+
+    test('String backslash should not escape',async () => {
+        const result = await parse(`
+        rd_table_pfx$="\\Test\\"
+        `);
+        expect(result.parseResult.parserErrors).toHaveLength(0);
+        const program = result.parseResult.value as Program;
+        const letStmt = program.statements[0] as LetStatement;
+        const strValue = letStmt.assignments[0].value as StringLiteral;
+        expect(strValue.value).toBe('\\Test\\');
     });
    
 });
