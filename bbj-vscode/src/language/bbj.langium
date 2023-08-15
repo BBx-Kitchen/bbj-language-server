@@ -336,7 +336,7 @@ ValidName returns string:
 
 EscapeId returns string:
     'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
-    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SQLEXEC' | 'SQLCLOSE' | 'METHOD' | 'METHODEND' | 'METHODRET'
+    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
