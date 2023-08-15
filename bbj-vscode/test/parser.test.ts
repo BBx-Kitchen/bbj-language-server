@@ -263,5 +263,24 @@ describe('Parser Tests', () => {
         // validation complains about missing linebreaks between 0.1234 and .1
         expect(result.diagnostics).toHaveLength(4);
     });
+
+    test('Seterr and Setesc',async () => {
+        const result = await parse(`
+        seterr stderr
+        setesc stdesc
+        
+        goto byebye
+        
+        stdesc:
+            REM standard escape routine
+        stderr: 
+            REM standard error routine
+        
+        byebye:
+            bye
+        `, {validationChecks: 'all'});
+        expect(result.parseResult.parserErrors).toHaveLength(0);
+        expect(result.diagnostics).toHaveLength(0);
+    });
    
 });

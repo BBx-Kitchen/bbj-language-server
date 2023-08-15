@@ -191,7 +191,7 @@ ExitToStatement:
 ;
 
 SetErrorStatement:
-    'SETERR'  target=[LabelDecl]
+    kind = ('SETERR' | 'SETESC') target=[LabelDecl]
 ;
 
 OpenStatement:
@@ -336,7 +336,7 @@ ValidName returns string:
 
 EscapeId returns string:
     'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
-    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT'
+    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
