@@ -114,7 +114,7 @@ FieldDecl returns FieldDecl:
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' visibility=Visibility Static type=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    'METHOD' visibility=Visibility Static returnType=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
     Comments?
     (
         (body+=Statement)*
@@ -404,7 +404,7 @@ interface FieldDecl extends VariableDecl {
 interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
-    type?: @Class
+    returnType?: @Class
     comments: CommentStatement[]
     params: VariableDecl[]
     body: Statement[]

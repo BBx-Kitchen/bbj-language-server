@@ -24,18 +24,14 @@ interface JavaClass extends Class {
 
 type JavaMember = JavaField | JavaMethod
 
-interface JavaField {
-    name: string
+interface JavaField extends NamedElement {
     type: string
-
     resolvedType?: @JavaClass
 }
 
-interface JavaMethod {
-    name: string
+interface JavaMethod extends NamedElement {
     returnType: string
     parameters: JavaMethodParameter[]
-
     resolvedReturnType?: @JavaClass
 }
 

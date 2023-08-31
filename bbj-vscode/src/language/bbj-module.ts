@@ -23,6 +23,7 @@ import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
 import { BBjDocumentValidator } from './bbj-document-validator';
 import { BBjCompletionProvider } from './bbj-completion-provider';
 import { BbjLexer } from './bbj-lexer';
+import { BBjAstNodeDescriptionProvider } from './bbj-nodedescription-provider';
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -70,6 +71,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         ValueConverter: () => new BBjValueConverter(),
         TokenBuilder: () => new BBjTokenBuilder(),
         Lexer: services => new BbjLexer(services)
+    }, 
+    workspace: {
+        AstNodeDescriptionProvider: (services) => new BBjAstNodeDescriptionProvider(services)
     }
 };
 

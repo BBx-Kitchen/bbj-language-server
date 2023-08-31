@@ -104,7 +104,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
 
     }
-    
+
     importedBBjClasses(root: Program | undefined): AstNodeDescription[] {
         if (root) {
             return root.statements.filter(it => isUse(it) && it.bbjClass?.ref)
@@ -149,8 +149,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return this.getType((reference as Assignment).value);
             } else if (isClass(reference)) {
                 return reference
-            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference) || isMethodDecl(reference)) {
+            } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)) {
                 return reference?.type?.ref
+            } else if (isMethodDecl(reference)) {
+                return reference?.returnType?.ref
             }
             return undefined;
         } else if (isConstructorCall(expression)) {
@@ -162,8 +164,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     return member.resolvedType?.ref;
                 } else if (isJavaMethod(member)) {
                     return member.resolvedReturnType?.ref;
-                } else {
-                    return member.type?.ref
+                } else if (isMethodDecl(member)) {
+                    return member?.returnType?.ref
                 }
             } else {
                 return undefined
