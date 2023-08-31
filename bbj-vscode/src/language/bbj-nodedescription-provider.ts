@@ -1,5 +1,6 @@
 import { AstNode, AstNodeDescription, DefaultAstNodeDescriptionProvider, LangiumDocument, getDocument, isAstNodeDescription } from "langium";
-import { JavaMethod, MethodDecl } from "./generated/ast";
+import { JavaMethod, LibFunction, MethodDecl } from "./generated/ast";
+
 
 
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
@@ -7,13 +8,8 @@ export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProv
     override createDescription(node: AstNode, name: string | undefined, document: LangiumDocument = getDocument(node)): AstNodeDescription {
         const descr = super.createDescription(node, name, document);
         switch (node.$type) {
-            case MethodDecl: {
-                const method = node as MethodDecl
-                return enhanceFunctionDescription(descr, {
-                    returnType: method.returnType?.$refText ?? '',
-                    parameters: method.params.map(p => { return { name: p.name, type: p.type?.$refText ?? '' } })
-                })
-            };
+            case MethodDecl: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))
+            case LibFunction: return enhanceFunctionDescription(descr, node as LibFunction);
             case JavaMethod: return enhanceFunctionDescription(descr, node as JavaMethod);
             default: return descr;
         }
@@ -21,21 +17,31 @@ export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProv
 
 }
 
-function enhanceFunctionDescription(descr: AstNodeDescription, func: { returnType: string, parameters: { name: string, type: string }[] }): FunctionNodeDescription {
-    return {
-        ...descr,
-        parameters: func.parameters.map(p => { return { name: p.name, type: p.type } }),
-        returnType: func.returnType
-    };
+function enhanceFunctionDescription(descr: AstNodeDescription, func: MethodData): FunctionNodeDescription {
+    return { ...descr, ...func };
 }
 
-export type FunctionNodeDescription = AstNodeDescription & {
-    parameters: { name: string, type: string }[]
-    returnType: string
+
+export function toMethodData(methDecl: MethodDecl): MethodData {
+    return {
+        name: methDecl.name,
+        parameters: methDecl.params.map(p => { return { name: p.name, type: p.type?.$refText ?? '' } }),
+        returnType: methDecl.returnType?.$refText ?? ''
+    }
 }
+
+export type FunctionNodeDescription = AstNodeDescription & MethodData
 
 export function isFunctionNodeDescription(obj: unknown): obj is FunctionNodeDescription {
     return typeof obj === 'object' && obj !== null && isAstNodeDescription(obj)
         && 'parameters' in obj
         && 'returnType' in obj
 }
+
+export type MethodData = {
+    name: string,
+    parameters: ParameterData[],
+    returnType: string
+}
+
+export type ParameterData = { name: string, type: string, optional?: boolean }
