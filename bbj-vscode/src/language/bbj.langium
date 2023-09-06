@@ -29,7 +29,7 @@ SingleStatement:
     LetStatement |
     ArrayDeclarationStatement |
     MethodReturnStatement |
-    PrintValue |
+    PrintStatement |
     SetErrorStatement |
     ForStatement |
     IfStatement |
@@ -58,7 +58,8 @@ SingleStatement:
     SqlCloseStatement
 ;
 
-CommentStatement: {infer CommentStatement} COMMENT; // add content back hen we need to show comment
+CommentStatement:
+    {infer CommentStatement} COMMENT; // add content back hen we need to show comment
 
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
@@ -75,7 +76,7 @@ LetStatement:
     'LET'? assignments+=Assignment (',' assignments+=Assignment)*
 ;
 
-PrintValue:
+PrintStatement:
     // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
     ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))*)? ENDLINE_PRINT_COMMA?
 ;
@@ -169,7 +170,7 @@ WhileEndStatement:
     'WEND' {infer WhileEndStatement};
 
 SwitchStatement:
-    'SWITCH' value=Expression cases+=SwitchCase* ('CASE' 'DEFAULT' (';')? (defaultCase +=Statement)*)? 'SWEND';
+    'SWITCH' value=Expression cases+=SwitchCase* ('CASE' 'DEFAULT' (';')? (defaultCase+=Statement)*)? 'SWEND';
 
 SwitchCase:
     LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
@@ -184,14 +185,14 @@ ExitStatement:
 ;
 
 ExitWithNumberStatement:
-    kind = 'EXIT' | 'RELEASE' exitVal = NUMBER?;
+    kind='EXIT' | 'RELEASE' exitVal=NUMBER?;
 
 ExitToStatement:
     'EXITTO' target=[LabelDecl]
 ;
 
 SetErrorStatement:
-    kind = ('SETERR' | 'SETESC') target=[LabelDecl]
+    kind=('SETERR' | 'SETESC') target=[LabelDecl]
 ;
 
 OpenStatement:
@@ -199,15 +200,51 @@ OpenStatement:
     'OPEN' '(' channelno=Expression? (',' 'ERR' '=' err=[LabelDecl])?')'fileid=Expression
 ;
 
-// NOTE:INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
+/**
+ * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
+ */
 ReadStatement:
-    kind = READ_KINDS (record='RECORD')? ('(' channelno=Expression? Options? ')')? (input+=Expression (','input+=Expression)* )?
+    kind=READ_KINDS (record='RECORD')? ('(' channelno=Expression? Options? ')')? (items+=Item (','items+=Item)* )?
 ;
 
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
-; 
+;
 
+Item:
+    InputItem | InputVariable | OutputItem
+;
+/**
+ * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm
+ */
+InputItem:
+    '*'
+    | ('IOL' '=' iol=[LabelDecl])
+;
+
+InputVariable:
+    {infer InputVariable} ( SymbolRef ('[ALL]' | options=VerifyOptions)?)
+;
+
+VerifyOptions:
+    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* elements+=LastVerifyOption?')'
+;
+
+OutputItem returns string:
+    ('@(' NUMBER (',' NUMBER)*')')
+    | MNEMONIC
+    | STRING
+    | HEX_STRING
+;
+
+VerifyOption:
+    key=StringLiteral '=' lineref=[LabelDecl]
+;
+
+LastVerifyOption returns string:
+    ('LEN=' NUMBER ',' NUMBER) // LEN=intA,intB 
+    | NUMBER // numvar:(4) num A numeric expression can impose range and precision on the numeric input
+;
 AddrStatement:
     'ADDR' fileid=StringLiteral Err?
 ;
@@ -217,7 +254,7 @@ ClipFromStrStatement:
 ;
 
 SqlOpenStatement:
-    'SQLOPEN' '(' sqlchan= Expression (',' 'MODE' mode=StringLiteral Err?)? ')' datasourcename=Expression
+    'SQLOPEN' '(' sqlchan=Expression (',' 'MODE' mode=StringLiteral Err?)? ')' datasourcename=Expression
 ;
 
 SqlPrepStatement:
@@ -276,7 +313,7 @@ Expression:
 ;
 
 BinaryExpression infers Expression:
-     PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
+    PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
 ;
 
 PrefixExpression infers Expression:
@@ -291,7 +328,7 @@ MemberCall infers Expression:
     )*;
 
 ParameterCall:
-    expression = Expression
+    expression=Expression
 ;
 
 PrimaryExpression infers Expression:

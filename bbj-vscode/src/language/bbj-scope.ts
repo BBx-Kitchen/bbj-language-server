@@ -12,10 +12,12 @@ import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
 import {
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
-    isClass, isConstructorCall, isFieldDecl, isForStatement, isJavaClass, isJavaField, isJavaMethod, isLetStatement,
+    isClass, isConstructorCall, isFieldDecl, isForStatement,
+    isInputVariable,
+    isJavaClass, isJavaField, isJavaMethod, isLetStatement,
     isLibMember, isMemberCall,
     isMethodDecl,
-    isProgram, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    isProgram, isReadStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
     LibMember, MethodDecl, NamedElement, Program, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
@@ -298,6 +300,22 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 if (!exists) {
                     scopes.add(program, {
                         name: '*next',
+                        type: FieldDecl,
+                        documentUri: document.uri,
+                        path: this.astNodeLocator.getAstNodePath(node)
+                    })
+                }
+            }
+        } else if (isInputVariable(node) && isReadStatement(node.$container)) {
+            // Create input variables: case: READ(1,KEY="TEST")A$,B$,C$
+            if (isSymbolRef(node) && isProgram(node.$container.$container)) {
+                const scopeHolder = node.$container.$container
+                const inputName = node.symbol.$refText
+                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {
+                    scopes.add(scopeHolder, {
+                        name: inputName,
+                        nameSegment: toDocumentSegment(node.symbol.$refNode),
+                        selectionSegment: toDocumentSegment(node.symbol.$refNode),
                         type: FieldDecl,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)

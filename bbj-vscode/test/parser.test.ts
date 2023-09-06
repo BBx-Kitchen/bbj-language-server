@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'vitest';
-import { parseHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
-import { CompoundStatement, isCommentStatement, isCompoundStatement, isLibrary, isPrintValue, isProgram, LetStatement, Library, Model, Program, StringLiteral } from '../src/language/generated/ast';
+import { parseHelper } from 'langium/test';
+import { describe, expect, test } from 'vitest';
+import { createBBjServices } from '../src/language/bbj-module';
+import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isCommentStatement, isCompoundStatement, isLibrary, isPrintStatement, isProgram } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -233,7 +233,7 @@ describe('Parser Tests', () => {
         const compound = (model as Program).statements[0] as CompoundStatement;
         expect(isCompoundStatement(compound)).toBeTruthy();
         expect(compound.statements).toHaveLength(2);
-        expect(isPrintValue(compound.statements[0])).toBeTruthy();
+        expect(isPrintStatement(compound.statements[0])).toBeTruthy();
         expect(isCommentStatement(compound.statements[1])).toBeTruthy();
     });
 
@@ -292,6 +292,33 @@ describe('Parser Tests', () => {
         const letStmt = program.statements[0] as LetStatement;
         const strValue = letStmt.assignments[0].value as StringLiteral;
         expect(strValue.value).toBe('\\Test\\');
+    });
+
+    test('String backslash should not escape',async () => {
+        const result = await parse(`
+        let B$="1",C$="2",Q$="3"
+
+        READ(1,KEY="TEST",ERR=9500)A$,B$,C$
+        READ RECORD(1,IND=2,ERR=9500)A$
+        EXTRACT(2,KEY=Q$,DOM=1300)IOL=Label1
+        INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2)
+
+        Label1:
+            PRINT "Label"
+        Label2:
+            PRINT "Label2"
+
+        Print A$,B$,C$
+        `, {validationChecks: 'all'});
+        expectNoParserLexerErrors(result);
+        expect(result.diagnostics).toHaveLength(0);
+
+        const program = result.parseResult.value as Program;
+        const printStmt = program.statements.slice(-1).pop() as PrintStatement;
+        const refContainer = (ref) => (ref as SymbolRef).symbol.ref?.$container
+        expect(refContainer(printStmt.value[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
+        expect(refContainer(printStmt.value[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
+        expect(refContainer(printStmt.value[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
     });
    
 });
