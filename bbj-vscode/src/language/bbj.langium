@@ -78,7 +78,23 @@ LetStatement:
 
 PrintStatement:
     // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? (value+=(Expression|MNEMONIC) (',' value+=(Expression|MNEMONIC))*)? ENDLINE_PRINT_COMMA?
+    ('?' | 'PRINT' | 'WRITE') 'RECORD'? WithChannel? (value+=OutputListItem (',' value+=OutputListItem)*)? ENDLINE_PRINT_COMMA?
+;
+
+fragment WithChannel:
+    '(' channelno=Expression? Options? ')'
+;
+
+/**
+ * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
+ */
+OutputListItem:
+   Expression | StringLike | OtherItem
+;
+
+OtherItem:
+    '*' //treats an asterisk as a null field
+    | ('IOL' '=' iol=[LabelDecl]) //Refers to the IOLIST statement
 ;
 
 ClassDecl returns BbjClass:
@@ -197,14 +213,14 @@ SetErrorStatement:
 
 OpenStatement:
     // TODO check channelno is int and fileid is string
-    'OPEN' '(' channelno=Expression? (',' 'ERR' '=' err=[LabelDecl])?')'fileid=Expression
+    'OPEN' '(' channelno=Expression? Err?')'fileid=Expression
 ;
 
 /**
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS (record='RECORD')? ('(' channelno=Expression? Options? ')')? (items+=Item (','items+=Item)* )?
+    kind=READ_KINDS (record='RECORD')? WithChannel? (items+=Item (','items+=Item)* )?
 ;
 
 READ_KINDS returns string:
@@ -212,29 +228,18 @@ READ_KINDS returns string:
 ;
 
 Item:
-    InputItem | InputVariable | OutputItem
+    InputVariable | StringLike | OtherItem
 ;
+
 /**
  * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm
  */
-InputItem:
-    '*'
-    | ('IOL' '=' iol=[LabelDecl])
-;
-
 InputVariable:
     {infer InputVariable} ( SymbolRef ('[ALL]' | options=VerifyOptions)?)
 ;
 
 VerifyOptions:
-    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* elements+=LastVerifyOption?')'
-;
-
-OutputItem returns string:
-    ('@(' NUMBER (',' NUMBER)*')')
-    | MNEMONIC
-    | STRING
-    | HEX_STRING
+    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* (',' elements+=LastVerifyOption)?')'
 ;
 
 VerifyOption:
@@ -245,6 +250,9 @@ LastVerifyOption returns string:
     ('LEN=' NUMBER ',' NUMBER) // LEN=intA,intB 
     | NUMBER // numvar:(4) num A numeric expression can impose range and precision on the numeric input
 ;
+
+
+
 AddrStatement:
     'ADDR' fileid=StringLiteral Err?
 ;
@@ -291,7 +299,7 @@ WaitStatement:
 ;
 
 ThrowStatement:
-    'THROW' expression=Expression (',' number=NumberLiteral)? (',' 'ERR' '=' err=[LabelDecl])?
+    'THROW' expression=Expression (',' number=NumberLiteral)? Err?
 ;
 
 ProcessEvent:
@@ -309,7 +317,7 @@ EXPR_OPERATOR returns string:
 ;
 
 Expression:
-    BinaryExpression ({infer StringMask.left=current} ':' right=Expression)?
+    BinaryExpression ({infer StringMask.left=current} ':' right=Expression)? //string mask
 ;
 
 BinaryExpression infers Expression:
@@ -338,7 +346,7 @@ PrimaryExpression infers Expression:
     | ConstructorCall;
 
 SymbolRef:
-    (instanceAccess?='#' | symbolicLabel?='*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? ')')?
+    (instanceAccess?='#' | symbolicLabel?='*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err?')')?
 ;
 
 Literal:
@@ -349,7 +357,14 @@ NumberLiteral:
     value=NUMBER;
 
 StringLiteral:
-    value=STRING | HEX_STRING;
+    value=StringLike;
+
+StringLike returns string: 
+    STRING 
+    | HEX_STRING
+    | MNEMONIC 
+    | ('@(' NUMBER (',' NUMBER)*')')
+;
 
 ConstructorCall:
     // TODO: Possibly use ID instead of QualifiedClassName

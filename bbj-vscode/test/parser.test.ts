@@ -8,12 +8,12 @@ const services = createBBjServices(EmptyFileSystem);
 
 const parse = parseHelper<Model>(services.BBj);
 describe('Parser Tests', () => {
-    
+
     function expectNoParserLexerErrors(document: LangiumDocument) {
         expect(document.parseResult.lexerErrors).toHaveLength(0)
         expect(document.parseResult.parserErrors).toHaveLength(0)
     }
-    
+
     test('Program definition test', async () => {
         const program = await parse(`
         REM arrays
@@ -237,14 +237,14 @@ describe('Parser Tests', () => {
         expect(isCommentStatement(compound.statements[1])).toBeTruthy();
     });
 
-    test('Allow trailing comma in print',async () => {
+    test('Allow trailing comma in print', async () => {
         const result = await parse(`
         PRINT X$,
         PRINT ERR,TCB(5),`); // no line break at the end
         expectNoParserLexerErrors(result);
     });
 
-    test('Number syntax',async () => {
+    test('Number syntax', async () => {
         const result = await parse(`
         x = 23
         y = 0.1234
@@ -252,19 +252,19 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
-   
-    test('Number syntax - invalid',async () => {
+
+    test('Number syntax - invalid', async () => {
         const result = await parse(`
             y = 0.1234.1
             z = .123345.12
-        `, {validationChecks: 'all'});
+        `, { validationChecks: 'all' });
         // currently parsed as two numbers 0.1234 and .1
         expectNoParserLexerErrors(result);
         // validation complains about missing linebreaks between 0.1234 and .1
         expect(result.diagnostics).toHaveLength(4);
     });
 
-    test('Seterr and Setesc',async () => {
+    test('Seterr and Setesc', async () => {
         const result = await parse(`
         seterr stderr
         setesc stdesc
@@ -278,12 +278,12 @@ describe('Parser Tests', () => {
         
         byebye:
             bye
-        `, {validationChecks: 'all'});
+        `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
         expect(result.diagnostics).toHaveLength(0);
     });
 
-    test('String backslash should not escape',async () => {
+    test('String backslash should not escape', async () => {
         const result = await parse(`
         rd_table_pfx$="\\Test\\"
         `);
@@ -294,22 +294,24 @@ describe('Parser Tests', () => {
         expect(strValue.value).toBe('\\Test\\');
     });
 
-    test('String backslash should not escape',async () => {
+    test('READ: Input variable should be linked or created.', async () => {
         const result = await parse(`
         let B$="1",C$="2",Q$="3"
 
         READ(1,KEY="TEST",ERR=9500)A$,B$,C$
         READ RECORD(1,IND=2,ERR=9500)A$
+        READ RECORD(1,IND=2,ERR=9500)*,A$
         EXTRACT(2,KEY=Q$,DOM=1300)IOL=Label1
-        INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2)
-
+        INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2,LEN=1,24)
+        REad (0) array[ALL]
+        
         Label1:
             PRINT "Label"
         Label2:
             PRINT "Label2"
 
         Print A$,B$,C$
-        `, {validationChecks: 'all'});
+        `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
         expect(result.diagnostics).toHaveLength(0);
 
@@ -320,5 +322,32 @@ describe('Parser Tests', () => {
         expect(refContainer(printStmt.value[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
         expect(refContainer(printStmt.value[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
     });
-   
+
+    test('Mnemonic tests', async () => {
+        const result = await parse(`
+        REM using mnemonic in output:
+        PRINT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
+        
+        PRINT (0)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
+        
+        REM but it's also allowed in INPUT 
+        INPUT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name:",@(30),X$
+        
+        REM for completeness sake an even more complex input:
+        INPUT (0,err=*same)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=1,24)
+        
+        rem Mnemonics are in a way like Strings:
+        X$='CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20)
+        PRINT X$,
+        
+        REM Hence, they can also be concatenated with plus during output:
+        PRINT 'CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20),
+        
+        fin:
+        release
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expect(result.diagnostics).toHaveLength(1); // 1 for linking error on *same
+    });
+
 });

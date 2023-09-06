@@ -1,0 +1,20 @@
+REM using mnemonic in output:
+PRINT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
+
+PRINT (0)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
+
+REM but it's also allowed in INPUT 
+INPUT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name:",@(30),X$
+
+REM for completeness sake an even more complex input:
+INPUT (0,err=*same)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=1,24)
+
+rem Mnemonics are in a way like Strings:
+X$='CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20)
+PRINT X$,
+
+REM Hence, they can also be concatenated with plus during output:
+PRINT 'CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20),
+
+fin:
+release

@@ -5,12 +5,14 @@ REM this is perfectly valid, a line can end with a comma!
 
 
 let B$="1",C$="2",Q$="3"
+dim array[2]
 
 REM do I need A$=""? For A$ in ReadStatements a new variable description is created
 READ(1,KEY="TEST",ERR=9500)A$,B$,C$
-READ RECORD(1,IND=2,ERR=9500)A$
+REad (0) array[ALL]
+READ RECORD(1,IND=2,ERR=9500)*,A$
 EXTRACT(2,KEY=Q$,DOM=1300)IOL=Label1
-INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2)
+INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2,LEN=4,3)
 
 Label1:
     PRINT "Label"
