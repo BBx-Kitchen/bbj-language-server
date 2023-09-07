@@ -1,3 +1,6 @@
+let x = 1,y = 2
+let ABS = "func"
+
 REM using mnemonic in output:
 PRINT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
 
@@ -7,14 +10,20 @@ REM but it's also allowed in INPUT
 INPUT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name:",@(30),X$
 
 REM for completeness sake an even more complex input:
-INPUT (0,err=*same)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=1,24)
+INPUT (0,err=*same)'CS','BR',@(4,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=x,y)
 
 rem Mnemonics are in a way like Strings:
-X$='CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20)
+X$='CS'+'BR'+@(x,y)+"Hello World"+'ER'+@(ABS(4),10)+"This is a Demo"+@(0,20)
 PRINT X$,
 
 REM Hence, they can also be concatenated with plus during output:
 PRINT 'CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20),
+
+REM parameterized mnemonics
+LET CURSOR$="C:\WINDOWS\Cursors\hourgla2.ani"
+LET TITLE$=CVS(SYS,3)+" "+CVS(REV,3)+" "+CURSOR$
+PRINT (1)'WINDOW'(200,200,500,200,TITLE$,$00010003$)
+PRINT (1)'SETCURSOR'(CURSOR$),'FOCUS'(0)
 
 fin:
 release

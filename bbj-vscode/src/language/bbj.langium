@@ -72,31 +72,6 @@ VariableDecl returns VariableDecl:
 Assignment:
     instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
 
-LetStatement:
-    'LET'? assignments+=Assignment (',' assignments+=Assignment)*
-;
-
-PrintStatement:
-    // TODO find out where mnemonics can be used and consider to add a mnemonic Expression
-    ('?' | 'PRINT' | 'WRITE') 'RECORD'? WithChannel? (value+=OutputListItem (',' value+=OutputListItem)*)? ENDLINE_PRINT_COMMA?
-;
-
-fragment WithChannel:
-    '(' channelno=Expression? Options? ')'
-;
-
-/**
- * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
- */
-OutputListItem:
-   Expression | StringLike | OtherItem
-;
-
-OtherItem:
-    '*' //treats an asterisk as a null field
-    | ('IOL' '=' iol=[LabelDecl]) //Refers to the IOLIST statement
-;
-
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
         Extends?
@@ -216,19 +191,44 @@ OpenStatement:
     'OPEN' '(' channelno=Expression? Err?')'fileid=Expression
 ;
 
+
+LetStatement:
+    'LET'? assignments+=Assignment (',' assignments+=Assignment)*
+;
+
+PrintStatement:
+    ('?' | 'PRINT' | 'WRITE') record='RECORD'? WithChannel? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+;
+
+fragment WithChannel:
+    '(' channelno=Expression? Options? ')'
+;
+
+/**
+ * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
+ */
+OutputItem:
+   Expression | OtherItem
+;
+
+OtherItem:
+    '*' //treats an asterisk as a null field
+    | ('IOL' '=' iol=[LabelDecl]) //Refers to the IOLIST statement
+;
+
 /**
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS (record='RECORD')? WithChannel? (items+=Item (','items+=Item)* )?
+    kind=READ_KINDS record='RECORD'? WithChannel? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
 ;
 
-Item:
-    InputVariable | StringLike | OtherItem
+InputItem:
+    InputVariable | Expression | OtherItem
 ;
 
 /**
@@ -246,9 +246,9 @@ VerifyOption:
     key=StringLiteral '=' lineref=[LabelDecl]
 ;
 
-LastVerifyOption returns string:
-    ('LEN=' NUMBER ',' NUMBER) // LEN=intA,intB 
-    | NUMBER // numvar:(4) num A numeric expression can impose range and precision on the numeric input
+LastVerifyOption:
+    ('LEN=' min=Expression ',' max=Expression) // LEN=intA,intB 
+    | min=Expression // numvar:(4) num A numeric expression can impose range and precision on the numeric input
 ;
 
 
@@ -343,6 +343,8 @@ PrimaryExpression infers Expression:
     '(' Expression ')'
     | SymbolRef
     | Literal
+    | Mnemonic
+    | PositionalMnemonic
     | ConstructorCall;
 
 SymbolRef:
@@ -357,13 +359,15 @@ NumberLiteral:
     value=NUMBER;
 
 StringLiteral:
-    value=StringLike;
+    value=(STRING | HEX_STRING)
+;
 
-StringLike returns string: 
-    STRING 
-    | HEX_STRING
-    | MNEMONIC 
-    | ('@(' NUMBER (',' NUMBER)*')')
+Mnemonic:
+    name=MNEMONIC ('(' params+=Expression (',' params+=Expression)*')')?
+;
+
+PositionalMnemonic:
+    '@(' col=Expression (',' row=Expression)?')'
 ;
 
 ConstructorCall:

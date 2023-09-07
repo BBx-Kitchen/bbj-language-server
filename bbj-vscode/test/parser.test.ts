@@ -318,13 +318,15 @@ describe('Parser Tests', () => {
         const program = result.parseResult.value as Program;
         const printStmt = program.statements.slice(-1).pop() as PrintStatement;
         const refContainer = (ref) => (ref as SymbolRef).symbol.ref?.$container
-        expect(refContainer(printStmt.value[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
-        expect(refContainer(printStmt.value[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
-        expect(refContainer(printStmt.value[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
+        expect(refContainer(printStmt.items[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
+        expect(refContainer(printStmt.items[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
+        expect(refContainer(printStmt.items[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
     });
 
     test('Mnemonic tests', async () => {
         const result = await parse(`
+        let x = 1,y = 2
+        let ABS = "fakeFunc"
         REM using mnemonic in output:
         PRINT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"This is a Demo",@(0,20),
         
@@ -334,15 +336,21 @@ describe('Parser Tests', () => {
         INPUT 'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name:",@(30),X$
         
         REM for completeness sake an even more complex input:
-        INPUT (0,err=*same)'CS','BR',@(0,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=1,24)
+        INPUT (0,err=*same)'CS','BR',@(4,0),"Hello World",'ER',@(10,10),"Enter your name: ",'CL',X$:(""=fin,LEN=x,y)
         
         rem Mnemonics are in a way like Strings:
-        X$='CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20)
+        X$='CS'+'BR'+@(x,y)+"Hello World"+'ER'+@(ABS(4),10)+"This is a Demo"+@(0,20)
         PRINT X$,
         
         REM Hence, they can also be concatenated with plus during output:
         PRINT 'CS'+'BR'+@(0,0)+"Hello World"+'ER'+@(10,10)+"This is a Demo"+@(0,20),
-        
+
+        REM parameterized mnemonics
+        LET CURSOR$="C:\WINDOWS\Cursors\hourgla2.ani"
+        LET TITLE$="4"+" "+3+" "+CURSOR$
+        PRINT (1)'WINDOW'(200,200,500,200,TITLE$,$00010003$)
+        PRINT (1)'SETCURSOR'(CURSOR$),'FOCUS'(0)
+
         fin:
         release
         `, { validationChecks: 'all' });
