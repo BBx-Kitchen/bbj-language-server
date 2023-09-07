@@ -358,4 +358,65 @@ describe('Parser Tests', () => {
         expect(result.diagnostics).toHaveLength(1); // 1 for linking error on *same
     });
 
+    test('Array declaration and access tests', async () => {
+        const result = await parse(`
+        REM square brackets with one or multiple dimensions
+        DIM Y1[22]
+        DIM Y2[10,10,20]
+        
+        REM same with Strings arrays:
+        DIM Y1$[22]
+        DIM Y2$[10,10,20]
+        
+        REM now this is pre-sizing a String with length 20
+        DIM Z1$(20)
+        
+        REM same, initialize it with dots
+        DIM Z2$(10,".")
+        
+        REM now the combination: a String array of pre-dimensioned strings:
+        DIM Y3$[22](20)
+        DIM Y4$[10,10,20](30,".")
+        
+        REM object arrays
+        DIM X![20]
+        DIM X![20,10,4]
+        
+        REM Java arrays:
+        REM https://documentation.basis.cloud/BASISHelp/WebHelp/gridctrl/Working_with_Java_Arrays.htm
+        
+        colorx! = Array.newInstance(Class.forName("java.awt.Color"),2) 
+        Array.set(colorx!,0,Color.RED)
+        Array.set(colorx!,1,Color.BLUE)
+        print "colorx![0]=",Array.get(colorx!,0)
+        print "colorx![1]=",Array.get(colorx!,1)
+        
+        declare Color[] Color!
+        color! = new Color[2]
+        color![0] = Color.RED
+        color![1] = Color.BLUE
+        print "color![0]=",color![0]
+        print "color![1]=",color![1]
+        
+        REM String Templates
+        
+        tpl$="NAME:C(25*),FIRSTNAME:C(25*),SCORE:N(4)"
+        DIM rec$:tpl$
+        rec.name$="Wallace"
+        rec.firstname$="Marcellus"
+        rec.score=2.3
+        print rec.name$,": ",rec.score
+        
+        REM other examples
+        DIM B$:"NAME:C(10+)"
+        
+        DIM B$:"NAME:C(10+=0)"
+        
+        X$="STRING:C(6)"
+        DIM A$:X$
+        REDIM A$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });

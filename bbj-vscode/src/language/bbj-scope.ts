@@ -249,15 +249,19 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             }
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = (isForStatement(node.$container) || isLetStatement(node.$container)) ? node.$container.$container : node.$container
-            if (scopes.get(scopeHolder).findIndex((descr) => descr.name === node.variable.$refText) === -1) {
-                scopes.add(scopeHolder, {
-                    name: node.variable.$refText,
-                    nameSegment: toDocumentSegment(node.variable.$refNode),
-                    selectionSegment: toDocumentSegment(node.variable.$refNode),
-                    type: FieldDecl,
-                    documentUri: document.uri,
-                    path: this.astNodeLocator.getAstNodePath(node)
-                })
+            if(isSymbolRef(node.variable)) {
+                // case: `foo$ = ""` without declaring foo$
+                const symbol = node.variable.symbol
+                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === symbol.$refText) === -1) {
+                    scopes.add(scopeHolder, {
+                        name: symbol.$refText,
+                        nameSegment: toDocumentSegment(symbol.$refNode),
+                        selectionSegment: toDocumentSegment(symbol.$refNode),
+                        type: FieldDecl,
+                        documentUri: document.uri,
+                        path: this.astNodeLocator.getAstNodePath(node)
+                    })
+                }
             }
         } else if (isBbjClass(node) && node.name) {
             scopes.add(node.$container, this.descriptions.createDescription(node, node.name))

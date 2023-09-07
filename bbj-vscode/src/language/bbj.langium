@@ -28,6 +28,7 @@ SingleStatement:
     VariableDecl |
     LetStatement |
     ArrayDeclarationStatement |
+    RedimStatement |
     MethodReturnStatement |
     PrintStatement |
     SetErrorStatement |
@@ -67,10 +68,10 @@ Use:
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' 'auto'? type=[Class:QualifiedClassName] name=FeatureName;
+    'declare' 'auto'? type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName;
 
 Assignment:
-    instanceAccess?='#'? variable=[VariableDecl:FeatureName] '=' value=Expression;
+    instanceAccess?='#'? variable=MemberCall '=' value=Expression;
 
 ClassDecl returns BbjClass:
     'CLASS' visibility=Visibility Static name=ValidName 
@@ -122,9 +123,34 @@ ParameterDecl returns VariableDecl:
     {infer ParameterDecl} type=[Class:QualifiedClassName] name=FeatureName
 ;
 
-
+/**
+ * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
+ */
 ArrayDeclarationStatement returns ArrayDecl:
-    'DIM' name=FeatureName '[' dimensions+=NUMBER (',' dimensions+=NUMBER)* ']'
+    'DIM'  name=FeatureName
+    (
+        (':' template=Expression)
+        | (
+            ('[' dimensions+=Expression (',' dimensions+=Expression)* ']')?
+            ('(' size=Expression (',' init=Expression)? ')')? // set size and init
+          )
+    )
+;
+
+/* TODO support multiple array definitions in one line
+ArrayDecl returns ArrayDecl:
+    name=FeatureName
+    (
+        (':' template=Expression)
+        | (
+            ('[' dimensions+=Expression (',' dimensions+=Expression)* ']')?
+            ('(' size=Expression (',' init=Expression)? ')')? // set size and init
+          )
+    )
+;
+*/
+RedimStatement:
+    'REDIM' arrays+=Expression (',' arrays+=Expression)* Err?
 ;
 
 LabelDecl:
@@ -132,7 +158,7 @@ LabelDecl:
 ;
 
 ForStatement:
-    // TODO check to evaluates to a number
+    // TODO check `to` evaluates to a number
     'FOR' init=Assignment 'TO' to=Expression  ('STEP' step=Expression)?
 ;
 
@@ -208,12 +234,12 @@ fragment WithChannel:
  * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
  */
 OutputItem:
-   Expression | OtherItem
+    Expression | OtherItem
 ;
 
 OtherItem:
     '*' //treats an asterisk as a null field
-    | ('IOL' '=' iol=[LabelDecl]) //Refers to the IOLIST statement
+    | ('IOL=' iol=[LabelDecl]) //Refers to the IOLIST statement
 ;
 
 /**
@@ -235,7 +261,7 @@ InputItem:
  * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm
  */
 InputVariable:
-    {infer InputVariable} ( SymbolRef ('[ALL]' | options=VerifyOptions)?)
+    {infer InputVariable} ( SymbolRef ('[ALL]' | options=VerifyOptions)?) // TODO SymbolRef '[ALL]' is array access
 ;
 
 VerifyOptions:
@@ -372,7 +398,12 @@ PositionalMnemonic:
 
 ConstructorCall:
     // TODO: Possibly use ID instead of QualifiedClassName
-    'new' class=[Class:QualifiedClassName] '(' (args+=Expression (',' args+=Expression)*)? ')';
+    'new' class=[Class:QualifiedClassName] 
+    (
+        ('(' (args+=Expression (',' args+=Expression)*)? ')')
+        | ('[' (args+=Expression (',' args+=Expression)*)? ']')
+    )
+    ;
 
 QualifiedClassName returns string:
     QualifiedBBjClassName | QualifiedJavaClassName;
@@ -391,8 +422,8 @@ ValidName returns string:
 ;
 
 EscapeId returns string:
-    'NEXT' |'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
-    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'
+    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
+    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
 ;
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
@@ -448,6 +479,7 @@ terminal DOCU:  /\/@@[\s\S]*?@\//;
 
 interface VariableDecl extends NamedElement {
     type?: @Class
+    array?: boolean
 }
 
 interface FieldDecl extends VariableDecl {
@@ -467,7 +499,10 @@ interface MethodDecl extends NamedElement {
 }
 
 interface ArrayDecl extends VariableDecl {
-    dimensions: number[]
+    dimensions: Expression[]
+    template: Expression
+    size: Expression
+    init: Expression
 }
 
 interface BbjClass extends Class {
