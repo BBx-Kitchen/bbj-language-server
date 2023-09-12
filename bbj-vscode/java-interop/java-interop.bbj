@@ -28,7 +28,7 @@ if argc=3 then
     pw$=argv(2)
 fi
 
-cpdir! = dir("")+"lib/*"
+cpdir! = dsk("")+dir("")+"lib/*"
 api! = BBjAdminFactory.getBBjAdmin(admin$,pw$)
 
 cpEntries! = new ArrayList()
