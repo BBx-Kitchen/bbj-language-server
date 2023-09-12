@@ -59,4 +59,20 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Use symbolic labels', async () => {
+        const document = await validate(`
+        class public List
+            method public List add()
+            add(err=*break)
+            methodend
+        classend
+        
+        map = new List(err=*next)
+        map.add(err=*BReak)
+        map.add(err=*STOP)
+        map.add(err=*next)
+        `)
+        expectNoErrors(document)
+    })
+
 });

@@ -25,3 +25,21 @@ rem multiline statement
 X! = "TEST"+
 : "TEST123"+
 : "jhgjgj"
+
+class public List
+    method public List add()
+    methodend
+classend
+
+map = new List(err=*next)
+map.add(err=*BReak)
+map.add(err=*STOP)
+map.add(err=*next)
+
+orderDetailRecordSet! = BBJAPI().createSQLRecordSet(database$,modes$,select$,err=*^ENDIF)
+if !(orderDetailRecordSet!.isEmpty()) then
+    orderDetailRecordSet!.first()
+    while 1
+        orderDetailRecordSet!.next(ERR=*next)
+    wend
+endif

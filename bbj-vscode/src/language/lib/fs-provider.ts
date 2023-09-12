@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { builtinFunctions } from './functions';
 import { builtinVariables } from './variables';
+import { builtinSymbolicLabels } from './labels';
 
 export class BBjLibraryFileSystemProvider implements vscode.FileSystemProvider {
 
@@ -26,6 +27,7 @@ export class BBjLibraryFileSystemProvider implements vscode.FileSystemProvider {
         switch (uri.path) {
             case '/functions.bbl': return builtinFunctions;
             case '/variables.bbl': return builtinVariables;
+            case '/labels.bbl': return builtinSymbolicLabels;
             default: return '';
         }
     }

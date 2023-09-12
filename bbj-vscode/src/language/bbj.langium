@@ -153,7 +153,7 @@ RedimStatement:
     'REDIM' arrays+=Expression (',' arrays+=Expression)* Err?
 ;
 
-LabelDecl:
+LabelDecl returns LabelDecl:
     name=ID':'
 ;
 
@@ -193,7 +193,7 @@ SwitchCase:
     LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
 
 GotoStatement:
-    kind=('GOTO' | 'GOSUB') target=[LabelDecl]
+    kind=('GOTO' | 'GOSUB') target=[LabelDecl:ValidName]
 ;
 
 // FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
@@ -205,11 +205,11 @@ ExitWithNumberStatement:
     kind='EXIT' | 'RELEASE' exitVal=NUMBER?;
 
 ExitToStatement:
-    'EXITTO' target=[LabelDecl]
+    'EXITTO' target=[LabelDecl:ValidName]
 ;
 
 SetErrorStatement:
-    kind=('SETERR' | 'SETESC') target=[LabelDecl]
+    kind=('SETERR' | 'SETESC') target=[LabelDecl:ValidName]
 ;
 
 OpenStatement:
@@ -239,7 +239,7 @@ OutputItem:
 
 OtherItem:
     '*' //treats an asterisk as a null field
-    | ('IOL=' iol=[LabelDecl]) //Refers to the IOLIST statement
+    | ('IOL=' iol=[LabelDecl:ValidName]) //Refers to the IOLIST statement
 ;
 
 /**
@@ -269,7 +269,7 @@ VerifyOptions:
 ;
 
 VerifyOption:
-    key=StringLiteral '=' lineref=[LabelDecl]
+    key=StringLiteral '=' lineref=[LabelDecl:ValidName]
 ;
 
 LastVerifyOption:
@@ -284,7 +284,7 @@ AddrStatement:
 ;
 
 ClipFromStrStatement:
-    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression (',' ERR=[LabelDecl])?
+    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression (',' ERR=[LabelDecl:ValidName])?
 ;
 
 SqlOpenStatement:
@@ -304,7 +304,7 @@ SqlExecStatement:
 ;
 
 fragment Err:
-    (',' 'ERR' '=' err=[LabelDecl])
+    (',' 'ERR' '=' err=[LabelDecl:ValidName])
 ;
 
 fragment Options:
@@ -424,7 +424,10 @@ ValidName returns string:
 EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
+    | 'BREAK' | 'RETURN' | 'EXIT' 
+    | '^ENDIF'
 ;
+
 Visibility returns string:
     'PUBLIC'|'PRIVATE'|'PROTECTED';
 
@@ -435,7 +438,7 @@ Library:
 ;
 
 LibMember:
-    LibFunction | LibVariable
+    LibFunction | LibVariable | LibSymbolicLabel
 ;
 
 LibFunction returns LibFunction:
@@ -450,6 +453,11 @@ LibParameter returns LibParameter:
 LibVariable returns LibVariable:
     (docu=DOCU)?
     'var' name=ValidName (':' type=ID)?
+;
+
+LibSymbolicLabel returns LibSymbolicLabelDecl:
+    (docu=DOCU)?
+    'label' name=ValidName
 ;
 
 hidden terminal WS: /\s+/;
@@ -530,6 +538,14 @@ interface LibVariable extends NamedElement {
     docu?: string
     type?: string
 }
+
+interface LabelDecl extends NamedElement {
+}
+
+interface LibSymbolicLabelDecl extends LabelDecl {
+    docu?: string
+}
+
 
 type BBjClassMember = FieldDecl | MethodDecl
 type ClassMember =  BBjClassMember | JavaMember

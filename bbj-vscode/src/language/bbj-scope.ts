@@ -296,20 +296,6 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
                 }
             });
-        } else if (isSymbolRef(node) && node.symbolicLabel) {
-            const program = getContainerOfType(node, isProgram)
-            if (program) {
-                // fake ref to *next
-                const exists = scopes.get(program).find(descr => descr.name === '*next')
-                if (!exists) {
-                    scopes.add(program, {
-                        name: '*next',
-                        type: FieldDecl,
-                        documentUri: document.uri,
-                        path: this.astNodeLocator.getAstNodePath(node)
-                    })
-                }
-            }
         } else if (isInputVariable(node) && isReadStatement(node.$container)) {
             // Create input variables: case: READ(1,KEY="TEST")A$,B$,C$
             if (isSymbolRef(node) && isProgram(node.$container.$container)) {

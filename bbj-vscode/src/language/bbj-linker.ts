@@ -16,7 +16,7 @@ export class BbjLinker extends DefaultLinker {
     static ERR_PARAM: AstNodeDescription = {
         type: VariableDecl,
         name: 'err',
-        documentUri: URI.parse('bbjlib:///variables.bbl'),
+        documentUri: URI.parse('bbjlib:///labels.bbl'),
         path: ''
     };
 
@@ -55,13 +55,8 @@ export class BbjLinker extends DefaultLinker {
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
         if (refInfo.container.$type === SymbolRef) {
             const symbolRef = refInfo.container as SymbolRef;
-            if (symbolRef.symbolicLabel && refInfo.reference.$refText === 'next') {
-                const scope = this.scopeProvider.getScope(refInfo);
-                // handle next symbolic links. TODO add other
-                const description = scope.getElement('*' + refInfo.reference.$refText);
-                return description ?? this.createLinkingError(refInfo);
-            } else if (!symbolRef.isMethodCall) {
-                if (refInfo.reference.$refText === 'err'
+            if (!symbolRef.isMethodCall) {
+                if (refInfo.reference.$refText?.toLowerCase() === 'err'
                     && symbolRef.$container.$type === BinaryExpression
                     && symbolRef.$containerProperty === 'left'
                     && (symbolRef.$container.$container.$type === ParameterCall || symbolRef.$container.$container.$type === ConstructorCall)) {

@@ -1,0 +1,65 @@
+export const builtinSymbolicLabels = `
+
+library
+
+/@@
+If an error occurs, proceed with the next statement (on the current line or the next line).
+@/
+label PROCEED
+
+/@@
+If an error occurs, branch to the first statement on the next line.
+@/
+label NEXT
+
+/@@
+If an error occurs, branch to the beginning of the current line.
+@/
+label SAME
+
+/@@
+If an error occurs, retry the statement.
+@/
+label RETRY
+
+/@@
+If an error occurs, emulate the BREAK verb.
+@/
+label BREAK
+
+/@@
+If an error occurs, emulate the CONTINUE verb.
+@/
+label CONTINUE
+
+/@@
+If an error occurs, emulate the ESCAPE verb.
+@/
+label ESCAPE
+
+/@@
+If an error occurs, emulate the RETURN verb.
+@/
+label RETURN
+
+/@@
+If an error occurs, emulate the STOP verb.
+@/
+label STOP
+
+/@@
+If an error occurs, emulate the END verb.
+@/
+label END
+
+/@@
+If an error occurs, emulate the EXIT verb.
+@/
+label EXIT
+
+/@@
+ TODO! If an error occurs, branch to the end of the current IF..ENDIF block.
+@/
+label ^ENDIF
+`.trimLeft();
+
