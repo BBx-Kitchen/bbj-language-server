@@ -127,7 +127,7 @@ ParameterDecl returns VariableDecl:
  * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
  */
 ArrayDeclarationStatement returns ArrayDecl:
-    'DIM'  name=FeatureName
+    'DIM' name=FeatureName
     (
         (':' template=Expression)
         | (
