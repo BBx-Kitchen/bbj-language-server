@@ -49,5 +49,17 @@
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}/bbj-vscode"
         },
+        {
+            "name": "Vitest: Run Selected File",
+            "type": "node",
+            "request": "launch",
+            "autoAttachChildProcesses": true,
+            "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+            "program": "${workspaceRoot}/bbj-vscode/node_modules/vitest/vitest.mjs",
+            "args": ["run", "${relativeFile}"],
+            "smartStep": true,
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/bbj-vscode"
+        }
     ]
 }
