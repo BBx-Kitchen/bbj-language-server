@@ -4,13 +4,13 @@ import { describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module';
 import { Model } from '../src/language/generated/ast';
+import { initializeWorkspace } from './test-helper';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, {validationChecks: 'all'});
 
 describe('Linking Tests', async () => {
-    const wsManager = services.shared.workspace.WorkspaceManager;
-    await wsManager.initializeWorkspace([{ name: 'test', uri: 'file:///' }]);
+    await initializeWorkspace(services.shared);
 
     function findLinkingErrors(document: LangiumDocument): Diagnostic[] {
         return document.diagnostics?.filter(err => err.code === DocumentValidator.LinkingError)??[]
@@ -71,6 +71,15 @@ describe('Linking Tests', async () => {
         map.add(err=*BReak)
         map.add(err=*STOP)
         map.add(err=*next)
+        `)
+        expectNoErrors(document)
+    })
+
+    test('Link to string template array members', async () => {
+        const document = await validate(`
+        DIM key$:"MY_COL:K(10)"
+        key.my_col = 525.95
+        READ RECORD(1, KEY=key$) myrec$
         `)
         expectNoErrors(document)
     })

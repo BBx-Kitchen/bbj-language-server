@@ -11,6 +11,7 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
 import {
+    ArrayDecl,
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass, isConstructorCall, isFieldDecl, isForStatement,
     isInputVariable,
@@ -312,10 +313,23 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     })
                 }
             }
+        } else if (isArrayDecl(node) && isTemplateStringArray(node)) {
+            // Create alias for arrays with template string. 
+            // case reference key$ with key: 
+            // DIM key$:"MY_COL:K(10)"
+            // key.my_col = 525.95
+            const description = this.descriptions.createDescription(node, node.name)
+            scopes.add(node.$container, description);
+            // add same description with name without $ to allow reference without $
+            scopes.add(node.$container, {...description, name: node.name.slice(0, -1)});
         } else {
             super.processNode(node, document, scopes);
         }
     }
+}
+
+export function isTemplateStringArray(array: ArrayDecl):boolean {
+    return array.template && array.name?.endsWith('$')
 }
 
 export class BbjNameProvider extends DefaultNameProvider {

@@ -7,9 +7,9 @@ import {
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { StreamScopeWithPredicate } from './bbj-scope';
+import { isTemplateStringArray, StreamScopeWithPredicate } from './bbj-scope';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BinaryExpression, ConstructorCall, isBBjClassMember, isMethodDecl, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
+import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -50,6 +50,21 @@ export class BbjLinker extends DefaultLinker {
             }
         }
         document.state = DocumentState.Linked;
+    }
+
+    override doLink(refInfo: ReferenceInfo, document: LangiumDocument): void {
+        if (refInfo.property === 'member' && isMemberCall(refInfo.container)) {
+            const receiver = refInfo.container.receiver
+            if (isSymbolRef(receiver) && isArrayDecl(receiver.symbol.ref) && isTemplateStringArray(receiver.symbol.ref)) {
+                // don't link member calls to array template.
+                /* Case `my_col` member call:
+                    DIM key$:"MY_COL:K(10)"
+                    key.my_col = 525.95 
+                */
+               return
+            }
+        }
+        super.doLink(refInfo, document);
     }
 
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
