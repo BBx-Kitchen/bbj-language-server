@@ -317,7 +317,7 @@ WaitStatement:
 ;
 
 ThrowStatement:
-    'THROW' expression=Expression (',' number=NumberLiteral)? Err?
+    'THROW' expression=Expression (',' number=Expression)? Err?
 ;
 
 ProcessEvent:

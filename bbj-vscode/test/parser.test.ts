@@ -426,4 +426,38 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check throw statement syntax', async () => {
+        const result = await parse(`
+        class public Sample
+
+            method public String write(String dr!)
+                seterr writeErr
+                PRINT dr!
+                methodret dr!
+
+                writeErr:
+                throw errmes(-1), err
+            methodend
+        classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check throw statement syntax with ERR=linefref', async () => {
+        const result = await parse(`
+        class public Sample
+
+            method public String write(String dr!)
+                seterr writeErr
+                PRINT dr!
+                methodret dr!
+
+                writeErr:
+                throw errmes(-1), err, err=STOP
+            methodend
+        classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });

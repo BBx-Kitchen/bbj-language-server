@@ -47,3 +47,16 @@ a!.setsomeInstanceString("TEST")
 x! = new someOtherClass("ABC")
 ? x!.getsomeInstanceString()
 ? x!.getSomeString()
+
+class public Sample
+
+    method public String write(String dr!)
+        seterr writeErr
+        PRINT dr!
+        methodret dr!
+
+        writeErr:
+        throw errmes(-1), err
+    methodend
+
+classend
