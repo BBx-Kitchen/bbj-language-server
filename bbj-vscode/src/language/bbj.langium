@@ -350,7 +350,7 @@ PrefixExpression infers Expression:
 MemberCall infers Expression:
     PrimaryExpression (
         {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? ')')?
-        | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
+        | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]" (isSubstring?='(' args+=Expression (',' args+=Expression)? ')')? // could be part of expression tree, but conflicts with mehode call
     )*;
 
 ParameterCall:

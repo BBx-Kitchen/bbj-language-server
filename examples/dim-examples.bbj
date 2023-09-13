@@ -60,3 +60,17 @@ DIM A$:X$
 REDIM A$
 let rd_num_files = 1
 dim rd_open_tables$[1:rd_num_files],rd_open_opts$[1:rd_num_files],rd_open_chans$[1:rd_num_files],rd_open_tpls$[1:rd_num_files]
+
+dim Y$[10], XYZ$[10,10]
+y$[1](2,1)="TEST"; rem substring
+
+let NAME$ = "name"
+A$(1,5); rem substring
+NAME$(10); rem substring
+XYZ$[3,4](1,5); rem substring
+
+compat$ = stbl("!COMPAT","THOROUGHBRED_IF47=TRUE")
+
+let x$ = ""
+if x$(10,10) = "" then print "if47" ; rem substring
+if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring

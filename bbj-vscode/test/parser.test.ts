@@ -460,4 +460,23 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check substring expression on array element', async () => {
+        const result = await parse(`
+        dim Y$[10], XYZ$[10,10]
+        y$[1](2,1)="TEST"; rem substring
+
+        let NAME$ = "name"
+        A$(1,5); rem substring
+        NAME$(10); rem substring
+        XYZ$[3,4](1,5); rem substring
+
+        compat$ = stbl("!COMPAT","THOROUGHBRED_IF47=TRUE")
+
+        let x$ = ""
+        if x$(10,10) = "" then print "if47" ; rem substring
+        if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });
