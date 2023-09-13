@@ -58,5 +58,5 @@ DIM B$:"NAME:C(10+=0)"
 X$="STRING:C(6)"
 DIM A$:X$
 REDIM A$
-
+let rd_num_files = 1
 dim rd_open_tables$[1:rd_num_files],rd_open_opts$[1:rd_num_files],rd_open_chans$[1:rd_num_files],rd_open_tpls$[1:rd_num_files]

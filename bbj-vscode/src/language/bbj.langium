@@ -126,18 +126,10 @@ ParameterDecl returns VariableDecl:
 /**
  * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
  */
-ArrayDeclarationStatement returns ArrayDecl:
-    'DIM' name=FeatureName
-    (
-        (':' template=Expression)
-        | (
-            ('[' dimensions+=Expression (',' dimensions+=Expression)* ']')?
-            ('(' size=Expression (',' init=Expression)? ')')? // set size and init
-          )
-    )
+ArrayDeclarationStatement:
+    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)*
 ;
 
-/* TODO support multiple array definitions in one line
 ArrayDecl returns ArrayDecl:
     name=FeatureName
     (
@@ -148,7 +140,7 @@ ArrayDecl returns ArrayDecl:
           )
     )
 ;
-*/
+
 RedimStatement:
     'REDIM' arrays+=Expression (',' arrays+=Expression)* Err?
 ;

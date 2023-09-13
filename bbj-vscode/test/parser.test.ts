@@ -419,4 +419,11 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Multiple Array declaration and access tests', async () => {
+        const result = await parse(`
+        dim rd_open_tables$[1:rd_num_files],rd_open_opts$[1:rd_num_files],rd_open_chans$[1:rd_num_files],rd_open_tpls$[1:rd_num_files]
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });

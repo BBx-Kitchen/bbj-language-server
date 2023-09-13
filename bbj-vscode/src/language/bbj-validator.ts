@@ -8,7 +8,7 @@ import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, fi
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, BinaryExpression, CommentStatement, Use, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isLibSymbolicLabelDecl, isMethodDecl, isParameterDecl, isStatement, isSymbolRef } from './generated/ast';
+import { BBjAstType, BinaryExpression, CommentStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isLibSymbolicLabelDecl, isMethodDecl, isParameterDecl, isStatement, isSymbolRef } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -70,7 +70,8 @@ export class BBjValidator {
             if (isCompoundStatement(node.$container)
                 || (isIfStatement(node.$container) && !node.$container.isMultiline)
                 || isLetStatement(node.$container)
-                || isForStatement(node.$container)) {
+                || isForStatement(node.$container)
+                || isArrayDeclarationStatement(node.$container)) {
                 return false;
             }
             return true;
