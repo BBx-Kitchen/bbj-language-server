@@ -351,6 +351,10 @@ describe('Parser Tests', () => {
         PRINT (1)'WINDOW'(200,200,500,200,TITLE$,$00010003$)
         PRINT (1)'SETCURSOR'(CURSOR$),'FOCUS'(0)
 
+        REM from issue #39
+        ? 'FILESAVE'("save file","C:/","test",".txt","Text files"+$0a$+"*.txt")
+        ? 'WINDOW'(10,10,20,10,"Hello")
+        
         fin:
         release
         `, { validationChecks: 'all' });

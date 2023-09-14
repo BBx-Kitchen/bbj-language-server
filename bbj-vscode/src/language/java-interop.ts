@@ -119,30 +119,32 @@ export class JavaInteropService {
         const classpath = this.classpath;
 
         this.resolvedClasses.set(className, javaClass); // add class event if it has an error
-        if (javaClass.error) {
-            return javaClass;
-        }
-        for (const field of javaClass.fields) {
-            (field as Mutable<JavaField>).$type = JavaField;
-            field.resolvedType = {
-                ref: await this.resolveClassByName(field.type, token),
-                $refText: field.type
-            };
-        }
-        for (const method of javaClass.methods) {
-            (method as Mutable<JavaMethod>).$type = JavaMethod;
-            method.resolvedReturnType = {
-                ref: await this.resolveClassByName(method.returnType, token),
-                $refText: method.returnType
-            };
-            for (const parameter of method.parameters) {
-                (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
-                parameter.resolvedType = {
-                    ref: await this.resolveClassByName(parameter.type, token),
-                    $refText: parameter.type
+        try {
+            for (const field of javaClass.fields) {
+                (field as Mutable<JavaField>).$type = JavaField;
+                field.resolvedType = {
+                    ref: await this.resolveClassByName(field.type, token),
+                    $refText: field.type
                 };
             }
-            linkContentToContainer(method);
+            for (const method of javaClass.methods) {
+                (method as Mutable<JavaMethod>).$type = JavaMethod;
+                method.resolvedReturnType = {
+                    ref: await this.resolveClassByName(method.returnType, token),
+                    $refText: method.returnType
+                };
+                for (const parameter of method.parameters) {
+                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
+                    parameter.resolvedType = {
+                        ref: await this.resolveClassByName(parameter.type, token),
+                        $refText: parameter.type
+                    };
+                }
+                linkContentToContainer(method);
+            }
+        } catch (e) {
+            // finish linking of the class even if it has an error
+            console.error(e)
         }
         linkContentToContainer(javaClass);
 

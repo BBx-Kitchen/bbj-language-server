@@ -5,25 +5,28 @@
  ******************************************************************************/
 
 import {
-    createDefaultModule, createDefaultSharedModule, DeepPartial, DefaultSharedModuleContext, inject,
-    LangiumServices, LangiumSharedServices, Module, PartialLangiumServices
+    createDefaultModule, createDefaultSharedModule,
+    DeepPartial, DefaultSharedModuleContext, inject,
+    LangiumParser,
+    LangiumServices, LangiumSharedServices, Module, PartialLangiumServices, prepareLangiumParser
 } from 'langium';
-import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
-import { BBjValidator, registerValidationChecks } from './bbj-validator';
-import { JavaInteropService } from './java-interop';
-import { BbjNameProvider, BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
-import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BBjHoverProvider } from './bbj-hover';
-import { BBjValueConverter } from './bbj-value-converter';
-import { BbjLinker } from './bbj-linker';
+import { BBjCompletionProvider } from './bbj-completion-provider';
 import { BBjDocumentBuilder } from './bbj-document-builder';
-import { BBjTokenBuilder } from './bbj-token-builder';
-import { BBjIndexManager } from './bbj-index-manager';
 import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
 import { BBjDocumentValidator } from './bbj-document-validator';
-import { BBjCompletionProvider } from './bbj-completion-provider';
+import { BBjHoverProvider } from './bbj-hover';
+import { BBjIndexManager } from './bbj-index-manager';
 import { BbjLexer } from './bbj-lexer';
+import { BbjLinker } from './bbj-linker';
 import { BBjAstNodeDescriptionProvider } from './bbj-nodedescription-provider';
+import { BbjNameProvider, BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
+import { BBjTokenBuilder } from './bbj-token-builder';
+import { BBjValidator, registerValidationChecks } from './bbj-validator';
+import { BBjValueConverter } from './bbj-value-converter';
+import { BBjWorkspaceManager } from './bbj-ws-manager';
+import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
+import { JavaInteropService } from './java-interop';
+ 
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -68,6 +71,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CompletionProvider: (services) => new BBjCompletionProvider(services)
     },
     parser: {
+        LangiumParser: (services) => createBBjParser(services),
         ValueConverter: () => new BBjValueConverter(),
         TokenBuilder: () => new BBjTokenBuilder(),
         Lexer: services => new BbjLexer(services)
@@ -76,6 +80,24 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         AstNodeDescriptionProvider: (services) => new BBjAstNodeDescriptionProvider(services)
     }
 };
+
+let ambiguitiesReported = false;
+
+function createBBjParser(services: LangiumServices): LangiumParser {
+    const parser = prepareLangiumParser(services);
+     // Customize ambiguity logging
+     const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
+     if (lookaheadStrategy) {
+         lookaheadStrategy.logging = (message: string) => {
+            if(!ambiguitiesReported) {
+                ambiguitiesReported = true;
+                console.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
+            }
+         }
+     }
+    parser.finalize();
+    return parser;
+}
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
     workspace: {
