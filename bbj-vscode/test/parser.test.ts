@@ -10,8 +10,8 @@ const parse = parseHelper<Model>(services.BBj);
 describe('Parser Tests', () => {
 
     function expectNoParserLexerErrors(document: LangiumDocument) {
-        expect(document.parseResult.lexerErrors).toHaveLength(0)
-        expect(document.parseResult.parserErrors).toHaveLength(0)
+        expect(document.parseResult.lexerErrors.join('\n')).toBe('')
+        expect(document.parseResult.parserErrors.join('\n')).toBe('')
     }
 
     test('Program definition test', async () => {
@@ -468,10 +468,7 @@ describe('Parser Tests', () => {
         const result = await parse(`
         dim Y$[10], XYZ$[10,10]
         y$[1](2,1)="TEST"; rem substring
-
-        let NAME$ = "name"
-        A$(1,5); rem substring
-        NAME$(10); rem substring
+       
         XYZ$[3,4](1,5); rem substring
 
         compat$ = stbl("!COMPAT","THOROUGHBRED_IF47=TRUE")
@@ -479,6 +476,31 @@ describe('Parser Tests', () => {
         let x$ = ""
         if x$(10,10) = "" then print "if47" ; rem substring
         if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check substring expression ', async () => {
+        const result = await parse(`
+        let NAME$ = "name"
+        NAME$(1,5); rem substring
+        NAME$(10); rem substring
+
+        compat$ = stbl("!COMPAT","THOROUGHBRED_IF47=TRUE")
+
+        let x$ = ""
+        if x$(10,10) = "" then print "if47" ; rem substring
+        if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring
+
+        bytes = dec(fin(serverfile)(1,4))
+        a$=STR(1234)(1,2)
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check substring other cases ', async () => {
+        const result = await parse(`
+        new String()(1)
         `);
         expectNoParserLexerErrors(result);
     });

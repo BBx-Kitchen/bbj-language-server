@@ -44,3 +44,6 @@ if !(orderDetailRecordSet!.isEmpty()) then
         orderDetailRecordSet!.next(ERR=*next)
     wend
 endif
+
+bytes = dec(fin(serverfile)(1,4))
+a$=STR(1234)(1,2)
