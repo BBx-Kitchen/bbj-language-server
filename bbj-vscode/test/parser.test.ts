@@ -483,4 +483,12 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Use Symbolic label in a verb', async () => {
+        const result = await parse(`
+        serverfile$ = "test"
+        open (7, err=*next)serverfile$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });

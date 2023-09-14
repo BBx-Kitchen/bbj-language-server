@@ -296,7 +296,7 @@ SqlExecStatement:
 ;
 
 fragment Err:
-    (',' 'ERR' '=' err=[LabelDecl:ValidName])
+    (',' 'ERR' '=' symbolicErrLabel='*'? err=[LabelDecl:ValidName])
 ;
 
 fragment Options:
