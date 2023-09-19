@@ -31,6 +31,7 @@ SingleStatement:
     RedimStatement |
     MethodReturnStatement |
     PrintStatement |
+    PrintRecordStatement |
     SetErrorStatement |
     ForStatement |
     IfStatement |
@@ -44,6 +45,7 @@ SingleStatement:
     LabelDecl |
     OpenStatement |
     ReadStatement |
+    ReadRecordStatement |
     CloseStatement |
     WaitStatement |
     ThrowStatement |
@@ -218,6 +220,10 @@ PrintStatement:
     ('?' | 'PRINT' | 'WRITE') record='RECORD'? WithChannel? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
 ;
 
+PrintRecordStatement:
+     ('PRINTRECORD' | 'WRITERECORD') WithChannel? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+;
+
 fragment WithChannel:
     '(' channelno=Expression? Options? ')'
 ;
@@ -243,6 +249,14 @@ ReadStatement:
 
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
+;
+
+ReadRecordStatement:
+    kind=READ_RECORD_KINDS record='RECORD'? WithChannel? (items+=InputItem (','items+=InputItem)* )?
+;
+
+READ_RECORD_KINDS returns string:
+    'READRECORD' | 'INPUTRECORD' | 'EXTRACTRECORD' | 'FINDRECORD'
 ;
 
 InputItem:
@@ -419,7 +433,7 @@ ValidName returns string:
 EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
-    | 'BREAK' | 'RETURN' | 'EXIT' 
+    | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD'
     | '^ENDIF'
 ;
 

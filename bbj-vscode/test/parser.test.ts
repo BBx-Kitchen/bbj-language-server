@@ -513,4 +513,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check readrecord and similar', async () => {
+        const result = await parse(`
+        READRECORD(1,IND=2,ERR=9500)A$
+        WRITERECORD(1,IND=2,ERR=9500)A$
+        PRINTRECORD(1,IND=2,ERR=9500)A$
+        INPUTRECORD(1,IND=2,ERR=9500)A$
+        EXTRACTRECORD(1,IND=2,ERR=9500)A$
+        FINDRECORD(1,IND=2,ERR=9500)A$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });
