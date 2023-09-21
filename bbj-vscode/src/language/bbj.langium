@@ -58,7 +58,9 @@ SingleStatement:
     SqlOpenStatement |
     SqlPrepStatement |
     SqlExecStatement |
-    SqlCloseStatement
+    SqlCloseStatement |
+    CallStatement |
+    RunStatement
 ;
 
 CommentStatement:
@@ -226,6 +228,14 @@ PrintRecordStatement:
 
 fragment WithChannel:
     '(' channelno=Expression? Options? ')'
+;
+
+CallStatement:
+    'CALL' fileid=StringLiteral Err? (',' expressions+=Expression)*
+;
+
+RunStatement:
+    'RUN' fileid=StringLiteral Err?
 ;
 
 /**
@@ -433,7 +443,7 @@ ValidName returns string:
 EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
-    | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD'
+    | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | '^ENDIF'
 ;
 
