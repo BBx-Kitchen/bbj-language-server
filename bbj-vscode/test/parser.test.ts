@@ -525,4 +525,11 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check CALL and RUN', async () => {
+        const result = await parse(`
+        RUN "TEST"
+        CALL "bus.bbj::setUpdateLocation", mapRC%, mapUser$, mapPassword$, mapVendor$, mapApplication$, mapVersion$, mapLevel%, mapLocation
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
