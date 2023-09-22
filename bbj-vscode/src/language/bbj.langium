@@ -345,8 +345,8 @@ ThrowStatement:
 ;
 
 ProcessEvent:
-    // TODO add later?  {,TIM=int}{,ERR=lineref}
-    {infer ProcessEvent} 'PROCESS_EVENTS'
+	// TODO: Value for TIM should evaluate to an int (number)
+    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' value=Expression)? Err?
 ;
 
 // TODO as a program statement literal expressions are not allowed
