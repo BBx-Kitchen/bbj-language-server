@@ -532,4 +532,12 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test('Check PROCESS_EVENT Parameters', async () => {
+        const result = await parse(`
+        process_events,err=*same
+        process_events, TIM = 28, err=*next
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
