@@ -30,7 +30,21 @@
                     ".bbl",
                     ".bbjt"
                 ],
-                "configuration": "./language-configuration.json"
+                "configuration": "./bbj-language-configuration.json"
+            },
+            {
+                "id": "bbx",
+                "aliases": [
+                    "BBx"
+                ],
+                "extensions": [
+                    "bbx"
+                ],
+                "icon": {
+                    "light": "./images/bbj-config-light.svg",
+                    "dark": "./images/bbj-config-dark.svg"
+                },
+                "configuration": "./bbx-language-configuration.json"
             }
         ],
         "grammars": [
@@ -38,6 +52,11 @@
                 "language": "bbj",
                 "scopeName": "source.bbj",
                 "path": "./syntaxes/bbj.tmLanguage.json"
+            },
+            {
+                "language": "bbx",
+                "scopeName": "source.bbx",
+                "path": "./syntaxes/bbx.tmLanguage.json"
             }
         ],
         "snippets": [
@@ -45,7 +64,7 @@
                 "language": "bbj",
                 "path": "./snippets/bbj.json"
             }
-        ],      
+        ],
         "commands": [
             {
                 "category": "BBj",
@@ -259,7 +278,6 @@
         "langium:generate": "langium generate",
         "langium:watch": "langium generate --watch"
     },
-
     "dependencies": {
         "chevrotain": "^10.4.2",
         "langium": "~1.2.0",

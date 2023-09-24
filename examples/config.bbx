@@ -1,0 +1,59 @@
+ALIASES=15
+FCBS=128
+CIBS=128
+STBLEN=4096
+SETOPTS 08004020000000
+ALIAS X0 SYSGUI
+ALIAS T0 SYSWINDOW
+ALIAS T1 SYSWINDOW "" TITLE="Extra Window"
+ALIAS T2 SYSWINDOW "" INVISIBLE
+ALIAS T3 /dev/tty term
+ALIAS T4 NIO
+ALIAS LP SYSPRINT "" FONT="Courier",COLS=80,ROWS=62
+ALIAS J0 com.basis.bbj.bridge.BBjBridgeOpenPlugin
+ALIAS PD SYSPRINT "" PREVIEW,FONT="Courier",COLS=80,ROWS=62
+ALIAS D0 SYSPLOT
+ALIAS N0 TCP "" NODELAY
+ALIAS N1 SSL "" NODELAY
+ALIAS JBASISREG com.basis.plugin.RegOpenPlugin "SOFTWARE\BASIS"
+ALIAS JSERVLET com.basis.server.jetty.servlet.BBjServletPlugin "SERVLET"
+# For BUI debugging, change the INVISIBLE mode to VISIBLE
+ALIAS TMINI MINI "BUI Mini Console" INVISIBLE,FLOAT,ROWS=24,COLS=80
+SET !COMPAT=LISTBUTTON_DESELECT=TRUE
+PREFIX "/Users/habof/bbx/utils/" "/Users/habof/bbx/plugins/" "/Users/habof/bbx/utils/reporting/bbjasper/" "/Users/habof/bbx/utils/translations/" "/Users/habof/bbx/utils/ext/" "/Users/habof/bbx/utils/std/" "/Users/habof/bbx/utils/email/" "/Users/habof/bbx/utils/bus/" "/Users/habof/bbx/utils/gapps/" "/Users/habof/bbx/utils/gappsV3/" "/Users/habof/bbx/utils/xcall/" "/Users/habof/bbx/utils/bwu/" "/Users/habof/bbx/utils/DialogWizard/" "/Users/habof/bbx/utils/BBjToJavadoc/" "/Users/habof/bbx/utils/invoker/" "/Users/habof/bbx/utils/launchdock/" "/Users/habof/bbx/utils/admin/" "/Users/habof/bbx/configurator/" "/Users/habof/bbx/demos/Common/" "/Users/habof/bbx/demos/chiledd/" "/Users/habof/bbx/demos/AdminAPI/" "/Users/habof/bbx/demos/ecommerce/" "/Users/habof/bbx/demos/ecommerce/data/" "/Users/habof/bbx/demos/cuiweb/" "/Users/habof/bbx/demos/webservices/" "/Users/habof/bbx/bbjsp/src/"
+DSKSYN A:
+DSKSYN B:
+DSKSYN C:
+DSKSYN D:
+DSKSYN E:
+DSKSYN F:
+DSKSYN G:
+DSKSYN H:
+DSKSYN I:
+DSKSYN J:
+DSKSYN K:
+DSKSYN L:
+DSKSYN M:
+DSKSYN N:
+DSKSYN O:
+DSKSYN P:
+DSKSYN Q:
+DSKSYN R:
+DSKSYN S:
+DSKSYN T:
+DSKSYN U:
+DSKSYN V:
+DSKSYN W:
+DSKSYN X:
+DSKSYN Y:
+DSKSYN Z:
+SQL=/Users/habof/bbx/cfg/sql.ini
+SET COMPANY="Basis International, Ltd"
+# SET !COMPONENTS=https://d2l1czft05fdqi.cloudfront.net/next
+ SET !COMPONENTS=https://s3-eu-west-1.amazonaws.com/cdn.bbx.kitchen/next
+# SET !COMPONENTS=https://s3-eu-west-1.amazonaws.com/cdn.bbx.kitchen/openai
+# SET !COMPONENTS=http://localhost:3334/build/
+# SET !COMPONENTS=http://10.66.90.115:3333/build
+# SET !COMPONENTS=http://bs-local.com:3333/build
+
+SET DEBUG=1
