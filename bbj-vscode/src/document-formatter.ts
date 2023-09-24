@@ -35,8 +35,10 @@ export const DocumentFormatter = {
       (err: any) => {
         if (err) {
           console.log(err);
-          return Promise.reject('Check the console in dev tools to find errors when formatting.');
+          return Promise.reject(err);
         }
+
+        return Promise.reject('Unknown error while formatting the BBj document');
       }
     );
   },
@@ -57,7 +59,6 @@ export const DocumentFormatter = {
           return reject(err);
         }
       });
-
 
       p.on('close', (code) => {
         if (code !== 0) {
