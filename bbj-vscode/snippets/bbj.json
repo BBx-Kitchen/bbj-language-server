@@ -1,0 +1,11 @@
+{
+    "Auto Comment Block": {
+        "prefix": "/**",
+        "body": [
+            "REM /**",
+            "REM  * $1",
+            "REM  */"
+        ],
+        "description": "Auto Comment Block"
+    }
+}

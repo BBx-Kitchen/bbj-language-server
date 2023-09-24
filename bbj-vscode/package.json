@@ -40,6 +40,12 @@
                 "path": "./syntaxes/bbj.tmLanguage.json"
             }
         ],
+        "snippets": [
+            {
+                "language": "bbj",
+                "path": "./snippets/bbj.json"
+            }
+        ],      
         "commands": [
             {
                 "category": "BBj",
