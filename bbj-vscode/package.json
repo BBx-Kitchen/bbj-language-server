@@ -227,7 +227,7 @@
                 },
                 "bbj.formatter.indentWidth": {
                     "type": "number",
-                    "default": 4,
+                    "default": 2,
                     "description": "Set the indentation width",
                     "scope": "window"
                 },
@@ -239,7 +239,7 @@
                 },
                 "bbj.formatter.keywordsToUppercase": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Enable/disable converting keywords to uppercase",
                     "scope": "window"
                 },

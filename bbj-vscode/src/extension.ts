@@ -10,8 +10,8 @@ import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider';
+import { DocumentFormatter } from './document-formatter';
 
-const DocumentFormatter = require("./Formatters/DocumentFormatter.js");
 const Commands = require("./Commands/Commands.js");
 
 let client: LanguageClient;
