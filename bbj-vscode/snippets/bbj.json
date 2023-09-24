@@ -594,17 +594,16 @@
 	},
 	"ForNextStep Inline": {
 		"prefix": [
-			"for-next-steb-inline"
+			"for-next-step-inline"
 		],
 		"body": [
-			"FOR $1 TO $2 STEP $3;$NEXT $4"
+			"FOR $1 TO $2 STEP $3;$5NEXT $4"
 		],
 		"description": "For next step inline Statement"
 	},
 	"If Statement": {
 		"prefix": [
-			"if",
-			"b-if"
+			"if"
 		],
 		"body": [
 			"IF($1) then",
