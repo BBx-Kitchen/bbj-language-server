@@ -1,11 +1,680 @@
 {
-    "Auto Comment Block": {
+    "Comment Block": {
         "prefix": "/**",
         "body": [
             "REM /**",
             "REM  * $1",
             "REM  */"
         ],
-        "description": "Auto Comment Block"
-    }
+        "description": "Comment Block"
+    },
+    "true": {
+        "prefix": [
+            "true"
+        ],
+        "body": [
+            "BBjAPI.TRUE"
+        ],
+        "description": "Java True Boolean"
+    },
+    "false": {
+        "prefix": [
+            "false"
+        ],
+        "body": [
+            "BBjAPI.FALSE"
+        ],
+        "description": "Java False Boolean"
+    },
+    "Routine": {
+        "prefix": [
+            "sub",
+            "routine"
+        ],
+        "body": [
+            "${1:subname}:",
+            "\t$2",
+            "RETURN"
+        ],
+        "description": "Create sub"
+    },
+    "Interface": {
+        "prefix": [
+            "interface"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${2}",
+            "REM  * ",
+            "REM  * @author ${3:\"\"}",
+            "REM  */",
+            "interface ${1|public,protected,private|} I${2:${TM_FILENAME_BASE}}",
+            "",
+            "\t$0",
+            "interfaceend"
+        ],
+        "description": "Interface Definition"
+    },
+    "Implements": {
+        "prefix": [
+            "implements"
+        ],
+        "body": [
+            "implements ${1}"
+        ],
+        "description": "Implements keyword"
+    },
+    "Extends": {
+        "prefix": [
+            "extends"
+        ],
+        "body": [
+            "extends ${1}"
+        ],
+        "description": "Extends keyword"
+    },
+    "Class": {
+        "prefix": [
+            "class"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${2}",
+            "REM  * ",
+            "REM  * @author ${3:\"\"}",
+            "REM  */",
+            "class ${1|public,protected,private|} ${2:${TM_FILENAME_BASE}}",
+            "",
+            "\t$0",
+            "classend"
+        ],
+        "description": "Class Definition"
+    },
+    "Method": {
+        "prefix": [
+            "method"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${3} Method",
+            "REM  * ",
+            "REM  * @return ${2}",
+            "REM  */",
+            "method ${1|public,protected,private|} ${2:void} ${3:name}($4)",
+            "\t$5",
+            "methodend"
+        ],
+        "description": "Class method"
+    },
+    "Static Method": {
+        "prefix": [
+            "static-method"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${3} Method",
+            "REM  * ",
+            "REM  * @return ${2}",
+            "REM  */",
+            "method ${1|public,protected,private|} static ${2:void} ${3:name}($4)",
+            "\t$5",
+            "methodend"
+        ],
+        "description": "Class Static method"
+    },
+    "Field": {
+        "prefix": [
+            "field"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${3} Field",
+            "REM  */",
+            "field ${1|public,protected,private|} ${2:Type} ${3:name} = ${4:null()}"
+        ],
+        "description": "Class Field"
+    },
+    "Static Field": {
+        "prefix": [
+            "static-field"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${3} Field",
+            "REM  */",
+            "field ${1|public,protected,private|} static ${2:Type} ${3:name}! = ${4:null()}"
+        ],
+        "description": "Class Static Field"
+    },
+    "String Field": {
+        "prefix": [
+            "field-string"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${2} Field",
+            "REM  */",
+            "field ${1|public,protected,private|} BBjString ${2:name}$ = ${3:null()}"
+        ],
+        "description": "Class BBjString Field"
+    },
+    "Number Field": {
+        "prefix": [
+            "field-number"
+        ],
+        "body": [
+            "REM /**",
+            "REM  * ${2} Field",
+            "REM  */",
+            "field ${1|public,protected,private|} BBjNumber ${2:name}! = ${3:null()}"
+        ],
+        "description": "Class BBjNumber Field"
+    },
+    "Declare": {
+        "prefix": [
+            "declare"
+        ],
+        "body": [
+            "declare ${1:type} ${2:name}!"
+        ],
+        "description": "Declare Statement"
+    },
+    "Declare Auto": {
+        "prefix": [
+            "declare"
+        ],
+        "body": [
+            "declare auto ${1:type} ${2:name}!"
+        ],
+        "description": "Declare Auto Statement"
+    },
+    "New Object": {
+        "prefix": [
+            "new"
+        ],
+        "body": [
+            "${3:obj}! = new ${1:Object}(${2})"
+        ],
+        "description": "Create new Object"
+    },
+    "BBjAPI().getSysGui()": {
+        "prefix": [
+            "getsys"
+        ],
+        "body": [
+            "BBjAPI().getSysGui()"
+        ],
+        "description": "BBjAPI().getSysGui()"
+    },
+    "Open": {
+        "prefix": [
+            "open file"
+        ],
+        "body": [
+            "${1:string}$ = \"\"",
+            "ch=unt\nopen (ch) BBjAPI().getFileSystem().resolvePath(\"${2:${TM_DIRECTORY}}\")",
+            "READ RECORD (ch,siz=5512000)${1:string}$",
+            "CLOSE (ch)"
+        ],
+        "description": "Open File"
+    },
+    "Test Method": {
+        "prefix": [
+            "test"
+        ],
+        "body": [
+            "REM @Test",
+            "method public void test${1/(.*)/${1:/capitalize}/}()",
+            "\t$2",
+            "methodend"
+        ],
+        "description": "Test Method"
+    },
+    "Test Setup": {
+        "prefix": [
+            "setup"
+        ],
+        "body": [
+            "REM @BeforeClass",
+            "method public void setup()",
+            "\t$2",
+            "methodend"
+        ],
+        "description": "Test Setup Method"
+    },
+    "Test TearDown": {
+        "prefix": [
+            "teardown"
+        ],
+        "body": [
+            "REM @AfterClass",
+            "method public void tearDown()",
+            "\t$2",
+            "methodend"
+        ],
+        "description": "Test TearDown Method"
+    },
+    "Test BeforeEach": {
+        "prefix": [
+            "before"
+        ],
+        "body": [
+            "REM @Before",
+            "method public void BeforeEach()",
+            "\t$2",
+            "methodend"
+        ],
+        "description": "Test Before Method"
+    },
+    "Test AfterEach": {
+        "prefix": [
+            "after"
+        ],
+        "body": [
+            "REM @Before",
+            "method public void AfterEach()",
+            "\t$2",
+            "methodend"
+        ],
+        "description": "Test After Method"
+    },
+    "Test Suite": {
+        "prefix": [
+            "suite"
+        ],
+        "body": [
+            "REM @SuiteClasses(\"${2}\")",
+            "class public ${1}Suite",
+            "classend"
+        ],
+        "description": "Tests Suite"
+    },
+    "Assert Equals": {
+        "prefix": [
+            "ass-eql"
+        ],
+        "body": [
+            "Assert.Equals(${1:param1} , ${2:param2})"
+        ],
+        "description": "Successful if the first param equals the second param; fails otherwise"
+    },
+    "Assert Not Equals": {
+        "prefix": [
+            "ass-not-eql"
+        ],
+        "body": [
+            "Assert.NotEquals(${1:param1} , ${2:param2})"
+        ],
+        "description": "Successful if the first param does not equal the second param; fails otherwise"
+    },
+    "Assert True": {
+        "prefix": [
+            "ass-true"
+        ],
+        "body": [
+            "Assert.Equals(${1:param1} , BBjAPI.TRUE)"
+        ],
+        "description": "Successful if the first param equals BBjAPI.TRUE"
+    },
+    "Assert False": {
+        "prefix": [
+            "ass-false"
+        ],
+        "body": [
+            "Assert.Equals(${1:param1} , BBjAPI.FALSE)"
+        ],
+        "description": "Successful if the first param equals BBjAPI.FALSE"
+    },
+    "Assert Null": {
+        "prefix": [
+            "ass-null"
+        ],
+        "body": [
+            "Assert.IsNull(${1})"
+        ],
+        "description": "Successful if the object obj! is null; fails otherwise"
+    },
+    "Assert Not Null": {
+        "prefix": [
+            "ass-not-null"
+        ],
+        "body": [
+            "Assert.IsNotNull(${1})"
+        ],
+        "description": "Successful if the object obj! is not null; fails otherwise"
+    },
+    "Assert Expect": {
+        "prefix": [
+            "ass-expect"
+        ],
+        "body": [
+            "Assert.Expect(${1:exceptionA}, ${2:exceptionB})"
+        ],
+        "description": "Successful if the exception number exceptionA thrown equals the exception number exceptionB; fails otherwise"
+    },
+    "Assert Fail": {
+        "prefix": [
+            "ass-fail"
+        ],
+        "body": [
+            "Assert.Fail() "
+        ],
+        "description": "Successful if the exception number exceptionA thrown equals the exception number exceptionB; fails otherwise"
+    },
+    "@SuiteClasses": {
+        "prefix": [
+            "@SuiteClasses"
+        ],
+        "body": [
+            "@SuiteClasses(\"${1}\")"
+        ],
+        "description": "Annotation @SuiteClasses"
+    },
+    "@Test": {
+        "prefix": [
+            "@Test"
+        ],
+        "body": [
+            "@Test"
+        ],
+        "description": "Annotation @Test"
+    },
+    "@BeforeClass": {
+        "prefix": [
+            "@BeforeClass"
+        ],
+        "body": [
+            "@BeforeClass"
+        ],
+        "description": "Annotation @BeforeClass"
+    },
+    "@AfterClass": {
+        "prefix": [
+            "@AfterClass"
+        ],
+        "body": [
+            "@AfterClass"
+        ],
+        "description": "Annotation @AfterClass"
+    },
+    "@Before": {
+        "prefix": [
+            "@Before"
+        ],
+        "body": [
+            "@Before"
+        ],
+        "description": "Annotation @Before"
+    },
+    "@After": {
+        "prefix": [
+            "@After"
+        ],
+        "body": [
+            "@After"
+        ],
+        "description": "Annotation @After"
+    },
+    "@Ignore": {
+        "prefix": [
+            "@Ignore"
+        ],
+        "body": [
+            "@Ignore"
+        ],
+        "description": "Annotation @Ignore"
+    },
+    "@author": {
+        "prefix": [
+            "@author"
+        ],
+        "body": [
+            "@author ${1}"
+        ],
+        "description": "Author name"
+    },
+    "@throws": {
+        "prefix": [
+            "@throws"
+        ],
+        "body": [
+            "@throws ${1:\"Error message\"}"
+        ],
+        "description": "Throw Exception"
+    },
+    "@version": {
+        "prefix": [
+            "@version"
+        ],
+        "body": [
+            "@version ${1:1.0}"
+        ],
+        "description": "Adds a Since heading with the specified since-text to the generated documentation."
+    },
+    "@since": {
+        "prefix": [
+            "@since"
+        ],
+        "body": [
+            "@since ${1:${CURRENT_YEAR}-${CURRENT_MONTH}-${CURRENT_DATE}}"
+        ],
+        "description": "Adds a Since heading with the specified since-text to the generated documentation."
+    },
+    "@deprecated": {
+        "prefix": [
+            "@deprecated"
+        ],
+        "body": [
+            "@deprecated ${1:\"deprecation text\"}"
+        ],
+        "description": "Adds a comment indicating that this API should no longer be used."
+    },
+    "@inheritDoc": {
+        "prefix": [
+            "@inheritDoc"
+        ],
+        "body": [
+            "{@inheritDoc}"
+        ],
+        "description": "Inherits a comment from the nearest inheritable class or implementable interface."
+    },
+    "@see": {
+        "prefix": [
+            "@see"
+        ],
+        "body": [
+            "@see <a href=\"${1}\">${2}</a>"
+        ],
+        "description": "Adds a \"See Also\" heading with a link or text entry that points to reference."
+    },
+    "@param": {
+        "prefix": [
+            "@param"
+        ],
+        "body": [
+            "@param ${1:paramNam!} - ${3}"
+        ],
+        "description": "Adds a parameter with the specified parameter-name followed by the specified description to the \"Parameters\" section."
+    },
+    "@return": {
+        "prefix": [
+            "@return"
+        ],
+        "body": [
+            "@return ${1:ObjectType} ${2}"
+        ],
+        "description": "Adds a \"Returns\" section with the description text."
+    },
+    "System.currentTimeMillis()": {
+        "prefix": [
+            "millis"
+        ],
+        "body": [
+            "System.currentTimeMillis()$1"
+        ],
+        "description": "Current Time"
+    },
+    "System.nanoTime()": {
+        "prefix": [
+            "nanoTime"
+        ],
+        "body": [
+            "System.nanoTime()$1"
+        ],
+        "description": "NanoTime"
+    },
+    "System.err.println": {
+        "prefix": [
+            "syserr"
+        ],
+        "body": [
+            "System.err.println($1)"
+        ],
+        "description": "Print to standard err"
+    },
+    "System.out.println": {
+        "prefix": [
+            "sysout"
+        ],
+        "body": [
+            "System.out.println($1)"
+        ],
+        "description": "Adjust Numeric with ERR lineref"
+    },
+    "Trace": {
+        "prefix": [
+            "trace"
+        ],
+        "body": [
+            "ch = unt",
+            "open(ch, mode=\"o_create,o_trunc\") \"$1\"",
+            "settrace(ch)"
+        ],
+        "description": "Trace"
+    },
+    "Super": {
+		"prefix": [
+			"super"
+		],
+		"body": [
+			"#super!"
+		],
+		"description": "Reference to the parent class"
+	},	
+	"This": {
+		"prefix": [
+			"this"
+		],
+		"body": [
+			"#this!"
+		],
+		"description": "Reference to the current class"
+	},		
+	"ForNext": {
+		"prefix": [
+			"for-next"
+		],
+		"body": [
+			"FOR $1 to $2",
+			"\t$4",
+			"NEXT $3"
+		],
+		"description": "For next Statement"
+	},
+	"ForNextStep": {
+		"prefix": [
+			"for-next-step"
+		],
+		"body": [
+			"FOR $1 TO $2 STEP $3",
+			"\t$5",
+			"NEXT $4"
+		],
+		"description": "For next step Statement"
+	},
+	"ForNextStep Inline": {
+		"prefix": [
+			"for-next-steb-inline"
+		],
+		"body": [
+			"FOR $1 TO $2 STEP $3;$NEXT $4"
+		],
+		"description": "For next step inline Statement"
+	},
+	"If Statement": {
+		"prefix": [
+			"if",
+			"b-if"
+		],
+		"body": [
+			"IF($1) then",
+			"\t$2",
+			"FI"
+		],
+		"description": "If Statement"
+	},
+	"If Else Statement": {
+		"prefix": [
+			"if-else"
+		],
+		"body": [
+			"IF($1) then",
+			"\t$2",
+			"ELSE",
+			"\t$3",
+			"FI"
+		],
+		"description": "If else Statement"
+	},
+	"Switch Statement": {
+		"prefix": [
+			"switch"
+		],
+		"body": [
+			"SWITCH $1",
+			"\tCASE $2",
+			"\t\t$3",
+			"\t\tBREAK",
+			"\tCASE DEFAULT",
+			"\t\tBREAK",
+			"SWEND"
+		],
+		"description": "Switch Statement"
+	},
+	"Switch Case Statement": {
+		"prefix": [
+			"case",
+			"switch-case"
+		],
+		"body": [
+			"CASE $1",
+			"\t\t$2",
+			"\t\tBREAK"		
+		],
+		"description": "Switch Statement"
+	},
+	"Switch Short Statement": {
+		"prefix": [
+			"switch-short"
+		],
+		"body": [
+			"SWITCH $1",
+			"CASE $2; $3; BREAK",
+			"CASE DEFAULT",
+			"\tBREAK",
+			"SWEND"
+		],
+		"description": "Switch Statement"
+	},		
+	"While Statement": {
+		"prefix": [
+			"while"
+		],
+		"body": [
+			"WHILE $1",
+			"\t$2",
+			"WEND"
+		],
+		"description": "While Statement"
+	}
 }
