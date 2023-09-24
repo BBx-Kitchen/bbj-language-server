@@ -30,6 +30,10 @@
                     ".bbl",
                     ".bbjt"
                 ],
+                "icon": {
+                    "light": "./images/bbj-file-light.svg",
+                    "dark": "./images/bbj-file-dark.svg"
+                },
                 "configuration": "./bbj-language-configuration.json"
             },
             {
