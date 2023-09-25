@@ -20,8 +20,6 @@ export const DocumentFormatter = {
 
     args.push('-w');
     args.push(config.indentWidth.toString().trim());
-    
-
 
     if (config.keywordsToUppercase) args.push('--keywords-uppercase');
     if (config.removeLineContinuation) args.push('--remove-line-continue');
@@ -30,7 +28,7 @@ export const DocumentFormatter = {
     // Use unsaved content if available, otherwise read from the file system
     const documentContent = unsavedContentMap.get(document.uri.toString()) || document.getText();
 
-    return this.runFormatter(args, documentContent).then(
+    return this.runFormatter(args, document, documentContent).then(
       (edits: any) => edits,
       (err: any) => {
         if (err) {
@@ -43,7 +41,7 @@ export const DocumentFormatter = {
     );
   },
 
-  runFormatter(formatFlags: string[], documentContent: string): Thenable<void> {
+  runFormatter(formatFlags: string[], document: vscode.TextDocument, documentContent: string): Thenable<void> {
     return new Promise<void>((resolve, reject) => {
       let t0 = Date.now();
       let stdout = '';
@@ -68,7 +66,6 @@ export const DocumentFormatter = {
         const edit = new vscode.WorkspaceEdit();
         const fileStart = new vscode.Position(0, 0);
         const fileEnd = new vscode.Position(0, documentContent.length);
-        // @ts-ignore
         edit.replace(document.uri, new vscode.Range(fileStart, fileEnd), stdout);
         vscode.workspace.applyEdit(edit);
 
@@ -76,8 +73,10 @@ export const DocumentFormatter = {
         if (timeTaken > 750) {
           console.log(`Formatting took too long (${timeTaken}ms). Format On Save feature could be aborted.`);
         }
+
         resolve();
       });
+      
       p.stdin.end(documentContent);
     });
   },
