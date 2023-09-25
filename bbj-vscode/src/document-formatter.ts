@@ -28,8 +28,15 @@ export const DocumentFormatter = {
     // Use unsaved content if available, otherwise read from the file system
     const documentContent = unsavedContentMap.get(document.uri.toString()) || document.getText();
 
-    return this.runFormatter(args, document, documentContent).then(
-      (edits: any) => edits,
+    return this.runFormatter(args, documentContent).then(
+      (formattedContent: string) => {
+        // Create a single edit that replaces the entire document content
+        const edit = new vscode.TextEdit(
+          new vscode.Range(0, 0, document.lineCount, 0),
+          formattedContent
+        );
+        return [edit];
+      },
       (err: any) => {
         if (err) {
           console.log(err);
@@ -41,8 +48,8 @@ export const DocumentFormatter = {
     );
   },
 
-  runFormatter(formatFlags: string[], document: vscode.TextDocument, documentContent: string): Thenable<void> {
-    return new Promise<void>((resolve, reject) => {
+  runFormatter(formatFlags: string[], documentContent: string): Thenable<string> {
+    return new Promise<string>((resolve, reject) => {
       let t0 = Date.now();
       let stdout = '';
       let stderr = '';
@@ -63,18 +70,12 @@ export const DocumentFormatter = {
           return reject(stderr);
         }
 
-        const edit = new vscode.WorkspaceEdit();
-        const fileStart = new vscode.Position(0, 0);
-        const fileEnd = new vscode.Position(0, documentContent.length);
-        edit.replace(document.uri, new vscode.Range(fileStart, fileEnd), stdout);
-        vscode.workspace.applyEdit(edit);
-
         let timeTaken = Date.now() - t0;
         if (timeTaken > 750) {
           console.log(`Formatting took too long (${timeTaken}ms). Format On Save feature could be aborted.`);
         }
 
-        resolve();
+        resolve(stdout);
       });
       
       p.stdin.end(documentContent);
