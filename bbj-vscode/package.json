@@ -239,7 +239,7 @@
                 },
                 "bbj.formatter.keywordsToUppercase": {
                     "type": "boolean",
-                    "default": true,
+                    "default": false,
                     "description": "Enable/disable converting keywords to uppercase",
                     "scope": "window"
                 },
