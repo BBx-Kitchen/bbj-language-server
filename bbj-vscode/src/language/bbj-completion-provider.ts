@@ -1,5 +1,4 @@
 import { AstNodeDescription, CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, MaybePromise, NextFeature, Reference, ReferenceInfo, getContainerOfType } from "langium";
-import { BBjNodeKindProvider } from "./bbj-document-symbol";
 
 import { CrossReference, Keyword, isAssignment } from "langium/lib/grammar/generated/ast";
 import { CompletionItemKind, MarkupContent } from "vscode-languageserver";
@@ -14,7 +13,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
     override  createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
         const superImpl = super.createReferenceCompletionItem(nodeDescription)
-        superImpl.kind = BBjNodeKindProvider.getCompletionItemKind(nodeDescription)
+        superImpl.kind = this.nodeKindProvider.getCompletionItemKind(nodeDescription)
         superImpl.sortText = undefined
         if (isFunctionNodeDescription(nodeDescription)) {
 
@@ -72,7 +71,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 const scope = this.scopeProvider.getScope(refInfo);
                 scope.getAllElements().forEach(e => {
                     if (this.filterCrossReference(e)) {
-                        acceptor(this.createReferenceCompletionItem(e));
+                        acceptor(context, this.createReferenceCompletionItem(e));
                     }
                 });
             } catch (err) {
@@ -85,7 +84,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (!keyword.value.match(/[\w]/)) {
             return;
         }
-        acceptor({
+        acceptor(context, {
             label: keyword.value?.toLowerCase(),
             kind: CompletionItemKind.Keyword,
             detail: 'Keyword',

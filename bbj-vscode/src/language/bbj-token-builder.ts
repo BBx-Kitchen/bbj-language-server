@@ -1,4 +1,4 @@
-import { CustomPatternMatcherFunc, TokenPattern, TokenType, TokenVocabulary } from "chevrotain";
+import { TokenPattern, TokenType, TokenVocabulary } from "chevrotain";
 import { DefaultTokenBuilder, GrammarAST, TokenBuilderOptions } from "langium";
 
 export class BBjTokenBuilder extends DefaultTokenBuilder {
@@ -55,15 +55,6 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else {
             return super.buildTerminalToken(terminal);
         }
-    }
-
-    protected regexPatternFunction(regex: RegExp): CustomPatternMatcherFunc {
-        const stickyRegex = new RegExp(regex, regex.flags + 'y');
-        return (text, offset) => {
-            stickyRegex.lastIndex = offset;
-            const execResult = stickyRegex.exec(text);
-            return execResult;
-        };
     }
 
 }

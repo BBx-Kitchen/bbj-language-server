@@ -5,14 +5,16 @@
  ******************************************************************************/
 
 import {
-    createDefaultModule, createDefaultSharedModule,
-    DeepPartial, DefaultSharedModuleContext, inject,
+    DeepPartial, DefaultSharedModuleContext,
     LangiumParser,
-    LangiumServices, LangiumSharedServices, Module, PartialLangiumServices, prepareLangiumParser
+    LangiumServices, LangiumSharedServices, Module, PartialLangiumServices,
+    createDefaultModule, createDefaultSharedModule,
+    inject,
+    prepareLangiumParser
 } from 'langium';
 import { BBjCompletionProvider } from './bbj-completion-provider';
 import { BBjDocumentBuilder } from './bbj-document-builder';
-import { BBjDocumentSymbolProvider } from './bbj-document-symbol';
+import { BBjNodeKindProvider } from './bbj-node-kind';
 import { BBjDocumentValidator } from './bbj-document-validator';
 import { BBjHoverProvider } from './bbj-hover';
 import { BBjIndexManager } from './bbj-index-manager';
@@ -67,7 +69,6 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     lsp: {
         HoverProvider: (services) => new BBjHoverProvider(services),
-        DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),
         CompletionProvider: (services) => new BBjCompletionProvider(services)
     },
     parser: {
@@ -100,6 +101,9 @@ function createBBjParser(services: LangiumServices): LangiumParser {
 }
 
 export const BBjSharedModule: Module<LangiumSharedServices, DeepPartial<LangiumSharedServices>> = {
+    lsp: {
+        NodeKindProvider: () => new BBjNodeKindProvider()
+    },
     workspace: {
         DocumentBuilder: (services: LangiumSharedServices) => new BBjDocumentBuilder(services),
         WorkspaceManager: (services: LangiumSharedServices) => new BBjWorkspaceManager(services),

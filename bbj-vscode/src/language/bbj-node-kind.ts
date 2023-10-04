@@ -1,20 +1,12 @@
-import { AstNode, AstNodeDescription, DefaultDocumentSymbolProvider, isAstNode } from "langium";
+import { AstNode, AstNodeDescription, NodeKindProvider, isAstNode } from "langium";
 import { CompletionItemKind, SymbolKind } from "vscode-languageserver";
 import { ArrayDecl, BbjClass, JavaClass, JavaMethod, LibFunction, MethodDecl } from "./generated/ast";
 
 
+export class BBjNodeKindProvider implements NodeKindProvider {
 
-export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
-
-    protected override getSymbolKind(type: string): SymbolKind {
-        return BBjNodeKindProvider.getSymbolKind(type);
-    }
-}
-
-export class BBjNodeKindProvider {
-
-   static getSymbolKind(nodeType: string): SymbolKind {
-        switch (nodeType) {
+   getSymbolKind(node: AstNode | AstNodeDescription): SymbolKind {
+        switch (isAstNode(node) ? node.$type : node.type) {
             case MethodDecl:
             case LibFunction:
                 return SymbolKind.Function
@@ -27,7 +19,7 @@ export class BBjNodeKindProvider {
         }
     }
 
-    static getCompletionItemKind(node: AstNode | AstNodeDescription): CompletionItemKind {
+    getCompletionItemKind(node: AstNode | AstNodeDescription): CompletionItemKind {
         switch (isAstNode(node) ? node.$type : node.type) {
             case MethodDecl:
             case JavaMethod:
