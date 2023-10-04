@@ -86,7 +86,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return;
         }
         acceptor({
-            label: keyword.value,
+            label: keyword.value?.toLowerCase(),
             kind: CompletionItemKind.Keyword,
             detail: 'Keyword',
             sortText: undefined

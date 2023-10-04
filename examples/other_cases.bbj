@@ -37,7 +37,7 @@ map.add(err=*STOP)
 map.add(err=*next)
 
 
-orderDetailRecordSet! = BBjAPI().createSQLRecordSet(database$,modes$,select$,err=*^ENDIF)
+orderDetailRecordSet! = BBjAPI().createSQLRecordSet(database$,modes$,select$,err=*ENDIF)
 if !(orderDetailRecordSet!.isEmpty()) then
     orderDetailRecordSet!.first()
     while 1

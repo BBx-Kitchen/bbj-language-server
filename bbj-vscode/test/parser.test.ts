@@ -540,4 +540,15 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    test('Check Reserved keywords', async () => {
+        const result = await parse(`
+        CLASS public MyClass
+
+            METHOD public MyClass open()
+            METHODEND
+      
+        classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
