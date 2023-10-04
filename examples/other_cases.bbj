@@ -49,3 +49,6 @@ OPEN (unt,mode="",tim="")"path/"+"html.png"
 
 bytes = dec(fin(serverfile)(1,4))
 a$=STR(1234)(1,2)
+
+result = msgbox("Message$",1,"Title$","Button1$","Button2$","Button3$",tim=12, mode="mode$",err=*NEXT)
+ 

@@ -84,4 +84,20 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Link to named lib parameter.', async () => {
+        const document = await validate(`
+        fileopen("Open Server File", "", "", "", "", MODE="CLIENT")
+        filesave("Open Server File", "", "", "", "", MODE="CLIENT")
+        `)
+        expectNoErrors(document)
+    })
+
+    test('Link to MSGBOX named lib parameter.', async () => {
+        const document = await validate(`
+        temp = msgbox("Hello!", "IconInfo", "Greetings", MODE="theme=primary")
+        result = msgbox("Message$",1,"Title$","Button1$","Button2$","Button3$",tim=12, mode="mode$",err=*NEXT)
+        `)
+        expectNoErrors(document)
+    })
+
 });

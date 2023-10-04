@@ -540,6 +540,7 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
     test('Check Reserved keywords', async () => {
         const result = await parse(`
         CLASS public MyClass
@@ -551,6 +552,7 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    
     test('Check Open Verb optional params keywords', async () => {
         const result = await parse(`
         OPEN (unt,mode="O_CREATE,O_TRUNC",TIM=12)"path/"+"html.png"

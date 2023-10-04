@@ -501,7 +501,7 @@ LibFunction returns LibFunction:
 ;
 
 LibParameter returns LibParameter:
-    name=ValidName optional?='?'? (':' type=ID)?
+    name=ValidName optional?='?'?  refByName?='!'? (':' type=ID)?
 ;
 
 LibVariable returns LibVariable:
@@ -586,6 +586,7 @@ interface LibFunction extends NamedElement {
 interface LibParameter extends NamedElement {
     type: string
     optional: boolean
+    refByName: boolean
 }
 
 interface LibVariable extends NamedElement {

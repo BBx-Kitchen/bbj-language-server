@@ -308,11 +308,11 @@ The FIELD() and NFIELD() functions allow access to data stored in a string templ
 FIELD(param: string, param: string, param: int, ERR?:lineref): string
 
 /@@
-\`FILEOPEN(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,EXISTS=option,RESOLVE=option,STYLE=name"]])\`
+\`FILEOPEN(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,EXISTS=option,RESOLVE=option,STYLE=name"]]])\`
 
 The FILEOPEN function activates the standard File Open dialog.
 @/
-FILEOPEN(param: string, param: string, param: string, param: string, param: int, param: string): string 
+FILEOPEN(prompt: string, path: string, name: string, ext: string, filters?: string, mode?: int, MODE?!: string): string 
 
 /@@
 \`FILEOPT(str{,ERR=lineref})\`
@@ -322,11 +322,11 @@ The FILEOPT() function returns the settings given in the FILEOPT verb.
 FILEOPT(param: string, ERR?:lineref): string
 
 /@@
-\`FILESAVE(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,STYLE=name,EXISTS=option"]])\`
+\`FILESAVE(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,STYLE=name,EXISTS=option"]]])\`
 
 The FILESAVE function activates the standard File Save dialog.
 @/
-FILESAVE(param: string, param: string, param: string, param: string, param: string, param: int, param: string): string
+FILESAVE(prompt: string, path: string, name: string, ext: string, filters?: string, mode?: int, MODE?!: string): string
 
 /@@
 \`FILL(int{,string}{,ERR=lineref})\`
@@ -559,11 +559,11 @@ The MOD() function returns the modulo (remainder) result using the following rul
 MOD(param: num, param: num, ERR?:lineref) : num
 
 /@@
-\`MSGBOX(str1{,expr}{,str2}{,ERR=lineref})\`
+\`MSGBOX(str1{,expr{,str2{,button1{,button2{,button3}}}}}{,MODE="options"}{,TIM=int}{,ERR=lineref})\`
 
 The MSGBOX() function creates a message dialog box and returns a value that identifies the user-selected button.
 @/
-MSGBOX(param: string, param: expression, param: string, ERR?:lineref): string
+MSGBOX(str1: string, expr?: number, str2?: string, button1?: string, button2?: string, button3?: string, MODE?!: string, TIM?!: number, ERR?!: lineref): string
 
 /@@
 \`NEVAL(str{,ERR=lineref})\`
@@ -949,5 +949,5 @@ optionally using the key described using str2 and int2 as a key descriptor pair.
 The key descriptor has the length of the key to sort. The string returned by this function is str1, sorted.
 @/
 XSSORT(param: string, param: int, param: string, param: string, ERR?:lineref): void
-`.trimLeft();
 
+`.trimLeft();

@@ -13,9 +13,11 @@ import { BBjServices } from './bbj-module';
 import {
     ArrayDecl,
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
+    isBinaryExpression,
     isClass, isConstructorCall, isFieldDecl, isForStatement,
     isInputVariable,
     isJavaClass, isJavaField, isJavaMethod, isLetStatement,
+    isLibFunction,
     isLibMember, isMemberCall,
     isMethodDecl,
     isProgram, isReadStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
@@ -67,9 +69,27 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     memberScope = this.createBBjClassMemberScope(bbjType, context.container.isMethodCall).getAllElements()
                 }
             }
-            const memberAndImports = memberScope
-                .concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram)))
-            return new StreamScopeWithPredicate(memberAndImports, super.getScope(context))
+
+            const memberAndImports = new StreamScopeWithPredicate(
+                memberScope.concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram))),
+                super.getScope(context)
+            )
+
+            if (context.container.$containerProperty === 'left' // left side of an assignment
+                && isBinaryExpression(context.container.$container)
+                && context.container.$container.$containerProperty === 'args' // function call args
+                && isSymbolRef(context.container.$container.$container)
+            ) {
+                // named parameter scope
+                const symbol = context.container.$container.$container.symbol.ref
+                if (isLibFunction(symbol)) {
+                    const namedParams = stream(symbol.parameters)
+                        .filter(param => param.refByName === true)
+                        .map(param => this.descriptions.createDescription(param, param.name));
+                    return this.createScope(namedParams, memberAndImports)
+                }
+            }
+            return memberAndImports
         }
         if (!context.container.$container && context.container.$cstNode?.element.$container) {
             // FIXME HACK for orphaned AST Instances
