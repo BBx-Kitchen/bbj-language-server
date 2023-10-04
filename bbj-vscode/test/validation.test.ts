@@ -7,7 +7,7 @@
 import { EmptyFileSystem } from 'langium';
 import { describe, test } from 'vitest';
 
-import { expectError, validationHelper } from 'langium/test';
+import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
 import { Program, isBinaryExpression } from '../src/language/generated/ast';
 import { findFirst, initializeWorkspace } from './test-helper';
@@ -19,13 +19,18 @@ describe('BBj validation', async () => {
 
     await initializeWorkspace(services.shared);
 
-    test('Symbolic link reference must start with "*"', async () => {
-        const validationResult = await validate(`let map = new List(err=next)`);
+    test('Symbolic link reference starts with', async () => {
+        const validationResult = await validate(`
+        class public List
+        classend
+        let map = new List(err=*next)
+        
+        `);
 
-        expectError(validationResult, /Symbolic Label name must be prefixed with '\*'./, {
+        expectNoIssues(validationResult, {
             node: findFirst(validationResult.document, isBinaryExpression),
             property: 'right'
         });
-        
+
     });
 });

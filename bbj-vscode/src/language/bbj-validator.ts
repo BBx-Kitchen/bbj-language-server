@@ -8,7 +8,7 @@ import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, fi
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, BinaryExpression, CommentStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isLibSymbolicLabelDecl, isMethodDecl, isParameterDecl, isStatement, isSymbolRef } from './generated/ast';
+import { BBjAstType, CommentStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -19,7 +19,6 @@ export function registerValidationChecks(services: BBjServices) {
     const validator = services.validation.BBjValidator;
     const checks: ValidationChecks<BBjAstType> = {
         AstNode: validator.checkLinebreaks,
-        BinaryExpression: validator.checkSymbolicLabelRef,
         Use: validator.checkUsedClassExists,
         CommentStatement: validator.checkCommentNewLines
     };
@@ -188,13 +187,6 @@ export class BBjValidator {
                 accept('error', `Class ${className} is not in the class path.`, { node: use });
             } else if(resolvedClass.error) {
                 accept('error', `Error when loading ${className}: ${resolvedClass.error}`, { node: use });
-            }
-        }
-    }
-    checkSymbolicLabelRef(node: BinaryExpression, accept: ValidationAcceptor): void {
-        if (isSymbolRef(node.right) && node.right.symbol) {
-            if(!node.right.symbolicLabel && isLibSymbolicLabelDecl(node.right.symbol.ref)) {
-                accept('error', `Symbolic Label name must be prefixed with '*'.`, { node: node.right });
             }
         }
     }

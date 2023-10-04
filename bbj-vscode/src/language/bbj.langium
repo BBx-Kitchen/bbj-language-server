@@ -189,7 +189,19 @@ SwitchCase:
     LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
 
 GotoStatement:
-    kind=('GOTO' | 'GOSUB') target=[LabelDecl:ValidName]
+    kind=('GOTO' | 'GOSUB') target=LabelRef
+;
+
+LabelRef infers Expression:
+    SymbolicLabelRef | UserLabelRef
+;
+
+UserLabelRef infers LabelRef:
+   {infer UserLabelRef} label=[LabelDecl:ValidName]
+;
+
+SymbolicLabelRef infers LabelRef:
+   {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SYMBOLIC_LABEL_NAME]
 ;
 
 // FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
@@ -201,11 +213,11 @@ ExitWithNumberStatement:
     kind='EXIT' | 'RELEASE' exitVal=NUMBER?;
 
 ExitToStatement:
-    'EXITTO' target=[LabelDecl:ValidName]
+    'EXITTO' target=LabelRef
 ;
 
 SetErrorStatement:
-    kind=('SETERR' | 'SETESC') target=[LabelDecl:ValidName]
+    kind=('SETERR' | 'SETESC') target=LabelRef
 ;
 
 OpenStatement:
@@ -247,7 +259,7 @@ OutputItem:
 
 OtherItem:
     '*' //treats an asterisk as a null field
-    | ('IOL=' iol=[LabelDecl:ValidName]) //Refers to the IOLIST statement
+    | ('IOL=' iol=LabelRef) //Refers to the IOLIST statement
 ;
 
 /**
@@ -285,7 +297,7 @@ VerifyOptions:
 ;
 
 VerifyOption:
-    key=StringLiteral '=' lineref=[LabelDecl:ValidName]
+    key=StringLiteral '=' lineref=LabelRef
 ;
 
 LastVerifyOption:
@@ -300,7 +312,7 @@ AddrStatement:
 ;
 
 ClipFromStrStatement:
-    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression (',' ERR=[LabelDecl:ValidName])?
+    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression Err?
 ;
 
 SqlOpenStatement:
@@ -320,7 +332,7 @@ SqlExecStatement:
 ;
 
 fragment Err:
-    (',' 'ERR' '=' symbolicErrLabel='*'? err=[LabelDecl:ValidName])
+    (',' 'ERR' '=' err=LabelRef)
 ;
 
 fragment Options:
@@ -363,7 +375,9 @@ Expression:
 ;
 
 BinaryExpression infers Expression:
-    PrefixExpression ({infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=Expression)?
+    PrefixExpression (
+        {infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=(Expression| SymbolicLabelRef)
+    )?
 ;
 
 PrefixExpression infers Expression:
@@ -393,7 +407,7 @@ PrimaryExpression infers Expression:
     | ConstructorCall;
 
 SymbolRef:
-    (instanceAccess?='#' | symbolicLabel?='*')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err?')')?
+    instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err?')')?
 ;
 
 Literal:
@@ -444,7 +458,7 @@ EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | '^ENDIF' | 'TIM'
+    | 'TIM'
 ;
 
 Visibility returns string:
@@ -476,7 +490,7 @@ LibVariable returns LibVariable:
 
 LibSymbolicLabel returns LibSymbolicLabelDecl:
     (docu=DOCU)?
-    'label' name=ValidName
+    'label' name=SYMBOLIC_LABEL_NAME
 ;
 
 hidden terminal WS: /\s+/;
@@ -500,7 +514,7 @@ terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
-
+terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
 

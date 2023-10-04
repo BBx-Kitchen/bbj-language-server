@@ -1,10 +1,12 @@
 import { AstNodeDescription, CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, MaybePromise, NextFeature, Reference, ReferenceInfo, getContainerOfType } from "langium";
 import { BBjNodeKindProvider } from "./bbj-document-symbol";
 
-import { CrossReference, isAssignment } from "langium/lib/grammar/generated/ast";
-import { MarkupContent } from "vscode-languageserver";
+import { CrossReference, Keyword, isAssignment } from "langium/lib/grammar/generated/ast";
+import { CompletionItemKind, MarkupContent } from "vscode-languageserver";
 import { documentationContent, methodSignature } from "./bbj-hover";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider";
+import { LibSymbolicLabelDecl } from "./generated/ast";
+
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     constructor(services: LangiumServices) {
@@ -13,7 +15,8 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     override  createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
         const superImpl = super.createReferenceCompletionItem(nodeDescription)
         superImpl.kind = BBjNodeKindProvider.getCompletionItemKind(nodeDescription)
-        if (superImpl && isFunctionNodeDescription(nodeDescription)) {
+        superImpl.sortText = undefined
+        if (isFunctionNodeDescription(nodeDescription)) {
 
             const label = (paramAdjust: ((param: string, index: number) => string) = (p, i) => p) =>
                 `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.name, idx)).join(', ')})`
@@ -36,6 +39,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     superImpl.documentation = { kind: content.kind, value: content.value }
                 }
             }
+        } else if(nodeDescription.type === LibSymbolicLabelDecl ) {
+            superImpl.label = nodeDescription.name
+            superImpl.sortText = superImpl.label.slice(1) // remove * so that symbolic labels appear in the alphabetical order
         }
         return superImpl;
     }
@@ -73,6 +79,18 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 console.error(err);
             }
         }
+    }
+    protected override completionForKeyword(context: CompletionContext, keyword: Keyword, acceptor: CompletionAcceptor): MaybePromise<void> {
+        // Filter out keywords that do not contain any word character
+        if (!keyword.value.match(/[\w]/)) {
+            return;
+        }
+        acceptor({
+            label: keyword.value,
+            kind: CompletionItemKind.Keyword,
+            detail: 'Keyword',
+            sortText: undefined
+        });
     }
 }
 
