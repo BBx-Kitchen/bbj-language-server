@@ -559,11 +559,45 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    
     test('Check SQLOpen Verb', async () => {
         const result = await parse(`
         SQLOPEN(1,mode="SQLDriverConnect",err=*next)"datasource"
         SQLOPEN(1,err=*next)"datasource"
         SQLOPEN(1)"datasource"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check Begin Clear Verb', async () => {
+        const result = await parse(`
+        dim PARAMS[2]
+        foo$ = ""
+
+        BEGIN
+        BEGIN EXCEPT foo$, PARAMS[ALL], foo$
+        CLEAR
+        CLEAR EXCEPT foo$, PARAMS[ALL], foo$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check Drop Verb', async () => {
+        const result = await parse(`
+        DROP "TEST.BBX", ERR=*next
+        DROP "TEST.BBX"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check Exit Verbs', async () => {
+        const result = await parse(`
+        RETURN
+        END
+        BYE
+        BREAK
+        CONTINUE
+        ESCAPE
         `);
         expectNoParserLexerErrors(result);
     });

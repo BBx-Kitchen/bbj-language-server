@@ -60,6 +60,8 @@ SingleStatement:
     SqlExecStatement |
     SqlCloseStatement |
     CallStatement |
+    DropStatement |
+    BeginStatement |
     RunStatement
 ;
 
@@ -213,7 +215,7 @@ SymbolicLabelRef infers LabelRef:
 
 // FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
 ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'BREAK' | 'CONTINUE')
+    kind=('RETURN' | 'END' | 'BYE' | 'BREAK' | 'CONTINUE' | 'ESCAPE')
 ;
 
 ExitWithNumberStatement:
@@ -265,6 +267,10 @@ fragment Err:
 
 CallStatement:
     'CALL' fileid=StringLiteral Err? (',' expressions+=Expression)*
+;
+
+DropStatement:
+    'DROP' fileid=StringLiteral Err?
 ;
 
 RunStatement:
@@ -373,10 +379,15 @@ ProcessEvent:
     {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' tim=Expression)? Err?
 ;
 
+BeginStatement:
+    kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=SymbolRef '[ALL]'? (','  except+=SymbolRef '[ALL]'?)*)?
+;
 
-// TODO as a program statement literal expressions are not allowed
-// Only membercalls to variables
+/* Expressions */
+
 ExpressionStatement:
+    // TODO as a program statement literal expressions are not allowed
+    // Only membercalls to variables
     expression=PrefixExpression;
 
 EXPR_OPERATOR returns string:
@@ -471,7 +482,7 @@ EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | 'TIM'
+    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP'
 ;
 
 // BBx Library
