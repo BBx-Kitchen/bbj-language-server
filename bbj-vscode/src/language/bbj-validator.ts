@@ -8,7 +8,7 @@ import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, fi
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -20,6 +20,7 @@ export function registerValidationChecks(services: BBjServices) {
     const checks: ValidationChecks<BBjAstType> = {
         AstNode: validator.checkLinebreaks,
         Use: validator.checkUsedClassExists,
+        OpenStatement: validator.checkOpenStatementOptions,
         CommentStatement: validator.checkCommentNewLines
     };
     registry.register(checks, validator);
@@ -188,6 +189,15 @@ export class BBjValidator {
             } else if(resolvedClass.error) {
                 accept('error', `Error when loading ${className}: ${resolvedClass.error}`, { node: use });
             }
+        }
+    }
+
+    checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
+        const allowedOptions = ['mode,tim', 'mode', 'tim']
+        const currentOptions = ele.options.map(o => o.key.toLowerCase()).join(',');
+        if(currentOptions.length > 0 && !allowedOptions.includes(currentOptions)) {
+            accept('error', `OPEN verb can have following two optional options: mode,tim. Found: ${currentOptions}.`, { node: ele, property: 'options'});
+            return;
         }
     }
 }

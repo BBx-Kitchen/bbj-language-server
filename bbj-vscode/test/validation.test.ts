@@ -9,7 +9,7 @@ import { describe, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
-import { Program, isBinaryExpression } from '../src/language/generated/ast';
+import { Program, isBinaryExpression, isOpenStatement } from '../src/language/generated/ast';
 import { findFirst, initializeWorkspace } from './test-helper';
 
 const services = createBBjServices(EmptyFileSystem);
@@ -33,4 +33,29 @@ describe('BBj validation', async () => {
         });
 
     });
+
+    test('Open statement invalid options', async () => {
+        const validationResult = await validate(`
+        OPEN (unt,mod="",time="")"path/"+"html.png"
+        `);
+
+        expectError(validationResult, 'OPEN verb can have following two optional options: mode,tim. Found: mod,time.',{
+            node: findFirst(validationResult.document, isOpenStatement),
+            property: 'options'
+        });
+
+    });
+
+    test('Open statement valid options', async () => {
+        const validationResult = await validate(`
+        OPEN (unt,mode="12",tim=12)"path/"+"html.png"
+        OPEN (unt,mode="12")"path/"+"html.png"
+        OPEN (unt,tim=12)"path/"+"html.png"
+        OPEN (unt)"path/"+"html.png"
+        `);
+
+        expectNoIssues(validationResult);
+
+    });
+
 });

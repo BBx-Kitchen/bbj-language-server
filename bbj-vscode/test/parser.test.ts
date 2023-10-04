@@ -551,4 +551,20 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    test('Check Open Verb optional params keywords', async () => {
+        const result = await parse(`
+        OPEN (unt,mode="O_CREATE,O_TRUNC",TIM=12)"path/"+"html.png"
+        OPEN (unt,TIM=12)"path/"+"html.png"
+        OPEN (unt)"path/"+"html.png"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+    test('Check SQLOpen Verb', async () => {
+        const result = await parse(`
+        SQLOPEN(1,mode="SQLDriverConnect",err=*next)"datasource"
+        SQLOPEN(1,err=*next)"datasource"
+        SQLOPEN(1)"datasource"
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

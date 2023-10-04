@@ -78,20 +78,27 @@ Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
 
 ClassDecl returns BbjClass:
-    'CLASS' visibility=Visibility Static name=ValidName 
+    'CLASS' Visibility Static name=ValidName 
         Extends?
         ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*  (';' comments+=CommentStatement)?
     (members+=ClassMember | Comments)*
     'CLASSEND'
 ;
 InterfaceDecl returns BbjClass:
-    interface?='INTERFACE' visibility=Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
+    interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
         (members+=MethodDecl | Comments)*
     'INTERFACEEND'
 ;
 
 fragment Static:
     static?='STATIC'?
+;
+fragment Visibility:
+    visibility=Modifier?
+;
+
+Modifier returns string:
+  'PUBLIC'|'PRIVATE'|'PROTECTED'
 ;
 
 fragment Extends:
@@ -107,11 +114,11 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' visibility=Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' visibility=Visibility Static returnType=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static returnType=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
     Comments?
     (
         (body+=Statement)*
@@ -222,7 +229,7 @@ SetErrorStatement:
 
 OpenStatement:
     // TODO check channelno is int and fileid is string
-    'OPEN' '(' channelno=Expression? Err?')'fileid=Expression
+    'OPEN' WithChannelAndOptions fileid=Expression
 ;
 
 
@@ -231,15 +238,29 @@ LetStatement:
 ;
 
 PrintStatement:
-    ('?' | 'PRINT' | 'WRITE') record='RECORD'? WithChannel? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+    ('?' | 'PRINT' | 'WRITE') record='RECORD'? WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
 ;
 
 PrintRecordStatement:
-     ('PRINTRECORD' | 'WRITERECORD') WithChannel? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+     ('PRINTRECORD' | 'WRITERECORD') WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
 ;
 
-fragment WithChannel:
-    '(' channelno=Expression? Options? ')'
+fragment WithChannelAndOptions infers WithChannelAndOptions:
+    '(' channelno=Expression? Options? Err? ')'
+;
+
+/**
+ * Adds a coma separated prameter list: (',' PARAM_NAME+=Expression)+
+ */
+fragment Options:
+    (',' options+=Option)+
+;
+
+/**
+ * Add optional parameter ,ERR=LabelRef
+ */
+fragment Err:
+    ',' 'ERR' '=' err=LabelRef
 ;
 
 CallStatement:
@@ -266,7 +287,7 @@ OtherItem:
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS record='RECORD'? WithChannel? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_KINDS record='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_KINDS returns string:
@@ -274,7 +295,7 @@ READ_KINDS returns string:
 ;
 
 ReadRecordStatement:
-    kind=READ_RECORD_KINDS record='RECORD'? WithChannel? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_RECORD_KINDS record='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_RECORD_KINDS returns string:
@@ -316,7 +337,7 @@ ClipFromStrStatement:
 ;
 
 SqlOpenStatement:
-    'SQLOPEN' '(' sqlchan=Expression (',' 'MODE' mode=StringLiteral Err?)? ')' datasourcename=Expression
+    'SQLOPEN' '(' sqlchan=Expression (',' 'MODE' '=' mode=Expression)? Err? ')' datasourcename=Expression
 ;
 
 SqlPrepStatement:
@@ -331,20 +352,12 @@ SqlExecStatement:
     'SQLEXEC' '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
 ;
 
-fragment Err:
-    (',' 'ERR' '=' err=LabelRef)
-;
-
-fragment Options:
-    (',' option+=Option)* Err?
-;
-
 Option:
     key=ValidName '=' value=Expression
 ;
 
 CloseStatement:
-    'CLOSE' '(' channelno=Expression? Options?')'
+    'CLOSE'  WithChannelAndOptions?
 ;
 
 WaitStatement:
@@ -357,9 +370,9 @@ ThrowStatement:
 ;
 
 ProcessEvent:
-	// TODO: Value for TIM should evaluate to an int (number)
-    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' value=Expression)? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' tim=Expression)? Err?
 ;
+
 
 // TODO as a program statement literal expressions are not allowed
 // Only membercalls to variables
@@ -460,9 +473,6 @@ EscapeId returns string:
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TIM'
 ;
-
-Visibility returns string:
-    'PUBLIC'|'PRIVATE'|'PROTECTED';
 
 // BBx Library
 Library:
