@@ -13,6 +13,9 @@ if (password!= null()) password! = "admin123"
 admin! = BBjAdminFactory.getBBjAdmin(username!, password!)
 configuration! = admin!.getRemoteConfiguration()
 
+rem clean up name!
+name! = name!.replaceAll("-","")
+
 rem check the app is not created yet
 app! = null()
 apps! = configuration!.getApplications()
