@@ -14,7 +14,7 @@ import {
     ArrayDecl,
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
-    isClass, isCompoundStatement, isConstructorCall, isFieldDecl, isForStatement,
+    isClass, isCompoundStatement, isConstructorCall, isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
     isJavaClass, isJavaField, isJavaMethod, isLetStatement,
     isLibFunction,
@@ -317,9 +317,14 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
                 }
             });
-        } else if (isInputVariable(node) && isReadStatement(node.$container)) {
-            // Create input variables: case: READ(1,KEY="TEST")A$,B$,C$
-            if (isSymbolRef(node) && isProgram(node.$container.$container)) {
+        } else if (isInputVariable(node) && (isReadStatement(node.$container) || isEnterStatement(node.$container))) {
+            /*
+            Create input variables.
+            Cases:
+               READ(1,KEY="TEST")A$,B$,C$
+               ENTER A$,B$,C$
+            */
+            if (isSymbolRef(node)) {
                 const scopeHolder = node.$container.$container
                 const inputName = node.symbol.$refText
                 if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {

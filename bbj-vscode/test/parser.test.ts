@@ -14,6 +14,10 @@ describe('Parser Tests', () => {
         expect(document.parseResult.parserErrors.join('\n')).toBe('')
     }
 
+    function expectNoValidationErrors(document: LangiumDocument) {
+        expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
+    }
+
     test('Program definition test', async () => {
         const program = await parse(`
         REM arrays
@@ -280,7 +284,7 @@ describe('Parser Tests', () => {
             bye
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
-        expect(result.diagnostics).toHaveLength(0);
+        expectNoValidationErrors(result);
     });
 
     test('String backslash should not escape', async () => {
@@ -313,7 +317,7 @@ describe('Parser Tests', () => {
         Print A$,B$,C$
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
-        expect(result.diagnostics).toHaveLength(0);
+        expectNoValidationErrors(result);
 
         const program = result.parseResult.value as Program;
         const printStmt = program.statements.slice(-1).pop() as PrintStatement;
@@ -524,6 +528,18 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    
+    test('Check read and similar, with record', async () => {
+        const result = await parse(`
+        READ RECORD(1,IND=2,ERR=9500)A$
+        WRITE RECORD(1,IND=2,ERR=9500)A$
+        PRINT RECORD(1,IND=2,ERR=9500)A$
+        INPUT RECORD(1,IND=2,ERR=9500)A$
+        EXTRACT RECORD(1,IND=2,ERR=9500)A$
+        FIND RECORD(1,IND=2,ERR=9500)A$
+        `);
+        expectNoParserLexerErrors(result);
+    });
 
     test('Check CALL and RUN', async () => {
         const result = await parse(`
@@ -602,5 +618,20 @@ describe('Parser Tests', () => {
         ESCAPE
         `);
         expectNoParserLexerErrors(result);
+    });
+
+    test('Check Enter Verb', async () => {
+        const result = await parse(`
+        someVar$ = "TEST"
+        someOtherVar$ = "TEST"
+        ENTER someVar$
+        ENTER someVar$, someOtherVar$
+        ENTER someVar$, ERR=JumpToLabel
+        ENTER someVar$, someOtherVar$, ERR=JumpToLabel
+
+        JumpToLabel:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 });

@@ -108,4 +108,12 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Enter verb: Put variable in scope if not exists.', async () => {
+        const document = await validate(`
+        ENTER A$
+        ? A$
+        `)
+        expectNoErrors(document)
+    })
+
 });

@@ -31,7 +31,6 @@ SingleStatement:
     RedimStatement |
     MethodReturnStatement |
     PrintStatement |
-    PrintRecordStatement |
     SetErrorStatement |
     ForStatement |
     IfStatement |
@@ -62,6 +61,7 @@ SingleStatement:
     CallStatement |
     DropStatement |
     BeginStatement |
+    EnterStatement |
     RunStatement
 ;
 
@@ -240,12 +240,13 @@ LetStatement:
 ;
 
 PrintStatement:
-    ('?' | 'PRINT' | 'WRITE') record='RECORD'? WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+    (
+        (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
+        | (record?=('PRINTRECORD' | 'WRITERECORD'))
+    )
+     WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
 ;
 
-PrintRecordStatement:
-     ('PRINTRECORD' | 'WRITERECORD') WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
-;
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
     '(' channelno=Expression? Options? Err? ')'
@@ -293,15 +294,15 @@ OtherItem:
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS record='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_KINDS record?='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
 ;
 
-ReadRecordStatement:
-    kind=READ_RECORD_KINDS record='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
+ReadRecordStatement infers ReadStatement:
+    kind=READ_RECORD_KINDS WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_RECORD_KINDS returns string:
@@ -381,6 +382,10 @@ ProcessEvent:
 
 BeginStatement:
     kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=SymbolRef '[ALL]'? (','  except+=SymbolRef '[ALL]'?)*)?
+;
+
+EnterStatement:
+   'ENTER' variables+=InputVariable (',' variables+=InputVariable)* Err?
 ;
 
 /* Expressions */
@@ -482,7 +487,7 @@ EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP'
+    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER'
 ;
 
 // BBx Library
