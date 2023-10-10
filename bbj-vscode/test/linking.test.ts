@@ -100,4 +100,12 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Process assignment in compound statement #99', async () => {
+        const document = await validate(`
+            title$ = "" ; rem should add title$ to compound statement parent scope
+            PRINT title$
+        `)
+        expectNoErrors(document)
+    })
+
 });

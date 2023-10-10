@@ -14,7 +14,7 @@ import {
     ArrayDecl,
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
-    isClass, isConstructorCall, isFieldDecl, isForStatement,
+    isClass, isCompoundStatement, isConstructorCall, isFieldDecl, isForStatement,
     isInputVariable,
     isJavaClass, isJavaField, isJavaMethod, isLetStatement,
     isLibFunction,
@@ -269,7 +269,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
             }
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
-            const scopeHolder = (isForStatement(node.$container) || isLetStatement(node.$container)) ? node.$container.$container : node.$container
+            const scopeHolder = this.findScopeHolder(node)
             if (isSymbolRef(node.variable)) {
                 // case: `foo$ = ""` without declaring foo$
                 const symbol = node.variable.symbol
@@ -349,6 +349,23 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             }
         } else {
             super.processNode(node, document, scopes);
+        }
+    }
+
+    findScopeHolder(assignment: Assignment) {
+        const container = assignment.$container
+        if(isForStatement(container)) {
+            return container.$container
+        } else if(isLetStatement(container)) {
+            if(isCompoundStatement(container.$container)) {
+                // case: title$ = "" ; rem Title
+                return container.$container.$container
+            } else {
+                // case: title$ = ""
+                return container.$container
+            }
+        } else {
+            return container
         }
     }
 }
