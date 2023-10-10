@@ -528,7 +528,7 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
-    
+
     test('Check read and similar, with record', async () => {
         const result = await parse(`
         READ RECORD(1,IND=2,ERR=9500)A$
@@ -630,6 +630,38 @@ describe('Parser Tests', () => {
         ENTER someVar$, someOtherVar$, ERR=JumpToLabel
 
         JumpToLabel:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Check REPEAT..UNTIL Verb', async () => {
+        const result = await parse(`
+        LOOP_EXIT=0
+        REPEAT
+            LOOP_EXIT = LOOP_EXIT + 1
+        UNTIL LOOP_EXIT=10
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Check SETOPTS Verb', async () => {
+        const result = await parse(`
+        LET A$=$02$
+        SETOPTS A$
+        SETOPTS $00C20240000000000000000000000000$
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Check Precision Verb', async () => {
+        const result = await parse(`
+        LET A%=16
+        Precision A%
+        Precision 1, 3
+        Precision A%, A%
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);

@@ -37,7 +37,7 @@ SingleStatement:
     WhileStatement |
     WhileEndStatement |
     GotoStatement |
-    ExitStatement |
+    KeywordStatement |
     ExitWithNumberStatement |
     ExitToStatement |
     NextStatement |
@@ -62,6 +62,9 @@ SingleStatement:
     DropStatement |
     BeginStatement |
     EnterStatement |
+    UntilStatement |
+    SetOptsStatement |
+    PrecisionStatement |
     RunStatement
 ;
 
@@ -167,6 +170,11 @@ ForStatement:
     'FOR' init=Assignment 'TO' to=Expression  ('STEP' step=Expression)?
 ;
 
+UntilStatement:
+    // REPEAT .. UNTIL Verb
+    'UNTIL' condition=Expression
+;
+
 NextStatement:
     NEXT_TOKEN (variable=[VariableDecl:FeatureName])?
 ;
@@ -213,9 +221,8 @@ SymbolicLabelRef infers LabelRef:
    {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SYMBOLIC_LABEL_NAME]
 ;
 
-// FIXME Move to a Library as FieldDeclaration with a flag to get rid of ExitStatement<>SymboRef ambiguities
-ExitStatement:
-    kind=('RETURN' | 'END' | 'BYE' | 'BREAK' | 'CONTINUE' | 'ESCAPE')
+KeywordStatement:
+    kind=('RETURN' | 'END' | 'BYE' | 'BREAK' | 'CONTINUE' | 'ESCAPE' | 'REPEAT')
 ;
 
 ExitWithNumberStatement:
@@ -333,8 +340,6 @@ LastVerifyOption:
     | min=Expression // numvar:(4) num A numeric expression can impose range and precision on the numeric input
 ;
 
-
-
 AddrStatement:
     'ADDR' fileid=StringLiteral Err?
 ;
@@ -386,6 +391,14 @@ BeginStatement:
 
 EnterStatement:
    'ENTER' variables+=InputVariable (',' variables+=InputVariable)* Err?
+;
+
+SetOptsStatement:
+    'SETOPTS' opts=Expression
+;
+
+PrecisionStatement:
+    'PRECISION' value=Expression (',' digits=Expression)?
 ;
 
 /* Expressions */
@@ -487,7 +500,7 @@ EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER'
+    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION'
 ;
 
 // BBx Library
