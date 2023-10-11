@@ -93,7 +93,7 @@
             {
                 "category": "BBj",
                 "command": "bbj.run",
-                "title": "Run As BBj Programme",
+                "title": "Run As BBj Program",
                 "icon": {
                     "light": "./images/run-gui-light.svg",
                     "dark": "./images/run-gui-dark.svg"
@@ -103,7 +103,7 @@
             {
                 "category": "BBj",
                 "command": "bbj.runBUI",
-                "title": "Run As BUI Programme",
+                "title": "Run As BUI Program",
                 "icon": {
                     "light": "./images/run-bui-light.svg",
                     "dark": "./images/run-bui-dark.svg"
@@ -113,7 +113,7 @@
             {
                 "category": "BBj",
                 "command": "bbj.runDWC",
-                "title": "Run As DWC Programme",
+                "title": "Run As DWC Program",
                 "icon": {
                     "light": "./images/run-dwc-light.svg",
                     "dark": "./images/run-dwc-dark.svg"
