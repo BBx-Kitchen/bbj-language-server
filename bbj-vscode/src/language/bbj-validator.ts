@@ -8,7 +8,7 @@ import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, fi
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -21,6 +21,7 @@ export function registerValidationChecks(services: BBjServices) {
         AstNode: validator.checkLinebreaks,
         Use: validator.checkUsedClassExists,
         OpenStatement: validator.checkOpenStatementOptions,
+        KeyedFileStatement: validator.checkKeyedFileStatement,
         CommentStatement: validator.checkCommentNewLines
     };
     registry.register(checks, validator);
@@ -186,7 +187,7 @@ export class BBjValidator {
             const resolvedClass = this.javaInterop.getResolvedClass(className);
             if (!resolvedClass) {
                 accept('error', `Class ${className} is not in the class path.`, { node: use });
-            } else if(resolvedClass.error) {
+            } else if (resolvedClass.error) {
                 accept('error', `Error when loading ${className}: ${resolvedClass.error}`, { node: use });
             }
         }
@@ -195,8 +196,15 @@ export class BBjValidator {
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
         const allowedOptions = ['mode,tim', 'mode', 'tim']
         const currentOptions = ele.options.map(o => o.key.toLowerCase()).join(',');
-        if(currentOptions.length > 0 && !allowedOptions.includes(currentOptions)) {
-            accept('error', `OPEN verb can have following two optional options: mode,tim. Found: ${currentOptions}.`, { node: ele, property: 'options'});
+        if (currentOptions.length > 0 && !allowedOptions.includes(currentOptions)) {
+            accept('error', `OPEN verb can have following two optional options: mode,tim. Found: ${currentOptions}.`, { node: ele, property: 'options' });
+            return;
+        }
+    }
+
+    checkKeyedFileStatement(ele: KeyedFileStatement, accept: ValidationAcceptor): void {
+        if (ele.kind !== 'MKEYED' && ele.mode) {
+            accept('error', 'MODE option only supported in MKEYED Verb.', { node: ele, property: 'mode' });
             return;
         }
     }

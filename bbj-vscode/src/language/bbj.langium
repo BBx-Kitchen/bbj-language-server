@@ -65,6 +65,7 @@ SingleStatement:
     UntilStatement |
     SetOptsStatement |
     PrecisionStatement |
+    KeyedFileStatement |
     RunStatement
 ;
 
@@ -399,6 +400,41 @@ SetOptsStatement:
 
 PrecisionStatement:
     'PRECISION' value=Expression (',' digits=Expression)?
+;
+
+/*
+MKEYED fileid,keysize,records,recsize{,MODE=string}{,ERR=lineref}
+MKEYED fileid,keydef{,keydef...},records,recsize{,MODE=string}{,ERR=lineref}
+*/
+KeyedFileStatement:
+    kind=('MKEYED'|'VKEYED'|'XKEYED')
+    fileid=Expression 
+    ',' (
+          (keydefs+=KeyDef (',' keydefs+=KeyDef)*)
+        | keysize=Expression
+    )
+    ',' records=Expression
+    ',' recsize=Expression
+    (',' 'MODE' '=' mode=Expression)?
+    Err?
+;
+
+/*
+ * Key definition. Each keydef has the following syntax:
+ * segment{+ segment...}
+ */
+KeyDef:
+    segments+=KeySegment ('+' segments+=KeySegment)*
+;
+
+
+/*
+ * Each segment has the following syntax:
+ * [{ field:} offset:len{ :flags}]
+ */
+KeySegment:
+    // Use BinaryExpression instead of Expression because Expression's stringmask syntax collides with KeySegment syntax
+    '[' arg0=BinaryExpression ':' arg1=BinaryExpression (':' arg2=BinaryExpression)? (':' arg3=BinaryExpression)? ']' 
 ;
 
 /* Expressions */

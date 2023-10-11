@@ -666,4 +666,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('Check KeyedFileStatement Verb', async () => {
+        const result = await parse(`
+        MKEYED "MYFILE",[1:6],[7:10:"N"],0,16
+        VKEYED "MYFILE",[1:4:2],[2:1:10],80,1000
+        XKEYED "MYFILE",[1:1:10]+[2:1:5],[1:25:2:"D"],[4:12:20],80,1000
+        MKEYED "myfile",10,0,500,MODE="CRYPTPASS=test",ERR=Jump
+        Jump:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

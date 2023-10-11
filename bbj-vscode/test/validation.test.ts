@@ -9,8 +9,8 @@ import { describe, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
-import { Program, isBinaryExpression, isOpenStatement } from '../src/language/generated/ast';
-import { findFirst, initializeWorkspace } from './test-helper';
+import { Program, isBinaryExpression, isKeyedFileStatement, isOpenStatement } from '../src/language/generated/ast';
+import { findByIndex, findFirst, initializeWorkspace } from './test-helper';
 
 const services = createBBjServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
@@ -39,7 +39,7 @@ describe('BBj validation', async () => {
         OPEN (unt,mod="",time="")"path/"+"html.png"
         `);
 
-        expectError(validationResult, 'OPEN verb can have following two optional options: mode,tim. Found: mod,time.',{
+        expectError(validationResult, 'OPEN verb can have following two optional options: mode,tim. Found: mod,time.', {
             node: findFirst(validationResult.document, isOpenStatement),
             property: 'options'
         });
@@ -56,6 +56,30 @@ describe('BBj validation', async () => {
 
         expectNoIssues(validationResult);
 
+    });
+
+    test('KeyedFile statement valid options', async () => {
+        const validationResult = await validate(`
+        MKEYED "MYFILE",10,80,1000,MODE="somemode"
+        `);
+        expectNoIssues(validationResult);
+
+    });
+
+    test('KeyedFile statement invalid options', async () => {
+        const validationResult = await validate(`
+        VKEYED "MYFILE",10,80,1000,MODE="somemode"
+        XKEYED "MYFILE",10,80,1000,MODE="somemode"
+        `);
+
+        expectError(validationResult, 'MODE option only supported in MKEYED Verb.', {
+            node: findFirst(validationResult.document, isKeyedFileStatement),
+            property: 'mode'
+        });
+        expectError(validationResult, 'MODE option only supported in MKEYED Verb.', {
+            node: findByIndex(validationResult.document, isKeyedFileStatement, 1),
+            property: 'mode'
+        });
     });
 
 });
