@@ -3,6 +3,7 @@ import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager";
 import { Use, isUse } from "./generated/ast";
+import { JavaSyntheticDocUri } from "./java-interop";
 
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
@@ -17,7 +18,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     protected override shouldValidate(_document: LangiumDocument<AstNode>, options: BuildOptions): boolean {
-        if (_document.uri.toString() === 'classpath:/bbj.class') {
+        if (_document.uri.toString() === JavaSyntheticDocUri) {
             // never validate programmatically created classpath document
             _document.state = DocumentState.Validated;
             return false;
