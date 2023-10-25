@@ -16,6 +16,9 @@ import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from
 const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui']
+
+export const JavaSyntheticDocUri = URI.parse('classpath:/bbj.class')
+
 export class JavaInteropService {
 
     private connection?: MessageConnection;
@@ -29,7 +32,7 @@ export class JavaInteropService {
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
             $type: Classpath,
             classes: []
-        }, URI.parse('classpath:/bbj.class'));
+        }, JavaSyntheticDocUri);
     }
 
     protected async connect(): Promise<MessageConnection> {
@@ -93,6 +96,7 @@ export class JavaInteropService {
                     this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
                 }))
             }))
+            console.debug("Loaded " + this.classpath.classes.length + " classes")
             return true;
         } catch (e) {
             console.error(e)
@@ -118,7 +122,7 @@ export class JavaInteropService {
         }
         const classpath = this.classpath;
 
-        this.resolvedClasses.set(className, javaClass); // add class event if it has an error
+        this.resolvedClasses.set(className, javaClass); // add class even if it has an error
         try {
             for (const field of javaClass.fields) {
                 (field as Mutable<JavaField>).$type = JavaField;

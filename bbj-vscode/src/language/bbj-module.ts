@@ -14,12 +14,12 @@ import {
 } from 'langium';
 import { BBjCompletionProvider } from './bbj-completion-provider';
 import { BBjDocumentBuilder } from './bbj-document-builder';
-import { BBjNodeKindProvider } from './bbj-node-kind';
 import { BBjDocumentValidator } from './bbj-document-validator';
 import { BBjHoverProvider } from './bbj-hover';
 import { BBjIndexManager } from './bbj-index-manager';
 import { BbjLexer } from './bbj-lexer';
 import { BbjLinker } from './bbj-linker';
+import { BBjNodeKindProvider } from './bbj-node-kind';
 import { BBjAstNodeDescriptionProvider } from './bbj-nodedescription-provider';
 import { BbjNameProvider, BbjScopeComputation, BbjScopeProvider } from './bbj-scope';
 import { BBjTokenBuilder } from './bbj-token-builder';
@@ -28,7 +28,7 @@ import { BBjValueConverter } from './bbj-value-converter';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
 import { JavaInteropService } from './java-interop';
- 
+
 
 /**
  * Declaration of custom services - add your own service classes here.
@@ -76,7 +76,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         ValueConverter: () => new BBjValueConverter(),
         TokenBuilder: () => new BBjTokenBuilder(),
         Lexer: services => new BbjLexer(services)
-    }, 
+    },
     workspace: {
         AstNodeDescriptionProvider: (services) => new BBjAstNodeDescriptionProvider(services)
     }
@@ -86,16 +86,16 @@ let ambiguitiesReported = false;
 
 function createBBjParser(services: LangiumServices): LangiumParser {
     const parser = prepareLangiumParser(services);
-     // Customize ambiguity logging
-     const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
-     if (lookaheadStrategy) {
-         lookaheadStrategy.logging = (message: string) => {
-            if(!ambiguitiesReported) {
+    // Customize ambiguity logging
+    const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
+    if (lookaheadStrategy) {
+        lookaheadStrategy.logging = (message: string) => {
+            if (!ambiguitiesReported) {
                 ambiguitiesReported = true;
                 console.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
             }
-         }
-     }
+        }
+    }
     parser.finalize();
     return parser;
 }
@@ -144,3 +144,5 @@ export function createBBjServices(context: DefaultSharedModuleContext): {
     registerValidationChecks(BBj);
     return { shared, BBj };
 }
+
+
