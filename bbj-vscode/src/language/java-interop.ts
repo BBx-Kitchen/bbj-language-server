@@ -17,7 +17,8 @@ const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui']
 
-export const JavaSyntheticDocUri = URI.parse('classpath:/bbj.class')
+export const JavaSyntheticDocUri = 'classpath:/bbj.class'
+
 
 export class JavaInteropService {
 
@@ -32,7 +33,7 @@ export class JavaInteropService {
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
             $type: Classpath,
             classes: []
-        }, JavaSyntheticDocUri);
+        }, URI.parse(JavaSyntheticDocUri));
     }
 
     protected async connect(): Promise<MessageConnection> {

@@ -14,9 +14,9 @@ import {
     ArrayDecl,
     Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
-    isClass, isCompoundStatement, isConstructorCall, isEnterStatement, isFieldDecl, isForStatement,
+    isClass, isClasspath, isCompoundStatement, isConstructorCall, isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
-    isJavaClass, isJavaField, isJavaMethod, isLetStatement,
+    isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter, isLetStatement,
     isLibFunction,
     isLibMember, isMemberCall,
     isMethodDecl,
@@ -38,7 +38,23 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if (isMemberCall(context.container) && context.property === 'member') {
+        if (
+            (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
+            || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
+        ) {
+            const precomputed = getDocument(context.container).precomputedScopes;
+            if (precomputed) {
+                const classPath = getContainerOfType(context.container, isClasspath);
+                if (classPath) {
+                    const allDescriptions = precomputed.get(classPath);
+                    return new StreamScope(stream(allDescriptions).filter(
+                        desc => desc.type === JavaClass))
+                }
+            }
+            console.error(`Unknown reference to JavaClass`)
+            return EMPTY_SCOPE;
+        }
+        if (context.property === 'member' && isMemberCall(context.container)) {
             const receiverType = this.getType(context.container.receiver);
             if (!receiverType) {
                 return EMPTY_SCOPE;
@@ -72,7 +88,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
             const memberAndImports = new StreamScopeWithPredicate(
                 memberScope.concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram))),
-                super.getScope(context)
+                this.superGetScope(context)
             )
 
             if (context.container.$containerProperty === 'left' // left side of an assignment
@@ -93,11 +109,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         }
         if (!context.container.$container && context.container.$cstNode?.element.$container) {
             // FIXME HACK for orphaned AST Instances
-            return super.getScope({ ...context, container: context.container.$cstNode?.element });
+            return this.superGetScope({ ...context, container: context.container.$cstNode?.element });
         }
-        return super.getScope(context);
+        return this.superGetScope(context);
     }
 
+    private superGetScope(context: ReferenceInfo) {
+        // Extracted one point access to super impl for performance and debugging purposes
+        return super.getScope(context)
+    }
 
     protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
         // By default scope is case insensitive
@@ -203,8 +223,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 export class StreamScopeWithPredicate extends StreamScope {
 
     override getElement(name: string, predicate: (descr: AstNodeDescription) => boolean = () => true): AstNodeDescription | undefined {
+        const nameToLower = name.toLowerCase()
         const local = this.caseInsensitive
-            ? this.elements.find(e => e.name.toLowerCase() === name.toLowerCase() && predicate(e))
+            ? this.elements.find(e => e.name.toLowerCase() === nameToLower && predicate(e))
             : this.elements.find(e => e.name === name && predicate(e));
         if (local) {
             return local;
@@ -359,10 +380,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     findScopeHolder(assignment: Assignment) {
         const container = assignment.$container
-        if(isForStatement(container)) {
+        if (isForStatement(container)) {
             return container.$container
-        } else if(isLetStatement(container)) {
-            if(isCompoundStatement(container.$container)) {
+        } else if (isLetStatement(container)) {
+            if (isCompoundStatement(container.$container)) {
                 // case: title$ = "" ; rem Title
                 return container.$container.$container
             } else {

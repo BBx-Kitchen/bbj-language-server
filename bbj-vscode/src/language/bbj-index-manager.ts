@@ -1,6 +1,7 @@
 import { AstNode, DefaultIndexManager, LangiumDocument, LangiumSharedServices, WorkspaceManager } from "langium";
 import { URI } from "vscode-uri";
 import { BBjWorkspaceManager } from "./bbj-ws-manager";
+import { JavaSyntheticDocUri } from "./java-interop";
 
 export class BBjIndexManager extends DefaultIndexManager {
 
@@ -12,7 +13,7 @@ export class BBjIndexManager extends DefaultIndexManager {
     }
 
     protected override isAffected(document: LangiumDocument<AstNode>, changed: URI): boolean {
-        if(document.uri.toString() === 'classpath:/bbj.class' || document.uri.scheme === 'bbjlib') {
+        if(document.uri.toString() === JavaSyntheticDocUri || document.uri.scheme === 'bbjlib') {
             // only affected by ClassPath changes
             return false;
         }

@@ -84,7 +84,7 @@ public class InteropService {
 
 
 	private ClassInfo loadClassInfo(String className) {
-
+		// FIXME handle inner class names
 		var classInfo = new ClassInfo();
 		classInfo.name = className;
 		try {
@@ -126,6 +126,7 @@ public class InteropService {
 
 	@JsonRequest
 	public CompletableFuture<Boolean> loadClasspath(ClassPathInfoParams params) {
+		var sw = Stopwatch.createStarted();
 		System.out.println("Load additional jars for "+params.toString()+"...");
 
 		if (params.classPathEntries.size()== 1 && params.classPathEntries.get(0).equals("file:")) {
@@ -168,6 +169,7 @@ public class InteropService {
 				e.printStackTrace();
 			}
 		});
+		System.out.println("Finished loading additional jars in: " + sw.elapsed(TimeUnit.MILLISECONDS) + "ms");
 		return CompletableFuture.completedFuture(true);
 	}
 
@@ -238,7 +240,7 @@ public class InteropService {
 			+ "ThreadGroup\n"
 			+ "ThreadLocal\n"
 			+ "Throwable\n"
-			+ "Void\\n"
+			+ "Void\n"
 			// exceptions
 			+"ArithmeticException\n"
 			+ "ArrayIndexOutOfBoundsException\n"
