@@ -1,7 +1,6 @@
 import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, LangiumSharedServices } from "langium";
 import { KeyValuePairObject, getProperties } from 'properties-file';
-import { CancellationToken } from "vscode";
-import { WorkspaceFolder } from 'vscode-languageserver';
+import { WorkspaceFolder, CancellationToken } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module";
 import { JavaInteropService } from "./java-interop";
@@ -11,7 +10,7 @@ import { builtinSymbolicLabels } from "./lib/labels";
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
-import fs from 'fs';
+// import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
@@ -33,6 +32,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
+        
         try {
             const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
@@ -52,7 +52,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             }
             this.settings = parseSettings(propcontents, prefixfromconfig)
             await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
+            console.debug(`Java Classes loaded`)
             await this.javaInterop.loadImplicitImports(cancelToken);
+            console.debug(`Implicit Java imports loaded`)
         } catch (e) {
             // all fine
             console.error(e);
@@ -67,18 +69,20 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 if (entry.isDirectory) {
                     await this.traverseFolder(workspaceFolder, entry.uri, fileExtensions, collector);
                 } else if (entry.isFile) {
-                    // TODO Read from stream
-                    const file = await this.fileSystemProvider.readFile(entry.uri);
-                    if(!file.startsWith('<<bbj>>')) {
-                        const document = this.langiumDocuments.getOrCreateDocument(entry.uri);
-                        collector(document);
+                    const fileContent = await this.fileSystemProvider.readFile(entry.uri);
+                    if(!fileContent.startsWith('<<bbj>>')) {
+                        if(!this.langiumDocuments.hasDocument(entry.uri)) {
+                            collector(this.documentFactory.fromString(fileContent, entry.uri));
+                        }
                     } else {
+                        // TODO Read binary file
                         console.warn(`Skipped binary file from index: ${entry.uri}`)
                     }
                 }
             }
         }));
     }
+
     protected override async loadAdditionalDocuments(
         folders: WorkspaceFolder[],
         collector: (document: LangiumDocument<AstNode>) => void
@@ -87,18 +91,6 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
         collector(this.documentFactory.fromString(builtinVariables, URI.parse('bbjlib:///variables.bbl')));
         collector(this.documentFactory.fromString(builtinSymbolicLabels, URI.parse('bbjlib:///labels.bbl')));
-
-        // Load additional files configured with the PREFIX property
-        if (this.settings?.prefixes) {
-            Promise.all(this.settings.prefixes.map(async prefixPath => {
-                console.warn('Add to additional files: ' + prefixPath.toString())
-                if (fs.existsSync(prefixPath)) {
-                    await this.traverseFolder({ name: "", uri: "" }, URI.file(prefixPath), ['.bbj'], collector)
-                } else {
-                    console.warn(`${prefixPath} is not a directory. Skipped.`)
-                }
-            }))
-        }
     }
 
     public getSettings() {
