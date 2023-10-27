@@ -28,15 +28,16 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override async link(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
+        const started = Date.now()
         const wsManager = this.wsManager()
         const externalDoc = (wsManager instanceof BBjWorkspaceManager)
             && (wsManager as BBjWorkspaceManager).isExternalDocument(document.uri)
 
         const treeIter = streamAst(document.parseResult.value).iterator()
         for (const node of treeIter) {
+            await interruptAndCheck(cancelToken);
             if (externalDoc && isBBjClassMember(node)) {
                 if (node.visibility?.toLowerCase() !== 'private') {
-                    await interruptAndCheck(cancelToken);
                     streamReferences(node).forEach(ref => this.doLink(ref, document));
                     // don't link the method body or Field initialization, we are only interested on its signature
                     if (isMethodDecl(node)) {
@@ -45,9 +46,13 @@ export class BbjLinker extends DefaultLinker {
                 }
                 treeIter.prune()
             } else {
-                await interruptAndCheck(cancelToken);
                 streamReferences(node).forEach(ref => this.doLink(ref, document));
             }
+        }
+        const elapsed = Date.now() - started
+        const threshold = 100
+        if(elapsed > threshold) {
+            console.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
         }
         document.state = DocumentState.Linked;
     }

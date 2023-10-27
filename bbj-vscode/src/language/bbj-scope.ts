@@ -12,7 +12,7 @@ import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
 import {
     ArrayDecl,
-    Assignment, BbjClass, Class, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
+    Assignment, BbjClass, Class, CompoundStatement, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
     isClass, isClasspath, isCompoundStatement, isConstructorCall, isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
@@ -20,8 +20,9 @@ import {
     isLibFunction,
     isLibMember, isMemberCall,
     isMethodDecl,
-    isProgram, isReadStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
-    LibMember, MethodDecl, NamedElement, Program, Use
+    isProgram, isReadStatement, isStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    LibMember, MethodDecl, NamedElement, Program,
+    Statement, Use
 } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
@@ -150,8 +151,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     importedBBjClasses(root: Program | undefined): AstNodeDescription[] {
         if (root) {
-            return root.statements.filter(it => isUse(it) && it.bbjClass?.ref)
-                .map(it => (it as Use).bbjClass!.$nodeDescription!)
+            return collectAllUseStatements(root).filter(it => it.bbjClass?.ref)
+                .map(it => it.bbjClass!.$nodeDescription!)
         }
         return []
     }
@@ -260,8 +261,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
         const rootNode = document.parseResult.value;
         if (isProgram(rootNode) && rootNode.$type === 'Program') {
-            for (const use of rootNode.statements.filter(statement => statement.$type == Use)) {
-                const className = (use as Use).javaClassName
+            for (const use of collectAllUseStatements(rootNode)) {
+                const className = use.javaClassName
                 if (className != null) {
                     try {
                         await this.javaInterop.resolveClassByName(className, cancelToken);
@@ -287,7 +288,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 }
                 const program = node.$container;
                 const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
-                scopes.add(program, this.descriptions.createDescription(javaClass, simpleName))
+                this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
             }
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
@@ -295,7 +296,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 // case: `foo$ = ""` without declaring foo$
                 const symbol = node.variable.symbol
                 if (scopes.get(scopeHolder).findIndex((descr) => descr.name === symbol.$refText) === -1) {
-                    scopes.add(scopeHolder, {
+                    this.addToScope(scopes, scopeHolder, {
                         name: symbol.$refText,
                         nameSegment: toDocumentSegment(symbol.$refNode),
                         selectionSegment: toDocumentSegment(symbol.$refNode),
@@ -306,9 +307,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 }
             }
         } else if (isBbjClass(node) && node.name) {
-            scopes.add(node.$container, this.descriptions.createDescription(node, node.name))
+            this.addToScope(scopes, node.$container, this.descriptions.createDescription(node, node.name))
             const classNameNode = findNodeForProperty(node.$cstNode, 'name')
-            scopes.add(node, {
+            this.addToScope(scopes, node, {
                 name: 'this!',
                 nameSegment: toDocumentSegment(classNameNode),
                 selectionSegment: toDocumentSegment(classNameNode),
@@ -318,7 +319,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             })
             if (node.extends.length > 0) {
                 const superType = node.extends[0]
-                scopes.add(node, {
+                this.addToScope(scopes, node, {
                     name: 'super!',
                     nameSegment: toDocumentSegment(superType.$refNode),
                     selectionSegment: toDocumentSegment(superType.$refNode),
@@ -332,10 +333,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             node.members.filter(member => isFieldDecl(member)).forEach(member => {
                 const nameSegment = toDocumentSegment(findNodeForProperty(member.$cstNode, 'name'))
                 if (!node.members.find(member => member.name === toAccessorName(member.name))) {
-                    scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment));
+                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment));
                 }
                 if (!node.members.find(member => member.name === toAccessorName(member.name, true))) {
-                    scopes.add(node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
+                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
                 }
             });
         } else if (isInputVariable(node) && (isReadStatement(node.$container) || isEnterStatement(node.$container))) {
@@ -349,7 +350,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const scopeHolder = node.$container.$container
                 const inputName = node.symbol.$refText
                 if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {
-                    scopes.add(scopeHolder, {
+                    this.addToScope(scopes, scopeHolder, {
                         name: inputName,
                         nameSegment: toDocumentSegment(node.symbol.$refNode),
                         selectionSegment: toDocumentSegment(node.symbol.$refNode),
@@ -363,19 +364,35 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const scopeHolder = node.$container.$container
             if (scopeHolder) {
                 const description = this.descriptions.createDescription(node, node.name)
-                scopes.add(scopeHolder, description);
+                this.addToScope(scopes, scopeHolder, description);
                 if (isTemplateStringArray(node)) {
                     // Create alias for arrays with template string. 
                     // case reference key$ with key: 
                     // DIM key$:"MY_COL:K(10)"
                     // key.my_col = 525.95
                     // add same description with name without $ to allow reference without $
-                    scopes.add(scopeHolder, { ...description, name: node.name.slice(0, -1) });
+                    this.addToScope(scopes, scopeHolder, { ...description, name: node.name.slice(0, -1) });
                 }
             }
         } else {
-            super.processNode(node, document, scopes);
+            // Almost super implementation, but CompoundStatement is considered
+            const container = node.$container;
+            if (container) {
+                const name = this.nameProvider.getName(node);
+                if (name) {
+                    this.addToScope(scopes, container, this.descriptions.createDescription(node, name, document));
+                }
+            }
         }
+    }
+
+    /**
+    * if scopeHolder is a CompoundStatement, add to parent scope.
+    * Case: title$ = "" ; rem Title
+    */
+    private addToScope(scopes: PrecomputedScopes, scopeHolder: AstNode, descr: AstNodeDescription): void {
+        const key = scopeHolder.$type === CompoundStatement ? scopeHolder.$container! : scopeHolder
+        scopes.add(key, descr);
     }
 
     findScopeHolder(assignment: Assignment) {
@@ -383,13 +400,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         if (isForStatement(container)) {
             return container.$container
         } else if (isLetStatement(container)) {
-            if (isCompoundStatement(container.$container)) {
-                // case: title$ = "" ; rem Title
-                return container.$container.$container
-            } else {
-                // case: title$ = ""
-                return container.$container
-            }
+            return container.$container
         } else {
             return container
         }
@@ -427,4 +438,21 @@ function createAccessorDescription(astNodeLocator: AstNodeLocator, member: Field
         documentUri: getDocument(member).uri,
         path: astNodeLocator.getAstNodePath(member)
     }
+}
+
+function collectAllUseStatements(program: Program): Use[] {
+    return collectUseStatements(program.statements.filter(isStatement))
+}
+
+function collectUseStatements(statements: Statement[]): Use[] {
+    const uses: Use[] = []
+    for (const statement of statements) {
+        if (isUse(statement)) {
+            uses.push(statement)
+        } else if (isCompoundStatement(statement)) {
+            uses.push(...collectUseStatements(statement.statements))
+        }
+        // TODO inspect `use` inside classes? 
+    }
+    return uses
 }
