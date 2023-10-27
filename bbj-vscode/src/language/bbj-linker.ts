@@ -7,7 +7,8 @@ import {
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { isTemplateStringArray, StreamScopeWithPredicate } from './bbj-scope';
+import { StreamScopeWithPredicate } from './bbj-scope';
+import { isTemplateStringArray } from './bbj-scope-local';
 import { BBjWorkspaceManager } from './bbj-ws-manager';
 import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
 

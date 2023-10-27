@@ -5,22 +5,27 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider, DefaultScopeComputation, DefaultScopeProvider, DocumentSegment, EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, IndexManager, isAstNode,
-    LangiumDocument, PrecomputedScopes, ReferenceInfo, Scope, Stream, stream, streamContents, StreamScope, toDocumentSegment
+    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider,
+    DefaultScopeProvider,
+    EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, IndexManager, isAstNode,
+    ReferenceInfo, Scope, Stream, stream,
+    StreamScope
 } from 'langium';
-import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module';
+import { isJavaDocument } from './bbj-scope-local';
 import {
-    ArrayDecl,
-    Assignment, BbjClass, Class, CompoundStatement, Expression, FieldDecl, isArrayDecl, isAssignment, isBbjClass,
+    Assignment, BbjClass, Class,
+    Expression,
+    isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
-    isClass, isClasspath, isCompoundStatement, isConstructorCall, isEnterStatement, isFieldDecl, isForStatement,
-    isInputVariable,
-    isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter, isLetStatement,
+    isClass, isClasspath, isCompoundStatement, isConstructorCall,
+    isFieldDecl,
+    isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isLibFunction,
-    isLibMember, isMemberCall,
+    isMemberCall,
     isMethodDecl,
-    isProgram, isReadStatement, isStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    isProgram,
+    isStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
 } from './generated/ast';
@@ -43,16 +48,25 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
         ) {
-            const precomputed = getDocument(context.container).precomputedScopes;
+            // Scope for JavaClass only
+            const doc = getDocument(context.container)
+            const precomputed = doc.precomputedScopes
             if (precomputed) {
+                if(isJavaDocument(doc)) {
+                    if(doc.classesMapScope) {
+                        // return cached JavaClass MapScope
+                        return doc.classesMapScope
+                    }
+                    console.warn(`JavaDocument without classesMapScope.`)
+                }
+                console.warn(`Resolving JavaMember from outside of JavaDocument.`)
                 const classPath = getContainerOfType(context.container, isClasspath);
                 if (classPath) {
                     const allDescriptions = precomputed.get(classPath);
-                    return new StreamScope(stream(allDescriptions).filter(
-                        desc => desc.type === JavaClass))
+                    return new StreamScope(stream(allDescriptions)) // don't filter as we only have classes as children
                 }
             }
-            console.error(`Unknown reference to JavaClass`)
+            console.error(`Can not retrieve scope for JavaClass type.`)
             return EMPTY_SCOPE;
         }
         if (context.property === 'member' && isMemberCall(context.container)) {
@@ -242,175 +256,6 @@ export class StreamScopeWithPredicate extends StreamScope {
     }
 }
 
-export class BbjScopeComputation extends DefaultScopeComputation {
-
-    protected readonly javaInterop: JavaInteropService;
-    protected readonly astNodeLocator: AstNodeLocator;
-
-    constructor(services: BBjServices) {
-        super(services);
-        this.javaInterop = services.java.JavaInteropService;
-        this.astNodeLocator = services.workspace.AstNodeLocator;
-    }
-
-    override async computeExports(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
-        // Only make classes and library elements globally "visible" in index
-        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibMember(child)), cancelToken);
-    }
-
-    override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
-        const rootNode = document.parseResult.value;
-        if (isProgram(rootNode) && rootNode.$type === 'Program') {
-            for (const use of collectAllUseStatements(rootNode)) {
-                const className = use.javaClassName
-                if (className != null) {
-                    try {
-                        await this.javaInterop.resolveClassByName(className, cancelToken);
-                    } catch (e) {
-                        console.error(e)
-                    }
-                }
-            }
-        }
-        return super.computeLocalScopes(document, cancelToken);
-    }
-
-    protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
-        if (isUse(node)) {
-            if (node.javaClassName) {
-                const javaClass = this.javaInterop.getResolvedClass(node.javaClassName);
-                if (!javaClass) {
-                    return;
-                }
-                if (javaClass.error) {
-                    console.warn(`Java class resolution error: ${javaClass.error}`)
-                    return;
-                }
-                const program = node.$container;
-                const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
-                this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
-            }
-        } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
-            const scopeHolder = this.findScopeHolder(node)
-            if (isSymbolRef(node.variable)) {
-                // case: `foo$ = ""` without declaring foo$
-                const symbol = node.variable.symbol
-                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === symbol.$refText) === -1) {
-                    this.addToScope(scopes, scopeHolder, {
-                        name: symbol.$refText,
-                        nameSegment: toDocumentSegment(symbol.$refNode),
-                        selectionSegment: toDocumentSegment(symbol.$refNode),
-                        type: FieldDecl,
-                        documentUri: document.uri,
-                        path: this.astNodeLocator.getAstNodePath(node)
-                    })
-                }
-            }
-        } else if (isBbjClass(node) && node.name) {
-            this.addToScope(scopes, node.$container, this.descriptions.createDescription(node, node.name))
-            const classNameNode = findNodeForProperty(node.$cstNode, 'name')
-            this.addToScope(scopes, node, {
-                name: 'this!',
-                nameSegment: toDocumentSegment(classNameNode),
-                selectionSegment: toDocumentSegment(classNameNode),
-                type: FieldDecl,
-                documentUri: document.uri,
-                path: this.astNodeLocator.getAstNodePath(node)
-            })
-            if (node.extends.length > 0) {
-                const superType = node.extends[0]
-                this.addToScope(scopes, node, {
-                    name: 'super!',
-                    nameSegment: toDocumentSegment(superType.$refNode),
-                    selectionSegment: toDocumentSegment(superType.$refNode),
-                    type: FieldDecl,
-                    documentUri: document.uri,
-                    path: this.astNodeLocator.getAstNodePath(node)
-                })
-            }
-            // local getter and setter.
-            // TODO Probably better to move to ScopeProvider as super getter and setter can not be accessed.
-            node.members.filter(member => isFieldDecl(member)).forEach(member => {
-                const nameSegment = toDocumentSegment(findNodeForProperty(member.$cstNode, 'name'))
-                if (!node.members.find(member => member.name === toAccessorName(member.name))) {
-                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment));
-                }
-                if (!node.members.find(member => member.name === toAccessorName(member.name, true))) {
-                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
-                }
-            });
-        } else if (isInputVariable(node) && (isReadStatement(node.$container) || isEnterStatement(node.$container))) {
-            /*
-            Create input variables.
-            Cases:
-               READ(1,KEY="TEST")A$,B$,C$
-               ENTER A$,B$,C$
-            */
-            if (isSymbolRef(node)) {
-                const scopeHolder = node.$container.$container
-                const inputName = node.symbol.$refText
-                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {
-                    this.addToScope(scopes, scopeHolder, {
-                        name: inputName,
-                        nameSegment: toDocumentSegment(node.symbol.$refNode),
-                        selectionSegment: toDocumentSegment(node.symbol.$refNode),
-                        type: FieldDecl,
-                        documentUri: document.uri,
-                        path: this.astNodeLocator.getAstNodePath(node)
-                    })
-                }
-            }
-        } else if (isArrayDecl(node)) {
-            const scopeHolder = node.$container.$container
-            if (scopeHolder) {
-                const description = this.descriptions.createDescription(node, node.name)
-                this.addToScope(scopes, scopeHolder, description);
-                if (isTemplateStringArray(node)) {
-                    // Create alias for arrays with template string. 
-                    // case reference key$ with key: 
-                    // DIM key$:"MY_COL:K(10)"
-                    // key.my_col = 525.95
-                    // add same description with name without $ to allow reference without $
-                    this.addToScope(scopes, scopeHolder, { ...description, name: node.name.slice(0, -1) });
-                }
-            }
-        } else {
-            // Almost super implementation, but CompoundStatement is considered
-            const container = node.$container;
-            if (container) {
-                const name = this.nameProvider.getName(node);
-                if (name) {
-                    this.addToScope(scopes, container, this.descriptions.createDescription(node, name, document));
-                }
-            }
-        }
-    }
-
-    /**
-    * if scopeHolder is a CompoundStatement, add to parent scope.
-    * Case: title$ = "" ; rem Title
-    */
-    private addToScope(scopes: PrecomputedScopes, scopeHolder: AstNode, descr: AstNodeDescription): void {
-        const key = scopeHolder.$type === CompoundStatement ? scopeHolder.$container! : scopeHolder
-        scopes.add(key, descr);
-    }
-
-    findScopeHolder(assignment: Assignment) {
-        const container = assignment.$container
-        if (isForStatement(container)) {
-            return container.$container
-        } else if (isLetStatement(container)) {
-            return container.$container
-        } else {
-            return container
-        }
-    }
-}
-
-export function isTemplateStringArray(array: ArrayDecl): boolean {
-    return array.template && array.name?.endsWith('$')
-}
-
 export class BbjNameProvider extends DefaultNameProvider {
 
     static called = new Map<string | undefined, number>
@@ -424,23 +269,8 @@ export class BbjNameProvider extends DefaultNameProvider {
     }
 }
 
-const pattern = new RegExp("[!|\$|%]$")
-function toAccessorName(field: string, setter: boolean = false): string {
-    return (setter ? 'set' : 'get') + (pattern.test(field) ? field.slice(0, -1) : field);
-}
 
-
-function createAccessorDescription(astNodeLocator: AstNodeLocator, member: FieldDecl, nameSegment: DocumentSegment | undefined, setter: boolean = false): AstNodeDescription {
-    return {
-        name: toAccessorName(member.name, setter),
-        nameSegment,
-        type: MethodDecl,
-        documentUri: getDocument(member).uri,
-        path: astNodeLocator.getAstNodePath(member)
-    }
-}
-
-function collectAllUseStatements(program: Program): Use[] {
+export function collectAllUseStatements(program: Program): Use[] {
     return collectUseStatements(program.statements.filter(isStatement))
 }
 
