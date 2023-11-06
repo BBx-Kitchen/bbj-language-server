@@ -81,6 +81,10 @@ export class BBjValidator {
     }
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
+        const document = getDocument(node);
+        if (document.parseResult.parserErrors.length > 0) {
+            return;
+        }
         if (node.$cstNode) {
             const text = (node.$cstNode.root as RootCstNode).fullText;
             const offset = node.$cstNode.offset;
@@ -99,7 +103,11 @@ export class BBjValidator {
     }
 
     checkLinebreaks(node: AstNode, accept: ValidationAcceptor): void {
-        const textDocument = getDocument(node).textDocument;
+        const document = getDocument(node);
+        if (document.parseResult.parserErrors.length > 0) {
+            return;
+        }
+        const textDocument = document.textDocument;
         for (const [predicate, before, after, both] of this.linebreakMap) {
             if (node.$cstNode && predicate(node)) {
                 if (before) {
