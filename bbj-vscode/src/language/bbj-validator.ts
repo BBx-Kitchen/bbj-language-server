@@ -4,11 +4,11 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, CompositeCstNode, CstNode, LeafCstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, CompositeCstNode, CstNode, LeafCstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getContainerOfType, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -53,9 +53,17 @@ export class BBjValidator {
             false,
             true],
         [isIfStatement,
-            ['IF'],
-            ['MLTHENFirst'],
-            ['ENDIF', 'FI']],
+            true,
+            false,
+            false],
+        [isIfEndStatement,
+            false,
+            false,
+            true],
+        [isElseStatement,
+            false,
+            false,
+            true],
         [this.isStandaloneStatement,
             false,
             false,
@@ -67,15 +75,16 @@ export class BBjValidator {
     }
 
     private isStandaloneStatement(node: AstNode): boolean {
-        if (isLabelDecl(node) || isLabelDecl(this.getPreviousNode(node))) {
+        const previous = this.getPreviousNode(node);
+        if (isLabelDecl(node) || isLabelDecl(previous)) {
             return false;
         }
         if (isStatement(node) && !isParameterDecl(node) && !isCommentStatement(node)) {
             if (isCompoundStatement(node.$container)
-                || (isIfStatement(node.$container) && !node.$container.isMultiline)
                 || isLetStatement(node.$container)
                 || isForStatement(node.$container)
-                || isArrayDeclarationStatement(node.$container)) {
+                || isArrayDeclarationStatement(node.$container)
+                || getContainerOfType(previous, isIfStatement)) {
                 return false;
             }
             return true;
