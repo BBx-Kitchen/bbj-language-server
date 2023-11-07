@@ -4,11 +4,11 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, CstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument } from 'langium';
+import { AstNode, CompositeCstNode, CstNode, LeafCstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isFieldDecl, isForStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -67,6 +67,9 @@ export class BBjValidator {
     }
 
     private isStandaloneStatement(node: AstNode): boolean {
+        if (isLabelDecl(node) || isLabelDecl(this.getPreviousNode(node))) {
+            return false;
+        }
         if (isStatement(node) && !isParameterDecl(node) && !isCommentStatement(node)) {
             if (isCompoundStatement(node.$container)
                 || (isIfStatement(node.$container) && !node.$container.isMultiline)
@@ -80,7 +83,19 @@ export class BBjValidator {
         return false;
     }
 
+    private getPreviousNode(node: AstNode): AstNode | undefined {
+        const offset = node.$cstNode?.offset;
+        if (offset) {
+            const previous = findLeafNodeAtOffset(node.$cstNode.root, offset - 1);
+            return previous?.element;
+        }
+        return undefined;
+    }
+
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
+        if (isLabelDecl(this.getPreviousNode(node))) {
+            return;
+        }
         if (node.$cstNode) {
             const text = (node.$cstNode.root as RootCstNode).fullText;
             const offset = node.$cstNode.offset;
@@ -101,7 +116,7 @@ export class BBjValidator {
     checkLinebreaks(node: AstNode, accept: ValidationAcceptor): void {
         const textDocument = getDocument(node).textDocument;
         for (const [predicate, before, after, both] of this.linebreakMap) {
-            if (node.$cstNode && predicate(node)) {
+            if (node.$cstNode && predicate.call(this, node)) {
                 if (before) {
                     const beforeNodes = this.getCstNodes(node.$cstNode, before);
                     for (const cst of beforeNodes) {
@@ -208,4 +223,43 @@ export class BBjValidator {
             return;
         }
     }
+}
+
+export function findLeafNodeAtOffset(node: CstNode, offset: number): LeafCstNode | undefined {
+    if (isLeafCstNode(node)) {
+        return node;
+    } else if (isCompositeCstNode(node)) {
+        const searchResult = binarySearch(node, offset);
+        if (searchResult) {
+            return findLeafNodeAtOffset(searchResult, offset);
+        }
+    }
+    return undefined;
+}
+
+function binarySearch(node: CompositeCstNode, offset: number): CstNode | undefined {
+    let left = 0;
+    let right = node.children.length - 1;
+    let closest: CstNode | undefined = undefined;
+
+    while (left <= right) {
+        const middle = Math.floor((left + right) / 2);
+        const middleNode = node.children[middle];
+
+        if (middleNode.offset === offset) {
+            // Found an exact match
+            return middleNode;
+        }
+
+        if (middleNode.offset < offset) {
+            // Update the closest node (less than offset) and move to the right half
+            closest = middleNode;
+            left = middle + 1;
+        } else {
+            // Move to the left half
+            right = middle - 1;
+        }
+    }
+
+    return closest;
 }
