@@ -81,5 +81,20 @@ describe('BBj validation', async () => {
             property: 'mode'
         });
     });
+    test('Labels followed by code', async () => {
+        const validationResult = await validate(`
+        seterr stderr
+        setesc stdesc
+
+        goto byebye
+
+        stdesc: REM standard escape routine
+        stderr: REM standard error routine
+
+        byebye: bye
+        `);
+
+        expectNoIssues(validationResult);
+    });
 
 });

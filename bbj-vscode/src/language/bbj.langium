@@ -24,7 +24,7 @@ Statement:
 
 
 SingleStatement:
-    CommentStatement |
+    CommentStatement | // alt 0
     VariableDecl |
     LetStatement |
     ArrayDeclarationStatement |
@@ -34,7 +34,7 @@ SingleStatement:
     SetErrorStatement |
     ForStatement |
     IfStatement |
-    WhileStatement |
+    WhileStatement | // alt 10
     WhileEndStatement |
     GotoStatement |
     KeywordStatement |
@@ -44,7 +44,7 @@ SingleStatement:
     LabelDecl |
     OpenStatement |
     ReadStatement |
-    ReadRecordStatement |
+    ReadRecordStatement | // alt 20
     CloseStatement |
     WaitStatement |
     ThrowStatement |
@@ -54,7 +54,7 @@ SingleStatement:
     SwitchStatement |
     ClipFromStrStatement |
     AddrStatement |
-    SqlOpenStatement |
+    SqlOpenStatement | // alt 30
     SqlPrepStatement |
     SqlExecStatement |
     SqlCloseStatement |
@@ -65,7 +65,7 @@ SingleStatement:
     UntilStatement |
     SetOptsStatement |
     PrecisionStatement |
-    KeyedFileStatement |
+    KeyedFileStatement | // alt 40
     RunStatement
 ;
 
