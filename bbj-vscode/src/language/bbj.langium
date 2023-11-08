@@ -34,6 +34,8 @@ SingleStatement:
     SetErrorStatement |
     ForStatement |
     IfStatement |
+    ElseStatement |
+    IfEndStatement |
     WhileStatement | // alt 10
     WhileEndStatement |
     GotoStatement |
@@ -181,17 +183,14 @@ NextStatement:
 ;
 
 IfStatement:
-    'IF' condition=Expression (
-        'SLTHEN'?
-            then+=Statement
-        ('ELSE' else+=Statement)?
-    |   
-        isMultiline?='MLTHEN'?
-            (then+=Statement)*
-        ('ELSE'  (else+=Statement)*)?
-    ('ENDIF' | 'FI')
-    )
+    'IF' condition=Expression 'THEN'?
 ;
+
+ElseStatement:
+    'ELSE' {infer ElseStatement};
+
+IfEndStatement:
+    ('ENDIF' | 'FI') {infer IfEndStatement};
 
 WhileStatement:
     'WHILE' condition=Expression
