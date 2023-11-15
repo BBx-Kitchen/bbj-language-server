@@ -1,11 +1,10 @@
-import { TokenPattern, TokenType, TokenVocabulary } from "chevrotain";
+import { TokenType, TokenVocabulary } from "chevrotain";
 import { DefaultTokenBuilder, GrammarAST, TokenBuilderOptions } from "langium";
 
 export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
-        this.spliceToken(tokens, 'MLTHEN', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
@@ -16,16 +15,6 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         const nextTokenIndex = tokens.findIndex(type => type.name === name);
         const nextToken = tokens.splice(nextTokenIndex, 1);
         tokens.splice(index, 0, ...nextToken);
-    }
-
-    protected override buildKeywordPattern(keyword: GrammarAST.Keyword, caseInsensitive: boolean): TokenPattern {
-        if (keyword.value === 'SLTHEN') {
-            return /then/i;
-        } else if (keyword.value === 'MLTHEN') {
-            return /then(?=[ \t]*(\r?\n|;))/i;
-        } else {
-            return super.buildKeywordPattern(keyword, caseInsensitive);
-        }
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {

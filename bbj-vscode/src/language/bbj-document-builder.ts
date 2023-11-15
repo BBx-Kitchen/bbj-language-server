@@ -86,8 +86,10 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             }
         }
         if (addedDocuments.length > 0) {
-            console.debug(`Trigger update for ${addedDocuments.length} documents.`)
+            const started = Date.now()
             await this.update(addedDocuments, [], cancelToken);
+            const elapsed = Date.now() - started
+            console.debug(`Transitive BBj file update for ${addedDocuments.length} documents took ${elapsed}ms`)
         }
     };
 }

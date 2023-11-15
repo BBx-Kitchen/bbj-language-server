@@ -24,7 +24,7 @@ Statement:
 
 
 SingleStatement:
-    CommentStatement |
+    CommentStatement | // alt 0
     VariableDecl |
     LetStatement |
     ArrayDeclarationStatement |
@@ -34,7 +34,9 @@ SingleStatement:
     SetErrorStatement |
     ForStatement |
     IfStatement |
-    WhileStatement |
+    ElseStatement |
+    IfEndStatement |
+    WhileStatement | // alt 10
     WhileEndStatement |
     GotoStatement |
     KeywordStatement |
@@ -44,7 +46,7 @@ SingleStatement:
     LabelDecl |
     OpenStatement |
     ReadStatement |
-    ReadRecordStatement |
+    ReadRecordStatement | // alt 20
     CloseStatement |
     WaitStatement |
     ThrowStatement |
@@ -54,7 +56,7 @@ SingleStatement:
     SwitchStatement |
     ClipFromStrStatement |
     AddrStatement |
-    SqlOpenStatement |
+    SqlOpenStatement | // alt 30
     SqlPrepStatement |
     SqlExecStatement |
     SqlCloseStatement |
@@ -65,7 +67,7 @@ SingleStatement:
     UntilStatement |
     SetOptsStatement |
     PrecisionStatement |
-    KeyedFileStatement |
+    KeyedFileStatement | // alt 40
     RunStatement
 ;
 
@@ -181,17 +183,14 @@ NextStatement:
 ;
 
 IfStatement:
-    'IF' condition=Expression (
-        'SLTHEN'?
-            then+=Statement
-        ('ELSE' else+=Statement)?
-    |   
-        isMultiline?='MLTHEN'?
-            (then+=Statement)*
-        ('ELSE'  (else+=Statement)*)?
-    ('ENDIF' | 'FI')
-    )
+    'IF' condition=Expression 'THEN'?
 ;
+
+ElseStatement:
+    'ELSE' {infer ElseStatement};
+
+IfEndStatement:
+    ('ENDIF' | 'FI') {infer IfEndStatement};
 
 WhileStatement:
     'WHILE' condition=Expression

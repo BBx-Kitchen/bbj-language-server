@@ -678,4 +678,52 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('1. If statement test #66', async () => {
+        const result = await parse(`
+        if 1<>0 rd_table_pfx$="@"
+        if 2 = 3 and 2 = 2
+            rd_temp_beg = ""
+        endif        
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+    test('2. If statement test #66', async () => {
+        const result = await parse(`
+        label1:
+
+        IF "dd"="sd" THEN 
+: GOTO label1
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+    test('3. If statement test #66', async () => {
+        const result = await parse(`
+        start_stop: ? "start stop"
+        exit_prog: ? "exit"
+        toSwitch = 123
+        switch toSwitch
+            case 27;rem escape
+                if toSwitch = "EDIT" then
+                    exitto exit_prog
+                gosub start_stop
+            break
+        swend
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+    test('4. If statement test #66', async () => {
+        const result = await parse(`
+        if "mode" <> "TIME"
+            if 2 = 0 break
+            if 3 = 0 break
+            print "start_stop"
+        endif
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

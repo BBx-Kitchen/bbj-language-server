@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { EmptyFileSystem } from 'langium';
-import { describe, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
@@ -80,6 +80,33 @@ describe('BBj validation', async () => {
             node: findByIndex(validationResult.document, isKeyedFileStatement, 1),
             property: 'mode'
         });
+    });
+    
+    test('Labels followed by code', async () => {
+        const validationResult = await validate(`
+        seterr stderr
+        setesc stdesc
+
+        goto byebye
+
+        stdesc: REM standard escape routine
+        stderr: REM standard error routine
+
+        byebye: bye
+        `);
+
+        expectNoIssues(validationResult);
+    });
+
+    test('No newline line validation on parse error', async () => {
+        const validationResult = await validate(`
+        x = 4
+        x = [
+        declare String p_color declare String foo
+        `);
+        // only the parse error should be reported, not the "This line needs to be wrapped by line breaks."
+        expect(validationResult.diagnostics).toHaveLength(1);
+        expect(validationResult.diagnostics[0].code).toBe('parsing-error');
     });
 
 });
