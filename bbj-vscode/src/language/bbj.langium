@@ -58,7 +58,7 @@ SingleStatement:
     AddrStatement |
     SqlOpenStatement | // alt 30
     SqlPrepStatement |
-    SqlExecStatement |
+    SqlOpStatement |
     SqlCloseStatement |
     CallStatement |
     DropStatement |
@@ -68,7 +68,10 @@ SingleStatement:
     SetOptsStatement |
     PrecisionStatement |
     KeyedFileStatement | // alt 40
-    RunStatement
+    RunStatement |
+    RenameStatement |
+    DirStatement |
+    ExecuteStatement
 ;
 
 CommentStatement:
@@ -122,11 +125,11 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' Visibility Static returnType=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
     Comments?
     (
         (body+=Statement)*
@@ -139,7 +142,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=[Class:QualifiedClassName] name=FeatureName
+    {infer ParameterDecl} type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName
 ;
 
 /**
@@ -233,7 +236,7 @@ ExitToStatement:
 ;
 
 SetErrorStatement:
-    kind=('SETERR' | 'SETESC') target=LabelRef
+    kind=('SETERR' | 'SETESC') target=(LabelRef | NUMBER)
 ;
 
 OpenStatement:
@@ -256,7 +259,7 @@ PrintStatement:
 
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
-    '(' channelno=Expression? Options? Err? ')'
+    '(' channelno=Expression? Options? ')'
 ;
 
 /**
@@ -264,6 +267,10 @@ fragment WithChannelAndOptions infers WithChannelAndOptions:
  */
 fragment Options:
     (',' options+=Option)+
+;
+
+Option:
+    key=ValidName '=' value=(Expression | LabelRef)
 ;
 
 /**
@@ -274,15 +281,23 @@ fragment Err:
 ;
 
 CallStatement:
-    'CALL' fileid=StringLiteral Err? (',' expressions+=Expression)*
+    'CALL' fileid=Expression Err? (',' expressions+=Expression)*
 ;
 
 DropStatement:
-    'DROP' fileid=StringLiteral Err?
+    'DROP' fileid=Expression Err?
 ;
 
 RunStatement:
-    'RUN' fileid=StringLiteral Err?
+    'RUN' fileid=Expression Err?
+;
+
+ExecuteStatement:
+    'EXECUTE' expression=Expression Err?
+;
+
+RenameStatement:
+    'RENAME' from=Expression ('TO' | ',') to=Expression (',' 'MODE' '=' mode=Expression)? Err?
 ;
 
 /**
@@ -360,13 +375,10 @@ SqlCloseStatement:
     'SQLCLOSE' '(' sqlchan=Expression Err? ')'
 ;
 
-SqlExecStatement:
-    'SQLEXEC' '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
+SqlOpStatement:
+    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
 ;
 
-Option:
-    key=ValidName '=' value=Expression
-;
 
 CloseStatement:
     'CLOSE'  WithChannelAndOptions?
@@ -434,6 +446,10 @@ KeyDef:
 KeySegment:
     // Use BinaryExpression instead of Expression because Expression's stringmask syntax collides with KeySegment syntax
     '[' arg0=BinaryExpression ':' arg1=BinaryExpression (':' arg2=BinaryExpression)? (':' arg3=BinaryExpression)? ']' 
+;
+
+DirStatement:
+    kind=('MKDIR' | 'RMDIR' | 'CHDIR') path=Expression Err?
 ;
 
 /* Expressions */
@@ -535,7 +551,8 @@ EscapeId returns string:
     'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION'
+    | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE'
 ;
 
 // BBx Library
@@ -608,6 +625,7 @@ interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
     returnType?: @Class
+    array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
     body: Statement[]

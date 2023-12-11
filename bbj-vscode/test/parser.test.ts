@@ -726,4 +726,86 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('Rename statement', async () => {
+        const result = await parse(`
+        tmpname$  = "test"
+        newname$  = "test2"
+        rename tmpname$ TO newname$
+        rename tmpname$, newname$
+        rename tmpname$ TO newname$, MODE="REPLACE"
+        rename tmpname$ TO newname$, MODE="REPLACE", ERR=Jump
+
+        Jump:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Release usage', async () => {
+        const result = await parse(`
+        requestSemaphore! = BBjAPI().getGlobalNamespace().getValue()
+        requestSemaphore!.release()
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Call: fileId as expression', async () => {
+        const result = await parse(`
+        authpgm$ = "test"
+        call authpgm$+"::PRE_AUTHENTICATION", err=*next
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Read with err option using symbolic label ref', async () => {
+        const result = await parse(`
+        ch = 2
+        read record (ch,end=*break)log$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Dir statements', async () => {
+        const result = await parse(`
+        path$ = "test"
+        mkdir path$,err=*next
+        chdir "REST_WD", err=*next
+        rmdir "REST_WD"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Array type ref', async () => {
+        const result = await parse(`
+       
+        class public OutputHandler
+
+            field protected String[] strings
+
+            method public String[] createHTML(byte[] bytes)
+            methodend
+        classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Sql set statement', async () => {
+        const result = await parse(`
+        value$ = "test"
+        ch=2
+        i=3
+        sqlset(ch)i,value$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Execute statement', async () => {
+        const result = await parse(`
+        invokeCommand! = "test"
+        execute invokeCommand!, err=Jump
+        Jump:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });

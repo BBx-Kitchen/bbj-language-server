@@ -108,5 +108,28 @@ describe('BBj validation', async () => {
         expect(validationResult.diagnostics).toHaveLength(1);
         expect(validationResult.diagnostics[0].code).toBe('parsing-error');
     });
-
+    /* FIXME
+    test('No newline line validation after :', async () => {
+        const validationResult = await validate(`
+        IF 4 <> 3 THEN 
+        : PRINT "s"; REM "Test" 
+        `);
+        expectNoIssues(validationResult);
+    });
+    */
+    test('OPEN verb: No error when using err', async () => {
+        const validationResult = await validate(`
+        ch = 1
+        file$ = "test"
+        open (ch,err=filenotfund)file$
+        filenotfund:
+        `);
+        expectNoIssues(validationResult);
+    });
+    test('Seterr with line number', async () => {
+        const validationResult = await validate(`
+        seterr 0
+        `);
+        expectNoIssues(validationResult);
+    });
 });
