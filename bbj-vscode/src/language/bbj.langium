@@ -58,7 +58,7 @@ SingleStatement:
     AddrStatement |
     SqlOpenStatement | // alt 30
     SqlPrepStatement |
-    SqlExecStatement |
+    SqlOpStatement |
     SqlCloseStatement |
     CallStatement |
     DropStatement |
@@ -70,7 +70,8 @@ SingleStatement:
     KeyedFileStatement | // alt 40
     RunStatement |
     RenameStatement |
-    DirStatement
+    DirStatement |
+    ExecuteStatement
 ;
 
 CommentStatement:
@@ -124,11 +125,11 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=[Class:QualifiedClassName] name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' Visibility Static returnType=[Class:QualifiedClassName]? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
     Comments?
     (
         (body+=Statement)*
@@ -141,7 +142,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=[Class:QualifiedClassName] name=FeatureName
+    {infer ParameterDecl} type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName
 ;
 
 /**
@@ -291,6 +292,10 @@ RunStatement:
     'RUN' fileid=Expression Err?
 ;
 
+ExecuteStatement:
+    'EXECUTE' expression=Expression Err?
+;
+
 RenameStatement:
     'RENAME' from=Expression ('TO' | ',') to=Expression (',' 'MODE' '=' mode=Expression)? Err?
 ;
@@ -370,8 +375,8 @@ SqlCloseStatement:
     'SQLCLOSE' '(' sqlchan=Expression Err? ')'
 ;
 
-SqlExecStatement:
-    'SQLEXEC' '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
+SqlOpStatement:
+    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
 ;
 
 
@@ -547,7 +552,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE'
 ;
 
 // BBx Library
@@ -620,6 +625,7 @@ interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
     returnType?: @Class
+    array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
     body: Statement[]

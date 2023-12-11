@@ -775,4 +775,37 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Array type ref', async () => {
+        const result = await parse(`
+       
+        class public OutputHandler
+
+            field protected String[] strings
+
+            method public String[] createHTML(byte[] bytes)
+            methodend
+        classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Sql set statement', async () => {
+        const result = await parse(`
+        value$ = "test"
+        ch=2
+        i=3
+        sqlset(ch)i,value$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Execute statement', async () => {
+        const result = await parse(`
+        invokeCommand! = "test"
+        execute invokeCommand!, err=Jump
+        Jump:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });
