@@ -224,7 +224,7 @@ export class BBjValidator {
 
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
         const allowedOptions = ['mode,tim', 'mode', 'tim']
-        const currentOptions = ele.options.map(o => o.key.toLowerCase()).join(',');
+        const currentOptions = ele.options.filter(o => o.key !== 'err').map(o => o.key.toLowerCase()).join(',');
         if (currentOptions.length > 0 && !allowedOptions.includes(currentOptions)) {
             accept('error', `OPEN verb can have following two optional options: mode,tim. Found: ${currentOptions}.`, { node: ele, property: 'options' });
             return;
