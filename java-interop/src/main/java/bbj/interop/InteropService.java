@@ -132,7 +132,21 @@ public class InteropService {
 		if (params.classPathEntries.size()== 1 && params.classPathEntries.get(0).equals("file:")) {
 			System.out.println("Classpath empty. Defaulting to BBj's lib directory.");
 			params.classPathEntries.clear();
-			String homedir = System.getProperty("basis.BBjHome") + "/lib/*";
+
+			String homedir = System.getProperty("basis.BBjHome") + "/.lib/*";
+			// BBj 24 moved the JARs to .lib instead of lib
+			try {
+				if (  Class.forName("com.basis.util.common.VersionInfo").getField("MAJOR_VERSION").getInt(null)<24) {
+					homedir = System.getProperty("basis.BBjHome") + "/.lib/*";
+				}
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			} catch (NoSuchFieldException e) {
+				throw new RuntimeException(e);
+			} catch (ClassNotFoundException e) {
+				throw new RuntimeException(e);
+			}
+
 			if (homedir.substring(1,2).equals(":"))
 				homedir = homedir.substring(2).replace("\\","/");
 			params.classPathEntries.add("file:" + homedir);
