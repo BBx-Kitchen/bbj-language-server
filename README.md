@@ -21,7 +21,7 @@ This opens a VS Code instance in your browser that automatically builds the proj
     * Alternatively, you can execute the command `./gradlew run` in the `java-interop` subfolder (works without additional VS Code extension).
  2. _Run Extension_ – this starts a second instance of VS Code (in a new browser tab) that contains the BBj language extension and its language server.
 
-Once the new VS Code instance is started, open a bbj file and see how the editor behaves.
+Once the new VS Code instance is started, you should open a bbj file and see how the editor behaves.  
 
 ### Building Locally
 
