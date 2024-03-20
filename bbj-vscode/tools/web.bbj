@@ -1,6 +1,15 @@
+rem This BBj program is called from the Commands.js JavaScript program
+rem These are the command line parameters:
+rem   1) client [BUI|DWC]
+rem   2) app name
+rem   3) program file
+rem   4) working directory
+rem   5) username
+rem   6) password
+
 ? 'HIDE'
 
-isDWC!      = iff(ARGV(1) = "DWC", 1, 0) 
+isDWC!      = iff(ARGV(1) = "DWC", 1, 0)
 name!       = ARGV(2)
 programme!  = ARGV(3)
 wd!         = ARGV(4)
@@ -16,27 +25,28 @@ configuration! = admin!.getRemoteConfiguration()
 rem clean up name!
 name! = name!.replaceAll("-","")
 
-rem check the app is not created yet
+rem get the app if it's already registered
 app! = null()
 apps! = configuration!.getApplications()
 it! = apps!.iterator()
 while(it!.hasNext())
     currentApp! = it!.next()
     appName! = currentApp!.getString(currentApp!.NAME)
-
-    if(appName! = name!)
+    if (appName! = name!) then
         app! = currentApp!
+        break
     fi
 wend
 
-if(app! = null()) then
-    rem create the app
+rem create the app if it wasn't in the list of registered apps
     app! = configuration!.createApplication()
 fi
 
+rem set the properties for the application
 app!.setString(app!.NAME, name!)
 app!.setString(app!.PROGRAM, programme!)
 app!.setString(app!.WORKING_DIRECTORY , wd!)
+if (isDWC!) then app!.setBoolean(app!.DWC_ENABLED, 1)
 app!.commit()
 
 rem open the app in the browser
