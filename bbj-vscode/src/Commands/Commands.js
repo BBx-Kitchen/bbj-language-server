@@ -104,19 +104,28 @@ const Commands = {
 
   run: function (params) {
     const home = getBBjHome();
-    if (home) {
-      const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
-      const active = vscode.window.activeTextEditor;
-      const fileName = active ? active.document.fileName : params.fsPath;
-      const workingDir = path.dirname(fileName);
-      const cmd = `${bbj} -q -WD${workingDir} ${fileName}`;
+    if (!home) return;
 
+    const webConfig = vscode.workspace.getConfiguration("bbj.web");
+    
+    const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
+    const active = vscode.window.activeTextEditor;
+    const fileName = active ? active.document.fileName : params.fsPath;
+    const workingDir = path.dirname(fileName);
+    const cmd = `${bbj} -q -WD${workingDir} ${fileName}`;
+
+    const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
           vscode.window.showErrorMessage(`Failed to run "${fileName}"`);
-          return;
         }
       });
+    };
+
+    if (webConfig.AutoSaveUponRun && active) {
+      active.document.save().then(runCommand);
+    } else {
+      runCommand();
     }
   },
 
