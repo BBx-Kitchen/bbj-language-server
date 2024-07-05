@@ -225,6 +225,12 @@
                     "description": "A dict of bui apps where the key is the name of the bui app and the value is the config dict.",
                     "scope": "window"
                 },
+                "bbj.web.AutoSaveUponRun": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Auto Save upon run of bbj program",
+                    "scope": "window"
+                },
                 "bbj.formatter.indentWidth": {
                     "type": "number",
                     "default": 2,
