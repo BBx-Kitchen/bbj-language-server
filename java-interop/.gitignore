@@ -1,3 +1,8 @@
 .gradle/
 build/
 bin/
+.metadata/
+gradle/
+.settings/
+.classpath
+.project
