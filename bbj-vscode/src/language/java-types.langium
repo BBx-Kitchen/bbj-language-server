@@ -15,21 +15,24 @@ interface NamedElement {
 interface Class extends NamedElement {
 }
 
-interface JavaClass extends Class {
+interface Documented {
+    docu?: string
+}
+
+interface JavaClass extends Class, Documented {
     fields: JavaField[]
     methods: JavaMethod[]
-
     error?: string
 }
 
 type JavaMember = JavaField | JavaMethod
 
-interface JavaField extends NamedElement {
+interface JavaField extends NamedElement, Documented {
     type: string
     resolvedType?: @JavaClass
 }
 
-interface JavaMethod extends NamedElement {
+interface JavaMethod extends NamedElement, Documented {
     returnType: string
     parameters: JavaMethodParameter[]
     resolvedReturnType?: @JavaClass
