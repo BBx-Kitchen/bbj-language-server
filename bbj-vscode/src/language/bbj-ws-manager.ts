@@ -1,12 +1,13 @@
 import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, LangiumSharedServices } from "langium";
 import { KeyValuePairObject, getProperties } from 'properties-file';
-import { WorkspaceFolder, CancellationToken } from 'vscode-languageserver';
+import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module";
 import { JavaInteropService } from "./java-interop";
+import { JavadocProvider } from "./java-javadoc";
 import { builtinFunctions } from "./lib/functions";
-import { builtinVariables } from "./lib/variables";
 import { builtinSymbolicLabels } from "./lib/labels";
+import { builtinVariables } from "./lib/variables";
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
@@ -51,6 +52,11 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 console.warn("No bbjdir set. No classpath and prefixes loaded.")
             }
             this.settings = parseSettings(propcontents, prefixfromconfig)
+            
+            // initialize javadoc look-up before loading classes.
+            const javadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc'))
+            await JavadocProvider.getInstance().initialize(javadocFolders, this.fileSystemProvider, cancelToken);
+
             await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
             console.debug(`Java Classes loaded`)
             await this.javaInterop.loadImplicitImports(cancelToken);
