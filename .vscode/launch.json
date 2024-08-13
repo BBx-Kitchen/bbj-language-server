@@ -15,7 +15,11 @@
             ],
             "env": {
                 // "DEBUG_BREAK": "true"
-            }
+            },
+            "outFiles": [
+                "${workspaceFolder}/bbj-vscode/out/*.(m|c|)js",
+                "!**/node_modules/**"
+            ]
         },
         {
             "name": "Attach to Language Server",

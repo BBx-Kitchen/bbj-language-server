@@ -1,0 +1,39 @@
+{
+	"name": "com.basis.util",
+	"version": "1.0.0",
+	"docu": "This package contains utility classes for the Basis Framework.",
+	"classes": [
+		{
+			"name": "BBjStringConverter",
+			"docu": "This class provides methods to convert strings to other data types.",
+			"fields": [
+				{
+					"name": "DEFAULT_DATE_FORMAT",
+					"docu": "The default date format used by the class."
+				}
+			],
+			"methods": [
+				{
+					"name": "convertToDate",
+					"docu": "Converts a string to a date using the default date format.",
+					"params": [
+						{
+							"name": "dateString"
+						}
+					]
+				}
+			],
+			"constructors": [
+				{
+					"name": "BBjStringConverter",
+					"docu": "Creates a new instance of the class.",
+					"params": [
+						{
+							"name": "dateString"
+						}
+					]
+				}
+			]
+		}
+	]
+}
