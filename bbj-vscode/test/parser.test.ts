@@ -808,4 +808,25 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Return statement without result', async () => {
+        const result = await parse(`
+        GOSUB funcNoReturn
+
+        funcNoReturn:
+            PRINT "we do something and RETURN"
+            RETURN
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Return statement with result', async () => {
+        const result = await parse(`
+        GOSUB funcWithReturn
+
+        funcWithReturn:
+            RETURN 42
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });
