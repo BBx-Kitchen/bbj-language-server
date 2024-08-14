@@ -1,41 +1,59 @@
-import { AstNode, MultilineCommentHoverProvider } from "langium";
+import { AstNode, AstNodeHoverProvider, DocumentationProvider, LangiumServices, isJSDoc, parseJSDoc } from "langium";
 import { Hover } from "vscode-languageclient";
 import { MethodData, toMethodData } from "./bbj-nodedescription-provider";
 import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc";
 
-export class BBjHoverProvider extends MultilineCommentHoverProvider {
+export class BBjHoverProvider extends AstNodeHoverProvider {
 
+    protected readonly documentationProvider: DocumentationProvider;
     protected javadocProvider = JavadocProvider.getInstance();
+
+    constructor(services: LangiumServices) {
+        super(services);
+        this.documentationProvider = services.documentation.DocumentationProvider;
+    }
 
     protected override async getAstNodeHoverContent(node: AstNode): Promise<Hover | undefined> {
         const header = documentationHeader(node)
         if (isBbjClass(node) || isBBjClassMember(node)) {
-            const superDocu = super.getAstNodeHoverContent(node);
-            if (superDocu) {
-                return superDocu;
+            const comments = this.getAstNodeComments(node);
+            if (comments) {
+                return this.createMarkdownHover(header, comments);
             }
         } else if (isDocumented(node) && isNamedElement(node)) {
             let javaDoc: { signature?: string, javadoc: string } | undefined = node.docu
             if (!javaDoc && this.javadocProvider.isInitialized()) {
                 const documentation = await this.javadocProvider.getDocumentation(node);
+                const javadocContent = documentation?.docu ? this.tryParseJavaDoc(documentation.docu) : ''
                 if (isMethodDoc(documentation)) {
                     const javaMethodNode = node as JavaMethod
                     const signature = `${javaTypeAdjust(javaMethodNode.returnType)} ${ownerClass(javaMethodNode)}${methodSignature(toMethodDocToMethodData(documentation, javaMethodNode), javaTypeAdjust)}`
                     javaDoc = {
                         signature: signature,
-                        javadoc: documentation.docu ?? ''
+                        javadoc: javadocContent
                     }
                 } else {
                     javaDoc = {
                         signature: documentationHeader(node),
-                        javadoc: documentation?.docu ?? ''
+                        javadoc: javadocContent
                     }
                 }
             }
             return this.createMarkdownHover(javaDoc?.signature, javaDoc?.javadoc);
         }
         return header ? this.createMarkdownHover(header) : undefined;
+    }
+
+    /**
+     * BBj documentation provider will collect all preceding comment statements
+     * and if the first comment starts with "/**" it will return all comments content.
+     * 
+     * @param node  The node to get the comments for
+     * @returns   The comments for the node
+     */
+    protected getAstNodeComments(node: AstNode) {
+        return this.documentationProvider.getDocumentation(node);
     }
 
     protected createMarkdownHover(header: string | undefined, content: string | undefined = ''): Hover {
@@ -46,6 +64,18 @@ export class BBjHoverProvider extends MultilineCommentHoverProvider {
                 value: `${headerText}${content}`
             }
         };
+    }
+
+    protected tryParseJavaDoc(comment: string) {
+        if (isJSDoc(comment)) {
+            try {
+                const doc = parseJSDoc(comment)
+                return doc.toMarkdown()
+            } catch (error) {
+                console.error(error)
+            }
+        }
+        return comment;
     }
 }
 
@@ -68,13 +98,15 @@ export function documentationHeader(node: AstNode): string | undefined {
 
     // Other (BBj)
     if (isMethodDecl(node)) {
-        return `${node.returnType?.$refText && javaTypeAdjust(node.returnType.$refText)} ${ownerClass(node)}${methodSignature(toMethodData(node))}`;
+        const owner = ownerClass(node)
+        const type = (node.returnType && javaTypeAdjust(node.returnType.$refText))
+        return `${type ? type + ' ' : ''}${owner}${methodSignature(toMethodData(node))}`;
     }
     if (isFieldDecl(node)) {
         return `${javaTypeAdjust(node.type?.ref?.name ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
     }
-    if (isClass(node)) {
-        return `class ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+    if (isBbjClass(node)) {
+        return `${node.interface ? 'interface' : 'class'} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
     }
     return undefined;
 }
