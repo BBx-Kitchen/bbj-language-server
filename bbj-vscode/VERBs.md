@@ -2,7 +2,7 @@
 
 | Status | Test | Main Description | BBj-Specific Description |
 | --- | --- | --- | --- |
-| OK | `npx vitest run -t "TODO"` | `npx vitest run -t "TODO"` | [ADDR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/addr_verb.htm) |     |
+| OK | `npx vitest run -t "TODO"` | [ADDR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/addr_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [AUTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/auto_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [BACKGROUND Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/background_verb.htm) |     |
 | OK | `npx vitest run -t "Check Begin Clear Verb"` | [BEGIN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/begin_verb.htm) | [BEGIN Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/BEGIN_Verb_-_BBj.htm) |
