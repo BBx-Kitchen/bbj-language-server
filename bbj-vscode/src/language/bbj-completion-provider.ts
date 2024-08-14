@@ -1,8 +1,8 @@
 import { AstNodeDescription, CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, MaybePromise, NextFeature, Reference, ReferenceInfo, getContainerOfType } from "langium";
 
 import { CrossReference, Keyword, isAssignment } from "langium/lib/grammar/generated/ast";
-import { CompletionItemKind, MarkupContent } from "vscode-languageserver";
-import { documentationContent, methodSignature } from "./bbj-hover";
+import { CompletionItemKind } from "vscode-languageserver";
+import { documentationHeader, methodSignature } from "./bbj-hover";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider";
 import { LibSymbolicLabelDecl } from "./generated/ast";
 
@@ -21,6 +21,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.name, idx)).join(', ')})`
 
             const retType = ': ' + toSimpleName(nodeDescription.returnType)
+            // TODO load param names for java methods from Javadoc
             const signature = methodSignature(nodeDescription, type => toSimpleName(type))
 
             superImpl.label = label()
@@ -33,12 +34,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             superImpl.detail = signature
             if (nodeDescription.node) {
                 // TODO Add docu to description?
-                const content = documentationContent(nodeDescription.node)?.contents as MarkupContent
+                const content = documentationHeader(nodeDescription.node)
                 if (content) {
-                    superImpl.documentation = { kind: content.kind, value: content.value }
+                    superImpl.documentation = { kind: 'markdown', value: content }
                 }
             }
-        } else if(nodeDescription.type === LibSymbolicLabelDecl ) {
+        } else if (nodeDescription.type === LibSymbolicLabelDecl) {
             superImpl.label = nodeDescription.name
             superImpl.sortText = superImpl.label.slice(1) // remove * so that symbolic labels appear in the alphabetical order
         }

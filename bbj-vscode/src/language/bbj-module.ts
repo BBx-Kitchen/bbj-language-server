@@ -12,6 +12,7 @@ import {
     inject,
     prepareLangiumParser
 } from 'langium';
+import { BBjCommentProvider } from './bbj-comment-provider';
 import { BBjCompletionProvider } from './bbj-completion-provider';
 import { BBjDocumentBuilder } from './bbj-document-builder';
 import { BBjDocumentValidator } from './bbj-document-validator';
@@ -67,6 +68,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     java: {
         JavaInteropService: (services) => new JavaInteropService(services)
+    },
+    documentation: {
+        CommentProvider: (services) => new BBjCommentProvider()
     },
     lsp: {
         HoverProvider: (services) => new BBjHoverProvider(services),
