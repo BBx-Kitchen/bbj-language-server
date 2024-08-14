@@ -7,6 +7,7 @@
 import { EmptyFileSystemProvider, FileSystemNode, FileSystemProvider } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
+import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast";
 
 /**
  * Provides Javadoc information for internal binary classes.
@@ -16,11 +17,12 @@ export class JavadocProvider {
     private static _instance: JavadocProvider;
 
     private lazyLoad: boolean = false;
-    private packages: Map<string, PackageDoc | URI | null> | undefined;
+    private initialized: boolean = false;
+    private packages: Map<string, PackageDoc | URI | null> = new Map();
     private fsAccess: FileSystemProvider = new EmptyFileSystemProvider();
 
 
-    protected constructor(lazyLoad: boolean = false) {
+    protected constructor(lazyLoad: boolean = true) {
         this.lazyLoad = lazyLoad;
     }
 
@@ -38,10 +40,10 @@ export class JavadocProvider {
      * @param cancelToken handles cancel requests
      */
     async initialize(roots: URI[], fsAccess: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
-        if (this.packages !== undefined) {
+        if (this.isInitialized()) {
             throw new Error("JavadocProvider already initialized");
         }
-        this.packages = new Map();
+        this.initialized = true;
         this.fsAccess = fsAccess;
         for (const root of roots.filter(uri => uri.scheme === 'file')) {
             if (cancelToken.isCancellationRequested) {
@@ -60,15 +62,50 @@ export class JavadocProvider {
                     const packageName = fileName.slice(0, -5); // cut .json
                     if (packageName !== undefined) {
                         this.packages.set(packageName, this.lazyLoad ? node.uri : await this.loadJavadocFile(packageName, node.uri));
-                        console.debug(`Javadoc for package '${packageName}' loaded.`);
+
                     }
                 }
             }
         }
     }
 
+    /**
+     * 
+     * @returns true if JavadocProvider is initialized
+     */
+    public isInitialized(): boolean {
+        return this.initialized;
+    }
+
+    async getDocumentation(node: Documented & NamedElement): Promise<NamedDoc | undefined> {
+        let clazz: JavaClass | undefined;
+        if (isJavaClass(node)) {
+            clazz = node;
+        } else if (isJavaMember(node) && isJavaClass(node.$container)) {
+            clazz = node.$container;
+        }
+        if (clazz) {
+            const qnParts = clazz.name.split('.')
+            const className = qnParts.pop();
+            const packageDoc = await this.getPackageDoc(qnParts.join('.'));
+            const classDoc = packageDoc?.classes.find(c => c.name === className);
+            if (classDoc) {
+                switch (node.$type) {
+                    case 'JavaClass':
+                        return classDoc;
+                    case 'JavaField':
+                        return classDoc.fields.find(c => c.name === node.name);
+                    case 'JavaMethod':/* TODO check method overloading */
+                        return classDoc.methods.find(c => c.name === node.name);
+                    // TODO handle constructors
+                }
+            }
+        }
+        return undefined;
+    }
+
     public async getPackageDoc(packageName: string): Promise<PackageDoc | undefined> {
-        if (this.packages === undefined) {
+        if (!this.isInitialized()) {
             throw new Error("JavadocProvider not initialized. Call initialize() first.");
         }
         const packageDoc = this.packages.get(packageName);
@@ -87,7 +124,7 @@ export class JavadocProvider {
      * Load javadoc file
      * @param packageName 
      * @param packageDocURI 
-     * @returns  PackageDoc or null. Null if failed to load.
+     * @returns PackageDoc or null. Null if failed to load.
      */
     protected async loadJavadocFile(packageName: string, packageDocURI: URI): Promise<PackageDoc | null> {
         try {
@@ -96,6 +133,7 @@ export class JavadocProvider {
                 console.error(`Failed to load javadoc file, package name '${doc.name}' does not match file name ${packageDocURI.toString()}`);
                 return null;
             }
+            console.debug(`Javadoc for package '${packageName}' loaded.`);
             return doc;
         } catch (e) {
             console.error(`Failed to load javadoc file ${packageDocURI.toString()}: ${e}`);
@@ -112,6 +150,7 @@ export class JavadocProvider {
     }
 }
 
+// JSON structure
 export type NamedDoc = {
     name: string,
     docu?: string
@@ -129,4 +168,8 @@ export type ClassDoc = NamedDoc & {
 
 export type MethodDoc = NamedDoc & {
     params: NamedDoc[]
+}
+
+export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {
+    return item !== undefined && (item as any).params !== undefined;
 }

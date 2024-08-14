@@ -15,8 +15,13 @@ interface NamedElement {
 interface Class extends NamedElement {
 }
 
+interface DocumentationInfo {
+    javadoc: string
+    signature?: string
+}
+
 interface Documented {
-    docu?: string
+    docu?: DocumentationInfo
 }
 
 interface JavaClass extends Class, Documented {
