@@ -1,0 +1,9 @@
+GOSUB funcNoReturn
+GOSUB funcWithReturn
+
+funcNoReturn:
+    PRINT "we do something and RETURN"
+    RETURN
+
+funcWithReturn:
+    RETURN 123

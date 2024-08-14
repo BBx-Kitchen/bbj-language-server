@@ -7,6 +7,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
+        this.spliceToken(tokens, 'ENDLINE_RETURN', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
         return tokens;
     }
@@ -30,6 +31,13 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 name: terminal.name,
                 // Add more expceptional tokens here if an explicit line break token is needed
                 PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
+                LINE_BREAKS: false
+            };
+            return token;
+        } else if (terminal.name === 'ENDLINE_RETURN') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/RETURN[ \t]*(?=(\r?\n))/),
                 LINE_BREAKS: false
             };
             return token;
