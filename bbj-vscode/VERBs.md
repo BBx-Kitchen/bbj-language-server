@@ -85,8 +85,8 @@
 | OK | `npx vitest run -t "Check PROCESS_EVENT Parameters"` |    | [PROCESS\_EVENTS Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/process_events_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [PROGRAM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/program_verb.htm) |     |
 | OK | `npx vitest run -t "Check read and similar, with record"` | [READ Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm) (+READRECORD) | [READ Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/read_verb_bbj.htm) |
-| OK | `npx vitest run -t "TODO"` |    | [REDIM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/REDIM_Verb.htm) |
-| OK | `npx vitest run -t "TODO"` | [RELEASE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/release_verb.htm) | [RELEASE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/release_verb_bbj.htm) |
+| OK | `npx vitest run -t "Check REDIM verb"` |    | [REDIM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/REDIM_Verb.htm) |
+| OK | `npx vitest run -t "Check RELEASE verb"` | [RELEASE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/release_verb.htm) | [RELEASE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/release_verb_bbj.htm) |
 | OK | `npx vitest run -t "Parse \"REM\" as independent statement on own line"`| [REM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/rem_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [REMOVE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/remove_verb.htm) | [REMOVE Verb - Delete Key from Keyed File - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/remove_verb_delete_key_from_keyed_file_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     | [REMOVE\_CALLBACK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/remove_callback_verb.htm) |
@@ -115,17 +115,17 @@
 | TODO | `npx vitest run -t "TODO"` | [SETTIME Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/settime_verb.htm) | [SETTIME Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/settime_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [SETTRACE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/settrace_verb.htm) | [SETTRACE Verb – BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/settrace_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [SORT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sort_verb.htm) |     |
-| OK | `npx vitest run -t "TODO"` | [SQLCLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlclose_verb.htm) |     |
+| OK | `npx vitest run -t "Check SQLCLOSE verb"` | [SQLCLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlclose_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [SQLCOMMIT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlcommit_verb_commit_current_transaction.htm) |
 | TODO | `npx vitest run -t "TODO"` | [SQLEXEC Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlexec_verb.htm) |     |
-| OK | `npx vitest run -t "Check SQLOpen Verb"` | [SQLOPEN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlopen_verb.htm) | [SQLOPEN Verb - Open SQL Channel BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/sqlopen_verb_open_sql_channel_bbj.htm) |
-| OK | `npx vitest run -t "TODO"` | [SQLPREP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlprep_verb.htm) | [SQLPREP Verb - Set Up SQL Command (BBj)](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/sqlprep_verb_set_up_sql_command_bbj.htm) |
+| TODO incomplete parameters | `npx vitest run -t "Check SQLOpen Verb"` | [SQLOPEN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlopen_verb.htm) | [SQLOPEN Verb - Open SQL Channel BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/sqlopen_verb_open_sql_channel_bbj.htm) |
+| OK | `npx vitest run -t "Check SQLPREP verb"` | [SQLPREP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlprep_verb.htm) | [SQLPREP Verb - Set Up SQL Command (BBj)](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/sqlprep_verb_set_up_sql_command_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     | [SQLROLLBACK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlrollback_verb_rollback_current_transaction.htm) |
 | TODO | `npx vitest run -t "TODO"` | [SQLSET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlset_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [START Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/start_verb.htm) | [START Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/start_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [STOP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/stop_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [STRING Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/string_verb.htm) |     |
-| OK | `npx vitest run -t "TODO"` | [SWITCH .. CASE .. SWEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/switch_case_swend_verbs.htm) | [SWITCH .. CASE .. SWEND Verbs - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/SWITCH..CASE..SWEND_Verbs-BBj.htm) |
+| OK | `npx vitest run -t "Check SWITCH...CASE...SWEND verb"` | [SWITCH .. CASE .. SWEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/switch_case_swend_verbs.htm) | [SWITCH .. CASE .. SWEND Verbs - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/SWITCH..CASE..SWEND_Verbs-BBj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     |     |
 | TODO | `npx vitest run -t "TODO"` | [TABLE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/table_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [TCLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/tclose_verb.htm) |
@@ -136,8 +136,8 @@
 | TODO | `npx vitest run -t "TODO"` | [UPDATELIC Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/updatelic_verb_update_license_for_basis_license_manager.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [USE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/use_verb.htm) |
 | OK | `npx vitest run -t "Check KeyedFileStatement Verb"` |      | [VKEYED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/vkeyed_verb.htm) |
-| OK | `npx vitest run -t "TODO"` | [WAIT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/wait_verb.htm) | [WAIT Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/wait_verb_bbj.htm) |
-| OK | `npx vitest run -t "TODO"` | [WHILE .. WEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/while_wend_verbs.htm) |     |
+| OK | `npx vitest run -t "Check WAIT verb"` | [WAIT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/wait_verb.htm) | [WAIT Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/wait_verb_bbj.htm) |
+| OK | `npx vitest run -t "Check WHILE verb"` | [WHILE .. WEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/while_wend_verbs.htm) |     |
 | OK | `npx vitest run -t "Check read and similar, with record"` | [WRITE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm) | [WRITE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/write_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [XCALL Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/xcall_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [XFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/xfile_verb.htm) |
