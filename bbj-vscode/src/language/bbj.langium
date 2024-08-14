@@ -197,7 +197,7 @@ IfEndStatement:
     ('ENDIF' | 'FI') {infer IfEndStatement};
 
 ReturnStatement:
-    ENDLINE_RETURN | 'RETURN' returnValue=Expression?;
+    ENDLINE_RETURN | 'RETURN' returnValue=Expression;
 
 WhileStatement:
     'WHILE' condition=Expression
