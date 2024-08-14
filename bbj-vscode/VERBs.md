@@ -138,7 +138,7 @@
 | OK |     | [VKEYED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/vkeyed_verb.htm) |
 | OK | [WAIT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/wait_verb.htm) | [WAIT Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/wait_verb_bbj.htm) |
 | OK | [WHILE .. WEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/while_wend_verbs.htm) |     |
-| ok | [WRITE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm) | [WRITE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/write_verb_bbj.htm) |
+| OK | [WRITE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm) | [WRITE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/write_verb_bbj.htm) |
 | TODO | [XCALL Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/xcall_verb.htm) |     |
 | TODO |     | [XFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/xfile_verb.htm) |
 | OK |     | [XKEYED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/xkeyed_verb.htm) |
