@@ -3,15 +3,18 @@ import { Hover } from "vscode-languageclient";
 import { MethodData, toMethodData } from "./bbj-nodedescription-provider";
 import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc";
+import { CommentProvider } from "langium/lib/documentation/comment-provider";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
 
     protected readonly documentationProvider: DocumentationProvider;
     protected javadocProvider = JavadocProvider.getInstance();
+    protected readonly commentProvider: CommentProvider;
 
     constructor(services: LangiumServices) {
         super(services);
         this.documentationProvider = services.documentation.DocumentationProvider;
+        this.commentProvider = services.documentation.CommentProvider;
     }
 
     protected override async getAstNodeHoverContent(node: AstNode): Promise<Hover | undefined> {
@@ -53,7 +56,18 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
      * @returns   The comments for the node
      */
     protected getAstNodeComments(node: AstNode) {
-        return this.documentationProvider.getDocumentation(node);
+        try {
+            return this.documentationProvider.getDocumentation(node);
+        } catch (e) {
+            // JSDocDocumentationProvider Fails to pars in case of syntax errors
+            // Example:
+            /**
+            * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">\n
+            * Java Collections Framework</a>
+            */
+            console.warn(e)
+            return this.commentProvider.getComment(node);
+        }
     }
 
     protected createMarkdownHover(header: string | undefined, content: string | undefined = ''): Hover {
@@ -72,7 +86,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
                 const doc = parseJSDoc(comment)
                 return doc.toMarkdown()
             } catch (error) {
-                console.error(error)
+                console.warn(error)
             }
         }
         return comment;
