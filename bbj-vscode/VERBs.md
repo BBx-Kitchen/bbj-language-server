@@ -2,7 +2,7 @@
 
 | Status | Test | Main Description | BBj-Specific Description |
 | --- | --- | --- | --- |
-| OK | `npx vitest run -t "TODO"` | [ADDR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/addr_verb.htm) |     |
+| OK | `npx vitest run -t "Check ADDR verb"` | [ADDR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/addr_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [AUTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/auto_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [BACKGROUND Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/background_verb.htm) |     |
 | OK | `npx vitest run -t "Check Begin Clear Verb"` | [BEGIN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/begin_verb.htm) | [BEGIN Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/BEGIN_Verb_-_BBj.htm) |
@@ -18,11 +18,11 @@
 | TODO | `npx vitest run -t "TODO"` |     | [CLEARP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clearp_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [CLIPCLEAR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipclear_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [CLIPFROMFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipfromfile_verb.htm) |     |
-| OK | `npx vitest run -t "TODO"` | [CLIPFROMSTR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipfromstr_verb.htm) |     |
+| OK | `npx vitest run -t "Check CLIPFROMSTR verb"` | [CLIPFROMSTR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipfromstr_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [CLIPLOCK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/cliplock_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [CLIPTOFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/cliptofile_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [CLIPUNLOCK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipunlock_verb.htm) |     |
-| OK | `npx vitest run -t "TODO"` | [CLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/close_verb.htm) | [CLOSE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/close_verb_bbj.htm) |
+| OK | `npx vitest run -t "Check CLOSE verb"` | [CLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/close_verb.htm) | [CLOSE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/close_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check Exit Verbs"` | [CONTINUE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/continue_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [DEF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/def_verb.htm) | [DEF Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/def_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [DELETE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/delete_verb.htm) |     |
@@ -44,21 +44,21 @@
 | OK | `npx vitest run -t "Execute statement"` | [EXECUTE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/execute_verb.htm) | [EXECUTE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/EXECUTE_Verb_-_BBj.htm) |
 | OK | `npx vitest run -t "Check Exit Verbs"` | [EXIT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/exit_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [EXITTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/exitto_verb.htm) |     |
-| OK | `npx vitest run -t "Check readrecord and similar"` <br/> `npx vitest run -t "READ: Input variable should be linked or created."` | [EXTRACT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/extract_verb.htm) (+EXTRACTRECORD) |     |
+| TODO parameter combinations | `npx vitest run -t "Check readrecord and similar"` <br/> `npx vitest run -t "READ: Input variable should be linked or created."` | [EXTRACT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/extract_verb.htm) (+EXTRACTRECORD) |     |
 | TODO | `npx vitest run -t "TODO"` | [FIELD Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/field_verb.htm) | [FIELD Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/field_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [FILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/file_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [FILEOPT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/fileopt_verb.htm) |     |
-| OK | `npx vitest run -t "Check read and similar, with record"` | [FIND Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/find_verb.htm) (+FINDRECORD) |     |
+| TODO parameter combinations | `npx vitest run -t "Check read and similar, with record"` | [FIND Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/find_verb.htm) (+FINDRECORD) |     |
 | TODO | `npx vitest run -t "TODO"` | [FLOATINGPOINT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/floatingpoint_verb.htm) | [FLOATINGPOINT Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/floatingpoint_verb_bbj.htm) |
 | OK | `npx vitest run -t "Program definition test"` | FOR ... TO ... STEP | |
 | TODO | `npx vitest run -t "TODO"` | [FOR .. NEXT Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/for_next_verbs.htm) | [FOR .. NEXT Verbs - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/for_next_verbs_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     | [FULLTEXT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/FULLTEXT_Verb-Create_FULLTEXT_File.htm) |
-| OK | `npx vitest run -t "TODO"` | [GOSUB Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/gosub_verb.htm) |     |
-| OK | `npx vitest run -t "Seterr and Setesc"`| [GOTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/goto_verb.htm) |     |
+| OK | `npx vitest run -t "Check GOSUB verb"` | [GOSUB Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/gosub_verb.htm) |     |
+| OK | `npx vitest run -t "Check GOTO verb"`| [GOTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/goto_verb.htm) |     |
 | OK | `npx vitest run -t "Parse \"METHODRET\" in a multi line \"IF\""` | [IF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/if_verb.htm) (IF/ELSE/ENDIF/FI) |     |
 | TODO | `npx vitest run -t "TODO"` | [INDEXED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/indexed_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [INITFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/initfile_verb.htm) | [INITFILE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/INITFILE_Verb_BBj.htm) |
-| OK | `npx vitest run -t "TODO"` | [INPUT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/input_verb.htm) (+INPUTRECORD) |     |
+| TODO parameter combinations | `npx vitest run -t "TODO"` | [INPUT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/input_verb.htm) (+INPUTRECORD) |     |
 | TODO | `npx vitest run -t "TODO"` | [INPUTE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/inpute_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [INPUTN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/inputn_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [INTERFACE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/interface_verb.htm) |
@@ -68,23 +68,23 @@
 | TODO | `npx vitest run -t "TODO"` |     | [JKEYED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/jkeyed_verb_create_journaled_file.htm) |
 | TODO | `npx vitest run -t "TODO"` |     | [JOPEN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/jopen_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [LCHECKIN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/lcheckin_verb_check_in_license.htm) |     |
-| OK | `npx vitest run -t "Mnemonic tests"`| [LET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/let_verb.htm) | [LET Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/let_verb_bbj.htm) |
+| TODO matrix operations | `npx vitest run -t "Check LET verb"`| [LET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/let_verb.htm) | [LET Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/let_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [LIST Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/list_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [LOAD Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/load_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [LOCK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/lock_verb.htm) | [LOCK Verb - Lock File BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/lock_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [MERGE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/merge_verb.htm) | [MERGE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/merge_verb_bbj.htm) |
-| OK | `npx vitest run -t "Check throw statement syntax"`  |   | [METHOD Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/method_verb.htm) |
+| TODO check "static" and other parameters | `npx vitest run -t "Check throw statement syntax"` |   | [METHOD Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/method_verb.htm) |
 | OK |  `npx vitest run -t "Check throw statement syntax"` |   | [METHODEND Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/methodend_verb.htm) |
 | OK | `npx vitest run -t "Dir statements"` | [MKDIR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/mkdir_verb.htm) | [MKDIR Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/mkdir_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check KeyedFileStatement Verb"` | [MKEYED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/mkeyed_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [ON GOTO/GOSUB Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/on_goto_gosub_verbs.htm) |     |
-| OK | `npx vitest run -t "Check Open Verb optional params keywords"` | [OPEN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/open_verb.htm) | [OPEN Verb - Open File BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/open_verb_open_file_bbj.htm) |
+| TODO check more parameter combinations | `npx vitest run -t "Check Open Verb optional params keywords"` | [OPEN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/open_verb.htm) | [OPEN Verb - Open File BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/open_verb_open_file_bbj.htm) |
 | OK | `npx vitest run -t "Check Precision Verb"` | [PRECISION Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/precision_verb.htm) | [PRECISION Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/precision_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [PREFIX Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/prefix_verb.htm) | [PREFIX Verb - Set File System Search Paths - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/prefix_verb_set_file_system_search_paths_bbj.htm) |
-| OK | `npx vitest run -t "Parse \"REM\" as independent statement in compound statement"` |  [PRINT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/print_verb.htm) |     |
+| TODO check more parameter combinations | `npx vitest run -t "Parse \"REM\" as independent statement in compound statement"` |  [PRINT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/print_verb.htm) |     |
 | OK | `npx vitest run -t "Check PROCESS_EVENT Parameters"` |    | [PROCESS\_EVENTS Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/process_events_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [PROGRAM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/program_verb.htm) |     |
-| OK | `npx vitest run -t "Check read and similar, with record"` | [READ Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm) (+READRECORD) | [READ Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/read_verb_bbj.htm) |
+| TODO check more parameter combinations | `npx vitest run -t "Check read and similar, with record"` | [READ Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm) (+READRECORD) | [READ Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/read_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check REDIM verb"` |    | [REDIM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/REDIM_Verb.htm) |
 | OK | `npx vitest run -t "Check RELEASE verb"` | [RELEASE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/release_verb.htm) | [RELEASE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/release_verb_bbj.htm) |
 | OK | `npx vitest run -t "Parse \"REM\" as independent statement on own line"`| [REM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/rem_verb.htm) |     |

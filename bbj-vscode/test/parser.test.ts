@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { streamAst } from 'langium';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isCallStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -902,5 +902,72 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
         expectToContainAstNodeType(result, isRedimStatement);
+    });
+
+    test('Check ADDR verb', async () => {
+        const result = await parse(`
+            ADDR "MYPROG"
+            ADDR "MYPROG", ERR=ErrorLabel
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isAddrStatement);
+    });
+
+
+    test('Check CLIPFROMSTR verb', async () => {
+        //documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/clipboard_verbs_and_functions_bbj.htm
+        //1=TEXT
+        const result = await parse(`
+            Start:  str$ = "Test!"
+                    CLIPFROMSTR 1,str$
+                    CLIPFROMSTR 1,str$,ERR=ErrorLabel
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isClipFromStrStatement);
+    });
+
+    test('Check CLOSE verb', async () => {
+        const result = await parse(`
+            Start:  CLOSE (1)
+                    CLOSE (1,ERR=ErrorLabel)
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isCloseStatement);
+    });
+
+    test('Check GOSUB verb', async () => {
+        const result = await parse(`
+            Start:  GOSUB func
+                    STOP
+            func:   REM SUBROUTINE
+                    LET A=50; LET B=A * C / 2; PRINT B
+                    RETURN
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isGotoStatement);
+    });
+
+    test('Check GOTO verb', async () => {
+        const result = await parse(`
+            start:  GOTO region
+                    STOP
+            region: REM and so on
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isGotoStatement);
+    });
+
+    test('Check LET verb', async () => {
+        //TODO what about matrix operations?
+        //https://documentation.basis.cloud/BASISHelp/WebHelp/commands/let_verb.htm
+        const result = await parse(`
+            C = 5
+            LET C=100
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isLetStatement);
     });
 });
