@@ -17,7 +17,7 @@ Program:
 ;
 
 fragment Statements:
-    statements+=(Statement | ClassDecl | InterfaceDecl);
+    statements+=(Statement | ClassDecl | DefFunction | InterfaceDecl);
 
 Statement:
     SingleStatement ({infer CompoundStatement.statements+=current} (';' statements+=SingleStatement)+)?;
@@ -31,7 +31,6 @@ SingleStatement:
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
-    DefFnStatement |
     DirStatement |
     DropStatement |
     ElseStatement |
@@ -40,6 +39,7 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
+    FnErrStatement |
     ForStatement |
     GotoStatement |
     IfEndStatement |
@@ -75,8 +75,15 @@ SingleStatement:
     WhileStatement
 ;
 
-DefFnStatement:
-    'DEF' name=FeatureName '(' (parameters+=FeatureName (',' parameters+=FeatureName)*)? ')' ('=' value=Expression | (body+=Statement)* 'FNEND');
+DefFunction returns DefFunction:
+    'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
+        '=' value=Expression
+        | (body+=Statement)* 'FNEND'
+    );
+
+FunctionParameter returns FunctionParameter: name=FeatureName;
+
+FnErrStatement: 'FNERR' errorCode=NumberLiteral;
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -559,7 +566,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'FNEND'
 ;
 
 // BBx Library
@@ -616,6 +623,15 @@ terminal DOCU:  /\/@@[\s\S]*?@\//;
 terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
+interface FunctionParameter extends NamedElement {
+
+}
+
+interface DefFunction extends NamedElement {
+    parameters: FunctionParameter[];
+    value?: Expression;
+    body?: Statement[];
+}
 
 interface VariableDecl extends NamedElement {
     type?: @Class
