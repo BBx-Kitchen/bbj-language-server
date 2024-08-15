@@ -24,6 +24,8 @@ Statement:
 
 
 SingleStatement:
+    KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+
     AddrStatement |
     ArrayDeclarationStatement |
     BeginStatement |
@@ -35,7 +37,7 @@ SingleStatement:
     DropStatement |
     ElseStatement |
     EnterStatement |
-    ExecuteStatement
+    ExecuteStatement |
     ExitToStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
@@ -45,7 +47,6 @@ SingleStatement:
     IfEndStatement |
     IfStatement |
     KeyedFileStatement |
-    KeywordStatement |
     LabelDecl |
     LetStatement |
     MethodReturnStatement |
