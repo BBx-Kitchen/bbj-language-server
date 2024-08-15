@@ -9,3 +9,5 @@ DEF FNGCF(X,Y)
     WEND
     RETURN Y
 FNEND
+
+Y = 123
