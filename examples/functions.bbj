@@ -1,13 +1,27 @@
 DEF FNA(Z)=Z
 
-LET Y=FNA(4)
+LET Y=FNA3(4)
 
 DEF FNGCF(X,Y)
     IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
     WHILE X<>0
         LET TEMP=X, X=MOD(Y,X), Y=TEMP
     WEND
-    RETURN Y
+    RETURN
+    REM Y
 FNEND
+
+DEF FNA3(Z)=Z
+
+DEF FNGCF(X,Y)
+    IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
+    WHILE X<>0
+        LET TEMP=X, X=MOD(Y,X), Y=TEMP
+    WEND
+    RETURN
+    REM Y
+FNEND
+
+DEF FNA2(Z)=Z
 
 Y = 123

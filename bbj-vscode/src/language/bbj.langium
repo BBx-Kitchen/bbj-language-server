@@ -78,7 +78,7 @@ SingleStatement:
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
         '=' value=Expression
-        | (body+=Statement)* 'FNEND'
+        | (body+=Statement)* FNEND
     );
 
 FunctionParameter returns FunctionParameter: name=FeatureName;
@@ -606,6 +606,7 @@ terminal ENDLINE_RETURN: /_endline_return/;
 
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
+terminal FNEND: /_fn_end/;
 
 terminal BBjFilePath: /::.*::/;
 
