@@ -24,56 +24,59 @@ Statement:
 
 
 SingleStatement:
-    CommentStatement | // alt 0
-    VariableDecl |
-    LetStatement |
-    ArrayDeclarationStatement |
-    RedimStatement |
-    MethodReturnStatement |
-    PrintStatement |
-    SetErrorStatement |
-    ForStatement |
-    IfStatement |
-    ElseStatement |
-    IfEndStatement |
-    WhileStatement | // alt 10
-    WhileEndStatement |
-    GotoStatement |
-    KeywordStatement |
-    ReturnStatement |
-    ExitWithNumberStatement |
-    ExitToStatement |
-    NextStatement |
-    LabelDecl |
-    OpenStatement |
-    ReadStatement |
-    ReadRecordStatement | // alt 20
-    CloseStatement |
-    WaitStatement |
-    ThrowStatement |
-    Use |
-    ProcessEvent |
-    ExpressionStatement |
-    SwitchStatement |
-    ClipFromStrStatement |
     AddrStatement |
-    SqlOpenStatement | // alt 30
-    SqlPrepStatement |
-    SqlOpStatement |
-    SqlCloseStatement |
-    CallStatement |
-    DropStatement |
+    ArrayDeclarationStatement |
     BeginStatement |
-    EnterStatement |
-    UntilStatement |
-    SetOptsStatement |
-    PrecisionStatement |
-    KeyedFileStatement | // alt 40
-    RunStatement |
-    RenameStatement |
+    CallStatement |
+    ClipFromStrStatement |
+    CloseStatement |
+    CommentStatement |
+    DefFnStatement |
     DirStatement |
+    DropStatement |
+    ElseStatement |
+    EnterStatement |
     ExecuteStatement
+    ExitToStatement |
+    ExitWithNumberStatement |
+    ExpressionStatement |
+    ForStatement |
+    GotoStatement |
+    IfEndStatement |
+    IfStatement |
+    KeyedFileStatement |
+    KeywordStatement |
+    LabelDecl |
+    LetStatement |
+    MethodReturnStatement |
+    NextStatement |
+    OpenStatement |
+    PrecisionStatement |
+    PrintStatement |
+    ProcessEvent |
+    ReadRecordStatement |
+    ReadStatement |
+    RedimStatement |
+    RenameStatement |
+    RunStatement |
+    SetErrorStatement |
+    SetOptsStatement |
+    SqlCloseStatement |
+    SqlOpenStatement |
+    SqlOpStatement |
+    SqlPrepStatement |
+    SwitchStatement |
+    ThrowStatement |
+    UntilStatement |
+    Use |
+    VariableDecl |
+    WaitStatement |
+    WhileEndStatement |
+    WhileStatement
 ;
+
+DefFnStatement:
+    'DEF' name=FeatureName '(' (parameters+=FeatureName (',' parameters+=FeatureName)*)? ')' ('=' value=Expression | (body+=Statement)* 'FNEND');
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -229,7 +232,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=('END' | 'BYE' | 'BREAK' | 'CONTINUE' | 'ESCAPE' | 'REPEAT')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' )
 ;
 
 ExitWithNumberStatement:

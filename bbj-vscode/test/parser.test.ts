@@ -822,6 +822,18 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check DEF FN... verb', async () => {
+        const result = await parse(`
+        DEF FNA(Z)=Z*5
+        LET Y=FNA(4)
+
+        DEF FNGCF(X,Y)
+            IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
+            WHILE X<>0
+                LET TEMP=X, X=MOD(Y,X), Y=TEMP
+            WEND
+            RETURN Y
+        FNEND
     test('Check WHILE verb', async () => {
         const result = await parse(`
             A = 0
