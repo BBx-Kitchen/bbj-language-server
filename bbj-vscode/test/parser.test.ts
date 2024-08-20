@@ -960,6 +960,72 @@ describe('Parser Tests', () => {
         expectToContainAstNodeType(result, isGotoStatement);
     });
 
+    describe("Check PRINT/WRITE verb", () => {
+        test("With Jump labels", async() => {
+            const result = await parse(`
+                    WRITE (0, ERR=ErrorJump,END=EndJump) str$
+                    PRINT (0, ERR=ErrorJump,END=EndJump) str$
+                    ? (0) str$
+                ErrorJump: exit
+                EndJump: exit
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With DIR option", async() => {
+            const result = await parse(`
+                WRITE "Hallo!"
+                WRITE (0, DIR=-1) "?"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With IND option", async () => {
+            const result = await parse(`
+                WRITE (0, IND=0) "Pardon?!"
+                PRINT (0, IND=0) "Pardon?!"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With KEY option", async () => {
+            const result = await parse(`
+                WRITE (0, KEY="key") "value"
+
+                REM Format of IP:Port not documented well enough
+                REM https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
+                REM WRITE (0, KEY="127.0.0.1") "ip-value"
+                REM WRITE (0, KEY="127.0.0.1":8080) "ip-value"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With TBL option", async () => {
+            const result = await parse(`
+                    WRITE (0, TBL=TableLine) "abcdef"
+                    PRINT (0, TBL=TableLine) "abcdef"
+                TableLine: REM TODO add TABLE verb here
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With TIM option", async () => {
+            const result = await parse(`
+                    WRITE (0, TIM=5, ERR=ErrorJump) "123456"
+                    PRINT (0, TIM=5, ERR=ErrorJump) "123456"
+                ErrorJump: exit
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+    });
+
     test('Check LET verb', async () => {
         //TODO what about matrix operations?
         //https://documentation.basis.cloud/BASISHelp/WebHelp/commands/let_verb.htm
