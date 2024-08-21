@@ -1,0 +1,29 @@
+str$ = "Hallo!"
+
+WRITE (0, ERR=ErrorJump,END=EndJump) str$
+PRINT (0, ERR=ErrorJump,END=EndJump) str$
+REM PRINT=?
+? (0) str$
+
+WRITE (0, DIR=-1) "?"
+
+WRITE (0, IND=0) "Pardon?!"
+PRINT (0, IND=0) "Pardon?!"
+
+WRITE (0, KEY="key") "value"
+
+REM Format of IP:Port not documented well enough
+REM https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
+REM WRITE (0, KEY="127.0.0.1") "ip-value"
+REM WRITE (0, KEY="127.0.0.1":8080) "ip-value"
+
+WRITE (0, TBL=TableLine) "abcdef"
+PRINT (0, TBL=TableLine) "abcdef"
+
+WRITE (0, TIM=5, ERR=ErrorJump) "123456"
+PRINT (0, TIM=5, ERR=ErrorJump) "123456"
+
+ErrorJump: exit
+EndJump: exit
+
+TableLine: REM TODO add TABLE verb here
