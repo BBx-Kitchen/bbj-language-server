@@ -1,8 +1,9 @@
-import { EmptyFileSystem, LangiumDocument } from 'langium';
+import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
+import { streamAst } from 'langium';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isCommentStatement, isCompoundStatement, isLibrary, isPrintStatement, isProgram } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -16,6 +17,10 @@ describe('Parser Tests', () => {
 
     function expectNoValidationErrors(document: LangiumDocument) {
         expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
+    }
+
+    function expectToContainAstNodeType<N extends AstNode>(document: LangiumDocument, predicate: (ast: AstNode) => ast is N) {
+        expect(streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
     }
 
     test('Program definition test', async () => {
@@ -543,10 +548,16 @@ describe('Parser Tests', () => {
 
     test('Check CALL and RUN', async () => {
         const result = await parse(`
-        RUN "TEST"
+        RUN "TEST", ERR=errorCase
+        RUN "TEST2"
         CALL "bus.bbj::setUpdateLocation", mapRC%, mapUser$, mapPassword$, mapVendor$, mapApplication$, mapVersion$, mapLevel%, mapLocation
+        X!=23
+        CALL "subprog",(X!), ERR=errorCase
+        errorCase: STOP
         `);
         expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isRunStatement);
+        expectToContainAstNodeType(result, isCallStatement);
     });
 
     test('Check PROCESS_EVENT Parameters', async () => {
@@ -768,9 +779,10 @@ describe('Parser Tests', () => {
     test('Dir statements', async () => {
         const result = await parse(`
         path$ = "test"
-        mkdir path$,err=*next
+        mkdir path$, err=*next
         chdir "REST_WD", err=*next
         rmdir "REST_WD"
+        rmdir "REST_WD", err=*next
         `);
         expectNoParserLexerErrors(result);
     });
@@ -808,6 +820,223 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check WHILE verb', async () => {
+        const result = await parse(`
+            A = 0
+            B = 10
+            WHILE A < B
+                A = A + 1
+                PRINT A        
+            WEND
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check WAIT verb', async () => {
+        const result = await parse(`
+            WAIT 123
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isWaitStatement);
+    });
+
+    test('Check SWITCH...CASE...SWEND verb', async () => {
+        const result = await parse(`
+            LVL = 3
+            SWITCH LVL
+                CASE 0
+                CASE 1; PRINT "Easy"; BREAK
+                CASE 2; PRINT "Middle"; BREAK
+                CASE DEFAULT; PRINT "Hard"; BREAK
+            SWEND
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isSwitchStatement);
+        expectToContainAstNodeType(result, isSwitchCase);
+    });
+
+    test('Check SQLPREP verb', async () => {
+        const result = await parse(`
+            SQLOPEN(1)"General Ledger"
+            SQLPREP(1)"Create table april96 (id integer primary key, price integer(10,2))"
+            SQLEXEC(1)
+            SQLPREP(1)"Insert into april96 values (?,?)"
+            LOOP:
+            INPUT "Id>", id$
+            INPUT "Price>", price$
+            SQLEXEC(1) id$, price$
+            GOTO LOOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isSqlPrepStatement);
+    });
+
+    test('Check SQLCLOSE verb', async () => {
+        const result = await parse(`
+            Start: SQLOPEN(1)"General Ledger"
+                SQLCLOSE(1)
+                SQLCLOSE(1,ERR=Error)
+                RETURN
+            Error: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isSqlCloseStatement);
+    });
+
+    test('Check RELEASE verb', async () => {
+        const result = await parse(`
+            RELEASE 123
+            RELEASE
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isExitWithNumberStatement);
+    });
+
+    test('Check REDIM verb', async () => {
+        const result = await parse(`
+            Start:  DIM fin$:tmpl(0,ind=0)
+                    LET fin$=fin(0,ind=0)
+                    REDIM fin$
+                    REDIM fin$,fin$,ERR=ErrorLabel
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isRedimStatement);
+    });
+
+    test('Check ADDR verb', async () => {
+        const result = await parse(`
+            ADDR "MYPROG"
+            ADDR "MYPROG", ERR=ErrorLabel
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isAddrStatement);
+    });
+
+
+    test('Check CLIPFROMSTR verb', async () => {
+        //documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/clipboard_verbs_and_functions_bbj.htm
+        //1=TEXT
+        const result = await parse(`
+            Start:  str$ = "Test!"
+                    CLIPFROMSTR 1,str$
+                    CLIPFROMSTR 1,str$,ERR=ErrorLabel
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isClipFromStrStatement);
+    });
+
+    test('Check CLOSE verb', async () => {
+        const result = await parse(`
+            Start:  CLOSE (1)
+                    CLOSE (1,ERR=ErrorLabel)
+            ErrorLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isCloseStatement);
+    });
+
+    test('Check GOSUB verb', async () => {
+        const result = await parse(`
+            Start:  GOSUB func
+                    STOP
+            func:   REM SUBROUTINE
+                    LET A=50; LET B=A * C / 2; PRINT B
+                    RETURN
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isGotoStatement);
+    });
+
+    test('Check GOTO verb', async () => {
+        const result = await parse(`
+            start:  GOTO region
+                    STOP
+            region: REM and so on
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isGotoStatement);
+    });
+
+    describe("Check PRINT/WRITE verb", () => {
+        test("With Jump labels", async() => {
+            const result = await parse(`
+                    WRITE (0, ERR=ErrorJump,END=EndJump) str$
+                    PRINT (0, ERR=ErrorJump,END=EndJump) str$
+                    ? (0) str$
+                ErrorJump: exit
+                EndJump: exit
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With DIR option", async() => {
+            const result = await parse(`
+                WRITE "Hallo!"
+                WRITE (0, DIR=-1) "?"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With IND option", async () => {
+            const result = await parse(`
+                WRITE (0, IND=0) "Pardon?!"
+                PRINT (0, IND=0) "Pardon?!"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With KEY option", async () => {
+            const result = await parse(`
+                WRITE (0, KEY="key") "value"
+
+                REM Format of IP:Port not documented well enough
+                REM https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
+                REM WRITE (0, KEY="127.0.0.1") "ip-value"
+                REM WRITE (0, KEY="127.0.0.1":8080) "ip-value"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With TBL option", async () => {
+            const result = await parse(`
+                    WRITE (0, TBL=TableLine) "abcdef"
+                    PRINT (0, TBL=TableLine) "abcdef"
+                TableLine: REM TODO add TABLE verb here
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+        test("With TIM option", async () => {
+            const result = await parse(`
+                    WRITE (0, TIM=5, ERR=ErrorJump) "123456"
+                    PRINT (0, TIM=5, ERR=ErrorJump) "123456"
+                ErrorJump: exit
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
+    });
+
+    test('Check LET verb', async () => {
+        //TODO what about matrix operations?
+        //https://documentation.basis.cloud/BASISHelp/WebHelp/commands/let_verb.htm
+        const result = await parse(`
+            C = 5
+            LET C=100
+        `);
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isLetStatement);
+    });
+
     test('Return statement without result', async () => {
         const result = await parse(`
         GOSUB funcNoReturn
@@ -828,5 +1057,4 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
-
 });
