@@ -834,6 +834,10 @@ describe('Parser Tests', () => {
             WEND
             RETURN Y
         FNEND
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
     test('Check WHILE verb', async () => {
         const result = await parse(`
             A = 0

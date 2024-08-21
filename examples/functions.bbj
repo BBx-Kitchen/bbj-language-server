@@ -7,8 +7,7 @@ DEF FNGCF(X,Y)
     WHILE X<>0
         LET TEMP=X, X=MOD(Y,X), Y=TEMP
     WEND
-    RETURN
-    REM Y
+    RETURN Y
 FNEND
 
 DEF FNA3(Z)=Z
@@ -18,8 +17,7 @@ DEF FNGCF(X,Y)
     WHILE X<>0
         LET TEMP=X, X=MOD(Y,X), Y=TEMP
     WEND
-    RETURN
-    REM Y
+    RETURN Y
 FNEND
 
 DEF FNA2(Z)=Z
