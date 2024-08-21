@@ -17,7 +17,10 @@ use com.basiscomponents.db.ResultSet
 use java.util.UUID
 use java.io.File 
 
-
+REM /**
+REM  * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">\n
+REM  * Java Collections Framework</a>
+REM  */
 class public ConfigurationWidget extends BBjWidget
 
     field protected BBjWindow container!

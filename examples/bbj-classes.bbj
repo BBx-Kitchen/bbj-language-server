@@ -1,3 +1,5 @@
+
+REM /** Some Javadoc */
 CLASS PUBLIC someClass
 
     FIELD PUBLIC BBjString someInstanceString$

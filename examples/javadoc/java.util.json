@@ -1,0 +1,41 @@
+{
+	"name": "java.util",
+	"version": "1.0.0",
+	"classes": [
+		{
+			"name": "HashMap",
+			"docu": "/**\n * Hash table based implementation of the {@code Map} interface.  This\n * implementation provides all of the optional map operations, and permits\n * {@code null} values and the {@code null} key.  (The {@code HashMap}\n * class is roughly equivalent to {@code Hashtable}, except that it is\n * unsynchronized and permits nulls.)  This class makes no guarantees as to\n * the order of the map; in particular, it does not guarantee that the order\n * will remain constant over time.\n *\n * <p>This implementation provides constant-time performance for the basic\n * operations ({@code get} and {@code put}), assuming the hash function\n * disperses the elements properly among the buckets.  Iteration over\n * collection views requires time proportional to the \"capacity\" of the\n * {@code HashMap} instance (the number of buckets) plus its size (the number\n * of key-value mappings).  Thus, it's very important not to set the initial\n * capacity too high (or the load factor too low) if iteration performance is\n * important.\n *\n * <p>An instance of {@code HashMap} has two parameters that affect its\n * performance: <i>initial capacity</i> and <i>load factor</i>.  The\n * <i>capacity</i> is the number of buckets in the hash table, and the initial\n * capacity is simply the capacity at the time the hash table is created.  The\n * <i>load factor</i> is a measure of how full the hash table is allowed to\n * get before its capacity is automatically increased.  When the number of\n * entries in the hash table exceeds the product of the load factor and the\n * current capacity, the hash table is <i>rehashed</i> (that is, internal data\n * structures are rebuilt) so that the hash table has approximately twice the\n * number of buckets.\n *\n * <p>As a general rule, the default load factor (.75) offers a good\n * tradeoff between time and space costs.  Higher values decrease the\n * space overhead but increase the lookup cost (reflected in most of\n * the operations of the {@code HashMap} class, including\n * {@code get} and {@code put}).  The expected number of entries in\n * the map and its load factor should be taken into account when\n * setting its initial capacity, so as to minimize the number of\n * rehash operations.  If the initial capacity is greater than the\n * maximum number of entries divided by the load factor, no rehash\n * operations will ever occur.\n *\n * <p>If many mappings are to be stored in a {@code HashMap}\n * instance, creating it with a sufficiently large capacity will allow\n * the mappings to be stored more efficiently than letting it perform\n * automatic rehashing as needed to grow the table.  Note that using\n * many keys with the same {@code hashCode()} is a sure way to slow\n * down performance of any hash table. To ameliorate impact, when keys\n * are {@link Comparable}, this class may use comparison order among\n * keys to help break ties.\n *\n * <p><strong>Note that this implementation is not synchronized.</strong>\n * If multiple threads access a hash map concurrently, and at least one of\n * the threads modifies the map structurally, it <i>must</i> be\n * synchronized externally.  (A structural modification is any operation\n * that adds or deletes one or more mappings; merely changing the value\n * associated with a key that an instance already contains is not a\n * structural modification.)  This is typically accomplished by\n * synchronizing on some object that naturally encapsulates the map.\n *\n * If no such object exists, the map should be \"wrapped\" using the\n * {@link Collections#synchronizedMap Collections.synchronizedMap}\n * method.  This is best done at creation time, to prevent accidental\n * unsynchronized access to the map:<pre>\n *   Map m = Collections.synchronizedMap(new HashMap(...));</pre>\n *\n * <p>The iterators returned by all of this class's \"collection view methods\"\n * are <i>fail-fast</i>: if the map is structurally modified at any time after\n * the iterator is created, in any way except through the iterator's own\n * {@code remove} method, the iterator will throw a\n * {@link ConcurrentModificationException}.  Thus, in the face of concurrent\n * modification, the iterator fails quickly and cleanly, rather than risking\n * arbitrary, non-deterministic behavior at an undetermined time in the\n * future.\n *\n * <p>Note that the fail-fast behavior of an iterator cannot be guaranteed\n * as it is, generally speaking, impossible to make any hard guarantees in the\n * presence of unsynchronized concurrent modification.  Fail-fast iterators\n * throw {@code ConcurrentModificationException} on a best-effort basis.\n * Therefore, it would be wrong to write a program that depended on this\n * exception for its correctness: <i>the fail-fast behavior of iterators\n * should be used only to detect bugs.</i>\n *\n * <p>This class is a member of the\n * <a href=\"{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework\">\n * Java Collections Framework</a>.\n *\n * @param <K> the type of keys maintained by this map\n * @param <V> the type of mapped values\n *\n * @author  Doug Lea\n * @author  Josh Bloch\n * @author  Arthur van Hoff\n * @author  Neal Gafter\n * @see     Object#hashCode()\n * @see     Collection\n * @see     Map\n * @see     TreeMap\n * @see     Hashtable\n * @since   1.2\n */",
+			"fields": [
+				{
+					"name": "DEFAULT_DATE_FORMAT",
+					"docu": "The default date format used by the class."
+				}
+			],
+			"methods": [
+				{
+					"name": "put",
+					"docu": "/**\n * Associates the specified value with the specified key in this map.\n * If the map previously contained a mapping for the key, the old\n * value is replaced.\n *\n * @param key key with which the specified value is to be associated\n * @param value value to be associated with the specified key\n * @return the previous value associated with {@code key}, or\n *         {@code null} if there was no mapping for {@code key}.\n *         (A {@code null} return can also indicate that the map\n *         previously associated {@code null} with {@code key}.)\n */",
+					"params": [
+						{
+							"name": "key"
+						},
+						{
+							"name": "value"
+						}
+					]
+				}
+			],
+			"constructors": [
+				{
+					"name": "BBjStringConverter",
+					"docu": "Creates a new instance of the class.",
+					"params": [
+						{
+							"name": "dateString"
+						}
+					]
+				}
+			]
+		}
+	]
+}
