@@ -1,4 +1,4 @@
-import { DeepPartial, DefaultSharedModuleContext, LangiumSharedServices, Module, PartialLangiumServices, createDefaultModule, createDefaultSharedModule, inject } from "langium";
+import { DeepPartial, DefaultSharedModuleContext, IndexManager, LangiumSharedServices, Module, PartialLangiumServices, createDefaultModule, createDefaultSharedModule, inject } from "langium";
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module";
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module";
 import { registerValidationChecks } from "../src/language/bbj-validator";
@@ -32,15 +32,32 @@ export const BBjTestModule: Module<BBjServices, PartialLangiumServices & DeepPar
 }
 
 class JavaInteropTestService extends JavaInteropService {
+    protected readonly index: () => IndexManager;
+    private indexed: boolean = false;
 
     constructor(services: BBjServices) {
         super(services)
+        this.index = () => services.shared.workspace.IndexManager
+
+        const bbjApi: JavaClass = {
+            $type: JavaClass,
+            name: 'BBjAPI',
+            $container: this.classpathDocument.parseResult.value,
+            $containerProperty: 'classes',
+            fields: [],
+            methods: []
+        }
+        this.classpathDocument.parseResult.value.classes.push(bbjApi)
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
     }
 
     override getResolvedClass(className: string): JavaClass | undefined {
+        if (!this.indexed) {
+            this.index().updateContent(this.classpathDocument)
+            this.indexed = true
+        }
         if (className === 'java.lang.String') {
             const fakeStringClass: JavaClass = {
                 $type: JavaClass,
