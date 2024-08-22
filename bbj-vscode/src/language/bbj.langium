@@ -600,7 +600,7 @@ terminal METHODRET_END: /_methodret_end/;
 terminal BBjFilePath: /::.*::/;
 
 terminal ID_WITH_SUFFIX: /[_a-zA-Z][\w_]*(!|\$|%)/; // Suffix: ! = object, $ = string, % = int, missing = double
-terminal ID: /[_a-zA-Z][\w_]*/;
+terminal ID: /[_a-zA-Z][\w_]*(@)?/;  // @ = ClientObjectClass
 
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also supported
 
