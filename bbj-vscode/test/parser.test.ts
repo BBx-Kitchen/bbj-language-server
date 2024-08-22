@@ -1057,4 +1057,15 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test('ClientObject - access with @. Issue: #57', async () => {
+        const result = await parse(`
+        declare java.lang.String@ str$
+        declare String@ str$
+        str$ = new java.lang.String@()
+        str$ = new String@()
+        str$ = String@.substring(2)
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
