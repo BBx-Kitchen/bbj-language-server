@@ -52,8 +52,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const doc = getDocument(context.container)
             const precomputed = doc.precomputedScopes
             if (precomputed) {
-                if(isJavaDocument(doc)) {
-                    if(doc.classesMapScope) {
+                if (isJavaDocument(doc)) {
+                    if (doc.classesMapScope) {
                         // return cached JavaClass MapScope
                         return doc.classesMapScope
                     }
@@ -208,9 +208,14 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             } else if (isClass(reference)) {
                 return reference
             } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)) {
-                return reference?.type?.ref
+                return reference.type?.ref
             } else if (isMethodDecl(reference)) {
-                return reference?.returnType?.ref
+                return reference.returnType?.ref
+            } else if (isLibFunction(reference) && reference.name.toLowerCase() === 'cast') {
+                if (expression.args.length > 0) {
+                    // CAST function return type is the first arg which is a Class reference
+                    return this.getType(expression.args[0])
+                }
             }
             return undefined;
         } else if (isConstructorCall(expression)) {
@@ -223,7 +228,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 } else if (isJavaMethod(member)) {
                     return member.resolvedReturnType?.ref;
                 } else if (isMethodDecl(member)) {
-                    return member?.returnType?.ref
+                    return member.returnType?.ref
                 }
             } else {
                 return undefined

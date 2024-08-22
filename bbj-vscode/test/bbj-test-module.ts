@@ -47,7 +47,19 @@ class JavaInteropTestService extends JavaInteropService {
             fields: [],
             methods: []
         }
+        bbjApi.methods = [
+            {
+                name: 'getThinClient',
+                $containerProperty: 'methods',
+                $container: bbjApi,
+                returnType: 'java.lang.String',
+                $type: JavaMethod,
+                parameters: []
+            }
+        ]
         this.classpathDocument.parseResult.value.classes.push(bbjApi)
+        this.resolveClass(bbjApi)
+
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
