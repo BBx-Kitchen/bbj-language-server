@@ -52,7 +52,7 @@ export class BbjLinker extends DefaultLinker {
         }
         const elapsed = Date.now() - started
         const threshold = 100
-        if(elapsed > threshold) {
+        if (elapsed > threshold) {
             console.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
         }
         document.state = DocumentState.Linked;
@@ -61,13 +61,14 @@ export class BbjLinker extends DefaultLinker {
     override doLink(refInfo: ReferenceInfo, document: LangiumDocument): void {
         if (refInfo.property === 'member' && isMemberCall(refInfo.container)) {
             const receiver = refInfo.container.receiver
+            // FIXME try to not resolve receiver ref
             if (isSymbolRef(receiver) && isArrayDecl(receiver.symbol.ref) && isTemplateStringArray(receiver.symbol.ref)) {
                 // don't link member calls to array template.
                 /* Case `my_col` member call:
                     DIM key$:"MY_COL:K(10)"
                     key.my_col = 525.95 
                 */
-               return
+                return
             }
         }
         super.doLink(refInfo, document);
@@ -91,6 +92,14 @@ export class BbjLinker extends DefaultLinker {
                     : scope.getElement(refInfo.reference.$refText);
                 return candidate ?? this.createLinkingError(refInfo);
             }
+        }
+        if (refInfo.reference.$refText.toLowerCase() === 'bbjapi'
+            && isSymbolRef(refInfo.container)
+            && refInfo.container.isMethodCall) {
+            // Special case for BBjAPI implicit import, it can be accessed case insensitively
+            const scope = this.scopeProvider.getScope(refInfo);
+            const description = scope.getElement('BBjAPI');
+            return description ?? this.createLinkingError(refInfo);
         }
         return super.getCandidate(refInfo);
     }

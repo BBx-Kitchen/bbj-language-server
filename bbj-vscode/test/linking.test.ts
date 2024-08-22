@@ -15,6 +15,7 @@ describe('Linking Tests', async () => {
     function findLinkingErrors(document: LangiumDocument): Diagnostic[] {
         return document.diagnostics?.filter(err => err.code === DocumentValidator.LinkingError)??[]
     }
+
     function expectNoErrors(document: LangiumDocument) {
         expect(document.parseResult.lexerErrors.length).toBe(0)
         expect(document.parseResult.parserErrors.length).toBe(0)
@@ -112,6 +113,13 @@ describe('Linking Tests', async () => {
         const document = await validate(`
         ENTER A$
         ? A$
+        `)
+        expectNoErrors(document)
+    })
+    
+    test('Case insensitive access to BBjAPI', async () => {
+        const document = await validate(`
+            API! = BbJaPi() REM <== no linking error here
         `)
         expectNoErrors(document)
     })

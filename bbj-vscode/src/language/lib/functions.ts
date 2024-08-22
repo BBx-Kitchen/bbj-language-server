@@ -25,7 +25,7 @@ CHR(param:int, ERR?:lineref): string
 /@@
 The NULL() function returns a Java null value. It is typically used to check for a null value returned from a Java function.
 @/
-NULL():string
+NULL():null
 
 /@@
 \`STR(objexpr{:mask}{,ERR:lineref})\`
