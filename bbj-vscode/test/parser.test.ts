@@ -1086,4 +1086,13 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check INITFILE verb", async() => {
+        const result = await parse(`
+                INITFILE "TEST",mode="",err=errorCase
+                INITFILE "TEST"
+            errorCase:
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

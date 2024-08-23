@@ -34,11 +34,21 @@ SingleStatement:
     CloseStatement |
     CommentStatement |
     DirStatement |
+    ExecuteStatement |
+    InitFileStatement |
     DropStatement |
     ElseStatement |
+    IfEndStatement |
+    WhileStatement | // alt 10
+    WhileEndStatement |
+    GotoStatement |
+    KeywordStatement |
+    ReturnStatement |
+    ExitWithNumberStatement |
     EnterStatement |
     ExecuteStatement |
     ExitToStatement |
+    NextStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
     FnErrStatement |
@@ -52,9 +62,22 @@ SingleStatement:
     MethodReturnStatement |
     NextStatement |
     OpenStatement |
+    ReadStatement |
+    ReadRecordStatement | // alt 20
+    CloseStatement |
+    WaitStatement |
+    ThrowStatement |
+    Use |
     PrecisionStatement |
     PrintStatement |
     ProcessEvent |
+    ExpressionStatement |
+    SwitchStatement |
+    ClipFromStrStatement |
+    AddrStatement |
+    SqlOpenStatement | // alt 30
+    SqlPrepStatement |
+    SqlOpStatement |
     ReadRecordStatement |
     ReadStatement |
     RedimStatement |
@@ -64,18 +87,32 @@ SingleStatement:
     SetErrorStatement |
     SetOptsStatement |
     SqlCloseStatement |
+    CallStatement |
+    DropStatement |
+    BeginStatement |
+    EnterStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
     SwitchStatement |
     ThrowStatement |
     UntilStatement |
+    SetOptsStatement |
+    PrecisionStatement |
+    KeyedFileStatement | // alt 40
+    RunStatement |
+    RenameStatement |
+    DirStatement |
     Use |
     VariableDecl |
     WaitStatement |
     WhileEndStatement |
     WhileStatement
 ;
+
+InitFileStatement:
+    'INITFILE' file=StringLiteral Options?
+    ;
 
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (

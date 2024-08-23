@@ -1,0 +1,3 @@
+INITFILE "TEST",mode="",err=errorCase
+
+errorCase:
