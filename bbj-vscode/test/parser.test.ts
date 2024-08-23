@@ -1113,4 +1113,13 @@ describe('Parser Tests', () => {
     //     `);
     //     expectNoParserLexerErrors(result);
     // });
+
+    test("Check DIRECT verb", async() => {
+        const result = await parse(`
+                DIRECT "TEST",10,100,512,ERR=errorCase
+                DIRECT "TEST",10,100,512
+            errorCase:
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

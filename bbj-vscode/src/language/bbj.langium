@@ -106,6 +106,8 @@ SingleStatement:
     ExecuteStatement |
     InitFileStatement |
     EraseStatement |
+    // StringStatement |
+    DirectStatement |
     Use |
     VariableDecl |
     WaitStatement |
@@ -130,6 +132,10 @@ DefFunction returns DefFunction:
 FunctionParameter returns NamedElement: name=FeatureName;
 
 FnErrStatement: 'FNERR' errorCode=NumberLiteral;
+
+DirectStatement:
+    'DIRECT' fileId=Expression ',' keySize=Expression ',' records=Expression ',' recSize=Expression Err?
+    ;
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment

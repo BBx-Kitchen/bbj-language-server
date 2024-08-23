@@ -3,4 +3,6 @@ initfile "TEST2",err=errorCase
 
 ERASE "TEST1",mode="",err=errorCase,tim=232
 
+direct "a","b","c","d",err=errorCase
+
 errorCase:
