@@ -103,6 +103,9 @@ SingleStatement:
     RunStatement |
     RenameStatement |
     DirStatement |
+    ExecuteStatement |
+    InitFileStatement |
+    EraseStatement |
     Use |
     VariableDecl |
     WaitStatement |
@@ -111,7 +114,11 @@ SingleStatement:
 ;
 
 InitFileStatement:
-    'INITFILE' file=StringLiteral Options?
+    'INITFILE' file=Expression Options?
+    ;
+
+EraseStatement:
+    'ERASE' file+=Expression Options?
     ;
 
 DefFunction returns DefFunction:
@@ -316,7 +323,7 @@ fragment WithChannelAndOptions infers WithChannelAndOptions:
 ;
 
 /**
- * Adds a coma separated prameter list: (',' PARAM_NAME+=Expression)+
+ * Adds a comma separated parameter list: (',' PARAM_NAME+=Expression)+
  */
 fragment Options:
     (',' options+=Option)+
@@ -332,6 +339,14 @@ Option:
 fragment Err:
     ',' 'ERR' '=' err=LabelRef
 ;
+
+fragment Mode:
+    ',' 'MODE' '=' mode=Expression
+    ;
+
+fragment Tim:
+    ',' 'TIM' '=' mode=Expression
+    ;
 
 CallStatement:
     'CALL' fileid=Expression Err? (',' expressions+=Expression)*
@@ -350,7 +365,7 @@ ExecuteStatement:
 ;
 
 RenameStatement:
-    'RENAME' from=Expression ('TO' | ',') to=Expression (',' 'MODE' '=' mode=Expression)? Err?
+    'RENAME' from=Expression ('TO' | ',') to=Expression Mode? Err?
 ;
 
 /**
@@ -417,7 +432,7 @@ ClipFromStrStatement:
 ;
 
 SqlOpenStatement:
-    'SQLOPEN' '(' sqlchan=Expression (',' 'MODE' '=' mode=Expression)? Err? ')' datasourcename=Expression
+    'SQLOPEN' '(' sqlchan=Expression Mode? Err? ')' datasourcename=Expression
 ;
 
 SqlPrepStatement:
@@ -479,7 +494,7 @@ KeyedFileStatement:
     )
     ',' records=Expression
     ',' recsize=Expression
-    (',' 'MODE' '=' mode=Expression)?
+    Mode?
     Err?
 ;
 

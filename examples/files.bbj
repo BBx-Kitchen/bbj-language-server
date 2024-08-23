@@ -1,3 +1,6 @@
-INITFILE "TEST",mode="",err=errorCase
+initfile "TEST1",err=22
+initfile "TEST2",err=errorCase
+
+ERASE "TEST1",mode="",err=errorCase,tim=232
 
 errorCase:

@@ -8,7 +8,7 @@ import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNod
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -22,6 +22,7 @@ export function registerValidationChecks(services: BBjServices) {
         Use: validator.checkUsedClassExists,
         OpenStatement: validator.checkOpenStatementOptions,
         InitFileStatement: validator.checkInitFileStatementOptions,
+        EraseStatement: validator.checkEraseStatementOptions,
         KeyedFileStatement: validator.checkKeyedFileStatement,
         CommentStatement: validator.checkCommentNewLines
     };
@@ -237,7 +238,11 @@ export class BBjValidator {
     }
 
     checkInitFileStatementOptions(ele: InitFileStatement, accept: ValidationAcceptor): void {
-        this.checkOptions('INITFILE', ele, 'options', ele.options, ['mode', 'err'], accept);
+        this.checkOptions('INITFILE', ele, 'options', ele.options, ['mode', 'tim', 'err'], accept);
+    }
+
+    checkEraseStatementOptions(ele: EraseStatement, accept: ValidationAcceptor): void {
+        this.checkOptions('ERASE', ele, 'options', ele.options, ['mode', 'tim', 'err'], accept);
     }
 
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
