@@ -118,7 +118,7 @@ InitFileStatement:
     ;
 
 EraseStatement:
-    'ERASE' file+=Expression Options?
+    'ERASE' file=Expression Options?
     ;
 
 DefFunction returns DefFunction:
@@ -342,10 +342,6 @@ fragment Err:
 
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
-    ;
-
-fragment Tim:
-    ',' 'TIM' '=' mode=Expression
     ;
 
 CallStatement:

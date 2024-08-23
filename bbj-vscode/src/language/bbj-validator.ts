@@ -23,6 +23,7 @@ export function registerValidationChecks(services: BBjServices) {
         OpenStatement: validator.checkOpenStatementOptions,
         InitFileStatement: validator.checkInitFileStatementOptions,
         EraseStatement: validator.checkEraseStatementOptions,
+        //StringStatement: validator.checkStringStatementOptions,
         KeyedFileStatement: validator.checkKeyedFileStatement,
         CommentStatement: validator.checkCommentNewLines
     };
@@ -244,6 +245,10 @@ export class BBjValidator {
     checkEraseStatementOptions(ele: EraseStatement, accept: ValidationAcceptor): void {
         this.checkOptions('ERASE', ele, 'options', ele.options, ['mode', 'tim', 'err'], accept);
     }
+
+    /*checkStringStatementOptions(ele: StringStatement, accept: ValidationAcceptor): void {
+        this.checkOptions('STRING', ele, 'options', ele.options, ['mode', 'err'], accept);
+    }*/
 
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
         this.checkOptions('OPEN', ele, 'options', ele.options, ['mode', 'tim', 'isz', 'err'], accept);

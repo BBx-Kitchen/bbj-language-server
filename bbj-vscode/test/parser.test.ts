@@ -1090,8 +1090,27 @@ describe('Parser Tests', () => {
     test("Check INITFILE verb", async() => {
         const result = await parse(`
                 INITFILE "TEST",mode="",err=errorCase
+                INITFILE "TEST2"
             errorCase:
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check ERASE verb", async() => {
+        const result = await parse(`
+                ERASE "TEST",mode="",tim=5,err=errorCase
+                ERASE "TEST2"
+            errorCase:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    // test("Check STRING verb", async() => {
+    //     const result = await parse(`
+    //             STRING "TEST",mode="",err=errorCase
+    //             STRING "TEST2"
+    //         errorCase:
+    //     `);
+    //     expectNoParserLexerErrors(result);
+    // });
 });
