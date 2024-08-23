@@ -4,11 +4,11 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, CompositeCstNode, CstNode, LeafCstNode, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getContainerOfType, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getContainerOfType, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -222,13 +222,21 @@ export class BBjValidator {
         }
     }
 
+    private checkOptions<T extends AstNode>(verb: string, node: T, property: Properties<T>, options: Option[], validOptionKeys: string[], accept: ValidationAcceptor) {
+        const copy = [...validOptionKeys.map(o => o.toLowerCase())];
+        options.forEach((option, propertyIndex) => {
+            const key = option.key.toLowerCase();
+            const index = copy.indexOf(key);
+            if (index > -1) {
+                copy.splice(index, 1);
+            } else {
+                accept('error', `${verb} verb can have following options: ${validOptionKeys.join(', ')}. Found: ${key}.`, { node, property, index: propertyIndex });
+            }
+        });
+    }
+
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
-        const allowedOptions = ['mode,tim', 'mode', 'tim']
-        const currentOptions = ele.options.filter(o => o.key !== 'err').map(o => o.key.toLowerCase()).join(',');
-        if (currentOptions.length > 0 && !allowedOptions.includes(currentOptions)) {
-            accept('error', `OPEN verb can have following two optional options: mode,tim. Found: ${currentOptions}.`, { node: ele, property: 'options' });
-            return;
-        }
+        this.checkOptions('OPEN', ele, 'options', ele.options, ['mode', 'tim', 'isz', 'err'], accept);
     }
 
     checkKeyedFileStatement(ele: KeyedFileStatement, accept: ValidationAcceptor): void {
