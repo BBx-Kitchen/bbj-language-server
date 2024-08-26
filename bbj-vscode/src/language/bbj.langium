@@ -106,8 +106,8 @@ SingleStatement:
     ExecuteStatement |
     InitFileStatement |
     EraseStatement |
-    // StringStatement |
-    DirectStatement |
+    StringStatement |
+    DirectStatement
     Use |
     VariableDecl |
     WaitStatement |
@@ -121,6 +121,10 @@ InitFileStatement:
 
 EraseStatement:
     'ERASE' items+=Expression (',' items+=(Option | Expression))*
+;
+
+StringStatement:
+    'STRING' file=Expression Mode? Err?
 ;
 
 DefFunction returns DefFunction:
@@ -581,7 +585,7 @@ NumberLiteral:
     value=NUMBER;
 
 StringLiteral:
-    value=(STRING | HEX_STRING)
+    value=(STRING_LITERAL | HEX_STRING)
 ;
 
 Mnemonic:
@@ -605,16 +609,20 @@ QualifiedClassName returns string:
     QualifiedBBjClassName | QualifiedJavaClassName;
 
 QualifiedJavaClassName returns string:
-    ID ('.' ID)*;
+    IdAndString ('.' IdAndString)*;
 
 QualifiedBBjClassName returns string:
-    BBjFilePath ID;
+    BBjFilePath IdAndString;
 
 FeatureName returns string:
-    EscapeId | ID_WITH_SUFFIX | ID;
+    EscapeId | ID_WITH_SUFFIX | IdAndString;
 
 ValidName returns string:
-    EscapeId | ID
+    EscapeId | IdAndString
+;
+
+IdAndString returns string:
+    'STRING' | ID
 ;
 
 EscapeId returns string:
@@ -637,16 +645,16 @@ LibMember:
 
 LibFunction returns LibFunction:
     (docu=DOCU)?
-    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
+    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=IdAndString
 ;
 
 LibParameter returns LibParameter:
-    name=ValidName optional?='?'?  refByName?='!'? (':' type=ID)?
+    name=ValidName optional?='?'?  refByName?='!'? (':' type=IdAndString)?
 ;
 
 LibVariable returns LibVariable:
     (docu=DOCU)?
-    'var' name=ValidName (':' type=ID)?
+    'var' name=ValidName (':' type=IdAndString)?
 ;
 
 LibSymbolicLabel returns LibSymbolicLabelDecl:
@@ -672,7 +680,7 @@ terminal ID: /[_a-zA-Z][\w_]*(@)?/;  // @ = ClientObjectClass
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also supported
 
 // "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter
-terminal STRING: /"([^"]|"{2})*"/;
+terminal STRING_LITERAL: /"([^"]|"{2})*"/;
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 

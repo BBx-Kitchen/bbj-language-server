@@ -1117,16 +1117,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    // test("Check STRING verb", async() => {
-    //     const result = await parse(`
-    //             STRING "TEST",mode="",err=errorCase
-    //             STRING "TEST2"
-    //         errorCase:
-    //     `);
-    //     expectNoParserLexerErrors(result);
-    // });
+    test("Check STRING verb", async () => {
+        const result = await parse(`
+                 STRING "TEST",mode="",err=errorCase
+                 STRING "TEST2"
+             errorCase:
+         `);
+        expectNoParserLexerErrors(result);
+    });
 
-    test("Check DIRECT verb", async() => {
+    test("Check DIRECT verb", async () => {
         const result = await parse(`
                 DIRECT "TEST",10,100,512,ERR=errorCase
                 DIRECT "TEST",10,100,512
