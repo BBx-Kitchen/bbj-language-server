@@ -171,19 +171,4 @@ describe('BBj validation', async () => {
         });
        
     });
-    // test('Check STRING validation', async () => {
-    //     const validationResult = await validate(`
-    //     STRING "TEST",mod=""
-    //     STRING "TEST",error=errorCase
-    //     errorCase:
-    //     `);
-    //     expectError(validationResult, 'STRING verb can have following options: mode, err. Found: mod.', {
-    //         node: findByIndex(validationResult.document, isStringStatement, 0),
-    //         property: 'options'
-    //     });
-    //     expectError(validationResult, 'STRING verb can have following options: mode, err. Found: error.', {
-    //         node: findByIndex(validationResult.document, isStringStatement, 1),
-    //         property: 'options'
-    //     });
-    // });
 });
