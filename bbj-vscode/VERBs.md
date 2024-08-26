@@ -24,7 +24,7 @@
 | TODO | `npx vitest run -t "TODO"` | [CLIPUNLOCK Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/clipunlock_verb.htm) |     |
 | OK | `npx vitest run -t "Check CLOSE verb"` | [CLOSE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/close_verb.htm) | [CLOSE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/close_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check Exit Verbs"` | [CONTINUE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/continue_verb.htm) |     |
-| TODO | `npx vitest run -t "TODO"` | [DEF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/def_verb.htm) | [DEF Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/def_verb_bbj.htm) |
+| OK | `npx vitest run -t "Check DEF FN... verb"` | [DEF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/def_verb.htm) | [DEF Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/def_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [DELETE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/delete_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [DENUM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/denum_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [DIM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm) | [DIM Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/dim_verb_bbj.htm) |
@@ -98,7 +98,7 @@
 | TODO | `npx vitest run -t "TODO"` | [RESET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/reset_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [RESTORE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/restore_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [RETRY Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/retry_verb.htm) |     |
-| TODO | `npx vitest run -t "TODO"` | [RETURN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/return_verb.htm) |     |
+| OK | `npx vitest run -t "Check DEF FN... verb"` | [RETURN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/return_verb.htm) |     |
 | OK | `npx vitest run -t "Dir statements"` | [RMDIR Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/rmdir_verb.htm) | [RMDIR Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/rmdir_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check CALL and RUN"` | [RUN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/run_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [SAVE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/save_verb.htm) | [SAVE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/save_verb_bbj.htm) |

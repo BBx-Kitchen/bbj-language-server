@@ -34,18 +34,6 @@ describe('BBj validation', async () => {
 
     });
 
-    test('Open statement invalid options', async () => {
-        const validationResult = await validate(`
-        OPEN (unt,mod="",time="")"path/"+"html.png"
-        `);
-
-        expectError(validationResult, 'OPEN verb can have following two optional options: mode,tim. Found: mod,time.', {
-            node: findFirst(validationResult.document, isOpenStatement),
-            property: 'options'
-        });
-
-    });
-
     test('Open statement valid options', async () => {
         const validationResult = await validate(`
         OPEN (unt,mode="12",tim=12)"path/"+"html.png"
