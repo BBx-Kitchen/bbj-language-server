@@ -17,63 +17,75 @@ Program:
 ;
 
 fragment Statements:
-    statements+=(Statement | ClassDecl | InterfaceDecl);
+    statements+=(Statement | ClassDecl | DefFunction | InterfaceDecl);
 
 Statement:
     SingleStatement ({infer CompoundStatement.statements+=current} (';' statements+=SingleStatement)+)?;
 
 
 SingleStatement:
-    CommentStatement | // alt 0
-    VariableDecl |
-    LetStatement |
-    ArrayDeclarationStatement |
-    RedimStatement |
-    MethodReturnStatement |
-    PrintStatement |
-    SetErrorStatement |
-    ForStatement |
-    IfStatement |
-    ElseStatement |
-    IfEndStatement |
-    WhileStatement | // alt 10
-    WhileEndStatement |
-    GotoStatement |
-    KeywordStatement |
-    ReturnStatement |
-    ExitWithNumberStatement |
-    ExitToStatement |
-    NextStatement |
-    LabelDecl |
-    OpenStatement |
-    ReadStatement |
-    ReadRecordStatement | // alt 20
-    CloseStatement |
-    WaitStatement |
-    ThrowStatement |
-    Use |
-    ProcessEvent |
-    ExpressionStatement |
-    SwitchStatement |
-    ClipFromStrStatement |
+    KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+
     AddrStatement |
-    SqlOpenStatement | // alt 30
-    SqlPrepStatement |
-    SqlOpStatement |
-    SqlCloseStatement |
-    CallStatement |
-    DropStatement |
+    ArrayDeclarationStatement |
     BeginStatement |
-    EnterStatement |
-    UntilStatement |
-    SetOptsStatement |
-    PrecisionStatement |
-    KeyedFileStatement | // alt 40
-    RunStatement |
-    RenameStatement |
+    CallStatement |
+    ClipFromStrStatement |
+    CloseStatement |
+    CommentStatement |
     DirStatement |
-    ExecuteStatement
+    DropStatement |
+    ElseStatement |
+    EnterStatement |
+    ExecuteStatement |
+    ExitToStatement |
+    ExitWithNumberStatement |
+    ExpressionStatement |
+    FnErrStatement |
+    ForStatement |
+    GotoStatement |
+    IfEndStatement |
+    IfStatement |
+    KeyedFileStatement |
+    LabelDecl |
+    LetStatement |
+    MethodReturnStatement |
+    NextStatement |
+    OpenStatement |
+    PrecisionStatement |
+    PrintStatement |
+    ProcessEvent |
+    ReadRecordStatement |
+    ReadStatement |
+    RedimStatement |
+    RenameStatement |
+    ReturnStatement |
+    RunStatement |
+    SetErrorStatement |
+    SetOptsStatement |
+    SqlCloseStatement |
+    SqlOpenStatement |
+    SqlOpStatement |
+    SqlPrepStatement |
+    SwitchStatement |
+    ThrowStatement |
+    UntilStatement |
+    Use |
+    VariableDecl |
+    WaitStatement |
+    WhileEndStatement |
+    WhileStatement
 ;
+
+DefFunction returns DefFunction:
+    'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
+        '=' value=Expression
+        | (body+=Statement)* FNEND
+    );
+
+FunctionParameter returns NamedElement: name=FeatureName;
+
+FnErrStatement: 'FNERR' errorCode=NumberLiteral;
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -229,7 +241,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=('END' | 'BYE' | 'BREAK' | 'CONTINUE' | 'ESCAPE' | 'REPEAT')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' )
 ;
 
 ExitWithNumberStatement:
@@ -556,7 +568,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF'
 ;
 
 // BBx Library
@@ -596,6 +608,7 @@ terminal ENDLINE_RETURN: /_endline_return/;
 
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
+terminal FNEND: /_fn_end/;
 
 terminal BBjFilePath: /::.*::/;
 
@@ -613,6 +626,11 @@ terminal DOCU:  /\/@@[\s\S]*?@\//;
 terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
+interface DefFunction extends NamedElement {
+    parameters: NamedElement[];
+    value?: Expression;
+    body?: Statement[];
+}
 
 interface VariableDecl extends NamedElement {
     type?: @Class
