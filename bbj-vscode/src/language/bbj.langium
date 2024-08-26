@@ -34,11 +34,21 @@ SingleStatement:
     CloseStatement |
     CommentStatement |
     DirStatement |
+    ExecuteStatement |
+    InitFileStatement |
     DropStatement |
     ElseStatement |
+    IfEndStatement |
+    WhileStatement | // alt 10
+    WhileEndStatement |
+    GotoStatement |
+    KeywordStatement |
+    ReturnStatement |
+    ExitWithNumberStatement |
     EnterStatement |
     ExecuteStatement |
     ExitToStatement |
+    NextStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
     FnErrStatement |
@@ -52,9 +62,22 @@ SingleStatement:
     MethodReturnStatement |
     NextStatement |
     OpenStatement |
+    ReadStatement |
+    ReadRecordStatement | // alt 20
+    CloseStatement |
+    WaitStatement |
+    ThrowStatement |
+    Use |
     PrecisionStatement |
     PrintStatement |
     ProcessEvent |
+    ExpressionStatement |
+    SwitchStatement |
+    ClipFromStrStatement |
+    AddrStatement |
+    SqlOpenStatement | // alt 30
+    SqlPrepStatement |
+    SqlOpStatement |
     ReadRecordStatement |
     ReadStatement |
     RedimStatement |
@@ -64,17 +87,44 @@ SingleStatement:
     SetErrorStatement |
     SetOptsStatement |
     SqlCloseStatement |
+    CallStatement |
+    DropStatement |
+    BeginStatement |
+    EnterStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
     SwitchStatement |
     ThrowStatement |
     UntilStatement |
+    SetOptsStatement |
+    PrecisionStatement |
+    KeyedFileStatement | // alt 40
+    RunStatement |
+    RenameStatement |
+    DirStatement |
+    ExecuteStatement |
+    InitFileStatement |
+    EraseStatement |
+    StringStatement |
+    DirectStatement |
     Use |
     VariableDecl |
     WaitStatement |
     WhileEndStatement |
     WhileStatement
+;
+
+InitFileStatement:
+    'INITFILE' file=Expression Options?
+;
+
+EraseStatement:
+    'ERASE' items+=Expression (',' items+=(Option | Expression))*
+;
+
+StringStatement:
+    'STRING' file=Expression Mode? Err?
 ;
 
 DefFunction returns DefFunction:
@@ -86,6 +136,10 @@ DefFunction returns DefFunction:
 FunctionParameter returns NamedElement: name=FeatureName;
 
 FnErrStatement: 'FNERR' errorCode=NumberLiteral;
+
+DirectStatement:
+    'DIRECT' fileId=Expression ',' keySize=Expression ',' records=Expression ',' recSize=Expression Err?
+;
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -279,7 +333,7 @@ fragment WithChannelAndOptions infers WithChannelAndOptions:
 ;
 
 /**
- * Adds a coma separated prameter list: (',' PARAM_NAME+=Expression)+
+ * Adds a comma separated parameter list: (',' PARAM_NAME+=Expression)+
  */
 fragment Options:
     (',' options+=Option)+
@@ -294,6 +348,10 @@ Option:
  */
 fragment Err:
     ',' 'ERR' '=' err=LabelRef
+;
+
+fragment Mode:
+    ',' 'MODE' '=' mode=Expression
 ;
 
 CallStatement:
@@ -313,7 +371,7 @@ ExecuteStatement:
 ;
 
 RenameStatement:
-    'RENAME' from=Expression ('TO' | ',') to=Expression (',' 'MODE' '=' mode=Expression)? Err?
+    'RENAME' from=Expression ('TO' | ',') to=Expression Mode? Err?
 ;
 
 /**
@@ -380,7 +438,7 @@ ClipFromStrStatement:
 ;
 
 SqlOpenStatement:
-    'SQLOPEN' '(' sqlchan=Expression (',' 'MODE' '=' mode=Expression)? Err? ')' datasourcename=Expression
+    'SQLOPEN' '(' sqlchan=Expression Mode? Err? ')' datasourcename=Expression
 ;
 
 SqlPrepStatement:
@@ -442,7 +500,7 @@ KeyedFileStatement:
     )
     ',' records=Expression
     ',' recsize=Expression
-    (',' 'MODE' '=' mode=Expression)?
+    Mode?
     Err?
 ;
 
@@ -527,7 +585,7 @@ NumberLiteral:
     value=NUMBER;
 
 StringLiteral:
-    value=(STRING | HEX_STRING)
+    value=(STRING_LITERAL | HEX_STRING)
 ;
 
 Mnemonic:
@@ -551,16 +609,20 @@ QualifiedClassName returns string:
     QualifiedBBjClassName | QualifiedJavaClassName;
 
 QualifiedJavaClassName returns string:
-    ID ('.' ID)*;
+    IdAndString ('.' IdAndString)*;
 
 QualifiedBBjClassName returns string:
-    BBjFilePath ID;
+    BBjFilePath IdAndString;
 
 FeatureName returns string:
-    EscapeId | ID_WITH_SUFFIX | ID;
+    EscapeId | ID_WITH_SUFFIX | IdAndString;
 
 ValidName returns string:
-    EscapeId | ID
+    EscapeId | IdAndString
+;
+
+IdAndString returns string:
+    'STRING' | ID
 ;
 
 EscapeId returns string:
@@ -583,16 +645,16 @@ LibMember:
 
 LibFunction returns LibFunction:
     (docu=DOCU)?
-    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=ID
+    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=IdAndString
 ;
 
 LibParameter returns LibParameter:
-    name=ValidName optional?='?'?  refByName?='!'? (':' type=ID)?
+    name=ValidName optional?='?'?  refByName?='!'? (':' type=IdAndString)?
 ;
 
 LibVariable returns LibVariable:
     (docu=DOCU)?
-    'var' name=ValidName (':' type=ID)?
+    'var' name=ValidName (':' type=IdAndString)?
 ;
 
 LibSymbolicLabel returns LibSymbolicLabelDecl:
@@ -618,7 +680,7 @@ terminal ID: /[_a-zA-Z][\w_]*(@)?/;  // @ = ClientObjectClass
 terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also supported
 
 // "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter
-terminal STRING: /"([^"]|"{2})*"/;
+terminal STRING_LITERAL: /"([^"]|"{2})*"/;
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
 
