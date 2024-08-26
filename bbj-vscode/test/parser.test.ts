@@ -584,7 +584,9 @@ describe('Parser Tests', () => {
         const result = await parse(`
         OPEN (unt,mode="O_CREATE,O_TRUNC",TIM=12)"path/"+"html.png"
         OPEN (unt,TIM=12)"path/"+"html.png"
+        OPEN (unt,ISZ=0,TIM=5,mode="",ERR=errorCase)"path/"+"html.png"
         OPEN (unt)"path/"+"html.png"
+        errorCase:
         `);
         expectNoParserLexerErrors(result);
     });
