@@ -556,7 +556,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ'
 ;
 
 // BBx Library

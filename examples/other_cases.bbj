@@ -45,10 +45,11 @@ if !(orderDetailRecordSet!.isEmpty()) then
     wend
 endif
 
-OPEN (unt,mode="",tim="")"path/"+"html.png"
+OPEN (unt,mode="",tim="",isz="",err=finish)"path/"+"html.png"
 
 bytes = dec(fin(serverfile)(1,4))
 a$=STR(1234)(1,2)
 
 result = msgbox("Message$",1,"Title$","Button1$","Button2$","Button3$",tim=12, mode="mode$",err=*NEXT)
  
+finish:
