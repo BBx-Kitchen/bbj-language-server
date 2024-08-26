@@ -83,7 +83,7 @@ DefFunction returns DefFunction:
         | (body+=Statement)* FNEND
     );
 
-FunctionParameter returns FunctionParameter: name=FeatureName;
+FunctionParameter returns NamedElement: name=FeatureName;
 
 FnErrStatement: 'FNERR' errorCode=NumberLiteral;
 
@@ -626,12 +626,8 @@ terminal DOCU:  /\/@@[\s\S]*?@\//;
 terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
-interface FunctionParameter extends NamedElement {
-
-}
-
 interface DefFunction extends NamedElement {
-    parameters: FunctionParameter[];
+    parameters: NamedElement[];
     value?: Expression;
     body?: Statement[];
 }
