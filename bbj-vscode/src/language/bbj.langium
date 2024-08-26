@@ -107,7 +107,7 @@ SingleStatement:
     InitFileStatement |
     EraseStatement |
     StringStatement |
-    DirectStatement
+    DirectStatement |
     Use |
     VariableDecl |
     WaitStatement |
