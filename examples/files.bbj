@@ -5,4 +5,6 @@ ERASE "TEST1",mode="",err=errorCase,tim=232
 
 direct "a","b","c","d",err=errorCase
 
+string "TEST1",mode="sd",err=errorCase
+
 errorCase:
