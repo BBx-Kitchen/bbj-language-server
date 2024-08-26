@@ -13,7 +13,7 @@ export class BBjValueConverter extends DefaultValueConverter {
         switch (rule.name.toUpperCase()) {
             case 'BBJFILEPATH': return input.replaceAll('::', '');
             case 'ID': return input.charAt(input.length - 1) === '@' ? input.slice(0, -1) : input;
-            case 'STRING': return input.slice(1, -1);
+            case 'STRING_LITERAL': return input.slice(1, -1);
             default: return super.runConverter(rule, input, cstNode)
         }
     }

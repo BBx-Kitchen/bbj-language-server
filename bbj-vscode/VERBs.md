@@ -28,7 +28,7 @@
 | TODO | `npx vitest run -t "TODO"` | [DELETE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/delete_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` |     | [DENUM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/denum_verb.htm) |
 | TODO | `npx vitest run -t "TODO"` | [DIM Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm) | [DIM Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/dim_verb_bbj.htm) |
-| TODO | `npx vitest run -t "TODO"` | [DIRECT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/direct_verb.htm) |     |
+| OK | `npx vitest run -t "Check DIRECT verb"` | [DIRECT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/direct_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [DISABLE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/disable_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [DREAD Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dread_verb.htm) | [DREAD Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/dread_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check Drop Verb"` | [DROP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/drop_verb.htm) |     |
@@ -38,7 +38,7 @@
 | OK | `npx vitest run -t "Check Exit Verbs"` | [END Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/end_verb.htm) (BYE) |     |
 | TODO | `npx vitest run -t "TODO"` | [ENDTRACE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/endtrace_verb.htm) |     |
 | OK | `npx vitest run -t "Check Enter Verb"` | [ENTER Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/enter_verb.htm) | [ENTER Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/enter_verb_bbj.htm) |
-| TODO | `npx vitest run -t "TODO"` | [ERASE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/erase_verb.htm) | [ERASE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/erase_verb_bbj.htm) |
+| TODO, can only handle single files | `npx vitest run -t "Check ERASE verb"` | [ERASE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/erase_verb.htm) | [ERASE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/erase_verb_bbj.htm) |
 | OK | `npx vitest run -t "Check Exit Verbs"` | [ESCAPE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/escape_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [ESCON/ESCOFF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/escon_escoff_verb.htm) |     |
 | OK | `npx vitest run -t "Execute statement"` | [EXECUTE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/execute_verb.htm) | [EXECUTE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/EXECUTE_Verb_-_BBj.htm) |
@@ -57,7 +57,7 @@
 | OK | `npx vitest run -t "Check GOTO verb"`| [GOTO Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/goto_verb.htm) |     |
 | OK | `npx vitest run -t "Parse \"METHODRET\" in a multi line \"IF\""` | [IF Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/if_verb.htm) (IF/ELSE/ENDIF/FI) |     |
 | TODO | `npx vitest run -t "TODO"` | [INDEXED Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/indexed_verb.htm) |     |
-| TODO | `npx vitest run -t "TODO"` | [INITFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/initfile_verb.htm) | [INITFILE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/INITFILE_Verb_BBj.htm) |
+| OK | `npx vitest run -t "Check INITFILE verb"` | [INITFILE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/initfile_verb.htm) | [INITFILE Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/INITFILE_Verb_BBj.htm) |
 | TODO parameter combinations | `npx vitest run -t "TODO"` | [INPUT Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/input_verb.htm) (+INPUTRECORD) |     |
 | TODO | `npx vitest run -t "TODO"` | [INPUTE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/inpute_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [INPUTN Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/inputn_verb.htm) |     |
@@ -124,7 +124,7 @@
 | TODO | `npx vitest run -t "TODO"` | [SQLSET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlset_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [START Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/start_verb.htm) | [START Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/start_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [STOP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/stop_verb.htm) |     |
-| TODO | `npx vitest run -t "TODO"` | [STRING Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/string_verb.htm) |     |
+| OK | `npx vitest run -t "Check STRING verb"` | [STRING Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/string_verb.htm) |     |
 | OK | `npx vitest run -t "Check SWITCH...CASE...SWEND verb"` | [SWITCH .. CASE .. SWEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/switch_case_swend_verbs.htm) | [SWITCH .. CASE .. SWEND Verbs - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/SWITCH..CASE..SWEND_Verbs-BBj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     |     |
 | TODO | `npx vitest run -t "TODO"` | [TABLE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/table_verb.htm) |     |
