@@ -1,0 +1,10 @@
+initfile "TEST1",err=22
+initfile "TEST2",err=errorCase
+
+ERASE "TEST1",mode="",err=errorCase,tim=232
+
+direct "a","b","c","d",err=errorCase
+
+string "TEST1",mode="sd",err=errorCase
+
+errorCase:

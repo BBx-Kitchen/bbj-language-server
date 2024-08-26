@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
-import { Program, isBinaryExpression, isKeyedFileStatement, isOpenStatement } from '../src/language/generated/ast';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement } from '../src/language/generated/ast';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper';
 
 const services = createBBjServices(EmptyFileSystem);
@@ -119,5 +119,56 @@ describe('BBj validation', async () => {
         seterr 0
         `);
         expectNoIssues(validationResult);
+    });
+
+    test('Check INITFILE validation', async () => {
+        const validationResult = await validate(`
+        INITFILE "TEST",mod=""
+        INITFILE "TEST",error=errorCase
+        INITFILE "TEST",time=8
+        errorCase:
+        `);
+        expectError(validationResult, 'INITFILE verb can have following options: mode, tim, err. Found: mod.', {
+            node: findByIndex(validationResult.document, isInitFileStatement, 0),
+            property: 'options'
+        });
+        expectError(validationResult, 'INITFILE verb can have following options: mode, tim, err. Found: error.', {
+            node: findByIndex(validationResult.document, isInitFileStatement, 1),
+            property: 'options'
+        });
+        expectError(validationResult, 'INITFILE verb can have following options: mode, tim, err. Found: time.', {
+            node: findByIndex(validationResult.document, isInitFileStatement, 2),
+            property: 'options'
+        });
+    });
+
+    test('Check ERASE validation', async () => {
+        const validationResult = await validate(`
+        ERASE "TEST",mod=""
+        ERASE "TEST",error=errorCase
+        ERASE "TEST",time=123
+        errorCase:
+        `);
+        expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: mod.', {
+            node: findByIndex(validationResult.document, isEraseStatement, 0),
+            property: 'items'
+        });
+        expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: error.', {
+            node: findByIndex(validationResult.document, isEraseStatement, 1),
+            property: 'items'
+        });
+        expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: time.', {
+            node: findByIndex(validationResult.document, isEraseStatement, 2),
+            property: 'items'
+        });
+    });
+    test('Check ERASE expression/option validation', async () => {
+        const validationResult = await validate(`
+        ERASE "TEST",mode="","not an option"
+        `);
+        expectError(validationResult, 'Invalid option. Expecting {,MODE=string}{,TIM=int}{,ERR=lineref}.', {
+            node: findByIndex(validationResult.document, isEraseStatement, 0)?.items[2]
+        });
+       
     });
 });

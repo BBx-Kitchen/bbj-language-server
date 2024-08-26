@@ -8,7 +8,7 @@ import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNod
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -21,6 +21,8 @@ export function registerValidationChecks(services: BBjServices) {
         AstNode: validator.checkLinebreaks,
         Use: validator.checkUsedClassExists,
         OpenStatement: validator.checkOpenStatementOptions,
+        InitFileStatement: validator.checkInitFileStatementOptions,
+        EraseStatement: validator.checkEraseStatementOptions,
         KeyedFileStatement: validator.checkKeyedFileStatement,
         CommentStatement: validator.checkCommentNewLines
     };
@@ -233,6 +235,22 @@ export class BBjValidator {
                 accept('error', `${verb} verb can have following options: ${validOptionKeys.join(', ')}. Found: ${key}.`, { node, property, index: propertyIndex });
             }
         });
+    }
+
+    checkInitFileStatementOptions(ele: InitFileStatement, accept: ValidationAcceptor): void {
+        this.checkOptions('INITFILE', ele, 'options', ele.options, ['mode', 'tim', 'err'], accept);
+    }
+
+    checkEraseStatementOptions(ele: EraseStatement, accept: ValidationAcceptor): void {
+        let expression = true;
+        ele.items?.forEach((item, index) => {
+            if (isOption(item)) {
+                expression = false;
+            } else if (!expression) {
+                accept('error', 'Invalid option. Expecting {,MODE=string}{,TIM=int}{,ERR=lineref}.', { node: ele, property: 'items', index });
+            }
+        });
+        this.checkOptions('ERASE', ele, 'items', ele.items.filter(expr => isOption(expr)).map(op => op as Option), ['mode', 'tim', 'err'], accept);
     }
 
     checkOpenStatementOptions(ele: OpenStatement, accept: ValidationAcceptor): void {
