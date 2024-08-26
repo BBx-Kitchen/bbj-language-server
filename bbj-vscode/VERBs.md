@@ -124,7 +124,7 @@
 | TODO | `npx vitest run -t "TODO"` | [SQLSET Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/sqlset_verb.htm) |     |
 | TODO | `npx vitest run -t "TODO"` | [START Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/start_verb.htm) | [START Verb - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/start_verb_bbj.htm) |
 | TODO | `npx vitest run -t "TODO"` | [STOP Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/stop_verb.htm) |     |
-| TODO | `npx vitest run -t "TODO"` | [STRING Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/string_verb.htm) |     |
+| OK | `npx vitest run -t "Check STRING verb"` | [STRING Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/string_verb.htm) |     |
 | OK | `npx vitest run -t "Check SWITCH...CASE...SWEND verb"` | [SWITCH .. CASE .. SWEND Verbs](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/switch_case_swend_verbs.htm) | [SWITCH .. CASE .. SWEND Verbs - BBj](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/SWITCH..CASE..SWEND_Verbs-BBj.htm) |
 | TODO | `npx vitest run -t "TODO"` |     |     |
 | TODO | `npx vitest run -t "TODO"` | [TABLE Verb](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/table_verb.htm) |     |
