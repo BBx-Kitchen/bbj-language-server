@@ -5,6 +5,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
+        this.spliceToken(tokens, 'FNEND', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
         this.spliceToken(tokens, 'ENDLINE_RETURN', 1);
@@ -19,7 +20,14 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {
-        if (terminal.name === 'NEXT_TOKEN') {
+        if (terminal.name === 'FNEND') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/FNEND[ \t]*(?=(;|\r?\n))/i),
+                LINE_BREAKS: false
+            };
+            return token;
+        } else if (terminal.name === 'NEXT_TOKEN') {
             const token: TokenType = {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)?\r?\n)/i),
