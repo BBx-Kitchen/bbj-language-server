@@ -117,11 +117,11 @@ SingleStatement:
 
 InitFileStatement:
     'INITFILE' file=Expression Options?
-    ;
+;
 
 EraseStatement:
-    'ERASE' file=Expression Options?
-    ;
+    'ERASE' items+=Expression (',' items+=(Option | Expression))*
+;
 
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
@@ -135,7 +135,7 @@ FnErrStatement: 'FNERR' errorCode=NumberLiteral;
 
 DirectStatement:
     'DIRECT' fileId=Expression ',' keySize=Expression ',' records=Expression ',' recSize=Expression Err?
-    ;
+;
 
 CommentStatement:
     {infer CommentStatement} COMMENT; // add content back hen we need to show comment
@@ -348,7 +348,7 @@ fragment Err:
 
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
-    ;
+;
 
 CallStatement:
     'CALL' fileid=Expression Err? (',' expressions+=Expression)*

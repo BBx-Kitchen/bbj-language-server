@@ -1098,8 +1098,20 @@ describe('Parser Tests', () => {
 
     test("Check ERASE verb", async() => {
         const result = await parse(`
-                ERASE "TEST",mode="",tim=5,err=errorCase
-                ERASE "TEST2"
+            ERASE "TEST1",mode="",tim=5,err=errorCase
+            ERASE "TEST2",tim=5,err=errorCase
+            ERASE "TEST3",err=errorCase
+            ERASE "TEST4"
+            errorCase:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+    test("Check ERASE verb multiple files", async() => {
+        const result = await parse(`
+            ERASE "TEST1", "TEST2", "TEST3", mode="",tim=5,err=errorCase
+            ERASE "TEST1", "TEST2", "TEST3", tim=5,err=errorCase
+            ERASE "TEST1", "TEST2", "TEST3", err=errorCase
+            ERASE "TEST1", "TEST2", "TEST3"
             errorCase:
         `);
         expectNoParserLexerErrors(result);

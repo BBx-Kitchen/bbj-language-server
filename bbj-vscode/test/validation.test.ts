@@ -151,18 +151,26 @@ describe('BBj validation', async () => {
         `);
         expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: mod.', {
             node: findByIndex(validationResult.document, isEraseStatement, 0),
-            property: 'options'
+            property: 'items'
         });
         expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: error.', {
             node: findByIndex(validationResult.document, isEraseStatement, 1),
-            property: 'options'
+            property: 'items'
         });
         expectError(validationResult, 'ERASE verb can have following options: mode, tim, err. Found: time.', {
             node: findByIndex(validationResult.document, isEraseStatement, 2),
-            property: 'options'
+            property: 'items'
         });
     });
-
+    test('Check ERASE expression/option validation', async () => {
+        const validationResult = await validate(`
+        ERASE "TEST",mode="","not an option"
+        `);
+        expectError(validationResult, 'Invalid option. Expecting {,MODE=string}{,TIM=int}{,ERR=lineref}.', {
+            node: findByIndex(validationResult.document, isEraseStatement, 0)?.items[2]
+        });
+       
+    });
     // test('Check STRING validation', async () => {
     //     const validationResult = await validate(`
     //     STRING "TEST",mod=""
