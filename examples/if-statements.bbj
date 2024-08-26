@@ -16,16 +16,3 @@ ELSE
 ENDIF
 
 next 
-
-DIM sss[1]
-
-start_stop: ? "start stop"
-exit_prog: ? "exit"
-toSwitch = 123
-switch toSwitch
-    case 27;rem escape
-        if toSwitch = "EDIT" then
-            exitto exit_prog
-        gosub start_stop
-    break
-swend

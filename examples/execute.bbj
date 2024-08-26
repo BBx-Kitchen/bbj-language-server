@@ -1,3 +1,0 @@
- invokeCommand! = "test"
-execute invokeCommand!,err=Jump
-Jump:
