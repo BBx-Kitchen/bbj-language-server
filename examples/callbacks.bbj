@@ -1,6 +1,7 @@
 CONTEXT = 0
         CALLBACK(ON_CLOSE,handler,CONTEXT,0)
         CALLBACK(ON_CLOSE,handler,CONTEXT)
+        REMOVE_CALLBACK(ON_BROWSER_BACK,CONTEXT,0)
     handler: ENTER
         REM do something
         EXIT

@@ -4,731 +4,732 @@ library
 /@@
 Window Activation
 @/
-var ON_ACTIVATE: event_type
+eventtype ON_ACTIVATE
 
 /@@
 Window Mouse Click
 @/
-var ON_CLICK: event_type
+eventtype ON_CLICK
 
 /@@
 Window Close Box
 @/
-var ON_CLOSE: event_type
+eventtype ON_CLOSE
 
 /@@
 Window System Color Change
 @/
-var ON_COLOR_CHANGE: event_type
+eventtype ON_COLOR_CHANGE
 
 /@@
 Window Deactivation
 @/
-var ON_DEACTIVATE: event_type
+eventtype ON_DEACTIVATE
 
 /@@
 Window Mouse Double-Click
 @/
-var ON_DOUBLE_CLICK: event_type
+eventtype ON_DOUBLE_CLICK
 
 /@@
 Window Keypress
 @/
-var ON_KEYPRESS: event_type
+eventtype ON_KEYPRESS
 
 /@@
 Window MDI Closing Event
 @/
-var ON_MDI_CLOSING: event_type
+eventtype ON_MDI_CLOSING
 
 /@@
 Window Minimize
 @/
-var ON_MINIMIZE: event_type
+eventtype ON_MINIMIZE
 
 /@@
 Window Mouse Button Down
 @/
-var ON_MOUSE_DOWN: event_type
+eventtype ON_MOUSE_DOWN
 
 /@@
 Window Mouse Enter
 @/
-var ON_MOUSE_ENTER: event_type
+eventtype ON_MOUSE_ENTER
 
 /@@
 Window Mouse Exit
 @/
-var ON_MOUSE_EXIT: event_type
+eventtype ON_MOUSE_EXIT
 
 /@@
 Window Mouse Move
 @/
-var ON_MOUSE_MOVE: event_type
+eventtype ON_MOUSE_MOVE
 
 /@@
 Window Mouse Scroll Wheel
 @/
-var ON_MOUSE_SCROLL: event_type
+eventtype ON_MOUSE_SCROLL
 
 /@@
 Window Mouse Button Up
 @/
-var ON_MOUSE_UP: event_type
+eventtype ON_MOUSE_UP
 
 /@@
 Window Resize
 @/
-var ON_RESIZE: event_type
+eventtype ON_RESIZE
 
 /@@
 Window Restore
 @/
-var ON_RESTORE: event_type
+eventtype ON_RESTORE
 
 /@@
 Window Screen Resize Event
 @/
-var ON_SCREEN_RESIZE: event_type
+eventtype ON_SCREEN_RESIZE
 
 /@@
 Window Focus Gained
 @/
-var ON_WINDOW_GAINED_FOCUS: event_type
+eventtype ON_WINDOW_GAINED_FOCUS
 
 /@@
 Window Lost Event
 @/
-var ON_WINDOW_LOST_FOCUS: event_type
+eventtype ON_WINDOW_LOST_FOCUS
 
 /@@
 Window Move Event
 @/
-var ON_WINDOW_MOVE: event_type
+eventtype ON_WINDOW_MOVE
 
 /@@
 Window Scrollbar Move
 @/
-var ON_WINDOW_SCROLL: event_type
+eventtype ON_WINDOW_SCROLL
 
 /@@
 Menu Events
 @/
-var ON_MENU_ITEM_SELECT: event_type
+eventtype ON_MENU_ITEM_SELECT
 
 /@@
 Popup Menu Selection
 @/
-var ON_POPUP_ITEM_SELECT: event_type
+eventtype ON_POPUP_ITEM_SELECT
 
 /@@
 Control Push Button Event
 @/
-var ON_BUTTON_PUSH: event_type
+eventtype ON_BUTTON_PUSH
 
 /@@
 Control CELLSELECTCHANGE Grid Notify Event
 @/
-var ON_CELL_SELECTION_CHANGE: event_type
+eventtype ON_CELL_SELECTION_CHANGE
 
 /@@
 Control Check Change Event
 @/
-var ON_CHECK_CHANGE: event_type
+eventtype ON_CHECK_CHANGE
 
 /@@
 Control Check Off Event
 @/
-var ON_CHECK_OFF: event_type
+eventtype ON_CHECK_OFF
 
 /@@
 Control Check On Event
 @/
-var ON_CHECK_ON: event_type
+eventtype ON_CHECK_ON
 
 /@@
 Control ColorChooser Approve Event
 @/
-var ON_COLORCHOOSER_APPROVE: event_type
+eventtype ON_COLORCHOOSER_APPROVE
 
 /@@
 Control ColorChooser Cancel Event
 @/
-var ON_COLORCHOOSER_CANCEL: event_type
+eventtype ON_COLORCHOOSER_CANCEL
 
 /@@
 Control ColorChooser Change Event
 @/
-var ON_COLORCHOOSER_CHANGE: event_type
+eventtype ON_COLORCHOOSER_CHANGE
 
 /@@
 Control Grid Notify Event
 @/
-var ON_COLUMN_SELECTION_CHANGE: event_type
+eventtype ON_COLUMN_SELECTION_CHANGE
 
 /@@
 Control Scrollbar Move Event
 @/
-var ON_CONTROL_SCROLL: event_type
+eventtype ON_CONTROL_SCROLL
 
 /@@
 Control Validation Event
 @/
-var ON_CONTROL_VALIDATION: event_type
+eventtype ON_CONTROL_VALIDATION
 
 /@@
 Control N/A
 @/
-var ON_DB_GRID_ROW_CHANGE_REQUEST: event_type
+eventtype ON_DB_GRID_ROW_CHANGE_REQUEST
 
 /@@
 Web Component Defined Event
 @/
-var ON_DEFINED: event_type
+eventtype ON_DEFINED
 
 /@@
 Drag Source Drop Event
 @/
-var ON_DRAG_SOURCE_DROP: event_type
+eventtype ON_DRAG_SOURCE_DROP
 
 /@@
 Drop Target Drop Event
 @/
-var ON_DROP_TARGET_DROP: event_type
+eventtype ON_DROP_TARGET_DROP
 
 /@@
 Edit Control Notify
 @/
-var ON_EDIT_KEYPRESS: event_type
+eventtype ON_EDIT_KEYPRESS
 
 /@@
 Edit Control Modify Event
 @/
-var ON_EDIT_MODIFY: event_type
+eventtype ON_EDIT_MODIFY
 
 /@@
 Execute Script Event
 @/
-var ON_EXECUTE_SCRIPT: event_type
+eventtype ON_EXECUTE_SCRIPT
 
 /@@
 FileChooser Approve Event
 @/
-var ON_FILECHOOSER_APPROVE: event_type
+eventtype ON_FILECHOOSER_APPROVE
 
 /@@
 FileChooser Cancel Event
 @/
-var ON_FILECHOOSER_CANCEL: event_type
+eventtype ON_FILECHOOSER_CANCEL
 
 /@@
 FileChooser Change Event
 @/
-var ON_FILECHOOSER_CHANGE: event_type
+eventtype ON_FILECHOOSER_CHANGE
 
 /@@
 FileChooser Filter Event
 @/
-var ON_FILECHOOSER_FILTER: event_type
+eventtype ON_FILECHOOSER_FILTER
 
 /@@
 FontChooser Approve Event
 @/
-var ON_FONTCHOOSER_APPROVE: event_type
+eventtype ON_FONTCHOOSER_APPROVE
 
 /@@
 FontChooser Cancel Event
 @/
-var ON_FONTCHOOSER_CANCEL: event_type
+eventtype ON_FONTCHOOSER_CANCEL
 
 /@@
 FontChooser Change Event
 @/
-var ON_FONTCHOOSER_CHANGE: event_type
+eventtype ON_FONTCHOOSER_CHANGE
 
 /@@
 Form Validation Event
 @/
-var ON_FORM_VALIDATION: event_type
+eventtype ON_FORM_VALIDATION
 
 /@@
 Control Focus Gained/Lost Event
 @/
-var ON_GAINED_FOCUS: event_type
+eventtype ON_GAINED_FOCUS
 
 /@@
 Grid Notify Event
 @/
-var ON_GRID_CELL_MODIFY: event_type
+eventtype ON_GRID_CELL_MODIFY
 
 /@@
 Grid Cell Query Event
 @/
-var ON_GRID_CELL_QUERY: event_type
+eventtype ON_GRID_CELL_QUERY
 
 /@@
 Grid Cell Validation Event
 @/
-var ON_GRID_CELL_VALIDATION: event_type
+eventtype ON_GRID_CELL_VALIDATION
 
 /@@
 Grid Control Event
 @/
-var ON_GRID_CHECK_OFF: event_type
+eventtype ON_GRID_CHECK_OFF
 
 /@@
 Grid Control Event
 @/
-var ON_GRID_CHECK_ON: event_type
+eventtype ON_GRID_CHECK_ON
 
 /@@
 COLUMNSIZED Grid Notify Event
 @/
-var ON_GRID_COLUMN_SIZE: event_type
+eventtype ON_GRID_COLUMN_SIZE
 
 /@@
 DCLICKED Grid Notify Event
 @/
-var ON_GRID_DOUBLE_CLICK: event_type
+eventtype ON_GRID_DOUBLE_CLICK
 
 /@@
 DRAGDROP Grid Notify Event
 @/
-var ON_GRID_DRAG_DROP: event_type
+eventtype ON_GRID_DRAG_DROP
 
 /@@
 EDITSET Grid Notify Event
 @/
-var ON_GRID_EDIT_START: event_type
+eventtype ON_GRID_EDIT_START
 
 /@@
 EDITKILL Grid Notify Event
 @/
-var ON_GRID_EDIT_STOP: event_type
+eventtype ON_GRID_EDIT_STOP
 
 /@@
 ENTER Grid Notify Event
 @/
-var ON_GRID_ENTER_KEY: event_type
+eventtype ON_GRID_ENTER_KEY
 
 /@@
 ERROR Grid Notify Event
 @/
-var ON_GRID_ERROR: event_type
+eventtype ON_GRID_ERROR
 
 /@@
 SETFOCUS
 @/
-var ON_GRID_GAINED_FOCUS: event_type
+eventtype ON_GRID_GAINED_FOCUS
 
 /@@
 HITBOTTOM Grid Notify Event
 @/
-var ON_GRID_HIT_BOTTOM: event_type
+eventtype ON_GRID_HIT_BOTTOM
 
 /@@
 HITTOP Grid Notify Event
 @/
-var ON_GRID_HIT_TOP: event_type
+eventtype ON_GRID_HIT_TOP
 
 /@@
 KEYBOARD Grid Notify Event
 @/
-var ON_GRID_KEYPRESS: event_type
+eventtype ON_GRID_KEYPRESS
 
 /@@
 LEFTCOLCHANGE Grid Notify Event
 @/
-var ON_GRID_LEFT_COLUMN_CHANGE: event_type
+eventtype ON_GRID_LEFT_COLUMN_CHANGE
 
 /@@
 LISTCANCEL Grid Notify Event
 @/
-var ON_GRID_LIST_CANCEL: event_type
+eventtype ON_GRID_LIST_CANCEL
 
 /@@
 LISTCHANGE Grid Notify Event
 @/
-var ON_GRID_LIST_CHANGE: event_type
+eventtype ON_GRID_LIST_CHANGE
 
 /@@
 LISTCLICK Grid Notify Event
 @/
-var ON_GRID_LIST_CLICK: event_type
+eventtype ON_GRID_LIST_CLICK
 
 /@@
 LISTCLOSE Grid Notify Event
 @/
-var ON_GRID_LIST_CLOSE: event_type
+eventtype ON_GRID_LIST_CLOSE
 
 /@@
 LISTOPEN Grid Notify Event
 @/
-var ON_GRID_LIST_OPEN: event_type
+eventtype ON_GRID_LIST_OPEN
 
 /@@
 LISTSELECT Grid Notify Event
 @/
-var ON_GRID_LIST_SELECT: event_type
+eventtype ON_GRID_LIST_SELECT
 
 /@@
 KILLFOCUS
 @/
-var ON_GRID_LOST_FOCUS: event_type
+eventtype ON_GRID_LOST_FOCUS
 
 /@@
 LCLICKED Grid Notify Event
 LCLICKED2 Grid Notify Event
 @/
-var ON_GRID_MOUSE_DOWN: event_type
+eventtype ON_GRID_MOUSE_DOWN
 
 /@@
 MOUSECAPTURE Grid Notify Event
 @/
-var ON_GRID_MOUSE_DRAG: event_type
+eventtype ON_GRID_MOUSE_DRAG
 
 /@@
 MOUSECAPTURE Grid Notify Event
 @/
-var ON_GRID_MOUSE_MOVE: event_type
+eventtype ON_GRID_MOUSE_MOVE
 
 /@@
 LCLICKED Grid Notify Event
 @/
-var ON_GRID_MOUSE_UP: event_type
+eventtype ON_GRID_MOUSE_UP
 
 /@@
 RCLICKED Grid Notify Event
 @/
-var ON_GRID_RIGHT_MOUSE_DOWN: event_type
+eventtype ON_GRID_RIGHT_MOUSE_DOWN
 
 /@@
 RCLICKED Grid Notify Event
 @/
-var ON_GRID_RIGHT_MOUSE_UP: event_type
+eventtype ON_GRID_RIGHT_MOUSE_UP
 
 /@@
 ROWDELETE Grid Notify Event
 @/
-var ON_GRID_ROW_DELETE: event_type
+eventtype ON_GRID_ROW_DELETE
 
 /@@
 ROWINSERT Grid Notify Event
 @/
-var ON_GRID_ROW_INSERT: event_type
+eventtype ON_GRID_ROW_INSERT
 
 /@@
 ROWCANCEL Grid Notify Event
 @/
-var ON_GRID_ROW_INSERT_CANCEL: event_type
+eventtype ON_GRID_ROW_INSERT_CANCEL
 
 /@@
 ROWUPDATE Grid Notify Event
 @/
-var ON_GRID_ROW_UPDATE: event_type
+eventtype ON_GRID_ROW_UPDATE
 
 /@@
 ROWVALIDATION Notify Event
 @/
-var ON_GRID_ROW_VALIDATION: event_type
+eventtype ON_GRID_ROW_VALIDATION
 
 /@@
 CELLCHANGE Grid Notify Event
 @/
-var ON_GRID_SELECT_CELL: event_type
+eventtype ON_GRID_SELECT_CELL
 
 /@@
 COLCHANGE Grid Notify Event
 @/
-var ON_GRID_SELECT_COLUMN: event_type
+eventtype ON_GRID_SELECT_COLUMN
 
 /@@
 ROWCHANGE Grid Notify Event
 @/
-var ON_GRID_SELECT_ROW: event_type
+eventtype ON_GRID_SELECT_ROW
 
 /@@
 EDITKEY Grid Notify Event
 @/
-var ON_GRID_SPECIAL_KEY: event_type
+eventtype ON_GRID_SPECIAL_KEY
 
 /@@
 TOPROWCHANGE Grid Notify Event
 @/
-var ON_GRID_TOP_ROW_CHANGE: event_type
+eventtype ON_GRID_TOP_ROW_CHANGE
 
 /@@
 TABLEUPDATE Grid Notify Event
 @/
-var ON_GRID_UPDATE: event_type
+eventtype ON_GRID_UPDATE
 
 /@@
 Hyperlink Activate Event
 @/
-var ON_HYPERLINK_ACTIVATE: event_type
+eventtype ON_HYPERLINK_ACTIVATE
 
 /@@
 Hyperlink Enter Event
 @/
-var ON_HYPERLINK_ENTER: event_type
+eventtype ON_HYPERLINK_ENTER
 
 /@@
 Hyperlink Exit Event
 @/
-var ON_HYPERLINK_EXIT: event_type
+eventtype ON_HYPERLINK_EXIT
 
 /@@
 Input Control Keypress
 @/
-var ON_INPUT_KEYPRESS: event_type
+eventtype ON_INPUT_KEYPRESS
 
 /@@
 List Button and List Edit Notify Events
 @/
-var ON_LIST_CANCEL: event_type
+eventtype ON_LIST_CANCEL
 
 /@@
 List Button and List Edit Notify Events
 @/
-var ON_LIST_CHANGE: event_type
+eventtype ON_LIST_CHANGE
 
 /@@
 List Item Click Event
 @/
-var ON_LIST_CLICK: event_type
+eventtype ON_LIST_CLICK
 
 /@@
 List Button and List Edit Notify Events
 @/
-var ON_LIST_CLOSE: event_type
+eventtype ON_LIST_CLOSE
 
 /@@
 List Item Click Event
 @/
-var ON_LIST_DOUBLE_CLICK: event_type
+eventtype ON_LIST_DOUBLE_CLICK
 
 /@@
 List Button and List Edit Notify Events
 @/
-var ON_LIST_OPEN: event_type
+eventtype ON_LIST_OPEN
 
 /@@
 List Button and List Edit Notify Events
 @/
-var ON_LIST_SELECT: event_type
+eventtype ON_LIST_SELECT
 
 /@@
 Control Focus Gained/Lost Event
 @/
-var ON_LOST_FOCUS: event_type
+eventtype ON_LOST_FOCUS
 
 /@@
 Mouse Enter Event
 @/
-var ON_MOUSE_ENTER: event_type
+eventtype ON_MOUSE_ENTER
 
 /@@
 Mouse Exit Event
 @/
-var ON_MOUSE_EXIT: event_type
+eventtype ON_MOUSE_EXIT
 
 /@@
 Native JavaScript Event
 @/
-var ON_NATIVE_JAVASCRIPT: event_type
+eventtype ON_NATIVE_JAVASCRIPT
 
 /@@
 Navigator Notify Event
 @/
-var ON_NAV_FIRST: event_type
+eventtype ON_NAV_FIRST
 
 /@@
 Navigator Notify Event
 @/
-var ON_NAV_LAST: event_type
+eventtype ON_NAV_LAST
 
 /@@
 Navigator Notify Event
 @/
-var ON_NAV_NEXT: event_type
+eventtype ON_NAV_NEXT
 
 /@@
 Navigator Notify Event
 @/
-var ON_NAV_PREVIOUS: event_type
+eventtype ON_NAV_PREVIOUS
 
 /@@
 Page Loaded Event
 @/
-var ON_PAGE_LOADED: event_type
+eventtype ON_PAGE_LOADED
 
 /@@
 Popup Request Event
 @/
-var ON_POPUP_REQUEST: event_type
+eventtype ON_POPUP_REQUEST
 
 /@@
 Right Mouse Button Down Event
 @/
-var ON_RIGHT_MOUSE_DOWN: event_type
+eventtype ON_RIGHT_MOUSE_DOWN
 
 /@@
 ROWSELECTIONCHANGE Grid Notify Event
 @/
-var ON_ROW_SELECTION_CHANGE: event_type
+eventtype ON_ROW_SELECTION_CHANGE
 
 /@@
 Script Failed Event
 @/
-var ON_SCRIPT_FAILED: event_type
+eventtype ON_SCRIPT_FAILED
 
 /@@
 Script Loaded Event
 @/
-var ON_SCRIPT_LOADED: event_type
+eventtype ON_SCRIPT_LOADED
 
 /@@
 Radio Group Selection Change Event
 @/
-var ON_SELECTION_CHANGE: event_type
+eventtype ON_SELECTION_CHANGE
 
 /@@
 N/A
 @/
-var ON_SPIN: event_type
+eventtype ON_SPIN
 
 /@@
 State Change Event
 @/
-var ON_STATE_CHANGE: event_type
+eventtype ON_STATE_CHANGE
 
 /@@
 Tab Close Notify Event
 @/
-var ON_TAB_CLOSE: event_type
+eventtype ON_TAB_CLOSE
 
 /@@
 Tab Selection Notify Event
 @/
-var ON_TAB_DESELECT: event_type
+eventtype ON_TAB_DESELECT
 
 /@@
 Keypress Notify Event
 @/
-var ON_TAB_KEYPRESS: event_type
+eventtype ON_TAB_KEYPRESS
 
 /@@
 Tab Popup Notify Event
 @/
-var ON_TAB_POPUP: event_type
+eventtype ON_TAB_POPUP
 
 /@@
 Tab Selection Notify Event
 @/
-var ON_TAB_SELECT: event_type
+eventtype ON_TAB_SELECT
 
 /@@
 Tool Button Push Event
 @/
-var ON_TOOL_BUTTON_PUSH: event_type
+eventtype ON_TOOL_BUTTON_PUSH
 
 /@@
 Tree Node Collapsed
 @/
-var ON_TREE_COLLAPSE: event_type
+eventtype ON_TREE_COLLAPSE
 
 /@@
 Tree Node Deselected
 @/
-var ON_TREE_DESELECT: event_type
+eventtype ON_TREE_DESELECT
 
 /@@
 Double-click on Tree
 @/
-var ON_TREE_DOUBLE_CLICK: event_type
+eventtype ON_TREE_DOUBLE_CLICK
 
 /@@
 Tree Node Edit Stopped
 @/
-var ON_TREE_EDIT_STOP: event_type
+eventtype ON_TREE_EDIT_STOP
 
 /@@
 Tree Node Expanded
 @/
-var ON_TREE_EXPAND: event_type
+eventtype ON_TREE_EXPAND
 
 /@@
 Left Mouse Down
 @/
-var ON_TREE_MOUSE_DOWN: event_type
+eventtype ON_TREE_MOUSE_DOWN
 
 /@@
 Left Mouse Up
 @/
-var ON_TREE_MOUSE_UP: event_type
+eventtype ON_TREE_MOUSE_UP
 
 /@@
 Right Mouse Down
 @/
-var ON_TREE_RIGHT_MOUSE_DOWN: event_type
+eventtype ON_TREE_RIGHT_MOUSE_DOWN
 
 /@@
 Right Mouse Up
 @/
-var ON_TREE_RIGHT_MOUSE_UP: event_type
+eventtype ON_TREE_RIGHT_MOUSE_UP
 
 /@@
 Tree Node Selected
 @/
-var ON_TREE_SELECT: event_type
+eventtype ON_TREE_SELECT
 
 /@@
 N/A
 @/
-var ON_WEB_EVENT: event_type
+eventtype ON_WEB_EVENT
 
 /@@
 BBjBrowserBackEvent
 @/
-var ON_BROWSER_BACK: event_type
+eventtype ON_BROWSER_BACK
 
 /@@
 BBjBrowserCloseEvent
 @/
-var ON_BROWSER_CLOSE: event_type
+eventtype ON_BROWSER_CLOSE
 
 /@@
 BBjGeolocationEvent
 @/
-var ON_GEOLOCATION_POSITION: event_type	
+eventtype ON_GEOLOCATION_POSITION	
 
 /@@
 BBjGeolocationEvent
 @/
-var ON_GEOLOCATION_WATCH: event_type	
+eventtype ON_GEOLOCATION_WATCH	
 
 /@@
 BBjLinkFailedEvent
 @/
-var ON_LINK_FAILED: event_type
+eventtype ON_LINK_FAILED
 
 /@@
 BBjLinkLoadedEvent
 @/
-var ON_LINK_LOADED: event_type
+eventtype ON_LINK_LOADED
 
 /@@
 BBjNamespaceEvent
 @/
-var ON_NAMESPACE_CHANGE: event_type	
+eventtype ON_NAMESPACE_CHANGE	
 
 /@@
 Timer Event
 @/
-var ON_TIMER: event_type	
+eventtype ON_TIMER	
 
 /@@
 BBjServletEvent
 @/
-var ON_WEB_CONNECTION: event_type	 
+eventtype ON_WEB_CONNECTION	 
+ 
 `;

@@ -84,11 +84,11 @@ SingleStatement:
 ;
 
 CallbackStatement:
-    'CALLBACK' '(' eventType=Expression ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
     ;
 
 RemoveCallbackStatement:
-    'REMOVE_CALLBACK' '(' eventType=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? ')'
     ;
 
 InitFileStatement:
@@ -616,7 +616,7 @@ Library:
 ;
 
 LibMember:
-    LibFunction | LibVariable | LibSymbolicLabel
+    LibFunction | LibVariable | LibSymbolicLabel | LibEventType
 ;
 
 LibFunction returns LibFunction:
@@ -637,6 +637,11 @@ LibSymbolicLabel returns LibSymbolicLabelDecl:
     (docu=DOCU)?
     'label' name=SYMBOLIC_LABEL_NAME
 ;
+
+LibEventType returns LibEventType:
+    (docu=DOCU)?
+    'eventType' name=ValidName
+    ;
 
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
@@ -724,6 +729,10 @@ interface LibParameter extends NamedElement {
 interface LibVariable extends NamedElement {
     docu?: string
     type?: string
+}
+
+interface LibEventType extends NamedElement {
+    docu?: string
 }
 
 interface LabelDecl extends NamedElement {
