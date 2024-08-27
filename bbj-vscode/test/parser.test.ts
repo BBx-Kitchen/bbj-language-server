@@ -1146,4 +1146,13 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check REMOVE_CALLBACK verb", async () => {
+        const result = await parse(`
+            CONTEXT = 0
+            REMOVE_CALLBACK(ON_CLOSE,CONTEXT,0)
+            REMOVE_CALLBACK(ON_CLOSE,CONTEXT)
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

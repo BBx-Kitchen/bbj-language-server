@@ -62,6 +62,7 @@ SingleStatement:
     ReadRecordStatement |
     ReadStatement |
     RedimStatement |
+    RemoveCallbackStatement |
     RenameStatement |
     ReturnStatement |
     RunStatement |
@@ -84,6 +85,10 @@ SingleStatement:
 
 CallbackStatement:
     'CALLBACK' '(' eventType=Expression ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    ;
+
+RemoveCallbackStatement:
+    'REMOVE_CALLBACK' '(' eventType=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
     ;
 
 InitFileStatement:
