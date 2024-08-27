@@ -1,0 +1,6 @@
+CONTEXT = 0
+        CALLBACK(ON_CLOSE,handler,CONTEXT,0)
+        CALLBACK(ON_CLOSE,handler,CONTEXT)
+    handler: ENTER
+        REM do something
+        EXIT

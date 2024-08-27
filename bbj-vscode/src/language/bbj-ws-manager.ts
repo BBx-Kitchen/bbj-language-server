@@ -14,6 +14,7 @@ import { builtinVariables } from "./lib/variables";
 // import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { builtinEvents } from "./lib/events";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -100,6 +101,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         collector(this.documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl')));
         collector(this.documentFactory.fromString(builtinVariables, URI.parse('bbjlib:///variables.bbl')));
         collector(this.documentFactory.fromString(builtinSymbolicLabels, URI.parse('bbjlib:///labels.bbl')));
+        collector(this.documentFactory.fromString(builtinEvents, URI.parse('bbjlib:///events.bbl')));
     }
 
     public getSettings() {
