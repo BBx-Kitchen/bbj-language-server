@@ -1000,6 +1000,15 @@ describe('Parser Tests', () => {
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
+
+        test("With DOM option", async() => {
+            const result = await parse(`
+                WRITE (0, DOM="") "?"
+            `);
+            expectNoParserLexerErrors(result);
+            expectToContainAstNodeType(result, isPrintStatement);
+        });
+
         test("With IND option", async () => {
             const result = await parse(`
                 WRITE (0, IND=0) "Pardon?!"
