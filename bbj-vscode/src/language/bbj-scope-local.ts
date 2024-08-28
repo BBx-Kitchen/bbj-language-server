@@ -23,6 +23,7 @@ import {
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
     isLetStatement,
+    isLibEventType,
     isLibMember,
     isProgram, isReadStatement,
     isSymbolRef, isUse,
@@ -44,7 +45,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     override async computeExports(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
         // Only make classes and library elements globally "visible" in index
-        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibMember(child)), cancelToken);
+        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
     }
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {

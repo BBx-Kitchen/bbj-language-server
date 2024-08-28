@@ -18,6 +18,7 @@ import {
     Expression,
     isArrayDecl, isAssignment, isBbjClass,
     isBinaryExpression,
+    isCallbackStatement,
     isClass, isClasspath, isCompoundStatement, isConstructorCall,
     isFieldDecl,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
@@ -25,7 +26,9 @@ import {
     isMemberCall,
     isMethodDecl,
     isProgram,
+    isRemoveCallbackStatement,
     isStatement, isStringLiteral, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
 } from './generated/ast';
@@ -126,6 +129,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // FIXME HACK for orphaned AST Instances
             return this.superGetScope({ ...context, container: context.container.$cstNode?.element });
         }
+        if(isCallbackStatement(context.container) || isRemoveCallbackStatement(context.container)) {
+            if(context.property === 'eventType') {
+                return this.getGlobalScope(LibEventType, context);
+            }
+        }
         return this.superGetScope(context);
     }
 
@@ -150,6 +158,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 // when looking for classes return only JavaClasses. References are case sensitive
                 // Temporally add imported BBjClasses
                 return new StreamScopeWithPredicate(stream(this.importedBBjClasses(program)), new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass)));
+            }
+            case LibEventType: {
+                return new StreamScopeWithPredicate(this.indexManager.allElements(LibEventType), undefined, { caseInsensitive: true });
             }
             case NamedElement: {
                 if (isSymbolRef(_context.container) && _context.property === 'symbol')

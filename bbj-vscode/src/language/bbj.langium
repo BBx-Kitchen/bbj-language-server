@@ -612,11 +612,15 @@ EscapeId returns string:
 // BBx Library
 Library:
     'library' 
-    (declarations+=LibMember)*
+    (
+        declarations+=LibMember
+        | declarations+=LibEventType
+    )*
 ;
 
+//ATTENTION: LibEventType is handled in an extra rule to not pollute the global index for content assist
 LibMember:
-    LibFunction | LibVariable | LibSymbolicLabel | LibEventType
+    LibFunction | LibVariable | LibSymbolicLabel
 ;
 
 LibFunction returns LibFunction:
