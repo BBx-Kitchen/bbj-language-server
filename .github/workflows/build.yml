@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - typefox-dev
   pull_request:
     branches:
       - main
+      - typefox-dev
 
 jobs:
   build:
