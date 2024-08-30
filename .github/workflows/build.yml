@@ -8,7 +8,6 @@ on:
   pull_request:
     branches:
       - main
-      - typefox-dev
 
 jobs:
   build:
