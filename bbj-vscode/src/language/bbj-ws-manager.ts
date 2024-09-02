@@ -61,8 +61,12 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             }
             await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
-            const loaded = await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
-            console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
+            if (this.settings!.classpath.length > 0) {
+                const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
+                console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
+            } else {
+                console.warn("No classpath set. No Java classes loaded.")
+            }
             const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
             console.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
         } catch (e) {
