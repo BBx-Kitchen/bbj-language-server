@@ -43,11 +43,11 @@ export class JavadocProvider {
         if (this.isInitialized()) {
             throw new Error("JavadocProvider already initialized");
         }
-        this.initialized = true;
         this.fsAccess = fsAccess;
         for (const root of roots.filter(uri => uri.scheme === 'file')) {
             if (cancelToken.isCancellationRequested) {
-                return;
+                console.warn("Cancelation requested in JavadocProvider.");
+                // FIXME will not be re-triggered return;
             }
             let nodes: FileSystemNode[];
             try {
@@ -66,6 +66,8 @@ export class JavadocProvider {
                 }
             }
         }
+        this.initialized = true;
+        console.debug(`JavadocProvider initialized with ${this.packages.size} package/-s.`);
     }
 
     /**
@@ -104,7 +106,7 @@ export class JavadocProvider {
         return undefined;
     }
 
-    public async getPackageDoc(packageName: string): Promise<PackageDoc | undefined> {
+    protected async getPackageDoc(packageName: string): Promise<PackageDoc | undefined> {
         if (!this.isInitialized()) {
             throw new Error("JavadocProvider not initialized. Call initialize() first.");
         }
