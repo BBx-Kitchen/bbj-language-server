@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - typefox-dev
   pull_request:
     branches:
       - main
@@ -19,7 +20,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '18'
     - name: Build
       shell: bash
       run: |
@@ -36,7 +37,7 @@ jobs:
       shell: bash
       run: |
         cd bbj-vscode
-        npm i -g @vscode/vsce
+        npm i -g @vscode/vsce@^2.32
         vsce package
     - name: Set up JDK
       uses: actions/setup-java@v3
