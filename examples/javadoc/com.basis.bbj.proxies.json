@@ -1,0 +1,55 @@
+{
+  "name": "com.basis.bbj.proxies",
+  "version": "1.0.0",
+  "docu": "The BBjAPI classes.",
+  "classes": [
+    {
+      "name": "BBjAPI",
+      "docu": "The BBjAPI object is the entry point for creating and using BBj Objects. See https://documentation.basis.cloud/BASISHelp/WebHelp/bbjobjects/bbjapi/bbjapi.htm",
+      "fields": [
+      ],
+      "methods": [
+        {
+          "name": "getFileSystem",
+          "docu": "Obtains a BBjFileSystem object that allows interaction with the BBj filesystem. See https://documentation.basis.cloud/BASISHelp/WebHelp/bbjobjects/bbjapi/bbjapi_getfilesystem.htm",
+          "params": []
+        },
+        {
+          "name": "openSysGui",
+          "docu": "In BBj 7.0 and higher, this method obtains a BBjSysGui object that represents a SysGui channel and is used to facilitate the creation and manipulation of custom graphical windows and controls in a GUI application. see https://documentation.basis.cloud/BASISHelp/WebHelp/bbjobjects/bbjapi/bbjapi_opensysgui.htm",
+          "params": [
+            {
+              "name": "alias"
+            }
+          ]
+        }
+      ],
+      "constructors": [
+        {
+          "name": "BBjAPI",
+          "docu": "Creates a new instance of BBjAPI.",
+          "params": []
+        }
+      ]
+    },
+    {
+      "name": "BBjFileSystem",
+      "docu": "The BBjFileSystem provides methods for interacting with the filesystem.",
+      "fields": [
+      ],
+      "methods": [
+        {
+          "name": "resolvePath",
+          "docu": "In BBj 15.0 and higher, this method returns the fully resolved absolute path for the specified file name. The file name can be a file relative to any configured prefix configurations. When a BBx program makes a call to OPEN passing in a relative path to a file, BBj checks any configured prefixes to look for the specified file in those locations. This method returns the full path BBj would use in a call to OPEN. See https://documentation.basis.cloud/BASISHelp/WebHelp/bbjobjects/FileSystem/bbjfilesystem/BBjFileSystem_resolvePath.htm",
+          "params": [
+            {
+              "name": "filename"
+            }
+          ]
+        }
+      ],
+      "constructors": []
+    }
+
+  ]
+}
