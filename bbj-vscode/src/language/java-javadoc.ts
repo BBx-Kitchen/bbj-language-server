@@ -62,7 +62,6 @@ export class JavadocProvider {
                     const packageName = fileName.slice(0, -5); // cut .json
                     if (packageName !== undefined) {
                         this.packages.set(packageName, this.lazyLoad ? node.uri : await this.loadJavadocFile(packageName, node.uri));
-
                     }
                 }
             }
@@ -85,7 +84,8 @@ export class JavadocProvider {
             clazz = node.$container;
         }
         if (clazz) {
-            const qnParts = clazz.name.split('.')
+            const qName = clazz.name.indexOf('.') > -1 ? clazz.name : (clazz as any)['simpleName'] ? (clazz as any).simpleName : clazz.name;
+            const qnParts = qName.split('.')
             const className = qnParts.pop();
             const packageDoc = await this.getPackageDoc(qnParts.join('.'));
             const classDoc = packageDoc?.classes.find(c => c.name === className);
