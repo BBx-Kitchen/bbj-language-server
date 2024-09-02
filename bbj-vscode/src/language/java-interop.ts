@@ -40,7 +40,15 @@ export class JavaInteropService {
         if (this.connection) {
             return this.connection;
         }
-        const socket = await this.createSocket();
+        let socket: Socket;
+        try {
+            socket = await this.createSocket();
+        } catch (e) {
+            // TODO send error message to the client.
+            // Allow the user to retry the connection.
+            console.error('Failed to connect to the Java service.', e)
+            return Promise.reject(e);
+        }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
         connection.listen();
         this.connection = connection;
@@ -113,7 +121,7 @@ export class JavaInteropService {
         return await this.resolveClass(javaClass, token);
     }
 
-    async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
+    protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
         const className = javaClass.name
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;

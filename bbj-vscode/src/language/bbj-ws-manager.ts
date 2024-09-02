@@ -33,34 +33,37 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
-        
+
         try {
             const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
             let propcontents = "";
             if (confFile) {
                 propcontents = this.fileSystemProvider.readFileSync(confFile.uri);
-            } 
+            }
             let prefixfromconfig;
-            if(this.bbjdir) {
-                const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir+"/cfg/"));
+            if (this.bbjdir) {
+                const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir + "/cfg/"));
                 const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
                 if (configbbx) {
-                    prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                    prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
                 }
             } else {
                 console.warn("No bbjdir set. No classpath and prefixes loaded.")
             }
             this.settings = parseSettings(propcontents, prefixfromconfig)
-            
-            // initialize javadoc look-up before loading classes.
-            const javadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc'))
-            await JavadocProvider.getInstance().initialize(javadocFolders, this.fileSystemProvider, cancelToken);
 
-            await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
-            console.debug(`Java Classes loaded`)
-            await this.javaInterop.loadImplicitImports(cancelToken);
-            console.debug(`Implicit Java imports loaded`)
+            // initialize javadoc look-up before loading classes.
+            const wsJavadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc/'))
+            if (this.bbjdir) {
+                wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
+            }
+            await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+
+            const loaded = await this.javaInterop.loadClasspath(this.settings!.classpath, cancelToken)
+            console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
+            const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
+            console.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
         } catch (e) {
             // all fine
             console.error(e);
@@ -76,8 +79,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                     await this.traverseFolder(workspaceFolder, entry.uri, fileExtensions, collector);
                 } else if (entry.isFile) {
                     const fileContent = await this.fileSystemProvider.readFile(entry.uri);
-                    if(!fileContent.startsWith('<<bbj>>')) {
-                        if(!this.langiumDocuments.hasDocument(entry.uri)) {
+                    if (!fileContent.startsWith('<<bbj>>')) {
+                        if (!this.langiumDocuments.hasDocument(entry.uri)) {
                             collector(this.documentFactory.fromString(fileContent, entry.uri));
                         }
                     } else {
@@ -124,18 +127,18 @@ export function parseSettings(input: string, prefixfromconfigbbx: string | undef
 
     let props: KeyValuePairObject;
     props = getProperties(input);
-    let cp="";
+    let cp = "";
     if (props.classpath) {
         cp = resolveTilde(props.classpath);
     }
 
-    let pfx=""
+    let pfx = ""
     if (props.PREFIX) {
         pfx = props.PREFIX;
-    } else if(prefixfromconfigbbx)
+    } else if (prefixfromconfigbbx)
         pfx = prefixfromconfigbbx;
 
-    return { prefixes: collectPrefixes(pfx), classpath: cp.split(":")};
+    return { prefixes: collectPrefixes(pfx), classpath: cp.split(":") };
 }
 
 export function collectPrefixes(input: string): string[] {
