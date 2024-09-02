@@ -269,10 +269,6 @@
         "onCommand:bbj.autoComment",
         "onCommand:bbj.initInterop"
     ],
-    "files": [
-        "out",
-        "src"
-    ],
     "main": "./out/extension.js",
     "scripts": {
         "prepare": "npm run langium:generate && npm run build",
@@ -280,7 +276,7 @@
         "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
         "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
         "lint": "eslint src test --ext ts",
-        "test": "vitest",
+        "test": "vitest run",
         "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
         "esbuild": "npm run esbuild-base -- --sourcemap",
         "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
