@@ -37,7 +37,7 @@ jobs:
       shell: bash
       run: |
         cd bbj-vscode
-        npm i -g @vscode/vsce
+        npm i -g @vscode/vsce@^2.32
         vsce package
     - name: Set up JDK
       uses: actions/setup-java@v3
