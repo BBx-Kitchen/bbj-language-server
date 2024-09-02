@@ -4,7 +4,7 @@ import { CrossReference, Keyword, isAssignment } from "langium/lib/grammar/gener
 import { CompletionItemKind } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider";
-import { LibSymbolicLabelDecl } from "./generated/ast";
+import { LibEventType, LibSymbolicLabelDecl } from "./generated/ast";
 
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
@@ -42,6 +42,8 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         } else if (nodeDescription.type === LibSymbolicLabelDecl) {
             superImpl.label = nodeDescription.name
             superImpl.sortText = superImpl.label.slice(1) // remove * so that symbolic labels appear in the alphabetical order
+        } else if (nodeDescription.type === LibEventType && 'docu' in nodeDescription && typeof nodeDescription.docu === "string") {
+            superImpl.detail = nodeDescription.docu;
         }
         return superImpl;
     }

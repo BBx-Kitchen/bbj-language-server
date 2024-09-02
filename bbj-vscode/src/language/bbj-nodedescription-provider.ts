@@ -1,5 +1,6 @@
 import { AstNode, AstNodeDescription, DefaultAstNodeDescriptionProvider, LangiumDocument, getDocument, isAstNodeDescription } from "langium";
-import { JavaMethod, LibFunction, MethodDecl } from "./generated/ast";
+import { JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast";
+import { documentationHeader } from "./bbj-hover";
 
 
 
@@ -11,6 +12,7 @@ export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProv
             case MethodDecl: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))
             case LibFunction: return enhanceFunctionDescription(descr, node as LibFunction);
             case JavaMethod: return enhanceFunctionDescription(descr, node as JavaMethod);
+            case LibEventType: return { ...descr, docu: documentationHeader(node)! } as AstNodeDescription;
             default: return descr;
         }
     }

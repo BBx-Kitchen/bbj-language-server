@@ -1,7 +1,7 @@
 import { AstNode, AstNodeHoverProvider, DocumentationProvider, LangiumServices, isJSDoc, parseJSDoc } from "langium";
 import { Hover } from "vscode-languageclient";
 import { MethodData, toMethodData } from "./bbj-nodedescription-provider";
-import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast";
+import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc";
 import { CommentProvider } from "langium/lib/documentation/comment-provider";
 
@@ -95,7 +95,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
 
 export function documentationHeader(node: AstNode): string | undefined {
     // Lib
-    if (isLibMember(node) && node.docu && node.docu.length > 5) {
+    if ((isLibMember(node) || isLibEventType(node)) && node.docu && node.docu.length > 5) {
         return node.docu.substring(3, node.docu.length - 2).replaceAll('\\`', '`').trim()
     }
 
