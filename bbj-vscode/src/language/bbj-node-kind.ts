@@ -1,6 +1,6 @@
 import { AstNode, AstNodeDescription, NodeKindProvider, isAstNode } from "langium";
 import { CompletionItemKind, SymbolKind } from "vscode-languageserver";
-import { ArrayDecl, BbjClass, JavaClass, JavaMethod, LibFunction, MethodDecl } from "./generated/ast";
+import { ArrayDecl, BbjClass, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast";
 
 
 export class BBjNodeKindProvider implements NodeKindProvider {
@@ -14,6 +14,8 @@ export class BBjNodeKindProvider implements NodeKindProvider {
                 return SymbolKind.Class
             case ArrayDecl:
                 return SymbolKind.Array
+            case LibEventType:
+                return SymbolKind.Event
             default:
                 return SymbolKind.Field
         }
@@ -21,6 +23,8 @@ export class BBjNodeKindProvider implements NodeKindProvider {
 
     getCompletionItemKind(node: AstNode | AstNodeDescription): CompletionItemKind {
         switch (isAstNode(node) ? node.$type : node.type) {
+            case LibEventType:
+                return CompletionItemKind.Event
             case MethodDecl:
             case JavaMethod:
             case LibFunction:
