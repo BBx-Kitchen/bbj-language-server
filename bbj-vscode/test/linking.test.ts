@@ -123,7 +123,7 @@ describe('Linking Tests', async () => {
         `)
         expectNoErrors(document)
     })
-
+/* Needs running java service
     test('All BBj classes extends Object', async () => {
         const document = await validate(`
             class public MyClass
@@ -134,5 +134,5 @@ describe('Linking Tests', async () => {
         `)
         expectNoErrors(document)
     })
-
+*/
 });
