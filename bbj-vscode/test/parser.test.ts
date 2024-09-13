@@ -1155,4 +1155,12 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check mnenonic loqcase", async () => {
+        const result = await parse(`
+            print 'hide'
+            print 'lf'
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

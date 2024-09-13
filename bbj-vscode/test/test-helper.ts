@@ -5,7 +5,7 @@ import { AstNode, LangiumDocument, LangiumSharedServices, streamContents } from 
  */
 export async function initializeWorkspace(shared: LangiumSharedServices) {
     const wsManager = shared.workspace.WorkspaceManager;
-    await wsManager.initializeWorkspace([{ name: 'test', uri: 'file:///' }]);
+    await wsManager.initializeWorkspace([{ name: 'test', uri: 'file:/test' }]);
 }
 
 export function findFirst<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T): T | undefined {

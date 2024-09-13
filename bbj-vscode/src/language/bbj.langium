@@ -667,7 +667,7 @@ terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also su
 // "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter
 terminal STRING_LITERAL: /"([^"]|"{2})*"/;
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
-terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
+terminal MNEMONIC: /'[0-9a-zA-Z_]*'/;  // 'hide', 'lf', 'BOX'(10,12,4,4), 'FONT'("pica") 
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
 terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
