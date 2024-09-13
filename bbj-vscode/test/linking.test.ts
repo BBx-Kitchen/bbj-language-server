@@ -124,4 +124,15 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('All BBj classes extends Object', async () => {
+        const document = await validate(`
+            class public MyClass
+            classend
+            t = new MyClass()
+            REM toString() comes from Object
+            t.toString()
+        `)
+        expectNoErrors(document)
+    })
+
 });

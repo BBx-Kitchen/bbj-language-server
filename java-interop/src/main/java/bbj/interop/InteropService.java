@@ -7,6 +7,8 @@ package bbj.interop;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -28,6 +30,7 @@ import java.util.stream.Stream;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 
 import com.google.common.base.Stopwatch;
+import com.google.common.collect.Lists;
 import com.google.common.primitives.Primitives;
 import com.google.common.reflect.ClassPath;
 
@@ -97,12 +100,18 @@ public class InteropService {
 				var fi = new FieldInfo();
 				fi.name = f.getName();
 				fi.type = getProperTypeName(f.getType());
+				fi.declaringClass = f.getDeclaringClass().getName();
 				return fi;
 			}).collect(Collectors.toList());
-
-			classInfo.methods = Stream.of(clazz.getMethods()).map(m -> {
+			List<Method> methods = Lists.newArrayList(clazz.getMethods());
+			if(clazz.isInterface()) {
+				// add implicit Object declared methods
+				methods.addAll(Stream.of(Object.class.getMethods()).filter(m -> Modifier.isPublic(m.getModifiers())).toList());
+			}
+			classInfo.methods = methods.stream().map(m -> {
 				var mi = new MethodInfo();
 				mi.name = m.getName();
+				mi.declaringClass = m.getDeclaringClass().getName();
 				mi.returnType = getProperTypeName(m.getReturnType());
 				mi.parameters = Stream.of(m.getParameters()).map(p -> {
 					var pi = new ParameterInfo();
