@@ -89,14 +89,18 @@ RELEASE
 
 service:
 
-System.out.println("vscode java interop service started")
-
-BBjAPI().getGlobalNamespace().setValue("vscode-interop","running")
+seterr startup_err
 
 Class.forName("bbj.interop.SocketServiceApp")
 new bbj.interop.SocketServiceApp().start()
-
+System.out.println("vscode java interop service started")
+BBjAPI().getGlobalNamespace().setValue("vscode-interop","running")
 RELEASE
+
+startup_err:
+    e$=errmes(-1)
+    A=MSGBOX(e$,0,"Error in VSCODE Java Service")
+release
 
 isrunning:
     System.out.println("vscode java interop service already running")
