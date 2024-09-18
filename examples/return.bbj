@@ -6,4 +6,4 @@ funcNoReturn:
     RETURN
 
 funcWithReturn:
-    RETURN 123
+    return

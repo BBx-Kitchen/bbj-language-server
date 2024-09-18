@@ -7,7 +7,7 @@ DEF FNGCF(X,Y)
     WHILE X<>0
         LET TEMP=X, X=MOD(Y,X), Y=TEMP
     WEND
-    RETURN Y
+    return Y
 FNEND
 
 DEF FNA3(Z)=Z

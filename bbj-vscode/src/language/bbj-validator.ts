@@ -8,7 +8,7 @@ import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNod
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -24,6 +24,7 @@ export function registerValidationChecks(services: BBjServices) {
         InitFileStatement: validator.checkInitFileStatementOptions,
         EraseStatement: validator.checkEraseStatementOptions,
         KeyedFileStatement: validator.checkKeyedFileStatement,
+        DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines
     };
     registry.register(checks, validator);
@@ -260,6 +261,17 @@ export class BBjValidator {
     checkKeyedFileStatement(ele: KeyedFileStatement, accept: ValidationAcceptor): void {
         if (ele.kind !== 'MKEYED' && ele.mode) {
             accept('error', 'MODE option only supported in MKEYED Verb.', { node: ele, property: 'mode' });
+            return;
+        }
+    }
+
+    checkReturnValueInDef(ele: DefFunction, accept: ValidationAcceptor): void {
+        if (ele.body && ele.body.length > 0) {
+            ele.body.filter(isKeywordStatement).forEach(statement => {
+                if (statement.kind.toUpperCase() === 'RETURN') {
+                    accept('error', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
+                }
+            })
             return;
         }
     }

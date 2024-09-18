@@ -1,4 +1,4 @@
-import { AstNode, LangiumDocument, LangiumSharedServices, streamContents } from "langium";
+import { AstNode, LangiumDocument, LangiumSharedServices, streamAllContents, streamContents } from "langium";
 
 /**
  * Load libraries.
@@ -8,8 +8,8 @@ export async function initializeWorkspace(shared: LangiumSharedServices) {
     await wsManager.initializeWorkspace([{ name: 'test', uri: 'file:/test' }]);
 }
 
-export function findFirst<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T): T | undefined {
-    return streamContents(document.parseResult.value).find(filter);
+export function findFirst<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T, streamAll: boolean = false): T | undefined {
+    return (streamAll ? streamAllContents(document.parseResult.value) : streamContents(document.parseResult.value)).find(filter);
 }
 
 export function findByIndex<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T, index: number): T | undefined {
