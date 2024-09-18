@@ -832,7 +832,7 @@ describe('Parser Tests', () => {
             WHILE X<>0
                 LET TEMP=X, X=MOD(Y,X), Y=TEMP
             WEND
-            RETURN Y
+            RETURn Y
         FNEND
         `);
         expectNoParserLexerErrors(result);
@@ -893,9 +893,9 @@ describe('Parser Tests', () => {
         const result = await parse(`
             Start: SQLOPEN(1)"General Ledger"
                 SQLCLOSE(1)
-                SQLCLOSE(1,ERR=Error)
-                RETURN
-            Error: STOP
+                SQLCLOSE(1,ERR=Labl)
+                return
+            Labl: STOP
         `);
         expectNoParserLexerErrors(result);
         expectToContainAstNodeType(result, isSqlCloseStatement);
@@ -1066,12 +1066,12 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    test('Return statement with result', async () => {
+    test('Return statement with lowcase', async () => {
         const result = await parse(`
         GOSUB funcWithReturn
 
         funcWithReturn:
-            RETURN 42
+            return
         `);
         expectNoParserLexerErrors(result);
     });
@@ -1152,6 +1152,32 @@ describe('Parser Tests', () => {
             CONTEXT = 0
             REMOVE_CALLBACK(ON_CLOSE,CONTEXT,0)
             REMOVE_CALLBACK(ON_CLOSE,CONTEXT)
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check mnenonic lowcase", async () => {
+        const result = await parse(`
+            print 'hide'
+            print 'lf'
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check return statement expect no parameter", async () => {
+        const result = await parse(`
+            gosub lbl1
+            release
+
+            lbl1: 
+                REM do somethin
+                PRINT ""
+            return
+
+            lbl2:
+                REM do something else
+                print ""
+            return
         `);
         expectNoParserLexerErrors(result);
     });

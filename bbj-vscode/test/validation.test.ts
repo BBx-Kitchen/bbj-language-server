@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement } from '../src/language/generated/ast';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper';
 
 const services = createBBjServices(EmptyFileSystem);
@@ -170,5 +170,36 @@ describe('BBj validation', async () => {
             node: findByIndex(validationResult.document, isEraseStatement, 0)?.items[2]
         });
        
+    });
+
+    test('Line breaks RETURN', async () => {
+        const validationResult = await validate(`
+        DEF FNGCF(X,Y)
+            IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
+            WHILE X<>0
+                LET TEMP=X, X=MOD(Y,X), Y=TEMP
+            WEND
+            RETURn Y
+        FNEND
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('DEF RETURN needs a return value', async () => {
+        const validationResult = await validate(`
+        DEF FNGCF(X,Y)
+            IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
+            WHILE X<>0
+                LET TEMP=X, X=MOD(Y,X), Y=TEMP
+            WEND
+            REM expect error here
+            RETURn
+        FNEND
+        `);
+        const keywordStatement  = findFirst(validationResult.document, isKeywordStatement, true);
+        expect(keywordStatement).toBeDefined();
+        expectError(validationResult, 'RETURN statement inside a DEF function must have a return value.', {
+            node: keywordStatement
+        });
     });
 });

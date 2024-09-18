@@ -106,7 +106,7 @@ export class JavadocProvider {
         return undefined;
     }
 
-    protected async getPackageDoc(packageName: string): Promise<PackageDoc | undefined> {
+    async getPackageDoc(packageName: string): Promise<PackageDoc | undefined> {
         if (!this.isInitialized()) {
             throw new Error("JavadocProvider not initialized. Call initialize() first.");
         }

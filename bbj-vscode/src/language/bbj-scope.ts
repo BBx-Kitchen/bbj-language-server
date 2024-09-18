@@ -129,8 +129,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // FIXME HACK for orphaned AST Instances
             return this.superGetScope({ ...context, container: context.container.$cstNode?.element });
         }
-        if(isCallbackStatement(context.container) || isRemoveCallbackStatement(context.container)) {
-            if(context.property === 'eventType') {
+        if (isCallbackStatement(context.container) || isRemoveCallbackStatement(context.container)) {
+            if (context.property === 'eventType') {
                 return this.getGlobalScope(LibEventType, context);
             }
         }
@@ -189,8 +189,19 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         if (typeScope) {
             descriptions.push(...typeScope.filter(member => !methodsOnly || member.type === MethodDecl))
         }
-        if (bbjType.extends.length == 1 && isBbjClass(bbjType.extends[0].ref)) {
-            return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(bbjType.extends[0].ref, methodsOnly))
+        if (bbjType.extends.length == 1) {
+            const superType = bbjType.extends[0].ref;
+            if (isBbjClass(superType)) {
+                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly))
+            } else if (isJavaClass(superType)) {
+                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(superType.fields).concat(superType.methods)))
+            }
+        } else {
+            // handle implicit extends java.lang.Object
+            const javaObject = this.javaInterop.getResolvedClass('java.lang.Object');
+            if (javaObject) {
+                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(javaObject.fields).concat(javaObject.methods)))
+            }
         }
         return this.createCaseSensitiveScope(descriptions)
     }

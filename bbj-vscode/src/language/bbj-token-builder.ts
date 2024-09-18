@@ -42,13 +42,6 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: false
             };
             return token;
-        } else if (terminal.name === 'ENDLINE_RETURN') {
-            const token: TokenType = {
-                name: terminal.name,
-                PATTERN: this.regexPatternFunction(/RETURN[ \t]*(?=(\r?\n))/),
-                LINE_BREAKS: false
-            };
-            return token;
         } else if (terminal.name === 'ENDLINE_PRINT_COMMA') {
             const token: TokenType = {
                 name: terminal.name,

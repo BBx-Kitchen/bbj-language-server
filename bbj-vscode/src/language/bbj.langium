@@ -64,7 +64,6 @@ SingleStatement:
     RedimStatement |
     RemoveCallbackStatement |
     RenameStatement |
-    ReturnStatement |
     RunStatement |
     SetErrorStatement |
     SetOptsStatement |
@@ -106,8 +105,11 @@ StringStatement:
 DefFunction returns DefFunction:
     'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
         '=' value=Expression
-        | (body+=Statement)* FNEND
+        | (body += (DefReturn | Statement))* FNEND
     );
+
+DefReturn:
+    'RETURN' returnValue=Expression;
 
 FunctionParameter returns NamedElement: name=FeatureName;
 
@@ -238,8 +240,6 @@ ElseStatement:
 IfEndStatement:
     ('ENDIF' | 'FI') {infer IfEndStatement};
 
-ReturnStatement:
-    ENDLINE_RETURN | 'RETURN' returnValue=Expression;
 
 WhileStatement:
     'WHILE' condition=Expression
@@ -267,11 +267,11 @@ UserLabelRef infers LabelRef:
 ;
 
 SymbolicLabelRef infers LabelRef:
-   {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SYMBOLIC_LABEL_NAME]
+    {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SYMBOLIC_LABEL_NAME]
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' )
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -606,7 +606,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
 ;
 
 // BBx Library
@@ -667,16 +667,18 @@ terminal NUMBER returns number: /[0-9]+(\.[0-9]*)?|\.[0-9]+/; // .123 is also su
 // "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter
 terminal STRING_LITERAL: /"([^"]|"{2})*"/;
 terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
-terminal MNEMONIC: /'[0-9A-Z_]*'/;  // 'BOX'(10,12,4,4) 'FONT'("pica")
+terminal MNEMONIC: /'[0-9a-zA-Z_]*'/;  // 'hide', 'lf', 'BOX'(10,12,4,4), 'FONT'("pica") 
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
 terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
+type DefFunctionStatement = DefReturn | Statement;
+
 interface DefFunction extends NamedElement {
     parameters: NamedElement[];
     value?: Expression;
-    body?: Statement[];
+    body?: DefFunctionStatement[];
 }
 
 interface VariableDecl extends NamedElement {

@@ -12,6 +12,7 @@ public class MethodInfo extends WithError {
     public String name;
 
     public String returnType;
+    public String declaringClass;
 
     public List<ParameterInfo> parameters;
     
