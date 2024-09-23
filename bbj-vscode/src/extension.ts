@@ -8,9 +8,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
-} from 'vscode-languageclient/node';
-import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider';
-import { DocumentFormatter } from './document-formatter';
+} from 'vscode-languageclient/node.js';
+import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
+import { DocumentFormatter } from './document-formatter.js';
 
 const Commands = require("./Commands/Commands.js");
 

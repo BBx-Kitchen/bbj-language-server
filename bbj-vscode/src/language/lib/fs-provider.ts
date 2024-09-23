@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { builtinFunctions } from './functions';
-import { builtinVariables } from './variables';
-import { builtinSymbolicLabels } from './labels';
-import { builtinEvents } from './events';
+import { builtinFunctions } from './functions.js';
+import { builtinVariables } from './variables.js';
+import { builtinSymbolicLabels } from './labels.js';
+import { builtinEvents } from './events.js';
 
 export class BBjLibraryFileSystemProvider implements vscode.FileSystemProvider {
 

@@ -4,10 +4,10 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { startLanguageServer } from 'langium';
+import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
-import { createConnection, ProposedFeatures } from 'vscode-languageserver/node';
-import { createBBjServices } from './bbj-module';
+import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
+import { createBBjServices } from './bbj-module.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);

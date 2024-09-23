@@ -1,12 +1,12 @@
-import { AstNode, AstNodeHoverProvider, DocumentationProvider, LangiumServices, isJSDoc, parseJSDoc } from "langium";
+import { AstNode, DocumentationProvider, isJSDoc, parseJSDoc } from "langium";
+import { AstNodeHoverProvider, LangiumServices } from "langium/lsp";
 import { Hover } from "vscode-languageclient";
-import { MethodData, toMethodData } from "./bbj-nodedescription-provider";
-import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast";
-import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc";
-import { CommentProvider } from "langium/lib/documentation/comment-provider";
+import { MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
+import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast.js";
+import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
+import { CommentProvider } from "langium";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
-
     protected readonly documentationProvider: DocumentationProvider;
     protected javadocProvider = JavadocProvider.getInstance();
     protected readonly commentProvider: CommentProvider;

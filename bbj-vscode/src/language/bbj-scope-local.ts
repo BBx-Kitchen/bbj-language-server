@@ -1,18 +1,17 @@
 import {
     AstNode, AstNodeDescription, AstNodeLocator,
+    AstUtils,
+    CstUtils,
     DefaultScopeComputation,
     DocumentSegment,
-    findNodeForProperty,
-    getDocument,
+    GrammarUtils,
     LangiumDocument,
     MapScope,
-    PrecomputedScopes,
-    streamContents,
-    toDocumentSegment
+    PrecomputedScopes
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
-import { BBjServices } from './bbj-module';
-import { collectAllUseStatements } from './bbj-scope';
+import { BBjServices } from './bbj-module.js';
+import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -28,8 +27,8 @@ import {
     isProgram, isReadStatement,
     isSymbolRef, isUse,
     MethodDecl
-} from './generated/ast';
-import { JavaInteropService, JavaSyntheticDocUri } from './java-interop';
+} from './generated/ast.js';
+import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
 
 
 export class BbjScopeComputation extends DefaultScopeComputation {
@@ -45,7 +44,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     override async computeExports(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
         // Only make classes and library elements globally "visible" in index
-        return this.computeExportsForNode(document.parseResult.value, document, (node) => streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
+        return this.computeExportsForNode(document.parseResult.value, document, (node) => AstUtils.streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
     }
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
@@ -94,8 +93,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 if (scopes.get(scopeHolder).findIndex((descr) => descr.name === symbol.$refText) === -1) {
                     this.addToScope(scopes, scopeHolder, {
                         name: symbol.$refText,
-                        nameSegment: toDocumentSegment(symbol.$refNode),
-                        selectionSegment: toDocumentSegment(symbol.$refNode),
+                        nameSegment: CstUtils.toDocumentSegment(symbol.$refNode),
+                        selectionSegment: CstUtils.toDocumentSegment(symbol.$refNode),
                         type: FieldDecl,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)
@@ -104,11 +103,11 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             }
         } else if (isBbjClass(node) && node.name) {
             this.addToScope(scopes, node.$container, this.descriptions.createDescription(node, node.name))
-            const classNameNode = findNodeForProperty(node.$cstNode, 'name')
+            const classNameNode = GrammarUtils.findNodeForProperty(node.$cstNode, 'name')
             this.addToScope(scopes, node, {
                 name: 'this!',
-                nameSegment: toDocumentSegment(classNameNode),
-                selectionSegment: toDocumentSegment(classNameNode),
+                nameSegment: CstUtils.toDocumentSegment(classNameNode),
+                selectionSegment: CstUtils.toDocumentSegment(classNameNode),
                 type: FieldDecl,
                 documentUri: document.uri,
                 path: this.astNodeLocator.getAstNodePath(node)
@@ -117,8 +116,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const superType = node.extends[0]
                 this.addToScope(scopes, node, {
                     name: 'super!',
-                    nameSegment: toDocumentSegment(superType.$refNode),
-                    selectionSegment: toDocumentSegment(superType.$refNode),
+                    nameSegment: CstUtils.toDocumentSegment(superType.$refNode),
+                    selectionSegment: CstUtils.toDocumentSegment(superType.$refNode),
                     type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)
@@ -127,7 +126,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             // local getter and setter.
             // TODO Probably better to move to ScopeProvider as super getter and setter can not be accessed.
             node.members.filter(member => isFieldDecl(member)).forEach(member => {
-                const nameSegment = toDocumentSegment(findNodeForProperty(member.$cstNode, 'name'))
+                const nameSegment = CstUtils.toDocumentSegment(GrammarUtils.findNodeForProperty(member.$cstNode, 'name'))
                 if (!node.members.find(member => member.name === toAccessorName(member.name))) {
                     this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment));
                 }
@@ -148,8 +147,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {
                     this.addToScope(scopes, scopeHolder, {
                         name: inputName,
-                        nameSegment: toDocumentSegment(node.symbol.$refNode),
-                        selectionSegment: toDocumentSegment(node.symbol.$refNode),
+                        nameSegment: CstUtils.toDocumentSegment(node.symbol.$refNode),
+                        selectionSegment: CstUtils.toDocumentSegment(node.symbol.$refNode),
                         type: FieldDecl,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)
@@ -209,7 +208,7 @@ function createAccessorDescription(astNodeLocator: AstNodeLocator, member: Field
         name: toAccessorName(member.name, setter),
         nameSegment,
         type: MethodDecl,
-        documentUri: getDocument(member).uri,
+        documentUri: AstUtils.getDocument(member).uri,
         path: astNodeLocator.getAstNodePath(member)
     }
 }

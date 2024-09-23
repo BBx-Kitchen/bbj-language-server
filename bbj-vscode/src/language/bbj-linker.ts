@@ -2,15 +2,16 @@
 import {
     AstNodeDescription,
     DefaultLinker, DocumentState, interruptAndCheck,
-    LangiumDocument, LangiumServices, LinkingError,
-    ReferenceInfo, streamAst, streamReferences, WorkspaceManager
+    LangiumDocument, LinkingError,
+    ReferenceInfo, AstUtils, WorkspaceManager
 } from 'langium';
+import { LangiumServices } from 'langium/lsp';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { StreamScopeWithPredicate } from './bbj-scope';
-import { isTemplateStringArray } from './bbj-scope-local';
-import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast';
+import { StreamScopeWithPredicate } from './bbj-scope.js';
+import { isTemplateStringArray } from './bbj-scope-local.js';
+import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, SymbolRef, VariableDecl } from './generated/ast.js';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -34,20 +35,20 @@ export class BbjLinker extends DefaultLinker {
         const externalDoc = (wsManager instanceof BBjWorkspaceManager)
             && (wsManager as BBjWorkspaceManager).isExternalDocument(document.uri)
 
-        const treeIter = streamAst(document.parseResult.value).iterator()
+        const treeIter = AstUtils.streamAst(document.parseResult.value).iterator()
         for (const node of treeIter) {
             await interruptAndCheck(cancelToken);
             if (externalDoc && isBBjClassMember(node)) {
                 if (node.visibility?.toLowerCase() !== 'private') {
-                    streamReferences(node).forEach(ref => this.doLink(ref, document));
+                    AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
                     // don't link the method body or Field initialization, we are only interested on its signature
                     if (isMethodDecl(node)) {
-                        node.params.forEach(p => streamReferences(p).forEach(ref => this.doLink(ref, document)))
+                        node.params.forEach(p => AstUtils.streamReferences(p).forEach(ref => this.doLink(ref, document)))
                     }
                 }
                 treeIter.prune()
             } else {
-                streamReferences(node).forEach(ref => this.doLink(ref, document));
+                AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
             }
         }
         const elapsed = Date.now() - started

@@ -1,20 +1,21 @@
-import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, LangiumSharedServices } from "langium";
+import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory,  } from "langium";
+import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
 import { URI } from "vscode-uri";
-import { BBjServices } from "./bbj-module";
-import { JavaInteropService } from "./java-interop";
-import { JavadocProvider } from "./java-javadoc";
-import { builtinFunctions } from "./lib/functions";
-import { builtinSymbolicLabels } from "./lib/labels";
-import { builtinVariables } from "./lib/variables";
+import { BBjServices } from "./bbj-module.js";
+import { JavaInteropService } from "./java-interop.js";
+import { JavadocProvider } from "./java-javadoc.js";
+import { builtinFunctions } from "./lib/functions.js";
+import { builtinSymbolicLabels } from "./lib/labels.js";
+import { builtinVariables } from "./lib/variables.js";
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
 // import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { builtinEvents } from "./lib/events";
+import { builtinEvents } from "./lib/events.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -40,14 +41,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
             let propcontents = "";
             if (confFile) {
-                propcontents = this.fileSystemProvider.readFileSync(confFile.uri);
+                propcontents = await this.fileSystemProvider.readFile(confFile.uri);
             }
             let prefixfromconfig;
             if (this.bbjdir) {
                 const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir + "/cfg/"));
                 const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
                 if (configbbx) {
-                    prefixfromconfig = this.fileSystemProvider.readFileSync(configbbx.uri).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                    prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
                 }
             } else {
                 console.warn("No bbjdir set. No classpath and prefixes loaded.")
