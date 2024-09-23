@@ -1,9 +1,9 @@
 import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
-import { streamAst } from 'langium';
+import { AstUtils } from 'langium';
 import { describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { createBBjServices } from '../src/language/bbj-module.js';
+import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast.js';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -20,7 +20,7 @@ describe('Parser Tests', () => {
     }
 
     function expectToContainAstNodeType<N extends AstNode>(document: LangiumDocument, predicate: (ast: AstNode) => ast is N) {
-        expect(streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
+        expect(AstUtils.streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
     }
 
     test('Program definition test', async () => {
@@ -266,7 +266,7 @@ describe('Parser Tests', () => {
         const result = await parse(`
             y = 0.1234.1
             z = .123345.12
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         // currently parsed as two numbers 0.1234 and .1
         expectNoParserLexerErrors(result);
         // validation complains about missing linebreaks between 0.1234 and .1
@@ -287,7 +287,7 @@ describe('Parser Tests', () => {
         
         byebye:
             bye
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -320,13 +320,13 @@ describe('Parser Tests', () => {
             PRINT "Label2"
 
         Print A$,B$,C$
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
 
         const program = result.parseResult.value as Program;
         const printStmt = program.statements.slice(-1).pop() as PrintStatement;
-        const refContainer = (ref) => (ref as SymbolRef).symbol.ref?.$container
+        const refContainer = (ref: unknown) => (ref as SymbolRef).symbol.ref?.$container
         expect(refContainer(printStmt.items[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
         expect(refContainer(printStmt.items[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
         expect(refContainer(printStmt.items[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
@@ -366,7 +366,7 @@ describe('Parser Tests', () => {
         
         fin:
         release
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expect(result.diagnostics).toHaveLength(1); // 1 for linking error on *same
     });
@@ -643,7 +643,7 @@ describe('Parser Tests', () => {
         ENTER someVar$, someOtherVar$, ERR=JumpToLabel
 
         JumpToLabel:
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -654,7 +654,7 @@ describe('Parser Tests', () => {
         REPEAT
             LOOP_EXIT = LOOP_EXIT + 1
         UNTIL LOOP_EXIT=10
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -664,7 +664,7 @@ describe('Parser Tests', () => {
         LET A$=$02$
         SETOPTS A$
         SETOPTS $00C20240000000000000000000000000$
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -675,7 +675,7 @@ describe('Parser Tests', () => {
         Precision A%
         Precision 1, 3
         Precision A%, A%
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -687,7 +687,7 @@ describe('Parser Tests', () => {
         XKEYED "MYFILE",[1:1:10]+[2:1:5],[1:25:2:"D"],[4:12:20],80,1000
         MKEYED "myfile",10,0,500,MODE="CRYPTPASS=test",ERR=Jump
         Jump:
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -698,7 +698,7 @@ describe('Parser Tests', () => {
         if 2 = 3 and 2 = 2
             rd_temp_beg = ""
         endif        
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -708,7 +708,7 @@ describe('Parser Tests', () => {
 
         IF "dd"="sd" THEN 
 : GOTO label1
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -724,7 +724,7 @@ describe('Parser Tests', () => {
                 gosub start_stop
             break
         swend
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
@@ -735,7 +735,7 @@ describe('Parser Tests', () => {
             if 3 = 0 break
             print "start_stop"
         endif
-        `, { validationChecks: 'all' });
+        `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });

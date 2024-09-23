@@ -3,13 +3,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { describe, expect, test, vi } from 'vitest';
 import { URI } from 'vscode-uri';
-import { JavadocProvider, PackageDoc } from '../src/language/java-javadoc';
+import { JavadocProvider, PackageDoc } from '../src/language/java-javadoc.js';
 
 class JavadocProviderUnderTest extends JavadocProvider {
     constructor() {
         super();
     }
-    async loadJavadocFile(packageName: string, packageDocURI: URI): Promise<PackageDoc | null> {
+    override async loadJavadocFile(packageName: string, packageDocURI: URI): Promise<PackageDoc | null> {
         return super.loadJavadocFile(packageName, packageDocURI);
     }
 }
@@ -28,7 +28,7 @@ describe('Javadoc tests', () => {
         vi.spyOn(console, 'error').mockImplementation(() => { });
         try {
             const javadocProvider = new class extends JavadocProviderUnderTest {
-                protected readFile(packageDocURI: URI): Promise<string> {
+                protected override readFile(packageDocURI: URI): Promise<string> {
                     return Promise.resolve('{"name":"wrong.package.name"}');
                 }
             }
@@ -46,7 +46,7 @@ describe('Javadoc tests', () => {
         vi.spyOn(console, 'error').mockImplementation(() => { });
         try {
             const javadocProvider = new class extends JavadocProviderUnderTest {
-                protected readFile(packageDocURI: URI): Promise<string> {
+                protected override readFile(packageDocURI: URI): Promise<string> {
                     return Promise.resolve('{"name":"wrong.package.name"}');
                 }
             }
@@ -60,7 +60,7 @@ describe('Javadoc tests', () => {
 
     test('Check package documentation loaded.', async () => {
         const javadocProvider = new class extends JavadocProviderUnderTest {
-            protected async readFile(packageDocURI: URI): Promise<string> {
+            protected override async readFile(packageDocURI: URI): Promise<string> {
                 const filePath = path.resolve(__dirname, '../test/test-data/com.basis.util.json');
                 return await fs.readFile(filePath, 'utf8');
             }
