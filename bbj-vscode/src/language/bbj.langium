@@ -206,7 +206,7 @@ ParameterDecl returns VariableDecl:
  * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
  */
 ArrayDeclarationStatement:
-    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)*
+    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)* Err?
 ;
 
 ArrayDecl returns ArrayDecl:

@@ -1207,5 +1207,16 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
-
+    
+    test("Check DIM statement", async () => {
+        const result = await parse(`
+                DIM A$(32000,$01$)
+                DIM B$(9),X[2,3],A$(9,"A")
+                DIM ARRAY$[10:20](10,"*")
+                DIM REC$:TEMP$
+                DIM B$(9),ERR=errorLabel
+            errorLabel:
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
