@@ -1,5 +1,5 @@
 import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
-import { parseHelper } from 'langium/test';
+import { expectError, parseHelper } from 'langium/test';
 import { streamAst } from 'langium';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
@@ -1227,5 +1227,45 @@ describe('Parser Tests', () => {
             NEXT
         `);
         expectNoParserLexerErrors(result);
+    });
+
+    test("Check INTERFACE statement", async () => {
+        const result = await parse(`
+            interface Nameable
+                method public BBjString name()
+            interfaceend
+
+            interface Person extends Nameable
+                method public BBjNumber id()
+            interfaceend
+
+            class Alice implements Nameable
+                method public BBjString name()
+                    methodret "Alice"
+                methodend
+            classend
+
+            class Bob implements Person
+                method public BBjNumber id()
+                    methodret 12345
+                methodend
+                method public BBjString name()
+                    methodret "Bob"
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check INTERFACE statement with method body", async () => {
+        const result = await parse(`
+            interface Chris
+                method public BBjNumber doIt()
+                methodend
+            interfaceend
+        `, { validationChecks: 'all' });
+        expect(result.diagnostics ?? []).toHaveLength(2);
+        expect(result.diagnostics![0].message).toBe("Could not resolve reference to Class named 'BBjNumber'.");
+        expect(result.diagnostics![1].message).toBe("Methods of interfaces must not have a METHODEND keyword!");
     });
 });

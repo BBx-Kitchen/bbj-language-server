@@ -190,7 +190,7 @@ MethodDecl returns MethodDecl:
     Comments?
     (
         (body+=Statement)*
-        'METHODEND'//FIXME Need to be forbiden for interfaces
+        endTag='METHODEND'
     )?
 ;
 
@@ -717,7 +717,8 @@ interface MethodDecl extends NamedElement {
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
-    body: Statement[]
+    body: Statement[];
+    endTag?: string;
 }
 
 interface ArrayDecl extends VariableDecl {
