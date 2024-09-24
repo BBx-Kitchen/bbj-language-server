@@ -1181,4 +1181,13 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check BACKGROUND statement", async () => {
+        const result = await parse(`
+                BACKGROUND "Menu"
+                BACKGROUND "Menu",ERR=error
+            error:
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

@@ -28,6 +28,7 @@ SingleStatement:
 
     AddrStatement |
     ArrayDeclarationStatement |
+    BackgroundStatement |
     BeginStatement |
     CallbackStatement |
     CallStatement |
@@ -81,6 +82,9 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+BackgroundStatement:
+    'BACKGROUND' str=Expression Err?;
 
 CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
