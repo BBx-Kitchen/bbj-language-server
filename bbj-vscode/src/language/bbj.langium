@@ -296,12 +296,16 @@ LetStatement:
 ;
 
 PrintStatement:
+    PRINT_STANDALONE_NL
+    | 
     (
-        (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
-        | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        (
+            (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
+            | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        )
+        WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
     )
-     WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
-;
+    ;
 
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
@@ -452,7 +456,7 @@ BeginStatement:
 ;
 
 EnterStatement:
-   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)*)? Err?
+   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)* Err?)?
 ;
 
 SetOptsStatement:
@@ -650,6 +654,7 @@ LibEventType returns LibEventType:
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
+terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
