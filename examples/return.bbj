@@ -7,3 +7,8 @@ funcNoReturn:
 
 funcWithReturn:
     return
+
+def id(value)
+    return value
+fnend
+

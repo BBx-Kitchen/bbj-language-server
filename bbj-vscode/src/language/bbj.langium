@@ -651,8 +651,6 @@ hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
-terminal ENDLINE_RETURN: /_endline_return/;
-
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;

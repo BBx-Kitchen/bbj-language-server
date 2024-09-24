@@ -8,7 +8,6 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'FNEND', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
-        this.spliceToken(tokens, 'ENDLINE_RETURN', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
         return tokens;
     }
