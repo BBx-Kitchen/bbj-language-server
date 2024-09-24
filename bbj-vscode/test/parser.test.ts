@@ -1219,4 +1219,13 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check FOR... NEXT statement", async () => {
+        const result = await parse(`
+            FOR i=1 TO 10
+                PRINT "Number ", i
+            NEXT
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
