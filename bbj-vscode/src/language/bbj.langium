@@ -35,6 +35,7 @@ SingleStatement:
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
+    DeleteStatement |
     DirectStatement |
     DirStatement |
     DropStatement |
@@ -82,6 +83,13 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+DeleteStatement:
+    DELETE_STANDALONE
+    | 'DELETE' lineRefA=LabelRef comma?=ENDLINE_PRINT_COMMA?
+    | 'DELETE' comma?=',' lineRefB=LabelRef
+    | 'DELETE' lineRefA=LabelRef comma?=',' lineRefB=LabelRef
+    ;
 
 BackgroundStatement:
     'BACKGROUND' str=Expression Err?;
@@ -615,6 +623,7 @@ EscapeId returns string:
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
+    | 'BACKGROUND' | 'DELETE'
 ;
 
 // BBx Library
@@ -658,6 +667,7 @@ LibEventType returns LibEventType:
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
+terminal DELETE_STANDALONE: /_DELETE_STANDALONE/;
 terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
 terminal NEXT_TOKEN: /_next/;

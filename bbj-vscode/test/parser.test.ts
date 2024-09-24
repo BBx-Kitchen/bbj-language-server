@@ -1190,4 +1190,22 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check DELETE statement", async () => {
+        const result = await parse(`
+                DELETE
+                DELETE label1
+                DELETE label1,
+                DELETE,label2
+                DELETE label1,label2
+
+            label1:
+                BACKGROUND "MENU"
+
+            label2:
+                BACKGROUND "MENU2"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
 });
