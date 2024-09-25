@@ -71,6 +71,7 @@ SingleStatement:
     SetErrorStatement |
     SetOptsStatement |
     SqlCloseStatement |
+    SqlCommitStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
@@ -88,6 +89,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+SqlCommitStatement:
+    'SQLCOMMIT' '(' sqlchan=Expression Err? ')'
+    ;
 
 SqlRollbackStatement:
     'SQLROLLBACK' '(' sqlchan=Expression Err? ')'

@@ -1311,4 +1311,28 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+    
+    test('Check SQLCOMMIT statement', async () => {
+        const result = await parse(`
+            SQLOPEN(1,MODE="AUTO_COMMIT=OFF")"MyData"
+            SQLPREP(1)"INSERT INTO mytable VALUES ('10', 'Sample Record')"
+            SQLEXEC(1)
+            SQLCOMMIT(1,err=labelError)
+            SQLCLOSE(1)
+        labelError:
+            SQLCOMMIT(1)
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check SQLEXEC statement', async () => {
+        const result = await parse(`
+            LET SQL1=123
+            LET LAST_NAME$ = "Bob"
+            SQLPREP (SQL1)"select * from CUSTOMERS where LAST_NAME > ?"
+            REM Fill the ? gap with LAST_NAME$
+            SQLEXEC (SQL1)LAST_NAME$
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
