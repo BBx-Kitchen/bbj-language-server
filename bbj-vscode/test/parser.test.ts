@@ -1286,4 +1286,20 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check START statement", async () => {
+        const result = await parse(`
+                START
+                START 255
+                START 123,456
+                START 123,456,"file.bbx"
+                START 123,"file.bbx"
+                START 255,err=labelError
+                START 123,456,err=labelError
+                START 123,456,err=labelError,"file.bbx"
+                START 123,err=labelError,"file.bbx"
+            labelError:
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

@@ -74,6 +74,7 @@ SingleStatement:
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
+    StartStatement |
     StopStatement |
     StringStatement |
     SwitchStatement |
@@ -86,6 +87,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+StartStatement:
+    'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
+    ;
 
 StopStatement:
     instruction='STOP'
