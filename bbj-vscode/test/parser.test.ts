@@ -1279,4 +1279,11 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check STOP statement", async () => {
+        const result = await parse(`
+            STOP
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

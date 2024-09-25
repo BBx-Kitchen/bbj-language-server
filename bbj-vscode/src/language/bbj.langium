@@ -74,6 +74,7 @@ SingleStatement:
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
+    StopStatement |
     StringStatement |
     SwitchStatement |
     ThrowStatement |
@@ -85,6 +86,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+StopStatement:
+    instruction='STOP'
+    ;
 
 LockStatement:
     'LOCK' '(' channelno=Expression Err? ')'
@@ -633,7 +638,7 @@ EscapeId returns string:
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
-    | 'BACKGROUND' | 'DELETE'
+    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM'
 ;
 
 // BBx Library
