@@ -803,7 +803,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    test('Sql set statement', async () => {
+    test('Check SQLSET statement', async () => {
         const result = await parse(`
         value$ = "test"
         ch=2
@@ -1298,6 +1298,15 @@ describe('Parser Tests', () => {
                 START 123,456,err=labelError
                 START 123,456,err=labelError,"file.bbx"
                 START 123,err=labelError,"file.bbx"
+            labelError:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check SQLROLLBACK statement', async () => {
+        const result = await parse(`
+                SQLROLLBACK(1)
+                SQLROLLBACK(2,err=LabelError)
             labelError:
         `);
         expectNoParserLexerErrors(result);

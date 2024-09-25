@@ -74,6 +74,7 @@ SingleStatement:
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
+    SqlRollbackStatement |
     StartStatement |
     StopStatement |
     StringStatement |
@@ -87,6 +88,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+SqlRollbackStatement:
+    'SQLROLLBACK' '(' sqlchan=Expression Err? ')'
+    ;
 
 StartStatement:
     'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
