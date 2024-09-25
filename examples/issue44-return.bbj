@@ -1,3 +1,4 @@
+REM RETURN verb has expression parameter inside of DEF only, otherwise no parameter
 GOSUB funcNoReturn
 GOSUB funcWithReturn
 
@@ -8,7 +9,7 @@ funcNoReturn:
 funcWithReturn:
     return
 
-def id(value)
+def identity(value)
     return value
 fnend
 

@@ -1,0 +1,21 @@
+REM JavaDoc of method is shown correctly
+
+REM /** 
+REM  * Javadoc for TestClass
+REM  */
+class public TestClass
+
+    REM /** 
+    REM  * Javadoc for Method TEST
+    REM  */
+    method public void test()
+        
+    methodend
+
+
+classend
+
+declare TestClass test!
+
+test! = new TestClass()
+test!.test()

@@ -1268,4 +1268,15 @@ describe('Parser Tests', () => {
         expect(result.diagnostics![0].message).toBe("Could not resolve reference to Class named 'BBjNumber'.");
         expect(result.diagnostics![1].message).toBe("Methods of interfaces must not have a METHODEND keyword!");
     });
+
+    test("Check LOCK and UNLOCK statement", async () => {
+        const result = await parse(`
+                LOCK(1,err=labelError)
+                UNLOCK(1,err=labelError)
+            labelError:
+                LOCK(2)
+                UNLOCK(2)
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });

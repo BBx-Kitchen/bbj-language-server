@@ -55,6 +55,7 @@ SingleStatement:
     KeyedFileStatement |
     LabelDecl |
     LetStatement |
+    LockStatement |
     MethodReturnStatement |
     NextStatement |
     OpenStatement |
@@ -76,6 +77,7 @@ SingleStatement:
     StringStatement |
     SwitchStatement |
     ThrowStatement |
+    UnlockStatement |
     UntilStatement |
     Use |
     VariableDecl |
@@ -83,6 +85,14 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+LockStatement:
+    'LOCK' '(' channelno=Expression Err? ')'
+    ;
+
+UnlockStatement:
+    'UNLOCK' '(' channelno=Expression Err? ')'
+    ;
 
 DeleteStatement:
     DELETE_STANDALONE
