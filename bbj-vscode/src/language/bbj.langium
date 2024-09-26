@@ -64,6 +64,7 @@ SingleStatement:
     OnGotoStatement |
     OpenStatement |
     PrecisionStatement |
+    PrefixStatement |
     PrintStatement |
     ProcessEvent |
     ReadRecordStatement |
@@ -89,6 +90,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+PrefixStatement:
+    'PREFIX' str=Expression
+    ;
 
 SqlCommitStatement:
     'SQLCOMMIT' '(' sqlchan=Expression Err? ')'

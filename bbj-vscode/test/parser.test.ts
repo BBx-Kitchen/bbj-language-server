@@ -1361,5 +1361,13 @@ describe('Parser Tests', () => {
             label2:
         `);
         expectNoParserLexerErrors(result);
-    }); 
+    });
+
+    test('Check PREFIX statement', async () => {
+        const result = await parse(`
+            PREFIX "/BASIS/SOURCE/MS/ /PRO5/UTIL/"
+            prefix """C:\\Program Files\\"" ""C:\\temp\\"""
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
