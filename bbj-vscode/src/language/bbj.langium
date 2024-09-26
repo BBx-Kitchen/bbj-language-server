@@ -25,6 +25,9 @@ Statement:
 
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+    SqlCloseStatement |
+    SqlCommitStatement |
+    SqlRollbackStatement |
 
     AddrStatement |
     ArrayDeclarationStatement |
@@ -70,14 +73,10 @@ SingleStatement:
     RunStatement |
     SetErrorStatement |
     SetOptsStatement |
-    SqlCloseStatement |
-    SqlCommitStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
-    SqlRollbackStatement |
     StartStatement |
-    StopStatement |
     StringStatement |
     SwitchStatement |
     ThrowStatement |
@@ -100,10 +99,6 @@ SqlRollbackStatement:
 
 StartStatement:
     'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
-    ;
-
-StopStatement:
-    instruction='STOP'
     ;
 
 LockStatement:
@@ -313,7 +308,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -652,8 +647,8 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
-    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
+    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE'
 ;
 
 // BBx Library

@@ -1287,6 +1287,20 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test("Check RESET statement", async () => {
+        const result = await parse(`
+            RESET
+        `, {validationChecks: 'all'});
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check RETRY statement", async () => {
+        const result = await parse(`
+            RETRY
+        `, {validationChecks: 'all'});
+        expectNoParserLexerErrors(result);
+    });
+
     test("Check START statement", async () => {
         const result = await parse(`
                 START

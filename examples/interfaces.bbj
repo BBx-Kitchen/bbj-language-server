@@ -82,7 +82,6 @@ interfaceend
 
 interface Person extends Nameable
   method public BBjNumber id()
-  methodend
 interfaceend
 
 class Alice implements Nameable
