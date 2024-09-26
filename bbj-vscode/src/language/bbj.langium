@@ -71,6 +71,7 @@ SingleStatement:
     ReadStatement |
     RedimStatement |
     RemoveCallbackStatement |
+    RemoveStatement |
     RenameStatement |
     RunStatement |
     SetErrorStatement |
@@ -90,6 +91,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+RemoveStatement:
+    'REMOVE' '(' channelno=Expression Key Err? Dom? ')'
+    ;
 
 PrefixStatement:
     'PREFIX' str=Expression
@@ -378,8 +383,16 @@ fragment Err:
     ',' 'ERR' '=' err=LabelRef
 ;
 
+fragment Dom:
+    ',' 'DOM' '=' dom=LabelRef
+;
+
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
+;
+
+fragment Key:
+    ',' 'KEY' '=' key=Expression
 ;
 
 CallStatement:

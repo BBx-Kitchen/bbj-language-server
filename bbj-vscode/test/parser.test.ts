@@ -1370,4 +1370,15 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
+
+    test('Check REMOVE statement', async () => {
+        const result = await parse(`
+                REMOVE(1,KEY="TEST KEY",ERR=label1,DOM=label1)
+                REMOVE(1,KEY="TEST KEY")
+                REMOVE(1,KEY="TEST KEY",ERR=label1)
+                REMOVE(1,KEY="TEST KEY",DOM=label1)
+            label1:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
