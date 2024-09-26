@@ -1349,4 +1349,17 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test('Check ON ... GOSUB statement', async () => {
+        const result = await parse(`
+                let A = 1
+                on A gosub label1,label2
+                on A gosub label1
+                A = -1
+                on A gosub label1,label2
+            label1:
+            label2:
+        `);
+        expectNoParserLexerErrors(result);
+    }); 
 });

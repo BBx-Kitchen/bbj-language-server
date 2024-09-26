@@ -61,6 +61,7 @@ SingleStatement:
     LockStatement |
     MethodReturnStatement |
     NextStatement |
+    OnGotoStatement |
     OpenStatement |
     PrecisionStatement |
     PrintStatement |
@@ -294,6 +295,11 @@ SwitchCase:
 GotoStatement:
     kind=('GOTO' | 'GOSUB') target=LabelRef
 ;
+
+OnGotoStatement:
+    'ON' int=Expression kind=('GOTO' | 'GOSUB') targets+=LabelRef (',' targets+=LabelRef)*
+    ;
+
 
 LabelRef infers Expression:
     SymbolicLabelRef | UserLabelRef
