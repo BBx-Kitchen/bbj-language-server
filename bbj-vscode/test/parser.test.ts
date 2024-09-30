@@ -1390,5 +1390,11 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
-    
+   
+    test('Check CHANOPT statement', async () => {
+        const result = await parse(`
+            CHANOPT (1,MODE="123") "BAUD=9600,MODE=8N1,XON/XOFF"
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });

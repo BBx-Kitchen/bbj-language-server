@@ -35,6 +35,7 @@ SingleStatement:
     BeginStatement |
     CallbackStatement |
     CallStatement |
+    ChanOptStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
@@ -91,6 +92,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+ChanOptStatement:
+    'CHANOPT' '(' channelno=Expression Mode? ')' str=Expression
+    ;
 
 RemoveStatement:
     'REMOVE' '(' channelno=Expression Key Err? Dom? ')'
