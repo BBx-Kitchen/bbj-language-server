@@ -1381,4 +1381,14 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
+
+    test('Check INPUT statement', async () => {
+        const result = await parse(`
+            INPUT "Id>", id$
+            INPUT "Price>", price$
+            INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:"
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
+    
 });
