@@ -32,7 +32,8 @@ SingleStatement:
     CallbackStatement |
     CallStatement |
     ClearPasswordStatement |
-    ClipClearStatement |
+    ClipOperationStatement |
+    ClipFileStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
@@ -88,8 +89,12 @@ ClearPasswordStatement:
     'CLEARP' password=Expression (',' level=Expression)?
     ;
 
-ClipClearStatement:
-    'CLIPCLEAR' ('ERR' '=' err=LabelRef)?
+ClipOperationStatement:
+    ('CLIPCLEAR'|'CLIPLOCK'|'CLIPUNLOCK') ('ERR' '=' err=LabelRef)?
+    ;
+
+ClipFileStatement:
+    ('CLIPFROMFILE'|'CLIPTOFILE') fmt=Expression ',' file=Expression Err?
     ;
 
 CallbackStatement:

@@ -1198,4 +1198,33 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
+
+    test("Check CLIPFROMFILE statement", async () => {
+        const result = await parse(`
+            CLIPFROMFILE "format1","file.txt",ERR=labelError
+            CLIPFROMFILE "format1","file.txt"
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check CLIPTOFILE statement", async () => {
+        const result = await parse(`
+            CLIPTOFILE "format1","file.txt",ERR=labelError
+            CLIPTOFILE "format1","file.txt"
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check CLIPLOCK/UNLOCK statement", async () => {
+        const result = await parse(`
+            CLIPLOCK ERR=labelError
+            CLIPLOCK
+            CLIPUNLOCK ERR=labelError
+            CLIPUNLOCK
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
