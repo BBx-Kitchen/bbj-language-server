@@ -286,7 +286,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:

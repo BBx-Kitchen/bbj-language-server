@@ -1227,4 +1227,11 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
+    
+    test("Check DENUM statement", async () => {
+        const result = await parse(`
+            DENUM
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
