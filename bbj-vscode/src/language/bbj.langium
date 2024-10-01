@@ -40,6 +40,7 @@ SingleStatement:
     DirectStatement |
     DirStatement |
     DropStatement |
+    DumpStatement |
     ElseStatement |
     EnterStatement |
     EraseStatement |
@@ -99,6 +100,10 @@ ClipFileStatement:
 
 CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    ;
+
+DumpStatement:
+    'DUMP' ('(' channelno=Expression Mode? Err? Ind? ')')?
     ;
 
 RemoveCallbackStatement:
@@ -343,6 +348,10 @@ fragment Err:
 
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
+;
+
+fragment Ind:
+    ',' 'IND' '=' index=Expression
 ;
 
 CallStatement:
