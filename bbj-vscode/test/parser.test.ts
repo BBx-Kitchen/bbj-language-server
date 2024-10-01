@@ -1359,4 +1359,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check INDEXED statement", async () => {
+        const result = await parse(`
+            INDEXED "TEST2",300,190
+            INDEXED "TEST2",300,190,ERR=labelError
+            INDEXED "TEST2",300,190,MODE="XXX"
+            INDEXED "TEST2",300,190,MODE="XXX",ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

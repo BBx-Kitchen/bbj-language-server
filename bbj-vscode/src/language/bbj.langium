@@ -55,6 +55,7 @@ SingleStatement:
     GotoStatement |
     IfEndStatement |
     IfStatement |
+    IndexedStatement |
     InitFileStatement |
     KeyedFileStatement |
     LabelDecl |
@@ -114,6 +115,10 @@ FileOptStatement:
 
 FulltextStatement:
     'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
+    ;
+
+IndexedStatement:
+    'INDEXED' fileid=Expression ',' records=Expression ',' recsize=Expression Mode? Err?
     ;
 
 RemoveCallbackStatement:
