@@ -1324,4 +1324,27 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check FILEOPT statement", async () => {
+        const result = await parse(`
+            FILEOPT "test"
+            FILEOPT "test",MODE="a"
+            FILEOPT "test",ERR=labelError
+            FILEOPT "test",MODE="a",ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check FLOATINGPOINT statement", async () => {
+        const result = await parse(`
+            BEGIN
+            LET T=999999.99999
+            PRINT T
+            FLOATINGPOINT
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

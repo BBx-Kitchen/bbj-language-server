@@ -48,6 +48,7 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
+    FileOptStatement |
     FnErrStatement |
     ForStatement |
     GotoStatement |
@@ -104,6 +105,10 @@ CallbackStatement:
 
 DumpStatement:
     'DUMP' ('(' channelno=Expression Mode? Err? Ind? ')')?
+    ;
+
+FileOptStatement:
+    'FILEOPT' str1=Expression Mode? Err?
     ;
 
 RemoveCallbackStatement:
@@ -291,7 +296,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'FLOATINGPOINT' | 'REPEAT' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
