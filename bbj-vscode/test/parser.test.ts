@@ -1189,4 +1189,13 @@ describe('Parser Tests', () => {
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
     });
+
+    test("Check CLIPCLEAR statement", async () => {
+        const result = await parse(`
+            CLIPCLEAR ERR=labelError
+            CLIPCLEAR
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
