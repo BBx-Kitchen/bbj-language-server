@@ -370,7 +370,7 @@ describe('Parser Tests', () => {
         release
         `, { validationChecks: 'all' });
         expectNoParserLexerErrors(result);
-        expect(result.diagnostics).toHaveLength(1); // 1 for linking error on *same
+        expectNoValidationErrors(result);
     });
 
     test('Array declaration and access tests', async () => {
