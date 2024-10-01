@@ -31,6 +31,7 @@ SingleStatement:
     BeginStatement |
     CallbackStatement |
     CallStatement |
+    ClearPasswordStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
@@ -81,6 +82,10 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+ClearPasswordStatement:
+    'CLEARP' password=Expression (',' level=Expression)?
+    ;
 
 CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'

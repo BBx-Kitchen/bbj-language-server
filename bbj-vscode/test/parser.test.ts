@@ -1181,4 +1181,12 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test("Check CLEARP statement", async () => {
+        const result = await parse(`
+            CLEARP "password",123
+            CLEARP "hallo"
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+    });
 });
