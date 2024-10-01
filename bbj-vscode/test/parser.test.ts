@@ -1371,4 +1371,14 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check LCHECKIN statement", async () => {
+        const result = await parse(`
+            LCHECKIN(1)
+            LCHECKIN(1,ERR=labelError)
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

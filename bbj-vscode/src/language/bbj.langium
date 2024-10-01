@@ -59,6 +59,7 @@ SingleStatement:
     InitFileStatement |
     KeyedFileStatement |
     LabelDecl |
+    LCheckInStatement |
     LetStatement |
     MethodReturnStatement |
     NextStatement |
@@ -128,6 +129,10 @@ RemoveCallbackStatement:
 InitFileStatement:
     'INITFILE' file=Expression Options?
 ;
+
+LCheckInStatement:
+    'LCHECKIN' '(' handle=Expression Err? ')'
+    ;
 
 EraseStatement:
     'ERASE' items+=Expression (',' items+=(Option | Expression))*
