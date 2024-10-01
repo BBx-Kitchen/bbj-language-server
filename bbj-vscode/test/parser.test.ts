@@ -1347,4 +1347,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check FULLTEXT statement", async () => {
+        const result = await parse(`
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID"
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",MODE="abc"
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",ERR=labelError
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",MODE="123",ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

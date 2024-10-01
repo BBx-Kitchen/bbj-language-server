@@ -51,6 +51,7 @@ SingleStatement:
     FileOptStatement |
     FnErrStatement |
     ForStatement |
+    FulltextStatement |
     GotoStatement |
     IfEndStatement |
     IfStatement |
@@ -109,6 +110,10 @@ DumpStatement:
 
 FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
+    ;
+
+FulltextStatement:
+    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
     ;
 
 RemoveCallbackStatement:
