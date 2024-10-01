@@ -75,3 +75,26 @@ class public Hourly extends Employee implements Payable; REM some comment
   methodend
   REM some comment
 classend
+
+interface Nameable
+  method public BBjString name()
+interfaceend
+
+interface Person extends Nameable
+  method public BBjNumber id()
+interfaceend
+
+class Alice implements Nameable
+  method public BBjString name()
+    methodret "Alice"
+  methodend
+classend
+
+class Bob implements Person
+  method public BBjNumber id()
+    methodret 12345
+  methodend
+  method public BBjString name()
+    methodret "Bob"
+  methodend
+classend

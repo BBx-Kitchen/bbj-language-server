@@ -1,0 +1,7 @@
+REM printing mnemonics
+
+print 'hide'
+PRINT 'lf'
+
+print 'HIDE'
+PRINT 'LF'

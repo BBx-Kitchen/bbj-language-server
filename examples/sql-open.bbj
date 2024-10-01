@@ -1,0 +1,7 @@
+let chan = 2
+SQLOPEN(1)"datasource"
+SQLOPEN(1,mode="UID=me,PWD=you")"datasource"
+SQLOPEN(1,mode="SQLDriverConnect")"datasource"
+SQLOPEN(1,mode="ExecDirect=1")"DSN=datasource;UID=me,PWD=you;OPTION=value"
+SQLOPEN(1)"DSN=datasource"
+SQLOPEN(chan, mode="DICTIONARY=/path/to/dict/")"MyDB"

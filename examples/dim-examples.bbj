@@ -74,3 +74,6 @@ compat$ = stbl("!COMPAT","THOROUGHBRED_IF47=TRUE")
 let x$ = ""
 if x$(10,10) = "" then print "if47" ; rem substring
 if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring
+
+DIM B$(9),ERR=errorLabel
+errorLabel:

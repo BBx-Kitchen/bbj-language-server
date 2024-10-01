@@ -8,8 +8,9 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'FNEND', 1);
         this.spliceToken(tokens, 'NEXT_TOKEN', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
-        this.spliceToken(tokens, 'ENDLINE_RETURN', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
+        this.spliceToken(tokens, 'DELETE_STANDALONE', 1);
+        this.spliceToken(tokens, 'PRINT_STANDALONE_NL', 1);
         return tokens;
     }
 
@@ -47,6 +48,20 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 name: terminal.name,
                 // Add more expceptional tokens here if an explicit line break token is needed
                 PATTERN: this.regexPatternFunction(/,(?=(\r?\n))/i),
+                LINE_BREAKS: true
+            };
+            return token;
+        } else if (terminal.name === 'PRINT_STANDALONE_NL') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/(\?|PRINT|WRITE)\s*(\r?\n)/i),
+                LINE_BREAKS: true
+            };
+            return token;
+        } else if (terminal.name === 'DELETE_STANDALONE') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/(DELETE)\s*(\r?\n)/i),
                 LINE_BREAKS: true
             };
             return token;

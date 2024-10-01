@@ -1,0 +1,6 @@
+LET SQL1=123
+LET LAST_NAME$ = "Bob"
+
+SQLPREP (SQL1)"select * from CUSTOMERS where LAST_NAME > ?"
+REM Fill the ? gap with LAST_NAME$
+SQLEXEC (SQL1)LAST_NAME$

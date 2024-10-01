@@ -1,0 +1,7 @@
+REM anything after print is optional. A standalone print advances the line:
+print
+print a$
+input a$
+REM special case
+print ; REM also this is valid
+input *

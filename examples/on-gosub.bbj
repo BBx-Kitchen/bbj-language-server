@@ -1,0 +1,7 @@
+    let A = 1
+    on A gosub label1,label2
+    on A gosub label1
+    A = -1
+    on A gosub label1,label2
+label1:
+label2: 

@@ -1,0 +1,3 @@
+    SQLROLLBACK(1)
+    SQLROLLBACK(2,err=LabelError)
+LabelError:

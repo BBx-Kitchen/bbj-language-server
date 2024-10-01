@@ -1,0 +1,5 @@
+    LOCK(1,err=labelError)
+    UNLOCK(1,err=labelError)
+labelError:
+    LOCK(2)
+    UNLOCK(2)

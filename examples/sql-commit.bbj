@@ -1,0 +1,6 @@
+    SQLOPEN(1,MODE="AUTO_COMMIT=OFF")"MyData"
+    SQLPREP(1)"INSERT INTO mytable VALUES ('10', 'Sample Record')"
+    SQLEXEC(1)
+    SQLCOMMIT(1,err=labelError)
+    SQLCLOSE(1)
+labelError:

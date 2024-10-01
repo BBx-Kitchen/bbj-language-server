@@ -8,7 +8,7 @@ import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNod
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
+import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
 import { JavaInteropService } from './java-interop';
 
 /**
@@ -25,7 +25,8 @@ export function registerValidationChecks(services: BBjServices) {
         EraseStatement: validator.checkEraseStatementOptions,
         KeyedFileStatement: validator.checkKeyedFileStatement,
         DefFunction: validator.checkReturnValueInDef,
-        CommentStatement: validator.checkCommentNewLines
+        CommentStatement: validator.checkCommentNewLines,
+        MethodDecl: validator.checkIfMethodIsChildOfInterface,
     };
     registry.register(checks, validator);
 }
@@ -102,6 +103,16 @@ export class BBjValidator {
             return previous?.element;
         }
         return undefined;
+    }
+
+    checkIfMethodIsChildOfInterface(node: MethodDecl, accept: ValidationAcceptor): void {
+        const klass = getContainerOfType(node, isBbjClass)!;
+        if(klass.interface && node.endTag) {
+            accept('error', 'Methods of interfaces must not have a METHODEND keyword!', {
+                node: node,
+                property: 'endTag'
+            });
+        }
     }
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
