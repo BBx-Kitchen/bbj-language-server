@@ -1491,4 +1491,14 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check UPDATELIC statement", async () => {
+        const result = await parse(`
+            UPDATELIC
+            UPDATELIC ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

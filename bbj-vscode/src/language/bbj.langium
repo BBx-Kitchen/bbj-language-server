@@ -92,6 +92,7 @@ SingleStatement:
     SwitchStatement |
     ThrowStatement |
     UntilStatement |
+    UpdateLicenseStatement |
     Use |
     VariableDecl |
     WaitStatement |
@@ -169,6 +170,10 @@ SetTraceStatement:
 
 SortStatement:
     'SORT' fileid=Expression ',' keysize=Expression ',' records=Expression Mode? Err?
+    ;
+
+UpdateLicenseStatement:
+    'UPDATELIC' ('ERR' '=' lineref=LabelRef)?
     ;
 
 InitFileStatement:
