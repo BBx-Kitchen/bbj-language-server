@@ -77,8 +77,10 @@ SingleStatement:
     RunStatement |
     SaveStatement |
     SavePStatement |
+    SetDayStatement |
     SetErrorStatement |
     SetOptsStatement |
+    SetTerminalStatement |
     SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
@@ -144,6 +146,14 @@ SaveStatement:
 
 SavePStatement:
     'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
+    ;
+
+SetDayStatement:
+    'SETDAY' string=Expression
+    ;
+
+SetTerminalStatement:
+    'SETTERM' alias=Expression Mode? Err?
     ;
 
 InitFileStatement:

@@ -1426,4 +1426,25 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SETDAY statement", async () => {
+        const result = await parse(`
+            SETDAY "09/15/96"
+            SETDAY "non-sense"
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SETTERM statement", async () => {
+        const result = await parse(`
+            SETTERM "alias"
+            SETTERM "alias",MODE="123"
+            SETTERM "alias",ERR=labelError
+            SETTERM "alias",MODE="123",ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
