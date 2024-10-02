@@ -72,6 +72,8 @@ SingleStatement:
     RedimStatement |
     RemoveCallbackStatement |
     RenameStatement |
+    ResourceCloseStatement |
+    RestoreStatement |
     RunStatement |
     SetErrorStatement |
     SetOptsStatement |
@@ -124,6 +126,14 @@ IndexedStatement:
 
 RemoveCallbackStatement:
     'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? ')'
+    ;
+
+ResourceCloseStatement:
+    'RESCLOSE' '(' handle=Expression Err? ')'
+    ;
+
+RestoreStatement:
+    'RESTORE' lineref=LabelRef
     ;
 
 InitFileStatement:

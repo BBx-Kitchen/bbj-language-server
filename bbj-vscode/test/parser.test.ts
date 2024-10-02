@@ -1381,4 +1381,23 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check RESCLOSE statement", async () => {
+        const result = await parse(`
+            RESCLOSE(2)
+            RESCLOSE(1,ERR=labelError)
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check RESTORE statement", async () => {
+        const result = await parse(`
+            RESTORE labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
