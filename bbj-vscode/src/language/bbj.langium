@@ -75,6 +75,7 @@ SingleStatement:
     ResourceCloseStatement |
     RestoreStatement |
     RunStatement |
+    SaveStatement |
     SetErrorStatement |
     SetOptsStatement |
     SqlCloseStatement |
@@ -134,6 +135,10 @@ ResourceCloseStatement:
 
 RestoreStatement:
     'RESTORE' lineref=LabelRef
+    ;
+
+SaveStatement:
+    'SAVE' (fileid=Expression (',' int=Expression)?)?
     ;
 
 InitFileStatement:

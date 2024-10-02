@@ -1400,4 +1400,14 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SAVE statement", async () => {
+        const result = await parse(`
+            SAVE
+            SAVE "file.txt"
+            SAVE "file.txt",100
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
