@@ -97,7 +97,8 @@ SingleStatement:
     VariableDecl |
     WaitStatement |
     WhileEndStatement |
-    WhileStatement
+    WhileStatement |
+    XCallStatement
 ;
 
 ClearPasswordStatement:
@@ -174,6 +175,10 @@ SortStatement:
 
 UpdateLicenseStatement:
     'UPDATELIC' ('ERR' '=' lineref=LabelRef)?
+    ;
+
+XCallStatement:
+    'XCALL' argument=Expression Mode? Err? Tim? (',' exprlist+=Expression)*
     ;
 
 InitFileStatement:
@@ -424,6 +429,10 @@ fragment Ind:
     ',' 'IND' '=' index=Expression
 ;
 
+fragment Tim:
+    ',' 'TIM' '=' index=Expression
+;
+
 CallStatement:
     'CALL' fileid=Expression Err? (',' expressions+=Expression)*
 ;
@@ -538,7 +547,7 @@ ThrowStatement:
 ;
 
 ProcessEvent:
-    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' tim=Expression)? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' Tim? Err?
 ;
 
 BeginStatement:

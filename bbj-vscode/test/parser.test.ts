@@ -1501,4 +1501,22 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check XCALL statement", async () => {
+        const result = await parse(`
+            REM Hello_caller.bbx (compile with pro5cpl)
+            LET NAME$="Nico"
+            LET RESPONSE$=""
+            XCALL "hello.bbj",NAME$,RESPONSE$
+            PRINT "Response was: ",RESPONSE$
+
+            REM Other stuff
+            XCALL "hello.bbj",MODE="mode"
+            XCALL "hello.bbj",ERR=labelError,NAME$,RESPONSE$
+            XCALL "hello.bbj",TIM=123,NAME$,RESPONSE$
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
