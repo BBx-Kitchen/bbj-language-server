@@ -83,6 +83,7 @@ SingleStatement:
     SetTerminalStatement |
     SetTimeStatement |
     SetTraceStatement |
+    SortStatement |
     SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
@@ -164,6 +165,10 @@ SetTimeStatement:
 
 SetTraceStatement:
     'SETTRACE' ('(' channelno=Expression Mode? Err? ')')?
+    ;
+
+SortStatement:
+    'SORT' fileid=Expression ',' keysize=Expression ',' records=Expression Mode? Err?
     ;
 
 InitFileStatement:

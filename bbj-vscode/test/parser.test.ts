@@ -1470,4 +1470,16 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SORT statement", async () => {
+        const result = await parse(`
+            SORT "TEST.BBX",10,100,ERR=labelError
+            SORT "TEST.BBX",10,100,MODE="123",ERR=labelError
+            SORT "TEST.BBX",10,100,MODE="XXX"
+            SORT "TEST.BBX",10,100
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
