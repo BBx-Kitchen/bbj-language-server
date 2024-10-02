@@ -1457,4 +1457,17 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SETTRACE statement", async () => {
+        const result = await parse(`
+            SETTRACE
+            SETTRACE(1)
+            SETTRACE(1,ERR=labelError)
+            SETTRACE(1,MODE="hallo")
+            SETTRACE(1,MODE="xxx",ERR=labelError)
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

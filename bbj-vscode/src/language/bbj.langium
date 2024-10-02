@@ -82,6 +82,7 @@ SingleStatement:
     SetOptsStatement |
     SetTerminalStatement |
     SetTimeStatement |
+    SetTraceStatement |
     SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
@@ -159,6 +160,10 @@ SetTerminalStatement:
 
 SetTimeStatement:
     'SETTIME' num=Expression Err?
+    ;
+
+SetTraceStatement:
+    'SETTRACE' ('(' channelno=Expression Mode? Err? ')')?
     ;
 
 InitFileStatement:
