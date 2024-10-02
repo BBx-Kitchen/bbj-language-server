@@ -81,6 +81,7 @@ SingleStatement:
     SetErrorStatement |
     SetOptsStatement |
     SetTerminalStatement |
+    SetTimeStatement |
     SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
@@ -154,6 +155,10 @@ SetDayStatement:
 
 SetTerminalStatement:
     'SETTERM' alias=Expression Mode? Err?
+    ;
+
+SetTimeStatement:
+    'SETTIME' num=Expression Err?
     ;
 
 InitFileStatement:

@@ -1447,4 +1447,14 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SETTIME statement", async () => {
+        const result = await parse(`
+            SETTIME 10.5
+            SETTIME 24.5,ERR=labelError
+        labelError:
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
