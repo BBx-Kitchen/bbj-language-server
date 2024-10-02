@@ -1482,4 +1482,13 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test.skip("Check TABLE statement", async () => {
+        const result = await parse(`
+            REM EBCDIC to ASCII conversion (ISO 8859/1)
+            TABLE FF 00 01 02 03 9C 09 86 7F 97 8D 8E 0B 0C 0D 0E 0F 10 11 12 13 9D 85 08 87 18 19 92 8F 1C 1D 1E
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
