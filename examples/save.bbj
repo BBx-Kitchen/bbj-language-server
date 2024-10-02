@@ -1,0 +1,6 @@
+LET a$="file.txt"
+LET size=123
+SAVE
+SAVE "file.txt"
+SAVE "file.txt",100
+SAVE a$,size

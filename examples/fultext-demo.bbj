@@ -1,0 +1,112 @@
+rem ' fulltext
+
+indexFile$ = "docindex.search"
+
+inputFile$ = "input.txt"
+
+template$ = "ID:C(32),DOCUMENT:C(32767*)"
+
+keyField$ = "ID"
+
+sampleData$ = "The quick brown fox ran across the road."
+
+ 
+
+rem ' Erase leftover temporary work files from previous runs
+
+erase indexFile$,ERR=*next
+
+erase inputFile$,ERR=*next
+
+ 
+
+rem ' Create the sample input text file and write some data
+
+string inputFile$
+
+stringChan = unt
+
+open (stringChan)inputFile$
+
+write (stringChan)sampleData$
+
+close (stringChan)
+
+print "Sample text file created ..."
+
+rem ' Create the FULLTEXT index.
+
+fulltext indexFile$,template$,keyField$
+
+print "FULLTEXT index created ..."
+
+ 
+
+rem ' Read contents of a text file
+
+chan = unt
+
+open (chan)inputFile$
+
+content$ = ""
+
+while 1
+
+   read (chan,err=FileFinished)data$
+
+   content$ = content$ + data$
+
+wend
+
+FileFinished:
+
+close (chan)
+
+ 
+
+rem ' Write contents of the text file to the index
+
+indexChan = unt
+
+open (indexChan)indexFile$
+
+dim indexRec$:template$
+
+indexRec.id$ = java.util.UUID.randomUUID().toString()
+
+indexRec.document$ = content$
+
+write record (indexChan)indexRec$
+
+print "Finished writing document to index ..."
+
+ 
+
+rem ' Clear out the indexRec$ variable
+
+indexRec$ = ""
+
+rem ' Query the index and look for documents with the word "fox"
+
+read record (indexChan,knum=1,key="fox")indexRec$
+
+print "Executed search and finished reading the document ..."
+
+print "Document ID: ",indexRec.id$
+
+print "Document Contents: ",indexRec.document$
+
+ 
+
+close (indexChan)
+
+ 
+
+rem ' Erase leftover temporary work files
+
+erase indexFile$,ERR=*next
+
+erase inputFile$,ERR=*next
+
+
+end

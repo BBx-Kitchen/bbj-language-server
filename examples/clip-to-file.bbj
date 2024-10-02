@@ -1,0 +1,3 @@
+    CLIPTOFILE "format1","file1.txt",ERR=labelError
+    CLIPTOFILE "format2","file2.txt"
+labelError:

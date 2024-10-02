@@ -1,0 +1,3 @@
+    CLIPFROMFILE "format1","file1.txt",ERR=labelError
+    CLIPFROMFILE "format2","file2.txt"
+labelError:

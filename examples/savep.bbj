@@ -1,0 +1,9 @@
+REM ' SAVEP with the unclearable password.
+SAVEP "program.bbj", 0
+SAVEP "program.bbj", $$, 0
+SAVEP "program.bbj"
+
+REM ' SAVEP with the password "password"
+SAVEP "program.bbj", "password", 0
+SAVEP "program.bbj", "password"
+SAVEP

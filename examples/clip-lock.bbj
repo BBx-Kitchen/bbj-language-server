@@ -1,0 +1,3 @@
+    cliplock ERR=labelError
+    cliplock
+labelError:
