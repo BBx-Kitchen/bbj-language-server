@@ -1410,4 +1410,20 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test("Check SAVEP statement", async () => {
+        const result = await parse(`
+            REM ' SAVEP with the unclearable password.
+            SAVEP "program.bbj", 0
+            SAVEP "program.bbj", $$, 0
+            SAVEP "program.bbj"
+
+            REM ' SAVEP with the password "password"
+            SAVEP "program.bbj", "password", 0
+            SAVEP "program.bbj", "password"
+            SAVEP
+        `, { validationChecks: 'all' });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

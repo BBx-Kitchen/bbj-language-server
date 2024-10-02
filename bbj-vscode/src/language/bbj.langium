@@ -76,6 +76,7 @@ SingleStatement:
     RestoreStatement |
     RunStatement |
     SaveStatement |
+    SavePStatement |
     SetErrorStatement |
     SetOptsStatement |
     SqlCloseStatement |
@@ -139,6 +140,10 @@ RestoreStatement:
 
 SaveStatement:
     'SAVE' (fileid=Expression (',' int=Expression)?)?
+    ;
+
+SavePStatement:
+    'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
     ;
 
 InitFileStatement:
