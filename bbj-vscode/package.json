@@ -270,7 +270,7 @@
         "onCommand:bbj.autoComment",
         "onCommand:bbj.initInterop"
     ],
-    "main": "./out/extension.js",
+    "main": "./out/extension.cjs",
     "scripts": {
         "prepare": "npm run langium:generate && npm run build",
         "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",

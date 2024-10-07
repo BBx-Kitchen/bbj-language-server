@@ -5,11 +5,12 @@
     "lib": ["ESNext"],
     "noEmit": true,
     "strict": true,
+    "allowJs": true,
     "noUnusedLocals": true,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
     "moduleResolution": "Node16",
-    "esModuleInterop": true,
+    "esModuleInterop": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true

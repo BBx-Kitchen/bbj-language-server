@@ -13,8 +13,8 @@ import { builtinVariables } from "./lib/variables.js";
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
 // import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import * as os from 'os';
+import * as path from 'path';
 import { builtinEvents } from "./lib/events.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
