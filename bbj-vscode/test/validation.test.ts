@@ -8,9 +8,9 @@ import { EmptyFileSystem } from 'langium';
 import { describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
-import { createBBjServices } from '../src/language/bbj-module';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast';
-import { findByIndex, findFirst, initializeWorkspace } from './test-helper';
+import { createBBjServices } from '../src/language/bbj-module.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast.js';
+import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 const services = createBBjServices(EmptyFileSystem);
 const validate = validationHelper<Program>(services.BBj);
@@ -94,7 +94,7 @@ describe('BBj validation', async () => {
         `);
         // only the parse error should be reported, not the "This line needs to be wrapped by line breaks."
         expect(validationResult.diagnostics).toHaveLength(1);
-        expect(validationResult.diagnostics[0].code).toBe('parsing-error');
+        expect(validationResult.diagnostics[0].data.code).toBe('parsing-error');
     });
     /* FIXME
     test('No newline line validation after :', async () => {

@@ -5,31 +5,31 @@
  ******************************************************************************/
 
 import {
-    DeepPartial, DefaultSharedModuleContext,
+    DeepPartial,
     LangiumParser,
-    LangiumServices, LangiumSharedServices, Module, PartialLangiumServices,
-    createDefaultModule, createDefaultSharedModule,
+    Module,
     inject,
     prepareLangiumParser
 } from 'langium';
-import { BBjCommentProvider } from './bbj-comment-provider';
-import { BBjCompletionProvider } from './bbj-completion-provider';
-import { BBjDocumentBuilder } from './bbj-document-builder';
-import { BBjDocumentValidator } from './bbj-document-validator';
-import { BBjHoverProvider } from './bbj-hover';
-import { BBjIndexManager } from './bbj-index-manager';
-import { BbjLexer } from './bbj-lexer';
-import { BbjLinker } from './bbj-linker';
-import { BBjNodeKindProvider } from './bbj-node-kind';
-import { BBjAstNodeDescriptionProvider } from './bbj-nodedescription-provider';
-import { BbjNameProvider, BbjScopeProvider } from './bbj-scope';
-import { BbjScopeComputation } from './bbj-scope-local';
-import { BBjTokenBuilder } from './bbj-token-builder';
-import { BBjValidator, registerValidationChecks } from './bbj-validator';
-import { BBjValueConverter } from './bbj-value-converter';
-import { BBjWorkspaceManager } from './bbj-ws-manager';
-import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module';
-import { JavaInteropService } from './java-interop';
+import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext } from 'langium/lsp';
+import { BBjCommentProvider } from './bbj-comment-provider.js';
+import { BBjCompletionProvider } from './bbj-completion-provider.js';
+import { BBjDocumentBuilder } from './bbj-document-builder.js';
+import { BBjDocumentValidator } from './bbj-document-validator.js';
+import { BBjHoverProvider } from './bbj-hover.js';
+import { BBjIndexManager } from './bbj-index-manager.js';
+import { BbjLexer } from './bbj-lexer.js';
+import { BbjLinker } from './bbj-linker.js';
+import { BBjNodeKindProvider } from './bbj-node-kind.js';
+import { BBjAstNodeDescriptionProvider } from './bbj-nodedescription-provider.js';
+import { BbjNameProvider, BbjScopeProvider } from './bbj-scope.js';
+import { BbjScopeComputation } from './bbj-scope-local.js';
+import { BBjTokenBuilder } from './bbj-token-builder.js';
+import { BBjValidator, registerValidationChecks } from './bbj-validator.js';
+import { BBjValueConverter } from './bbj-value-converter.js';
+import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module.js';
+import { JavaInteropService } from './java-interop.js';
 
 
 /**

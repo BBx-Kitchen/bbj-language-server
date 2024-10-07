@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES6",
-    "module": "commonjs",
+    "module": "Node16",
     "lib": ["ESNext"],
     "noEmit": true,
     "strict": true,
+    "allowJs": true,
     "noUnusedLocals": true,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
+    "moduleResolution": "Node16",
+    "esModuleInterop": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true

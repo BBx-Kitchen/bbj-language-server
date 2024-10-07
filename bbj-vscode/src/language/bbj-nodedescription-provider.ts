@@ -1,12 +1,12 @@
-import { AstNode, AstNodeDescription, DefaultAstNodeDescriptionProvider, LangiumDocument, getDocument, isAstNodeDescription } from "langium";
-import { JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast";
-import { documentationHeader } from "./bbj-hover";
+import { AstNode, AstNodeDescription, AstUtils, DefaultAstNodeDescriptionProvider, LangiumDocument, isAstNodeDescription } from "langium";
+import { JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast.js";
+import { documentationHeader } from "./bbj-hover.js";
 
 
 
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
 
-    override createDescription(node: AstNode, name: string | undefined, document: LangiumDocument = getDocument(node)): AstNodeDescription {
+    override createDescription(node: AstNode, name: string | undefined, document: LangiumDocument = AstUtils.getDocument(node)): AstNodeDescription {
         const descr = super.createDescription(node, name, document);
         switch (node.$type) {
             case MethodDecl: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))

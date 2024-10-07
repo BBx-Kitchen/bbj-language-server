@@ -1,9 +1,8 @@
-import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
+import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { streamAst } from 'langium';
 import { describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isBbjClass, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { createBBjServices } from '../src/language/bbj-module.js';
+import { Model, Program, isBbjClass } from '../src/language/generated/ast.js';
 
 
 const services = createBBjServices(EmptyFileSystem);

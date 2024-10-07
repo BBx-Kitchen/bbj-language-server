@@ -1,18 +1,17 @@
-import { AstNode, DefaultIndexManager, LangiumDocument, LangiumSharedServices, WorkspaceManager } from "langium";
-import { URI } from "vscode-uri";
-import { BBjWorkspaceManager } from "./bbj-ws-manager";
-import { JavaSyntheticDocUri } from "./java-interop";
+import { AstNode, DefaultIndexManager, LangiumDocument, LangiumSharedCoreServices, URI, WorkspaceManager } from "langium";
+import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
+import { JavaSyntheticDocUri } from "./java-interop.js";
 
 export class BBjIndexManager extends DefaultIndexManager {
 
     wsManager: () => WorkspaceManager;
 
-    constructor(services: LangiumSharedServices) {
+    constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.wsManager = () => services.workspace.WorkspaceManager;
     }
 
-    protected override isAffected(document: LangiumDocument<AstNode>, changed: URI): boolean {
+    public override isAffected(document: LangiumDocument<AstNode>, changedUris: Set<string>): boolean {
         if(document.uri.toString() === JavaSyntheticDocUri || document.uri.scheme === 'bbjlib') {
             // only affected by ClassPath changes
             return false;
@@ -24,12 +23,12 @@ export class BBjIndexManager extends DefaultIndexManager {
                 // don't rebuild external documents that has errors
                 return !isExternal
             }
-            if(!bbjWsManager.isExternalDocument(changed) && isExternal) {
+            if(![...changedUris].every(changed => bbjWsManager.isExternalDocument(URI.parse(changed))) && isExternal) {
                 // don't rebuild external documents if ws document changed
                 return false;
             }
         }
-        return super.isAffected(document, changed);
+        return super.isAffected(document, changedUris);
     }
 
 }

@@ -4,14 +4,14 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { LangiumDocument, LangiumDocuments, linkContentToContainer, Mutable } from 'langium';
+import { AstUtils, LangiumDocument, LangiumDocuments, Mutable } from 'langium';
 import { Socket } from 'net';
 import {
     CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
-} from 'vscode-jsonrpc/node';
+} from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
-import { BBjServices } from './bbj-module';
-import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast';
+import { BBjServices } from './bbj-module.js';
+import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
 
 const DEFAULT_PORT = 5008;
 
@@ -153,13 +153,13 @@ export class JavaInteropService {
                         $refText: parameter.type
                     };
                 }
-                linkContentToContainer(method);
+                AstUtils.linkContentToContainer(method);
             }
         } catch (e) {
             // finish linking of the class even if it has an error
             console.error(e)
         }
-        linkContentToContainer(javaClass);
+        AstUtils.linkContentToContainer(javaClass);
 
         javaClass.$type = JavaClass;
         javaClass.$container = classpath;

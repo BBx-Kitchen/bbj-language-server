@@ -3,8 +3,8 @@ import { parseHelper } from 'langium/test';
 import path from 'path';
 import fs from 'fs';
 import { describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module';
-import { Model } from '../src/language/generated/ast';
+import { createBBjServices } from '../src/language/bbj-module.js';
+import { Model } from '../src/language/generated/ast.js';
 
 const services = createBBjServices(EmptyFileSystem);
 

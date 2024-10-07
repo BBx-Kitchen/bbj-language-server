@@ -11,7 +11,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         return {
             message,
             range: getDiagnosticRange(info),
-            severity: info.code === DocumentValidator.LinkingError ? DiagnosticSeverity.Warning : toDiagnosticSeverity(severity),
+            severity: (info.data as any)?.code === DocumentValidator.LinkingError ? DiagnosticSeverity.Warning : toDiagnosticSeverity(severity),
             code: info.code,
             codeDescription: info.codeDescription,
             tags: info.tags,

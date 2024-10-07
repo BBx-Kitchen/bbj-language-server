@@ -7,7 +7,7 @@
 import { EmptyFileSystemProvider, FileSystemNode, FileSystemProvider } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
-import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast";
+import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast.js";
 
 /**
  * Provides Javadoc information for internal binary classes.

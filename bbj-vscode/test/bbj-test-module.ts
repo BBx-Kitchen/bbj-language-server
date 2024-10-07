@@ -1,9 +1,10 @@
-import { DeepPartial, DefaultSharedModuleContext, IndexManager, LangiumSharedServices, Module, PartialLangiumServices, createDefaultModule, createDefaultSharedModule, inject } from "langium";
-import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module";
-import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module";
-import { registerValidationChecks } from "../src/language/bbj-validator";
-import { JavaInteropService } from "../src/language/java-interop";
-import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast";
+import { DeepPartial, IndexManager, Module, inject } from "langium";
+import { PartialLangiumServices, createDefaultModule, createDefaultSharedModule, LangiumSharedServices, DefaultSharedModuleContext } from "langium/lsp";
+import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../src/language/bbj-module.js";
+import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
+import { registerValidationChecks } from "../src/language/bbj-validator.js";
+import { JavaInteropService } from "../src/language/java-interop.js";
+import { JavaClass, JavaMethod } from "../src/language/generated/ast.js";
 
 export function createBBjTestServices(context: DefaultSharedModuleContext): {
     shared: LangiumSharedServices,
