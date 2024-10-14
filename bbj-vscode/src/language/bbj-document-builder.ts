@@ -1,30 +1,29 @@
-import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedServices, WorkspaceManager, interruptAndCheck, streamAllContents } from "langium";
+import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from 'vscode-uri';
-import { BBjWorkspaceManager } from "./bbj-ws-manager";
-import { Use, isUse } from "./generated/ast";
-import { JavaSyntheticDocUri } from "./java-interop";
-
+import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
+import { Use, isUse } from "./generated/ast.js";
+import { JavaSyntheticDocUri } from "./java-interop.js";
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     wsManager: () => WorkspaceManager;
     fileSystemProvider: FileSystemProvider;
 
-    constructor(services: LangiumSharedServices) {
+    constructor(services: LangiumSharedCoreServices) {
         super(services);
         this.wsManager = () => services.workspace.WorkspaceManager;
         this.fileSystemProvider = services.workspace.FileSystemProvider
     }
 
-    protected override shouldValidate(_document: LangiumDocument<AstNode>, options: BuildOptions): boolean {
+    protected override shouldValidate(_document: LangiumDocument<AstNode>): boolean {
         if (_document.uri.toString() === JavaSyntheticDocUri) {
             // never validate programmatically created classpath document
             _document.state = DocumentState.Validated;
             return false;
         }
         if (this.wsManager() instanceof BBjWorkspaceManager) {
-            const validate = super.shouldValidate(_document, options)
+            const validate = super.shouldValidate(_document)
                 && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
             if (!validate) {
                 // mark as validated to avoid rebuilding
@@ -32,7 +31,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             }
             return validate;
         }
-        return super.shouldValidate(_document, options);
+        return super.shouldValidate(_document);
     }
 
     protected override async buildDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken): Promise<void> {
@@ -51,7 +50,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const bbjImports = new Set<string>();
         for (const document of documents) {
             await interruptAndCheck(cancelToken);
-            streamAllContents(document.parseResult.value).filter(isUse).forEach((use: Use) => {
+            AstUtils.streamAllContents(document.parseResult.value).filter(isUse).forEach((use: Use) => {
                 if (use.bbjFilePath) {
                     bbjImports.add(use.bbjFilePath);
                 }
@@ -64,16 +63,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
         const addedDocuments: URI[] = []
         for (const importPath of bbjImports) {
-            const docFileData = prefixes.map(prefixPath => {
+            const docFileContents = await Promise.all(prefixes.map(async prefixPath => {
                 const prefixedPath = URI.file(prefixPath + (prefixPath.endsWith('/') ? '' : '/') + importPath)
                 try {
-                    const fileContent = fsProvider.readFileSync(prefixedPath);
-                    return { uri: prefixedPath, text: fileContent }
+                    const fileContent = await fsProvider.readFile(prefixedPath);
+                    return { uri: prefixedPath, text: fileContent };
                 } catch (e) {
                     return undefined;
                 }
-            }).find(doc => doc !== undefined)
-
+            }));
+            
+            const docFileData = docFileContents.find(doc => doc !== undefined);
             if (docFileData) {
                 const document = documentFactory.fromString(docFileData.text, docFileData.uri);
                 if (!langiumDocuments.hasDocument(document.uri)) {

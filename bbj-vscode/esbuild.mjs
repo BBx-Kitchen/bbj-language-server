@@ -7,8 +7,12 @@ const minify = process.argv.includes('--minify');
 const ctx = await esbuild.context({
     entryPoints: ['src/extension.ts', 'src/language/main.ts'],
     outdir: 'out',
+    outExtension: {
+        '.js': '.cjs'
+    },
     bundle: true,
     target: "es6",
+    format: 'cjs',
     loader: { '.ts': 'ts' },
     external: ['vscode'], // the vscode-module is created on-the-fly and must be excluded.
     platform: 'node', // VSCode extensions run in a node process

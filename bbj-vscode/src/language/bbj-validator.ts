@@ -4,12 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, CompositeCstNode, CstNode, LeafCstNode, Properties, RootCstNode, ValidationAcceptor, ValidationChecks, findNodesForKeyword, getContainerOfType, getDocument, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, GrammarUtils, LeafCstNode, Properties, RootCstNode, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
-import type { BBjServices } from './bbj-module';
-import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast';
-import { JavaInteropService } from './java-interop';
+import type { BBjServices } from './bbj-module.js';
+import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast.js';
+import { JavaInteropService } from './java-interop.js';
 
 /**
  * Register custom validation checks.
@@ -87,7 +87,7 @@ export class BBjValidator {
                 || isLetStatement(node.$container)
                 || isForStatement(node.$container)
                 || isArrayDeclarationStatement(node.$container)
-                || getContainerOfType(previous, isIfStatement)) {
+                || AstUtils.getContainerOfType(previous, isIfStatement)) {
                 return false;
             }
             return true;
@@ -105,7 +105,7 @@ export class BBjValidator {
     }
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
-        const document = getDocument(node);
+        const document = AstUtils.getDocument(node);
         if (document.parseResult.parserErrors.length > 0 || isLabelDecl(this.getPreviousNode(node))) {
             return;
         }
@@ -127,7 +127,7 @@ export class BBjValidator {
     }
 
     checkLinebreaks(node: AstNode, accept: ValidationAcceptor): void {
-        const document = getDocument(node);
+        const document = AstUtils.getDocument(node);
         if (document.parseResult.parserErrors.length > 0) {
             return;
         }
@@ -176,7 +176,7 @@ export class BBjValidator {
         if (Array.isArray(features)) {
             const nodes: CstNode[] = [];
             for (const feature of features) {
-                nodes.push(...findNodesForKeyword(node, feature));
+                nodes.push(...GrammarUtils.findNodesForKeyword(node, feature));
             }
             return nodes;
         } else {

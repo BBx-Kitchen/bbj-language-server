@@ -1,7 +1,7 @@
 
 import os from 'os';
 import { describe, expect, test } from 'vitest';
-import { parseSettings } from '../src/language/bbj-ws-manager';
+import { parseSettings } from '../src/language/bbj-ws-manager.js';
 
 const exampleInput = `
 classpath=~/git/bbj-language-server/examples/lib/com.google.guava_30.1.0.v20221112-0806.jar:~/someOtherPath.jar:~/someOtherPath2.jar

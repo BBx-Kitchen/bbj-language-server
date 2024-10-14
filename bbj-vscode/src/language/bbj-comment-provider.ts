@@ -1,6 +1,6 @@
 import { AstNode, GenericAstNode } from "langium";
-import { CommentProvider } from "langium/lib/documentation/comment-provider";
-import { BbjClass, CommentStatement, isBBjClassMember, isBbjClass, isCommentStatement } from "./generated/ast";
+import { CommentProvider } from "langium";
+import { BbjClass, CommentStatement, isBBjClassMember, isBbjClass, isCommentStatement } from "./generated/ast.js";
 
 export class BBjCommentProvider implements CommentProvider {
 

@@ -7,12 +7,13 @@
 import {
     AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider,
     DefaultScopeProvider,
-    EMPTY_SCOPE, EMPTY_STREAM, findNodeForProperty, getContainerOfType, getDocument, IndexManager, isAstNode,
+    EMPTY_SCOPE, EMPTY_STREAM, AstUtils, IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
-    StreamScope
+    StreamScope,
+    GrammarUtils
 } from 'langium';
-import { BBjServices } from './bbj-module';
-import { isJavaDocument } from './bbj-scope-local';
+import { BBjServices } from './bbj-module.js';
+import { isJavaDocument } from './bbj-scope-local.js';
 import {
     Assignment, BbjClass, Class,
     Expression,
@@ -31,8 +32,8 @@ import {
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
-} from './generated/ast';
-import { JavaInteropService } from './java-interop';
+} from './generated/ast.js';
+import { JavaInteropService } from './java-interop.js';
 
 
 export class BbjScopeProvider extends DefaultScopeProvider {
@@ -52,7 +53,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
         ) {
             // Scope for JavaClass only
-            const doc = getDocument(context.container)
+            const doc = AstUtils.getDocument(context.container)
             const precomputed = doc.precomputedScopes
             if (precomputed) {
                 if (isJavaDocument(doc)) {
@@ -63,7 +64,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     console.warn(`JavaDocument without classesMapScope.`)
                 }
                 console.warn(`Resolving JavaMember from outside of JavaDocument.`)
-                const classPath = getContainerOfType(context.container, isClasspath);
+                const classPath = AstUtils.getContainerOfType(context.container, isClasspath);
                 if (classPath) {
                     const allDescriptions = precomputed.get(classPath);
                     return new StreamScope(stream(allDescriptions)) // don't filter as we only have classes as children
@@ -96,7 +97,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return EMPTY_SCOPE
         } else if (isSymbolRef(context.container)) {
-            const bbjType = getContainerOfType(context.container, isBbjClass)
+            const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
             var memberScope = EMPTY_STREAM;
             if (bbjType) {
                 if (context.container.instanceAccess) {
@@ -105,7 +106,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
 
             const memberAndImports = new StreamScopeWithPredicate(
-                memberScope.concat(this.importedBBjClasses(getContainerOfType(context.container, isProgram))),
+                memberScope.concat(this.importedBBjClasses(AstUtils.getContainerOfType(context.container, isProgram))),
                 this.superGetScope(context)
             )
 
@@ -154,7 +155,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         }
         switch (referenceType) {
             case Class: {
-                const program = getContainerOfType(_context.container, isProgram)
+                const program = AstUtils.getContainerOfType(_context.container, isProgram)
                 // when looking for classes return only JavaClasses. References are case sensitive
                 // Temporally add imported BBjClasses
                 return new StreamScopeWithPredicate(stream(this.importedBBjClasses(program)), new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass)));
@@ -183,7 +184,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false): StreamScope {
-        const document = getDocument(bbjType)
+        const document = AstUtils.getDocument(bbjType)
         const typeScope = document?.precomputedScopes?.get(bbjType)
         let descriptions: AstNodeDescription[] = []
         if (typeScope) {
@@ -200,7 +201,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // handle implicit extends java.lang.Object
             const javaObject = this.javaInterop.getResolvedClass('java.lang.Object');
             if (javaObject) {
-                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(javaObject.fields).concat(javaObject.methods)))
+                const members = stream(javaObject.fields).concat(javaObject.methods);
+                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(members))
             }
         }
         return this.createCaseSensitiveScope(descriptions)
@@ -288,11 +290,11 @@ export class BbjNameProvider extends DefaultNameProvider {
     static called = new Map<string | undefined, number>
 
     override getNameNode(node: AstNode): CstNode | undefined {
-        if (!getDocument(node)) {
+        if (!AstUtils.getDocument(node)) {
             // synthetic nodes
             return undefined
         }
-        return findNodeForProperty(node.$cstNode, 'name');
+        return GrammarUtils.findNodeForProperty(node.$cstNode, 'name');
     }
 }
 
