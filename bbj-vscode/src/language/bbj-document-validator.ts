@@ -1,6 +1,6 @@
 // This class extends DefaultDocumentValidator
 
-import { AstNode, DefaultDocumentValidator, DiagnosticInfo, DocumentValidator, getDiagnosticRange, toDiagnosticSeverity } from "langium";
+import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, toDiagnosticSeverity } from "langium";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 
 export class BBjDocumentValidator extends DefaultDocumentValidator {
@@ -11,7 +11,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         return {
             message,
             range: getDiagnosticRange(info),
-            severity: (info.data as any)?.code === DocumentValidator.LinkingError ? DiagnosticSeverity.Warning : toDiagnosticSeverity(severity),
+            severity: (info.data as DiagnosticData)?.code === DocumentValidator.LinkingError ? DiagnosticSeverity.Warning : toDiagnosticSeverity(severity),
             code: info.code,
             codeDescription: info.codeDescription,
             tags: info.tags,

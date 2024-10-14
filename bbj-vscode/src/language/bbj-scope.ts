@@ -201,7 +201,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // handle implicit extends java.lang.Object
             const javaObject = this.javaInterop.getResolvedClass('java.lang.Object');
             if (javaObject) {
-                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(javaObject.fields as any[]).concat(javaObject.methods as any[])))
+                const members = stream(javaObject.fields).concat(javaObject.methods);
+                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(members))
             }
         }
         return this.createCaseSensitiveScope(descriptions)

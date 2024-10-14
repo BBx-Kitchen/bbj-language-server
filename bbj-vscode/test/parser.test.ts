@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { AstUtils } from 'langium';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { CompoundStatement, LetStatement, Library, Model, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast.js';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast.js';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -326,7 +326,7 @@ describe('Parser Tests', () => {
 
         const program = result.parseResult.value as Program;
         const printStmt = program.statements.slice(-1).pop() as PrintStatement;
-        const refContainer = (ref: unknown) => (ref as SymbolRef).symbol.ref?.$container
+        const refContainer = (ref: OutputItem) => (ref as SymbolRef).symbol.ref?.$container
         expect(refContainer(printStmt.items[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
         expect(refContainer(printStmt.items[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
         expect(refContainer(printStmt.items[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
