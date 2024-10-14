@@ -135,7 +135,7 @@ function ownerClass(member: ClassMember): string {
 }
 
 export function methodSignature(nodeDescription: MethodData, typeAdjust: ((type: string) => string) = (t) => t ?? '') {
-    return `${nodeDescription.name}(${nodeDescription.parameters.map(p => `${typeAdjust(p.type)} ${p.name}${p.optional ? '?' : ''}`).join(', ')})`
+    return `${nodeDescription.name}(${nodeDescription.parameters.map(p => `${typeAdjust(p.type)} ${p.realName ?? p.name}${p.optional ? '?' : ''}`).join(', ')})`
 }
 
 function toMethodDocToMethodData(methodDoc: MethodDoc, node: JavaMethod): MethodData {

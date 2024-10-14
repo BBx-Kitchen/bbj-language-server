@@ -17,7 +17,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (isFunctionNodeDescription(nodeDescription)) {
 
             const label = (paramAdjust: ((param: string, index: number) => string) = (p, i) => p) =>
-                `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.name, idx)).join(', ')})`
+                `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.realName ?? p.name, idx)).join(', ')})`
 
             const retType = ': ' + toSimpleName(nodeDescription.returnType)
             // TODO load param names for java methods from Javadoc

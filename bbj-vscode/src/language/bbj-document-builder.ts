@@ -80,9 +80,6 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     langiumDocuments.addDocument(document);
                     addedDocuments.push(document.uri);
                 }
-            } else {
-                // log error?
-                // console.debug(`Imported path ${importPath} can not be resolved. Skipped.`)
             }
         }
         if (addedDocuments.length > 0) {
