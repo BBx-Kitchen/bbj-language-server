@@ -63,28 +63,26 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
         const addedDocuments: URI[] = []
         for (const importPath of bbjImports) {
-            const docFileDataPromise = prefixes.map(async prefixPath => {
+            const docFileContents = await Promise.all(prefixes.map(async prefixPath => {
                 const prefixedPath = URI.file(prefixPath + (prefixPath.endsWith('/') ? '' : '/') + importPath)
                 try {
                     const fileContent = await fsProvider.readFile(prefixedPath);
-                    return { uri: prefixedPath, text: fileContent }
+                    return { uri: prefixedPath, text: fileContent };
                 } catch (e) {
                     return undefined;
                 }
-            }).find(doc => doc !== undefined)
-
-            if(docFileDataPromise) {
-                const docFileData = await docFileDataPromise;
-                if (docFileData) {
-                    const document = documentFactory.fromString(docFileData.text, docFileData.uri);
-                    if (!langiumDocuments.hasDocument(document.uri)) {
-                        langiumDocuments.addDocument(document);
-                        addedDocuments.push(document.uri);
-                    }
-                } else {
-                    // log error?
-                    // console.debug(`Imported path ${importPath} can not be resolved. Skipped.`)
+            }));
+            
+            const docFileData = docFileContents.find(doc => doc !== undefined);
+            if (docFileData) {
+                const document = documentFactory.fromString(docFileData.text, docFileData.uri);
+                if (!langiumDocuments.hasDocument(document.uri)) {
+                    langiumDocuments.addDocument(document);
+                    addedDocuments.push(document.uri);
                 }
+            } else {
+                // log error?
+                // console.debug(`Imported path ${importPath} can not be resolved. Skipped.`)
             }
         }
         if (addedDocuments.length > 0) {
