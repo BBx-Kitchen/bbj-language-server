@@ -12,6 +12,7 @@ import {
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
+import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 
 const DEFAULT_PORT = 5008;
 
@@ -27,6 +28,7 @@ export class JavaInteropService {
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
+    protected javadocProvider = JavadocProvider.getInstance();
 
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
@@ -129,10 +131,12 @@ export class JavaInteropService {
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
-        const classpath = this.classpath;
+
+        javaClass.$type = JavaClass; // make isJavaClass work
 
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
         try {
+            const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
                 (field as Mutable<JavaField>).$type = JavaField;
                 field.resolvedType = {
@@ -142,16 +146,24 @@ export class JavaInteropService {
             }
             for (const method of javaClass.methods) {
                 (method as Mutable<JavaMethod>).$type = JavaMethod;
+                const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
+                    m => m.name == method.name
+                        && m.params.length === method.parameters.length
+                ) : [];
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token),
                     $refText: method.returnType
                 };
-                for (const parameter of method.parameters) {
+                for (const [index, parameter] of method.parameters.entries()) {
                     (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
                     parameter.resolvedType = {
                         ref: await this.resolveClassByName(parameter.type, token),
                         $refText: parameter.type
                     };
+                    if (methodDocs.length > 0) {
+                        // TODO check types of parameters
+                        parameter.realName = methodDocs[0].params[index]?.name
+                    }
                 }
                 AstUtils.linkContentToContainer(method);
             }
@@ -161,6 +173,7 @@ export class JavaInteropService {
         }
         AstUtils.linkContentToContainer(javaClass);
 
+        const classpath = this.classpath;
         javaClass.$type = JavaClass;
         javaClass.$container = classpath;
         javaClass.$containerProperty = 'classes';

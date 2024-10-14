@@ -46,4 +46,9 @@ export type MethodData = {
     returnType: string
 }
 
-export type ParameterData = { name: string, type: string, optional?: boolean }
+export type ParameterData = {
+    name: string
+    type: string
+    optional?: boolean
+    realName?: string
+}

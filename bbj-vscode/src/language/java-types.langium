@@ -46,6 +46,9 @@ interface JavaMethod extends NamedElement, Documented {
 interface JavaMethodParameter {
     name: string
     type: string
-
     resolvedType?: @JavaClass
+    /**
+     * In case of synthetic `arg` name the real name from the Javadoc if any.
+     */
+    realName: string
 }

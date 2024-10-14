@@ -175,3 +175,8 @@ export type MethodDoc = NamedDoc & {
 export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {
     return item !== undefined && (item as any).params !== undefined;
 }
+
+
+export function isClassDoc(item: NamedDoc | undefined): item is ClassDoc {
+    return item !== undefined && (item as any).methods !== undefined && (item as any).fields !== undefined;
+}
