@@ -25,15 +25,21 @@ Statement:
 
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+    SqlCloseStatement |
+    SqlCommitStatement |
+    SqlRollbackStatement |
 
     AddrStatement |
     ArrayDeclarationStatement |
+    BackgroundStatement |
     BeginStatement |
     CallbackStatement |
     CallStatement |
+    ChanOptStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
+    DeleteStatement |
     DirectStatement |
     DirStatement |
     DropStatement |
@@ -53,27 +59,32 @@ SingleStatement:
     KeyedFileStatement |
     LabelDecl |
     LetStatement |
+    LockStatement |
     MethodReturnStatement |
     NextStatement |
+    OnGotoStatement |
     OpenStatement |
     PrecisionStatement |
+    PrefixStatement |
     PrintStatement |
     ProcessEvent |
     ReadRecordStatement |
     ReadStatement |
     RedimStatement |
     RemoveCallbackStatement |
+    RemoveStatement |
     RenameStatement |
     RunStatement |
     SetErrorStatement |
     SetOptsStatement |
-    SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
+    StartStatement |
     StringStatement |
     SwitchStatement |
     ThrowStatement |
+    UnlockStatement |
     UntilStatement |
     Use |
     VariableDecl |
@@ -81,6 +92,48 @@ SingleStatement:
     WhileEndStatement |
     WhileStatement
 ;
+
+ChanOptStatement:
+    'CHANOPT' '(' channelno=Expression Mode? ')' str=Expression
+    ;
+
+RemoveStatement:
+    'REMOVE' '(' channelno=Expression Key Err? Dom? ')'
+    ;
+
+PrefixStatement:
+    'PREFIX' str=Expression
+    ;
+
+SqlCommitStatement:
+    'SQLCOMMIT' '(' sqlchan=Expression Err? ')'
+    ;
+
+SqlRollbackStatement:
+    'SQLROLLBACK' '(' sqlchan=Expression Err? ')'
+    ;
+
+StartStatement:
+    'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
+    ;
+
+LockStatement:
+    'LOCK' '(' channelno=Expression Err? ')'
+    ;
+
+UnlockStatement:
+    'UNLOCK' '(' channelno=Expression Err? ')'
+    ;
+
+DeleteStatement:
+    DELETE_STANDALONE
+    | 'DELETE' lineRefA=LabelRef comma?=ENDLINE_PRINT_COMMA?
+    | 'DELETE' comma?=',' lineRefB=LabelRef
+    | 'DELETE' lineRefA=LabelRef comma?=',' lineRefB=LabelRef
+    ;
+
+BackgroundStatement:
+    'BACKGROUND' str=Expression Err?;
 
 CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
@@ -178,7 +231,7 @@ MethodDecl returns MethodDecl:
     Comments?
     (
         (body+=Statement)*
-        'METHODEND'//FIXME Need to be forbiden for interfaces
+        endTag='METHODEND'
     )?
 ;
 
@@ -194,7 +247,7 @@ ParameterDecl returns VariableDecl:
  * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
  */
 ArrayDeclarationStatement:
-    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)*
+    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)* Err?
 ;
 
 ArrayDecl returns ArrayDecl:
@@ -258,6 +311,11 @@ GotoStatement:
     kind=('GOTO' | 'GOSUB') target=LabelRef
 ;
 
+OnGotoStatement:
+    'ON' int=Expression kind=('GOTO' | 'GOSUB') targets+=LabelRef (',' targets+=LabelRef)*
+    ;
+
+
 LabelRef infers Expression:
     SymbolicLabelRef | UserLabelRef
 ;
@@ -271,7 +329,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -296,12 +354,16 @@ LetStatement:
 ;
 
 PrintStatement:
+    PRINT_STANDALONE_NL
+    | 
     (
-        (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
-        | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        (
+            (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
+            | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        )
+        WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
     )
-     WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
-;
+    ;
 
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
@@ -326,8 +388,16 @@ fragment Err:
     ',' 'ERR' '=' err=LabelRef
 ;
 
+fragment Dom:
+    ',' 'DOM' '=' dom=LabelRef
+;
+
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
+;
+
+fragment Key:
+    ',' 'KEY' '=' key=Expression
 ;
 
 CallStatement:
@@ -452,7 +522,7 @@ BeginStatement:
 ;
 
 EnterStatement:
-   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)*)? Err?
+   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)* Err?)?
 ;
 
 SetOptsStatement:
@@ -606,7 +676,8 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
+    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START'
 ;
 
 // BBx Library
@@ -650,9 +721,9 @@ LibEventType returns LibEventType:
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
+terminal DELETE_STANDALONE: /_DELETE_STANDALONE/;
+terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
-terminal ENDLINE_RETURN: /_endline_return/;
-
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
@@ -700,7 +771,8 @@ interface MethodDecl extends NamedElement {
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
-    body: Statement[]
+    body: Statement[];
+    endTag?: string;
 }
 
 interface ArrayDecl extends VariableDecl {

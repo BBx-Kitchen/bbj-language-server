@@ -1,6 +1,6 @@
 import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
-import { parseHelper } from 'langium/test';
 import { AstUtils } from 'langium';
+import { expectError, parseHelper } from 'langium/test';
 import { describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast.js';
@@ -803,7 +803,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    test('Sql set statement', async () => {
+    test('Check SQLSET statement', async () => {
         const result = await parse(`
         value$ = "test"
         ch=2
@@ -1179,6 +1179,222 @@ describe('Parser Tests', () => {
                 print ""
             return
         `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check BACKGROUND statement", async () => {
+        const result = await parse(`
+                BACKGROUND "Menu"
+                BACKGROUND "Menu",ERR=error
+            error:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check DELETE statement", async () => {
+        const result = await parse(`
+                DELETE
+                DELETE label1
+                DELETE label1,
+                DELETE,label2
+                DELETE label1,label2
+
+            label1:
+                BACKGROUND "MENU"
+
+            label2:
+                BACKGROUND "MENU2"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+    
+    test("Check DIM statement", async () => {
+        const result = await parse(`
+                DIM A$(32000,$01$)
+                DIM B$(9),X[2,3],A$(9,"A")
+                DIM ARRAY$[10:20](10,"*")
+                DIM REC$:TEMP$
+                DIM B$(9),ERR=errorLabel
+            errorLabel:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check FOR... NEXT statement", async () => {
+        const result = await parse(`
+            FOR i=1 TO 10
+                PRINT "Number ", i
+            NEXT
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check INTERFACE statement", async () => {
+        const result = await parse(`
+            interface Nameable
+                method public BBjString name()
+            interfaceend
+
+            interface Person extends Nameable
+                method public BBjNumber id()
+            interfaceend
+
+            class Alice implements Nameable
+                method public BBjString name()
+                    methodret "Alice"
+                methodend
+            classend
+
+            class Bob implements Person
+                method public BBjNumber id()
+                    methodret 12345
+                methodend
+                method public BBjString name()
+                    methodret "Bob"
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check INTERFACE statement with method body", async () => {
+        const result = await parse(`
+            interface Chris
+                method public BBjNumber doIt()
+                methodend
+            interfaceend
+        `, { validation: true });
+        expect(result.diagnostics ?? []).toHaveLength(2);
+        expect(result.diagnostics![0].message).toBe("Could not resolve reference to Class named 'BBjNumber'.");
+        expect(result.diagnostics![1].message).toBe("Methods of interfaces must not have a METHODEND keyword!");
+    });
+
+    test("Check LOCK and UNLOCK statement", async () => {
+        const result = await parse(`
+                LOCK(1,err=labelError)
+                UNLOCK(1,err=labelError)
+            labelError:
+                LOCK(2)
+                UNLOCK(2)
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check STOP statement", async () => {
+        const result = await parse(`
+            STOP
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check RESET statement", async () => {
+        const result = await parse(`
+            RESET
+        `, {validation: true});
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check RETRY statement", async () => {
+        const result = await parse(`
+            RETRY
+        `, {validation: true});
+        expectNoParserLexerErrors(result);
+    });
+
+    test("Check START statement", async () => {
+        const result = await parse(`
+                START
+                START 255
+                START 123,456
+                START 123,456,"file.bbx"
+                START 123,"file.bbx"
+                START 255,err=labelError
+                START 123,456,err=labelError
+                START 123,456,err=labelError,"file.bbx"
+                START 123,err=labelError,"file.bbx"
+            labelError:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check SQLROLLBACK statement', async () => {
+        const result = await parse(`
+                SQLROLLBACK(1)
+                SQLROLLBACK(2,err=LabelError)
+            labelError:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+    
+    test('Check SQLCOMMIT statement', async () => {
+        const result = await parse(`
+            SQLOPEN(1,MODE="AUTO_COMMIT=OFF")"MyData"
+            SQLPREP(1)"INSERT INTO mytable VALUES ('10', 'Sample Record')"
+            SQLEXEC(1)
+            SQLCOMMIT(1,err=labelError)
+            SQLCLOSE(1)
+        labelError:
+            SQLCOMMIT(1)
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check SQLEXEC statement', async () => {
+        const result = await parse(`
+            LET SQL1=123
+            LET LAST_NAME$ = "Bob"
+            SQLPREP (SQL1)"select * from CUSTOMERS where LAST_NAME > ?"
+            REM Fill the ? gap with LAST_NAME$
+            SQLEXEC (SQL1)LAST_NAME$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check ON ... GOSUB statement', async () => {
+        const result = await parse(`
+                let A = 1
+                on A gosub label1,label2
+                on A gosub label1
+                A = -1
+                on A gosub label1,label2
+            label1:
+            label2:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check PREFIX statement', async () => {
+        const result = await parse(`
+            PREFIX "/BASIS/SOURCE/MS/ /PRO5/UTIL/"
+            prefix """C:\\Program Files\\"" ""C:\\temp\\"""
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check REMOVE statement', async () => {
+        const result = await parse(`
+                REMOVE(1,KEY="TEST KEY",ERR=label1,DOM=label1)
+                REMOVE(1,KEY="TEST KEY")
+                REMOVE(1,KEY="TEST KEY",ERR=label1)
+                REMOVE(1,KEY="TEST KEY",DOM=label1)
+            label1:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Check INPUT statement', async () => {
+        const result = await parse(`
+            INPUT "Id>", id$
+            INPUT "Price>", price$
+            INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+   
+    test('Check CHANOPT statement', async () => {
+        const result = await parse(`
+            CHANOPT (1,MODE="123") "BAUD=9600,MODE=8N1,XON/XOFF"
+        `, { validation: true });
         expectNoParserLexerErrors(result);
     });
 });
