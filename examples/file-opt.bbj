@@ -1,0 +1,5 @@
+    FILEOPT "test"
+    FILEOPT "test",MODE="a"
+    FILEOPT "test",ERR=labelError
+    FILEOPT "test",MODE="a",ERR=labelError
+labelError:

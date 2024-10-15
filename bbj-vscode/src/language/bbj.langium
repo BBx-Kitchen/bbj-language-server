@@ -36,6 +36,9 @@ SingleStatement:
     CallbackStatement |
     CallStatement |
     ChanOptStatement |
+    ClearPasswordStatement |
+    ClipOperationStatement |
+    ClipFileStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
@@ -43,6 +46,7 @@ SingleStatement:
     DirectStatement |
     DirStatement |
     DropStatement |
+    DumpStatement |
     ElseStatement |
     EnterStatement |
     EraseStatement |
@@ -50,14 +54,18 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
+    FileOptStatement |
     FnErrStatement |
     ForStatement |
+    FulltextStatement |
     GotoStatement |
     IfEndStatement |
     IfStatement |
+    IndexedStatement |
     InitFileStatement |
     KeyedFileStatement |
     LabelDecl |
+    LCheckInStatement |
     LetStatement |
     LockStatement |
     MethodReturnStatement |
@@ -74,9 +82,19 @@ SingleStatement:
     RemoveCallbackStatement |
     RemoveStatement |
     RenameStatement |
+    ResourceCloseStatement |
+    RestoreStatement |
     RunStatement |
+    SaveStatement |
+    SavePStatement |
+    SetDayStatement |
     SetErrorStatement |
     SetOptsStatement |
+    SetTerminalStatement |
+    SetTimeStatement |
+    SetTraceStatement |
+    SortStatement |
+    SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
@@ -86,12 +104,26 @@ SingleStatement:
     ThrowStatement |
     UnlockStatement |
     UntilStatement |
+    UpdateLicenseStatement |
     Use |
     VariableDecl |
     WaitStatement |
     WhileEndStatement |
-    WhileStatement
+    WhileStatement |
+    XCallStatement
 ;
+
+ClearPasswordStatement:
+    'CLEARP' password=Expression (',' level=Expression)?
+    ;
+
+ClipOperationStatement:
+    ('CLIPCLEAR'|'CLIPLOCK'|'CLIPUNLOCK') ('ERR' '=' err=LabelRef)?
+    ;
+
+ClipFileStatement:
+    ('CLIPFROMFILE'|'CLIPTOFILE') fmt=Expression ',' file=Expression Err?
+    ;
 
 ChanOptStatement:
     'CHANOPT' '(' channelno=Expression Mode? ')' str=Expression
@@ -139,13 +171,77 @@ CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
     ;
 
+DumpStatement:
+    'DUMP' ('(' channelno=Expression Mode? Err? Ind? ')')?
+    ;
+
+FileOptStatement:
+    'FILEOPT' str1=Expression Mode? Err?
+    ;
+
+FulltextStatement:
+    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
+    ;
+
+IndexedStatement:
+    'INDEXED' fileid=Expression ',' records=Expression ',' recsize=Expression Mode? Err?
+    ;
+
 RemoveCallbackStatement:
     'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? ')'
+    ;
+
+ResourceCloseStatement:
+    'RESCLOSE' '(' handle=Expression Err? ')'
+    ;
+
+RestoreStatement:
+    'RESTORE' lineref=LabelRef
+    ;
+
+SaveStatement:
+    'SAVE' (fileid=Expression (',' int=Expression)?)?
+    ;
+
+SavePStatement:
+    'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
+    ;
+
+SetDayStatement:
+    'SETDAY' string=Expression
+    ;
+
+SetTerminalStatement:
+    'SETTERM' alias=Expression Mode? Err?
+    ;
+
+SetTimeStatement:
+    'SETTIME' num=Expression Err?
+    ;
+
+SetTraceStatement:
+    'SETTRACE' ('(' channelno=Expression Mode? Err? ')')?
+    ;
+
+SortStatement:
+    'SORT' fileid=Expression ',' keysize=Expression ',' records=Expression Mode? Err?
+    ;
+
+UpdateLicenseStatement:
+    'UPDATELIC' ('ERR' '=' lineref=LabelRef)?
+    ;
+
+XCallStatement:
+    'XCALL' argument=Expression Mode? Err? Tim? (',' exprlist+=Expression)*
     ;
 
 InitFileStatement:
     'INITFILE' file=Expression Options?
 ;
+
+LCheckInStatement:
+    'LCHECKIN' '(' handle=Expression Err? ')'
+    ;
 
 EraseStatement:
     'ERASE' items+=Expression (',' items+=(Option | Expression))*
@@ -329,7 +425,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'FLOATINGPOINT' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -398,7 +494,15 @@ fragment Mode:
 
 fragment Key:
     ',' 'KEY' '=' key=Expression
-;
+    ;
+
+fragment Ind:
+    ',' 'IND' '=' index=Expression
+    ;
+
+fragment Tim:
+    ',' 'TIM' '=' index=Expression
+    ;
 
 CallStatement:
     'CALL' fileid=Expression Err? (',' expressions+=Expression)*
@@ -514,7 +618,7 @@ ThrowStatement:
 ;
 
 ProcessEvent:
-    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' tim=Expression)? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' Tim? Err?
 ;
 
 BeginStatement:
@@ -678,6 +782,7 @@ EscapeId returns string:
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
     | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
+    | 'FILEOPT'
 ;
 
 // BBx Library

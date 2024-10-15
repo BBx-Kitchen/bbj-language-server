@@ -1,9 +1,9 @@
 import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { AstUtils } from 'langium';
 import { expectError, parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
-import { createBBjServices } from '../src/language/bbj-module.js';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast.js';
+import { beforeAll, describe, expect, test } from 'vitest';
+import { createBBjServices } from '../src/language/bbj-module';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -22,6 +22,8 @@ describe('Parser Tests', () => {
     function expectToContainAstNodeType<N extends AstNode>(document: LangiumDocument, predicate: (ast: AstNode) => ast is N) {
         expect(AstUtils.streamAst(document.parseResult.value).some(predicate)).toBeTruthy();
     }
+
+    beforeAll(() => services.shared.workspace.WorkspaceManager.initializeWorkspace([]));
 
     test('Program definition test', async () => {
         const program = await parse(`
@@ -368,7 +370,7 @@ describe('Parser Tests', () => {
         release
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        expect(result.diagnostics).toHaveLength(1); // 1 for linking error on *same
+        expectNoValidationErrors(result);
     });
 
     test('Array declaration and access tests', async () => {
@@ -428,15 +430,18 @@ describe('Parser Tests', () => {
         X$="STRING:C(6)"
         DIM A$:X$
         REDIM A$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Multiple Array declaration and access tests', async () => {
         const result = await parse(`
+        let rd_num_files = 123
         dim rd_open_tables$[1:rd_num_files],rd_open_opts$[1:rd_num_files],rd_open_chans$[1:rd_num_files],rd_open_tpls$[1:rd_num_files]
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check throw statement syntax', async () => {
@@ -452,8 +457,9 @@ describe('Parser Tests', () => {
                 throw errmes(-1), err
             methodend
         classend
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Check throw statement syntax with ERR=linefref', async () => {
@@ -469,8 +475,9 @@ describe('Parser Tests', () => {
                 throw errmes(-1), err, err=STOP
             methodend
         classend
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Check substring expression on array element', async () => {
@@ -485,12 +492,14 @@ describe('Parser Tests', () => {
         let x$ = ""
         if x$(10,10) = "" then print "if47" ; rem substring
         if len(cvs(x$(10,10),3)) = 0 then print "if47" ; rem substring
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check substring expression ', async () => {
         const result = await parse(`
+        let serverfile = 1
         let NAME$ = "name"
         NAME$(1,5); rem substring
         NAME$(10); rem substring
@@ -503,23 +512,26 @@ describe('Parser Tests', () => {
 
         bytes = dec(fin(serverfile)(1,4))
         a$=STR(1234)(1,2)
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check substring other cases ', async () => {
         const result = await parse(`
         new String()(1)
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Use Symbolic label in a verb', async () => {
         const result = await parse(`
         serverfile$ = "test"
         open (7, err=*next)serverfile$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check readrecord and similar', async () => {
@@ -530,8 +542,9 @@ describe('Parser Tests', () => {
         INPUTRECORD(1,IND=2,ERR=9500)A$
         EXTRACTRECORD(1,IND=2,ERR=9500)A$
         FINDRECORD(1,IND=2,ERR=9500)A$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check read and similar, with record', async () => {
@@ -542,8 +555,9 @@ describe('Parser Tests', () => {
         INPUT RECORD(1,IND=2,ERR=9500)A$
         EXTRACT RECORD(1,IND=2,ERR=9500)A$
         FIND RECORD(1,IND=2,ERR=9500)A$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check CALL and RUN', async () => {
@@ -554,8 +568,9 @@ describe('Parser Tests', () => {
         X!=23
         CALL "subprog",(X!), ERR=errorCase
         errorCase: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isRunStatement);
         expectToContainAstNodeType(result, isCallStatement);
     });
@@ -564,8 +579,9 @@ describe('Parser Tests', () => {
         const result = await parse(`
         process_events,err=*same
         process_events, TIM = 28, err=*next
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check Reserved keywords', async () => {
@@ -576,8 +592,9 @@ describe('Parser Tests', () => {
             METHODEND
       
         classend
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
     
     test('Check Open Verb optional params keywords', async () => {
@@ -587,8 +604,9 @@ describe('Parser Tests', () => {
         OPEN (unt,ISZ=0,TIM=5,mode="",ERR=errorCase)"path/"+"html.png"
         OPEN (unt)"path/"+"html.png"
         errorCase:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
     
     test('Check SQLOpen Verb', async () => {
@@ -596,8 +614,9 @@ describe('Parser Tests', () => {
         SQLOPEN(1,mode="SQLDriverConnect",err=*next)"datasource"
         SQLOPEN(1,err=*next)"datasource"
         SQLOPEN(1)"datasource"
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check Begin Clear Verb', async () => {
@@ -609,16 +628,18 @@ describe('Parser Tests', () => {
         BEGIN EXCEPT foo$, PARAMS[ALL], foo$
         CLEAR
         CLEAR EXCEPT foo$, PARAMS[ALL], foo$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check Drop Verb', async () => {
         const result = await parse(`
         DROP "TEST.BBX", ERR=*next
         DROP "TEST.BBX"
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check Exit Verbs', async () => {
@@ -629,8 +650,9 @@ describe('Parser Tests', () => {
         BREAK
         CONTINUE
         ESCAPE
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check Enter Verb', async () => {
@@ -750,32 +772,36 @@ describe('Parser Tests', () => {
         rename tmpname$ TO newname$, MODE="REPLACE", ERR=Jump
 
         Jump:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Release usage', async () => {
         const result = await parse(`
         requestSemaphore! = BBjAPI().getGlobalNamespace().getValue()
         requestSemaphore!.release()
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Call: fileId as expression', async () => {
         const result = await parse(`
         authpgm$ = "test"
         call authpgm$+"::PRE_AUTHENTICATION", err=*next
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Read with err option using symbolic label ref', async () => {
         const result = await parse(`
         ch = 2
         read record (ch,end=*break)log$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Dir statements', async () => {
@@ -785,8 +811,9 @@ describe('Parser Tests', () => {
         chdir "REST_WD", err=*next
         rmdir "REST_WD"
         rmdir "REST_WD", err=*next
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Array type ref', async () => {
@@ -799,8 +826,9 @@ describe('Parser Tests', () => {
             method public String[] createHTML(byte[] bytes)
             methodend
         classend
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
     });
 
     test('Check SQLSET statement', async () => {
@@ -809,8 +837,9 @@ describe('Parser Tests', () => {
         ch=2
         i=3
         sqlset(ch)i,value$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Execute statement', async () => {
@@ -818,8 +847,9 @@ describe('Parser Tests', () => {
         invokeCommand! = "test"
         execute invokeCommand!, err=Jump
         Jump:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check DEF FN... verb', async () => {
@@ -834,8 +864,9 @@ describe('Parser Tests', () => {
             WEND
             RETURn Y
         FNEND
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check WHILE verb', async () => {
@@ -846,15 +877,17 @@ describe('Parser Tests', () => {
                 A = A + 1
                 PRINT A        
             WEND
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check WAIT verb', async () => {
         const result = await parse(`
             WAIT 123
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isWaitStatement);
     });
 
@@ -867,8 +900,9 @@ describe('Parser Tests', () => {
                 CASE 2; PRINT "Middle"; BREAK
                 CASE DEFAULT; PRINT "Hard"; BREAK
             SWEND
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isSwitchStatement);
         expectToContainAstNodeType(result, isSwitchCase);
     });
@@ -884,8 +918,9 @@ describe('Parser Tests', () => {
             INPUT "Price>", price$
             SQLEXEC(1) id$, price$
             GOTO LOOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isSqlPrepStatement);
     });
 
@@ -896,8 +931,9 @@ describe('Parser Tests', () => {
                 SQLCLOSE(1,ERR=Labl)
                 return
             Labl: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isSqlCloseStatement);
     });
 
@@ -905,8 +941,9 @@ describe('Parser Tests', () => {
         const result = await parse(`
             RELEASE 123
             RELEASE
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isExitWithNumberStatement);
     });
 
@@ -917,8 +954,9 @@ describe('Parser Tests', () => {
                     REDIM fin$
                     REDIM fin$,fin$,ERR=ErrorLabel
             ErrorLabel: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        //TODO expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isRedimStatement);
     });
 
@@ -927,8 +965,9 @@ describe('Parser Tests', () => {
             ADDR "MYPROG"
             ADDR "MYPROG", ERR=ErrorLabel
             ErrorLabel: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isAddrStatement);
     });
 
@@ -941,8 +980,9 @@ describe('Parser Tests', () => {
                     CLIPFROMSTR 1,str$
                     CLIPFROMSTR 1,str$,ERR=ErrorLabel
             ErrorLabel: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isClipFromStrStatement);
     });
 
@@ -951,8 +991,9 @@ describe('Parser Tests', () => {
             Start:  CLOSE (1)
                     CLOSE (1,ERR=ErrorLabel)
             ErrorLabel: STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isCloseStatement);
     });
 
@@ -961,10 +1002,12 @@ describe('Parser Tests', () => {
             Start:  GOSUB func
                     STOP
             func:   REM SUBROUTINE
+                    LET C=2;
                     LET A=50; LET B=A * C / 2; PRINT B
                     RETURN
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isGotoStatement);
     });
 
@@ -973,21 +1016,24 @@ describe('Parser Tests', () => {
             start:  GOTO region
                     STOP
             region: REM and so on
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isGotoStatement);
     });
 
     describe("Check PRINT/WRITE verb", () => {
         test("With Jump labels", async() => {
             const result = await parse(`
+                    LET str$="hallo"
                     WRITE (0, ERR=ErrorJump,END=EndJump) str$
                     PRINT (0, ERR=ErrorJump,END=EndJump) str$
                     ? (0) str$
                 ErrorJump: exit
                 EndJump: exit
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -995,8 +1041,9 @@ describe('Parser Tests', () => {
             const result = await parse(`
                 WRITE "Hallo!"
                 WRITE (0, DIR=-1) "?"
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -1004,8 +1051,9 @@ describe('Parser Tests', () => {
             const result = await parse(`
                 WRITE (0, IND=0) "Pardon?!"
                 PRINT (0, IND=0) "Pardon?!"
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -1017,8 +1065,9 @@ describe('Parser Tests', () => {
                 REM https://documentation.basis.cloud/BASISHelp/WebHelp/commands/write_verb.htm
                 REM WRITE (0, KEY="127.0.0.1") "ip-value"
                 REM WRITE (0, KEY="127.0.0.1":8080) "ip-value"
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -1027,8 +1076,9 @@ describe('Parser Tests', () => {
                     WRITE (0, TBL=TableLine) "abcdef"
                     PRINT (0, TBL=TableLine) "abcdef"
                 TableLine: REM TODO add TABLE verb here
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -1037,8 +1087,9 @@ describe('Parser Tests', () => {
                     WRITE (0, TIM=5, ERR=ErrorJump) "123456"
                     PRINT (0, TIM=5, ERR=ErrorJump) "123456"
                 ErrorJump: exit
-            `);
+            `, { validation: true });
             expectNoParserLexerErrors(result);
+            expectNoValidationErrors(result);
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
@@ -1050,8 +1101,9 @@ describe('Parser Tests', () => {
         const result = await parse(`
             C = 5
             LET C=100
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isLetStatement);
     });
 
@@ -1062,8 +1114,9 @@ describe('Parser Tests', () => {
         funcNoReturn:
             PRINT "we do something and RETURN"
             RETURN
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Return statement with lowcase', async () => {
@@ -1072,8 +1125,9 @@ describe('Parser Tests', () => {
 
         funcWithReturn:
             return
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('ClientObject - access with @. Issue: #57', async () => {
@@ -1092,8 +1146,9 @@ describe('Parser Tests', () => {
                 INITFILE "TEST",mode="",err=errorCase
                 INITFILE "TEST2"
             errorCase:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check ERASE verb", async() => {
@@ -1103,8 +1158,9 @@ describe('Parser Tests', () => {
             ERASE "TEST3",err=errorCase
             ERASE "TEST4"
             errorCase:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
     test("Check ERASE verb multiple files", async() => {
         const result = await parse(`
@@ -1113,8 +1169,9 @@ describe('Parser Tests', () => {
             ERASE "TEST1", "TEST2", "TEST3", err=errorCase
             ERASE "TEST1", "TEST2", "TEST3"
             errorCase:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check STRING verb", async () => {
@@ -1122,8 +1179,9 @@ describe('Parser Tests', () => {
                  STRING "TEST",mode="",err=errorCase
                  STRING "TEST2"
              errorCase:
-         `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check DIRECT verb", async () => {
@@ -1131,8 +1189,9 @@ describe('Parser Tests', () => {
                 DIRECT "TEST",10,100,512,ERR=errorCase
                 DIRECT "TEST",10,100,512
             errorCase:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check CALLBACK verb", async () => {
@@ -1143,8 +1202,9 @@ describe('Parser Tests', () => {
             handler: ENTER
                 REM do something
                 EXIT
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check REMOVE_CALLBACK verb", async () => {
@@ -1152,16 +1212,18 @@ describe('Parser Tests', () => {
             CONTEXT = 0
             REMOVE_CALLBACK(ON_CLOSE,CONTEXT,0)
             REMOVE_CALLBACK(ON_CLOSE,CONTEXT)
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check mnenonic lowcase", async () => {
         const result = await parse(`
             print 'hide'
             print 'lf'
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check return statement expect no parameter", async () => {
@@ -1178,8 +1240,284 @@ describe('Parser Tests', () => {
                 REM do something else
                 print ""
             return
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check CLEARP statement", async () => {
+        const result = await parse(`
+            CLEARP "password",123
+            CLEARP "hallo"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check CLIPCLEAR statement", async () => {
+        const result = await parse(`
+            CLIPCLEAR ERR=labelError
+            CLIPCLEAR
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check CLIPFROMFILE statement", async () => {
+        const result = await parse(`
+            CLIPFROMFILE "format1","file.txt",ERR=labelError
+            CLIPFROMFILE "format1","file.txt"
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check CLIPTOFILE statement", async () => {
+        const result = await parse(`
+            CLIPTOFILE "format1","file.txt",ERR=labelError
+            CLIPTOFILE "format1","file.txt"
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check CLIPLOCK/UNLOCK statement", async () => {
+        const result = await parse(`
+            CLIPLOCK ERR=labelError
+            CLIPLOCK
+            CLIPUNLOCK ERR=labelError
+            CLIPUNLOCK
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+    
+    test("Check DENUM statement", async () => {
+        const result = await parse(`
+            DENUM
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check DUMP statement", async () => {
+        const result = await parse(`
+            DUMP
+            DUMP (0,MODE="NAME=X$,NAME=I")
+            DUMP (0,MODE="CHANNELS")
+            DUMP (1)
+            DUMP (1,ERR=labelError)
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check ENDTRACE statement", async () => {
+        const result = await parse(`
+            ENDTRACE
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check FILEOPT statement", async () => {
+        const result = await parse(`
+            FILEOPT "test"
+            FILEOPT "test",MODE="a"
+            FILEOPT "test",ERR=labelError
+            FILEOPT "test",MODE="a",ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check FLOATINGPOINT statement", async () => {
+        const result = await parse(`
+            BEGIN
+            LET T=999999.99999
+            PRINT T
+            FLOATINGPOINT
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check FULLTEXT statement", async () => {
+        const result = await parse(`
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID"
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",MODE="abc"
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",ERR=labelError
+            FULLTEXT "file.db","ID:C(32),DOCUMENT:C(32767*)","ID",MODE="123",ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check INDEXED statement", async () => {
+        const result = await parse(`
+            INDEXED "TEST2",300,190
+            INDEXED "TEST2",300,190,ERR=labelError
+            INDEXED "TEST2",300,190,MODE="XXX"
+            INDEXED "TEST2",300,190,MODE="XXX",ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check LCHECKIN statement", async () => {
+        const result = await parse(`
+            LCHECKIN(1)
+            LCHECKIN(1,ERR=labelError)
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check RESCLOSE statement", async () => {
+        const result = await parse(`
+            RESCLOSE(2)
+            RESCLOSE(1,ERR=labelError)
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check RESTORE statement", async () => {
+        const result = await parse(`
+            RESTORE labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SAVE statement", async () => {
+        const result = await parse(`
+            SAVE
+            SAVE "file.txt"
+            SAVE "file.txt",100
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SAVEP statement", async () => {
+        const result = await parse(`
+            REM ' SAVEP with the unclearable password.
+            SAVEP "program.bbj", 0
+            SAVEP "program.bbj", $$, 0
+            SAVEP "program.bbj"
+
+            REM ' SAVEP with the password "password"
+            SAVEP "program.bbj", "password", 0
+            SAVEP "program.bbj", "password"
+            SAVEP
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SETDAY statement", async () => {
+        const result = await parse(`
+            SETDAY "09/15/96"
+            SETDAY "non-sense"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SETTERM statement", async () => {
+        const result = await parse(`
+            SETTERM "alias"
+            SETTERM "alias",MODE="123"
+            SETTERM "alias",ERR=labelError
+            SETTERM "alias",MODE="123",ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SETTIME statement", async () => {
+        const result = await parse(`
+            SETTIME 10.5
+            SETTIME 24.5,ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SETTRACE statement", async () => {
+        const result = await parse(`
+            SETTRACE
+            SETTRACE(1)
+            SETTRACE(1,ERR=labelError)
+            SETTRACE(1,MODE="hallo")
+            SETTRACE(1,MODE="xxx",ERR=labelError)
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check SORT statement", async () => {
+        const result = await parse(`
+            SORT "TEST.BBX",10,100,ERR=labelError
+            SORT "TEST.BBX",10,100,MODE="123",ERR=labelError
+            SORT "TEST.BBX",10,100,MODE="XXX"
+            SORT "TEST.BBX",10,100
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test.skip("Check TABLE statement", async () => {
+        const result = await parse(`
+            REM EBCDIC to ASCII conversion (ISO 8859/1)
+            TABLE FF 00 01 02 03 9C 09 86 7F 97 8D 8E 0B 0C 0D 0E 0F 10 11 12 13 9D 85 08 87 18 19 92 8F 1C 1D 1E
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check UPDATELIC statement", async () => {
+        const result = await parse(`
+            UPDATELIC
+            UPDATELIC ERR=labelError
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test("Check XCALL statement", async () => {
+        const result = await parse(`
+            REM Hello_caller.bbx (compile with pro5cpl)
+            LET NAME$="Nico"
+            LET RESPONSE$=""
+            XCALL "hello.bbj",NAME$,RESPONSE$
+            PRINT "Response was: ",RESPONSE$
+
+            REM Other stuff
+            XCALL "hello.bbj",MODE="mode"
+            XCALL "hello.bbj",ERR=labelError,NAME$,RESPONSE$
+            XCALL "hello.bbj",TIM=123,NAME$,RESPONSE$
+        labelError:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check BACKGROUND statement", async () => {
