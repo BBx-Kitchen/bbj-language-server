@@ -178,7 +178,6 @@ describe('BBj validation', async () => {
         const validationResult = await validate(`
             let fp = FPT(1)
         `);
-        console.log(validationResult.diagnostics[0].message)
         expectNoIssues(validationResult);
     });
 

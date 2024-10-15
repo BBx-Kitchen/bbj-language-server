@@ -84,6 +84,13 @@ In BBj 6.0 and higher, the CAST() function takes a type name and an object and r
 CAST(param:object, param: object, ERR?:lineref): object
 
 /@@
+\`CHANOPT(channelno{, ERR:lineref})\`
+
+The CHANOPT() function returns the current settings that are accessible using the CHANOPT verb for the specified channel.
+@/
+CHANOPT(param:int, ERR?:lineref): object
+
+/@@
 \`CLIENTENV(str{,IND=int}{,ERR:lineref})\`
 
 In BBj 4.0 and higher, the CLIENTENV() function returns the value of a specified operating system environment variable from the client side of a thin client session.
