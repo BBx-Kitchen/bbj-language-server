@@ -5,19 +5,21 @@
  ******************************************************************************/
 
 import { EmptyFileSystem } from 'langium';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
-const validate = validationHelper<Program>(services.BBj);
-
 describe('BBj validation', async () => {
+    let validate: ReturnType<typeof validationHelper<Program>>;
 
-    await initializeWorkspace(services.shared);
+    beforeAll(async () => {
+        const services = createBBjServices(EmptyFileSystem);
+        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        validate = validationHelper<Program>(services.BBj);
+    });
 
     test('Symbolic link reference starts with', async () => {
         const validationResult = await validate(`
@@ -179,9 +181,10 @@ describe('BBj validation', async () => {
             WHILE X<>0
                 LET TEMP=X, X=MOD(Y,X), Y=TEMP
             WEND
-            RETURn Y
+            RETURN Y
         FNEND
         `);
+        (validationResult.diagnostics ?? []).forEach(r => console.log(r.message));
         expectNoIssues(validationResult);
     });
 
