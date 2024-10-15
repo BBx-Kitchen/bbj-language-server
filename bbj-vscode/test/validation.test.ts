@@ -13,11 +13,11 @@ import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isK
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
+    const services = createBBjServices(EmptyFileSystem);
     let validate: ReturnType<typeof validationHelper<Program>>;
 
     beforeAll(async () => {
-        const services = createBBjServices(EmptyFileSystem);
-        await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
+        await initializeWorkspace(services.shared);
         validate = validationHelper<Program>(services.BBj);
     });
 
@@ -174,6 +174,14 @@ describe('BBj validation', async () => {
        
     });
 
+    test('Link a function call', async () => {
+        const validationResult = await validate(`
+            let fp = FPT(1)
+        `);
+        console.log(validationResult.diagnostics[0].message)
+        expectNoIssues(validationResult);
+    });
+
     test('Line breaks RETURN', async () => {
         const validationResult = await validate(`
         DEF FNGCF(X,Y)
@@ -184,7 +192,6 @@ describe('BBj validation', async () => {
             RETURN Y
         FNEND
         `);
-        (validationResult.diagnostics ?? []).forEach(r => console.log(r.message));
         expectNoIssues(validationResult);
     });
 
