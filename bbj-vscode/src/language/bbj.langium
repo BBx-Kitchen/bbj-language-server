@@ -25,18 +25,28 @@ Statement:
 
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+    SqlCloseStatement |
+    SqlCommitStatement |
+    SqlRollbackStatement |
 
     AddrStatement |
     ArrayDeclarationStatement |
+    BackgroundStatement |
     BeginStatement |
     CallbackStatement |
     CallStatement |
+    ChanOptStatement |
+    ClearPasswordStatement |
+    ClipOperationStatement |
+    ClipFileStatement |
     ClipFromStrStatement |
     CloseStatement |
     CommentStatement |
+    DeleteStatement |
     DirectStatement |
     DirStatement |
     DropStatement |
+    DumpStatement |
     ElseStatement |
     EnterStatement |
     EraseStatement |
@@ -44,55 +54,194 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     ExpressionStatement |
+    FileOptStatement |
     FnErrStatement |
     ForStatement |
+    FulltextStatement |
     GotoStatement |
     IfEndStatement |
     IfStatement |
+    IndexedStatement |
     InitFileStatement |
     KeyedFileStatement |
     LabelDecl |
+    LCheckInStatement |
     LetStatement |
+    LockStatement |
     MethodReturnStatement |
     NextStatement |
+    OnGotoStatement |
     OpenStatement |
     PrecisionStatement |
+    PrefixStatement |
     PrintStatement |
     ProcessEvent |
     ReadRecordStatement |
     ReadStatement |
     RedimStatement |
     RemoveCallbackStatement |
+    RemoveStatement |
     RenameStatement |
+    ResourceCloseStatement |
+    RestoreStatement |
     RunStatement |
+    SaveStatement |
+    SavePStatement |
+    SetDayStatement |
     SetErrorStatement |
     SetOptsStatement |
+    SetTerminalStatement |
+    SetTimeStatement |
+    SetTraceStatement |
+    SortStatement |
     SqlCloseStatement |
     SqlOpenStatement |
     SqlOpStatement |
     SqlPrepStatement |
+    StartStatement |
     StringStatement |
     SwitchStatement |
     ThrowStatement |
+    UnlockStatement |
     UntilStatement |
+    UpdateLicenseStatement |
     Use |
     VariableDecl |
     WaitStatement |
     WhileEndStatement |
-    WhileStatement
+    WhileStatement |
+    XCallStatement
 ;
+
+ClearPasswordStatement:
+    'CLEARP' password=Expression (',' level=Expression)?
+    ;
+
+ClipOperationStatement:
+    ('CLIPCLEAR'|'CLIPLOCK'|'CLIPUNLOCK') ('ERR' '=' err=LabelRef)?
+    ;
+
+ClipFileStatement:
+    ('CLIPFROMFILE'|'CLIPTOFILE') fmt=Expression ',' file=Expression Err?
+    ;
+
+ChanOptStatement:
+    'CHANOPT' '(' channelno=Expression Mode? ')' str=Expression
+    ;
+
+RemoveStatement:
+    'REMOVE' '(' channelno=Expression Key Err? Dom? ')'
+    ;
+
+PrefixStatement:
+    'PREFIX' str=Expression
+    ;
+
+SqlCommitStatement:
+    'SQLCOMMIT' '(' sqlchan=Expression Err? ')'
+    ;
+
+SqlRollbackStatement:
+    'SQLROLLBACK' '(' sqlchan=Expression Err? ')'
+    ;
+
+StartStatement:
+    'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
+    ;
+
+LockStatement:
+    'LOCK' '(' channelno=Expression Err? ')'
+    ;
+
+UnlockStatement:
+    'UNLOCK' '(' channelno=Expression Err? ')'
+    ;
+
+DeleteStatement:
+    DELETE_STANDALONE
+    | 'DELETE' lineRefA=LabelRef comma?=ENDLINE_PRINT_COMMA?
+    | 'DELETE' comma?=',' lineRefB=LabelRef
+    | 'DELETE' lineRefA=LabelRef comma?=',' lineRefB=LabelRef
+    ;
+
+BackgroundStatement:
+    'BACKGROUND' str=Expression Err?;
 
 CallbackStatement:
     'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    ;
+
+DumpStatement:
+    'DUMP' ('(' channelno=Expression Mode? Err? Ind? ')')?
+    ;
+
+FileOptStatement:
+    'FILEOPT' str1=Expression Mode? Err?
+    ;
+
+FulltextStatement:
+    'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
+    ;
+
+IndexedStatement:
+    'INDEXED' fileid=Expression ',' records=Expression ',' recsize=Expression Mode? Err?
     ;
 
 RemoveCallbackStatement:
     'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? ')'
     ;
 
+ResourceCloseStatement:
+    'RESCLOSE' '(' handle=Expression Err? ')'
+    ;
+
+RestoreStatement:
+    'RESTORE' lineref=LabelRef
+    ;
+
+SaveStatement:
+    'SAVE' (fileid=Expression (',' int=Expression)?)?
+    ;
+
+SavePStatement:
+    'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
+    ;
+
+SetDayStatement:
+    'SETDAY' string=Expression
+    ;
+
+SetTerminalStatement:
+    'SETTERM' alias=Expression Mode? Err?
+    ;
+
+SetTimeStatement:
+    'SETTIME' num=Expression Err?
+    ;
+
+SetTraceStatement:
+    'SETTRACE' ('(' channelno=Expression Mode? Err? ')')?
+    ;
+
+SortStatement:
+    'SORT' fileid=Expression ',' keysize=Expression ',' records=Expression Mode? Err?
+    ;
+
+UpdateLicenseStatement:
+    'UPDATELIC' ('ERR' '=' lineref=LabelRef)?
+    ;
+
+XCallStatement:
+    'XCALL' argument=Expression Mode? Err? Tim? (',' exprlist+=Expression)*
+    ;
+
 InitFileStatement:
     'INITFILE' file=Expression Options?
 ;
+
+LCheckInStatement:
+    'LCHECKIN' '(' handle=Expression Err? ')'
+    ;
 
 EraseStatement:
     'ERASE' items+=Expression (',' items+=(Option | Expression))*
@@ -178,7 +327,7 @@ MethodDecl returns MethodDecl:
     Comments?
     (
         (body+=Statement)*
-        'METHODEND'//FIXME Need to be forbiden for interfaces
+        endTag='METHODEND'
     )?
 ;
 
@@ -194,7 +343,7 @@ ParameterDecl returns VariableDecl:
  * https://documentation.basis.cloud/BASISHelp/WebHelp/commands/dim_verb.htm
  */
 ArrayDeclarationStatement:
-    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)*
+    'DIM' items+= ArrayDecl (',' items+=ArrayDecl)* Err?
 ;
 
 ArrayDecl returns ArrayDecl:
@@ -213,7 +362,7 @@ RedimStatement:
 ;
 
 LabelDecl returns LabelDecl:
-    name=ID':'
+    name=ValidName':'
 ;
 
 ForStatement:
@@ -258,6 +407,11 @@ GotoStatement:
     kind=('GOTO' | 'GOSUB') target=LabelRef
 ;
 
+OnGotoStatement:
+    'ON' int=Expression kind=('GOTO' | 'GOSUB') targets+=LabelRef (',' targets+=LabelRef)*
+    ;
+
+
 LabelRef infers Expression:
     SymbolicLabelRef | UserLabelRef
 ;
@@ -271,7 +425,7 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'END' | 'ESCAPE' | 'REPEAT' | 'RETURN' | 'STOP')
+    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'FLOATINGPOINT' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -296,12 +450,16 @@ LetStatement:
 ;
 
 PrintStatement:
+    PRINT_STANDALONE_NL
+    | 
     (
-        (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
-        | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        (
+            (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
+            | (record?=('PRINTRECORD' | 'WRITERECORD'))
+        )
+        WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
     )
-     WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
-;
+    ;
 
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
@@ -326,9 +484,25 @@ fragment Err:
     ',' 'ERR' '=' err=LabelRef
 ;
 
+fragment Dom:
+    ',' 'DOM' '=' dom=LabelRef
+;
+
 fragment Mode:
     ',' 'MODE' '=' mode=Expression
 ;
+
+fragment Key:
+    ',' 'KEY' '=' key=Expression
+    ;
+
+fragment Ind:
+    ',' 'IND' '=' index=Expression
+    ;
+
+fragment Tim:
+    ',' 'TIM' '=' index=Expression
+    ;
 
 CallStatement:
     'CALL' fileid=Expression Err? (',' expressions+=Expression)*
@@ -444,7 +618,7 @@ ThrowStatement:
 ;
 
 ProcessEvent:
-    {infer ProcessEvent} 'PROCESS_EVENTS' (',' 'TIM' '=' tim=Expression)? Err?
+    {infer ProcessEvent} 'PROCESS_EVENTS' Tim? Err?
 ;
 
 BeginStatement:
@@ -452,7 +626,7 @@ BeginStatement:
 ;
 
 EnterStatement:
-   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)*)? Err?
+   'ENTER' (variables+=InputVariable (',' variables+=InputVariable)* Err?)?
 ;
 
 SetOptsStatement:
@@ -606,7 +780,9 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
+    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
+    | 'FILEOPT'
 ;
 
 // BBx Library
@@ -650,9 +826,9 @@ LibEventType returns LibEventType:
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
+terminal DELETE_STANDALONE: /_DELETE_STANDALONE/;
+terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
-terminal ENDLINE_RETURN: /_endline_return/;
-
 terminal NEXT_TOKEN: /_next/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
@@ -700,7 +876,8 @@ interface MethodDecl extends NamedElement {
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
-    body: Statement[]
+    body: Statement[];
+    endTag?: string;
 }
 
 interface ArrayDecl extends VariableDecl {

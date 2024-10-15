@@ -1,0 +1,3 @@
+start:  GOTO region
+        STOP
+region: REM and so on

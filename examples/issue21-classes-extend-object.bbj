@@ -1,0 +1,10 @@
+REM classes extend Object
+class public MyClass
+classend
+
+t = new MyClass()
+REM hovering toString points to Object.toString()
+? t.toString()
+ 
+a! = BBjAPI().openSysGui("X0")
+? a!.toString()

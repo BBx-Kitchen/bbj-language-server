@@ -1,0 +1,5 @@
+    SETTERM "alias"
+    SETTERM "alias",MODE="123"
+    SETTERM "alias",ERR=labelError
+    SETTERM "alias",MODE="123",ERR=labelError
+labelError:

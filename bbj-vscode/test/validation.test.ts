@@ -5,19 +5,21 @@
  ******************************************************************************/
 
 import { EmptyFileSystem } from 'langium';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
-const services = createBBjServices(EmptyFileSystem);
-const validate = validationHelper<Program>(services.BBj);
-
 describe('BBj validation', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
 
-    await initializeWorkspace(services.shared);
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+        validate = validationHelper<Program>(services.BBj);
+    });
 
     test('Symbolic link reference starts with', async () => {
         const validationResult = await validate(`
@@ -172,6 +174,13 @@ describe('BBj validation', async () => {
        
     });
 
+    test('Link a function call', async () => {
+        const validationResult = await validate(`
+            let fp = FPT(1)
+        `);
+        expectNoIssues(validationResult);
+    });
+
     test('Line breaks RETURN', async () => {
         const validationResult = await validate(`
         DEF FNGCF(X,Y)
@@ -179,7 +188,7 @@ describe('BBj validation', async () => {
             WHILE X<>0
                 LET TEMP=X, X=MOD(Y,X), Y=TEMP
             WEND
-            RETURn Y
+            RETURN Y
         FNEND
         `);
         expectNoIssues(validationResult);
