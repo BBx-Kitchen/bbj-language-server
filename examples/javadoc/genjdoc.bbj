@@ -1,0 +1,204 @@
+use com.google.gson.JsonObject
+use com.google.gson.JsonArray
+
+use com.sun.source.tree.ClassTree
+use com.sun.source.tree.CompilationUnitTree
+use com.sun.source.tree.MethodTree
+use com.sun.source.tree.Tree
+use com.sun.source.util.JavacTask
+use com.sun.source.util.SimpleTreeVisitor
+use com.sun.source.tree.TreeVisitor
+
+
+use javax.tools.JavaCompiler
+use javax.tools.JavaFileObject
+use javax.tools.StandardJavaFileManager
+use javax.tools.ToolProvider
+use java.io.File
+use java.io.IOException
+use java.nio.charset.StandardCharsets
+use java.util.Arrays
+
+class public Gen
+
+    field private JsonObject jsonobj! = new JsonObject()
+    field private String outdir! = "/Users/beff/bbx/documentation/javadoc/"
+
+    method public Gen(String repo!,String pkg!)
+
+        mkdir #outdir!,err=*next
+        
+        declare String javapkg!    
+        javapkg! = pkg!.replaceAll("/",".")
+        javapkg! = javapkg!.substring(1,javapkg!.length()-1)
+        
+        #jsonobj!.addProperty("name",javapkg!)
+        #jsonobj!.addProperty("version",javapkg!)
+        #jsonobj!.addProperty("docu","BBjAPI Class Hierarchy")
+        classes! = new JsonArray()
+        #jsonobj!.add("classes",classes!)
+
+        ch= unt
+        open (ch)repo!+pkg!
+        while 1
+            read record (ch,end=*break) f$
+            if f$="." or f$=".." then continue
+            if f$(len(f$),1)="/" then
+                new Gen(repo!,pkg!+f$)
+                continue
+            fi
+            thisclass! = new JsonObject()
+            thisclass!.addProperty("name",f$(1,len(f$)-5))
+
+
+
+            thisclass!.addProperty("docu",#getDocs(f$(1,len(f$)-5)))
+
+            thisclass!.add("fields",new JsonArray())
+            thisclass!.add("constructors",new JsonArray())
+
+            methods! = new JsonArray()
+            thisclass!.add("methods",methods!)
+
+            compilationunittree! = Gen.parseFile(repo!+pkg!+f$)
+           
+            it! = compilationunittree!.getTypeDecls().iterator()
+            while it!.hasNext()
+                tree! = it!.next()
+                if tree!.getKind() = Tree.Kind.CLASS OR tree!.getKind() = Tree.Kind.INTERFACE then
+                    it2! = tree!.getMembers().iterator()
+                    while it2!.hasNext()
+                        member! = it2!.next()
+                        if member!.getKind().toString() ="METHOD" then
+                            meth! = new JsonObject()
+                            meth!.addProperty("name",STR(member!.getName()))
+                            meth!.addProperty("docu",#getDocs(f$(1,len(f$)-5)+"_"+STR(member!.getName())))
+                            
+                            params! = new JsonArray()
+                            meth!.add("params",params!)
+                            it3! = member!.getParameters().iterator()
+                            while it3!.hasNext()
+                                param! = it3!.next()
+                                par! = new JsonObject()
+                                par!.addProperty("name",STR(param!.getName()))
+                                params!.add(par!)
+                            wend
+                            methods!.add(meth!)
+
+                        fi
+                      
+                    wend
+
+                fi
+            wend
+
+
+            classes!.add(thisclass!)
+        wend
+
+        ch1 = unt
+        open (ch1,mode="O_CREATE,O_TRUNC")#outdir!+javapkg!+".json"
+        print (ch1)#jsonobj!.toString()
+        close (ch1)
+        
+    methodend
+
+    method private BBjString getDocs(BBjString classname$)
+        ch=unt
+        open (ch,err=*next)classname$+".htm"; goto cont
+        open (ch,err=*next)classname$+".html"; goto cont
+        open (ch,err=*next)"interface_"+classname$+".htm"; goto cont
+        open (ch,err=*next)"interface_"+classname$+".html"; goto cont
+        goto nodox
+
+        cont:
+        read record (ch,siz=1000000)s$
+        f1$=fid(ch)(9)
+        close (ch)
+
+        f1$=BBjAPI().getFileSystem().resolvePath(f1$)
+        
+
+        tmp = pos("<h2>Description</h2>"=cvs(s$,144))
+
+        if tmp > 0 then
+            tmp = pos("<h2>Description</h2>"=s$)
+
+            if tmp=0 then 
+                tmp = pos("Description"=s$)
+                if tmp=0 then 
+                    methodret ""
+                else    
+                    s$=s$(tmp+16)
+                fi
+            else
+                s$=s$(tmp+20)
+            fi
+            
+            s!=cvs(s$(1,pos("<h2"=s$)-1),3)
+            s!=s!.replace("<p>","")
+            s!=s!.replace("</p>","")
+            s!=s!.replace("\n","")
+            s!=s!.replace("\r","")
+            s!=s!.trim()+$0d0d$+"[Docs](https://documentation.basis.cloud/"+f1$(pos("BASISHelp"=f1$))+")"
+        else 
+            s!=""
+        fi
+
+       methodret s!
+
+       nodox: 
+        print "no dox for "+classname$
+        methodret ""
+    methodend
+
+
+    method public static void buildPrefix(String dir!)
+        ch=unt
+        open (ch)dir!
+        while 1
+            read record (ch,end=*break)f$
+            declare auto String f!
+            f! = f$
+            if f!.endsWith("/") then
+                prefix pfx+" "+dir!+f!
+                Gen.buildPrefix(dir!+f!)
+            fi
+        wend
+        close (ch)
+    methodend
+ 
+     method private static CompilationUnitTree parseFile(String filename!)
+
+      compiler! = ToolProvider.getSystemJavaCompiler()
+
+      fileManager! = compiler!.getStandardFileManager(NULL(), NULL(), StandardCharsets.UTF_8)
+      compilationUnits! = fileManager!.getJavaFileObjectsFromFiles(Arrays.asList(new File(filename!)))
+
+      javacTask! = CAST(JavacTask,compiler!.getTask(NULL(), fileManager!, NULL(), NULL(), NULL(), compilationUnits!))
+      compilationUnitTrees! = javacTask!.parse()
+
+      compilationUnitTree! = compilationUnitTrees!.iterator().next()
+      methodret compilationUnitTree!
+    methodend
+
+classend
+
+
+
+doclocal! = "/Users/beff/doclocal/documentation.basis.cloud/"
+rem load the docs locally here with
+rem wget -r  https://documentation.basis.cloud/BASISHelp/WebHelp/bbjobjects/bbjapi/bbjapi.htm
+
+Gen.buildPrefix(doclocal!)
+
+
+
+repo! = "/Users/beff/svn/trunk/"
+pkg! = "/com/basis/bbj/proxies/"
+
+new Gen(repo!,pkg!)
+
+print "FERTIG"
+wait 2
+release
