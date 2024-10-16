@@ -18,22 +18,18 @@ print "GL Account:",e2!.account()
 
 interface public Address
   method public void address()
-  METHODEND
 interfaceend
 
 interface public Pay
   method public void print()
-  METHODEND
 interfaceend
 
 interface public GL
   method public BBjNumber account()
-  METHODEND
 interfaceend
 
 interface public Payable extends Pay, GL
   method public BBjNumber pay()
-  METHODEND
 interfaceend
 
 class public Employee

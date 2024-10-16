@@ -1720,6 +1720,17 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Check remove as function name', async () => {
+        const result = await parse(`
+            class public RemoveTest
+                method public void delete(Onject obj!)
+                    obj!.remove(1)
+                methodend
+            classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
     test('Check INPUT statement', async () => {
         const result = await parse(`
             INPUT "Id>", id$
