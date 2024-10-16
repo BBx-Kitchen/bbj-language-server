@@ -146,7 +146,8 @@ SqlRollbackStatement:
     ;
 
 StartStatement:
-    'START' (int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?)?
+    START_BREAK
+    | 'START' int1=Expression (',' int2=Expression)? Err? (',' fileid=Expression)?
     ;
 
 LockStatement:
@@ -376,7 +377,8 @@ UntilStatement:
 ;
 
 NextStatement:
-    NEXT_TOKEN (variable=[VariableDecl:FeatureName])?
+    NEXT_BREAK
+    | NEXT_ID variable=[VariableDecl:FeatureName]
 ;
 
 IfStatement:
@@ -782,7 +784,7 @@ EscapeId returns string:
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
     | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
-    | 'FILEOPT' | 'REMOVE'
+    | 'FILEOPT'
 ;
 
 // BBx Library
@@ -829,9 +831,11 @@ terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab
 terminal DELETE_STANDALONE: /_DELETE_STANDALONE/;
 terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
-terminal NEXT_TOKEN: /_next/;
+terminal NEXT_BREAK: /_next1/;
+terminal NEXT_ID: /_next2/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
+terminal START_BREAK: /_start/;
 
 terminal BBjFilePath: /::.*::/;
 

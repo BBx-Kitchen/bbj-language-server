@@ -5,8 +5,10 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
+        this.spliceToken(tokens, 'START_BREAK', 1);
         this.spliceToken(tokens, 'FNEND', 1);
-        this.spliceToken(tokens, 'NEXT_TOKEN', 1);
+        this.spliceToken(tokens, 'NEXT_BREAK', 1);
+        this.spliceToken(tokens, 'NEXT_ID', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
         this.spliceToken(tokens, 'DELETE_STANDALONE', 1);
@@ -21,17 +23,31 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {
-        if (terminal.name === 'FNEND') {
+        if (terminal.name === 'START_BREAK') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/START[ \t]*(?=(;|\r?\n))/i),
+                LINE_BREAKS: false
+            };
+            return token;
+        } else if (terminal.name === 'FNEND') {
             const token: TokenType = {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/FNEND[ \t]*(?=(;|\r?\n))/i),
                 LINE_BREAKS: false
             };
             return token;
-        } else if (terminal.name === 'NEXT_TOKEN') {
+        } else if (terminal.name === 'NEXT_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)?\r?\n)/i),
+                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*(\r?\n))/i),
+                LINE_BREAKS: false
+            };
+            return token;
+        } else if (terminal.name === 'NEXT_ID') {
+            const token: TokenType = {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)\r?\n)/i),
                 LINE_BREAKS: false
             };
             return token;
