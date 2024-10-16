@@ -69,3 +69,7 @@ Figure out IntelliJ - https://plugins.jetbrains.com/docs/intellij/language-serve
 ### 6. Clean up
 
 Potentially find a good moment to separate the Java part, VSCode extension and the Language Server. TBD. Don't know yet.
+
+### 7. Automate
+
+We're missing build automation for the releases to marketplace. For the time being QA manually pushes the button. 
