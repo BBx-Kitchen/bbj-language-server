@@ -1,0 +1,6 @@
+    SETTRACE
+    SETTRACE(1)
+    SETTRACE(1,ERR=labelError)
+    SETTRACE(1,MODE="hallo")
+    SETTRACE(1,MODE="xxx",ERR=labelError)
+labelError:

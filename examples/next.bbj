@@ -1,0 +1,10 @@
+e$="hallo"
+
+next
+
+next e$
+
+next
+
+class XYZ
+classend

@@ -7,7 +7,7 @@
 import { EmptyFileSystemProvider, FileSystemNode, FileSystemProvider } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
-import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast";
+import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast.js";
 
 /**
  * Provides Javadoc information for internal binary classes.
@@ -174,4 +174,9 @@ export type MethodDoc = NamedDoc & {
 
 export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {
     return item !== undefined && (item as any).params !== undefined;
+}
+
+
+export function isClassDoc(item: NamedDoc | undefined): item is ClassDoc {
+    return item !== undefined && (item as any).methods !== undefined && (item as any).fields !== undefined;
 }

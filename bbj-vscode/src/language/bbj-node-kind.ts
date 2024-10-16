@@ -1,6 +1,7 @@
-import { AstNode, AstNodeDescription, NodeKindProvider, isAstNode } from "langium";
+import { AstNode, AstNodeDescription, isAstNode } from "langium";
+import { NodeKindProvider } from "langium/lsp";
 import { CompletionItemKind, SymbolKind } from "vscode-languageserver";
-import { ArrayDecl, BbjClass, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast";
+import { ArrayDecl, BbjClass, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast.js";
 
 
 export class BBjNodeKindProvider implements NodeKindProvider {

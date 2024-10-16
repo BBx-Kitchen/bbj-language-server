@@ -1,0 +1,15 @@
+REM RETURN verb has expression parameter inside of DEF only, otherwise no parameter
+GOSUB funcNoReturn
+GOSUB funcWithReturn
+
+funcNoReturn:
+    PRINT "we do something and RETURN"
+    RETURN
+
+funcWithReturn:
+    return
+
+def identity(value)
+    return value
+fnend
+

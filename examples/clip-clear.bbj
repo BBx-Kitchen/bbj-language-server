@@ -1,0 +1,3 @@
+    CLIPCLEAR ERR=labelError
+    CLIPCLEAR
+labelError:

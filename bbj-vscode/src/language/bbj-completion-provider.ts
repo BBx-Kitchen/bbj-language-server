@@ -1,10 +1,9 @@
-import { AstNodeDescription, CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, MaybePromise, NextFeature, Reference, ReferenceInfo, getContainerOfType } from "langium";
-
-import { CrossReference, Keyword, isAssignment } from "langium/lib/grammar/generated/ast";
+import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, NextFeature } from "langium/lsp";
+import { AstUtils, AstNodeDescription, MaybePromise, Reference, ReferenceInfo, GrammarAST } from "langium";
 import { CompletionItemKind } from "vscode-languageserver";
-import { documentationHeader, methodSignature } from "./bbj-hover";
-import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider";
-import { LibEventType, LibSymbolicLabelDecl } from "./generated/ast";
+import { documentationHeader, methodSignature } from "./bbj-hover.js";
+import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider.js";
+import { LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
 
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
@@ -18,7 +17,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (isFunctionNodeDescription(nodeDescription)) {
 
             const label = (paramAdjust: ((param: string, index: number) => string) = (p, i) => p) =>
-                `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.name, idx)).join(', ')})`
+                `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.realName ?? p.name, idx)).join(', ')})`
 
             const retType = ': ' + toSimpleName(nodeDescription.returnType)
             // TODO load param names for java methods from Javadoc
@@ -51,11 +50,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     /**
      * Need to override to control deduplicate filtering
      */
-    protected override completionForCrossReference(context: CompletionContext, crossRef: NextFeature<CrossReference>, acceptor: CompletionAcceptor): MaybePromise<void> {
-        const assignment = getContainerOfType(crossRef.feature, isAssignment);
+    protected override completionForCrossReference(context: CompletionContext, crossRef: NextFeature<GrammarAST.CrossReference>, acceptor: CompletionAcceptor): MaybePromise<void> {
+        const assignment = AstUtils.getContainerOfType(crossRef.feature, GrammarAST.isAssignment);
         let node = context.node;
         if (assignment && node) {
-            if (crossRef.type && (crossRef.new || node.$type !== crossRef.type)) {
+            if (crossRef.type) {
                 node = {
                     $type: crossRef.type,
                     $container: node,
@@ -71,18 +70,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 property: assignment.feature
             };
             try {
-                const scope = this.scopeProvider.getScope(refInfo);
-                scope.getAllElements().forEach(e => {
-                    if (this.filterCrossReference(e)) {
-                        acceptor(context, this.createReferenceCompletionItem(e));
-                    }
-                });
+                this.getReferenceCandidates(refInfo, context).forEach(
+                    c => acceptor(context, this.createReferenceCompletionItem(c))
+                );
             } catch (err) {
                 console.error(err);
             }
         }
     }
-    protected override completionForKeyword(context: CompletionContext, keyword: Keyword, acceptor: CompletionAcceptor): MaybePromise<void> {
+    protected override completionForKeyword(context: CompletionContext, keyword: GrammarAST.Keyword, acceptor: CompletionAcceptor): MaybePromise<void> {
         // Filter out keywords that do not contain any word character
         if (!keyword.value.match(/[\w]/)) {
             return;

@@ -4,14 +4,15 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { LangiumDocument, LangiumDocuments, linkContentToContainer, Mutable } from 'langium';
+import { AstUtils, LangiumDocument, LangiumDocuments, Mutable } from 'langium';
 import { Socket } from 'net';
 import {
     CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
-} from 'vscode-jsonrpc/node';
+} from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
-import { BBjServices } from './bbj-module';
-import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast';
+import { BBjServices } from './bbj-module.js';
+import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
+import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 
 const DEFAULT_PORT = 5008;
 
@@ -27,6 +28,7 @@ export class JavaInteropService {
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
+    protected javadocProvider = JavadocProvider.getInstance();
 
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
@@ -129,10 +131,12 @@ export class JavaInteropService {
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
-        const classpath = this.classpath;
+
+        javaClass.$type = JavaClass; // make isJavaClass work
 
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
         try {
+            const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
                 (field as Mutable<JavaField>).$type = JavaField;
                 field.resolvedType = {
@@ -142,25 +146,34 @@ export class JavaInteropService {
             }
             for (const method of javaClass.methods) {
                 (method as Mutable<JavaMethod>).$type = JavaMethod;
+                const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
+                    m => m.name == method.name
+                        && m.params.length === method.parameters.length
+                ) : [];
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token),
                     $refText: method.returnType
                 };
-                for (const parameter of method.parameters) {
+                for (const [index, parameter] of method.parameters.entries()) {
                     (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
                     parameter.resolvedType = {
                         ref: await this.resolveClassByName(parameter.type, token),
                         $refText: parameter.type
                     };
+                    if (methodDocs.length > 0) {
+                        // TODO check types of parameters
+                        parameter.realName = methodDocs[0].params[index]?.name
+                    }
                 }
-                linkContentToContainer(method);
+                AstUtils.linkContentToContainer(method);
             }
         } catch (e) {
             // finish linking of the class even if it has an error
             console.error(e)
         }
-        linkContentToContainer(javaClass);
+        AstUtils.linkContentToContainer(javaClass);
 
+        const classpath = this.classpath;
         javaClass.$type = JavaClass;
         javaClass.$container = classpath;
         javaClass.$containerProperty = 'classes';

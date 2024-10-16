@@ -1,19 +1,19 @@
 import { DocumentValidator, EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { createBBjTestServices } from './bbj-test-module';
-import { Model } from '../src/language/generated/ast';
-import { initializeWorkspace } from './test-helper';
+import { createBBjTestServices } from './bbj-test-module.js';
+import { Model } from '../src/language/generated/ast.js';
+import { initializeWorkspace } from './test-helper.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
-const validate = (content: string) => parseHelper<Model>(services.BBj)(content, {validationChecks: 'all'});
+const validate = (content: string) => parseHelper<Model>(services.BBj)(content, {validation: true});
 
 describe('Linking Tests', async () => {
-    await initializeWorkspace(services.shared);
+    beforeAll(() => initializeWorkspace(services.shared));
 
     function findLinkingErrors(document: LangiumDocument): Diagnostic[] {
-        return document.diagnostics?.filter(err => err.code === DocumentValidator.LinkingError)??[]
+        return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError)??[]
     }
 
     function expectNoErrors(document: LangiumDocument) {

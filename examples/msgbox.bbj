@@ -1,0 +1,2 @@
+temp = msgbox("Hello!", "IconInfo", "Greetings", MODE="theme=primary")
+result = msgbox("Message$",1,"Title$","Button1$","Button2$","Button3$",tim=12, mode="mode$",err=*NEXT)

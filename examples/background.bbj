@@ -1,0 +1,3 @@
+    BACKGROUND "Menu1"
+    BACKGROUND "Menu2",ERR=error
+error:
