@@ -8,3 +8,10 @@
     START 123,456,err=labelError,"file.bbx"
     START 123,err=labelError,"file.bbx"
 labelError:
+    REM these 3 compound statements should be allowed only
+    IF 1 THEN
+    START ; ELSE ; REM TODO
+    START ; FI   ; REM TODO
+    START        ; REM works
+    REM and any compound statement else should not
+    START ; START ; START 255 ; START
