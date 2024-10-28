@@ -399,7 +399,14 @@ WhileEndStatement:
     'WEND' {infer WhileEndStatement};
 
 SwitchStatement:
-    'SWITCH' value=Expression cases+=SwitchCase* ('CASE' 'DEFAULT' (';')? (defaultCase+=Statement)*)? 'SWEND';
+    'SWITCH' value=Expression
+        cases+=SwitchCase*
+    (
+        'CASE' 'DEFAULT' ';'
+        (defaultCase+=Statement)*
+    )?
+    'SWEND'
+;
 
 SwitchCase:
     LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
