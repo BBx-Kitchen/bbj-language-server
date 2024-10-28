@@ -279,7 +279,7 @@ export class BBjValidator {
     checkReturnValueInDef(ele: DefFunction, accept: ValidationAcceptor): void {
         if (ele.body && ele.body.length > 0) {
             ele.body.filter(isKeywordStatement).forEach(statement => {
-                if (statement.kind.toUpperCase() === 'RETURN') {
+                if (statement.kind && statement.kind.toUpperCase() === 'RETURN') {
                     accept('error', 'RETURN statement inside a DEF function must have a return value.', { node: statement });
                 }
             })

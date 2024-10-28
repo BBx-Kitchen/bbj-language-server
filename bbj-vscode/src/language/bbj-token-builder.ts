@@ -11,7 +11,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'NEXT_ID', 1);
         this.spliceToken(tokens, 'METHODRET_END', 1);
         this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
-        this.spliceToken(tokens, 'DELETE_STANDALONE', 1);
+        this.spliceToken(tokens, 'KEYWORD_STANDALONE', 1);
         this.spliceToken(tokens, 'PRINT_STANDALONE_NL', 1);
         return tokens;
     }
@@ -54,7 +54,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'METHODRET_END') {
             const token: TokenType = {
                 name: terminal.name,
-                // Add more expceptional tokens here if an explicit line break token is needed
+                // Add more exceptional tokens here if an explicit line break token is needed
                 PATTERN: this.regexPatternFunction(/METHODRET[ \t]*(?=(;|\r?\n))/i),
                 LINE_BREAKS: false
             };
@@ -62,7 +62,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'ENDLINE_PRINT_COMMA') {
             const token: TokenType = {
                 name: terminal.name,
-                // Add more expceptional tokens here if an explicit line break token is needed
+                // Add more exceptional tokens here if an explicit line break token is needed
                 PATTERN: this.regexPatternFunction(/,(?=(\r?\n))/i),
                 LINE_BREAKS: true
             };
@@ -74,10 +74,10 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 LINE_BREAKS: true
             };
             return token;
-        } else if (terminal.name === 'DELETE_STANDALONE') {
+        } else if (terminal.name === 'KEYWORD_STANDALONE') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(DELETE)\s*(\r?\n)/i),
+                PATTERN: this.regexPatternFunction(new RegExp(`(${KEYWORD_STANDALONE})\s*(\r?\n|;|$)`, 'i')),
                 LINE_BREAKS: true
             };
             return token;
@@ -85,5 +85,5 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             return super.buildTerminalToken(terminal);
         }
     }
-
 }
+const KEYWORD_STANDALONE = 'DELETE|SAVE'
