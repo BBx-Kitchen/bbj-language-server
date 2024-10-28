@@ -159,8 +159,7 @@ UnlockStatement:
     ;
 
 DeleteStatement:
-    DELETE_STANDALONE
-    | 'DELETE' lineRefA=LabelRef comma?=ENDLINE_PRINT_COMMA?
+      'DELETE' lineRefA=LabelRef comma?=ENDLINE_PRINT_COMMA?
     | 'DELETE' comma?=',' lineRefB=LabelRef
     | 'DELETE' lineRefA=LabelRef comma?=',' lineRefB=LabelRef
     ;
@@ -201,7 +200,7 @@ RestoreStatement:
     ;
 
 SaveStatement:
-    'SAVE' (fileid=Expression (',' int=Expression)?)?
+     'SAVE' fileid=Expression (',' int=Expression)?
     ;
 
 SavePStatement:
@@ -427,7 +426,8 @@ SymbolicLabelRef infers LabelRef:
 ;
 
 KeywordStatement:
-    kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'FLOATINGPOINT' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
+    KEYWORD_STANDALONE
+    | kind=( 'BREAK' | 'BYE' | 'CONTINUE' | 'DENUM' | 'END' | 'ENDTRACE' | 'ESCAPE' | 'FLOATINGPOINT' | 'REPEAT' | 'RESET' | 'RETRY' | 'RETURN' | 'STOP')
 ;
 
 ExitWithNumberStatement:
@@ -784,7 +784,7 @@ EscapeId returns string:
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
     | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
-    | 'FILEOPT' | 'REMOVE'
+    | 'FILEOPT' | 'REMOVE' | 'SAVE' | 'SORT' | 'FULLTEXT' | 'INDEXED' | 'RESTORE' | 'SETDAY' | 'SETTERM' | 'SETTIME' | 'INTERFACE'
 ;
 
 // BBx Library
@@ -828,7 +828,7 @@ LibEventType returns LibEventType:
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
 
-terminal DELETE_STANDALONE: /_DELETE_STANDALONE/;
+terminal KEYWORD_STANDALONE: /_KEYWORD_STANDALONE/;
 terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
 terminal ENDLINE_PRINT_COMMA: /_endline_print_comma/;
 terminal NEXT_BREAK: /_next1/;

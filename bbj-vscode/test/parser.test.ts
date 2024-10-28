@@ -1746,4 +1746,17 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+   
+    test('Check Save as Id', async () => {
+        const result = await parse(`
+        class public DTNote
+        
+        method public boolean save(BBjString text!)
+            methodret 1
+        methodend
+        
+        classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
 });
