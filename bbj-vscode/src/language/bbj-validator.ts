@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, GrammarUtils, LeafCstNode
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module.js';
-import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement } from './generated/ast.js';
+import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 
 /**
@@ -88,6 +88,7 @@ export class BBjValidator {
                 || isLetStatement(node.$container)
                 || isForStatement(node.$container)
                 || isArrayDeclarationStatement(node.$container)
+                || AstUtils.getContainerOfType(previous, isSwitchStatement)
                 || AstUtils.getContainerOfType(previous, isIfStatement)) {
                 return false;
             }

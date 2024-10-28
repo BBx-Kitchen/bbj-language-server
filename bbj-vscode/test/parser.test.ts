@@ -1766,4 +1766,19 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+   
+    test('Switch case single line', async () => {
+        const result = await parse(`
+        a$ = "2"
+
+        switch a$
+            case "1"; print "First"; break
+            case "2"; print "Second"; break
+            case "3"; print "Third"; break
+            case default; print "Not in top three, try again"
+        swend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
