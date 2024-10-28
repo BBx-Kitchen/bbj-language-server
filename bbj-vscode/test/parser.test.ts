@@ -1759,4 +1759,11 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+   
+    test('Print trailing comma in compound statement', async () => {
+        const result = await parse(`
+        print 'fl', "9", chr(adv), fill(adv, $0a$),; rem  Move down CDS037 grid
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
 });
