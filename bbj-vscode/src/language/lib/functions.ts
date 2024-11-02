@@ -3,53 +3,39 @@ export const builtinFunctions = `
 library
 
 /@@
-AND(left:string, right:string, ERR?:lineref): string
-@/
-AND(left:string, right:string, ERR?:lineref): string
-
-/@@
-#### Syntax
-\`ASC(string{,ERR:lineref})\`
-
-#### Description
-
-The **ASC()** function returns the ASCII numeric value of the first character in a string.
-@/
-ASC(param:string, ERR?:lineref): int
-
-/@@
-\`CHR(int{,ERR:lineref})\`
-
-The CHR() function returns the ASCII value of an integer.
-@/
-CHR(param:int, ERR?:lineref): string
-
-/@@
-The NULL() function returns a Java null value. It is typically used to check for a null value returned from a Java function.
-@/
-NULL():null
-
-/@@
-\`STR(objexpr{:mask}{,ERR:lineref})\`
- 
-In BBj, the STR() function accepts arguments of any type. If the argument evaluates to a number, STR(num) is used, otherwise STR(str) is used.
-BBj STR() function supports the 'U' mask character.
-@/
-STR(objexpr:string, ERR?:lineref): string
-
-/@@
-\`ABS(num{, ERR:lineref})\`
+\`ABS(num{,ERR:lineref})\`
 
 The ABS() function returns the absolute value of its numeric argument.
 @/
-ABS(param:num, ERR?:lineref): num
+ABS(param: num, ERR?:lineref): num
 
 /@@
 \`ADJN(val{, ERR:lineref})\`
 
 The ADJN() function returns an 8-byte binary string suitable for string comparisons of numeric values.
 @/
-ADJN():string
+ADJN(val:num):string
+
+/@@
+\`AND(left:string, right:string, ERR: lineref)\`
+
+The **AND()** function joins two or more expressions and returns the result. Both arguments must be the same length.
+@/
+AND(left:string, right:string, ERR?:lineref): int
+
+/@@
+\`ARGV(int{,ERR: lineref})\`
+
+The **ARGV()** function returns the arguments passed to BBj when invoked. ARGC returns the number of arguments passed on the command line. ARGV(0) always returns the fully qualified name of the executable. User-defined arguments are returned in ARGV(1), ARGV(2), etc., up to ARGV(ARGC-1). If there are no user-defined arguments, then ARGC is 1
+@/
+ARGV(param:int, ERR?:lineref): string
+
+/@@
+\`ASC(param:string, ERR: lineref): int\`
+
+The **ASC()** function returns the ASCII numeric value of the first character in a string.
+@/
+ASC(param:string, ERR?:lineref): int
 
 /@@
 \`ATH(string{, ERR: lineref})\`
@@ -82,7 +68,7 @@ BSZ(param: int, ERR?:lineref): int
 /@@
 \`CAST(type, object{, ERR:lineref})\`
 
-In BBj 6.0 and higher, the CAST() function takes a type name and an object and returns an object of the provided type.
+The CAST() function takes a type name and an object and returns an object of the provided type.
 @/
 CAST(param:object, param: object, ERR?:lineref): object
 
@@ -94,9 +80,17 @@ The CHANOPT() function returns the current settings that are accessible using th
 CHANOPT(param:int, ERR?:lineref): object
 
 /@@
+\`CHR(int{,ERR: lineref})\`
+
+The **CHR()** function returns the ASCII value of an integer.
+@/
+CHR(param:int, ERR?:lineref): string
+
+
+/@@
 \`CLIENTENV(str{,IND=int}{,ERR:lineref})\`
 
-In BBj 4.0 and higher, the CLIENTENV() function returns the value of a specified operating system environment variable from the client side of a thin client session.
+The CLIENTENV() function returns the value of a specified operating system environment variable from the client side of a thin client session.
 @/
 CLIENTENV(param: string, param: int, ERR?:lineref): int
 
@@ -245,7 +239,7 @@ ENCRYPT(param: string, param: string, ERR?:lineref): string
 /@@
 \`ENV(str{,IND=int}{,ERR=lineref})\`
 
-In BBj 4.0 and higher, the ENV() function returns the value of a specified operating system environment variable
+The ENV() function returns the value of a specified operating system environment variable
 @/
 ENV(param: string, param: int, ERR?:lineref): string
 
@@ -314,13 +308,28 @@ FID(param: int, ERR?:lineref): string
 /@@
 \`
 FIELD(strname,str{,int}{,ERR=lineref})
+
 NFIELD(strname,str{,int}{,ERR=lineref})
+
 FIELD(strname{,ERR=lineref})
 \`
 
 The FIELD() and NFIELD() functions allow access to data stored in a string template. To access character (string) data, use FIELD(). To access numeric data, use NFIELD().
 @/
 FIELD(param: string, param: string, param: int, ERR?:lineref): string
+
+/@@
+\`
+FIELD(strname,str{,int}{,ERR=lineref})
+
+NFIELD(strname,str{,int}{,ERR=lineref})
+
+FIELD(strname{,ERR=lineref})
+\`
+
+The FIELD() and NFIELD() functions allow access to data stored in a string template. To access character (string) data, use FIELD(). To access numeric data, use NFIELD().
+@/
+NFIELD(param: string, param: string, param: int, ERR?:lineref): num
 
 /@@
 \`FILEOPEN(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,EXISTS=option,RESOLVE=option,STYLE=name"]]])\`
@@ -448,30 +457,84 @@ The JUL() function returns the Julian day number for a given date.
 JUL(param: int, param: int, param: int, ERR?:lineref): int
 
 /@@
-\`
-1-KEY(channelno{,ERR=lineref}{,END=lineref}{,IND=index}{,KNUM=int})
-2-KEYF(channelno{,ERR=lineref}{,END=lineref}{,IND=index})
-3-KEYL(channelno{,ERR=lineref}{,END=lineref}{,IND=index})
-4-KEYN(channelno{,ERR=lineref}{,END=lineref}{,IND=index})
-5-KEYP(channelno{,ERR=lineref}{,END=lineref}{,IND=index})
-\`
+\`KEY(channelno{,ERR=lineref}{,END=lineref}{,IND=index}{,KNUM=int})\`
 
-1-KEY() returns the key at the current file pointer position in the file.
-2-KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
-3-KEYL() returns the last logical, or greatest, key in the file.
-4-KEYN() returns the key following the current key (next key).
-5-KEYP() returns the key prior to the current key.
+KEY() returns the key at the current file pointer position in the file.
+
+KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
+
+KEYL() returns the last logical, or greatest, key in the file.
+
+KEYN() returns the key following the current key (next key).
+
+KEYP() returns the key prior to the current key.
 @/
 KEY(param: int, ERR?:lineref, END?:lineref, param: int, param: int): string
+
+/@@
+\`KEYF(channelno{,ERR=lineref}{,END=lineref}{,IND=index})\`
+
+KEY() returns the key at the current file pointer position in the file.
+
+KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
+
+KEYL() returns the last logical, or greatest, key in the file.
+
+KEYN() returns the key following the current key (next key).
+
+KEYP() returns the key prior to the current key.
+@/
 KEYF(param: int, ERR?:lineref, END?:lineref, param: int): string
+
+/@@
+\`KEYL(channelno{,ERR=lineref}{,END=lineref}{,IND=index})\`
+
+KEY() returns the key at the current file pointer position in the file.
+
+KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
+
+KEYL() returns the last logical, or greatest, key in the file.
+
+KEYN() returns the key following the current key (next key).
+
+KEYP() returns the key prior to the current key.
+@/
 KEYL(param: int, ERR?:lineref, END?:lineref, param: int): string
+
+/@@
+\`KEYN(channelno{,ERR=lineref}{,END=lineref}{,IND=index})\`
+
+KEY() returns the key at the current file pointer position in the file.
+
+KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
+
+KEYL() returns the last logical, or greatest, key in the file.
+
+KEYN() returns the key following the current key (next key).
+
+KEYP() returns the key prior to the current key.
+@/
 KEYN(param: int, ERR?:lineref, END?:lineref, param: int): string
+
+/@@
+\`KEYP(channelno{,ERR=lineref}{,END=lineref}{,IND=index})\`
+
+KEY() returns the key at the current file pointer position in the file.
+
+KEYF() returns the first logical, or lowest, key in the file. For TCP/IP and UDP sockets, it returns the port signature "IP;port;hostname"
+
+KEYL() returns the last logical, or greatest, key in the file.
+
+KEYN() returns the key following the current key (next key).
+
+KEYP() returns the key prior to the current key.
+@/
 KEYP(param: int, ERR?:lineref, END?:lineref, param: int): string
 
 /@@
 \`KEYR(channelno{,ERR=lineref}{,DOM=lineref})\`
 
-In BBj 15.00 and higher, the KEYR() function returns the most recent value passed in a KEY= option for any I/O verb on the specified file channel.
+The KEYR() function returns the most recent value passed in a KEY= option for any I/O verb on the specified file channel.
 @/
 KEYR(param: int, ERR?:lineref, DOM?:lineref): string
 
@@ -488,7 +551,6 @@ KGEN(param: string, param: string, param: int, ERR?:lineref): string
 In PRO/5 Rev. 3.10 and higher, the LCHECKOUT function checks out one license of the specified feature. LCHECKOUT returns an integer handle.
 The version is a string that contains a number that can be less than or equal to the version that is available. 
 An attempt to checkout a license for a version that is greater than the version that is available will fail. 
-In BBj 9.0 and higher, the optional numeric parameter nagOnFailure is available.
 @/
 LCHECKOUT(param: string, param: string, param: int, ERR?:lineref): string
 
@@ -502,7 +564,7 @@ LEN(param: string, ERR?:lineref): int
 /@@
 \`LEVENSHTEIN(str1,str2{,ERR?=lineref})\`
 
-In BBj 18.00 and higher, the LEVENSHTEIN() function returns the Levenshtein distance between two strings.
+The LEVENSHTEIN() function returns the Levenshtein distance between two strings.
 @/
 LEVENSHTEIN(param: string, param: string, ERR?:lineref): int
 
@@ -606,33 +668,64 @@ NOTICE(param: sysgui, param: int, ERR?:lineref): string
 
 The NOTICETPL() function retrieves the template string definition for the specified Notice code and object for grid, INPUTE, INPUTN, list edit, list button, and tab controls.
 objtype values:
+
 -1:Windows operation system notice event,
+
 1: top level window.
+
 2: bordered child window.
+
 7: borderless child window.
+
 11: button control.
+
 12: radio button control.
+
 13: check box control.
+
 14: horizontal scroll bar control.
+
 15: vertical scroll bar control.
+
 16: edit control.
+
 17: static text control.
+
 18: list box control.
+
 19: list button control.
+
 20: list edit control
+
 21: group box control.
+
 22: custom edit control.
+
 100: menu item control.
+
 101: checkable menu item.
+
 102: status bar control.
+
 103: tool button control.
+
 104: INPUTE control.
+
 105: INPUTN control.
+
 106: tabl control.
+
 107: grid control.
 
 @/
 NOTICETPL(param: int, param: int, ERR?:lineref): string
+
+
+/@@
+The NULL() function returns a Java null value. It is typically used to check for a null value returned from a Java function.
+@/
+NULL():null
+
 
 /@@
 \`NUM(string{,ERR=lineref})\`
@@ -677,7 +770,7 @@ POS(param: boolean, param: int, param: int): int
 /@@
 \`PROMPT(message{,default{,title{,expr}}}{,MODE="options"}{,TIM=int}{,ERR=lineref})\`
 
-In BBj 22.13 and higher, the PROMPT() function prompts the user to type a value into a dialog box, then returns that string to the application. 
+The PROMPT() function prompts the user to type a value into a dialog box, then returns that string to the application. 
 @/
 PROMPT(param: string, param: string, param: string, param: expression, param: string, param: int, ERR?:lineref): string
 
@@ -699,20 +792,25 @@ RESFIRST(param: res_handle, ERR?:lineref): string
 \`RESGET(handle,group,item{,ERR=lineref})\`
 
 RESGET() returns a resource string from a BASIS resource file.
+
 group:
+
 1:window
+
 2:menu
+
 4:child window
+
 5:image list
 @/
-RESGET(param: res_handle, param: int, param: int, ERR?:lineref): string
+RESGET(res_handle: int, param: int, param: int, ERR?:lineref): string
 
 /@@
 \`RESINFO(res_handle,resource{,ERR=lineref})\`
 
 The RESINFO() function returns a formatted string containing information about the contents of a resource file.
 @/
-RESINFOR(param: res_handle, param: string, ERR?:lineref): string
+RESINFO(res_handle: int, resource: string, ERR?:lineref): string
 
 /@@
 \`RESNEXT(res_handle,res_id{,ERR=lineref})\`
@@ -761,7 +859,7 @@ SENDMSG(param: sysgui, param: int, param: int, param: int, param: string, param:
 /@@
 \`SERVERENV(str{,IND=int}{,ERR=lineref})\`
 
-In BBj 4.0 and higher, the SERVERENV() function returns the value of the specified operating system's environment variable from the server side of a thin client session.
+The SERVERENV() function returns the value of the specified operating system's environment variable from the server side of a thin client session.
 @/
 SERVERENV(param: string, param: int, ERR?:lineref): string
 
@@ -778,7 +876,7 @@ SEVAL(param: string, ERR?:lineref): string
 
 The SGN() function returns a 1, 0, or -1 depending on whether its numeric argument is positive, zero, or negative respectively.
 @/
-SNG(param: int, ERR?:lineref): int
+SGN(param: int, ERR?:lineref): int
 
 /@@
 \`SIN(num{,precis}{,ERR=lineref})\`
@@ -824,6 +922,14 @@ The template returned is dependent on the SQL command given by the SQLPREP verb.
 SQLTMPL(param: sqlchannel, param: int, ERR?:lineref): template
 
 /@@
+\`TMPL(sqlchan{,IND=1}{,ERR=lineref})\`
+
+The TMPL() and SQLTMPL() function returns the template used to access the data returned in an SQLFETCH() operation. 
+The template returned is dependent on the SQL command given by the SQLPREP verb.
+@/
+TMPL(param: sqlchannel, param: int, ERR?:lineref): template
+
+/@@
 \`SQR(num{,ERR=lineref})\`
 
 The SQR() function returns the square root of its numeric argument. The argument may be any positive number.
@@ -855,6 +961,14 @@ The STBL() function allows the program to maintain strings that are independent 
 @/
 STBL(param: string, param: string, ERR?:lineref): void
 
+/@@
+\`STR(objexpr{:mask}{,ERR:lineref})\`
+ 
+The STR() function accepts arguments of any type. If the argument evaluates to a number, STR(num) is used, otherwise STR(str) is used.
+BBj STR() function supports the 'U' mask character.
+@/
+STR(objexpr:string, ERR?:lineref): string
+
 
 /@@
 \`SWAP(str1{,str2}{,ERR=lineref})\`
@@ -882,6 +996,21 @@ TBL(param: string, TBL?:lineref, ERR?:lineref): void
 The TCB() function returns information on the current state of the application.
 @/
 TCB(param: int, ERR?:lineref): string
+
+/@@
+\`TIME(str1{,str2}{,str3}{,ERR=lineref})\`
+
+The TIME() function returns a time value in the same format as the BBx TIM variable for a given time string.
+
+str1: Human readable time string.
+
+str2: TIME mask. If not specified, the mask from STBL("!TIME") is used.
+
+str3: Locale. If not specified, the value of STBL("!LOCALE") is used. The locale is only relevant when parsing a time string containing a localized am/pm value
+
+@/
+TIME(stimestr: string, mask: string, locale: string, ERR?: lineref): string
+
 
 /@@
 \`TOPEN(level{,MODE="READONLY"){,ERR=lineref})\`
@@ -917,7 +1046,7 @@ WINFIRST(param: sysgui, ERR?:lineref): int
 
 The WININFO() function returns a string that contains information about the contents of a SYSGUI window.
 @/
-WININFOR(param: sysgui, ERR?:lineref): string
+WININFO(sysgui: int, context:int, ERR?:lineref): string
 
 /@@
 \`WINNEXT(sysgui,context{,ERR=lineref})\`
@@ -945,7 +1074,7 @@ XFIN(param: int, ERR?:lineref): double
 /@@
 \`XKGEN(str1,str2,int{,ERR=lineref})\`
 
-In BBj 3.0 and higher, the XKGEN() function derives the value of a key contained within a record.
+The XKGEN() function derives the value of a key contained within a record.
 @/
 XKGEN(param: string, param: string, ERR?:lineref): string
 
@@ -959,7 +1088,7 @@ XOR(param: string, param: string, ERR?:lineref): int
 /@@
 \`XSSORT(str1,int1{,str2,int2}{,ERR=lineref})\`
 
-In BBj 3.0 and higher, the XSSORT() function sorts str1 using int1 as the record size and 
+The XSSORT() function sorts str1 using int1 as the record size and 
 optionally using the key described using str2 and int2 as a key descriptor pair. 
 The key descriptor has the length of the key to sort. The string returned by this function is str1, sorted.
 @/
