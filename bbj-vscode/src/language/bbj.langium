@@ -609,7 +609,7 @@ SqlCloseStatement:
 ;
 
 SqlOpStatement:
-    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
+    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? RPAREN_NL (exprs+=Expression (',' exprs+=Expression)*)?
 ;
 
 
@@ -843,6 +843,7 @@ terminal NEXT_ID: /_next2/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
 terminal START_BREAK: /_start/;
+terminal RPAREN_NL: /_rparen_nl/;
 
 terminal BBjFilePath: /::.*::/;
 

@@ -920,7 +920,7 @@ describe('Parser Tests', () => {
             GOTO LOOP
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        //TODO expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isSqlPrepStatement);
     });
 
