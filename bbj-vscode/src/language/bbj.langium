@@ -25,6 +25,7 @@ Statement:
 
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
+    ReadStatement |
     SqlCloseStatement |
     SqlCommitStatement |
     SqlRollbackStatement |
@@ -76,7 +77,6 @@ SingleStatement:
     PrintStatement |
     ProcessEvent |
     ReadRecordStatement |
-    ReadStatement |
     RedimStatement |
     RemoveCallbackStatement |
     RemoveStatement |
@@ -796,7 +796,7 @@ EscapeId returns string:
     | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
     | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY'
+    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY' | 'KNUM' | 'LEN' | 'SIZ'
     | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
     | 'FILEOPT' | 'REMOVE' | 'SAVE' | 'SORT' | 'FULLTEXT' | 'INDEXED' | 'RESTORE' | 'SETDAY' | 'SETTERM' | 'SETTIME' | 'INTERFACE'
 ;

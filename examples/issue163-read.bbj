@@ -1,0 +1,2 @@
+let so70 = 1111
+read(so70, knum=3, dir=0, end=*next)
