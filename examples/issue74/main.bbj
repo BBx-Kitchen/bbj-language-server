@@ -1,0 +1,7 @@
+use ::folder/helper.bbj::Hidden
+use ::folder/helper.bbj::SemiHidden
+use ::folder/helper.bbj::NonHidden
+
+let x! = new Hidden(); REM error private class
+let y! = new SemiHidden(); REM error protected class
+let z! = new NonHidden();

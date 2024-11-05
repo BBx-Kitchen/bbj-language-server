@@ -1,0 +1,8 @@
+class private Hidden
+classend
+
+class protected SemiHidden
+classend
+
+class public NonHidden
+classend
