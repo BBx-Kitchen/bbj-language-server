@@ -20,8 +20,9 @@ Contributors welcome!
 
 ## Installation Requirements
 
-* Java 17
-* BBj 23.00 and up
+* Java 21
+* BBj 24.00 and up
+* BBjServices has to run locally (for now)
 
 ## Setup
 
