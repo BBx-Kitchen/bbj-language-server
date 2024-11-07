@@ -1673,8 +1673,9 @@ describe('Parser Tests', () => {
             SQLCLOSE(1)
         labelError:
             SQLCOMMIT(1)
-        `);
+        `, {validation: true});
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check SQLEXEC statement', async () => {
@@ -1684,8 +1685,9 @@ describe('Parser Tests', () => {
             SQLPREP (SQL1)"select * from CUSTOMERS where LAST_NAME > ?"
             REM Fill the ? gap with LAST_NAME$
             SQLEXEC (SQL1)LAST_NAME$
-        `);
+        `, {validation: true});
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check ON ... GOSUB statement', async () => {
@@ -1777,6 +1779,22 @@ describe('Parser Tests', () => {
             case "3"; print "Third"; break
             case default; print "Not in top three, try again"
         swend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Single SQLEXEC without parameters', async () => {
+        const result = await parse(`
+            SQLEXEC(1)
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Single SQLEXEC with REM', async () => {
+        const result = await parse(`
+            SQLEXEC(1) ; REM tada
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);

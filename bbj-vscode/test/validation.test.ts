@@ -202,7 +202,7 @@ describe('BBj validation', async () => {
                 LET TEMP=X, X=MOD(Y,X), Y=TEMP
             WEND
             REM expect error here
-            RETURn
+            RETURN
         FNEND
         `);
         const keywordStatement  = findFirst(validationResult.document, isKeywordStatement, true);

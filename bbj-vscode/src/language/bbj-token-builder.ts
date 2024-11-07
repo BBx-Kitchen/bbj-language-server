@@ -14,10 +14,6 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'KEYWORD_STANDALONE');
         this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
         this.spliceToken(tokens, 'RPAREN_NL');
-        const rparen = tokens.find(t => t.name === ')')!;
-        const rparenNl = tokens.find(t => t.name === 'RPAREN_NL')!;
-        rparenNl.CATEGORIES = [rparen];
-        rparenNl.PATTERN = /\)(?=(\r?\n))/;
         return tokens;
     }
 
@@ -28,7 +24,13 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {
-        if (terminal.name === 'START_BREAK') {
+        if (terminal.name === 'RPAREN_NL') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/\)(?=\s*(;\s*|\r?\n))/),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'START_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/START[ \t]*(?=(;|\r?\n))/i),
