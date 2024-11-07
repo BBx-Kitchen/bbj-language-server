@@ -470,12 +470,15 @@ PrintStatement:
     )
     ;
 
+//actual intent: ('('channelno?options?')')? (items(',' items)*)? ','?
 fragment WithChannelAndOptionsAndOutputItems infers WithChannelAndOptionsAndOutputItems:
     '(' channelno=Expression? Options? (
         RPAREN_NL
-        | RPAREN_NO_NL items+=OutputItem (','items+=OutputItem)* ENDLINE_PRINT_COMMA?
+        | RPAREN_NO_NL items+=OutputItem (',' items+=OutputItem)* ENDLINE_PRINT_COMMA?
         | RPAREN_NO_NL ENDLINE_PRINT_COMMA
     )
+    | items+=OutputItem (',' items+=OutputItem)* ENDLINE_PRINT_COMMA?
+    | ENDLINE_PRINT_COMMA
 ;
 
 
@@ -564,8 +567,10 @@ ReadRecordStatement infers ReadStatement:
     kind=READ_RECORD_KINDS WithChannelAndOptionsAndInputItems?
 ;
 
+//actual intent: ('('channelno?options?')')? (items(','items)*)?
 fragment WithChannelAndOptionsAndInputItems infers WithChannelAndOptionsAndInputItems:
     '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)*)
+    | (items+=InputItem (','items+=InputItem)*)?
 ;
 
 READ_RECORD_KINDS returns string:
