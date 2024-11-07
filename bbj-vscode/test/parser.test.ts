@@ -1797,6 +1797,16 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Issue 163 READ', async () => {
+        const result = await parse(`
+            let so70 = 1111
+            read(so70, knum=3, dir=0, end=*next)
+            read(so70, knum=3, dir=0, end=*next)
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Single SQLEXEC without parameters', async () => {
         const result = await parse(`
             SQLEXEC(1)
