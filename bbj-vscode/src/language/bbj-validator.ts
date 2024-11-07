@@ -150,7 +150,7 @@ export class BBjValidator {
                     const beforeNodes = this.getCstNodes(node.$cstNode, before);
                     for (const cst of beforeNodes) {
                         if (!this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be preceeded by a line break.', {
+                            accept('error', 'This line needs to be preceeded by a line break: ' +textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -161,7 +161,7 @@ export class BBjValidator {
                     const afterNodes = this.getCstNodes(node.$cstNode, after);
                     for (const cst of afterNodes) {
                         if (!this.hasLinebreakAfter(cst, textDocument)) {
-                            accept('error', 'This line needs to be succeeded by a line break.', {
+                            accept('error', 'This line needs to be succeeded by a line break: ' +textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -172,7 +172,7 @@ export class BBjValidator {
                     const cstNodes = this.getCstNodes(node.$cstNode, both);
                     for (const cst of cstNodes) {
                         if (!this.hasLinebreakAfter(cst, textDocument) || !this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be wrapped by line breaks.', {
+                            accept('error', 'This line needs to be wrapped by line breaks: ' +textDocument.getText(cst.range) , {
                                 node,
                                 range: cst.range
                             });

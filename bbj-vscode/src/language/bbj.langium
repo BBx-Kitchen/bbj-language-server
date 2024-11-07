@@ -53,7 +53,6 @@ SingleStatement:
     ExecuteStatement |
     ExitToStatement |
     ExitWithNumberStatement |
-    ExpressionStatement |
     FileOptStatement |
     FnErrStatement |
     ForStatement |
@@ -110,7 +109,8 @@ SingleStatement:
     WaitStatement |
     WhileEndStatement |
     WhileStatement |
-    XCallStatement
+    XCallStatement |
+    ExpressionStatement
 ;
 
 ClearPasswordStatement:
@@ -126,11 +126,11 @@ ClipFileStatement:
     ;
 
 ChanOptStatement:
-    'CHANOPT' '(' channelno=Expression Mode? ')' str=Expression
+    'CHANOPT' '(' channelno=Expression Mode? RPAREN_NO_NL str=Expression
     ;
 
 RemoveStatement:
-    'REMOVE' '(' channelno=Expression Key Err? Dom? ')'
+    'REMOVE' '(' channelno=Expression Key Err? Dom? RPAREN_NL
     ;
 
 PrefixStatement:
@@ -138,11 +138,11 @@ PrefixStatement:
     ;
 
 SqlCommitStatement:
-    'SQLCOMMIT' '(' sqlchan=Expression Err? ')'
+    'SQLCOMMIT' '(' sqlchan=Expression Err? RPAREN_NL
     ;
 
 SqlRollbackStatement:
-    'SQLROLLBACK' '(' sqlchan=Expression Err? ')'
+    'SQLROLLBACK' '(' sqlchan=Expression Err? RPAREN_NL
     ;
 
 StartStatement:
@@ -151,11 +151,11 @@ StartStatement:
     ;
 
 LockStatement:
-    'LOCK' '(' channelno=Expression Err? ')'
+    'LOCK' '(' channelno=Expression Err? RPAREN_NL
     ;
 
 UnlockStatement:
-    'UNLOCK' '(' channelno=Expression Err? ')'
+    'UNLOCK' '(' channelno=Expression Err? RPAREN_NL
     ;
 
 DeleteStatement:
@@ -168,11 +168,11 @@ BackgroundStatement:
     'BACKGROUND' str=Expression Err?;
 
 CallbackStatement:
-    'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? ')'
+    'CALLBACK' '(' eventType=[LibEventType:ValidName] ',' publicProgramEntryPoint=Expression ',' contextID=Expression (',' controlID=Expression)? RPAREN_NL
     ;
 
 DumpStatement:
-    'DUMP' ('(' channelno=Expression Mode? Err? Ind? ')')?
+    'DUMP' ('(' channelno=Expression Mode? Err? Ind? RPAREN_NL)?
     ;
 
 FileOptStatement:
@@ -188,11 +188,11 @@ IndexedStatement:
     ;
 
 RemoveCallbackStatement:
-    'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? ')'
+    'REMOVE_CALLBACK' '(' eventType=[LibEventType:ValidName] ',' contextID=Expression (',' controlID=Expression)? RPAREN_NL
     ;
 
 ResourceCloseStatement:
-    'RESCLOSE' '(' handle=Expression Err? ')'
+    'RESCLOSE' '(' handle=Expression Err? RPAREN_NL
     ;
 
 RestoreStatement:
@@ -220,7 +220,7 @@ SetTimeStatement:
     ;
 
 SetTraceStatement:
-    'SETTRACE' ('(' channelno=Expression Mode? Err? ')')?
+    'SETTRACE' ('(' channelno=Expression Mode? Err? RPAREN_NL)?
     ;
 
 SortStatement:
@@ -240,7 +240,7 @@ InitFileStatement:
 ;
 
 LCheckInStatement:
-    'LCHECKIN' '(' handle=Expression Err? ')'
+    'LCHECKIN' '(' handle=Expression Err? RPAREN_NL
     ;
 
 EraseStatement:
@@ -252,9 +252,9 @@ StringStatement:
 ;
 
 DefFunction returns DefFunction:
-    'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? ')' (
-        '=' value=Expression
-        | (body += (DefReturn | Statement))* FNEND
+    'DEF' name=FeatureName '(' (parameters+=FunctionParameter (',' parameters+=FunctionParameter)*)? (
+        RPAREN_NO_NL '=' value=Expression
+        | RPAREN_NL (body += (DefReturn | Statement))* FNEND
     );
 
 DefReturn:
@@ -323,7 +323,7 @@ FieldDecl returns FieldDecl:
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? ')' (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
     Comments?
     (
         (body+=Statement)*
@@ -352,7 +352,7 @@ ArrayDecl returns ArrayDecl:
         (':' template=Expression)
         | (
             ('[' dimensions+=Expression (',' dimensions+=Expression)* ']')?
-            ('(' size=Expression (',' init=Expression)? ')')? // set size and init
+            ('(' size=Expression (',' init=Expression)? RPAREN)? // set size and init
           )
     )
 ;
@@ -472,7 +472,7 @@ PrintStatement:
 
 
 fragment WithChannelAndOptions infers WithChannelAndOptions:
-    '(' channelno=Expression? Options? ')'
+    '(' channelno=Expression? Options? RPAREN
 ;
 
 /**
@@ -549,7 +549,7 @@ OtherItem:
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS record?='RECORD'? WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_KINDS record?='RECORD'? (WithChannelAndOptions)? (items+=InputItem (','items+=InputItem)* )?
 ;
 
 READ_KINDS returns string:
@@ -576,7 +576,7 @@ InputVariable:
 ;
 
 VerifyOptions:
-    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* (',' elements+=LastVerifyOption)?')'
+    ':(' elements+=VerifyOption (',' elements+=VerifyOption)* (',' elements+=LastVerifyOption)? RPAREN_NL
 ;
 
 VerifyOption:
@@ -597,21 +597,28 @@ ClipFromStrStatement:
 ;
 
 SqlOpenStatement:
-    'SQLOPEN' '(' sqlchan=Expression Mode? Err? ')' datasourcename=Expression
+    'SQLOPEN' '(' sqlchan=Expression Mode? Err? RPAREN_NO_NL datasourcename=Expression
 ;
 
 SqlPrepStatement:
-    'SQLPREP' '(' sqlchan=Expression Err? ')' str=Expression
+    'SQLPREP' '(' sqlchan=Expression Err? RPAREN_NO_NL str=Expression
 ;
 
 SqlCloseStatement:
-    'SQLCLOSE' '(' sqlchan=Expression Err? ')'
+    'SQLCLOSE' '(' sqlchan=Expression Err? RPAREN
 ;
 
 SqlOpStatement:
-    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? ')' (exprs+=Expression (',' exprs+=Expression)*)?
+    kind = ('SQLEXEC' | 'SQLSET') '(' sqlchan=Expression Err? (RPAREN_NL | RPAREN_NO_NL exprs+=Expression (',' exprs+=Expression)*)
 ;
 
+RPAREN returns string:
+    RPAREN_NL | RPAREN_NO_NL
+    ;
+
+RPAREN_NO_NL returns string:
+    ')'
+    ;
 
 CloseStatement:
     'CLOSE'  WithChannelAndOptions?
@@ -714,10 +721,10 @@ PrefixExpression infers Expression:
 MemberCall infers Expression:
     PrimaryExpression
     (
-        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? ')')?
+        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? RPAREN)?
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
     )*
-    ({infer SubstringExpresion.receiver=current} '(' position = Expression (',' length = Expression)? ')')? // substring
+    ({infer SubstringExpresion.receiver=current} '(' position = Expression (',' length = Expression)? RPAREN)? // substring
 ;
 
 ParameterCall:
@@ -725,15 +732,15 @@ ParameterCall:
 ;
 
 PrimaryExpression infers Expression:
-    '(' Expression ')'
+    '(' Expression RPAREN
     | SymbolRef
     | Literal
     | Mnemonic
     | PositionalMnemonic
     | ConstructorCall;
 
-SymbolRef:
-    instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err?')')?
+SymbolRef infers Expression:
+    {infer SymbolRef} instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err? RPAREN)?
 ;
 
 Literal:
@@ -748,18 +755,18 @@ StringLiteral:
 ;
 
 Mnemonic:
-    name=MNEMONIC ('(' params+=Expression (',' params+=Expression)*')')?
+    name=MNEMONIC ('(' params+=Expression (',' params+=Expression)*RPAREN)?
 ;
 
 PositionalMnemonic:
-    '@(' col=Expression (',' row=Expression)?')'
+    '@(' col=Expression (',' row=Expression)? RPAREN
 ;
 
 ConstructorCall:
     // TODO: Possibly use ID instead of QualifiedClassName
     'new' class=[Class:QualifiedClassName] 
     (
-        ('(' (args+=Expression (',' args+=Expression)*)? ')')
+        ('(' (args+=Expression (',' args+=Expression)*)? RPAREN)
         | ('[' (args+=Expression (',' args+=Expression)*)? ']')
     )
     ;
@@ -810,7 +817,7 @@ LibMember:
 
 LibFunction returns LibFunction:
     (docu=DOCU)?
-    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* ')' ':' returnType=IdAndString
+    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* RPAREN_NO_NL ':' returnType=IdAndString
 ;
 
 LibParameter returns LibParameter:
@@ -843,6 +850,7 @@ terminal NEXT_ID: /_next2/;
 terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
 terminal START_BREAK: /_start/;
+terminal RPAREN_NL: /_rparen_nl/;
 
 terminal BBjFilePath: /::.*::/;
 

@@ -596,7 +596,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
-    
+
     test('Check Open Verb optional params keywords', async () => {
         const result = await parse(`
         OPEN (unt,mode="O_CREATE,O_TRUNC",TIM=12)"path/"+"html.png"
@@ -608,7 +608,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
-    
+
     test('Check SQLOpen Verb', async () => {
         const result = await parse(`
         SQLOPEN(1,mode="SQLDriverConnect",err=*next)"datasource"
@@ -920,7 +920,7 @@ describe('Parser Tests', () => {
             GOTO LOOP
         `, { validation: true });
         expectNoParserLexerErrors(result);
-        //TODO expectNoValidationErrors(result);
+        expectNoValidationErrors(result);
         expectToContainAstNodeType(result, isSqlPrepStatement);
     });
 
@@ -1023,7 +1023,7 @@ describe('Parser Tests', () => {
     });
 
     describe("Check PRINT/WRITE verb", () => {
-        test("With Jump labels", async() => {
+        test("With Jump labels", async () => {
             const result = await parse(`
                     LET str$="hallo"
                     WRITE (0, ERR=ErrorJump,END=EndJump) str$
@@ -1037,7 +1037,7 @@ describe('Parser Tests', () => {
             expectToContainAstNodeType(result, isPrintStatement);
         });
 
-        test("With DIR option", async() => {
+        test("With DIR option", async () => {
             const result = await parse(`
                 WRITE "Hallo!"
                 WRITE (0, DIR=-1) "?"
@@ -1141,7 +1141,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    test("Check INITFILE verb", async() => {
+    test("Check INITFILE verb", async () => {
         const result = await parse(`
                 INITFILE "TEST",mode="",err=errorCase
                 INITFILE "TEST2"
@@ -1151,7 +1151,7 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
-    test("Check ERASE verb", async() => {
+    test("Check ERASE verb", async () => {
         const result = await parse(`
             ERASE "TEST1",mode="",tim=5,err=errorCase
             ERASE "TEST2",tim=5,err=errorCase
@@ -1162,7 +1162,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
-    test("Check ERASE verb multiple files", async() => {
+    test("Check ERASE verb multiple files", async () => {
         const result = await parse(`
             ERASE "TEST1", "TEST2", "TEST3", mode="",tim=5,err=errorCase
             ERASE "TEST1", "TEST2", "TEST3", tim=5,err=errorCase
@@ -1295,7 +1295,7 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
-    
+
     test("Check DENUM statement", async () => {
         const result = await parse(`
             DENUM
@@ -1545,7 +1545,7 @@ describe('Parser Tests', () => {
         `);
         expectNoParserLexerErrors(result);
     });
-    
+
     test("Check DIM statement", async () => {
         const result = await parse(`
                 DIM A$(32000,$01$)
@@ -1614,29 +1614,33 @@ describe('Parser Tests', () => {
             labelError:
                 LOCK(2)
                 UNLOCK(2)
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check STOP statement", async () => {
         const result = await parse(`
             STOP
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check RESET statement", async () => {
         const result = await parse(`
             RESET
-        `, {validation: true});
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check RETRY statement", async () => {
         const result = await parse(`
             RETRY
-        `, {validation: true});
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test("Check START statement", async () => {
@@ -1651,8 +1655,9 @@ describe('Parser Tests', () => {
                 START 123,456,err=labelError,"file.bbx"
                 START 123,err=labelError,"file.bbx"
             labelError:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check SQLROLLBACK statement', async () => {
@@ -1660,10 +1665,11 @@ describe('Parser Tests', () => {
                 SQLROLLBACK(1)
                 SQLROLLBACK(2,err=LabelError)
             labelError:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
-    
+
     test('Check SQLCOMMIT statement', async () => {
         const result = await parse(`
             SQLOPEN(1,MODE="AUTO_COMMIT=OFF")"MyData"
@@ -1673,8 +1679,9 @@ describe('Parser Tests', () => {
             SQLCLOSE(1)
         labelError:
             SQLCOMMIT(1)
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check SQLEXEC statement', async () => {
@@ -1684,8 +1691,9 @@ describe('Parser Tests', () => {
             SQLPREP (SQL1)"select * from CUSTOMERS where LAST_NAME > ?"
             REM Fill the ? gap with LAST_NAME$
             SQLEXEC (SQL1)LAST_NAME$
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check ON ... GOSUB statement', async () => {
@@ -1697,8 +1705,9 @@ describe('Parser Tests', () => {
                 on A gosub label1,label2
             label1:
             label2:
-        `);
+        `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check PREFIX statement', async () => {
@@ -1707,6 +1716,7 @@ describe('Parser Tests', () => {
             prefix """C:\\Program Files\\"" ""C:\\temp\\"""
         `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check REMOVE statement', async () => {
@@ -1718,12 +1728,13 @@ describe('Parser Tests', () => {
             label1:
         `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 
     test('Check remove as function name', async () => {
         const result = await parse(`
             class public RemoveTest
-                method public void delete(Onject obj!)
+                method public void delete(Object obj!)
                     obj!.remove(1)
                 methodend
             classend
@@ -1738,15 +1749,17 @@ describe('Parser Tests', () => {
             INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:"
         `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
-   
+
     test('Check CHANOPT statement', async () => {
         const result = await parse(`
             CHANOPT (1,MODE="123") "BAUD=9600,MODE=8N1,XON/XOFF"
         `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
-   
+
     test('Check Save as Id', async () => {
         const result = await parse(`
         class public DTNote
@@ -1759,14 +1772,16 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
-   
+
     test('Print trailing comma in compound statement', async () => {
         const result = await parse(`
+        let adv = 1
         print 'fl', "9", chr(adv), fill(adv, $0a$),; rem  Move down CDS037 grid
         `, { validation: true });
         expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
-   
+
     test('Switch case single line', async () => {
         const result = await parse(`
         a$ = "2"
@@ -1777,6 +1792,22 @@ describe('Parser Tests', () => {
             case "3"; print "Third"; break
             case default; print "Not in top three, try again"
         swend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Single SQLEXEC without parameters', async () => {
+        const result = await parse(`
+            SQLEXEC(1)
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Single SQLEXEC with REM', async () => {
+        const result = await parse(`
+            SQLEXEC(1) ; REM tada
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);

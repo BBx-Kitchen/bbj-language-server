@@ -5,25 +5,32 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
         const tokens = super.buildTokens(grammar, options) as TokenType[];
-        this.spliceToken(tokens, 'START_BREAK', 1);
-        this.spliceToken(tokens, 'FNEND', 1);
-        this.spliceToken(tokens, 'NEXT_BREAK', 1);
-        this.spliceToken(tokens, 'NEXT_ID', 1);
-        this.spliceToken(tokens, 'METHODRET_END', 1);
-        this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA', 1);
-        this.spliceToken(tokens, 'KEYWORD_STANDALONE', 1);
-        this.spliceToken(tokens, 'PRINT_STANDALONE_NL', 1);
+        this.spliceToken(tokens, 'START_BREAK');
+        this.spliceToken(tokens, 'FNEND');
+        this.spliceToken(tokens, 'NEXT_BREAK');
+        this.spliceToken(tokens, 'NEXT_ID');
+        this.spliceToken(tokens, 'METHODRET_END');
+        this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA');
+        this.spliceToken(tokens, 'KEYWORD_STANDALONE');
+        this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
+        this.spliceToken(tokens, 'RPAREN_NL');
         return tokens;
     }
 
-    private spliceToken(tokens: TokenType[], name: string, index: number) {
+    private spliceToken(tokens: TokenType[], name: string) {
         const nextTokenIndex = tokens.findIndex(type => type.name === name);
-        const nextToken = tokens.splice(nextTokenIndex, 1);
-        tokens.splice(index, 0, ...nextToken);
+        const nextToken = tokens.splice(nextTokenIndex, 1)[0];
+        tokens.splice(1, 0, nextToken);
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {
-        if (terminal.name === 'START_BREAK') {
+        if (terminal.name === 'RPAREN_NL') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/\)(?=\s*(;\s*|\r?\n))/),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'START_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/START[ \t]*(?=(;|\r?\n))/i),
