@@ -450,7 +450,7 @@ SetErrorStatement:
 
 OpenStatement:
     // TODO check channelno is int and fileid is string
-    'OPEN' WithChannelAndOptions fileid=Expression
+    'OPEN' '(' channelno=Expression? Options? RPAREN_NO_NL fileid=Expression
 ;
 
 
@@ -466,14 +466,18 @@ PrintStatement:
             (('?' | 'PRINT' | 'WRITE') record?='RECORD'?)
             | (record?=('PRINTRECORD' | 'WRITERECORD'))
         )
-        WithChannelAndOptions? (items+=OutputItem (',' items+=OutputItem)*)? ENDLINE_PRINT_COMMA?
+        WithChannelAndOptionsAndOutputItems?
     )
     ;
 
-
-fragment WithChannelAndOptions infers WithChannelAndOptions:
-    '(' channelno=Expression? Options? RPAREN
+fragment WithChannelAndOptionsAndOutputItems infers WithChannelAndOptionsAndOutputItems:
+    '(' channelno=Expression? Options? (
+        RPAREN_NL
+        | RPAREN_NO_NL items+=OutputItem (','items+=OutputItem)* ENDLINE_PRINT_COMMA?
+        | RPAREN_NO_NL ENDLINE_PRINT_COMMA
+    )
 ;
+
 
 /**
  * Adds a comma separated parameter list: (',' PARAM_NAME+=Expression)+
@@ -549,7 +553,7 @@ OtherItem:
  * NOTE: READ, INPUT, EXTRACT, and FIND use the same syntax as READ and READ RECORD.
  */
 ReadStatement:
-    kind=READ_KINDS record?='RECORD'? (WithChannelAndOptions)? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_KINDS record?='RECORD'? WithChannelAndOptionsAndInputItems?
 ;
 
 READ_KINDS returns string:
@@ -557,7 +561,11 @@ READ_KINDS returns string:
 ;
 
 ReadRecordStatement infers ReadStatement:
-    kind=READ_RECORD_KINDS WithChannelAndOptions? (items+=InputItem (','items+=InputItem)* )?
+    kind=READ_RECORD_KINDS WithChannelAndOptionsAndInputItems?
+;
+
+fragment WithChannelAndOptionsAndInputItems infers WithChannelAndOptionsAndInputItems:
+    '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)*)
 ;
 
 READ_RECORD_KINDS returns string:
@@ -621,7 +629,7 @@ RPAREN_NO_NL returns string:
     ;
 
 CloseStatement:
-    'CLOSE'  WithChannelAndOptions?
+    'CLOSE'  '(' channelno=Expression? Options? RPAREN_NL
 ;
 
 WaitStatement:
