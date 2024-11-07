@@ -135,6 +135,7 @@ export class BBjValidator {
         }
         const klass = ref.ref;
         if(isBbjClass(klass) && klass.visibility) {
+            const typeName = klass.interface ? 'interface' : 'class';
             const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
             switch(klass.visibility.toUpperCase()) {
                 case "PUBLIC":
@@ -144,12 +145,12 @@ export class BBjValidator {
                     const dirOfDeclaration = dirname(uriOfDeclaration);
                     const dirOfUsage = dirname(uriOfUsage);
                     if(!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                        accept("error", `Protected class or interface '${klass.name}' can be only referenced within the same directory!`, info);
+                        accept("error", `Protected ${typeName} '${klass.name}' can be only referenced within the same directory!`, info);
                     }
                     break;
                 case "PRIVATE":
                     if(uriOfUsage !== uriOfDeclaration) {
-                        accept("error", `Private class or interface '${klass.name}' can be only referenced within the same file!`, info);
+                        accept("error", `Private ${typeName} '${klass.name}' can be only referenced within the same file!`, info);
                     }
                     break;
             }
