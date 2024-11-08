@@ -4,12 +4,14 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, GrammarUtils, LeafCstNode, Properties, RootCstNode, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, GrammarUtils, LeafCstNode, Properties, Reference, RootCstNode, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module.js';
-import { BBjAstType, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement, isSwitchStatement } from './generated/ast.js';
+import { BBjAstType, Class, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
+import { dirname, isAbsolute, relative } from 'path';
+import { registerClassChecks } from './validations/check-classes.js';
 
 /**
  * Register custom validation checks.
@@ -29,6 +31,7 @@ export function registerValidationChecks(services: BBjServices) {
         MethodDecl: validator.checkIfMethodIsChildOfInterface,
     };
     registry.register(checks, validator);
+    registerClassChecks(registry);
 }
 
 type LinebreakMap = [(node: AstNode) => boolean, string[] | boolean, string[] | boolean, string[] | boolean][]
@@ -77,6 +80,47 @@ export class BBjValidator {
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
     }
+
+    private isSubFolderOf(folder: string, parentFolder: string) {
+        if(parentFolder === folder) {
+            return true;
+        }
+        const relativePath = relative(parentFolder, folder);
+        return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath);
+    }
+
+    public checkClassReference<N extends AstNode>(accept: ValidationAcceptor, ref: Reference<Class>|undefined, info: DiagnosticInfo<N>): void {
+        if(!ref) {
+            return;
+        }
+        const uriOfUsage = AstUtils.getDocument(ref.$refNode!.root.astNode).uri.fsPath;
+        if(!ref.ref) {
+            return;
+        }
+        const klass = ref.ref;
+        if(isBbjClass(klass) && klass.visibility) {
+            const typeName = klass.interface ? 'interface' : 'class';
+            const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
+            switch(klass.visibility.toUpperCase()) {
+                case "PUBLIC":
+                    //everything is allowed
+                    return;
+                case "PROTECTED":
+                    const dirOfDeclaration = dirname(uriOfDeclaration);
+                    const dirOfUsage = dirname(uriOfUsage);
+                    if(!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
+                        accept("error", `Protected ${typeName} '${klass.name}' can be only referenced within the same directory!`, info);
+                    }
+                    break;
+                case "PRIVATE":
+                    if(uriOfUsage !== uriOfDeclaration) {
+                        accept("error", `Private ${typeName} '${klass.name}' can be only referenced within the same file!`, info);
+                    }
+                    break;
+            }
+        }
+    }
+    
 
     private isStandaloneStatement(node: AstNode): boolean {
         const previous = this.getPreviousNode(node);
@@ -150,7 +194,7 @@ export class BBjValidator {
                     const beforeNodes = this.getCstNodes(node.$cstNode, before);
                     for (const cst of beforeNodes) {
                         if (!this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be preceeded by a line break.', {
+                            accept('error', 'This line needs to be preceeded by a line break: ' +textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -161,7 +205,7 @@ export class BBjValidator {
                     const afterNodes = this.getCstNodes(node.$cstNode, after);
                     for (const cst of afterNodes) {
                         if (!this.hasLinebreakAfter(cst, textDocument)) {
-                            accept('error', 'This line needs to be succeeded by a line break.', {
+                            accept('error', 'This line needs to be succeeded by a line break: ' +textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -172,7 +216,7 @@ export class BBjValidator {
                     const cstNodes = this.getCstNodes(node.$cstNode, both);
                     for (const cst of cstNodes) {
                         if (!this.hasLinebreakAfter(cst, textDocument) || !this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be wrapped by line breaks.', {
+                            accept('error', 'This line needs to be wrapped by line breaks: ' +textDocument.getText(cst.range) , {
                                 node,
                                 range: cst.range
                             });
@@ -327,3 +371,4 @@ function binarySearch(node: CompositeCstNode, offset: number): CstNode | undefin
 
     return closest;
 }
+

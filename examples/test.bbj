@@ -1,0 +1,3 @@
+let X$ = ""
+PRINT X$,
+PRINT ERR,TCB(5),
