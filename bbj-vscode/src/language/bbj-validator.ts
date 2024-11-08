@@ -11,6 +11,7 @@ import type { BBjServices } from './bbj-module.js';
 import { BBjAstType, Class, CommentStatement, DefFunction, EraseStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { dirname, isAbsolute, relative } from 'path';
+import { registerClassChecks } from './validations/check-classes.js';
 
 /**
  * Register custom validation checks.
@@ -30,44 +31,7 @@ export function registerValidationChecks(services: BBjServices) {
         MethodDecl: validator.checkIfMethodIsChildOfInterface,
     };
     registry.register(checks, validator);
-
-    const classChecks: ValidationChecks<BBjAstType> = {
-        BbjClass: (decl, accept) => {
-            decl.extends.forEach((implement, index) => {
-                validator.checkClassReference(accept, implement, {
-                    node: decl,
-                    property: 'extends',
-                    index
-                });
-            });
-            decl.implements.forEach((implement, index) => {
-                validator.checkClassReference(accept, implement, {
-                    node: decl,
-                    property: 'implements',
-                    index
-                });
-            });
-        },
-        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.class, {
-            node: call,
-            property: 'class'
-        }),
-        MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType, {
-            node: meth,
-            property: 'returnType'
-        }),
-        ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type, {
-            node: param,
-            property: 'type'
-        }),
-        VariableDecl: (decl, accept) => validator.checkClassReference(accept, decl.type, {
-            node: decl,
-            property: 'type'
-        }),
-        
-    };
-    registry.register(classChecks, validator);
-
+    registerClassChecks(registry);
 }
 
 type LinebreakMap = [(node: AstNode) => boolean, string[] | boolean, string[] | boolean, string[] | boolean][]
