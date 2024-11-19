@@ -4,12 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { EmptyFileSystem } from 'langium';
+import { AstUtils, EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isMemberCall } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -211,6 +211,48 @@ describe('BBj validation', async () => {
             node: keywordStatement
         });
     });
+
+    test('Call private method', async () => {
+        const validationResult = await validate(`
+            class public Test 
+                method private doPrivately()
+                methodend
+
+                method protected doProtected()
+                methodend
+
+                method public doPublic()
+                    #this!.doPrivately()        ; REM no error
+                methodend
+            classend
+
+            class public TestDX extends Test 
+                method public doNew()
+                    #this!.doProtected()        ; REM no error
+                    #this!.doPrivately()        ; REM error
+                methodend
+            classend
+
+            t! = new Test()
+            t!.doPrivately()                    ; REM error
+            t!.doProtected()                    ; REM error
+            t!.doPublic()                       ; REM no error
+        `);
+        const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
+        expect(memberCalls).toHaveLength(6);
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[2],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[3],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+            node: memberCalls[4],
+            property: 'member'
+        });
+	});
 
     test('IF statement one line', async () => {
         const validationResult = await validate(`
