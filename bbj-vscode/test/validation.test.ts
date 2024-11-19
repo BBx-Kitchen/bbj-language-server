@@ -212,7 +212,7 @@ describe('BBj validation', async () => {
         });
     });
 
-    test('Call private method', async () => {
+    test('Call methods with different access levels', async () => {
         const validationResult = await validate(`
             class public Test 
                 method private doPrivately()
