@@ -157,14 +157,27 @@ CTRL(param: int, param: int, param: int, param: int, ERR?:lineref): string
 \`CVS(string,int{,ERR=lineref})\`
 
 The CVS() function modifies a given string by the value of int from the table below:
+
 0-Do nothing
+
 1-Strip leading spaces
+
 2-Strip traling spaces
+
 4-Convert characters to uppercase
+
 8-Convert characters to lowercase
+
 16-Convert nonprintable characters to spaces
+
 32-Replace multiple spaces with a single space
+
 64-Repace "," and "." characters with values as specified in OPTS(see SETOPTS)
+
+If the optional char parameter was specified, use it instead of space.
+
+Documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/cvs_function_bbj.htm
+
 @/
 CVS(param: string, param: int, ERR?:lineref): string
 
