@@ -1822,4 +1822,26 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('issue 190, SWITCH CASEs with REM in-between', async () => {
+        const result = await parse(`
+            num = 4
+            switch (num)
+                rem [locale].properties Files
+                case 1
+                    PRINT
+                    break
+                rem Jar File
+                case 2
+                    PRINT
+                    break
+                rem Zip File
+                case 3
+                    PRINT
+                    break
+            swend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
