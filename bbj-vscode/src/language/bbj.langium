@@ -400,19 +400,18 @@ WhileEndStatement:
 
 SwitchStatement:
     'SWITCH' value=Expression
-        (
+		(
             cases+=SwitchCase
             | comments+=CommentStatement
         )*
-        (
-            'CASE' 'DEFAULT' ';'
-            (defaultCase+=Statement)*
-        )?
+    	(
+        	'CASE' 'DEFAULT' (';')? (defaultCase+=Statement)*
+    	)?
     'SWEND'
 ;
 
 SwitchCase:
-    LabelDecl? 'CASE' value=Expression (';')? (body+=Statement)*;
+    LabelDecl? 'CASE' value=Expression (';')? (body+=Statement (';')?)*;
 
 GotoStatement:
     kind=('GOTO' | 'GOSUB') target=LabelRef

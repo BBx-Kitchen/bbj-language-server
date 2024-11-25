@@ -1823,6 +1823,33 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Switch-Default without semicolon', async () => {
+        const result = await parse(`
+            LET t$ = "hallo"
+            SWITCH t$
+                CASE 1
+                    PRINT "1"
+                    BREAK
+                CASE 2
+                    PRINT "2"
+                    BREAK
+                CASE DEFAULT
+                    PRINT "default"
+            SWEND
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Switch-Default with semicolon', async () => {
+        const result = await parse(`
+            LET t$ = "hallo"
+            SWITCH t$; CASE 1; PRINT "1"; BREAK; CASE 2; PRINT "2"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('issue 190, SWITCH CASEs with REM in-between', async () => {
         const result = await parse(`
             num = 4
