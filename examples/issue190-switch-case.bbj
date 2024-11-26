@@ -5,9 +5,9 @@ switch (num)
         PRINT
         break
     rem Jar File
-    case 2
-        PRINT
-        break
+    case 2; REM same line comment
+        PRINT; REM same line comment
+        break; REM same line comment
     rem Zip File
     case 3
         PRINT
