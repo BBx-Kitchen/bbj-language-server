@@ -1,0 +1,15 @@
+num = 4
+switch (num)
+    rem [locale].properties Files
+    case 1
+        PRINT
+        break
+    rem Jar File
+    case 2; REM same line comment
+        PRINT; REM same line comment
+        break; REM same line comment
+    rem Zip File
+    case 3
+        PRINT
+        break
+swend

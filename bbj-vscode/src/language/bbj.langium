@@ -400,11 +400,14 @@ WhileEndStatement:
 
 SwitchStatement:
     'SWITCH' value=Expression
-        cases+=SwitchCase*
-    (
-        'CASE' 'DEFAULT' ';'
-        (defaultCase+=Statement)*
-    )?
+        (
+            cases+=SwitchCase
+            | comments+=CommentStatement
+        )*
+        (
+            'CASE' 'DEFAULT' ';'
+            (defaultCase+=Statement)*
+        )?
     'SWEND'
 ;
 
