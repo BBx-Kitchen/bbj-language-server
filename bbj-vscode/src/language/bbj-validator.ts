@@ -9,7 +9,7 @@ import { dirname, isAbsolute, relative } from 'path';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module.js';
-import { BBjAstType, Class, CommentStatement, CompoundStatement, DefFunction, ElseStatement, EraseStatement, IfEndStatement, IfStatement, InitFileStatement, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, Statement, Use, isArrayDeclarationStatement, isBBjClassMember, isBbjClass, isClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement } from './generated/ast.js';
+import { BBjAstType, Class, CommentStatement, CompoundStatement, DefFunction, ElseStatement, EraseStatement, FieldDecl, IfEndStatement, IfStatement, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, Statement, Use, isArrayDeclarationStatement, isBBjClassMember, isBbjClass, isClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { TypeInferer } from './bbj-type-inferer.js';
@@ -61,6 +61,10 @@ export class BBjValidator {
     }
 
     checkMemberCallUsingAccessLevels(memberCall: MemberCall, accept: ValidationAcceptor): void {
+        const type = memberCall.member.$nodeDescription?.type ?? memberCall.member.ref?.$type;
+        if(!type || ![JavaField, JavaMethod, MethodDecl, FieldDecl].includes(type)) {
+            return;
+        }
         const classOfDeclaration = memberCall.member.ref?.$container;
         const classOfUsage = AstUtils.getContainerOfType(memberCall, isClass);
         if(!classOfDeclaration) {
