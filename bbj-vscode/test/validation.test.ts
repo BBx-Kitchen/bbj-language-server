@@ -212,9 +212,13 @@ describe('BBj validation', async () => {
         });
     });
 
-    test('Call methods with different access levels', async () => {
+    test('Call instance members with different access levels', async () => {
         const validationResult = await validate(`
-            class public Test 
+            class public Test
+                field private String fieldPrivate
+                field protected String fieldProtected
+                field public String fieldPublic
+
                 method private doPrivately()
                 methodend
 
@@ -222,34 +226,113 @@ describe('BBj validation', async () => {
                 methodend
 
                 method public doPublic()
-                    #this!.doPrivately()        ; REM no error
+                    #this!.doPrivately()               ; REM no error
                 methodend
             classend
 
             class public TestDX extends Test 
                 method public doNew()
-                    #this!.doProtected()        ; REM no error
-                    #this!.doPrivately()        ; REM error
+                    #this!.doProtected()               ; REM no error
+                    #this!.doPrivately()               ; REM error
+                    let local1 = #this!.fieldProtected ; REM no error
+                    let local2 = #this!.fieldPrivate   ; REM error
                 methodend
             classend
 
             t! = new Test()
-            t!.doPrivately()                    ; REM error
-            t!.doProtected()                    ; REM error
-            t!.doPublic()                       ; REM no error
+            t!.doPrivately()                           ; REM error
+            t!.doProtected()                           ; REM error
+            t!.doPublic()                              ; REM no error
+            let global1 = t!.fieldPrivate              ; REM error
+            let global2 = t!.fieldProtected            ; REM error
+            let global3 = t!.fieldPublic               ; REM no error
         `);
         const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
-        expect(memberCalls).toHaveLength(6);
+        expect(memberCalls).toHaveLength(11);
         expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
             node: memberCalls[2],
             property: 'member'
         });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[4],
+            property: 'member'
+        });
         expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
-            node: memberCalls[3],
+            node: memberCalls[5],
             property: 'member'
         });
         expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+            node: memberCalls[6],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[8],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+            node: memberCalls[9],
+            property: 'member'
+        });
+    });
+
+    test('Call static members with different access levels', async () => {
+        const validationResult = await validate(`
+            class public Test
+                field private static String fieldPrivate
+                field protected static String fieldProtected
+                field public static String fieldPublic
+
+                method private static doPrivately()
+                methodend
+
+                method protected static doProtected()
+                methodend
+
+                method public static doPublic()
+                    #this!.doPrivately()             ; REM no error
+                methodend
+            classend
+
+            class public TestDX extends Test 
+                method public doNew()
+                    Test.doProtected()               ; REM no error
+                    Test.doPrivately()               ; REM error
+                    let local1 = Test.fieldProtected ; REM no error
+                    let local2 = Test.fieldPrivate   ; REM error
+                methodend
+            classend
+
+            Test.doPrivately()                       ; REM error
+            Test.doProtected()                       ; REM error
+            Test.doPublic()                          ; REM no error
+            let global1 = Test.fieldPrivate          ; REM error
+            let global2 = Test.fieldProtected        ; REM error
+            let global3 = Test.fieldPublic           ; REM no error
+        `);
+        const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
+        expect(memberCalls).toHaveLength(11);
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[2],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
             node: memberCalls[4],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[5],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+            node: memberCalls[6],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[8],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+            node: memberCalls[9],
             property: 'member'
         });
 	});
