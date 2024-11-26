@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNo
 import { dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, Use, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption } from './generated/ast.js';
+import { BBjAstType, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
@@ -30,6 +30,7 @@ export function registerValidationChecks(services: BBjServices) {
         CommentStatement: validator.checkCommentNewLines,
         MethodDecl: validator.checkIfMethodIsChildOfInterface,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
+        SymbolicLabelRef: validator.checkSymbolicLabelRef
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
@@ -224,6 +225,12 @@ export class BBjValidator {
                 }
             })
             return;
+        }
+    }
+
+    checkSymbolicLabelRef(ele: SymbolicLabelRef, accept: ValidationAcceptor): void {
+        if (ele.$cstNode?.text.search(/\s/) !== -1) {
+            accept('error', 'Symbolic label reference may not contain whitespace.', { node: ele });
         }
     }
 }
