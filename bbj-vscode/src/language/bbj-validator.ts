@@ -5,12 +5,12 @@
  ******************************************************************************/
 
 import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, GrammarUtils, LeafCstNode, Properties, Reference, RootCstNode, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { dirname, isAbsolute, relative } from 'path';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module.js';
-import { BBjAstType, Class, CommentStatement, DefFunction, ElseStatement, EraseStatement, IfEndStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, SingleStatement, Statement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isStatement, isSwitchStatement } from './generated/ast.js';
+import { BBjAstType, Class, CommentStatement, CompoundStatement, DefFunction, ElseStatement, EraseStatement, IfEndStatement, IfStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Statement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
-import { dirname, isAbsolute, relative } from 'path';
 import { registerClassChecks } from './validations/check-classes.js';
 
 /**
@@ -52,7 +52,6 @@ export class BBjValidator {
 
     protected readonly javaInterop: JavaInteropService;
 
-
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
     }
@@ -85,13 +84,10 @@ export class BBjValidator {
             after: false,
             both: true
         }],
-        [isIfStatement, {
-            before: true,
-            after: false,
-            both: false
-        }],
+        this.ifStatementLineBreaks(),
         this.elseStatementLineBreaks(),
         this.ifEndStatementLineBreaks(),
+        this.compoundStatementLineBreaks(),
         [this.isStandaloneStatement, {
             before: false,
             after: false,
@@ -99,13 +95,31 @@ export class BBjValidator {
         }],
     ];
 
+    private ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
+        const mask = (node: IfStatement) => {
+            const lineBreaks = { before: true, after: false, both: false };
+            if (isCompoundStatement(node.$container)) {
+                lineBreaks.before = false;
+            }
+            return lineBreaks
+        }
+        return [isIfStatement, mask]
+    }
+
     private elseStatementLineBreaks(): LineBreakConfig<ElseStatement> {
-        let lineBreaks = { before: false, after: false, both: true };
         const mask = (node: ElseStatement) => {
-            const prev = this.getPreviousNode(node);
-            if (isIfStatement(prev) && this.isSameLine(prev, node)) {
-                // ELSE: if previous is IF_THEN same line
-                lineBreaks.both = false;
+            const lineBreaks = { before: false, after: false, both: true };
+            let prev = this.previousStatement(node);
+            while (isSingleStatement(prev) && this.isSameLine(prev, node)) {
+                if (isIfStatement(prev)) {
+                    // ELSE: if previous is IF_THEN - same line
+                    lineBreaks.both = false;
+                    break;
+                } else if (isElseStatement(prev) || isIfEndStatement(prev)) {
+                    // other
+                    break;
+                }
+                prev = this.previousStatement(prev);
             }
             return lineBreaks
         }
@@ -113,19 +127,42 @@ export class BBjValidator {
     }
 
     private ifEndStatementLineBreaks(): LineBreakConfig<IfEndStatement> {
-        let lineBreaks = { before: false, after: false, both: true };
         const mask = (node: IfEndStatement) => {
-            const prev = this.getPreviousNode(node);
-            if ((isIfStatement(prev) || isElseStatement(prev)) && this.isSameLine(prev, node)) {
-                // ENDIF: if previous is IF_THEN or ELSE same line
-                lineBreaks.both = false;
+            let lineBreaks = { before: false, after: false, both: true };
+            let prev = this.previousStatement(node);
+            while (isSingleStatement(prev) && this.isSameLine(prev, node)) {
+                if (isIfStatement(prev) || isElseStatement(prev)) {
+                    // ENDIF: if previous is IF_THEN or ELSE same line
+                    lineBreaks.both = false;
+                    break;
+                } else if (isIfEndStatement(prev)) {
+                    // other
+                    break;
+                }
+                prev = this.previousStatement(prev);
             }
             return lineBreaks
         }
         return [isIfEndStatement, mask]
     }
 
-
+    private compoundStatementLineBreaks(): LineBreakConfig<CompoundStatement> {
+        const mask = (node: CompoundStatement) => {
+            const lineBreaks = { before: false, after: false, both: false };
+            if (this.isStandaloneStatement(node)) {
+                // default case - wrap by line breaks
+                lineBreaks.both = true;
+                if (isIfStatement(node.statements[node.statements.length - 1])) {
+                    // case: PRINT "FOO"; IF value = 1 THEN PRINT "BAR" FI
+                    lineBreaks.both = false;
+                    lineBreaks.before = true;
+                    lineBreaks.after = false;
+                }
+            }
+            return lineBreaks
+        }
+        return [isCompoundStatement, mask]
+    }
 
     private isSameLine(node: AstNode, other: AstNode): boolean {
         return node.$cstNode?.range.start.line === other.$cstNode?.range.start.line;
@@ -145,7 +182,7 @@ export class BBjValidator {
                     const beforeNodes = this.getCstNodes(node.$cstNode, mask.before);
                     for (const cst of beforeNodes) {
                         if (!this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be preceeded by a line break: ' + textDocument.getText(cst.range), {
+                            accept('error', 'This statement needs to start in a new line: ' + textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -156,7 +193,7 @@ export class BBjValidator {
                     const afterNodes = this.getCstNodes(node.$cstNode, mask.after);
                     for (const cst of afterNodes) {
                         if (!this.hasLinebreakAfter(cst, textDocument)) {
-                            accept('error', 'This line needs to be succeeded by a line break: ' + textDocument.getText(cst.range), {
+                            accept('error', 'This statement needs to end with a line break: ' + textDocument.getText(cst.range), {
                                 node,
                                 range: cst.range
                             });
@@ -166,8 +203,14 @@ export class BBjValidator {
                 if (mask.both) {
                     const cstNodes = this.getCstNodes(node.$cstNode, mask.both);
                     for (const cst of cstNodes) {
-                        if (!this.hasLinebreakAfter(cst, textDocument) || !this.hasLinebreakBefore(cst, textDocument)) {
-                            accept('error', 'This line needs to be wrapped by line breaks: ' + textDocument.getText(cst.range), {
+                        let missingMsg: string | undefined;
+                        if (!this.hasLinebreakBefore(cst, textDocument)) {
+                            missingMsg = 'This statement needs to start in a new line';
+                        } else if (!this.hasLinebreakAfter(cst, textDocument)) {
+                            missingMsg = 'This statement needs to end with a line break';
+                        }
+                        if (missingMsg) {
+                            accept('error', `${missingMsg}: ${textDocument.getText(cst.range)}`, {
                                 node,
                                 range: cst.range
                             });
@@ -182,9 +225,16 @@ export class BBjValidator {
     private previousStatement(statement: Statement): Statement | undefined {
         const container = statement.$container;
         if (isProgram(container) || isCompoundStatement(container)) {
-            if (statement.$containerIndex && statement.$containerIndex > 0) {
+            if (statement.$containerIndex === 0 && isCompoundStatement(container)) {
+                return this.previousStatement(container);
+            } else if (statement.$containerIndex && statement.$containerIndex > 0) {
                 const prevSibling = container.statements[statement.$containerIndex - 1];
-                return isStatement(prevSibling) ? prevSibling : undefined;
+                if (isCompoundStatement(prevSibling)) {
+                    // last child statement in compound statement
+                    return prevSibling.statements[prevSibling.statements.length - 1];
+                } else if (isStatement(prevSibling)) {
+                    return prevSibling;
+                }
             }
         }
         return undefined;
@@ -230,7 +280,7 @@ export class BBjValidator {
         return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath);
     }
 
-    private isStandaloneStatement(node: AstNode): node is SingleStatement {
+    private isStandaloneStatement(node: AstNode): node is Statement {
         const previous = this.getPreviousNode(node);
         if (isLabelDecl(node) || isLabelDecl(previous)) {
             return false;
@@ -241,10 +291,22 @@ export class BBjValidator {
                 || isForStatement(node.$container)
                 || isArrayDeclarationStatement(node.$container)
                 || AstUtils.getContainerOfType(previous, isSwitchStatement)
-                || AstUtils.getContainerOfType(previous, isIfStatement)) {
+                || AstUtils.getContainerOfType(previous, isIfStatement)
+                || this.isInsideSingleLineIf(node)) {
                 return false;
             }
             return true;
+        }
+        return false;
+    }
+
+    private isInsideSingleLineIf(node: Statement): boolean {
+        let prev = this.previousStatement(node);
+        while (prev && this.isSameLine(prev, node)) {
+            if (isIfStatement(prev)) {
+                return true;
+            }
+            prev = this.previousStatement(prev);
         }
         return false;
     }

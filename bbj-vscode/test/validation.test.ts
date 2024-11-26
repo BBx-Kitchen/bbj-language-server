@@ -211,4 +211,31 @@ describe('BBj validation', async () => {
             node: keywordStatement
         });
     });
+
+    test('IF statement one line', async () => {
+        const validationResult = await validate(`
+        value = -1
+        if value = 0 then value = 1 else value = 2
+        IF value=0 THEN value=3 ELSE value=4 FI; PRINT value
+        IF value=0 THEN value=5 ELSE value=6 FI; PRINT value; IF value=7 THEN value=8; PRINT value
+        value = 0; if value<>0 then value = 9
+        value = 0; if value<>0 then value = 9 fi
+        value = 0; if value<>0 then value = 9 else value = 4
+        value = 0; if value<>0 then value = 9 else value = 4 fi
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    /**
+     * Waiting for answer in #149
+     */
+    test.skip('IF as last child of a compound statement', async () => {
+        const validationResult = await validate(`
+        debug = 1
+        PRINT "Foo"; if debug then
+        PRINT "top_rs_row=",3
+        `);
+        // missing statement after `if debug then``
+        expect(validationResult.diagnostics).toHaveLength(1);
+    });
 });
