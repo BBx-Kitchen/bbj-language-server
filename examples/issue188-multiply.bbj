@@ -1,0 +1,3 @@
+let p_width = 100
+let p_hPadding = 20
+let imageW = 2*p_hPadding

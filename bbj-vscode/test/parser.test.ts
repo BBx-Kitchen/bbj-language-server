@@ -1823,6 +1823,16 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Multiply without spaces', async () => {
+        const result = await parse(`
+            let p_width = 100
+            let p_hPadding = 20
+            let imageW = int(p_width + (2*p_hPadding))
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Switch-Default without semicolon', async () => {
         const result = await parse(`
             LET t$ = "hallo"

@@ -426,7 +426,7 @@ UserLabelRef infers LabelRef:
 ;
 
 SymbolicLabelRef infers LabelRef:
-    {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SYMBOLIC_LABEL_NAME]
+    {infer SymbolicLabelRef} label=[LibSymbolicLabelDecl:SymbolicLabelName]
 ;
 
 KeywordStatement:
@@ -709,24 +709,35 @@ ExpressionStatement:
     // Only membercalls to variables
     expression=PrefixExpression;
 
-EXPR_OPERATOR returns string:
-    '^' | '*' |  '/' | '+' | '-' | '<' | '>' | '=' | '<=' | '>=' | '<>' | 'AND' | 'OR'// from the BBx docu
-;
-
 Expression:
     BinaryExpression ({infer StringMask.left=current} ':' right=Expression)? //string mask
 ;
 
+
 BinaryExpression infers Expression:
-    PrefixExpression (
-        {infer BinaryExpression.left=current} operator=EXPR_OPERATOR right=(Expression| SymbolicLabelRef)
-    )?
-;
+    RelationalExpr ({infer BinaryExpression.left=current} operator=('AND'|'OR') right=RelationalExpr)*
+    ;
+
+RelationalExpr infers Expression:
+    AdditiveExpr ({infer BinaryExpression.left=current} operator=('<' | '>' | '=' | '<=' | '>=' | '<>' ) right=AdditiveExpr)*
+    ;
+
+AdditiveExpr infers Expression:
+    MultiplicativeExpr ({infer BinaryExpression.left=current} operator=('+' | '-') right=MultiplicativeExpr)*
+    ;
+
+MultiplicativeExpr infers Expression:
+    ExponentiationExpr ({infer BinaryExpression.left=current} operator=('*' | '/') right=ExponentiationExpr)*
+    ;
+
+ExponentiationExpr infers Expression:
+    PrefixExpression ({infer BinaryExpression.left=current} operator='^' right=PrefixExpression)*
+    ;
 
 PrefixExpression infers Expression:
     {infer PrefixExpression} operator=('!'|'-'|'+') expression=MemberCall
     | MemberCall
-;
+    ;
 
 MemberCall infers Expression:
     PrimaryExpression
@@ -747,7 +758,9 @@ PrimaryExpression infers Expression:
     | Literal
     | Mnemonic
     | PositionalMnemonic
-    | ConstructorCall;
+    | ConstructorCall
+    | SymbolicLabelName
+    ;
 
 SymbolRef infers Expression:
     {infer SymbolRef} instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err? RPAREN)?
@@ -808,7 +821,7 @@ EscapeId returns string:
     | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
     | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY' | 'KNUM' | 'LEN' | 'SIZ'
     | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
-    | 'FILEOPT' | 'REMOVE' | 'SAVE' | 'SORT' | 'FULLTEXT' | 'INDEXED' | 'RESTORE' | 'SETDAY' | 'SETTERM' | 'SETTIME' | 'INTERFACE'
+    | 'FILEOPT' | 'REMOVE' | 'SAVE' | 'SORT' | 'FULLTEXT' | 'INDEXED' | 'RESTORE' | 'SETDAY' | 'SETTERM' | 'SETTIME' | 'INTERFACE' | 'ENDIF' | 'FI'
 ;
 
 // BBx Library
@@ -841,13 +854,15 @@ LibVariable returns LibVariable:
 
 LibSymbolicLabel returns LibSymbolicLabelDecl:
     (docu=DOCU)?
-    'label' name=SYMBOLIC_LABEL_NAME
+    'label' name=SymbolicLabelName
 ;
 
 LibEventType returns LibEventType:
     (docu=DOCU)?
     'eventType' name=ValidName
     ;
+
+SymbolicLabelName returns string: '*' ValidName;
 
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
@@ -875,7 +890,6 @@ terminal HEX_STRING: /\$[0-9a-fA-F]*\$/;  // $0A1E$, $$ = Null string
 terminal MNEMONIC: /'[0-9a-zA-Z_]*'/;  // 'hide', 'lf', 'BOX'(10,12,4,4), 'FONT'("pica") 
 
 terminal DOCU:  /\/@@[\s\S]*?@\//;
-terminal SYMBOLIC_LABEL_NAME: /\*[a-zA-Z]+/;
 
 // Types
 type DefFunctionStatement = DefReturn | Statement;

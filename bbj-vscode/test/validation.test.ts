@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isMemberCall } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -383,5 +383,16 @@ describe('BBj validation', async () => {
         FNEND
         `);
        expectNoIssues(validationResult);
+    });
+
+    test('SymbolicLabelRef text should not contain whitespace', async () => {
+        const validationResult = await validate(`
+        exitto *   NEXT
+        `);
+        const symbolicLabelRef  = findFirst(validationResult.document, isSymbolicLabelRef, true);
+        expect(symbolicLabelRef).toBeDefined();
+        expectError(validationResult, 'Symbolic label reference may not contain whitespace.', {
+            node: symbolicLabelRef
+        });
     });
 });
