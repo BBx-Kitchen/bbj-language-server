@@ -351,10 +351,7 @@ describe('BBj validation', async () => {
         expectNoIssues(validationResult);
     });
 
-    /**
-     * Waiting for answer in #149
-     */
-    test.skip('IF as last child of a compound statement', async () => {
+    test('IF as last child of a compound statement', async () => {
         const validationResult = await validate(`
         debug = 1
         PRINT "Foo"; if debug then
