@@ -9,9 +9,10 @@ import { dirname, isAbsolute, relative } from 'path';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { Range } from 'vscode-languageserver-types';
 import type { BBjServices } from './bbj-module.js';
-import { BBjAstType, Class, CommentStatement, CompoundStatement, DefFunction, ElseStatement, EraseStatement, IfEndStatement, IfStatement, InitFileStatement, KeyedFileStatement, MethodDecl, OpenStatement, Option, Statement, Use, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement } from './generated/ast.js';
+import { BBjAstType, Class, CommentStatement, CompoundStatement, DefFunction, ElseStatement, EraseStatement, FieldDecl, IfEndStatement, IfStatement, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, Statement, Use, isArrayDeclarationStatement, isBBjClassMember, isBbjClass, isClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isKeywordStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isOption, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
+import { TypeInferer } from './bbj-type-inferer.js';
 
 /**
  * Register custom validation checks.
@@ -29,6 +30,7 @@ export function registerValidationChecks(services: BBjServices) {
         DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines,
         MethodDecl: validator.checkIfMethodIsChildOfInterface,
+        MemberCall: validator.checkMemberCallUsingAccessLevels,
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
@@ -49,11 +51,53 @@ type LineBreakConfig<T extends AstNode> = [
  * Implementation of custom validations.
  */
 export class BBjValidator {
-
     protected readonly javaInterop: JavaInteropService;
+
+    protected readonly typeInferer: TypeInferer;
 
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
+        this.typeInferer = services.types.Inferer;
+    }
+
+    checkMemberCallUsingAccessLevels(memberCall: MemberCall, accept: ValidationAcceptor): void {
+        const type = memberCall.member.$nodeDescription?.type ?? memberCall.member.ref?.$type;
+        if(!type || ![JavaField, JavaMethod, MethodDecl, FieldDecl].includes(type)) {
+            return;
+        }
+        const classOfDeclaration = memberCall.member.ref?.$container;
+        const classOfUsage = AstUtils.getContainerOfType(memberCall, isClass);
+        if(!classOfDeclaration) {
+            return;
+        }
+        const expectedAccessLevels = ["PUBLIC"];
+        if(classOfUsage) {
+            if(classOfUsage === classOfDeclaration) {
+                expectedAccessLevels.push("PRIVATE", "PROTECTED");
+            } else {
+                const remainingClasses = [classOfUsage];
+                while(remainingClasses.length > 0) {
+                    const c = remainingClasses.pop();
+                    if(c === classOfDeclaration) {
+                        expectedAccessLevels.push("PROTECTED");
+                        break;
+                    }
+                    if(isBbjClass(c)) {
+                        remainingClasses.push(...c.extends.map(x => x.ref).filter(x => x!== undefined).map(x => x as Class))
+                    }
+                }
+            }
+        }
+        const member = memberCall.member.ref;
+        if(member && isBBjClassMember(member)) {
+            const actualAccessLevel = (member.visibility ?? "PUBLIC").toUpperCase();
+            if(!expectedAccessLevels.includes(actualAccessLevel)) {
+                accept('error', `The member '${member.name}' from the type '${classOfDeclaration.name}' is not visible`, {
+                    node: memberCall,
+                    property: 'member'
+                });
+            }
+        }
     }
 
     /**
