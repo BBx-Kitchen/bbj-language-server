@@ -4,12 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { EmptyFileSystem } from 'langium';
+import { AstUtils, EmptyFileSystem } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isMemberCall } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -210,5 +210,154 @@ describe('BBj validation', async () => {
         expectError(validationResult, 'RETURN statement inside a DEF function must have a return value.', {
             node: keywordStatement
         });
+    });
+
+    test('Call instance members with different access levels', async () => {
+        const validationResult = await validate(`
+            class public Test
+                field private String fieldPrivate
+                field protected String fieldProtected
+                field public String fieldPublic
+
+                method private doPrivately()
+                methodend
+
+                method protected doProtected()
+                methodend
+
+                method public doPublic()
+                    #this!.doPrivately()               ; REM no error
+                methodend
+            classend
+
+            class public TestDX extends Test 
+                method public doNew()
+                    #this!.doProtected()               ; REM no error
+                    #this!.doPrivately()               ; REM error
+                    let local1 = #this!.fieldProtected ; REM no error
+                    let local2 = #this!.fieldPrivate   ; REM error
+                methodend
+            classend
+
+            t! = new Test()
+            t!.doPrivately()                           ; REM error
+            t!.doProtected()                           ; REM error
+            t!.doPublic()                              ; REM no error
+            let global1 = t!.fieldPrivate              ; REM error
+            let global2 = t!.fieldProtected            ; REM error
+            let global3 = t!.fieldPublic               ; REM no error
+        `);
+        const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
+        expect(memberCalls).toHaveLength(11);
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[2],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[4],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[5],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+            node: memberCalls[6],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[8],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+            node: memberCalls[9],
+            property: 'member'
+        });
+    });
+
+    test('Call static members with different access levels', async () => {
+        const validationResult = await validate(`
+            class public Test
+                field private static String fieldPrivate
+                field protected static String fieldProtected
+                field public static String fieldPublic
+
+                method private static doPrivately()
+                methodend
+
+                method protected static doProtected()
+                methodend
+
+                method public static doPublic()
+                    #this!.doPrivately()             ; REM no error
+                methodend
+            classend
+
+            class public TestDX extends Test 
+                method public doNew()
+                    Test.doProtected()               ; REM no error
+                    Test.doPrivately()               ; REM error
+                    let local1 = Test.fieldProtected ; REM no error
+                    let local2 = Test.fieldPrivate   ; REM error
+                methodend
+            classend
+
+            Test.doPrivately()                       ; REM error
+            Test.doProtected()                       ; REM error
+            Test.doPublic()                          ; REM no error
+            let global1 = Test.fieldPrivate          ; REM error
+            let global2 = Test.fieldProtected        ; REM error
+            let global3 = Test.fieldPublic           ; REM no error
+        `);
+        const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
+        expect(memberCalls).toHaveLength(11);
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[2],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[4],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+            node: memberCalls[5],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+            node: memberCalls[6],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+            node: memberCalls[8],
+            property: 'member'
+        });
+        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+            node: memberCalls[9],
+            property: 'member'
+        });
+	});
+
+    test('IF statement one line', async () => {
+        const validationResult = await validate(`
+        value = -1
+        if value = 0 then value = 1 else value = 2
+        IF value=0 THEN value=3 ELSE value=4 FI; PRINT value
+        IF value=0 THEN value=5 ELSE value=6 FI; PRINT value; IF value=7 THEN value=8; PRINT value
+        value = 0; if value<>0 then value = 9
+        value = 0; if value<>0 then value = 9 fi
+        value = 0; if value<>0 then value = 9 else value = 4
+        value = 0; if value<>0 then value = 9 else value = 4 fi
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('IF as last child of a compound statement', async () => {
+        const validationResult = await validate(`
+        debug = 1
+        PRINT "Foo"; if debug then
+        PRINT "top_rs_row=",3
+        `);
+        // missing statement after `if debug then``
+        expect(validationResult.diagnostics).toHaveLength(1);
     });
 });

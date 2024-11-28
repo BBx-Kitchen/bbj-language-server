@@ -1,0 +1,31 @@
+class public Test
+    field private static String fieldPrivate
+    field protected static String fieldProtected
+    field public static String fieldPublic
+
+    method private static doPrivately()
+    methodend
+
+    method protected static doProtected()
+    methodend
+
+    method public static doPublic()
+        #this!.doPrivately()             ; REM no error
+    methodend
+classend
+
+class public TestDX extends Test 
+    method public doNew()
+        Test.doProtected()               ; REM no error
+        Test.doPrivately()               ; REM error
+        let local1 = Test.fieldProtected ; REM no error
+        let local2 = Test.fieldPrivate   ; REM error
+    methodend
+classend
+
+Test.doPrivately()                       ; REM error
+Test.doProtected()                       ; REM error
+Test.doPublic()                          ; REM no error
+let global1 = Test.fieldPrivate          ; REM error
+let global2 = Test.fieldProtected        ; REM error
+let global3 = Test.fieldPublic           ; REM no error

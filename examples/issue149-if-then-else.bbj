@@ -1,0 +1,35 @@
+touch = BBjAPI.TRUE
+web = BBjAPI.TRUE
+result! = 0
+index = -1
+index! = 2
+value! = ""
+value$ = ""
+c=9
+f=8
+X=99
+html! = ""
+html=0
+result! = 0
+debug = BBjAPI.TRUE
+rs_row = 0
+
+if value! = null() then value$ = "null" else value$ = String.valueOf(value!)
+
+if c<128 then html!.append(chr(c)) else html!.append("&#").append(str(c)).append(";"); _html=1
+
+IF A=6 THEN B=7 ELSE X=6 FI; PRINT X; IF x=7 THEN A=f; PRINT X
+
+IF A=6 THEN B=7 ELSE X=6 FI; PRINT X
+
+IF x=7 THEN A=f; PRINT X
+
+if touch then title$ = title$ + " (Touch)" else title$ = title$ + " (Not Touch)"
+
+if web then body$ = "" else body$ = "document.body."
+
+index = 0; if index!<>null() then index = num(index!)
+
+if result! = null() then result$ = "null" else result$ = result!.getClass().getName()+" "+result!.toString()
+
+top_rs_row = rs_row; if debug then ? "top_rs_row=",top_rs_row

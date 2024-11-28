@@ -30,6 +30,7 @@ import { BBjValueConverter } from './bbj-value-converter.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module.js';
 import { JavaInteropService } from './java-interop.js';
+import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 
 
 /**
@@ -41,6 +42,9 @@ export type BBjAddedServices = {
     },
     java: {
         JavaInteropService: JavaInteropService
+    },
+    types: {
+        Inferer: TypeInferer
     }
 }
 
@@ -56,6 +60,9 @@ export type BBjServices = LangiumServices & BBjAddedServices
  * selected services, while the custom services must be fully specified.
  */
 export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedServices> = {
+    types: {
+        Inferer: (services) => new BBjTypeInferer(services),
+    },
     references: {
         ScopeComputation: (services) => new BbjScopeComputation(services),
         ScopeProvider: (services) => new BbjScopeProvider(services),

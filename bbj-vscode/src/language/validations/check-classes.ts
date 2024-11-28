@@ -92,12 +92,12 @@ class ClassValidator {
                 const dirOfDeclaration = dirname(uriOfDeclaration);
                 const dirOfUsage = dirname(uriOfUsage);
                 if (!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                    accept("error", `Protected ${typeName} '${klass.name}' can be only referenced within the same directory!`, info);
+                    accept("error", `Protected ${typeName} '${klass.name}' is not visible from this directory!`, info);
                 }
                 break;
             case "PRIVATE":
                 if (uriOfUsage !== uriOfDeclaration) {
-                    accept("error", `Private ${typeName} '${klass.name}' can be only referenced within the same file!`, info);
+                    accept("error", `Private ${typeName} '${klass.name}' is not visible from this file!`, info);
                 }
                 break;
         }
