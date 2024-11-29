@@ -1871,4 +1871,13 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('issue 187, SWITCH CASE in one line', async () => {
+        const result = await parse(`
+            input i
+            SWITCH i; CASE 1; PRINT "1"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });

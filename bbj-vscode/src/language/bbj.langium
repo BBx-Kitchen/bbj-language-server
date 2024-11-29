@@ -100,6 +100,7 @@ SingleStatement:
     StartStatement |
     StringStatement |
     SwitchStatement |
+    SwitchCase |
     ThrowStatement |
     UnlockStatement |
     UntilStatement |
@@ -396,22 +397,16 @@ WhileStatement:
 ;
 
 WhileEndStatement:
-    'WEND' {infer WhileEndStatement};
+    'WEND' {infer WhileEndStatement}
+;
 
 SwitchStatement:
-    'SWITCH' value=Expression
-		(
-            cases+=SwitchCase
-            | comments+=CommentStatement
-        )*
-    	(
-        	'CASE' 'DEFAULT' (';')? (defaultCase+=Statement)*
-    	)?
-    'SWEND'
+    ('SWITCH' value=Expression)
+    | end='SWEND'
 ;
 
 SwitchCase:
-    LabelDecl? 'CASE' value=Expression (';')? (body+=Statement (';')?)*;
+    LabelDecl? 'CASE' (default ?= 'DEFAULT' | value=Expression);
 
 GotoStatement:
     kind=('GOTO' | 'GOSUB') target=LabelRef
