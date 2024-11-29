@@ -2,14 +2,24 @@ let t$ = "hallo"
 
 REM does not work yet
 REM SWITCH t$; CASE 1; PRINT "1"; BREAK; CASE 2; PRINT "2"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
+switch t$
+    case t$=""
+        break
+    case "TEST"
+        break
+    case default
+        print "default"
+        break
+swend
 
-SWITCH t$
-    CASE 1
-        PRINT "1"
-        BREAK
-    CASE 2
-        PRINT "2"
-        BREAK
-    CASE DEFAULT
-        PRINT "default"
-SWEND
+switch t$
+    case t$=""
+        break
+    case "TEST"
+        break
+    case default; print "default"
+        break
+swend
+
+input i
+SWITCH i; CASE 1; PRINT "1"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
