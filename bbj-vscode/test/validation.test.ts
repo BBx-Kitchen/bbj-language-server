@@ -360,4 +360,28 @@ describe('BBj validation', async () => {
         // missing statement after `if debug then``
         expect(validationResult.diagnostics).toHaveLength(1);
     });
+
+    test('IF after IF single line', async () => {
+        // Issue #210
+        const validationResult = await validate(`
+            a = 4
+            if a = "" then if a > 0 then exit else return
+        `);
+       expectNoIssues(validationResult);
+    });
+
+    test('IF single line function container', async () => {
+        // Issue #209
+        const validationResult = await validate(`
+        class public Test
+            method public doTest()
+                appName! = 2; if appName! = "" then appName! = "default"
+            methodend
+        classend
+        DEF defFunc()
+            appName! = 2; if appName! = "" then appName! = "default"
+        FNEND
+        `);
+       expectNoIssues(validationResult);
+    });
 });
