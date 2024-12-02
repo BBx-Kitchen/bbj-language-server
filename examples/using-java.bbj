@@ -1,26 +1,5 @@
-
-use java.util.HashMap
-use java.util.HashSet
-use java.util.TreeMap
-use ::bbj-classes.bbj::someClass
-  
-testBbj! = new someClass()
-testBbj!.setsomeInstanceString("")
-
-
-rem if we declare today, our Eclipse Plug-In Produces Suggestions:
-declare HashMap hm!
-hm! = new HashMap()
-hm!.put("KEY","VALUE")
-? hm!
-
-    
-   
-rem we don't have to declare
-tm! = new TreeMap()
-tM!.put("KEY","VALUE")
-?tm! 
-
-hs! = new HashSet()
-hs!.add("TEST")
-? hs!
+class public Test
+    method public doTest()
+        appName! = 2; if appName! = "" then appName! = "default"
+    methodend
+classend 

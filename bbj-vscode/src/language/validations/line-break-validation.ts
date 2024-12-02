@@ -1,7 +1,7 @@
 import { AstNode, AstUtils, CstNode, GrammarUtils, TextDocument, ValidationAcceptor } from "langium";
 import { Range } from 'vscode-languageserver-types';
 import { findLeafNodeAtOffset } from "../bbj-validator.js";
-import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
+import { CompoundStatement, ElseStatement, IfEndStatement, IfStatement, isArrayDeclarationStatement, isBbjClass, isCommentStatement, isCompoundStatement, isDefFunction, isElseStatement, isFieldDecl, isForStatement, isIfEndStatement, isIfStatement, isLabelDecl, isLetStatement, isLibMember, isMethodDecl, isParameterDecl, isProgram, isSingleStatement, isStatement, isSwitchStatement, Statement } from "../generated/ast.js";
 
 type LineBreakMask = {
     before: string[] | boolean;
@@ -140,15 +140,26 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
     const mask = (node: IfStatement) => {
         const lineBreaks = { before: true, after: false, both: false };
         const container = node.$container;
+
         if (isCompoundStatement(container)) {
             const compoundContainer = container.$container;
             const index = container.statements.indexOf(node);
             // IF_THEN: if last statement in compound statement and next statement is on the same line
             // then no line break before is allowed
-            if (index === container.statements.length - 1 && isProgram(compoundContainer)) {
-                const next = compoundContainer.statements[compoundContainer.statements.indexOf(container) + 1];
+            if (index === container.statements.length - 1) {
+                const siblings = getSiblings(compoundContainer);
+                const next = siblings[siblings.indexOf(container) + 1];
                 if (next && isSameLine(node, next)) {
                     lineBreaks.before = false;
+                }
+            }
+        } else {
+            let prev = previousStatement(node);
+            while (isSingleStatement(prev) && isSameLine(prev, node)) {
+                if (isIfStatement(prev)) {
+                    // IF_THEN: if previous is IF_THEN - same line
+                    lineBreaks.before = false;
+                    break;
                 }
             }
         }
@@ -221,11 +232,11 @@ function isSameLine(node: AstNode, other: AstNode): boolean {
 
 function previousStatement(statement: Statement): Statement | undefined {
     const container = statement.$container;
-    if (isProgram(container) || isCompoundStatement(container)) {
-        if (statement.$containerIndex === 0 && isCompoundStatement(container)) {
-            return previousStatement(container);
-        } else if (statement.$containerIndex && statement.$containerIndex > 0) {
-            const prevSibling = container.statements[statement.$containerIndex - 1];
+    if (statement.$containerIndex === 0 && isCompoundStatement(container)) {
+        return previousStatement(container);
+    } else {
+        if (statement.$containerIndex && statement.$containerIndex > 0) {
+            const prevSibling = getSiblings(container)[statement.$containerIndex - 1];
             if (isCompoundStatement(prevSibling)) {
                 // last child statement in compound statement
                 return prevSibling.statements[prevSibling.statements.length - 1];
@@ -237,6 +248,14 @@ function previousStatement(statement: Statement): Statement | undefined {
     return undefined;
 }
 
+function getSiblings(container: AstNode | undefined): AstNode[] {
+    if (isProgram(container)) {
+        return container.statements;
+    } else if (isMethodDecl(container) || isDefFunction(container)) {
+        return container.body;
+    }
+    return [];
+}
 
 function isInsideSingleLineIf(node: Statement): boolean {
     let prev = previousStatement(node);
