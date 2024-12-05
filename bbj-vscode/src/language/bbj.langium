@@ -566,8 +566,8 @@ ReadRecordStatement infers ReadStatement:
 
 //actual intent: ('('channelno?options?')')? (items(','items)*)?
 fragment WithChannelAndOptionsAndInputItems infers WithChannelAndOptionsAndInputItems:
-    '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)*)
-    | (items+=InputItem (','items+=InputItem)*)?
+    '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?)
+    | items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?
 ;
 
 READ_RECORD_KINDS returns string:
