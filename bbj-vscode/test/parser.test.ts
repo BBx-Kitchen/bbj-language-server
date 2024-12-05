@@ -1890,4 +1890,22 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('INPUT standalone #176', async () => {
+        const result = await parse(`
+            input
+            a = 9
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('INPUT trailing comma #176', async () => {
+        const result = await parse(`
+            input(0,err=3)'ask'("",4,"Requires at least Visual PRO/5 REV 2.0 or BBj.  "+ "This program will now terminate.","&Terminate:Y"+$0a$),'ee',cfg__trash$,'be',
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
 });
