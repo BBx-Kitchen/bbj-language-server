@@ -669,7 +669,15 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
-
+    test('Enter Verb standalone', async () => {
+        const result = await parse(`
+        someVar$ = "TEST"
+        ENTER
+        someVar$ = "TEST2"; REM expect no error
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
     test('Check REPEAT..UNTIL Verb', async () => {
         const result = await parse(`
         LOOP_EXIT=0

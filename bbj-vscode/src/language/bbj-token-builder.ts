@@ -93,4 +93,4 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         }
     }
 }
-const KEYWORD_STANDALONE = 'DELETE|SAVE'
+const KEYWORD_STANDALONE = 'DELETE|SAVE|ENTER'
