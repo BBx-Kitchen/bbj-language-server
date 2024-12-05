@@ -1916,4 +1916,33 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('NEXT with id #175', async () => {
+        const result = await parse(`
+            for z = 21 to 0 step -1
+                z = z * 2
+            next z
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('NEXT with id in compoud statement #175', async () => {
+        const result = await parse(`
+            for z = 21 to 0 step -1; z = z * 2; next z
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('NEXT with id combined in compoud statement #175', async () => {
+        const result = await parse(`
+        m = 10; for z = 21 to 0 step -1; m = m * 2; next z
+        m = 10; for z = 21 to 0 step -1; m = m * 2; next
+
+        goto *next
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
 });
