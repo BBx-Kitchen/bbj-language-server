@@ -1859,7 +1859,7 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
-    test.skip('Switch-Default with semicolon', async () => {
+    test('Switch-Default with semicolon', async () => {
         const result = await parse(`
             LET t = 123
             SWITCH t; CASE 1; PRINT "1"; BREAK; CASE 2; PRINT "2"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
