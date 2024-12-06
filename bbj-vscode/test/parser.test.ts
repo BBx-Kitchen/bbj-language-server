@@ -1859,7 +1859,7 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
-    test.skip('Switch-Default with semicolon', async () => {
+    test('Switch-Default with semicolon', async () => {
         const result = await parse(`
             LET t = 123
             SWITCH t; CASE 1; PRINT "1"; BREAK; CASE 2; PRINT "2"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
@@ -1911,6 +1911,35 @@ describe('Parser Tests', () => {
     test('INPUT trailing comma #176', async () => {
         const result = await parse(`
             input(0,err=3)'ask'("",4,"Requires at least Visual PRO/5 REV 2.0 or BBj.  "+ "This program will now terminate.","&Terminate:Y"+$0a$),'ee',cfg__trash$,'be',
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('NEXT with id #175', async () => {
+        const result = await parse(`
+            for z = 21 to 0 step -1
+                z = z * 2
+            next z
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('NEXT with id in compoud statement #175', async () => {
+        const result = await parse(`
+            for z = 21 to 0 step -1; z = z * 2; next z
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('NEXT with id combined in compoud statement #175', async () => {
+        const result = await parse(`
+        m = 10; for z = 21 to 0 step -1; m = m * 2; next z
+        m = 10; for z = 21 to 0 step -1; m = m * 2; next
+
+        goto *next
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);

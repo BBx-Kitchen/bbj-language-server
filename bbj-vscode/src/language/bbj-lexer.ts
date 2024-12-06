@@ -7,7 +7,7 @@ export class BbjLexer extends DefaultLexer {
         return super.tokenize(text);
     }
 
-    private prepareLineSplitter(text: string): string {
+    protected prepareLineSplitter(text: string): string {
         const windowsEol = text.includes('\r\n');
         const lines = text.split(/\r?\n/g);
         for (let i = 0; i < lines.length - 1; i++) {

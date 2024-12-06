@@ -1,6 +1,6 @@
 import { EmptyFileSystem } from "langium";
 import { expandToString } from "langium/generate";
-import { createBBjTestServices } from "./bbj-test-module.js";
+import { createBBjTestServices, TestableBBjLexer } from "./bbj-test-module.js";
 import { describe, test, expect } from "vitest";
 
 const services = createBBjTestServices(EmptyFileSystem);
@@ -29,4 +29,24 @@ describe('Lexer tests', () => {
         expect(result.tokens[2].startOffset).toBe(afterIndex);
     });
 
+    test('Joins split lines preserve offset with empty line', () => {
+        const text = `
+if sys = "1" then
+: goto *NEXT
+: goto *BREAK
+PRINT "After"
+
+`;
+        const expectedSplitJoin = `
+if sys = "1" then goto *NEXT goto *BREAK  
+
+
+PRINT "After"
+
+
+`;
+        const tokenizedText = (lexer as TestableBBjLexer).prepareLineSplitter(text);
+        expect(tokenizedText.length).toBe(expectedSplitJoin.length);
+        expect(tokenizedText).toBe(expectedSplitJoin);
+    });
 });

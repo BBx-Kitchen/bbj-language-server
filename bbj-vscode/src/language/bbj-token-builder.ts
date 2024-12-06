@@ -47,14 +47,16 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'NEXT_BREAK') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*(\r?\n))/i),
+                // may match `next` or `<NL>next`, but not `*next`
+                PATTERN: this.regexPatternFunction(/(?<=\r?\n?[^\*][ \t]*)next(?=[ \t]*(\r?\n))/i),
                 LINE_BREAKS: false
             };
             return token;
         } else if (terminal.name === 'NEXT_ID') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(?<=\r?\n[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)\r?\n)/i),
+                // may match `next ID` or `<NL>next ID`
+                PATTERN: this.regexPatternFunction(/(?<=\r?\n?[ \t]*)next(?=[ \t]*([_a-zA-Z][\w_]*(!|\$|%)?)\r?\n)/i),
                 LINE_BREAKS: false
             };
             return token;
@@ -70,7 +72,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/i),
+                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/),
                 LINE_BREAKS: true
             };
             return token;

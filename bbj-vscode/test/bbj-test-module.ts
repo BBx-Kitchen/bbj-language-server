@@ -5,6 +5,7 @@ import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/ge
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
 import { JavaClass, JavaMethod } from "../src/language/generated/ast.js";
+import { BbjLexer } from "../src/language/bbj-lexer.js";
 
 export function createBBjTestServices(context: DefaultSharedModuleContext): {
     shared: LangiumSharedServices,
@@ -27,8 +28,17 @@ export function createBBjTestServices(context: DefaultSharedModuleContext): {
 }
 
 export const BBjTestModule: Module<BBjServices, PartialLangiumServices & DeepPartial<BBjAddedServices>> = {
+    parser: {
+        Lexer: (services) => new TestableBBjLexer(services)
+    },
     java: {
         JavaInteropService: (services) => new JavaInteropTestService(services)
+    }
+}
+
+export class TestableBBjLexer extends BbjLexer {
+    public prepareLineSplitter(text: string): string {
+        return super.prepareLineSplitter(text)
     }
 }
 
