@@ -229,7 +229,10 @@ export class BBjValidator {
     }
 
     checkSymbolicLabelRef(ele: SymbolicLabelRef, accept: ValidationAcceptor): void {
-        if (ele.$cstNode?.text.search(/\s/) !== -1) {
+        const nodeText = ele.$cstNode?.text;
+        // currently when using ':', see #214, node text may be shifted, that why
+        // we check for the first character to avoid false positives
+        if (nodeText && nodeText.startsWith('*') && nodeText.search(/\s/) !== -1) {
             accept('error', 'Symbolic label reference may not contain whitespace.', { node: ele });
         }
     }

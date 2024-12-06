@@ -72,7 +72,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             const token: TokenType = {
                 name: terminal.name,
                 // Add more exceptional tokens here if an explicit line break token is needed
-                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/i),
+                PATTERN: this.regexPatternFunction(/,(?=(\r?\n|;))/),
                 LINE_BREAKS: true
             };
             return token;
