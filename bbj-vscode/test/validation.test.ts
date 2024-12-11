@@ -387,7 +387,7 @@ describe('BBj validation', async () => {
 
     test('SymbolicLabelRef text should not contain whitespace', async () => {
         const validationResult = await validate(`
-        exitto *   NEXT
+        exitto *   BREAK
         `);
         const symbolicLabelRef  = findFirst(validationResult.document, isSymbolicLabelRef, true);
         expect(symbolicLabelRef).toBeDefined();
