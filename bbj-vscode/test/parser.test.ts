@@ -1943,4 +1943,18 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Performance test', async () => {
+        const count = 5;
+        const startTime = performance.now();
+        for (let index = 0; index < count; index++) {
+            const result = await parse(`
+                print x;
+                `, { validation: false });
+        }
+        const endTime = performance.now();
+        const timeInSeconds = (endTime - startTime) / 1000;
+        console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
+        // In a bad state it took 48 seconds
+        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(5);
+    });
 });
