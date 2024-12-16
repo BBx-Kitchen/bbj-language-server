@@ -1,10 +1,23 @@
 import { TokenType, TokenVocabulary } from "chevrotain";
-import { DefaultTokenBuilder, GrammarAST, TokenBuilderOptions } from "langium";
+import { DefaultTokenBuilder, GrammarAST, GrammarUtils, RegExpUtils, stream, TokenBuilderOptions } from "langium";
+
 
 export class BBjTokenBuilder extends DefaultTokenBuilder {
-
+    static EXCLUDED = new Set(['METHODEND', 'CLASSEND', 'INTERFACEEND'])
     override buildTokens(grammar: GrammarAST.Grammar, options?: TokenBuilderOptions | undefined): TokenVocabulary {
-        const tokens = super.buildTokens(grammar, options) as TokenType[];
+        const reachableRules = stream(GrammarUtils.getAllReachableRules(grammar, false));
+        const terminalTokens: TokenType[] = this.buildTerminalTokens(reachableRules);
+        const tokens: TokenType[] = this.buildKeywordTokens(reachableRules, terminalTokens, options);
+
+        terminalTokens.forEach(terminalToken => {
+            const pattern = terminalToken.PATTERN;
+            if (typeof pattern === 'object' && pattern && 'test' in pattern && RegExpUtils.isWhitespace(pattern)) {
+                tokens.unshift(terminalToken);
+            } else {
+                tokens.push(terminalToken);
+            }
+        });
+
         this.spliceToken(tokens, 'START_BREAK');
         this.spliceToken(tokens, 'FNEND');
         this.spliceToken(tokens, 'NEXT_BREAK');
@@ -14,6 +27,17 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'KEYWORD_STANDALONE');
         this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
         this.spliceToken(tokens, 'RPAREN_NL');
+
+        const id = terminalTokens.find(e => e.name === 'ID')!;
+
+        for (const keywordToken of tokens) {
+            if (/[A-Z]+(?!_)/.test(keywordToken.name)
+                    && !('LINE_BREAKS' in keywordToken)
+                    && !BBjTokenBuilder.EXCLUDED.has(keywordToken.name)) {
+                // add all matching keywords to ID category
+                keywordToken.CATEGORIES = [id];
+            }
+        }
         return tokens;
     }
 

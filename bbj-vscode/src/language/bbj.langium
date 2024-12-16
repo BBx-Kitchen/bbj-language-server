@@ -11,7 +11,7 @@ entry Model:
     Library | Program
 ;
 
-// Main programm
+// Main program
 Program:
     Statements*
 ;
@@ -292,7 +292,7 @@ ClassDecl returns BbjClass:
 ;
 InterfaceDecl returns BbjClass:
     interface?='INTERFACE' Visibility name=ValidName Extends? (';' comments+=CommentStatement)?
-        (members+=MethodDecl | Comments)*
+        (members+=InterfaceMethodDecl | Comments)*
     'INTERFACEEND'
 ;
 
@@ -324,12 +324,20 @@ FieldDecl returns FieldDecl:
 ;
 
 MethodDecl returns MethodDecl:
-    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    MethodDeclStart
     Comments?
     (
         (body+=Statement)*
         endTag='METHODEND'
     )?
+;
+
+fragment MethodDeclStart returns MethodDecl:
+    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+;
+
+InterfaceMethodDecl returns MethodDecl:
+   MethodDeclStart
 ;
 
 MethodReturnStatement:
@@ -798,35 +806,21 @@ QualifiedClassName returns string:
     QualifiedBBjClassName | QualifiedJavaClassName;
 
 QualifiedJavaClassName returns string:
-    IdAndString ('.' IdAndString)*;
+    ID ('.' ID)*;
 
 QualifiedBBjClassName returns string:
-    BBjFilePath IdAndString;
+    BBjFilePath ID;
 
 FeatureName returns string:
-    EscapeId | ID_WITH_SUFFIX | IdAndString;
+    ID | ID_WITH_SUFFIX;
 
 ValidName returns string:
-    EscapeId | IdAndString
-;
-
-IdAndString returns string:
-    'STRING' | ID
-;
-
-EscapeId returns string:
-    'NEXT' | 'PRINT' | 'AND' | 'OR' | 'ERR' | 'FIELD' | 'WRITE' | 'END' | 'CLIPFROMSTR' | 'ADDR' | 'CONTINUE' | 'SQLOPEN' | 'SQLPREP' | 'MODE'
-    | 'READ' | 'INPUT' | 'EXTRACT' | 'FIND' | 'CLOSE' | 'OPEN' | 'WAIT' | 'SETERR' | 'SETESC'| 'CLASS' | 'REDIM'
-    | 'BREAK' | 'RETURN' | 'EXIT' | 'PRINTRECORD' | 'READRECORD' | 'WRITERECORD' | 'EXTRACTRECORD' | 'FINDRECORD' | 'INPUTRECORD' | 'RUN' | 'CALL'
-    | 'TBL' | 'TIM' | 'BEGIN' | 'CLEAR' | 'ESCAPE' | 'DROP' | 'ENTER' | 'SETOPTS' | 'PRECISION' | 'RELEASE' | 'RENAME' | 'TO'
-    | 'MKDIR' | 'RMDIR' | 'CHDIR' | 'EXECUTE' | 'KEY' | 'IND' | 'DIR' | 'ISZ' | 'DEF' | 'STOP' | 'RESET' | 'RETRY' | 'KNUM' | 'LEN' | 'SIZ'
-    | 'BACKGROUND' | 'DELETE' | 'LOCK' | 'UNLOCK' | 'DIM' | 'SQLCOMMIT' | 'SQLROLLBACK' | 'SQLEXEC' | 'SQLCLOSE' | 'START' | 'DOM' | 'CHANOPT'
-    | 'FILEOPT' | 'REMOVE' | 'SAVE' | 'SORT' | 'FULLTEXT' | 'INDEXED' | 'RESTORE' | 'SETDAY' | 'SETTERM' | 'SETTIME' | 'INTERFACE' | 'ENDIF' | 'FI'
+    ID
 ;
 
 // BBx Library
 Library:
-    'library' 
+    'library'
     (
         declarations+=LibMember
         | declarations+=LibEventType
@@ -840,16 +834,16 @@ LibMember:
 
 LibFunction returns LibFunction:
     (docu=DOCU)?
-    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* RPAREN_NO_NL ':' returnType=IdAndString
+    name=ValidName '(' parameters+=LibParameter? (',' parameters+=LibParameter)* RPAREN_NO_NL ':' returnType=ID
 ;
 
 LibParameter returns LibParameter:
-    name=ValidName optional?='?'?  refByName?='!'? (':' type=IdAndString)?
+    name=ValidName optional?='?'?  refByName?='!'? (':' type=ID)?
 ;
 
 LibVariable returns LibVariable:
     (docu=DOCU)?
-    'var' name=ValidName (':' type=IdAndString)?
+    'var' name=ValidName (':' type=ID)?
 ;
 
 LibSymbolicLabel returns LibSymbolicLabelDecl:
