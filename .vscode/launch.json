@@ -14,7 +14,7 @@
                 "${workspaceFolder}/examples"
             ],
             "env": {
-                // "DEBUG_BREAK": "true"
+                "DEBUG_BREAK": "false"
             },
             "outFiles": [
                 "${workspaceFolder}/bbj-vscode/out/*.(m|c|)js",

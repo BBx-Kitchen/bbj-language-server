@@ -52,7 +52,7 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
     // By setting `process.env.DEBUG_BREAK` to a truthy value, the language server will wait until a debugger is attached.
     const debugOptions = { execArgv: [
         '--nolazy',
-        `--inspect${process.env.DEBUG_BREAK ? '-brk' : ''}=${process.env.DEBUG_SOCKET || '6009'}`
+        `--inspect${process.env.DEBUG_BREAK === 'true' ? '-brk' : ''}=${process.env.DEBUG_SOCKET || '6009'}`
     ] };
 
     // If the extension is launched in debug mode then the debug server options are used

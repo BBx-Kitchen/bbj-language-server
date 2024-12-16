@@ -19,6 +19,7 @@ export class JavadocProvider {
     private lazyLoad: boolean = false;
     private initialized: boolean = false;
     private packages: Map<string, PackageDoc | URI | null> = new Map();
+    private loadPromises: Map<string, Promise<PackageDoc | undefined>> = new Map();
     private fsAccess: FileSystemProvider = new EmptyFileSystemProvider();
 
 
@@ -110,13 +111,27 @@ export class JavadocProvider {
         if (!this.isInitialized()) {
             throw new Error("JavadocProvider not initialized. Call initialize() first.");
         }
+
+        if (this.loadPromises.has(packageName)) {
+            // Wait for the ongoing operation to complete
+            return this.loadPromises.get(packageName);
+        }
         const packageDoc = this.packages.get(packageName);
         if (!packageDoc) {
             return undefined;
         } else if (packageDoc instanceof URI) {
-            const resolvedDoc = await this.loadJavadocFile(packageName, packageDoc);
-            this.packages.set(packageName, resolvedDoc);
-            return resolvedDoc === null ? undefined : resolvedDoc;
+            const loadPromise = this.loadJavadocFile(packageName, packageDoc)
+                .then((resolvedDoc) => {
+                    this.packages.set(packageName, resolvedDoc);
+                    this.loadPromises.delete(packageName);
+                    return resolvedDoc === null ? undefined : resolvedDoc;
+                })
+                .catch((error) => {
+                    this.loadPromises.delete(packageName);
+                    throw error;
+                });
+            this.loadPromises.set(packageName, loadPromise);
+            return loadPromise;
         } else {
             return packageDoc;
         }
