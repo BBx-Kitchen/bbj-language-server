@@ -52,7 +52,7 @@ export class BbjLinker extends DefaultLinker {
             }
         }
         const elapsed = Date.now() - started
-        const threshold = 100
+        const threshold = 300
         if (elapsed > threshold) {
             console.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
         }

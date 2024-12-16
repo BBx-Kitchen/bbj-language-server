@@ -1603,16 +1603,14 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
-    test("Check INTERFACE statement with method body", async () => {
+    test("Check INTERFACE statement with two methods", async () => {
         const result = await parse(`
             interface Chris
-                method public BBjNumber doIt()
-                methodend
+                method public String doIt(String foo!)
+                method public int doIt(String foo2!)
             interfaceend
         `, { validation: true });
-        expect(result.diagnostics ?? []).toHaveLength(2);
-        expect(result.diagnostics![0].message).toBe("Could not resolve reference to Class named 'BBjNumber'.");
-        expect(result.diagnostics![1].message).toBe("Methods of interfaces must not have a METHODEND keyword!");
+        expectNoParserLexerErrors(result);
     });
 
     test("Check LOCK and UNLOCK statement", async () => {

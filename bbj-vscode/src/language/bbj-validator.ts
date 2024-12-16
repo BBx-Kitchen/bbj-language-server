@@ -28,7 +28,6 @@ export function registerValidationChecks(services: BBjServices) {
         KeyedFileStatement: validator.checkKeyedFileStatement,
         DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines,
-        MethodDecl: validator.checkIfMethodIsChildOfInterface,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
         SymbolicLabelRef: validator.checkSymbolicLabelRef
     };
@@ -128,17 +127,6 @@ export class BBjValidator {
         }
         const relativePath = relative(parentFolder, folder);
         return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath);
-    }
-
-
-    checkIfMethodIsChildOfInterface(node: MethodDecl, accept: ValidationAcceptor): void {
-        const klass = AstUtils.getContainerOfType(node, isBbjClass)!;
-        if (klass.interface && node.endTag) {
-            accept('error', 'Methods of interfaces must not have a METHODEND keyword!', {
-                node: node,
-                property: 'endTag'
-            });
-        }
     }
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {
