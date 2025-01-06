@@ -1,0 +1,12 @@
+class public Issue
+
+    field protected BBjNumber Test
+
+    method public BBjNumber getTest()
+        methodret #Test
+    methodend
+
+classend
+
+t! = new Issue()
+? t!.getTest()
