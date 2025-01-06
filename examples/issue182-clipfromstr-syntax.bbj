@@ -1,2 +1,4 @@
-clipfromstr clipregformat("png"),bytes$,err=oops
-clipfromstr 1,bytes$,err=oops
+    let bytes$ = 9
+    clipfromstr clipregformat("png"),bytes$,err=oops
+    clipfromstr 1,bytes$,err=oops
+oops:

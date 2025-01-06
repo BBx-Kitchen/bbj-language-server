@@ -1968,4 +1968,13 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('Issue #181 RELEASE syntax with extra parameter', async () => {
+        const result = await parse(`
+            let exitcode$ = 1
+            RELEASE exitcode$
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
 });
