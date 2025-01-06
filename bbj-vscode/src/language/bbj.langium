@@ -443,7 +443,7 @@ KeywordStatement:
 ;
 
 ExitWithNumberStatement:
-    kind='EXIT' | 'RELEASE' exitVal=Expression?;
+    kind='EXIT' | 'RELEASE' exitVal=NUMBER?;
 
 ExitToStatement:
     'EXITTO' target=LabelRef

@@ -1240,7 +1240,7 @@ describe('Parser Tests', () => {
             release
 
             lbl1: 
-                REM do somethin
+                REM do something
                 PRINT ""
             return
 
@@ -1964,15 +1964,6 @@ describe('Parser Tests', () => {
                 clipfromstr clipregformat("png"),bytes$,err=oops
                 clipfromstr 1,bytes$,err=oops
             oops:
-        `, { validation: true });
-        expectNoParserLexerErrors(result);
-        expectNoValidationErrors(result);
-    });
-
-    test('Issue #181 RELEASE syntax with extra parameter', async () => {
-        const result = await parse(`
-            let exitcode$ = 1
-            RELEASE exitcode$
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
