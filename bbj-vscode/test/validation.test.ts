@@ -396,17 +396,17 @@ describe('BBj validation', async () => {
         });
     });
 
-    test('Issue 207 about access level from method that overrides auto-getter or setter', async () => {
+    test('Issue 207 about access level from method that overrides auto-getter or -setter', async () => {
         const validationResult = await validate(`
         class public Issue
-            field protected String Test
-            method public String getTest()
+            field protected Issue Test
+            method public Issue getTest()
                 methodret #Test
             methodend
         classend
         t! = new Issue()
         ? t!.getTest()
         `);
-        expect(validationResult.diagnostics.map(m => m.message).every(m => m === "Could not resolve reference to Class named 'String'.")).toBeTruthy();
+        expectNoIssues(validationResult);
     });
 });

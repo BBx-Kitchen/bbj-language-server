@@ -1,8 +1,8 @@
 class public Issue
 
-    field protected BBjNumber Test
+    field protected Issue Test
 
-    method public BBjNumber getTest()
+    method public Issue getTest()
         methodret #Test
     methodend
 
