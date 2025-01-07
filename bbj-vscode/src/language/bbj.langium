@@ -611,7 +611,7 @@ AddrStatement:
 ;
 
 ClipFromStrStatement:
-    'CLIPFROMSTR' fmt=NumberLiteral ',' str=Expression Err?
+    'CLIPFROMSTR' fmt=Expression ',' str=Expression Err?
 ;
 
 SqlOpenStatement:

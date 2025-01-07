@@ -1240,7 +1240,7 @@ describe('Parser Tests', () => {
             release
 
             lbl1: 
-                REM do somethin
+                REM do something
                 PRINT ""
             return
 
@@ -1956,5 +1956,16 @@ describe('Parser Tests', () => {
         console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
         // In a bad state it took 48 seconds
         expect(timeInSeconds, 'Parser is too slow').toBeLessThan(5);
+    });
+
+    test('Issue #182 CLIPFROMSTR syntax', async () => {
+        const result = await parse(`
+                let bytes$ = 9
+                clipfromstr clipregformat("png"),bytes$,err=oops
+                clipfromstr 1,bytes$,err=oops
+            oops:
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
     });
 });
