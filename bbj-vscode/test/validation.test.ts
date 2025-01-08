@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -394,5 +394,19 @@ describe('BBj validation', async () => {
         expectError(validationResult, 'Symbolic label reference may not contain whitespace.', {
             node: symbolicLabelRef
         });
+    });
+
+    test('Issue 207 about access level from method that overrides auto-getter or -setter', async () => {
+        const validationResult = await validate(`
+        class public Issue
+            field protected Issue Test
+            method public Issue getTest()
+                methodret #Test
+            methodend
+        classend
+        t! = new Issue()
+        ? t!.getTest()
+        `);
+        expectNoIssues(validationResult);
     });
 });

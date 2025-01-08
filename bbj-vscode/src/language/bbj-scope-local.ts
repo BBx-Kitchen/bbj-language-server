@@ -125,13 +125,13 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             }
             // local getter and setter.
             // TODO Probably better to move to ScopeProvider as super getter and setter can not be accessed.
-            node.members.filter(member => isFieldDecl(member)).forEach(member => {
-                const nameSegment = CstUtils.toDocumentSegment(GrammarUtils.findNodeForProperty(member.$cstNode, 'name'))
-                if (!node.members.find(member => member.name === toAccessorName(member.name))) {
-                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment));
+            node.members.filter(member => isFieldDecl(member)).forEach(field => {
+                const nameSegment = CstUtils.toDocumentSegment(GrammarUtils.findNodeForProperty(field.$cstNode, 'name'))
+                if (!node.members.find(member => member.name === toAccessorName(field.name))) {
+                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, field as FieldDecl, nameSegment));
                 }
-                if (!node.members.find(member => member.name === toAccessorName(member.name, true))) {
-                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, member as FieldDecl, nameSegment, true));
+                if (!node.members.find(member => member.name === toAccessorName(field.name, true))) {
+                    this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, field as FieldDecl, nameSegment, true));
                 }
             });
         } else if (isInputVariable(node) && (isReadStatement(node.$container) || isEnterStatement(node.$container))) {
