@@ -410,6 +410,16 @@ describe('BBj validation', async () => {
         expectNoIssues(validationResult);
     });
 
+    test('Issue #222 Support INPUT with asterisk', async () => {
+        const result = await validate(`
+        GET_CUST_NUM:
+            Input "Customer: ",c$
+            Print c$
+            input "Hit <CR> to enter a new customer number. ", *
+            goto GET_CUST_NUM
+        `, { validation: true });
+        expectNoIssues(result);
+    });
 
     test('Check BEGIN EXCEPT ok', async () => {
         const result = await validate(`
