@@ -590,7 +590,7 @@ InputItem:
  * See https://documentation.basis.cloud/BASISHelp/WebHelp/commands/read_verb.htm
  */
 InputVariable:
-    {infer InputVariable} ( SymbolRef ('[ALL]' | options=VerifyOptions)?) // TODO SymbolRef '[ALL]' is array access
+    {infer InputVariable} Expression options=VerifyOptions?
 ;
 
 VerifyOptions:
@@ -656,7 +656,7 @@ ProcessEvent:
 ;
 
 BeginStatement:
-    kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=SymbolRef '[ALL]'? (','  except+=SymbolRef '[ALL]'?)*)?
+    kind=('BEGIN' | 'CLEAR') ('EXCEPT' except+=Expression (','  except+=Expression)*)?
 ;
 
 EnterStatement:
@@ -751,7 +751,7 @@ MemberCall infers Expression:
     PrimaryExpression
     (
         {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName]
-        | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
+        | {infer ArrayElement.receiver=current} "[" (all?="ALL" | indices+=Expression (',' indices+=Expression)*) "]"
         | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? RPAREN
     )*
 ;

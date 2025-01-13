@@ -308,6 +308,7 @@ describe('Parser Tests', () => {
     test('READ: Input variable should be linked or created.', async () => {
         const result = await parse(`
         let B$="1",C$="2",Q$="3"
+        let array = "hallo!"
 
         READ(1,KEY="TEST",ERR=9500)A$,B$,C$
         READ RECORD(1,IND=2,ERR=9500)A$
@@ -1970,7 +1971,16 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
-    test('Issue #225 Check substring after fid call ', async () => {
+    test('Issue #224 ALL array access as expression', async () => {
+        const result = await parse(`
+        attr_def_tbl$ = ""
+        attr_def_col$ = "";
+        call stbl("+DIR_SYP")+"bam_attr_init.bbj",attr_def_tbl$[all],attr_def_col$[all],"ALL"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Issue #225 Check substring after fid call', async () => {
         const result = await parse(`
         ch = 2
         PgmDirectory$=fid(ch)(9)(1,max(pos("\"=pgm(-2),-1),pos("/"=pgm(-2),-1)))

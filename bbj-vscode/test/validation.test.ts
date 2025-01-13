@@ -409,4 +409,20 @@ describe('BBj validation', async () => {
         `);
         expectNoIssues(validationResult);
     });
+
+
+    test('Check BEGIN EXCEPT ok', async () => {
+        const result = await validate(`
+        let a = 0
+        BEGIN EXCEPT a
+        `, { validation: true });
+        expectNoIssues(result);
+    });
+
+    test('Check BEGIN EXCEPT fail', async () => {
+        const result = await validate(`
+        BEGIN EXCEPT 0
+        `, { validation: true });
+        expectError(result, "'0' must be symbol reference or array access with ALL", {});
+    });
 });

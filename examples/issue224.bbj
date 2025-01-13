@@ -1,0 +1,16 @@
+let B$="1",C$="2",Q$="3"
+let array = "hallo!"
+
+READ(1,KEY="TEST",ERR=9500)A$,B$,C$
+READ RECORD(1,IND=2,ERR=9500)A$
+READ RECORD(1,IND=2,ERR=9500)*,A$
+EXTRACT(2,KEY=Q$,DOM=1300)IOL=Label1
+INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2,LEN=1,24)
+REad (0) array[ALL]
+
+Label1:
+    PRINT "Label"
+Label2:
+    PRINT "Label2"
+
+Print A$,B$,C$

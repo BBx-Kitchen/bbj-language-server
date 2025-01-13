@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNo
 import { dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption } from './generated/ast.js';
+import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
@@ -29,7 +29,9 @@ export function registerValidationChecks(services: BBjServices) {
         DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
-        SymbolicLabelRef: validator.checkSymbolicLabelRef
+        SymbolicLabelRef: validator.checkSymbolicLabelRef,
+
+        BeginStatement: validator.checkExceptClause,
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
@@ -43,6 +45,14 @@ export class BBjValidator {
     protected readonly javaInterop: JavaInteropService;
 
     protected readonly typeInferer: TypeInferer;
+    checkExceptClause(node: BeginStatement, accept: ValidationAcceptor): void {
+        const wrongs = node.except.filter(e => !(isSymbolRef(e) || (isArrayElement(e) && e.all)))
+        for (const except of wrongs) {
+            accept("error", `'${except.$cstNode?.text}' must be symbol reference or array access with ALL`, {
+                node: except
+            });
+        }
+    }
 
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
