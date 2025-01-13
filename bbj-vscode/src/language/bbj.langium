@@ -750,10 +750,10 @@ PrefixExpression infers Expression:
 MemberCall infers Expression:
     PrimaryExpression
     (
-        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName] (isMethodCall?='(' (args+=ParameterCall (',' args+=ParameterCall)* )? RPAREN)?
+        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName]
         | {infer ArrayElement.receiver=current} "[" indices+=Expression (',' indices+=Expression)* "]"
+        | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? RPAREN
     )*
-    ({infer SubstringExpresion.receiver=current} '(' position = Expression (',' length = Expression)? RPAREN)? // substring
 ;
 
 ParameterCall:

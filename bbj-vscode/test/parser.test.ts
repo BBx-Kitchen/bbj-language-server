@@ -1,6 +1,6 @@
 import { AstNode, EmptyFileSystem, LangiumDocument } from 'langium';
 import { AstUtils } from 'langium';
-import { expectError, parseHelper } from 'langium/test';
+import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
 import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
@@ -1968,5 +1968,13 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
+    });
+
+    test('Issue #225 Check substring after fid call ', async () => {
+        const result = await parse(`
+        ch = 2
+        PgmDirectory$=fid(ch)(9)(1,max(pos("\"=pgm(-2),-1),pos("/"=pgm(-2),-1)))
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
     });
 });

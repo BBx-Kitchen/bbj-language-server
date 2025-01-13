@@ -50,6 +50,10 @@ export class BBjValidator {
     }
 
     checkMemberCallUsingAccessLevels(memberCall: MemberCall, accept: ValidationAcceptor): void {
+        if(!memberCall.member) {
+            //for broken syntax like "obj!.   "
+            return;
+        }
         const type = memberCall.member.$nodeDescription?.type ?? memberCall.member.ref?.$type;
         if (!type || ![JavaField, JavaMethod, MethodDecl, FieldDecl].includes(type)) {
             return;
