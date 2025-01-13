@@ -103,7 +103,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'PRINT_STANDALONE_NL') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(/(\?|PRINT|WRITE)\s*(\r?\n)/i),
+                PATTERN: this.regexPatternFunction(/(\?|PRINT|WRITE)\s*(?=(;|\r?\n))/i),
                 LINE_BREAKS: true
             };
             return token;
