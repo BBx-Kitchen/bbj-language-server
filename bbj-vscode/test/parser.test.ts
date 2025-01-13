@@ -1977,4 +1977,18 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+
+    test('Issue #227 Space after NEXT ID ', async () => {
+        const result = await parse(`
+        rem both is valid - either give the variable with NEXT or omit it. 
+        for i=0 to 10
+            print i
+        next i 
+
+        for j=0 to 10
+            print j
+        next 
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
 });
