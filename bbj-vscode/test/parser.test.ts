@@ -1971,6 +1971,18 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Issue #223 Fix identifiers starting with NEXT', async () => {
+        const result = await parse(`
+        class public WidgetWizard
+            REM THE NEXT LINE CAUSED TROUBLE
+            field private BBjButton NextButton!
+            method public WidgetWizard()
+            methodend
+        classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
     test('Issue #224 ALL array access as expression', async () => {
         const result = await parse(`
         attr_def_tbl$ = ""
