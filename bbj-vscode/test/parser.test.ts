@@ -1968,4 +1968,12 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
         expectNoValidationErrors(result);
     });
+
+    test('Issue #225 Check substring after fid call ', async () => {
+        const result = await parse(`
+        ch = 2
+        PgmDirectory$=fid(ch)(9)(1,max(pos("\"=pgm(-2),-1),pos("/"=pgm(-2),-1)))
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
 });

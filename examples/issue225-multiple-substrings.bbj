@@ -1,0 +1,2 @@
+ch = 2
+PgmDirectory$=fid(ch)(9)(1,max(pos("\"=pgm(-2),-1),pos("/"=pgm(-2),-1)))
