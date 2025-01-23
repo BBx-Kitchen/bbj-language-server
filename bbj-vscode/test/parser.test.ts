@@ -1971,6 +1971,23 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
+    test('Issue #208 AND is also a function', async () => {
+        const result = await parse(`
+            requiredPermissionsString$="1"
+            permissionIDBinString$="1"
+            permissionResult = DEC(AND(requiredPermissionsString$,permissionIDBinString$))
+
+            x=1
+            y=2
+
+            IF x=1 AND y=2 then
+                PRINT "hello"
+            FI
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Issue #223 Fix identifiers starting with NEXT', async () => {
         const result = await parse(`
         class public WidgetWizard
