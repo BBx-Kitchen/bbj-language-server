@@ -4,12 +4,12 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstUtils, EmptyFileSystem } from 'langium';
+import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -396,6 +396,22 @@ describe('BBj validation', async () => {
         });
     });
 
+    test('Issue 166 Disallow certain label names using a negative list.', async () => {
+        const validationResult = await validate(`
+            begin: GOTO begin
+            gosub: GOTO gosub
+        `);
+        const nodes  = findAll(validationResult.document, isLabelDecl, true);
+        expectError(validationResult, "'begin' is not allowed as label name!", {
+            node: nodes[0],
+            property: 'name'
+        });
+        expectError(validationResult, "'gosub' is not allowed as label name!", {
+            node: nodes[1],
+            property: 'name'
+        });
+    });
+
     test('Issue 207 about access level from method that overrides auto-getter or -setter', async () => {
         const validationResult = await validate(`
         class public Issue
@@ -426,3 +442,7 @@ describe('BBj validation', async () => {
         expectError(result, "'0' must be symbol reference or array access with ALL", {});
     });
 });
+
+export function findAll<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T, streamAll: boolean = false): T[] {
+    return (streamAll ? AstUtils.streamAllContents(document.parseResult.value) : AstUtils.streamContents(document.parseResult.value)).filter(filter).toArray();
+}
