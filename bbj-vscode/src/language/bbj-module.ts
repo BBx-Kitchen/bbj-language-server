@@ -31,6 +31,7 @@ import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
+import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 
 
 /**
@@ -77,11 +78,12 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         JavaInteropService: (services) => new JavaInteropService(services)
     },
     documentation: {
-        CommentProvider: (services) => new BBjCommentProvider()
+        CommentProvider: () => new BBjCommentProvider()
     },
     lsp: {
         HoverProvider: (services) => new BBjHoverProvider(services),
-        CompletionProvider: (services) => new BBjCompletionProvider(services)
+        CompletionProvider: (services) => new BBjCompletionProvider(services),
+        SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),
