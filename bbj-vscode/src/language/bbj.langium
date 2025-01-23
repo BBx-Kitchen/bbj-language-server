@@ -443,7 +443,8 @@ KeywordStatement:
 ;
 
 ExitWithNumberStatement:
-    kind='EXIT' | 'RELEASE' exitVal=NUMBER?;
+    kind='EXIT' | RELEASE_NL | RELEASE_NO_NL exitVal=Expression
+;
 
 ExitToStatement:
     'EXITTO' target=LabelRef
@@ -870,6 +871,8 @@ terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
 terminal START_BREAK: /_start/;
 terminal RPAREN_NL: /_rparen_nl/;
+terminal RELEASE_NL: /_release_nl/;
+terminal RELEASE_NO_NL: /_release_no_nl/;
 
 terminal ASTERISK_STANDALONE: /_asterisk_standalone/;
 terminal ASTERISK_EXPRESSION: /_asterisk_expression/;

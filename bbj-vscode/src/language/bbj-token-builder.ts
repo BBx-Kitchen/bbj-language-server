@@ -29,6 +29,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RPAREN_NL');
         this.spliceToken(tokens, 'ASTERISK_EXPRESSION');
         this.spliceToken(tokens, 'ASTERISK_STANDALONE');
+        this.spliceToken(tokens, 'RELEASE_NL');
+        this.spliceToken(tokens, 'RELEASE_NO_NL');
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
 
@@ -40,6 +42,9 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 keywordToken.CATEGORIES = [id];
             }
         }
+        const releaseNoNl = terminalTokens.find(e => e.name === 'RELEASE_NO_NL')!;
+        releaseNoNl.CATEGORIES = [id];
+
         return tokens;
     }
 
@@ -60,6 +65,18 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             return {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/\*/),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'RELEASE_NO_NL') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/RELEASE(?!\s*(;\s*|\r?\n))/i),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'RELEASE_NL') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/RELEASE(?=\s*(;\s*|\r?\n))/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
