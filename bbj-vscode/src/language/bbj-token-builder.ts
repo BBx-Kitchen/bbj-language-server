@@ -42,7 +42,9 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 keywordToken.CATEGORIES = [id];
             }
         }
+        const releaseNl = terminalTokens.find(e => e.name === 'RELEASE_NL')!;
         const releaseNoNl = terminalTokens.find(e => e.name === 'RELEASE_NO_NL')!;
+        releaseNl.CATEGORIES = [id];
         releaseNoNl.CATEGORIES = [id];
 
         return tokens;
