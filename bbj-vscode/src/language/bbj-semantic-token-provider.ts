@@ -1,6 +1,6 @@
 import { AstNode } from "langium";
 import { AbstractSemanticTokenProvider, LangiumServices, SemanticTokenAcceptor } from "langium/lsp";
-import { SymbolRef } from "./generated/ast.js";
+import { SymbolRef, ParameterDecl } from "./generated/ast.js";
 import { SemanticTokenTypes } from "vscode-languageserver-types";
 
 export class BBjSemanticTokenProvider extends AbstractSemanticTokenProvider {
@@ -10,6 +10,8 @@ export class BBjSemanticTokenProvider extends AbstractSemanticTokenProvider {
 
     protected override highlightElement(node: AstNode, acceptor: SemanticTokenAcceptor): void | undefined | "prune" {
         switch (node.$type) {
+            case ParameterDecl:
+                return acceptor({ node: node as ParameterDecl, property: 'name', type: SemanticTokenTypes.variable });
             case SymbolRef:
                 return this.highlightSymbolRef(node as SymbolRef, acceptor);
         }
