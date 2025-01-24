@@ -553,7 +553,7 @@ OutputItem:
 ;
 
 OtherItem:
-    '*' //treats an asterisk as a null field
+    ASTERISK_STANDALONE //treats an asterisk as a null field
     | ('IOL=' iol=LabelRef) //Refers to the IOLIST statement
 ;
 
@@ -735,7 +735,7 @@ AdditiveExpr infers Expression:
     ;
 
 MultiplicativeExpr infers Expression:
-    ExponentiationExpr ({infer BinaryExpression.left=current} operator=('*' | '/') right=ExponentiationExpr)*
+    ExponentiationExpr ({infer BinaryExpression.left=current} operator=(ASTERISK_EXPRESSION | '/') right=ExponentiationExpr)*
     ;
 
 ExponentiationExpr infers Expression:
@@ -856,7 +856,7 @@ LibEventType returns LibEventType:
     'eventType' name=ValidName
     ;
 
-SymbolicLabelName returns string: '*' ValidName;
+SymbolicLabelName returns string: ASTERISK_EXPRESSION ValidName;
 
 hidden terminal WS: /\s+/;
 terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
@@ -870,6 +870,9 @@ terminal METHODRET_END: /_methodret_end/;
 terminal FNEND: /_fn_end/;
 terminal START_BREAK: /_start/;
 terminal RPAREN_NL: /_rparen_nl/;
+
+terminal ASTERISK_STANDALONE: /_asterisk_standalone/;
+terminal ASTERISK_EXPRESSION: /_asterisk_expression/;
 
 terminal BBjFilePath: /::.*::/;
 

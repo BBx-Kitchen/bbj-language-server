@@ -27,6 +27,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'KEYWORD_STANDALONE');
         this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
         this.spliceToken(tokens, 'RPAREN_NL');
+        this.spliceToken(tokens, 'ASTERISK_EXPRESSION');
+        this.spliceToken(tokens, 'ASTERISK_STANDALONE');
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
 
@@ -48,7 +50,19 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
     }
 
     protected override buildTerminalToken(terminal: GrammarAST.TerminalRule): TokenType {
-        if (terminal.name === 'RPAREN_NL') {
+        if (terminal.name === 'ASTERISK_STANDALONE') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/\*(?=\s*(,|;\s*|\r?\n))/),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'ASTERISK_EXPRESSION') {
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/\*/),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'RPAREN_NL') {
             return {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/\)(?=\s*(;\s*|\r?\n))/),
