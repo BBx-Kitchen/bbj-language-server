@@ -1960,6 +1960,56 @@ describe('Parser Tests', () => {
         expect(timeInSeconds, 'Parser is too slow').toBeLessThan(7);
     });
 
+    test('Issue #181 RELEASE with and without value', async () => {
+        const result = await parse(`
+            back:
+                let exitcode$ = 1
+                RELEASE exitcode$
+                RELEASE -1
+                RELEASE
+                RELEASE
+                goto back
+
+                release -exitcode$+1
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Issue #181 RELEASE as field name', async () => {
+        const result = await parse(`
+                CLASS PUBLIC BBjString
+                CLASSEND
+
+                CLASS PUBLIC MyClass
+                    FIELD PUBLIC BBjString release
+                CLASSEND
+
+                let my = new MyClass()
+                PRINT my.release
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Issue #181 RELEASE as method name', async () => {
+        const result = await parse(`
+                CLASS PUBLIC BBjString
+                CLASSEND
+
+                CLASS PUBLIC MyClass
+                    METHOD public BBjString release()
+                        METHODRET "freedom!"
+                    METHODEND
+                CLASSEND
+
+                let my = new MyClass()
+                PRINT my.release()
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('Issue #182 CLIPFROMSTR syntax', async () => {
         const result = await parse(`
                 let bytes$ = 9
