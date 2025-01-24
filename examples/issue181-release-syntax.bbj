@@ -1,2 +1,40 @@
-let exitcode$ = 1
-RELEASE exitcode$
+lol:
+    let exitcode$ = 1
+    RELEASE exitcode$
+    RELEASE -1
+    RELEASE
+    RELEASE
+    goto lol
+
+release -exitcode$+1
+
+release
+lbl1: 
+    REM do something
+    PRINT ""
+return
+
+lbl2:
+    REM do something else
+    print ""
+return
+
+CLASS PUBLIC BBjString
+CLASSEND
+
+CLASS PUBLIC MyClassA
+    FIELD PUBLIC BBjString release
+CLASSEND
+
+CLASS PUBLIC MyClassB
+    method public void release()
+        
+    methodend
+CLASSEND
+
+let my = new MyClassA()
+let x$ = my.release
+PRINT x$
+
+let myB = new MyClassB()
+myB.release()
