@@ -243,7 +243,7 @@ export class BBjValidator {
     private LabelNegativeIdList: RegExp[] = ["GOSUB", "BEGIN"].map(t => new RegExp(`^${t}$`, 'i'));
     checkLabelDecl(label: LabelDecl, accept: ValidationAcceptor): void {
         if(this.LabelNegativeIdList.some(t => t.test(label.name))) {
-            accept('error', `'${label.name}' is not allowed as label name!`, {
+            accept('error', `'${label.name}' is not allowed as label name.`, {
                 node: label,
                 property: 'name',
             });

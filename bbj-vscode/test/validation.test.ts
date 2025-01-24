@@ -402,11 +402,11 @@ describe('BBj validation', async () => {
             gosub: GOTO gosub
         `);
         const nodes  = findAll(validationResult.document, isLabelDecl, true);
-        expectError(validationResult, "'begin' is not allowed as label name!", {
+        expectError(validationResult, "'begin' is not allowed as label name.", {
             node: nodes[0],
             property: 'name'
         });
-        expectError(validationResult, "'gosub' is not allowed as label name!", {
+        expectError(validationResult, "'gosub' is not allowed as label name.", {
             node: nodes[1],
             property: 'name'
         });
