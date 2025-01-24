@@ -1,0 +1,10 @@
+requiredPermissionsString$="1"
+permissionIDBinString$="1"
+permissionResult = DEC(AND(requiredPermissionsString$,permissionIDBinString$))
+
+x=1
+y=2
+
+IF x=1 AND y=2 then
+    PRINT "hello"
+FI

@@ -1,0 +1,7 @@
+class public QVGrid implements BBjControl
+
+    method public void clearProcCallback (BBjNumber eventType)
+        BBjAPI().clearCustomEventCallback(#proc_id$+"_"+str(eventType))
+    methodend
+
+classend
