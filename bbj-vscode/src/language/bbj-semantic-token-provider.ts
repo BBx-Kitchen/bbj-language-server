@@ -11,7 +11,7 @@ export class BBjSemanticTokenProvider extends AbstractSemanticTokenProvider {
     protected override highlightElement(node: AstNode, acceptor: SemanticTokenAcceptor): void | undefined | "prune" {
         switch (node.$type) {
             case ParameterDecl:
-                return acceptor({ node: node as ParameterDecl, property: 'name', type: SemanticTokenTypes.variable });
+                return acceptor({ node: node as ParameterDecl, property: 'name', type: SemanticTokenTypes.parameter });
             case SymbolRef:
                 return this.highlightSymbolRef(node as SymbolRef, acceptor);
         }
