@@ -13,7 +13,7 @@ The project consists of two main parts:
 
 The easiest way is to open the project in [Gitpod](https://gitpod.io/).
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/BBx-Kitchen/bbj-language-server)
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/BBx-Kitchen/bbj-language-server) [![Open in Codeanywhere](https://codeanywhere.com/img/open-in-codeanywhere-btn.svg)](https://app.codeanywhere.com/#https://github.com/BBx-Kitchen/bbj-language-server)
 
 This opens a VS Code instance in your browser that automatically builds the project code. Once the terminal processes are done, go to the "Run and Debug" view and start two launch configurations:
 
