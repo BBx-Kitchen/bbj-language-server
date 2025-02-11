@@ -15,6 +15,7 @@ programme!  = ARGV(3)
 wd!         = ARGV(4)
 username!   = ARGV(5,err=*next)
 password!   = ARGV(6,err=*next)
+sscp!       = ARGV(7,err=*next)
 
 if (username! = null()) username! = "admin"
 if (password!= null()) password! = "admin123"
@@ -46,6 +47,11 @@ rem set the properties for the application
 app!.setString(app!.NAME, name!)
 app!.setString(app!.PROGRAM, programme!)
 app!.setString(app!.WORKING_DIRECTORY , wd!)
+
+if sscp! <> null() and sscp! > "" and sscp! <> "--" then
+    app!.setString(app!.CLASSPATH, sscp!)
+fi
+
 if (isDWC!) then app!.setBoolean(app!.DWC_ENABLED, 1)
 app!.commit()
 

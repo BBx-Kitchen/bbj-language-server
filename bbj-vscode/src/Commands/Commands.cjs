@@ -26,6 +26,7 @@ const runWeb = (params, client) => {
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
   const username = vscode.workspace.getConfiguration("bbj").web.username;
   const password = vscode.workspace.getConfiguration("bbj").web.password;
+  const sscp = vscode.workspace.getConfiguration("bbj").classpath;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
   const workingDir = path.dirname(fileName);
@@ -37,7 +38,9 @@ const runWeb = (params, client) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}"`;
+  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+
+  vscode.window.showInformationMessage(cmd);
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
@@ -107,12 +110,21 @@ const Commands = {
     if (!home) return;
 
     const webConfig = vscode.workspace.getConfiguration("bbj.web");
+    var sscp = vscode.workspace.getConfiguration("bbj").classpath;
     
     const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
-    const cmd = `${bbj} -q -WD${workingDir} ${fileName}`;
+
+    if (sscp != null && sscp>"") {
+      sscp = "-CP"+sscp;
+    } else {
+      sscp = "";
+    }
+
+    const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
+    vscode.window.showInformationMessage(cmd);
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {

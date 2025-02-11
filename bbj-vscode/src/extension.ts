@@ -73,6 +73,7 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             fileEvents: fileSystemWatcher
         },
         initializationOptions:  vscode.workspace.getConfiguration("bbj").home
+
     };
 
     // Create the language client and start the client.
