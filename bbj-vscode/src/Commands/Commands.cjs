@@ -40,8 +40,6 @@ const runWeb = (params, client) => {
 
   const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
 
-  vscode.window.showInformationMessage(cmd);
-
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
       vscode.window.showErrorMessage(`Failed to run "${programme}"`);
@@ -124,7 +122,6 @@ const Commands = {
     }
 
     const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
-    vscode.window.showInformationMessage(cmd);
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
