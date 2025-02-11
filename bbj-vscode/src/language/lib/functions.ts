@@ -3,9 +3,9 @@ export const builtinFunctions = `
 library
 
 /@@
-AND(left:string, right:string, ERR:?lineref): string
+AND(left:string, right:string, ERR?:lineref): string
 @/
-AND(left:string, right:string, ERR:?lineref): string
+AND(left:string, right:string, ERR?:lineref): string
 
 /@@
 #### Syntax
