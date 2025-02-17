@@ -8,10 +8,11 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNo
 import { dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
+import { NegativeLabelIdList } from './constants.js';
 
 /**
  * Register custom validation checks.
@@ -21,6 +22,7 @@ export function registerValidationChecks(services: BBjServices) {
     const validator = services.validation.BBjValidator;
     const checks: ValidationChecks<BBjAstType> = {
         AstNode: checkLineBreaks,
+        LabelDecl: validator.checkLabelDecl,
         Use: validator.checkUsedClassExists,
         OpenStatement: validator.checkOpenStatementOptions,
         InitFileStatement: validator.checkInitFileStatementOptions,
@@ -236,6 +238,16 @@ export class BBjValidator {
         // we check for the first character to avoid false positives
         if (nodeText && nodeText.startsWith('*') && nodeText.search(/\s/) !== -1) {
             accept('error', 'Symbolic label reference may not contain whitespace.', { node: ele });
+        }
+    }
+
+    private LabelNegativeIdList: RegExp[] = NegativeLabelIdList.map(t => new RegExp(`^${t}$`, 'i'));
+    checkLabelDecl(label: LabelDecl, accept: ValidationAcceptor): void {
+        if(this.LabelNegativeIdList.some(t => t.test(label.name))) {
+            accept('error', `'${label.name}' is not allowed as label name.`, {
+                node: label,
+                property: 'name',
+            });
         }
     }
 }
