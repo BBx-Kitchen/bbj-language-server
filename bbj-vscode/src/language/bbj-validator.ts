@@ -12,6 +12,7 @@ import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, Erase
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
+import { NegativeLabelIdList } from './constants.js';
 
 /**
  * Register custom validation checks.
@@ -240,7 +241,7 @@ export class BBjValidator {
         }
     }
 
-    private LabelNegativeIdList: RegExp[] = ["GOSUB", "BEGIN"].map(t => new RegExp(`^${t}$`, 'i'));
+    private LabelNegativeIdList: RegExp[] = NegativeLabelIdList.map(t => new RegExp(`^${t}$`, 'i'));
     checkLabelDecl(label: LabelDecl, accept: ValidationAcceptor): void {
         if(this.LabelNegativeIdList.some(t => t.test(label.name))) {
             accept('error', `'${label.name}' is not allowed as label name.`, {
