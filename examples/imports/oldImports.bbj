@@ -1,0 +1,5 @@
+use ::importMe.bbj::ImportMe
+let imp = new ImportMe()
+let num1 = ImportMe.field
+let num2 = ImportMe.zero()
+let num3 = ImportMe.identity(num2)
