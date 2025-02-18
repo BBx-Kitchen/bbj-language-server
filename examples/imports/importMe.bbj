@@ -1,0 +1,11 @@
+class BBjNumber
+classend
+class public ImportMe
+    field public static BBjNumber field
+    method public static BBjNumber zero()
+        methodret 0
+    methodend
+    method public static BBjNumber identity(BBjNumber value)
+        methodret value
+    methodend
+classend

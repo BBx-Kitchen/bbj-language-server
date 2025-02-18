@@ -769,6 +769,7 @@ PrimaryExpression infers Expression:
     | PositionalMnemonic
     | ConstructorCall
     | SymbolicLabelName
+    | QualifiedBBjClassName
     ;
 
 SymbolRef infers Expression:
