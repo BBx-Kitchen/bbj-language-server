@@ -13,7 +13,7 @@ entry Model:
 
 // Main program
 Program:
-    Statements*
+    Statements* EOF
 ;
 
 fragment Statements:

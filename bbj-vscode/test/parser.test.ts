@@ -3,7 +3,7 @@ import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isSymbolRef, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -2078,6 +2078,15 @@ describe('Parser Tests', () => {
             print j
         next 
         `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test("xxx", async () => {
+        const result = await parse(`
+            let xxx = 123
+            let yyy = xxx()
+        `, { validation: true });
+        AstUtils.streamAst(result.parseResult.value).toArray().filter(isSymbolRef).forEach(a => console.log(a.isMethodCall));
         expectNoParserLexerErrors(result);
     });
 });
