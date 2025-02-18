@@ -88,7 +88,7 @@ export class BBjValidator {
                         break;
                     }
                     if (isBbjClass(c)) {
-                        remainingClasses.push(...c.extends.map(x => x.ref).filter(x => x !== undefined).map(x => x as Class))
+                        remainingClasses.push(...c.extends.map(x => x.type.ref).filter(x => x !== undefined).map(x => x as Class))
                     }
                 }
             }

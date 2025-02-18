@@ -21,9 +21,9 @@ export class BBjTypeInferer implements TypeInferer {
             } else if (isClass(reference)) {
                 return reference
             } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)) {
-                return reference.type?.ref
+                return reference.type?.type.ref
             } else if (isMethodDecl(reference)) {
-                return reference.returnType?.ref
+                return reference.returnType?.type.ref
             } else if (isLibFunction(reference) && reference.name.toLowerCase() === 'cast') {
                 if (expression.args.length > 0) {
                     // CAST function return type is the first arg which is a Class reference
@@ -32,7 +32,7 @@ export class BBjTypeInferer implements TypeInferer {
             }
             return undefined;
         } else if (isConstructorCall(expression)) {
-            return expression.class.ref;
+            return expression.class.type.ref;
         } else if (isMemberCall(expression)) {
             const member = expression.member.ref;
             if (member) {
@@ -41,7 +41,7 @@ export class BBjTypeInferer implements TypeInferer {
                 } else if (isJavaMethod(member)) {
                     return member.resolvedReturnType?.ref;
                 } else if (isMethodDecl(member)) {
-                    return member.returnType?.ref
+                    return member.returnType?.type.ref
                 }
             } else {
                 return undefined

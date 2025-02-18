@@ -27,8 +27,8 @@ function enhanceFunctionDescription(descr: AstNodeDescription, func: MethodData)
 export function toMethodData(methDecl: MethodDecl): MethodData {
     return {
         name: methDecl.name,
-        parameters: methDecl.params.map(p => { return { name: p.name, type: p.type?.$refText ?? '' } }),
-        returnType: methDecl.returnType?.$refText ?? ''
+        parameters: methDecl.params.map(p => { return { name: p.name, type: p.type?.type.$refText ?? '' } }),
+        returnType: methDecl.returnType?.type.$refText ?? ''
     }
 }
 

@@ -278,7 +278,7 @@ Use:
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' 'auto'? type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName;
+    'declare' 'auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
@@ -286,7 +286,7 @@ Assignment:
 ClassDecl returns BbjClass:
     'CLASS' Visibility Static name=ValidName 
         Extends?
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*  (';' comments+=CommentStatement)?
+        ('IMPLEMENTS' implements+=QualifiedClass)? (',' implements+=QualifiedClass)*  (';' comments+=CommentStatement)?
     (members+=ClassMember | Comments)*
     'CLASSEND'
 ;
@@ -308,7 +308,7 @@ Modifier returns string:
 ;
 
 fragment Extends:
-    ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)
+    ('EXTENDS' extends+=QualifiedClass (',' extends+=QualifiedClass)*)
 ;
 
 fragment Comments:
@@ -320,7 +320,7 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=QualifiedClass (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
@@ -333,7 +333,7 @@ MethodDecl returns MethodDecl:
 ;
 
 fragment MethodDeclStart returns MethodDecl:
-    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (returnType=QualifiedClass (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
 InterfaceMethodDecl returns MethodDecl:
@@ -345,7 +345,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName
+    {infer ParameterDecl} type=QualifiedClass (array?='[' ']')? name=FeatureName
 ;
 
 /**
@@ -772,7 +772,7 @@ PrimaryExpression infers Expression:
     ;
 
 SymbolRef infers Expression:
-    {infer SymbolRef} instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err? RPAREN)?
+    {infer SymbolRef} instanceAccess?='#'? (type=QualifiedClass '.')? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err? RPAREN)?
 ;
 
 Literal:
@@ -796,21 +796,20 @@ PositionalMnemonic:
 
 ConstructorCall:
     // TODO: Possibly use ID instead of QualifiedClassName
-    'new' class=[Class:QualifiedClassName] 
+    'new' class=QualifiedClass 
     (
         ('(' (args+=Expression (',' args+=Expression)*)? RPAREN)
         | ('[' (args+=Expression (',' args+=Expression)*)? ']')
     )
     ;
 
-QualifiedClassName returns string:
-    QualifiedBBjClassName | QualifiedJavaClassName;
+QualifiedClass:
+    {infer FullQualifiedBBjClassName} folder=BBjFilePath type=[Class:ID]
+    | {infer FullQualifiedJavaOrNonQualifiedBBjClassName} type=[NamedElement:QualifiedJavaClassName]
+    ;
 
 QualifiedJavaClassName returns string:
     ID ('.' ID)*;
-
-QualifiedBBjClassName returns string:
-    BBjFilePath ID;
 
 FeatureName returns string:
     ID | ID_WITH_SUFFIX;
@@ -901,7 +900,7 @@ interface DefFunction extends NamedElement {
 }
 
 interface VariableDecl extends NamedElement {
-    type?: @Class
+    type?: QualifiedClass
     array?: boolean
 }
 
@@ -915,7 +914,7 @@ interface FieldDecl extends VariableDecl {
 interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
-    returnType?: @Class
+    returnType?: QualifiedClass
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
@@ -934,8 +933,8 @@ interface BbjClass extends Class {
     visibility?: string
     static?: boolean
     interface: boolean
-    extends?: @Class[]
-    implements?: @Class[]
+    extends?: QualifiedClass[]
+    implements?: QualifiedClass[]
     comments: CommentStatement[]
     members: ClassMember[]
 }

@@ -116,8 +116,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const superType = node.extends[0]
                 this.addToScope(scopes, node, {
                     name: 'super!',
-                    nameSegment: CstUtils.toDocumentSegment(superType.$refNode),
-                    selectionSegment: CstUtils.toDocumentSegment(superType.$refNode),
+                    nameSegment: CstUtils.toDocumentSegment(superType.type.$refNode),
+                    selectionSegment: CstUtils.toDocumentSegment(superType.type.$refNode),
                     type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)

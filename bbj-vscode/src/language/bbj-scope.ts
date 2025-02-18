@@ -10,7 +10,10 @@ import {
     EMPTY_SCOPE, EMPTY_STREAM, AstUtils, IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
     StreamScope,
-    GrammarUtils
+    GrammarUtils,
+    assertUnreachable,
+    URI,
+    UriUtils
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
 import { isJavaDocument } from './bbj-scope-local.js';
@@ -20,6 +23,8 @@ import {
     isBinaryExpression,
     isCallbackStatement,
     isClasspath, isCompoundStatement, 
+    isFullQualifiedBBjClassName, 
+    isFullQualifiedJavaOrNonQualifiedBBjClassName, 
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isLibFunction,
     isMemberCall,
@@ -32,7 +37,6 @@ import {
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-
 
 export class BbjScopeProvider extends DefaultScopeProvider {
 
@@ -48,7 +52,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if (
+        const currentFile = AstUtils.getDocument(context.container).uri;
+        if(isFullQualifiedBBjClassName(context.container) && context.property === "type") {
+            return this.lookupBBjClassesByFolder(currentFile, context.container.folder);
+        } else if(isFullQualifiedJavaOrNonQualifiedBBjClassName(context.container) && context.property === "type") {
+            if(!context.container.type.$refText.includes(".")) {
+                const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
+                    return bbjClass.documentUri.toString() === currentFile.toString();
+                });
+                const program = AstUtils.getContainerOfType(context.container, isProgram)!;
+                const classesViaUse = this.importedBBjClasses(program);
+                return new StreamScopeWithPredicate(stream(bbjClasses, classesViaUse), undefined);
+            } else {
+                //TODO for full-qualified Java classes
+                return EMPTY_SCOPE;
+            }
+        } else if (
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
         ) {
@@ -84,24 +103,20 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
             }
         } else if (isUse(context.container)) {
-            const filePath = context.container.bbjFilePath?.toLowerCase()
-            if (filePath) {
-                const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
-                    // FIXME 
-                    // 1. load first files in same folder
-                    // 2. try resolve with path relative to project root
-                    // 3. Access PREFIX folder information and load the first match 
-                    return bbjClass.documentUri.path.toLowerCase().endsWith(filePath)
-                });
-                return new StreamScopeWithPredicate(stream(bbjClasses), undefined);
-            }
-            return EMPTY_SCOPE
+            return this.lookupBBjClassesByFolder(currentFile, context.container.bbjFilePath);
         } else if (isSymbolRef(context.container)) {
-            const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
+            const bbjOuterClass = AstUtils.getContainerOfType(context.container, isBbjClass)
             var memberScope = EMPTY_STREAM;
-            if (bbjType) {
+            if (context.container.type) {
+                const aClass = context.container.type!.type.ref
+                if(isBbjClass(aClass)) {
+                    memberScope = this.createBBjClassMemberScope(aClass, context.container.isMethodCall).getAllElements()
+                } else if(isJavaClass(aClass)) {
+                    //TODO
+                }
+            } else if (bbjOuterClass) {
                 if (context.container.instanceAccess) {
-                    memberScope = this.createBBjClassMemberScope(bbjType, context.container.isMethodCall).getAllElements()
+                    memberScope = this.createBBjClassMemberScope(bbjOuterClass, context.container.isMethodCall).getAllElements()
                 }
             }
 
@@ -126,7 +141,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return memberAndImports
         }
-        if (!context.container.$container && context.container.$cstNode?.element.$container) {
+        if (!context.container.$container && context.container.$cstNode?.astNode.$container) {
             // FIXME HACK for orphaned AST Instances
             return this.superGetScope({ ...context, container: context.container.$cstNode?.element });
         }
@@ -136,6 +151,18 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
         }
         return this.superGetScope(context);
+    }
+
+    private lookupBBjClassesByFolder(currentDocumentUri: URI,  folderPath?: string) {
+        const filePath = folderPath ?? '.';
+        const location = UriUtils.resolvePath(UriUtils.dirname(currentDocumentUri), filePath);
+        if (filePath) {
+            const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
+                return bbjClass.documentUri.toString() === location.toString();
+            });
+            return new StreamScopeWithPredicate(stream(bbjClasses), undefined);
+        }
+        return EMPTY_SCOPE
     }
 
     private superGetScope(context: ReferenceInfo) {
@@ -183,7 +210,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         return []
     }
 
-    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false): StreamScope {
+    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false): Scope {
         const document = AstUtils.getDocument(bbjType)
         const typeScope = document?.precomputedScopes?.get(bbjType)
         let descriptions: AstNodeDescription[] = []
@@ -191,11 +218,20 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             descriptions.push(...typeScope.filter(member => !methodsOnly || member.type === MethodDecl))
         }
         if (bbjType.extends.length == 1) {
-            const superType = bbjType.extends[0].ref;
-            if (isBbjClass(superType)) {
-                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly))
-            } else if (isJavaClass(superType)) {
-                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(superType.fields).concat(superType.methods)))
+            const superType = bbjType.extends[0];
+            if(isFullQualifiedBBjClassName(superType)) {
+                return this.lookupBBjClassesByFolder(document.uri, superType.folder);
+            } else if(isFullQualifiedJavaOrNonQualifiedBBjClassName(superType)) {
+                const classRef = superType.type.ref;
+                if(classRef) {
+                    if(isJavaClass(classRef)) {
+                        return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(classRef.fields).concat(classRef.methods)))
+                    } else if(isBbjClass(classRef)) {
+                        return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(classRef, methodsOnly))
+                    }
+                }
+            } else {
+                assertUnreachable(superType);
             }
         } else {
             // handle implicit extends java.lang.Object

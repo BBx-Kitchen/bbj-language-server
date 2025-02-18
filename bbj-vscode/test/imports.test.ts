@@ -32,7 +32,7 @@ describe('Import tests', () => {
                 methodend
             classend
         `, {
-            documentUri: URI.file("./importMe.bbj").toString(),
+            documentUri: URI.file("importMe.bbj").toString(),
             validation: true,
         });
         expectNoParserLexerErrors(document);
@@ -41,7 +41,7 @@ describe('Import tests', () => {
 
     test('Import full-qualified, use afterwards', async () => {
         const document = await parse(`
-            use ::./importMe.bbj::ImportMe
+            use ::importMe.bbj::ImportMe
             let imp = new ImportMe()
             let num1 = ImportMe.field
             let num2 = ImportMe.zero()

@@ -22,33 +22,33 @@ export function registerClassChecks(registry: ValidationRegistry) {
         },
         BbjClass: (decl, accept) => {
             decl.extends.forEach((implement, index) => {
-                validator.checkClassReference(accept, implement, {
+                validator.checkClassReference(accept, implement.type, {
                     node: decl,
                     property: 'extends',
                     index
                 });
             });
             decl.implements.forEach((implement, index) => {
-                validator.checkClassReference(accept, implement, {
+                validator.checkClassReference(accept, implement.type, {
                     node: decl,
                     property: 'implements',
                     index
                 });
             });
         },
-        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.class, {
+        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.class.type, {
             node: call,
             property: 'class'
         }),
-        MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType, {
+        MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType?.type, {
             node: meth,
             property: 'returnType'
         }),
-        ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type, {
+        ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type.type, {
             node: param,
             property: 'type'
         }),
-        VariableDecl: (decl, accept) => validator.checkClassReference(accept, decl.type, {
+        VariableDecl: (decl, accept) => validator.checkClassReference(accept, decl.type?.type, {
             node: decl,
             property: 'type'
         }),

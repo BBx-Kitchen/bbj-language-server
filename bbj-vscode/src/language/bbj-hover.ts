@@ -113,11 +113,11 @@ export function documentationHeader(node: AstNode): string | undefined {
     // Other (BBj)
     if (isMethodDecl(node)) {
         const owner = ownerClass(node)
-        const type = (node.returnType && javaTypeAdjust(node.returnType.$refText))
+        const type = (node.returnType && javaTypeAdjust(node.returnType.type.$refText))
         return `${type ? type + ' ' : ''}${owner}${methodSignature(toMethodData(node))}`;
     }
     if (isFieldDecl(node)) {
-        return `${javaTypeAdjust(node.type?.ref?.name ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        return `${javaTypeAdjust(node.type?.type.ref?.name ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
     }
     if (isBbjClass(node)) {
         return `${node.interface ? 'interface' : 'class'} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
