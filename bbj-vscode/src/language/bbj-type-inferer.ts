@@ -1,5 +1,5 @@
 import { BBjServices } from "./bbj-module.js";
-import { Expression, Class, Assignment, isArrayDecl, isAssignment, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isLibFunction, isMemberCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, isMethodCall } from "./generated/ast.js";
+import { Expression, Class, Assignment, isArrayDecl, isAssignment, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isLibFunction, isMemberCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, isMethodCall, isBBjClassReference } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
@@ -50,6 +50,8 @@ export class BBjTypeInferer implements TypeInferer {
             return this.javaInterop.getResolvedClass('java.lang.String')
         } else if(isMethodCall(expression)) {
             return this.getType(expression.method);
+        } else if (isBBjClassReference(expression)) {
+            return expression.bbjClass.ref;
         }
         return undefined;
     }

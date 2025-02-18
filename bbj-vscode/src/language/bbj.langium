@@ -769,7 +769,7 @@ PrimaryExpression infers Expression:
     | PositionalMnemonic
     | ConstructorCall
     | SymbolicLabelName
-    | QualifiedBBjClassName
+    | BBjClassReference
     ;
 
 SymbolRef infers Expression:
@@ -809,6 +809,9 @@ QualifiedClassName returns string:
 
 QualifiedJavaClassName returns string:
     ID ('.' ID)*;
+
+BBjClassReference:
+    bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName];
 
 QualifiedBBjClassName returns string:
     BBjFilePath ID;

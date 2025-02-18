@@ -5,21 +5,26 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider,
+    AstNode, AstNodeDescription, AstNodeLocator,
+    AstUtils,
+    CstNode, DefaultNameProvider,
     DefaultScopeProvider,
-    EMPTY_SCOPE, EMPTY_STREAM, AstUtils, IndexManager, isAstNode,
+    EMPTY_SCOPE, EMPTY_STREAM,
+    GrammarUtils,
+    IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
-    StreamScope,
-    GrammarUtils
+    StreamScope
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
 import { isJavaDocument } from './bbj-scope-local.js';
+import { TypeInferer } from './bbj-type-inferer.js';
 import {
     BbjClass, Class,
     isBbjClass,
+    isBBjClassReference,
     isBinaryExpression,
     isCallbackStatement,
-    isClasspath, isCompoundStatement, 
+    isClasspath, isCompoundStatement,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isLibFunction,
     isMemberCall,
@@ -31,7 +36,6 @@ import {
     Statement, Use
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
-import { TypeInferer } from './bbj-type-inferer.js';
 
 
 export class BbjScopeProvider extends DefaultScopeProvider {
@@ -83,17 +87,20 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             } else if (isBbjClass(receiverType)) {
                 return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
             }
-        } else if (isUse(context.container)) {
-            const filePath = context.container.bbjFilePath?.toLowerCase()
-            if (filePath) {
+        } else if (isUse(context.container) || isBBjClassReference(context.container)) {
+            const bbjFilePath = context.container.bbjFilePath?.toLowerCase()
+            if (bbjFilePath) {
+                // make absolute path
+                const currentDocUri = AstUtils.getDocument(context.container).uri
+                const adjustedFilePath =  (bbjFilePath.includes('/')) ? new URL(bbjFilePath, currentDocUri.toString()).pathname.toString().toLowerCase() : bbjFilePath.toLowerCase();
                 const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
-                    // FIXME 
+                    // FIXME
                     // 1. load first files in same folder
                     // 2. try resolve with path relative to project root
-                    // 3. Access PREFIX folder information and load the first match 
-                    return bbjClass.documentUri.path.toLowerCase().endsWith(filePath)
+                    // 3. Access PREFIX folder information and load the first match
+                    return bbjClass.documentUri.path.toString().toLowerCase().endsWith(adjustedFilePath.toString())
                 });
-                return new StreamScopeWithPredicate(stream(bbjClasses), undefined);
+                return new StreamScopeWithPredicate(bbjClasses);
             }
             return EMPTY_SCOPE
         } else if (isSymbolRef(context.container)) {
