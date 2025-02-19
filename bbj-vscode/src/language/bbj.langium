@@ -13,7 +13,7 @@ entry Model:
 
 // Main program
 Program:
-    Statements*
+    Statements* EOF
 ;
 
 fragment Statements:
@@ -274,7 +274,7 @@ CommentStatement:
 
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
-    'use' javaClassName=QualifiedJavaClassName
+    'use' javaClassName=QualifiedClassName
 ;
 
 VariableDecl returns VariableDecl:
@@ -769,7 +769,11 @@ PrimaryExpression infers Expression:
     | PositionalMnemonic
     | ConstructorCall
     | SymbolicLabelName
-    | BBjClassReference
+    | TypeRef
+    ;
+
+TypeRef:
+    class=[Class:QualifiedBBjClassName]
     ;
 
 SymbolRef infers Expression:
@@ -809,9 +813,6 @@ QualifiedClassName returns string:
 
 QualifiedJavaClassName returns string:
     ID ('.' ID)*;
-
-BBjClassReference:
-    bbjFilePath = BBjFilePath bbjClass=[BbjClass:ValidName];
 
 QualifiedBBjClassName returns string:
     BBjFilePath ID;

@@ -90,6 +90,8 @@ describe('BBj validation', async () => {
 
     test('No newline line validation on parse error', async () => {
         const validationResult = await validate(`
+        class public String
+        classend
         x = 4
         x = [
         declare String p_color declare String foo

@@ -36,7 +36,7 @@ describe('Import tests', () => {
             validation: true,
         });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 
     test('Import full-qualified, use afterwards', async () => {
@@ -48,7 +48,7 @@ describe('Import tests', () => {
             let num3 = ImportMe.identity(num2)
         `, { validation: true });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 
     test('No import, use full-qualified constructor afterwards', async () => {
@@ -56,7 +56,7 @@ describe('Import tests', () => {
             let imp = new ::./importMe.bbj::ImportMe()
         `, { validation: true });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 
     test('No import, use full-qualified field afterwards', async () => {
@@ -64,7 +64,7 @@ describe('Import tests', () => {
             let num1 = ::./importMe.bbj::ImportMe.field
         `, { validation: true });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 
     test('No import, use full-qualified method with no parameters afterwards', async () => {
@@ -72,7 +72,7 @@ describe('Import tests', () => {
             let num2 = ::./importMe.bbj::ImportMe.zero()
         `, { validation: true });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 
     test('No import, use full-qualified method with parameters afterwards', async () => {
@@ -80,6 +80,6 @@ describe('Import tests', () => {
             let num3 = ::./importMe.bbj::ImportMe.identity(123)
         `, { validation: true });
         expectNoParserLexerErrors(document);
-        //expectNoValidationErrors(document);
+        expectNoValidationErrors(document);
     });
 });
