@@ -13,7 +13,7 @@ entry Model:
 
 // Main program
 Program:
-    Statements* EOF
+    Statements*
 ;
 
 fragment Statements:
@@ -769,10 +769,10 @@ PrimaryExpression infers Expression:
     | PositionalMnemonic
     | ConstructorCall
     | SymbolicLabelName
-    | TypeRef
+    | BBjTypeRef
     ;
 
-TypeRef:
+BBjTypeRef:
     class=[Class:QualifiedBBjClassName]
     ;
 

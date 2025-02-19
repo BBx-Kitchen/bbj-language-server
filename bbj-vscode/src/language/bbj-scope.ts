@@ -22,6 +22,7 @@ import { TypeInferer } from './bbj-type-inferer.js';
 import {
     BbjClass, Class,
     isBbjClass,
+    isBBjTypeRef,
     isBinaryExpression,
     isCallbackStatement,
     isClasspath, isCompoundStatement,
@@ -34,7 +35,7 @@ import {
     isParameterDecl,
     isProgram,
     isRemoveCallbackStatement,
-    isStatement, isSymbolRef, isTypeRef, isUse, isVariableDecl, JavaClass,
+    isStatement, isSymbolRef, isUse, isVariableDecl, JavaClass,
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
@@ -68,7 +69,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
         } else if(isConstructorCall(context.container) && context.property === 'class') {
             return this.resolveClassScopeByName(context, context.container.class.$refText);
-        } else if(isTypeRef(context.container) && context.property === 'class') {
+        } else if(isBBjTypeRef(context.container) && context.property === 'class') {
             return this.resolveClassScopeByName(context, context.container.class.$refText);
         } else if(isFieldDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
