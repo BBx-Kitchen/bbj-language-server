@@ -274,7 +274,7 @@ CommentStatement:
 
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
-    'use' javaClassName=QualifiedClassName
+    'use' javaClassName=QualifiedJavaClassName
 ;
 
 VariableDecl returns VariableDecl:

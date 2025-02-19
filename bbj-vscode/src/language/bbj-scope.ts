@@ -26,12 +26,15 @@ import {
     isCallbackStatement,
     isClasspath, isCompoundStatement,
     isConstructorCall,
+    isFieldDecl,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isLibFunction,
     isMemberCall,
+    isMethodDecl,
+    isParameterDecl,
     isProgram,
     isRemoveCallbackStatement,
-    isStatement, isSymbolRef, isTypeRef, isUse, JavaClass,
+    isStatement, isSymbolRef, isTypeRef, isUse, isVariableDecl, JavaClass,
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
@@ -55,10 +58,24 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if(isConstructorCall(context.container) && context.property === 'class') {
+        if(isBbjClass(context.container)) {
+            if(context.property === 'extends') {
+                return this.resolveClassScopeByName(context, context.container.extends[context.index!].$refText);
+            } else if (context.property === 'implements') {
+                return this.resolveClassScopeByName(context, context.container.implements[context.index!].$refText);
+            }
+        } else if(isVariableDecl(context.container) && context.container.type) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
+        } else if(isConstructorCall(context.container) && context.property === 'class') {
             return this.resolveClassScopeByName(context, context.container.class.$refText);
         } else if(isTypeRef(context.container) && context.property === 'class') {
             return this.resolveClassScopeByName(context, context.container.class.$refText);
+        } else if(isFieldDecl(context.container) && context.container.type) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
+        } else if(isMethodDecl(context.container) && context.container.returnType) {
+            return this.resolveClassScopeByName(context, context.container.returnType.$refText);
+        } else if(isParameterDecl(context.container)) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
         } else if (
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))

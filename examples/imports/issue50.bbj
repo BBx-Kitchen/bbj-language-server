@@ -1,0 +1,21 @@
+CLASS PUBLIC XXX
+    FIELD ::./importMe.bbj::ImportMe field
+CLASSEND
+
+let yyy = XXX.field
+
+CLASS PUBLIC XXX
+    METHOD STATIC ::./importMe.bbj::ImportMe doIt()
+        METHODRET new ::./importMe.bbj::ImportMe()
+    METHODEND
+CLASSEND
+
+let yyy = XXX.doIt()
+
+CLASS PUBLIC XXX
+    METHOD String doIt(::./importMe.bbj::ImportMe aaa)
+        METHODRET ''
+    METHODEND
+CLASSEND
+
+let yyy = XXX.doIt(new ::./importMe.bbj::ImportMe())

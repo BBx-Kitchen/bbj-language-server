@@ -59,9 +59,51 @@ describe('Import tests', () => {
         expectNoValidationErrors(document);
     });
 
-    test('No import, use full-qualified field afterwards', async () => {
+    test('No import, use full-qualified field call', async () => {
         const document = await parse(`
             let num1 = ::./importMe.bbj::ImportMe.field
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified field declaration', async () => {
+        const document = await parse(`
+            CLASS PUBLIC XXX
+                FIELD ::./importMe.bbj::ImportMe field
+            CLASSEND
+
+            let yyy = XXX.field
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified method return type', async () => {
+        const document = await parse(`
+            CLASS PUBLIC XXX
+                METHOD ::./importMe.bbj::ImportMe doIt()
+                    METHODRET new ::./importMe.bbj::ImportMe()
+                METHODEND
+            CLASSEND
+
+            let yyy = XXX.doIt()
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified parameter type', async () => {
+        const document = await parse(`
+            CLASS PUBLIC String
+            CLASSEND
+            CLASS PUBLIC XXX
+                METHOD String doIt(::./importMe.bbj::ImportMe aaa)
+                    METHODRET ''
+                METHODEND
+            CLASSEND
+
+            let yyy = XXX.doIt(new ::./importMe.bbj::ImportMe())
         `, { validation: true });
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);
@@ -78,6 +120,32 @@ describe('Import tests', () => {
     test('No import, use full-qualified method with parameters afterwards', async () => {
         const document = await parse(`
             let num3 = ::./importMe.bbj::ImportMe.identity(123)
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified extends', async () => {
+        const document = await parse(`
+            class public XXX extends ::./importMe.bbj::ImportMe
+            classend
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified implements', async () => {
+        const document = await parse(`
+            class public XXX implements ::./importMe.bbj::ImportMe
+            classend
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('No import, use full-qualified declare', async () => {
+        const document = await parse(`
+            declare auto ::./importMe.bbj::ImportMe xxx
         `, { validation: true });
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);
