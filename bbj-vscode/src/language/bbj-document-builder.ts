@@ -4,6 +4,7 @@ import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
+import { BBjPathPattern } from "./bbj-scope.js";
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
@@ -42,7 +43,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     async addImportedBBjDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken) {
         const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
-        const prefixes = bbjWsManager.getSettings()?.prefixes;
+        let prefixes = bbjWsManager.getSettings()?.prefixes;
         if (!prefixes) {
             return;
         }
@@ -52,7 +53,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             await interruptAndCheck(cancelToken);
             AstUtils.streamAllContents(document.parseResult.value).filter(isUse).forEach((use: Use) => {
                 if (use.bbjFilePath) {
-                    bbjImports.add(use.bbjFilePath);
+                    bbjImports.add(use.bbjFilePath.match(BBjPathPattern)![1]);
                 }
             })
         }

@@ -3,21 +3,22 @@ import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
+import { NodeFileSystem } from 'langium/node';
+
+function expectNoParserLexerErrors(document: LangiumDocument) {
+    expect(document.parseResult.lexerErrors.join('\n')).toBe('')
+    expect(document.parseResult.parserErrors.join('\n')).toBe('')
+}
+
+function expectNoValidationErrors(document: LangiumDocument) {
+    expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
+}
 
 describe('Import tests', () => {
+    const services = createBBjServices(EmptyFileSystem);
     let parse: ReturnType<typeof parseHelper>;
 
-    function expectNoParserLexerErrors(document: LangiumDocument) {
-        expect(document.parseResult.lexerErrors.join('\n')).toBe('')
-        expect(document.parseResult.parserErrors.join('\n')).toBe('')
-    }
-
-    function expectNoValidationErrors(document: LangiumDocument) {
-        expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
-    }
-
     beforeAll(async () => {
-        const services = createBBjServices(EmptyFileSystem);
         parse = parseHelper(services.BBj);
         const document = await parse(`
             class BBjNumber
@@ -155,6 +156,31 @@ describe('Import tests', () => {
         const document = await parse(`
             class public XXX
             classend
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+});
+
+describe.skip('Prefix tests', () => {
+    //Needs additional adjustments in the document builder
+    const services = createBBjServices(NodeFileSystem);
+    let parse: ReturnType<typeof parseHelper>;
+
+    beforeAll(async () => {
+        parse = parseHelper(services.BBj);
+    });
+
+    test('Prefix tests', async () => {
+        const document = await parse(`
+            use ::BBjWidget/BBjWidget.bbj::BBjWidget
+            declare auto ::BBjWidget/BBjWidget.bbj::BBjWidget xxx
+            let yyy = new ::BBjWidget/BBjWidget.bbj::BBjWidget()
+            CLASS PUBLIC ZZZ
+                METHOD ::BBjWidget/BBjWidget.bbj::BBjWidget doIt()
+                    METHODRET new ::BBjWidget/BBjWidget.bbj::BBjWidget()
+                METHODEND
+            CLASSEND
         `, { validation: true });
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);

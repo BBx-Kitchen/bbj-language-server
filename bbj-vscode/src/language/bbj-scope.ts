@@ -43,7 +43,7 @@ import {
 import { JavaInteropService } from './java-interop.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
-const BBjPathPattern = /^::(.*)::$/;
+export const BBjPathPattern = /^::(.*)::$/;
 
 export class BbjScopeProvider extends DefaultScopeProvider {
 
