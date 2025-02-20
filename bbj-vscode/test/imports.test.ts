@@ -150,4 +150,13 @@ describe('Import tests', () => {
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);
     });
+
+    test('No import, use class without extends and implements', async () => {
+        const document = await parse(`
+            class public XXX
+            classend
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
 });

@@ -60,10 +60,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     override getScope(context: ReferenceInfo): Scope {
         if(isBbjClass(context.container)) {
-            if(context.property === 'extends') {
-                return this.resolveClassScopeByName(context, context.container.extends[context.index!].$refText);
-            } else if (context.property === 'implements') {
-                return this.resolveClassScopeByName(context, context.container.implements[context.index!].$refText);
+            if(context.property === 'extends' && context.container.extends && context.index) {
+                return this.resolveClassScopeByName(context, context.container.extends[context.index].$refText);
+            } else if (context.property === 'implements' && context.container.implements && context.index) {
+                return this.resolveClassScopeByName(context, context.container.implements[context.index].$refText);
             }
         } else if(isVariableDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
