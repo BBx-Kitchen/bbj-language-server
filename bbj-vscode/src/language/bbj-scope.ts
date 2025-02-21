@@ -5,50 +5,84 @@
  ******************************************************************************/
 
 import {
-    AstNode, AstNodeDescription, AstNodeLocator, CstNode, DefaultNameProvider,
+    AstNode, AstNodeDescription, AstNodeLocator,
+    AstUtils,
+    CstNode, DefaultNameProvider,
     DefaultScopeProvider,
-    EMPTY_SCOPE, EMPTY_STREAM, AstUtils, IndexManager, isAstNode,
+    EMPTY_SCOPE, EMPTY_STREAM,
+    GrammarUtils,
+    IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
     StreamScope,
-    GrammarUtils
+    URI,
+    UriUtils
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
 import { isJavaDocument } from './bbj-scope-local.js';
+import { TypeInferer } from './bbj-type-inferer.js';
 import {
     BbjClass, Class,
     isBbjClass,
+    isBBjTypeRef,
     isBinaryExpression,
     isCallbackStatement,
-    isClasspath, isCompoundStatement, 
+    isClasspath, isCompoundStatement,
+    isConstructorCall,
+    isFieldDecl,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isLibFunction,
     isMemberCall,
+    isMethodDecl,
+    isParameterDecl,
     isProgram,
     isRemoveCallbackStatement,
-    isStatement, isSymbolRef, isUse, JavaClass,
+    isStatement, isSymbolRef, isUse, isVariableDecl, JavaClass,
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
-import { TypeInferer } from './bbj-type-inferer.js';
+import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { resolve } from 'path';
 
+const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
+export const BBjPathPattern = /^::(.*)::$/;
 
 export class BbjScopeProvider extends DefaultScopeProvider {
 
     protected readonly javaInterop: JavaInteropService;
     protected readonly astNodeLocator: AstNodeLocator;
     protected readonly typeInferer: TypeInferer;
+    protected readonly workspaceManager: BBjWorkspaceManager;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
         this.astNodeLocator = services.workspace.AstNodeLocator;
         this.typeInferer = services.types.Inferer;
+        this.workspaceManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if (
+        if(isBbjClass(context.container)) {
+            if(context.property === 'extends' && context.container.extends && typeof context.index === 'number') {
+                return this.resolveClassScopeByName(context, context.container.extends[context.index].$refText);
+            } else if (context.property === 'implements' && context.container.implements && typeof context.index === 'number') {
+                return this.resolveClassScopeByName(context, context.container.implements[context.index].$refText);
+            }
+        } else if(isVariableDecl(context.container) && context.container.type) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
+        } else if(isConstructorCall(context.container) && context.property === 'class') {
+            return this.resolveClassScopeByName(context, context.container.class.$refText);
+        } else if(isBBjTypeRef(context.container) && context.property === 'class') {
+            return this.resolveClassScopeByName(context, context.container.class.$refText);
+        } else if(isFieldDecl(context.container) && context.container.type) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
+        } else if(isMethodDecl(context.container) && context.container.returnType) {
+            return this.resolveClassScopeByName(context, context.container.returnType.$refText);
+        } else if(isParameterDecl(context.container)) {
+            return this.resolveClassScopeByName(context, context.container.type.$refText);
+        } else if (
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
         ) {
@@ -84,18 +118,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
             }
         } else if (isUse(context.container)) {
-            const filePath = context.container.bbjFilePath?.toLowerCase()
-            if (filePath) {
-                const bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
-                    // FIXME 
-                    // 1. load first files in same folder
-                    // 2. try resolve with path relative to project root
-                    // 3. Access PREFIX folder information and load the first match 
-                    return bbjClass.documentUri.path.toLowerCase().endsWith(filePath)
-                });
-                return new StreamScopeWithPredicate(stream(bbjClasses), undefined);
+            const match = context.container.bbjFilePath?.match(BBjPathPattern);
+            if (match) {
+                return this.getBBjClassesFromFile(context.container, match[1], true);
             }
-            return EMPTY_SCOPE
+            return EMPTY_SCOPE;
         } else if (isSymbolRef(context.container)) {
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
             var memberScope = EMPTY_STREAM;
@@ -136,6 +163,40 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
         }
         return this.superGetScope(context);
+    }
+
+    private getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean) {
+        const currentDocUri = AstUtils.getDocument(container).uri;
+        const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
+        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)].concat(
+            prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath)))
+        );
+        let bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
+            // FIXME
+            // DONE 1. load first files in same folder
+            // TODO 2. try resolve with path relative to project root
+            // DONE 3. Access PREFIX folder information and load the first match
+            return adjustedFileUris.some(adjustedFileUri => bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase()));
+        })
+        if(!simpleName) {
+            bbjClasses = bbjClasses.map(d => this.descriptions.createDescription(d.node!, `::${bbjFilePath}::${d.name}`));
+        }
+        return new StreamScopeWithPredicate(bbjClasses);
+    }
+
+    private resolveClassScopeByName(context: ReferenceInfo, qualifiedClassName: string): Scope {
+        const match = qualifiedClassName.match(BBjClassNamePattern);
+        if(match) {
+            const relativeFilePath = match[1];
+            return this.getBBjClassesFromFile(context.container, relativeFilePath, false);
+        } else {
+            const program = AstUtils.getContainerOfType(context.container, isProgram)!;
+            const document = AstUtils.getDocument(program);
+            const locals = this.indexManager.allElements(BbjClass, new Set([document.uri.toString()]));
+            const imports = this.importedBBjClasses(program);
+            const globals = this.getGlobalScope(Class, context);
+            return this.createScope(stream(imports).concat(locals), globals);
+        }
     }
 
     private superGetScope(context: ReferenceInfo) {
