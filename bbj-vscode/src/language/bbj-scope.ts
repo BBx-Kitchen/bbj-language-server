@@ -14,6 +14,7 @@ import {
     IndexManager, isAstNode,
     ReferenceInfo, Scope, Stream, stream,
     StreamScope,
+    URI,
     UriUtils
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
@@ -41,6 +42,8 @@ import {
     Statement, Use
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
+import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { resolve } from 'path';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
@@ -50,12 +53,14 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     protected readonly javaInterop: JavaInteropService;
     protected readonly astNodeLocator: AstNodeLocator;
     protected readonly typeInferer: TypeInferer;
+    protected readonly workspaceManager: BBjWorkspaceManager;
 
     constructor(services: BBjServices) {
         super(services);
         this.javaInterop = services.java.JavaInteropService;
         this.astNodeLocator = services.workspace.AstNodeLocator;
         this.typeInferer = services.types.Inferer;
+        this.workspaceManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
     }
 
     override getScope(context: ReferenceInfo): Scope {
@@ -162,13 +167,16 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     private getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean) {
         const currentDocUri = AstUtils.getDocument(container).uri;
-        const adjustedFileUri = UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath);
+        const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
+        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)].concat(
+            prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath)))
+        );
         let bbjClasses = this.indexManager.allElements(BbjClass).filter(bbjClass => {
             // FIXME
-            // 1. load first files in same folder
-            // 2. try resolve with path relative to project root
-            // 3. Access PREFIX folder information and load the first match
-            return bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase());
+            // DONE 1. load first files in same folder
+            // TODO 2. try resolve with path relative to project root
+            // DONE 3. Access PREFIX folder information and load the first match
+            return adjustedFileUris.some(adjustedFileUri => bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase()));
         })
         if(!simpleName) {
             bbjClasses = bbjClasses.map(d => this.descriptions.createDescription(d.node!, `::${bbjFilePath}::${d.name}`));
