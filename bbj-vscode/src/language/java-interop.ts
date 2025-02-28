@@ -11,20 +11,20 @@ import {
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
-import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
+import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
+import { assertType } from './utils.js';
 
 const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.class'
-
-
 export class JavaInteropService {
 
     private connection?: MessageConnection;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -33,7 +33,9 @@ export class JavaInteropService {
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
+            $container: undefined!,
             $type: Classpath,
+            packages: [],
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
     }
@@ -146,6 +148,9 @@ export class JavaInteropService {
         }
 
         javaClass.$type = JavaClass; // make isJavaClass work
+        const lastIndexOfDot = className.lastIndexOf('.');
+        javaClass.packageName = lastIndexOfDot > -1 ? className.substring(0, lastIndexOfDot) : '';
+        javaClass.classes ??= [];
 
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
         try {
@@ -186,15 +191,60 @@ export class JavaInteropService {
         }
         AstUtils.linkContentToContainer(javaClass);
 
-        const classpath = this.classpath;
-        javaClass.$type = JavaClass;
-        javaClass.$container = classpath;
-        javaClass.$containerProperty = 'classes';
-        javaClass.$containerIndex = classpath.classes.length;
-        classpath.classes.push(javaClass);
+        this.storeJavaClass(javaClass);
+
         return javaClass;
     }
 
+    getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
+        const children = this.childrenOfByName.get(javaPackageLike ?? this.classpath);
+        if (!children) {
+            return [];
+        }
+        return [...children.values()];
+    }
+
+    getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath, childName: string): JavaClass | JavaPackage | undefined {
+        return this.childrenOfByName.get(javaPackageLike)?.get(childName);
+    }
+
+    storeJavaClass(javaClass: Mutable<JavaClass>) {
+        const classpath = this.classpath;
+        javaClass.$type = JavaClass;
+
+        let parent: Classpath | JavaPackage | JavaClass = classpath;
+        const parts = javaClass.name.split('.');
+        parts.forEach((part, index) => {
+            if (!this.childrenOfByName.has(parent)) {
+                this.childrenOfByName.set(parent, new Map());
+            }
+            const children = this.childrenOfByName.get(parent)!;
+            if (!children.has(part)) {
+                if (index === parts.length - 1) {
+                    javaClass.$container = parent;
+                    javaClass.$containerProperty = 'classes';
+                    javaClass.$containerIndex = parent.classes.length;
+                    javaClass.name = part;
+                    parent.classes.push(javaClass);
+                    children.set(part, javaClass);
+                } else {
+                    assertType<JavaPackage>(parent);
+                    const javaPackage: JavaPackage = {
+                        $container: parent,
+                        $type: JavaPackage,
+                        classes: [],
+                        packages: [],
+                        name: part,
+                        $containerIndex: parent.packages.length,
+                        $containerProperty: 'packages',
+                    };
+                    parent.packages.push(javaPackage);
+                    children.set(part, javaPackage);
+                }
+            }
+            parent = children.get(part)!;
+        });
+    }
 }
 
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');

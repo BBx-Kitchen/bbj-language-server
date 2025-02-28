@@ -1,15 +1,17 @@
-import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, NextFeature } from "langium/lsp";
-import { AstUtils, AstNodeDescription, MaybePromise, Reference, ReferenceInfo, GrammarAST } from "langium";
+import { AstNodeDescription, GrammarAST, MaybePromise } from "langium";
+import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices } from "langium/lsp";
 import { CompletionItemKind } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider.js";
 import { LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
+
 
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     constructor(services: LangiumServices) {
         super(services);
     }
+
     override  createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
         const superImpl = super.createReferenceCompletionItem(nodeDescription)
         superImpl.kind = this.nodeKindProvider.getCompletionItemKind(nodeDescription)
@@ -47,37 +49,6 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         return superImpl;
     }
 
-    /**
-     * Need to override to control deduplicate filtering
-     */
-    protected override completionForCrossReference(context: CompletionContext, crossRef: NextFeature<GrammarAST.CrossReference>, acceptor: CompletionAcceptor): MaybePromise<void> {
-        const assignment = AstUtils.getContainerOfType(crossRef.feature, GrammarAST.isAssignment);
-        let node = context.node;
-        if (assignment && node) {
-            if (crossRef.type) {
-                node = {
-                    $type: crossRef.type,
-                    $container: node,
-                    $containerProperty: crossRef.property
-                };
-            }
-            if (!context) {
-                return;
-            }
-            const refInfo: ReferenceInfo = {
-                reference: {} as Reference,
-                container: node,
-                property: assignment.feature
-            };
-            try {
-                this.getReferenceCandidates(refInfo, context).forEach(
-                    c => acceptor(context, this.createReferenceCompletionItem(c))
-                );
-            } catch (err) {
-                console.error(err);
-            }
-        }
-    }
     protected override completionForKeyword(context: CompletionContext, keyword: GrammarAST.Keyword, acceptor: CompletionAcceptor): MaybePromise<void> {
         // Filter out keywords that do not contain any word character
         if (!keyword.value.match(/[\w]/)) {

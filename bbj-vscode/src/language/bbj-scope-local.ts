@@ -11,7 +11,6 @@ import {
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
-import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -21,14 +20,18 @@ import {
     isClasspath,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
+    isJavaClass,
     isLetStatement,
     isLibEventType,
     isLibMember,
-    isProgram, isReadStatement,
+    isProgram,
+    isReadStatement,
     isSymbolRef, isUse,
     MethodDecl
 } from './generated/ast.js';
 import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
+import { getClassRef, getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
+import { collectAllUseStatements } from './bbj-scope.js';
 
 
 export class BbjScopeComputation extends DefaultScopeComputation {
@@ -51,10 +54,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         const rootNode = document.parseResult.value;
         if (isProgram(rootNode) && rootNode.$type === 'Program') {
             for (const use of collectAllUseStatements(rootNode)) {
-                const className = use.javaClassName
-                if (className != null) {
+                const className = use.javaClass
+                if (className && className.pathParts.every(p => p.symbol.ref !== undefined)) {
                     try {
-                        await this.javaInterop.resolveClassByName(className, cancelToken);
+                        await this.javaInterop.resolveClassByName(className.pathParts.map(p => p.symbol.ref!.name).join("."), cancelToken);
                     } catch (e) {
                         console.error(e)
                     }
@@ -72,19 +75,18 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
         if (isUse(node)) {
-            if (node.javaClassName) {
-                const javaClass = this.javaInterop.getResolvedClass(node.javaClassName);
-                if (!javaClass) {
-                    return;
-                }
-                if (javaClass.error) {
-                    console.warn(`Java class resolution error: ${javaClass.error}`)
-                    return;
-                }
-                const program = node.$container;
-                const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
-                this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
+            const javaClassName = getFQNFullname(node.javaClass);
+            const javaClass = this.javaInterop.getResolvedClass(javaClassName);
+            if (!javaClass) {
+                return;
             }
+            if (javaClass.error) {
+                console.warn(`Java class resolution error: ${javaClass.error}`)
+                return;
+            }
+            const program = node.$container;
+            const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
+            this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
             if (isSymbolRef(node.variable)) {
@@ -116,8 +118,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const superType = node.extends[0]
                 this.addToScope(scopes, node, {
                     name: 'super!',
-                    nameSegment: CstUtils.toDocumentSegment(superType.$refNode),
-                    selectionSegment: CstUtils.toDocumentSegment(superType.$refNode),
+                    nameSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
+                    selectionSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
                     type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)

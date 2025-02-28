@@ -10,6 +10,8 @@ import java.util.List;
 public class ClassInfo extends WithError {
 
     public String name;
+
+    public String packageName;
     
     public String simpleName;
 
