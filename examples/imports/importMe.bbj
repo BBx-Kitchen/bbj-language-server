@@ -1,4 +1,4 @@
-class BBjNumber
+class protected BBjNumber
 classend
 class public ImportMe
     field public static BBjNumber field

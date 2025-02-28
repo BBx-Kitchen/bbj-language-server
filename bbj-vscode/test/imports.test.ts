@@ -21,7 +21,7 @@ describe('Import tests', () => {
     beforeAll(async () => {
         parse = parseHelper(services.BBj);
         const document = await parse(`
-            class BBjNumber
+            class protected BBjNumber
             classend
             class public ImportMe
                 field public static BBjNumber field

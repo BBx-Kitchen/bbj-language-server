@@ -6,10 +6,16 @@
 
 interface Classpath {
     classes: JavaClass[]
+    packages: JavaPackage[];
 }
+
 
 interface NamedElement {
     name: string
+}
+
+interface JavaPackage extends NamedElement, Classpath {
+
 }
 
 interface Class extends NamedElement {
@@ -25,9 +31,11 @@ interface Documented {
 }
 
 interface JavaClass extends Class, Documented {
+    packageName: string;
     fields: JavaField[]
     methods: JavaMethod[]
     error?: string
+    classes: JavaClass[]
 }
 
 type JavaMember = JavaField | JavaMethod
