@@ -71,7 +71,20 @@ export class JavaInteropService {
     }
 
     getResolvedClass(className: string): JavaClass | undefined {
+        if (className === 'java.lang.Object') {
+            // called very often, so cache it
+            return this.javaLangObject()
+        }
         return this.resolvedClasses.get(className);
+    }
+
+    private JAVA_LANG_OBJECT: JavaClass | undefined = undefined;
+
+    private javaLangObject(): JavaClass | undefined {
+        if (!this.JAVA_LANG_OBJECT) {
+            this.JAVA_LANG_OBJECT = this.resolvedClasses.get('java.lang.Object');
+        }
+        return this.JAVA_LANG_OBJECT;
     }
 
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {

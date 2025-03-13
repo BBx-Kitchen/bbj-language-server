@@ -1,4 +1,4 @@
-import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory,  } from "langium";
+import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
@@ -35,46 +35,51 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
-        if(folders.length > 0) {
-            try {
+        try {
+            let propcontents = "";
+            let prefixfromconfig;
+            if (folders.length > 0) {
                 const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
                 const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
-                let propcontents = "";
                 if (confFile) {
                     propcontents = await this.fileSystemProvider.readFile(confFile.uri);
                 }
-                let prefixfromconfig;
                 if (this.bbjdir) {
-                    const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir + "/cfg/"));
-                    const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
-                    if (configbbx) {
-                        prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                    try {
+                        const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir + "/cfg/"));
+                        const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
+                        if (configbbx) {
+                            prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                        }
+                    } catch (e) {
+                        console.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
                     }
                 } else {
                     console.warn("No bbjdir set. No classpath and prefixes loaded.")
                 }
-                this.settings = parseSettings(propcontents, prefixfromconfig)
-
-                // initialize javadoc look-up before loading classes.
-                const wsJavadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc/'))
-                if (this.bbjdir) {
-                    wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
-                }
-                await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
-
-                if (this.settings!.classpath.length > 0) {
-                    const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
-                    console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
-                } else {
-                    console.warn("No classpath set. No Java classes loaded.")
-                }
-                const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
-                console.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
-            } catch (e) {
-                // all fine
-                console.error(e);
             }
+            this.settings = parseSettings(propcontents, prefixfromconfig)
+
+            // initialize javadoc look-up before loading classes.
+            const wsJavadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc/'))
+            if (this.bbjdir) {
+                wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
+            }
+            await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+
+            if (this.settings!.classpath.length > 0) {
+                const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
+                console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
+            } else {
+                console.warn("No classpath set. No Java classes loaded.")
+            }
+            const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
+            console.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
+        } catch (e) {
+            // all fine
+            console.error(e);
         }
+
         return await super.initializeWorkspace(folders, cancelToken);
     }
 

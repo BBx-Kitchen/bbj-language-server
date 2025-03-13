@@ -137,7 +137,7 @@ public class InteropService {
 	@JsonRequest
 	public CompletableFuture<Boolean> loadClasspath(ClassPathInfoParams params) {
 		var sw = Stopwatch.createStarted();
-		System.out.println("Load additional jars for " + params.toString() + "...");
+		System.out.println("Loading additional jars for " + String.join(", ", params.classPathEntries) + "...");
 
 		if (params.classPathEntries.size() == 1 && params.classPathEntries.get(0).equals("file:")) {
 			System.out.println("Classpath empty. Defaulting to BBj's lib directory.");
@@ -160,8 +160,6 @@ public class InteropService {
 			if (homedir.substring(1, 2).equals(":"))
 				homedir = homedir.substring(2).replace("\\", "/");
 			params.classPathEntries.add("file:" + homedir);
-		} else {
-			System.out.println("Requested Classpath: " + params.classPathEntries.toString());
 		}
 
 		params.classPathEntries.forEach(entry -> {
@@ -210,6 +208,10 @@ public class InteropService {
 			super(urls, parent);
 		}
 
+		/*
+		 * Make super implementation accessible
+		 * 
+		 */
 		public void addUrl(URL url) {
 			super.addURL(url);
 		}

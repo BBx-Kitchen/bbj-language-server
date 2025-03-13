@@ -4,7 +4,7 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
-import { JavaClass, JavaMethod } from "../src/language/generated/ast.js";
+import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 
 export function createBBjTestServices(context: DefaultSharedModuleContext): {
@@ -50,26 +50,16 @@ class JavaInteropTestService extends JavaInteropService {
         super(services)
         this.index = () => services.shared.workspace.IndexManager
 
-        const bbjApi: JavaClass = {
-            $type: JavaClass,
-            name: 'BBjAPI',
-            $container: this.classpathDocument.parseResult.value,
-            $containerProperty: 'classes',
-            fields: [],
-            methods: []
-        }
-        bbjApi.methods = [
-            {
-                name: 'getThinClient',
-                $containerProperty: 'methods',
-                $container: bbjApi,
-                returnType: 'java.lang.String',
-                $type: JavaMethod,
-                parameters: []
-            }
+        // Add some faked Java classes to test java service related code.
+        const fakeJavaClasses: JavaClass[] = [
+            createBBjApiClass(this.classpath),
+            createHashMapClass(this.classpath),
+            createJavaLangStringClass(this.classpath)
         ]
-        this.classpathDocument.parseResult.value.classes.push(bbjApi)
-        this.resolveClass(bbjApi)
+        fakeJavaClasses.forEach(clazz => {
+            this.classpath.classes.push(clazz)
+            this.resolveClass(clazz)
+        })
 
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
@@ -81,27 +71,72 @@ class JavaInteropTestService extends JavaInteropService {
             this.index().updateContent(this.classpathDocument)
             this.indexed = true
         }
-        if (className === 'java.lang.String') {
-            const fakeStringClass: JavaClass = {
-                $type: JavaClass,
-                name: 'java.lang.String',
-                $container: this.classpath,
-                $containerProperty: 'classes',
-                fields: [],
-                methods: []
-            }
-            fakeStringClass.methods = [
-                {
-                    name: 'charAt',
-                    $containerProperty: 'methods',
-                    $container: fakeStringClass,
-                    returnType: 'char',
-                    $type: JavaMethod,
-                    parameters: []
-                }
-            ]
-            return fakeStringClass
-        }
         return super.getResolvedClass(className)
     }
+}
+
+function createBBjApiClass(container: Classpath) {
+    const clazz: JavaClass = {
+        $type: JavaClass,
+        name: 'BBjAPI',
+        $container: container,
+        $containerProperty: 'classes',
+        fields: [],
+        methods: []
+    }
+    clazz.methods = [
+        {
+            name: 'getThinClient',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.String',
+            $type: JavaMethod,
+            parameters: []
+        }
+    ]
+    return clazz
+}
+
+function createHashMapClass(container: Classpath) {
+    const clazz: JavaClass = {
+        $type: JavaClass,
+        name: 'java.util.HashMap',
+        $container: container,
+        $containerProperty: 'classes',
+        fields: [],
+        methods: []
+    }
+    clazz.methods = [
+        {
+            name: 'put',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: []
+        }
+    ]
+    return clazz
+}
+
+function createJavaLangStringClass(container: Classpath): JavaClass {
+    const fakeStringClass: JavaClass = {
+        $type: JavaClass,
+        name: 'java.lang.String',
+        $container: container,
+        $containerProperty: 'classes',
+        fields: [],
+        methods: []
+    }
+    fakeStringClass.methods = [
+        {
+            name: 'charAt',
+            $containerProperty: 'methods',
+            $container: fakeStringClass,
+            returnType: 'char',
+            $type: JavaMethod,
+            parameters: []
+        }
+    ]
+    return fakeStringClass
 }
