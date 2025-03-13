@@ -67,7 +67,8 @@ public class InteropService {
 		var sw = Stopwatch.createStarted();
 		Stream<ClassInfo> collected;
 		if ("java.lang".equals(packageName)) {
-			collected = Arrays.asList(JAVA_LANG).stream().map(className -> loadClassInfo("java.lang." + className));
+			collected = Arrays.asList(JavaLangPackage.JAVA_LANG).stream()
+					.map(className -> loadClassInfo("java.lang." + className));
 		} else {
 			var topLevelClasses = getClassPath().getTopLevelClasses(packageName);
 			collected = topLevelClasses.stream().filter(info -> !info.getSimpleName().contains("-"))
@@ -84,7 +85,6 @@ public class InteropService {
 		var classInfo = loadClassInfo(params.className);
 		return CompletableFuture.completedFuture(classInfo);
 	}
-
 
 	private ClassInfo loadClassInfo(String className) {
 		// FIXME handle inner class names
@@ -104,9 +104,10 @@ public class InteropService {
 				return fi;
 			}).collect(Collectors.toList());
 			List<Method> methods = Lists.newArrayList(clazz.getMethods());
-			if(clazz.isInterface()) {
+			if (clazz.isInterface()) {
 				// add implicit Object declared methods
-				methods.addAll(Stream.of(Object.class.getMethods()).filter(m -> Modifier.isPublic(m.getModifiers())).toList());
+				methods.addAll(
+						Stream.of(Object.class.getMethods()).filter(m -> Modifier.isPublic(m.getModifiers())).toList());
 			}
 			classInfo.methods = methods.stream().map(m -> {
 				var mi = new MethodInfo();
@@ -136,16 +137,16 @@ public class InteropService {
 	@JsonRequest
 	public CompletableFuture<Boolean> loadClasspath(ClassPathInfoParams params) {
 		var sw = Stopwatch.createStarted();
-		System.out.println("Load additional jars for "+params.toString()+"...");
+		System.out.println("Load additional jars for " + params.toString() + "...");
 
-		if (params.classPathEntries.size()== 1 && params.classPathEntries.get(0).equals("file:")) {
+		if (params.classPathEntries.size() == 1 && params.classPathEntries.get(0).equals("file:")) {
 			System.out.println("Classpath empty. Defaulting to BBj's lib directory.");
 			params.classPathEntries.clear();
 
 			String homedir = System.getProperty("basis.BBjHome") + "/.lib/*";
 			// BBj 24 moved the JARs to .lib instead of lib
 			try {
-				if (  Class.forName("com.basis.util.common.VersionInfo").getField("MAJOR_VERSION").getInt(null)<24) {
+				if (Class.forName("com.basis.util.common.VersionInfo").getField("MAJOR_VERSION").getInt(null) < 24) {
 					homedir = System.getProperty("basis.BBjHome") + "/.lib/*";
 				}
 			} catch (IllegalAccessException e) {
@@ -156,11 +157,11 @@ public class InteropService {
 				throw new RuntimeException(e);
 			}
 
-			if (homedir.substring(1,2).equals(":"))
-				homedir = homedir.substring(2).replace("\\","/");
+			if (homedir.substring(1, 2).equals(":"))
+				homedir = homedir.substring(2).replace("\\", "/");
 			params.classPathEntries.add("file:" + homedir);
 		} else {
-			System.out.println("Requested Classpath: "+params.classPathEntries.toString());
+			System.out.println("Requested Classpath: " + params.classPathEntries.toString());
 		}
 
 		params.classPathEntries.forEach(entry -> {
@@ -214,109 +215,4 @@ public class InteropService {
 		}
 	}
 
-	public static final String[] JAVA_LANG = (
-			// interfaces
-			"Appendable\n"
-			+ "AutoCloseable\n"
-			+ "CharSequence\n"
-			+ "Cloneable\n"
-			+ "Comparable\n"
-			+ "Iterable\n"
-			+ "ProcessHandle\n"
-			+ "Readable\n"
-			+ "Runnable\n"
-			// classes
-			+ "Boolean\n"
-			+ "Byte\n"
-			+ "Character\n"
-			+ "Class\n"
-			+ "ClassLoader\n"
-			+ "ClassValue\n"
-			+ "Compiler\n"
-			+ "Double\n"
-			+ "Enum\n"
-			+ "Float\n"
-			+ "InheritableThreadLocal\n"
-			+ "Integer\n"
-			+ "Long\n"
-			+ "Math\n"
-			+ "Module\n"
-			+ "ModuleLayer\n"
-			+ "Number\n"
-			+ "Object\n"
-			+ "Package\n"
-			+ "Process\n"
-			+ "ProcessBuilder\n"
-			+ "Record\n"
-			+ "Runtime\n"
-			+ "RuntimePermission\n"
-			+ "SecurityManager\n"
-			+ "Short\n"
-			+ "StackTraceElement\n"
-			+ "StackWalker\n"
-			+ "StrictMath\n"
-			+ "String\n"
-			+ "StringBuffer\n"
-			+ "StringBuilder\n"
-			+ "System\n"
-			+ "Thread\n"
-			+ "ThreadGroup\n"
-			+ "ThreadLocal\n"
-			+ "Throwable\n"
-			+ "Void\n"
-			// exceptions
-			+"ArithmeticException\n"
-			+ "ArrayIndexOutOfBoundsException\n"
-			+ "ArrayStoreException\n"
-			+ "ClassCastException\n"
-			+ "ClassNotFoundException\n"
-			+ "CloneNotSupportedException\n"
-			+ "EnumConstantNotPresentException\n"
-			+ "Exception\n"
-			+ "IllegalAccessException\n"
-			+ "IllegalArgumentException\n"
-			+ "IllegalCallerException\n"
-			+ "IllegalMonitorStateException\n"
-			+ "IllegalStateException\n"
-			+ "IllegalThreadStateException\n"
-			+ "IndexOutOfBoundsException\n"
-			+ "InstantiationException\n"
-			+ "InterruptedException\n"
-			+ "LayerInstantiationException\n"
-			+ "NegativeArraySizeException\n"
-			+ "NoSuchFieldException\n"
-			+ "NoSuchMethodException\n"
-			+ "NullPointerException\n"
-			+ "NumberFormatException\n"
-			+ "ReflectiveOperationException\n"
-			+ "RuntimeException\n"
-			+ "SecurityException\n"
-			+ "StringIndexOutOfBoundsException\n"
-			+ "TypeNotPresentException\n"
-			+ "UnsupportedOperationException\n"
-			//errors
-			+ "AbstractMethodError\n"
-			+ "AssertionError\n"
-			+ "BootstrapMethodError\n"
-			+ "ClassCircularityError\n"
-			+ "ClassFormatError\n"
-			+ "Error\n"
-			+ "ExceptionInInitializerError\n"
-			+ "IllegalAccessError\n"
-			+ "IncompatibleClassChangeError\n"
-			+ "InstantiationError\n"
-			+ "InternalError\n"
-			+ "LinkageError\n"
-			+ "NoClassDefFoundError\n"
-			+ "NoSuchFieldError\n"
-			+ "NoSuchMethodError\n"
-			+ "OutOfMemoryError\n"
-			+ "StackOverflowError\n"
-			+ "ThreadDeath\n"
-			+ "UnknownError\n"
-			+ "UnsatisfiedLinkError\n"
-			+ "UnsupportedClassVersionError\n"
-			+ "VerifyError\n"
-			+ "VirtualMachineError"
-			).split("\\n");
 }
