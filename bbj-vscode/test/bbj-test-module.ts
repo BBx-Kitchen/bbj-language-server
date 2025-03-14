@@ -6,6 +6,7 @@ import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
 import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
+import { JavadocProvider } from "../src/language/java-javadoc.js";
 
 export function createBBjTestServices(context: DefaultSharedModuleContext): {
     shared: LangiumSharedServices,
@@ -48,8 +49,13 @@ class JavaInteropTestService extends JavaInteropService {
 
     constructor(services: BBjServices) {
         super(services)
+        
+        
         this.index = () => services.shared.workspace.IndexManager
-
+        
+        // Init JavadocProvider otherwise adding Classes will throw an error
+        JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        
         // Add some faked Java classes to test java service related code.
         const fakeJavaClasses: JavaClass[] = [
             createBBjApiClass(this.classpath),

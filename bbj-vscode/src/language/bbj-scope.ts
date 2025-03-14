@@ -76,9 +76,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         } else if (isVariableDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
         } else if (isConstructorCall(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class.$refText);
+            return this.resolveClassScopeByName(context, context.container.class?.$refText);
         } else if (isBBjTypeRef(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class.$refText);
+            return this.resolveClassScopeByName(context, context.container.class?.$refText);
         } else if (isFieldDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
         } else if (isMethodDecl(context.container) && context.container.returnType) {
@@ -188,6 +188,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     private resolveClassScopeByName(context: ReferenceInfo, qualifiedClassName: string): Scope {
+        if (!qualifiedClassName) {
+            return EMPTY_SCOPE;
+        }
         const match = qualifiedClassName.match(BBjClassNamePattern);
         if (match) {
             const relativeFilePath = match[1];
