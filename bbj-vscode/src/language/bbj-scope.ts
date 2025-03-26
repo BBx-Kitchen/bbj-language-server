@@ -6,6 +6,7 @@
 
 import {
     AstNode, AstNodeDescription, AstNodeLocator,
+    AstReflection,
     AstUtils,
     CstNode, DefaultNameProvider,
     DefaultScopeProvider,
@@ -54,9 +55,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     protected readonly astNodeLocator: AstNodeLocator;
     protected readonly typeInferer: TypeInferer;
     protected readonly workspaceManager: BBjWorkspaceManager;
+    protected readonly astReflection: AstReflection;
 
     constructor(services: BBjServices) {
         super(services);
+        this.astReflection = services.shared.AstReflection;
         this.javaInterop = services.java.JavaInteropService;
         this.astNodeLocator = services.workspace.AstNodeLocator;
         this.typeInferer = services.types.Inferer;
@@ -64,23 +67,23 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if(isBbjClass(context.container)) {
-            if(context.property === 'extends' && context.container.extends && typeof context.index === 'number') {
+        if (isBbjClass(context.container)) {
+            if (context.property === 'extends' && context.container.extends && typeof context.index === 'number') {
                 return this.resolveClassScopeByName(context, context.container.extends[context.index].$refText);
             } else if (context.property === 'implements' && context.container.implements && typeof context.index === 'number') {
                 return this.resolveClassScopeByName(context, context.container.implements[context.index].$refText);
             }
-        } else if(isVariableDecl(context.container) && context.container.type) {
+        } else if (isVariableDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
-        } else if(isConstructorCall(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class.$refText);
-        } else if(isBBjTypeRef(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class.$refText);
-        } else if(isFieldDecl(context.container) && context.container.type) {
+        } else if (isConstructorCall(context.container) && context.property === 'class') {
+            return this.resolveClassScopeByName(context, context.container.class?.$refText);
+        } else if (isBBjTypeRef(context.container) && context.property === 'class') {
+            return this.resolveClassScopeByName(context, context.container.class?.$refText);
+        } else if (isFieldDecl(context.container) && context.container.type) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
-        } else if(isMethodDecl(context.container) && context.container.returnType) {
+        } else if (isMethodDecl(context.container) && context.container.returnType) {
             return this.resolveClassScopeByName(context, context.container.returnType.$refText);
-        } else if(isParameterDecl(context.container)) {
+        } else if (isParameterDecl(context.container)) {
             return this.resolveClassScopeByName(context, context.container.type.$refText);
         } else if (
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
@@ -178,21 +181,25 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // DONE 3. Access PREFIX folder information and load the first match
             return adjustedFileUris.some(adjustedFileUri => bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase()));
         })
-        if(!simpleName) {
+        if (!simpleName) {
             bbjClasses = bbjClasses.map(d => this.descriptions.createDescription(d.node!, `::${bbjFilePath}::${d.name}`));
         }
         return new StreamScopeWithPredicate(bbjClasses);
     }
 
     private resolveClassScopeByName(context: ReferenceInfo, qualifiedClassName: string): Scope {
+        if (!qualifiedClassName) {
+            return EMPTY_SCOPE;
+        }
         const match = qualifiedClassName.match(BBjClassNamePattern);
-        if(match) {
+        if (match) {
             const relativeFilePath = match[1];
             return this.getBBjClassesFromFile(context.container, relativeFilePath, false);
         } else {
             const program = AstUtils.getContainerOfType(context.container, isProgram)!;
             const document = AstUtils.getDocument(program);
-            const locals = this.indexManager.allElements(BbjClass, new Set([document.uri.toString()]));
+            const locals = document.precomputedScopes?.get(program)
+                ?.filter(descr => this.astReflection.isSubtype(descr.type, Class)) ?? EMPTY_STREAM;
             const imports = this.importedBBjClasses(program);
             const globals = this.getGlobalScope(Class, context);
             return this.createScope(stream(imports).concat(locals), globals);

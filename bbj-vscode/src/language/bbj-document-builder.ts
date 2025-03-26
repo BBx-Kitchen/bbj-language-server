@@ -66,17 +66,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
         const addedDocuments: URI[] = []
         for (const importPath of bbjImports) {
-            const docFileContents = await Promise.all(prefixes.map(async prefixPath => {
-                const prefixedPath = URI.file(resolve(prefixPath, importPath))
+            let docFileData;
+            for (const prefixPath of prefixes) {
+                const prefixedPath = URI.file(resolve(prefixPath, importPath));
                 try {
                     const fileContent = await fsProvider.readFile(prefixedPath);
-                    return { uri: prefixedPath, text: fileContent };
+                    docFileData = { uri: prefixedPath, text: fileContent };
+                    break; // early stop iterating prefixes when file is found
                 } catch (e) {
-                    return undefined;
+                    // Continue to the next prefixPath if readFile fails
                 }
-            }));
-            
-            const docFileData = docFileContents.find(doc => doc !== undefined);
+            }
             if (docFileData) {
                 const document = documentFactory.fromString(docFileData.text, docFileData.uri);
                 if (!langiumDocuments.hasDocument(document.uri)) {

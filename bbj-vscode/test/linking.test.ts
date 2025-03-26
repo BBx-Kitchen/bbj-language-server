@@ -7,13 +7,13 @@ import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
-const validate = (content: string) => parseHelper<Model>(services.BBj)(content, {validation: true});
+const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
     beforeAll(() => initializeWorkspace(services.shared));
 
     function findLinkingErrors(document: LangiumDocument): Diagnostic[] {
-        return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError)??[]
+        return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError) ?? []
     }
 
     function expectNoErrors(document: LangiumDocument) {
@@ -49,7 +49,7 @@ describe('Linking Tests', async () => {
         const linkingErr = findLinkingErrors(document)
         expect(linkingErr.length).toBe(1)
         expect(linkingErr[0].severity).toBe(DiagnosticSeverity.Warning)
-        
+
     })
 
     test('String literal is of type java.lang.String type', async () => {
@@ -116,23 +116,32 @@ describe('Linking Tests', async () => {
         `)
         expectNoErrors(document)
     })
-    
+
     test('Case insensitive access to BBjAPI', async () => {
         const document = await validate(`
             API! = BbJaPi() REM <== no linking error here
         `)
         expectNoErrors(document)
     })
-/* Needs running java service
-    test('All BBj classes extends Object', async () => {
+    /* Needs running java service
+        test('All BBj classes extends Object', async () => {
+            const document = await validate(`
+                class public MyClass
+                classend
+                t = new MyClass()
+                REM toString() comes from Object
+                t.toString()
+            `)
+            expectNoErrors(document)
+        })
+    */
+    test('Imported java classes resolves', async () => {
         const document = await validate(`
-            class public MyClass
-            classend
-            t = new MyClass()
-            REM toString() comes from Object
-            t.toString()
+            use java.util.HashMap
+            hm! = new HashMap()
+            hm!.put("JKH","HJ")
         `)
         expectNoErrors(document)
     })
-*/
+
 });
