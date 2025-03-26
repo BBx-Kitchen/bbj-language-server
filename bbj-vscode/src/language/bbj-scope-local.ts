@@ -11,6 +11,8 @@ import {
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
+import { getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
+import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -20,7 +22,6 @@ import {
     isClasspath,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
-    isJavaClass,
     isLetStatement,
     isLibEventType,
     isLibMember,
@@ -30,8 +31,6 @@ import {
     MethodDecl
 } from './generated/ast.js';
 import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
-import { getClassRef, getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
-import { collectAllUseStatements } from './bbj-scope.js';
 
 
 export class BbjScopeComputation extends DefaultScopeComputation {
@@ -55,9 +54,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         if (isProgram(rootNode) && rootNode.$type === 'Program') {
             for (const use of collectAllUseStatements(rootNode)) {
                 const className = use.javaClass
-                if (className && className.pathParts.every(p => p.symbol.ref !== undefined)) {
+                if (className && className.pathParts.every(p => p.symbol.$refText)) {
                     try {
-                        await this.javaInterop.resolveClassByName(className.pathParts.map(p => p.symbol.ref!.name).join("."), cancelToken);
+                        await this.javaInterop.resolveClassByName(className.pathParts.map(p => p.symbol.$refText).join("."), cancelToken);
                     } catch (e) {
                         console.error(e)
                     }

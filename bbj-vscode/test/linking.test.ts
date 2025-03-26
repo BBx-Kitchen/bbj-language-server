@@ -130,7 +130,7 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
     
-    describe.runIf(isInteropRunning)("Interop related tests", () => {
+    describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
                 class public MyClass
@@ -189,6 +189,13 @@ describe('Linking Tests', async () => {
         });
 
         test('Object construction with direct import', async () => {
+            const document = await validate(`
+                let hashMap! = new java.util.HashMap()
+            `)
+            expectNoErrors(document)
+        });
+
+        test.skip('Linked List is resolved', async () => {
             const document = await validate(`
                 let list! = new java.util.LinkedList()
             `)

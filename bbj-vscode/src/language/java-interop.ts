@@ -23,8 +23,9 @@ export const JavaSyntheticDocUri = 'classpath:/bbj.class'
 export class JavaInteropService {
 
     private connection?: MessageConnection;
-    private readonly resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
+    private resolvedClassesLock: Promise<void> = Promise.resolve();
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -38,6 +39,10 @@ export class JavaInteropService {
             packages: [],
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
+    }
+    
+    private get resolvedClasses(): Map<string, JavaClass> {
+        return this._resolvedClasses;
     }
 
     protected async connect(): Promise<MessageConnection> {
@@ -68,7 +73,7 @@ export class JavaInteropService {
         });
     }
 
-    get classpath(): Classpath {
+    protected get classpath(): Classpath {
         return this.classpathDocument.parseResult.value;
     }
 
@@ -131,11 +136,16 @@ export class JavaInteropService {
     }
 
     async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
-        if (this.resolvedClasses.has(className)) {
-            return this.resolvedClasses.get(className)!;
+        await this.acquireLock();
+        try {
+            if (this.resolvedClasses.has(className)) {
+                return this.resolvedClasses.get(className)!;
+            }
+            const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
+            return await this.resolveClass(javaClass, token);
+        } finally {
+            // unlocked
         }
-        const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
-        return await this.resolveClass(javaClass, token);
     }
 
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
@@ -152,7 +162,9 @@ export class JavaInteropService {
         javaClass.packageName = lastIndexOfDot > -1 ? className.substring(0, lastIndexOfDot) : '';
         javaClass.classes ??= [];
 
+        this.storeJavaClass(javaClass);
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
+
         try {
             const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
@@ -190,10 +202,7 @@ export class JavaInteropService {
             console.error(e)
         }
         AstUtils.linkContentToContainer(javaClass);
-
-        this.storeJavaClass(javaClass);
-
-        return javaClass;
+         return javaClass;
     }
 
     getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
@@ -244,6 +253,15 @@ export class JavaInteropService {
             }
             parent = children.get(part)!;
         });
+    }
+
+    private async acquireLock(): Promise<void> {
+        let release: () => void;
+        const lock = new Promise<void>((resolve) => (release = resolve));
+        const previousLock = this.resolvedClassesLock;
+        this.resolvedClassesLock = lock;
+        await previousLock;
+        release!();
     }
 }
 

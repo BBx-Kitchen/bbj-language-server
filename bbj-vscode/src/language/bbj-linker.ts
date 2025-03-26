@@ -1,17 +1,19 @@
 
 import {
     AstNodeDescription,
+    AstUtils,
     DefaultLinker, DocumentState, interruptAndCheck,
     LangiumDocument, LinkingError,
-    ReferenceInfo, AstUtils, WorkspaceManager
+    ReferenceInfo,
+    WorkspaceManager
 } from 'langium';
 import { LangiumServices } from 'langium/lsp';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
-import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { isTemplateStringArray } from './bbj-scope-local.js';
+import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, LibFunction, MethodCall, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
+import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -76,28 +78,29 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
-        if (isMethodCall(refInfo.container)) {
-            const memberCall = refInfo.container as MethodCall;
-            if (refInfo.reference.$refText?.toLowerCase() === 'err'
-                && memberCall.$container.$type === BinaryExpression
-                && memberCall.$containerProperty === 'left'
-                && (memberCall.$container.$container.$type === ParameterCall || memberCall.$container.$container.$type === ConstructorCall)) {
-                // Error param case: addProperty("prop" , err=*next)
-                return BbjLinker.ERR_PARAM;
+        if (isSymbolRef(refInfo.container)) {
+            const symbolRef = refInfo.container;
+            if (!(isMethodCall(symbolRef.$container) && symbolRef.$containerProperty === 'method')) {
+                if (refInfo.reference.$refText?.toLowerCase() === 'err'
+                    && symbolRef.$container.$type === BinaryExpression
+                    && symbolRef.$containerProperty === 'left'
+                    && (symbolRef.$container.$container.$type === ParameterCall || symbolRef.$container.$container.$type === ConstructorCall)) {
+                    // Error param case: addProperty("prop" , err=*next)
+                    return BbjLinker.ERR_PARAM;
+                }
+                const scope = this.scopeProvider.getScope(refInfo);
+                const candidate = (scope instanceof StreamScopeWithPredicate) ?
+                    // Don't link to methods or a constructor when not a method call is expected
+                    scope.getElement(refInfo.reference.$refText, descr => descr.type !== MethodDecl && descr.type !== LibFunction)
+                    : scope.getElement(refInfo.reference.$refText);
+                return candidate ?? this.createLinkingError(refInfo);
             }
-            const scope = this.scopeProvider.getScope(refInfo);
-            const candidate = (scope instanceof StreamScopeWithPredicate) ?
-                // Don't link to methods or a constructor when not a method call is  expected
-                scope.getElement(refInfo.reference.$refText, descr => descr.type !== MethodDecl && descr.type !== LibFunction)
-                : scope.getElement(refInfo.reference.$refText);
-            return candidate ?? this.createLinkingError(refInfo);
-        }
-        if (refInfo.reference.$refText.toLowerCase() === 'bbjapi'
-            && isMethodCall(refInfo.container)) {
-            // Special case for BBjAPI implicit import, it can be accessed case insensitively
-            const scope = this.scopeProvider.getScope(refInfo);
-            const description = scope.getElement('BBjAPI');
-            return description ?? this.createLinkingError(refInfo);
+            if (refInfo.reference.$refText.toLowerCase() === 'bbjapi' && isMethodCall(symbolRef.$container)) {
+                // Special case for BBjAPI implicit import, it can be accessed case insensitively
+                const scope = this.scopeProvider.getScope(refInfo);
+                const description = scope.getElement('BBjAPI');
+                return description ?? this.createLinkingError(refInfo);
+            }
         }
         return super.getCandidate(refInfo);
     }

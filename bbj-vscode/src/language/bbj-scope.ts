@@ -7,6 +7,7 @@
 import {
     AstNode, AstNodeDescription, AstNodeLocator,
     AstNodeTypesWithCrossReferences,
+    AstReflection,
     AstUtils,
     CrossReferencesOfAstNodeType,
     CstNode, DefaultNameProvider,
@@ -72,10 +73,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     override getScope(context: ReferenceInfo): Scope {
         const container = context.container as AstNodeTypesWithCrossReferences<BBjAstType>;
-        switch(container.$type) {
+        switch (container.$type) {
             case 'SimpleTypeRef': {
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
-                if(property === 'simpleClass') {
+                if (property === 'simpleClass') {
                     return this.resolveClassScopeByName(context, container.simpleClass.$refText);
                 }
                 return EMPTY_SCOPE;
@@ -83,22 +84,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             case 'BBjTypeRef': {
                 assertType<BBjTypeRef>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
-                if(property === 'klass') {
-                    return this.resolveClassScopeByName(context, container.klass.$refText);
+                if (property === 'klass') {
+                    return this.resolveClassScopeByName(context, container.klass?.$refText);
                 }
                 return EMPTY_SCOPE;
             }
             case 'JavaSymbol': {
                 assertType<JavaSymbol>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
-                if(property === 'symbol') {
-                    if(isJavaTypeRef(container.$container)) {
+                if (property === 'symbol') {
+                    if (isJavaTypeRef(container.$container)) {
                         assertTrue(container.$containerIndex !== undefined);
-                        if(container.$containerIndex === 0) {
+                        if (container.$containerIndex === 0) {
                             return this.createScopeForNodes(this.javaInterop.getChildrenOf());
                         } else {
-                            const previousPart = container.$container.pathParts[container.$containerIndex-1].symbol.ref;
-                            if(previousPart) {
+                            const previousPart = container.$container.pathParts[container.$containerIndex - 1].symbol.ref;
+                            if (previousPart) {
                                 return this.createScopeForNodes(this.javaInterop.getChildrenOf(previousPart));
                             }
                         }
@@ -172,7 +173,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             ) {
                 // named parameter scope
                 const method = context.container.$container.$container.$container.method;
-                if(isSymbolRef(method)) {
+                if (isSymbolRef(method)) {
                     const symbol = method.symbol.ref;
                     if (isLibFunction(symbol)) {
                         const namedParams = stream(symbol.parameters)
@@ -284,13 +285,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         if (root) {
             const useStatements = collectAllUseStatements(root);
             return useStatements.map(use => {
-                if(use.bbjClass && use.bbjClass.ref) {
-                    return this.descriptions.createDescription(use.bbjClass.ref, use.bbjClass.ref.name);   
-                } else if(use.javaClass) {
+                if (use.bbjClass && use.bbjClass.ref) {
+                    return this.descriptions.createDescription(use.bbjClass.ref, use.bbjClass.ref.name);
+                } else if (use.javaClass) {
                     const lastPart = use.javaClass.pathParts[use.javaClass.pathParts.length - 1];
                     const klass = lastPart.symbol.ref;
-                    if(klass) {
-                        return this.descriptions.createDescription(klass, klass.name);   
+                    if (klass) {
+                        return this.descriptions.createDescription(klass, klass.name);
                     }
                 }
                 return undefined;

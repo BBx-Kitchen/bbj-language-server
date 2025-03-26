@@ -1,6 +1,7 @@
-import { AstNode, AstUtils, DiagnosticInfo, Reference, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
+import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { dirname, isAbsolute, relative } from 'path';
-import { BBjAstType, BbjClass, Class, isBbjClass } from '../generated/ast.js';
+import { getClassRef } from '../bbj-nodedescription-provider.js';
+import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
     const validator = new ClassValidator();
