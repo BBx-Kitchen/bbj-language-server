@@ -1,4 +1,4 @@
-import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, } from "langium";
+import { AstNode, DefaultWorkspaceManager, FileSystemProvider, LangiumDocument, LangiumDocumentFactory, } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
@@ -65,7 +65,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             if (this.bbjdir) {
                 wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
             }
-            await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+
+            await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             if (this.settings!.classpath.length > 0) {
                 const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
@@ -160,5 +161,13 @@ export function collectPrefixes(input: string): string[] {
 
 export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
+}
+
+async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
+    try {
+        return await JavadocProvider.getInstance().initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
+    } catch (e) {
+        console.error(e);
+    }
 }
 

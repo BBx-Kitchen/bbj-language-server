@@ -96,6 +96,7 @@ public class InteropService {
 			var clazz = primitiv.isPresent() ? primitiv.get() : Class.forName(className, false, classLoader);
 
 			classInfo.simpleName = clazz.getCanonicalName();
+			classInfo.packageName = clazz.getPackageName();
 			classInfo.fields = Stream.of(clazz.getFields()).map(f -> {
 				var fi = new FieldInfo();
 				fi.name = f.getName();
