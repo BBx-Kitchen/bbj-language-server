@@ -8,6 +8,8 @@ use com.basis.api.admin.BBjAdminTask
 use com.basis.api.admin.BBjAdminBBjTask
 use java.util.ArrayList
 
+if  rev >= "REV 25" then release
+
 if pos("-CPvscode"=str(BBjAPI().getConfig().getCurrentCommandLineObject()))>0 then
     goto service
 fi
