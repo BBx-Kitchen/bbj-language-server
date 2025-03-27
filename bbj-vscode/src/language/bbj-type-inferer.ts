@@ -1,10 +1,10 @@
 import { BBjServices } from "./bbj-module.js";
 import { getClass } from "./bbj-nodedescription-provider.js";
-import { Expression, Class, Assignment, isArrayDecl, isAssignment, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isMemberCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, isMethodCall, isBBjTypeRef } from "./generated/ast.js";
+import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isMemberCall, isMethodCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
-    getType(expression: Expression): Class | undefined;
+    getType(expression: Expression): JavaPackage |Class | undefined;
 }
 
 export class BBjTypeInferer implements TypeInferer {
@@ -14,7 +14,7 @@ export class BBjTypeInferer implements TypeInferer {
         this.javaInterop = services.java.JavaInteropService;
     }
 
-    public getType(expression: Expression): Class | undefined {
+    public getType(expression: Expression): JavaPackage | Class | undefined {
         if (isSymbolRef(expression)) {
             const reference = expression.symbol.ref
             if (isAssignment(reference)) {
@@ -25,6 +25,8 @@ export class BBjTypeInferer implements TypeInferer {
                 return getClass(reference.type);
             } else if (isMethodDecl(reference)) {
                 return getClass(reference.returnType);
+            } else if (isJavaPackage(reference)) {
+                return reference;
             }
             return undefined;
         } else if (isConstructorCall(expression)) {
@@ -38,6 +40,8 @@ export class BBjTypeInferer implements TypeInferer {
                     return member.resolvedReturnType?.ref;
                 } else if (isMethodDecl(member)) {
                     return getClass(member.returnType);
+                } else if (isJavaPackage(member) || isClass(member)) {
+                    return member;
                 }
             } else {
                 return undefined

@@ -195,6 +195,24 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
 
+        test('Test for #67', async () => {
+            const document = await validate(`
+                use java.lang.Class
+                declare Class thinClientClass!
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Java FQN access - test for #6', async () => {
+            const document = await validate(`
+                use java.sql.Date
+                b! = java.lang.Boolean.TRUE 
+                A$ = java.sql.Date.valueOf("2305-07-23")
+                hm! = new java.util.HashMap()
+            `)
+            expectNoErrors(document)
+        });
+
         test.skip('Linked List is resolved', async () => {
             const document = await validate(`
                 let list! = new java.util.LinkedList()

@@ -31,6 +31,7 @@ import {
     isCallbackStatement,
     isClasspath, isCompoundStatement,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
+    isJavaPackage,
     isJavaTypeRef,
     isLibFunction,
     isMemberCall,
@@ -134,7 +135,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return EMPTY_SCOPE;
         }
         if (context.property === 'member' && isMemberCall(context.container)) {
-            const receiverType = this.typeInferer.getType(context.container.receiver);
+            const receiver = context.container.receiver
+            const receiverType = this.typeInferer.getType(receiver);
             if (!receiverType) {
                 return EMPTY_SCOPE;
             }
@@ -142,6 +144,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
             } else if (isBbjClass(receiverType)) {
                 return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
+            } else if (isJavaPackage(receiverType)) {
+                return this.createScopeForNodes(this.javaInterop.getChildrenOf(receiverType));
             }
         } else if (isUse(context.container)) {
             const match = context.container.bbjFilePath?.match(BBjPathPattern);
@@ -151,16 +155,21 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return EMPTY_SCOPE;
         } else if (isSymbolRef(context.container)) {
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
-            var memberScope = EMPTY_STREAM;
+            // Add java root packages to be linked in expressions like: java.util.List
+            const javaRoots = this.javaInterop.getChildrenOf().filter(it => isJavaPackage(it));
+            var membersStream = stream(javaRoots.map(javaPackage => 
+                this.descriptions.createDescription(javaPackage, javaPackage.name))
+            );
+
             if (bbjType) {
                 if (context.container.instanceAccess) {
-                    memberScope = this.createBBjClassMemberScope(bbjType, false).getAllElements()
+                    membersStream = this.createBBjClassMemberScope(bbjType, false).getAllElements()
                 }
             }
 
             const program = AstUtils.getContainerOfType(context.container, isProgram);
             const memberAndImports = new StreamScopeWithPredicate(
-                memberScope.concat(this.importedBBjClasses(program)),
+                membersStream.concat(this.importedBBjClasses(program)),
                 this.superGetScope(context)
             );
 
