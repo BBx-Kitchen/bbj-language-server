@@ -203,6 +203,16 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
 
+        test.skip('Unloaded Java FQN access - test for #6', async () => {
+            // TODO Need to find member calls matching `java.sql.Date` and request java type resolution
+            // See similar case for JavaTypeRefs in bbj-scope-local.ts
+            // Currently just pre-load `java.sql` in java-interop.ts see loadImplicitImports
+            const document = await validate(`
+                A$ = java.sql.Date.valueOf("2305-07-23")
+            `)
+            expectNoErrors(document)
+        });
+        
         test('Java FQN access - test for #6', async () => {
             const document = await validate(`
                 use java.sql.Date
@@ -213,7 +223,9 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
 
-        test.skip('Linked List is resolved', async () => {
+
+
+        test('Linked List is resolved', async () => {
             const document = await validate(`
                 let list! = new java.util.LinkedList()
             `)

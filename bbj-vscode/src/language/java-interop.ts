@@ -40,7 +40,7 @@ export class JavaInteropService {
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
     }
-    
+
     private get resolvedClasses(): Map<string, JavaClass> {
         return this._resolvedClasses;
     }
@@ -112,19 +112,22 @@ export class JavaInteropService {
     }
 
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
-        console.warn("Load package classes: " + implicitJavaImports.join(', '))
+        console.warn("Load package classes: ", implicitJavaImports.join(', '))
         try {
             const connection = await this.connect();
-            await Promise.all(implicitJavaImports.map(async pack => {
+            await Promise.all(implicitJavaImports.concat('java.sql').map(async pack => {
                 const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
                 await Promise.all(classInfos.map(async javaClass => {
                     await this.resolveClass(javaClass, token)
-                    // add as implicit Java package import
-                    const simpleNameCopy = { ...javaClass }
-                    simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
-                    simpleNameCopy.$containerIndex = this.classpath.classes.length;
-                    this.classpath.classes.push(simpleNameCopy);
-                    this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                    
+                    if (pack !== 'java.sql') { // Not an implicit import but sql package preload.
+                        // add as implicit Java package import
+                        const simpleNameCopy = { ...javaClass }
+                        simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
+                        simpleNameCopy.$containerIndex = this.classpath.classes.length;
+                        this.classpath.classes.push(simpleNameCopy);
+                        this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                    }
                 }))
             }))
             console.debug("Loaded " + this.classpath.classes.length + " classes")
@@ -202,7 +205,7 @@ export class JavaInteropService {
             console.error(e)
         }
         AstUtils.linkContentToContainer(javaClass);
-         return javaClass;
+        return javaClass;
     }
 
     getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {

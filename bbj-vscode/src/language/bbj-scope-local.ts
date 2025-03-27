@@ -5,14 +5,15 @@ import {
     DefaultScopeComputation,
     DocumentSegment,
     GrammarUtils,
+    interruptAndCheck,
     LangiumDocument,
     MapScope,
+    MultiMap,
     PrecomputedScopes
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
-import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -22,10 +23,10 @@ import {
     isClasspath,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
+    isJavaTypeRef,
     isLetStatement,
     isLibEventType,
     isLibMember,
-    isProgram,
     isReadStatement,
     isSymbolRef, isUse,
     MethodDecl
@@ -51,31 +52,25 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
         const rootNode = document.parseResult.value;
-        if (isProgram(rootNode) && rootNode.$type === 'Program') {
-            for (const use of collectAllUseStatements(rootNode)) {
-                const className = use.javaClass
-                if (className && className.pathParts.every(p => p.symbol.$refText)) {
-                    try {
-                        await this.javaInterop.resolveClassByName(className.pathParts.map(p => p.symbol.$refText).join("."), cancelToken);
-                    } catch (e) {
-                        console.error(e)
-                    }
-                }
-            }
+        const scopes = new MultiMap<AstNode, AstNodeDescription>();
+        // Override to process node in an async way
+        // to trigger backend resolution of Java class references.
+        for (const node of AstUtils.streamAllContents(rootNode)) {
+            await interruptAndCheck(cancelToken);
+            await this.processNode(node, document, scopes);
         }
+
         if (JavaSyntheticDocUri === document.uri.toString() && isClasspath(rootNode)) {
-            const computed = await super.computeLocalScopes(document, cancelToken);
             // Cache classes as map scope. It is used very often and not changing.
-            (document as JavaDocument).classesMapScope = new MapScope(computed.get(rootNode))
-            return computed;
+            (document as JavaDocument).classesMapScope = new MapScope(scopes.get(rootNode))
         }
-        return super.computeLocalScopes(document, cancelToken);
+        return scopes;
     }
 
-    protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
+    protected override async processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): Promise<void> {
         if (isUse(node)) {
             const javaClassName = getFQNFullname(node.javaClass);
-            const javaClass = this.javaInterop.getResolvedClass(javaClassName);
+            const javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
             if (!javaClass) {
                 return;
             }
@@ -86,6 +81,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             const program = node.$container;
             const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
             this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
+        } else if (isJavaTypeRef(node) && node.pathParts.length > 1) { // resolve only qualified names
+            const javaClassName = getFQNFullname(node);
+            // just trigger resolution so the class reference is loaded into the synthetic document.
+            await this.tryResolveJavaReference(javaClassName, this.javaInterop);
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
             if (isSymbolRef(node.variable)) {
@@ -180,6 +179,19 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 }
             }
         }
+    }
+
+    private async tryResolveJavaReference(javaClassName: string, javaInterop: JavaInteropService) {
+        let javaClass = javaInterop.getResolvedClass(javaClassName)
+        if (!javaClass) {
+            // try resolve using Java service
+            try {
+                javaClass = await this.javaInterop.resolveClassByName(javaClassName);
+            } catch (e) {
+                console.warn(e)
+            }
+        }
+        return javaClass;
     }
 
     /**

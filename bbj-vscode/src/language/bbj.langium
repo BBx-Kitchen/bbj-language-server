@@ -176,9 +176,10 @@ DumpStatement:
     'DUMP' ('(' channelno=Expression Mode? Err? Ind? RPAREN_NL)?
     ;
 
+// Add 'FILE' | 'XFILE' here
 FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
-    ;
+;
 
 FulltextStatement:
     'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
@@ -801,7 +802,6 @@ PositionalMnemonic:
 ;
 
 ConstructorCall:
-    // TODO: Possibly use ID instead of QualifiedClassName
     'new' klass=QualifiedClass
     (
         ('(' (args+=Expression (',' args+=Expression)*)? RPAREN)
