@@ -35,24 +35,23 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version }}"
           echo "Target version: $VERSION"
-
+      
           CURRENT=$(jq -r .version package.json)
           echo "Current version in package.json: $CURRENT"
-
-          # Must be in x.y.z format and end with .0
+      
+          # Must be in x.y.0 format
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0]+$ ]]; then
             echo "❌ Error: Version must be in format x.y.0, e.g. 25.12.0"
             exit 1
           fi
-
-          # Check if new version > current version using semver
-          IS_GREATER=$(npx semver "$VERSION" -r ">$CURRENT" || echo false)
-          if [ "$IS_GREATER" != "true" ]; then
+      
+          # Ensure new version is greater
+          if npx semver "$VERSION" -r ">$CURRENT"; then
+            echo "✅ Version $VERSION is valid and greater than $CURRENT"
+          else
             echo "❌ Error: Version $VERSION is not greater than current version $CURRENT"
             exit 1
           fi
-
-          echo "✅ Version validated"
 
       - name: Set package.json version
         working-directory: bbj-vscode
