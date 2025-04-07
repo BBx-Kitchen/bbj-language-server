@@ -18,12 +18,19 @@ jobs:
         with:
           node-version: 18
 
-      - run: npm install -g vsce jq
-      - run: cd bbj-vscode && npm ci
+      - name: Install CLI Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          npm install -g @vscode/vsce
+
+      - name: Install deps and build
+        working-directory: bbj-vscode
+        run: npm ci
 
       - name: Bump patch version
+        working-directory: bbj-vscode
         run: |
-          cd bbj-vscode
           VERSION=$(jq -r .version package.json)
           PARTS=(${VERSION//./ })
 
@@ -39,8 +46,8 @@ jobs:
           jq ".version = \"$NEW_VERSION\"" package.json > tmp && mv tmp package.json
 
       - name: Commit version bump
+        working-directory: bbj-vscode
         run: |
-          cd bbj-vscode
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add package.json
@@ -48,9 +55,9 @@ jobs:
           git push
 
       - name: Package & Publish Preview
+        working-directory: bbj-vscode
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          cd bbj-vscode
-          vsce package
-          vsce publish --pre-release -p $VSCE_PAT
+          npx vsce package
+          npx vsce publish --pre-release -p $VSCE_PAT
