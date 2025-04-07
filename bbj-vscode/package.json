@@ -1,320 +1,320 @@
 {
-    "name": "bbj-vscode",
-    "version": "0.0.45",
-    "publisher": "BEU",
-    "displayName": " BBj Language Support",
-    "description": "BBj Language Support for Visual Studio Code",
-    "license": "MIT",
-    "icon": "images/icon.png",
-    "type": "module",
-    "engines": {
-        "vscode": "^1.67.0"
-    },
-    "categories": [
-        "Programming Languages"
-    ],
-    "repository": {
-        "url": "https://github.com/BBx-Kitchen/bbj-language-server/",
-        "type": "git",
-        "directory": "bbj-vscode"
-    },
-    "contributes": {
-        "languages": [
-            {
-                "id": "bbj",
-                "aliases": [
-                    "BBj",
-                    "bbj"
-                ],
-                "extensions": [
-                    ".bbj",
-                    ".bbl",
-                    ".bbjt"
-                ],
-                "icon": {
-                    "light": "./images/bbj-file-light.svg",
-                    "dark": "./images/bbj-file-dark.svg"
-                },
-                "configuration": "./bbj-language-configuration.json"
-            },
-            {
-                "id": "bbx",
-                "aliases": [
-                    "BBx"
-                ],
-                "extensions": [
-                    "bbx"
-                ],
-                "icon": {
-                    "light": "./images/bbj-config-light.svg",
-                    "dark": "./images/bbj-config-dark.svg"
-                },
-                "configuration": "./bbx-language-configuration.json"
-            }
+  "name": "bbj-vscode",
+  "version": "0.0.46",
+  "publisher": "BEU",
+  "displayName": " BBj Language Support",
+  "description": "BBj Language Support for Visual Studio Code",
+  "license": "MIT",
+  "icon": "images/icon.png",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.67.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "repository": {
+    "url": "https://github.com/BBx-Kitchen/bbj-language-server/",
+    "type": "git",
+    "directory": "bbj-vscode"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "bbj",
+        "aliases": [
+          "BBj",
+          "bbj"
         ],
-        "grammars": [
-            {
-                "language": "bbj",
-                "scopeName": "source.bbj",
-                "path": "./syntaxes/bbj.tmLanguage.json"
-            },
-            {
-                "language": "bbx",
-                "scopeName": "source.bbx",
-                "path": "./syntaxes/bbx.tmLanguage.json"
-            }
+        "extensions": [
+          ".bbj",
+          ".bbl",
+          ".bbjt"
         ],
-        "snippets": [
-            {
-                "language": "bbj",
-                "path": "./snippets/bbj.json"
-            }
-        ],
-        "commands": [
-            {
-                "category": "BBj",
-                "command": "bbj.initInterop",
-                "title": "Initialize BBj Interop in BBj Service"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.config",
-                "title": "Show the config.bbx file"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.properties",
-                "title": "Show the BBj.properties file"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.em",
-                "title": "Open Enterprise Manager"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.run",
-                "title": "Run As BBj Program",
-                "icon": {
-                    "light": "./images/run-gui-light.svg",
-                    "dark": "./images/run-gui-dark.svg"
-                },
-                "key": "alt+g"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.runBUI",
-                "title": "Run As BUI Program",
-                "icon": {
-                    "light": "./images/run-bui-light.svg",
-                    "dark": "./images/run-bui-dark.svg"
-                },
-                "key": "alt+b"
-            },
-            {
-                "category": "BBj",
-                "command": "bbj.runDWC",
-                "title": "Run As DWC Program",
-                "icon": {
-                    "light": "./images/run-dwc-light.svg",
-                    "dark": "./images/run-dwc-dark.svg"
-                },
-                "key": "alt+d"
-            }
-        ],
-        "keybindings": [
-            {
-                "command": "bbj.run",
-                "key": "alt+g"
-            },
-            {
-                "command": "bbj.runBUI",
-                "key": "alt+b"
-            },
-            {
-                "command": "bbj.runDWC",
-                "key": "alt+d"
-            }
-        ],
-        "menus": {
-            "editor/context": [
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.run",
-                    "group": "BBj@1"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runBUI",
-                    "group": "BBj@2"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runDWC",
-                    "group": "BBj@3"
-                }
-            ],
-            "editor/title": [
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.run",
-                    "group": "navigation"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runBUI",
-                    "group": "navigation"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runDWC",
-                    "group": "navigation"
-                }
-            ],
-            "explorer/context": [
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.run",
-                    "group": "BBj@1"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runBUI",
-                    "group": "BBj@2"
-                },
-                {
-                    "when": "resourceLangId == bbj",
-                    "command": "bbj.runDWC",
-                    "group": "BBj32"
-                }
-            ]
+        "icon": {
+          "light": "./images/bbj-file-light.svg",
+          "dark": "./images/bbj-file-dark.svg"
         },
-        "configuration": {
-            "type": "object",
-            "title": "BBj configuration",
-            "properties": {
-                "bbj.home": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": null,
-                    "description": "Specify the path to the BBj executable",
-                    "scope": "window"
-                },
-                "bbj.classpath": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": "bbj_default",
-                    "description": "BBj Classpath to use for starting applications",
-                    "scope": "window"
-                },
-                "bbj.web.username": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": "admin",
-                    "description": "EM username",
-                    "scope": "window"
-                },
-                "bbj.web.password": {
-                    "type": [
-                        "string",
-                        "null"
-                    ],
-                    "default": "admin123",
-                    "description": "EM password",
-                    "scope": "window"
-                },
-                "bbj.web.apps": {
-                    "type": "object",
-                    "default": {},
-                    "description": "A dict of bui apps where the key is the name of the bui app and the value is the config dict.",
-                    "scope": "window"
-                },
-                "bbj.web.AutoSaveUponRun": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Auto Save upon run of bbj program",
-                    "scope": "window"
-                },
-                "bbj.formatter.indentWidth": {
-                    "type": "number",
-                    "default": 2,
-                    "description": "Set the indentation width",
-                    "scope": "window"
-                },
-                "bbj.formatter.removeLineContinuation": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable/disable removing line continuations",
-                    "scope": "window"
-                },
-                "bbj.formatter.keywordsToUppercase": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable/disable converting keywords to uppercase",
-                    "scope": "window"
-                },
-                "bbj.formatter.splitSingleLineIF": {
-                    "type": "boolean",
-                    "default": false,
-                    "description": "Enable/disable single line IF statements",
-                    "scope": "window"
-                }
-            }
-        }
-    },
-    "activationEvents": [
-        "onLanguage:bbj",
-        "onCommand:bbj.config",
-        "onCommand:bbj.properties",
-        "onCommand:bbj.em",
-        "onCommand:bbj.run",
-        "onCommand:bbj.runBUI",
-        "onCommand:bbj.runDWC",
-        "onCommand:bbj.autoComment",
-        "onCommand:bbj.initInterop"
+        "configuration": "./bbj-language-configuration.json"
+      },
+      {
+        "id": "bbx",
+        "aliases": [
+          "BBx"
+        ],
+        "extensions": [
+          "bbx"
+        ],
+        "icon": {
+          "light": "./images/bbj-config-light.svg",
+          "dark": "./images/bbj-config-dark.svg"
+        },
+        "configuration": "./bbx-language-configuration.json"
+      }
     ],
-    "main": "./out/extension.cjs",
-    "scripts": {
-        "prepare": "npm run langium:generate && npm run build",
-        "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
-        "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
-        "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
-        "lint": "eslint src test --ext ts",
-        "test": "vitest run",
-        "test:watch": "vitest watch",
-        "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-        "esbuild": "npm run esbuild-base -- --sourcemap",
-        "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-        "test-compile": "tsc -p ./",
-        "langium:generate": "langium generate",
-        "langium:watch": "langium generate --watch"
+    "grammars": [
+      {
+        "language": "bbj",
+        "scopeName": "source.bbj",
+        "path": "./syntaxes/bbj.tmLanguage.json"
+      },
+      {
+        "language": "bbx",
+        "scopeName": "source.bbx",
+        "path": "./syntaxes/bbx.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "bbj",
+        "path": "./snippets/bbj.json"
+      }
+    ],
+    "commands": [
+      {
+        "category": "BBj",
+        "command": "bbj.initInterop",
+        "title": "Initialize BBj Interop in BBj Service"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.config",
+        "title": "Show the config.bbx file"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.properties",
+        "title": "Show the BBj.properties file"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.em",
+        "title": "Open Enterprise Manager"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.run",
+        "title": "Run As BBj Program",
+        "icon": {
+          "light": "./images/run-gui-light.svg",
+          "dark": "./images/run-gui-dark.svg"
+        },
+        "key": "alt+g"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.runBUI",
+        "title": "Run As BUI Program",
+        "icon": {
+          "light": "./images/run-bui-light.svg",
+          "dark": "./images/run-bui-dark.svg"
+        },
+        "key": "alt+b"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.runDWC",
+        "title": "Run As DWC Program",
+        "icon": {
+          "light": "./images/run-dwc-light.svg",
+          "dark": "./images/run-dwc-dark.svg"
+        },
+        "key": "alt+d"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bbj.run",
+        "key": "alt+g"
+      },
+      {
+        "command": "bbj.runBUI",
+        "key": "alt+b"
+      },
+      {
+        "command": "bbj.runDWC",
+        "key": "alt+d"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.run",
+          "group": "BBj@1"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runBUI",
+          "group": "BBj@2"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runDWC",
+          "group": "BBj@3"
+        }
+      ],
+      "editor/title": [
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.run",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runBUI",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runDWC",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.run",
+          "group": "BBj@1"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runBUI",
+          "group": "BBj@2"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.runDWC",
+          "group": "BBj32"
+        }
+      ]
     },
-    "dependencies": {
-        "chevrotain": "^11.0.3",
-        "langium": "~3.2.0",
-        "properties-file": "~3.2.5",
-        "properties-reader": "^2.2.0",
-        "vscode-jsonrpc": "^8.2.1",
-        "vscode-languageclient": "^9.0.1",
-        "vscode-uri": "^3.0.2"
-    },
-    "devDependencies": {
-        "@types/node": "^18.0.0",
-        "@types/vscode": "^1.67.0",
-        "@typescript-eslint/eslint-plugin": "^5.28.0",
-        "@typescript-eslint/parser": "^5.28.0",
-        "concurrently": "^8.2.0",
-        "esbuild": "^0.18.12",
-        "eslint": "^8.17.0",
-        "langium-cli": "^3.2.0",
-        "shx": "^0.3.4",
-        "typescript": "^4.9.4",
-        "vitest": "~1.4.0"
+    "configuration": {
+      "type": "object",
+      "title": "BBj configuration",
+      "properties": {
+        "bbj.home": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Specify the path to the BBj executable",
+          "scope": "window"
+        },
+        "bbj.classpath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "bbj_default",
+          "description": "BBj Classpath to use for starting applications",
+          "scope": "window"
+        },
+        "bbj.web.username": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "admin",
+          "description": "EM username",
+          "scope": "window"
+        },
+        "bbj.web.password": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "admin123",
+          "description": "EM password",
+          "scope": "window"
+        },
+        "bbj.web.apps": {
+          "type": "object",
+          "default": {},
+          "description": "A dict of bui apps where the key is the name of the bui app and the value is the config dict.",
+          "scope": "window"
+        },
+        "bbj.web.AutoSaveUponRun": {
+          "type": "boolean",
+          "default": false,
+          "description": "Auto Save upon run of bbj program",
+          "scope": "window"
+        },
+        "bbj.formatter.indentWidth": {
+          "type": "number",
+          "default": 2,
+          "description": "Set the indentation width",
+          "scope": "window"
+        },
+        "bbj.formatter.removeLineContinuation": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable removing line continuations",
+          "scope": "window"
+        },
+        "bbj.formatter.keywordsToUppercase": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable converting keywords to uppercase",
+          "scope": "window"
+        },
+        "bbj.formatter.splitSingleLineIF": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable single line IF statements",
+          "scope": "window"
+        }
+      }
     }
+  },
+  "activationEvents": [
+    "onLanguage:bbj",
+    "onCommand:bbj.config",
+    "onCommand:bbj.properties",
+    "onCommand:bbj.em",
+    "onCommand:bbj.run",
+    "onCommand:bbj.runBUI",
+    "onCommand:bbj.runDWC",
+    "onCommand:bbj.autoComment",
+    "onCommand:bbj.initInterop"
+  ],
+  "main": "./out/extension.cjs",
+  "scripts": {
+    "prepare": "npm run langium:generate && npm run build",
+    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
+    "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
+    "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
+    "lint": "eslint src test --ext ts",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./",
+    "langium:generate": "langium generate",
+    "langium:watch": "langium generate --watch"
+  },
+  "dependencies": {
+    "chevrotain": "^11.0.3",
+    "langium": "~3.2.0",
+    "properties-file": "~3.2.5",
+    "properties-reader": "^2.2.0",
+    "vscode-jsonrpc": "^8.2.1",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-uri": "^3.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.67.0",
+    "@typescript-eslint/eslint-plugin": "^5.28.0",
+    "@typescript-eslint/parser": "^5.28.0",
+    "concurrently": "^8.2.0",
+    "esbuild": "^0.18.12",
+    "eslint": "^8.17.0",
+    "langium-cli": "^3.2.0",
+    "shx": "^0.3.4",
+    "typescript": "^4.9.4",
+    "vitest": "~1.4.0"
+  }
 }
