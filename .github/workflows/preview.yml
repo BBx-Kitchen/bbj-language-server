@@ -1,0 +1,56 @@
+# .github/workflows/preview.yml
+name: Publish Preview Extension
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install -g vsce jq
+      - run: cd bbj-vscode && npm ci
+
+      - name: Bump patch version
+        run: |
+          cd bbj-vscode
+          VERSION=$(jq -r .version package.json)
+          PARTS=(${VERSION//./ })
+
+          if [ ${#PARTS[@]} -eq 2 ]; then
+            NEW_VERSION="${PARTS[0]}.${PARTS[1]}.1"
+          else
+            PATCH=${PARTS[2]:-0}
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="${PARTS[0]}.${PARTS[1]}.$PATCH"
+          fi
+
+          echo "Bumping version to $NEW_VERSION"
+          jq ".version = \"$NEW_VERSION\"" package.json > tmp && mv tmp package.json
+
+      - name: Commit version bump
+        run: |
+          cd bbj-vscode
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "Bump preview version"
+          git push
+
+      - name: Package & Publish Preview
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          cd bbj-vscode
+          vsce package
+          vsce publish --pre-release -p $VSCE_PAT
