@@ -1,6 +1,6 @@
 {
   "name": "bbj-vscode",
-  "version": "0.0.49",
+  "version": "0.1.0",
   "publisher": "BEU",
   "displayName": " BBj Language Support",
   "description": "BBj Language Support for Visual Studio Code",
