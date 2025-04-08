@@ -1,0 +1,82 @@
+# .github/workflows/manual-release.yml
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (must be higher and end with .0, e.g. 25.12.0)'
+        required: true
+
+jobs:
+  manual-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+          npm install -g @vscode/vsce semver
+
+      - name: Install dependencies
+        working-directory: bbj-vscode
+        run: npm ci
+
+      - name: Validate version input
+        working-directory: bbj-vscode
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          echo "Target version: $VERSION"
+      
+          CURRENT=$(jq -r .version package.json)
+          echo "Current version in package.json: $CURRENT"
+      
+          # Must be in x.y.0 format
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0]+$ ]]; then
+            echo "❌ Error: Version must be in format x.y.0, e.g. 25.12.0"
+            exit 1
+          fi
+      
+          # Ensure new version is greater
+          if npx semver "$VERSION" -r ">$CURRENT"; then
+            echo "✅ Version $VERSION is valid and greater than $CURRENT"
+          else
+            echo "❌ Error: Version $VERSION is not greater than current version $CURRENT"
+            exit 1
+          fi
+
+      - name: Set package.json version
+        working-directory: bbj-vscode
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          jq ".version = \"$VERSION\"" package.json > tmp && mv tmp package.json
+
+      - name: Commit and tag version
+        working-directory: bbj-vscode
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add package.json
+          git commit -m "Release version $VERSION"
+          git tag "v$VERSION"
+          git push origin main
+          git push origin "v$VERSION"
+
+      - name: Package and publish to VS Code Marketplace
+        working-directory: bbj-vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          npx vsce package
+          npx vsce publish -p $VSCE_PAT

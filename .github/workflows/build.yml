@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches:
-      - main
       - typefox-dev
   pull_request:
     branches:
