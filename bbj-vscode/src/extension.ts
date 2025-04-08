@@ -26,14 +26,11 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("bbj.run", Commands.run);
     vscode.commands.registerCommand("bbj.runBUI", Commands.runBUI);
     vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);
-    vscode.commands.registerCommand("bbj.initInterop", Commands.initInterop);
 
     vscode.languages.registerDocumentFormattingEditProvider(
         "bbj",
         DocumentFormatter
     );
-
-    Commands.initInterop();
 
 }
 

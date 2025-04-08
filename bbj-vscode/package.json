@@ -73,11 +73,6 @@
     "commands": [
       {
         "category": "BBj",
-        "command": "bbj.initInterop",
-        "title": "Initialize BBj Interop in BBj Service"
-      },
-      {
-        "category": "BBj",
         "command": "bbj.config",
         "title": "Show the config.bbx file"
       },
@@ -276,8 +271,7 @@
     "onCommand:bbj.run",
     "onCommand:bbj.runBUI",
     "onCommand:bbj.runDWC",
-    "onCommand:bbj.autoComment",
-    "onCommand:bbj.initInterop"
+    "onCommand:bbj.autoComment"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
