@@ -54,12 +54,13 @@ export class JavadocProvider {
             try {
                 nodes = await this.fsAccess.readDirectory(root)
             } catch (e) {
-                console.warn(`Failed to read javadoc directory ${root.toString()}: ${e}`);
+                console.debug(`Failed to read javadoc directory ${root.toString()}: ${e}`);
                 continue;
             }
             for (const node of nodes) {
                 const fileName = this.filename(node.uri)
                 if (node.isFile && fileName && fileName.endsWith(".json")) {
+                    console.debug(`Found ${fileName.toString()}`)
                     const packageName = fileName.slice(0, -5); // cut .json
                     if (packageName !== undefined) {
                         this.packages.set(packageName, this.lazyLoad ? node.uri : await this.loadJavadocFile(packageName, node.uri));

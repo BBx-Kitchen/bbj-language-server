@@ -20,37 +20,24 @@ Contributors welcome!
 
 ## Installation Requirements
 
-* Java 21
-* BBj 24.00 and up
+* BBj 25.00 and up
 * BBjServices has to run locally (for now)
+
+
+### Important Information: Upgrading this extension from Pre-25 versions
+
+If you were using the Pre-25 version of the extension (0.x.x version numbers), make sure to completely uninstall them, and clean up your BBj install:
+
+1. Remove the extension from VSCode completely before continuing with the Setup
+2. Go to BBj Enterprise Manager, and remove the "vscode" Classpath, and the "vscode" Autorun Job
+
+Failing to do so may result in unpredictable failure.
 
 ## Setup
 
-1. Install the extension
-2. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
-3. The plug-in launches a Java-based module inside your local BBj installation. This module will be automatically configured upon first start. See below for further details.  
-
-
-
-### Java Interop Module
-
-The Java Interop Module configures a local BBj to host the Java part of the language server directly inside a locally installed and running BBj Service.
-
-The initialization process runs automatically whenever the extension is activated. For debugging purposes the initialization can be manually triggered with a Command "BBj: Initialize BBj interop service"
-
-When successful, this initialization process performs the following actions:
-
-1. Create a classpath in BBj Services named "vscode" and adds the jar files shipped with the extension in the subdirectory "/java-interop/lib/"
-2. Adds an autostart task group "vscode" to BBj Services to launch the interop services with every startup, and 
-3. starts the interop service thread right away if not already running.
-
-The interop service is a Java thread that cannot be seen in BBj's process list in Enterprise Manager.
-
-After initial install of the extension or potentially after an update of the extension you may have to restart VSCode and your local BBjServices.
-
-
-#### Note:
-Altenatively, the Java interop part can be run isolated from BBj as described under https://github.com/BBx-Kitchen/bbj-language-server, if no local BBj installation is running. However, Code Completion will the not be able to resolve BBj built-in types.  
+1. BBj 25.00 introduces a new Server, the BBj Language Service. Go to Enterprise Manager and enable it
+2. Install the extension using the Extensions functionality in VSCode
+3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
 
 ### Credits

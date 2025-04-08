@@ -1,8 +1,8 @@
 {
-    "name": "bbj-vscode",
-    "version": "0.0.44-SNAPSHOT",
-    "publisher": "BEU",
-    "displayName": " BBj Language Support",
+    "name": "bbj-lang",
+    "version": "0.2.1",
+    "publisher": "basis-intl",
+    "displayName": " BBj Programming Language Support",
     "description": "BBj Language Support for Visual Studio Code",
     "license": "MIT",
     "icon": "images/icon.png",
