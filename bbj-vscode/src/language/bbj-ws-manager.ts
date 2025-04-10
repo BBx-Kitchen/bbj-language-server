@@ -27,7 +27,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
-            this.bbjdir = params.initializationOptions;
+            this.bbjdir = params.initializationOptions.home;
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;

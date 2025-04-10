@@ -15,6 +15,7 @@ import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 
 const DEFAULT_PORT = 5008;
+const DEFAULT_HOSTNAME = "127.0.0.1";
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
@@ -62,7 +63,7 @@ export class JavaInteropService {
             const socket = new Socket();
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
-            socket.connect(DEFAULT_PORT, '127.0.0.1');
+            socket.connect(DEFAULT_PORT, DEFAULT_HOSTNAME);
         });
     }
 
