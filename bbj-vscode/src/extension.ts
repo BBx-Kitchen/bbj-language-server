@@ -63,9 +63,6 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
 
     const config = vscode.workspace.getConfiguration("bbj");
     // Options to control the language client
-    console.log(config.get("home"));
-    console.log(config.get("interop-hostname"));
-    console.log(config.get("interop-port"));
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'bbj' }],
         synchronize: {
@@ -87,7 +84,28 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
         clientOptions
     );
 
+    client.onDidChangeState(() => {
+        client.onNotification('bbj/connectionStatus', (status: ConnectionStatus) => {
+            if (status.success) {
+                vscode.window.showInformationMessage(
+                    `Connected to Java service at ${status.hostname}:${status.port}`
+                );
+            } else {
+                vscode.window.showErrorMessage(
+                    `Failed to connect to Java service at ${status.hostname}:${status.port}`
+                );
+            }
+        })
+    });
+
     // Start the client. This will also launch the server
     client.start();
     return client;
+}
+
+interface ConnectionStatus {
+    success: boolean;
+    message: string;
+    hostname: string;
+    port: number;
 }
