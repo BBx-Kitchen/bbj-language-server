@@ -62,10 +62,10 @@ export class JavaInteropService {
             );
             connection.listen();
 
-            this.sendConnectionNotification(true);
+            this.sendConnectionSuccessNotification();
         } catch (e: any) {
             console.error('Failed to connect to the Java service.', e);
-            this.sendConnectionNotification(false);
+            this.sendConnectionFailedNotification();
             return Promise.reject(e);
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
@@ -213,14 +213,24 @@ export class JavaInteropService {
         return javaClass;
     }
 
-    private sendConnectionNotification(success:boolean) : void {
-        (this.services.shared as any).lsp.Connection?.sendNotification(
-            connectionStatusNotification, {
-                success: success,
-                hostname: this.config.hostname,
-                port: this.config.port
-            }
-        );
+    private sendConnectionSuccessNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionSuccessNotification,
+                `Connected to Java service at ${this.config.hostname}:${this.config.port}`
+            );
+        }
+    }
+    
+    private sendConnectionFailedNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionErrorNotification,
+                `Failed to connect to Java service at ${this.config.hostname}:${this.config.port}`
+            );
+        }
     }
 
 }
@@ -229,7 +239,8 @@ const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
 
-const connectionStatusNotification = new NotificationType<ConnectionStatus>('bbj/connectionStatus');
+const connectionSuccessNotification = new NotificationType<string>('bbj/connectionStatus/success');
+const connectionErrorNotification = new NotificationType<string>('bbj/connectionStatus/error');
 
 interface ClassInfoParams {
     className: string
@@ -243,12 +254,6 @@ interface ClassPathInfoParams {
 }
 
 interface JavaInteropConfig {
-    hostname: string;
-    port: number;
-}
-
-interface ConnectionStatus {
-    success: boolean;
     hostname: string;
     port: number;
 }

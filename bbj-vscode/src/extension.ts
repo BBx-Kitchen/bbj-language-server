@@ -85,27 +85,11 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
     );
 
     client.onDidChangeState(() => {
-        client.onNotification('bbj/connectionStatus', (status: ConnectionStatus) => {
-            if (status.success) {
-                vscode.window.showInformationMessage(
-                    `Connected to Java service at ${status.hostname}:${status.port}`
-                );
-            } else {
-                vscode.window.showErrorMessage(
-                    `Failed to connect to Java service at ${status.hostname}:${status.port}`
-                );
-            }
-        })
+        client.onNotification('bbj/connectionStatus/success', (connectionMessage: string) => { vscode.window.showInformationMessage(connectionMessage)});
+        client.onNotification('bbj/connectionStatus/error', (connectionMessage: string) => { vscode.window.showErrorMessage(connectionMessage)});
     });
 
     // Start the client. This will also launch the server
     client.start();
     return client;
-}
-
-interface ConnectionStatus {
-    success: boolean;
-    message: string;
-    hostname: string;
-    port: number;
 }
