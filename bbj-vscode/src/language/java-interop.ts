@@ -26,6 +26,7 @@ export class JavaInteropService {
 
     private connection?: MessageConnection;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly config: JavaInteropConfig;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -37,9 +38,16 @@ export class JavaInteropService {
             $type: Classpath,
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
+
+        const initParams = (services.shared as any).lsp.Connection?.initializeParams;
+        this.config = {
+            hostname: initParams?.initializationOptions?.hostname || DEFAULT_HOSTNAME,
+            port: initParams?.initializationOptions?.port || DEFAULT_PORT
+        };
     }
 
     protected async connect(): Promise<MessageConnection> {
+        console.log("HELLO");
         if (this.connection) {
             return this.connection;
         }
@@ -63,7 +71,11 @@ export class JavaInteropService {
             const socket = new Socket();
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
-            socket.connect(DEFAULT_PORT, DEFAULT_HOSTNAME);
+
+            const port = this.config.port || 5008;
+            const hostname = this.config.hostname || "127.0.0.1";
+            socket.connect(port, hostname);
+            console.log("HERE");
         });
     }
 
@@ -211,4 +223,9 @@ interface PackageInfoParams {
 
 interface ClassPathInfoParams {
     classPathEntries: string[]
+}
+
+interface JavaInteropConfig {
+    hostname?: string;
+    port?: number;
 }

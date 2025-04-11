@@ -202,7 +202,7 @@
             "string",
             "null"
           ],
-          "default": "5008",
+          "default": null,
           "description": "Specify the port to connect to the Java Interop",
           "scope": "window"
         },
@@ -211,7 +211,7 @@
             "string",
             "null"
           ],
-          "default": "127.0.0.1",
+          "default": null,
           "description": "Specify the name to connect to the Java Interop",
           "scope": "window"
         },
