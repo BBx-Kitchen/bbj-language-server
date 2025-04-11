@@ -7,7 +7,7 @@
 import { AstUtils, LangiumDocument, LangiumDocuments, Mutable } from 'langium';
 import { Socket } from 'net';
 import {
-    CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
+    CancellationToken, createMessageConnection, MessageConnection, NotificationType, RequestType, SocketMessageReader, SocketMessageWriter
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
@@ -15,6 +15,7 @@ import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 
 const DEFAULT_PORT = 5008;
+const DEFAULT_HOSTNAME = "localhost";
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
@@ -25,10 +26,12 @@ export class JavaInteropService {
 
     private connection?: MessageConnection;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly config: JavaInteropConfig;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
+    protected services: BBjServices;
 
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
@@ -36,6 +39,18 @@ export class JavaInteropService {
             $type: Classpath,
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
+
+        this.services = services;
+
+        const initParams = (services.shared as any).lsp.Connection?.initializeParams;
+        console.log("TEST" + initParams);
+        console.log("SERVICES" + (services.shared as any).lsp.LanguageServer);
+        services.shared.lsp.
+        LanguageServer.onInitialized((params) => console.log("PARAMS" + params));
+        this.config = {
+            hostname: initParams?.initializationOptions?.hostname || DEFAULT_HOSTNAME,
+            port: initParams?.initializationOptions?.port || DEFAULT_PORT
+        };
     }
 
     protected async connect(): Promise<MessageConnection> {
@@ -45,10 +60,16 @@ export class JavaInteropService {
         let socket: Socket;
         try {
             socket = await this.createSocket();
-        } catch (e) {
-            // TODO send error message to the client.
-            // Allow the user to retry the connection.
-            console.error('Failed to connect to the Java service.', e)
+            const connection = createMessageConnection(
+                new SocketMessageReader(socket), 
+                new SocketMessageWriter(socket)
+            );
+            connection.listen();
+
+            this.sendConnectionSuccessNotification();
+        } catch (e: any) {
+            console.error('Failed to connect to the Java service.', e);
+            this.sendConnectionFailedNotification();
             return Promise.reject(e);
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
@@ -62,7 +83,8 @@ export class JavaInteropService {
             const socket = new Socket();
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
-            socket.connect(DEFAULT_PORT, '127.0.0.1');
+
+            socket.connect(this.config.port, this.config.hostname);
         });
     }
 
@@ -195,11 +217,34 @@ export class JavaInteropService {
         return javaClass;
     }
 
+    private sendConnectionSuccessNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionSuccessNotification,
+                `Connected to Java service at ${this.config.hostname}:${this.config.port}`
+            );
+        }
+    }
+    
+    private sendConnectionFailedNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionErrorNotification,
+                `Failed to connect to Java service at ${this.config.hostname}:${this.config.port}`
+            );
+        }
+    }
+
 }
 
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
+
+const connectionSuccessNotification = new NotificationType<string>('bbj/connectionStatus/success');
+const connectionErrorNotification = new NotificationType<string>('bbj/connectionStatus/error');
 
 interface ClassInfoParams {
     className: string
@@ -210,4 +255,9 @@ interface PackageInfoParams {
 
 interface ClassPathInfoParams {
     classPathEntries: string[]
+}
+
+interface JavaInteropConfig {
+    hostname: string;
+    port: number;
 }
