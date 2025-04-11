@@ -29,6 +29,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
+            console.log(params.initializationOptions);
             this.bbjdir = params.initializationOptions.home;
             this.interopHostname = params.initializationOptions.hostname;
             this.interopPort = params.initializationOptions.port;

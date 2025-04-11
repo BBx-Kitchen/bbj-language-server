@@ -43,6 +43,10 @@ export class JavaInteropService {
         this.services = services;
 
         const initParams = (services.shared as any).lsp.Connection?.initializeParams;
+        console.log("TEST" + initParams);
+        console.log("SERVICES" + (services.shared as any).lsp.LanguageServer);
+        services.shared.lsp.
+        LanguageServer.onInitialized((params) => console.log("PARAMS" + params));
         this.config = {
             hostname: initParams?.initializationOptions?.hostname || DEFAULT_HOSTNAME,
             port: initParams?.initializationOptions?.port || DEFAULT_PORT
