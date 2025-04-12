@@ -65,6 +65,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             if (this.bbjdir) {
                 wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
             }
+            console.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
+
             await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             if (this.settings!.classpath.length > 0) {

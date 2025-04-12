@@ -57,6 +57,8 @@ export class JavadocProvider {
                 console.debug(`Failed to read javadoc directory ${root.toString()}: ${e}`);
                 continue;
             }
+            console.debug(`Scanning directory for javadoc: ${root.toString()}`);
+
             for (const node of nodes) {
                 const fileName = this.filename(node.uri)
                 if (node.isFile && fileName && fileName.endsWith(".json")) {
