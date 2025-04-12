@@ -46,7 +46,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 }
                 if (this.bbjdir) {
                     try {
-                        const bbjcfgdir = await this.fileSystemProvider.readDirectory(URI.parse(this.bbjdir + "/cfg/"));
+                        const bbjcfgdir = await this.fileSystemProvider.readDirectory(joinPath(safeUri(this.bbjdir), 'cfg'));
                         const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
                         if (configbbx) {
                             prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
@@ -61,9 +61,13 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             this.settings = parseSettings(propcontents, prefixfromconfig)
 
             // initialize javadoc look-up before loading classes.
-            const wsJavadocFolders = folders.map(folder => URI.parse(folder.uri + '/javadoc/'))
+            const wsJavadocFolders = folders.map(folder =>
+                joinPath(safeUri(folder.uri), 'javadoc')
+            );
             if (this.bbjdir) {
-                wsJavadocFolders.unshift(URI.parse(this.bbjdir + '/documentation/javadoc/'))
+                wsJavadocFolders.unshift(
+                    joinPath(safeUri(this.bbjdir), 'documentation', 'javadoc')
+                );
             }
             console.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
 
@@ -129,7 +133,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (documentUri.fsPath.startsWith(path.normalize(prefix))) {
+                if (documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
                     return true;
                 }
             }
@@ -153,7 +157,16 @@ export function parseSettings(input: string, prefixfromconfigbbx: string | undef
     } else if (prefixfromconfigbbx)
         pfx = prefixfromconfigbbx;
 
-    return { prefixes: collectPrefixes(pfx), classpath: cp.split(":") };
+    return { prefixes: collectPrefixes(pfx), classpath: cp.split(path.delimiter) };
+}
+
+export function safeUri(input: string): URI {
+    return input.startsWith('file://') ? URI.parse(input) : URI.file(input);
+}
+export function joinPath(base: URI, ...segments: string[]): URI {
+    const path = [base.path, ...segments].join('/');
+    const normalized = path.replace(/\/+/g, '/');
+    return base.with({ path: normalized });
 }
 
 export function collectPrefixes(input: string): string[] {
