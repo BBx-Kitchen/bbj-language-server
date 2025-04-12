@@ -28,4 +28,4 @@ Once the new VS Code instance is started, open a bbj file and see how the editor
 If you want to test this project on your local machine, you need to install [Node.js](https://nodejs.org/) and [JDK](https://openjdk.org/). Then execute the following commands.
 
  * In the `bbj-vscode` subfolder: `npm install`
- * In the `java-interop` subfolder: `./gradlew assemble`
+
