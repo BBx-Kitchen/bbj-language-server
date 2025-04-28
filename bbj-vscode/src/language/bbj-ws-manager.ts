@@ -23,16 +23,12 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private javaInterop: JavaInteropService;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
-    private interopHostname?: string;
-    private interopPort?: number;
 
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
-            console.log(params.initializationOptions);
+            console.log("HERE");
             this.bbjdir = params.initializationOptions.home;
-            this.interopHostname = params.initializationOptions.hostname;
-            this.interopPort = params.initializationOptions.port;
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;

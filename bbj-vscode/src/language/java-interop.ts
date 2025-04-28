@@ -26,7 +26,7 @@ export class JavaInteropService {
 
     private connection?: MessageConnection;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
-    private readonly config: JavaInteropConfig;
+    private config: JavaInteropConfig;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -34,19 +34,15 @@ export class JavaInteropService {
     protected services: BBjServices;
 
     constructor(services: BBjServices) {
+        this.services = services;
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
             $type: Classpath,
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
 
-        this.services = services;
-
+        // Get initialization options from LSP connection
         const initParams = (services.shared as any).lsp.Connection?.initializeParams;
-        console.log("TEST" + initParams);
-        console.log("SERVICES" + (services.shared as any).lsp.LanguageServer);
-        services.shared.lsp.
-        LanguageServer.onInitialized((params) => console.log("PARAMS" + params));
         this.config = {
             hostname: initParams?.initializationOptions?.hostname || DEFAULT_HOSTNAME,
             port: initParams?.initializationOptions?.port || DEFAULT_PORT
@@ -65,17 +61,15 @@ export class JavaInteropService {
                 new SocketMessageWriter(socket)
             );
             connection.listen();
-
+            this.connection = connection;
+            
             this.sendConnectionSuccessNotification();
+            return connection;
         } catch (e: any) {
             console.error('Failed to connect to the Java service.', e);
             this.sendConnectionFailedNotification();
             return Promise.reject(e);
         }
-        const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
-        connection.listen();
-        this.connection = connection;
-        return connection;
     }
 
     protected createSocket(): Promise<Socket> {
@@ -235,6 +229,10 @@ export class JavaInteropService {
                 `Failed to connect to Java service at ${this.config.hostname}:${this.config.port}`
             );
         }
+    }
+
+    public setConnectionParams(interopConfig:JavaInteropConfig): void {
+        this.config = interopConfig;
     }
 
 }
