@@ -47,6 +47,7 @@ rem set the properties for the application
 app!.setString(app!.NAME, name!)
 app!.setString(app!.PROGRAM, programme!)
 app!.setString(app!.WORKING_DIRECTORY , wd!)
+app!.setString(app!.CONFIG_FILE, BBjAPI().getConfig().getConfigFileName())
 
 if sscp! <> null() and sscp! > "" and sscp! <> "--" then
     app!.setString(app!.CLASSPATH, sscp!)
