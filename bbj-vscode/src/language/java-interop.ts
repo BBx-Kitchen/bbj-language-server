@@ -14,9 +14,6 @@ import { BBjServices } from './bbj-module.js';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 
-const DEFAULT_PORT = 5008;
-const DEFAULT_HOSTNAME = "localhost";
-
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.class'
@@ -26,12 +23,14 @@ export class JavaInteropService {
 
     private connection?: MessageConnection;
     private readonly resolvedClasses: Map<string, JavaClass> = new Map();
-    private config: JavaInteropConfig;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
     protected services: BBjServices;
+
+    public port: number = 5008;
+    public hostname: string = "localhost";
 
     constructor(services: BBjServices) {
         this.services = services;
@@ -40,13 +39,6 @@ export class JavaInteropService {
             $type: Classpath,
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
-
-        // Get initialization options from LSP connection
-        const initParams = (services.shared as any).lsp.Connection?.initializeParams;
-        this.config = {
-            hostname: initParams?.initializationOptions?.hostname || DEFAULT_HOSTNAME,
-            port: initParams?.initializationOptions?.port || DEFAULT_PORT
-        };
     }
 
     protected async connect(): Promise<MessageConnection> {
@@ -78,7 +70,7 @@ export class JavaInteropService {
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
 
-            socket.connect(this.config.port, this.config.hostname);
+            socket.connect(this.port, this.hostname);
         });
     }
 
@@ -216,7 +208,7 @@ export class JavaInteropService {
         if (lspConnection) {
             lspConnection.sendNotification(
                 connectionSuccessNotification,
-                `Connected to Java service at ${this.config.hostname}:${this.config.port}`
+                `Connected to Java service at ${this.hostname}:${this.port}`
             );
         }
     }
@@ -226,13 +218,9 @@ export class JavaInteropService {
         if (lspConnection) {
             lspConnection.sendNotification(
                 connectionErrorNotification,
-                `Failed to connect to Java service at ${this.config.hostname}:${this.config.port}`
+                `Failed to connect to Java service at ${this.hostname}:${this.port}`
             );
         }
-    }
-
-    public setConnectionParams(interopConfig:JavaInteropConfig): void {
-        this.config = interopConfig;
     }
 
 }
@@ -253,9 +241,4 @@ interface PackageInfoParams {
 
 interface ClassPathInfoParams {
     classPathEntries: string[]
-}
-
-interface JavaInteropConfig {
-    hostname: string;
-    port: number;
 }
