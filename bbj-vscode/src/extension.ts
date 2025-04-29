@@ -62,9 +62,6 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
     context.subscriptions.push(fileSystemWatcher);
 
     const config = vscode.workspace.getConfiguration("bbj");
-    console.log(config.get("home"));
-    console.log(config.get("interop-hostname"));
-    console.log(config.get("interop-port"));
 
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
