@@ -7,14 +7,12 @@
 import { AstUtils, LangiumDocument, LangiumDocuments, Mutable } from 'langium';
 import { Socket } from 'net';
 import {
-    CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
+    CancellationToken, createMessageConnection, MessageConnection, NotificationType, RequestType, SocketMessageReader, SocketMessageWriter
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
-
-const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
@@ -29,8 +27,13 @@ export class JavaInteropService {
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
+    protected services: BBjServices;
+
+    public port: number = 5008;
+    public hostname: string = "localhost";
 
     constructor(services: BBjServices) {
+        this.services = services;
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
             $type: Classpath,
@@ -45,16 +48,20 @@ export class JavaInteropService {
         let socket: Socket;
         try {
             socket = await this.createSocket();
-        } catch (e) {
-            // TODO send error message to the client.
-            // Allow the user to retry the connection.
-            console.error('Failed to connect to the Java service.', e)
+            const connection = createMessageConnection(
+                new SocketMessageReader(socket), 
+                new SocketMessageWriter(socket)
+            );
+            connection.listen();
+            this.connection = connection;
+            
+            this.sendConnectionSuccessNotification();
+            return connection;
+        } catch (e: any) {
+            console.error('Failed to connect to the Java service.', e);
+            this.sendConnectionFailedNotification();
             return Promise.reject(e);
         }
-        const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
-        connection.listen();
-        this.connection = connection;
-        return connection;
     }
 
     protected createSocket(): Promise<Socket> {
@@ -62,7 +69,8 @@ export class JavaInteropService {
             const socket = new Socket();
             socket.on('error', reject);
             socket.on('ready', () => resolve(socket));
-            socket.connect(DEFAULT_PORT, '127.0.0.1');
+
+            socket.connect(this.port, this.hostname);
         });
     }
 
@@ -195,11 +203,34 @@ export class JavaInteropService {
         return javaClass;
     }
 
+    private sendConnectionSuccessNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionSuccessNotification,
+                `Connected to Java service at ${this.hostname}:${this.port}`
+            );
+        }
+    }
+    
+    private sendConnectionFailedNotification(): void {
+        const lspConnection = (this.services.shared as any).lsp.Connection;
+        if (lspConnection) {
+            lspConnection.sendNotification(
+                connectionErrorNotification,
+                `Failed to connect to Java service at ${this.hostname}:${this.port}`
+            );
+        }
+    }
+
 }
 
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
+
+const connectionSuccessNotification = new NotificationType<string>('bbj/connectionStatus/success');
+const connectionErrorNotification = new NotificationType<string>('bbj/connectionStatus/error');
 
 interface ClassInfoParams {
     className: string
