@@ -206,60 +206,237 @@
           "description": "BBj Classpath to use for starting applications",
           "scope": "window"
         },
-        "bbj.web.username": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": "admin",
-          "description": "EM username",
-          "scope": "window"
-        },
-        "bbj.web.password": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": "admin123",
-          "description": "EM password",
-          "scope": "window"
-        },
-        "bbj.web.apps": {
+        "bbj.commandLineOptions": {
           "type": "object",
-          "default": {},
-          "description": "A dict of bui apps where the key is the name of the bui app and the value is the config dict.",
-          "scope": "window"
-        },
-        "bbj.web.AutoSaveUponRun": {
-          "type": "boolean",
-          "default": false,
-          "description": "Auto Save upon run of bbj program",
-          "scope": "window"
-        },
-        "bbj.formatter.indentWidth": {
-          "type": "number",
-          "default": 2,
-          "description": "Set the indentation width",
-          "scope": "window"
-        },
-        "bbj.formatter.removeLineContinuation": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable/disable removing line continuations",
-          "scope": "window"
-        },
-        "bbj.formatter.keywordsToUppercase": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable/disable converting keywords to uppercase",
-          "scope": "window"
-        },
-        "bbj.formatter.splitSingleLineIF": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable/disable single line IF statements",
+          "properties": {
+            "a": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Associates the SysConsole settings with a particular application so that the size, font, and position of the SysConsole are saved when the session is closed and recalled when the SysConsole is invoked again with a particular application name. Can be used with the -n parameter to create a two-part name/application key.",
+              "scope": "window"
+            },
+            "c": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Name of the configuration file on the remote machine to use.",
+              "scope": "window"
+            },
+            "d": {
+              "type": "boolean",
+              "description": "Invokes BBj in debug mode. In this mode, when BBj drops to console, debugging takes place in the BBj WinConsole.",
+              "scope": "window"
+            },
+            "n": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Associates the SysConsole settings with a particular name, so that the size, font, and position of the SysConsole are saved when the session is closed and recalled when the SysConsole is invoked again with a particular name. Can be used with the -a parameter to create a two-part name/application key.",
+              "scope": "window"
+            },
+            "q": {
+              "type": "boolean",
+              "description": "Suppresses the start-up message and is useful when running PRO/5 in background.",
+              "scope": "window"
+            },
+            "t": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "The alias of a terminal specified in the configuration file. FID(0) will return this alias in the Thin Client program.",
+              "scope": "window"
+            },
+            "u": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the user account to be used for Data Server and AppServer access.",
+              "scope": "window"
+            },
+            "CP": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the session-specific classpath for the session. See Session-Specific Classpath (SSCP).",
+              "default": "bbj_default",
+              "scope": "window"
+            },
+            "FC": {
+              "type": "boolean",
+              "description": "Runs in Fat Client mode (non-Thin Client). This option has been obsolete since BBj 5.00.",
+              "scope": "window"
+            },
+            "LF": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the look and feel the BBj session uses. Valid options are: default, cross, none, skinlf:theme (deprecated), vpro5.",
+              "scope": "window"
+            },
+            "LO": {
+              "type": "boolean",
+              "description": "Loads but does not run the specified program.",
+              "scope": "window"
+            },
+            "LP": {
+              "type": "integer",
+              "description": "Specifies the Port Request Server's (PRS) port. The executable connects to the PRS to get the appropriate port to use to connect to the ThinClientProxyServer. By default, the PRS uses port 2008.",
+              "scope": "window"
+            },
+            "MDI": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the mdiMode that will be used if this command is being executed within an MDI environment.",
+              "scope": "window"
+            },
+            "RH": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the machine name or IP address of the server on which the ThinClientServer (TCS) or SecureThinClientServer (STCS) resides.",
+              "scope": "window"
+            },
+            "RP": {
+              "type": "integer",
+              "description": "Specifies the ThinClientServer's (TCS) port on the remote machine. If no remote port number is specified, the default port, 2003, is used.",
+              "scope": "window"
+            },
+            "SC": {
+              "type": "boolean",
+              "description": "Specifies a secure connection between the ThinClientProxyServer (TCPS) and the SecureThinClientServer (STCS).",
+              "scope": "window"
+            },
+            "SMN": {
+              "type": "integer",
+              "description": "Specifies the minimum number of seconds for session monitoring.",
+              "scope": "window"
+            },
+            "SMX": {
+              "type": "integer",
+              "description": "Specifies the maximum number of seconds for session monitoring.",
+              "scope": "window"
+            },
+            "keystore": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the keystore file for SSL connections.",
+              "scope": "window"
+            },
+            "keypass": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the password for the keystore.",
+              "scope": "window"
+            },
+            "message": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies a message for BBjSessionInfo.",
+              "scope": "window"
+            },
+            "TC": {
+              "type": "boolean",
+              "description": "Specifies Thin Client mode.",
+              "scope": "window"
+            },
+            "WD": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "Specifies the working directory.",
+              "scope": "window"
+            },
+            "TCPSpreload": {
+              "type": "boolean",
+              "description": "Preloads the ThinClientProxyServer.",
+              "scope": "window"
+            },
+            "TCPSto": {
+              "type": "integer",
+              "description": "Specifies the timeout in seconds for the ThinClientProxyServer.",
+              "scope": "window"
+            },
+            "TCPShb": {
+              "type": "integer",
+              "description": "Specifies the heartbeat interval in seconds for the ThinClientProxyServer.",
+              "scope": "window"
+            }
+          },
+          "description": "Additional command-line options for BBj",
           "scope": "window"
         }
+      },
+      "bbj.web.username": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": "admin",
+        "description": "EM username",
+        "scope": "window"
+      },
+      "bbj.web.password": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "default": "admin123",
+        "description": "EM password",
+        "scope": "window"
+      },
+      "bbj.web.apps": {
+        "type": "object",
+        "default": {},
+        "description": "A dict of bui apps where the key is the name of the bui app and the value is the config dict.",
+        "scope": "window"
+      },
+      "bbj.web.AutoSaveUponRun": {
+        "type": "boolean",
+        "default": false,
+        "description": "Auto Save upon run of bbj program",
+        "scope": "window"
+      },
+      "bbj.formatter.indentWidth": {
+        "type": "number",
+        "default": 2,
+        "description": "Set the indentation width",
+        "scope": "window"
+      },
+      "bbj.formatter.removeLineContinuation": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable/disable removing line continuations",
+        "scope": "window"
+      },
+      "bbj.formatter.keywordsToUppercase": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable/disable converting keywords to uppercase",
+        "scope": "window"
+      },
+      "bbj.formatter.splitSingleLineIF": {
+        "type": "boolean",
+        "default": false,
+        "description": "Enable/disable single line IF statements",
+        "scope": "window"
       }
     }
   },
@@ -290,6 +467,7 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
+    "bbj-lang": "file:",
     "chevrotain": "^11.0.3",
     "langium": "~3.2.0",
     "properties-file": "~3.2.5",

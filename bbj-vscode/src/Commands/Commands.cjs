@@ -26,7 +26,7 @@ const runWeb = (params, client) => {
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
   const username = vscode.workspace.getConfiguration("bbj").web.username;
   const password = vscode.workspace.getConfiguration("bbj").web.password;
-  const sscp = vscode.workspace.getConfiguration("bbj").classpath;
+  const sscp = vscode.workspace.getConfiguration("bbj").commandLineOptions.classpath;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
   const workingDir = path.dirname(fileName);
@@ -88,20 +88,20 @@ const Commands = {
     if (!home) return;
 
     const webConfig = vscode.workspace.getConfiguration("bbj.web");
-    var sscp = vscode.workspace.getConfiguration("bbj").classpath;
+    const commandLineOptions = vscode.workspace.getConfiguration("bbj").commandLineOptions;
     
     const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
+    
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
-    const workingDir = path.dirname(fileName);
 
-    if (sscp != null && sscp>"") {
-      sscp = "-CP"+sscp;
-    } else {
-      sscp = "";
-    }
+    const workingDir = commandLineOptions.WD || path.dirname(fileName);
+    const sscp = commandLineOptions.classpath || "bbj_default";
+    const config = commandLineOptions || `${home}/cfg/config.bbx`
 
-    const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
+    const cmd = `${bbj} ${buildExecCommand(commandLineOptions)} -CP${sscp} ${fileName}`;
+
+    console.log(cmd);
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
@@ -126,5 +126,26 @@ const Commands = {
     runWeb(params, "DWC");
   }
 };
+
+const buildExecCommand = (options) =>  {
+  let cmd = "";
+
+  const boolFlags = ["q", "d", "FC", "LO", "SC", "TC", "TCPSpreload"];
+  const stringFlags = ["a", "c", "n", "t", "u", "LF", "MDI", "RH", "keystore", "keypass", "message", "WD"];
+  const intFlags = ["LP", "RP", "SMN", "SMX", "TCPSto", "TCPShb"];
+
+  const allFlags = [...boolFlags, ...stringFlags, ...intFlags];
+
+  for (const flag of allFlags) {
+    const value = options[flag];
+    if (boolFlags.includes(flag) && value === true) {
+      cmd += ` -${flag}`;
+    } else if (value) {
+      cmd += ` -${flag}${value}`;
+    }
+  }
+
+  return cmd;
+}
 
 module.exports = Commands;
