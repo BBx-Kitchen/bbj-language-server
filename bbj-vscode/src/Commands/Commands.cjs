@@ -124,6 +124,42 @@ const Commands = {
 
   runDWC: function (params) {
     runWeb(params, "DWC");
+  },
+
+  compile: function(filePath) {
+    const home = getBBjHome();
+    if (!home) return;
+
+    const cmd = `${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""} ${vscode.window.activeTextEditor.document.fileName}`;
+
+    console.log(cmd);
+
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        vscode.window.showErrorMessage(`Failed to decompile "${filePath}"`);
+      }
+    });
+
+    vscode.window.showInformationMessage(`Successfully compiled "${filePath}"`);
+  },
+  
+  decompile: function(filePath) {
+    const home = getBBjHome();
+    if (!home) return;
+
+    const cmd = `${home}/bin/bbjlst${os.platform() === "win32" ? ".exe" : ""} ${vscode.window.activeTextEditor.document.fileName}`;
+    console.log(cmd);
+
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        vscode.window.showErrorMessage(`Failed to decompile "${filePath}"`);
+      }
+    });
+
+    const path = vscode.Uri.file(vscode.window.activeTextEditor.document.fileName);
+    vscode.workspace.openTextDocument(path.path.replace(".bbj", "")).then(file => {
+      vscode.window.showTextDocument(file);
+    });
   }
 };
 

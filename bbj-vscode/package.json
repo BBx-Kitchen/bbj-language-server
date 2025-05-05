@@ -115,6 +115,26 @@
           "dark": "./images/run-dwc-dark.svg"
         },
         "key": "alt+d"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.decompile",
+        "title": "Decompile a BBj Program",
+        "icon": {
+          "light": "./images/run-dwc-light.svg",
+          "dark": "./images/run-dwc-dark.svg"
+        },
+        "key": "alt+x"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.compile",
+        "title": "Compile a BBj Program",
+        "icon": {
+          "light": "./images/run-dwc-light.svg",
+          "dark": "./images/run-dwc-dark.svg"
+        },
+        "key": "alt+x"
       }
     ],
     "keybindings": [
@@ -290,6 +310,7 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
+    "bbj-lang": "file:",
     "chevrotain": "^11.0.3",
     "langium": "~3.2.0",
     "properties-file": "~3.2.5",
