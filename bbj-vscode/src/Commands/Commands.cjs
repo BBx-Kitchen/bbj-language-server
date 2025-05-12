@@ -126,52 +126,57 @@ const Commands = {
     runWeb(params, "DWC");
   },
 
-  compile: function(filePath) {
+  compile: function (params) {
     const home = getBBjHome();
     if (!home) return;
-
     const cmd = `${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""} ${vscode.window.activeTextEditor.document.fileName}`;
 
-    console.log(cmd);
+    const active = vscode.window.activeTextEditor;
 
+    const fileName = active ? active.document.fileName : params.fsPath;;
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        vscode.window.showErrorMessage(`Failed to compile "${filePath}"`);
+        vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
         return;
       }
     });
-
-    vscode.window.showInformationMessage(`Successfully compile "${filePath}"`);
+    vscode.window.showInformationMessage(`Successfully compile "${fileName}"`);
   },
-  
-  decompile: function(filePath) {
+
+  decompile: async function (params) {
     const home = getBBjHome();
     if (!home) return;
   
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
-  
-    const originalPath = editor.document.fileName;
-    const cmd = `${home}/bin/bbjlst${os.platform() === "win32" ? ".exe" : ""} "${originalPath}"`;
-    console.log(`Running command: ${cmd}`);
+    const active = vscode.window.activeTextEditor;
+    const fileName = active ? active.document.fileName : params.fsPath;
+    const lstFileName = fileName + '.lst';
+    const cmd = `${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''} ${fileName}`;
   
     exec(cmd, (err, stdout, stderr) => {
-      if (err || stderr) {
-        vscode.window.showErrorMessage(`Failed to decompile "${filePath}": ${stderr || err.message}`);
+      if (err) {
+        vscode.window.showErrorMessage(`Failed to decompile ${fileName}: ${stderr || err.message}`);
         return;
       }
   
-      const decompiledContent = stdout || '';
-      const virtualDocUri = vscode.Uri.parse(`untitled:${originalPath}.decompiled.bbj`);
+      fs.unlink(fileName, (unlinkErr) => {
+        if (unlinkErr) {
+          vscode.window.showErrorMessage(`Failed to delete original file "${fileName}": ${unlinkErr.message}`);
+          return;
+        }
   
-      vscode.workspace.openTextDocument({ content: decompiledContent, language: 'bbj' }).then(doc => {
-        vscode.window.showTextDocument(doc, { preview: false });
+        fs.rename(lstFileName, fileName, (renameErr) => {
+          if (renameErr) {
+            vscode.window.showErrorMessage(`Failed to rename ${lstFileName} to ${fileName}: ${renameErr.message}`);
+            return;
+          }
+  
+          const virtualUri = vscode.Uri.file(fileName).with({ scheme });
+          vscode.commands.executeCommand('vscode.open', virtualUri);
+          vscode.window.showInformationMessage(`Successfully decompiled and opened "${fileName}"`);
+        });
       });
-  
-      vscode.window.showInformationMessage(`Successfully decompiled "${filePath}"`);
     });
-  }
-  
+  },
 };
 
 module.exports = Commands;
