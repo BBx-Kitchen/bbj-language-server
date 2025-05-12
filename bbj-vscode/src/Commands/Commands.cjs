@@ -136,31 +136,42 @@ const Commands = {
 
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        vscode.window.showErrorMessage(`Failed to decompile "${filePath}"`);
+        vscode.window.showErrorMessage(`Failed to compile "${filePath}"`);
+        return;
       }
     });
 
-    vscode.window.showInformationMessage(`Successfully compiled "${filePath}"`);
+    vscode.window.showInformationMessage(`Successfully compile "${filePath}"`);
   },
   
   decompile: function(filePath) {
     const home = getBBjHome();
     if (!home) return;
-
-    const cmd = `${home}/bin/bbjlst${os.platform() === "win32" ? ".exe" : ""} ${vscode.window.activeTextEditor.document.fileName}`;
-    console.log(cmd);
-
+  
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+  
+    const originalPath = editor.document.fileName;
+    const cmd = `${home}/bin/bbjlst${os.platform() === "win32" ? ".exe" : ""} "${originalPath}"`;
+    console.log(`Running command: ${cmd}`);
+  
     exec(cmd, (err, stdout, stderr) => {
-      if (err) {
-        vscode.window.showErrorMessage(`Failed to decompile "${filePath}"`);
+      if (err || stderr) {
+        vscode.window.showErrorMessage(`Failed to decompile "${filePath}": ${stderr || err.message}`);
+        return;
       }
-    });
-
-    const path = vscode.Uri.file(vscode.window.activeTextEditor.document.fileName);
-    vscode.workspace.openTextDocument(path.path.replace(".bbj", "")).then(file => {
-      vscode.window.showTextDocument(file);
+  
+      const decompiledContent = stdout || '';
+      const virtualDocUri = vscode.Uri.parse(`untitled:${originalPath}.decompiled.bbj`);
+  
+      vscode.workspace.openTextDocument({ content: decompiledContent, language: 'bbj' }).then(doc => {
+        vscode.window.showTextDocument(doc, { preview: false });
+      });
+  
+      vscode.window.showInformationMessage(`Successfully decompiled "${filePath}"`);
     });
   }
+  
 };
 
 module.exports = Commands;

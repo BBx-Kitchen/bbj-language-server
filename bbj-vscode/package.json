@@ -121,8 +121,8 @@
         "command": "bbj.decompile",
         "title": "Decompile a BBj Program",
         "icon": {
-          "light": "./images/run-dwc-light.svg",
-          "dark": "./images/run-dwc-dark.svg"
+          "light": "./images/bbj-decompile-light.svg",
+          "dark": "./images/bbj-decompile-dark.svg"
         },
         "key": "alt+x"
       },
@@ -131,8 +131,8 @@
         "command": "bbj.compile",
         "title": "Compile a BBj Program",
         "icon": {
-          "light": "./images/run-dwc-light.svg",
-          "dark": "./images/run-dwc-dark.svg"
+          "light": "./images/bbj-compile-light.svg",
+          "dark": "./images/bbj-compile-dark.svg"
         },
         "key": "alt+x"
       }
@@ -149,6 +149,14 @@
       {
         "command": "bbj.runDWC",
         "key": "alt+d"
+      },
+      {
+        "command": "bbj.compile",
+        "key": "alt+x"
+      },
+      {
+        "command": "bbj.compile",
+        "key": "alt+x"
       }
     ],
     "menus": {
@@ -167,6 +175,14 @@
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
           "group": "BBj@3"
+        },
+        {
+          "command": "bbj.compile",
+          "group": "BBj@4"
+        },
+        {
+          "command": "bbj.decompile",
+          "group": "BBj@5"
         }
       ],
       "editor/title": [
@@ -183,6 +199,14 @@
         {
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
+          "group": "navigation"
+        },
+        {
+          "command": "bbj.compile",
+          "group": "navigation"
+        },
+        {
+          "command": "bbj.decompile",
           "group": "navigation"
         }
       ],
@@ -201,6 +225,16 @@
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
           "group": "BBj32"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.compile",
+          "group": "BBj@4"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.decompile",
+          "group": "BBj@5"
         }
       ]
     },
@@ -291,7 +325,9 @@
     "onCommand:bbj.run",
     "onCommand:bbj.runBUI",
     "onCommand:bbj.runDWC",
-    "onCommand:bbj.autoComment"
+    "onCommand:bbj.autoComment",
+    "onCommand:bbj.compile",
+    "onCommand:bbj.decompile"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
