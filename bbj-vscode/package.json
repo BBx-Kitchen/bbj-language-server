@@ -199,10 +199,10 @@
         },
         "bbj.interop-port": {
           "type": [
-            "string",
+            "number",
             "null"
           ],
-          "default": null,
+          "default": 5008,
           "description": "Specify the port to connect to the Java Interop",
           "scope": "window"
         },
@@ -211,7 +211,7 @@
             "string",
             "null"
           ],
-          "default": null,
+          "default": "localhost",
           "description": "Specify the name to connect to the Java Interop",
           "scope": "window"
         },
