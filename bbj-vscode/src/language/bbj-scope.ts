@@ -6,8 +6,10 @@
 
 import {
     AstNode, AstNodeDescription, AstNodeLocator,
+    AstNodeTypesWithCrossReferences,
     AstReflection,
     AstUtils,
+    CrossReferencesOfAstNodeType,
     CstNode, DefaultNameProvider,
     DefaultScopeProvider,
     EMPTY_SCOPE, EMPTY_STREAM,
@@ -22,22 +24,23 @@ import { BBjServices } from './bbj-module.js';
 import { isJavaDocument } from './bbj-scope-local.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import {
-    BbjClass, Class,
+    BBjAstType,
+    BbjClass, BBjTypeRef, Class,
     isBbjClass,
-    isBBjTypeRef,
     isBinaryExpression,
     isCallbackStatement,
     isClasspath, isCompoundStatement,
-    isConstructorCall,
-    isFieldDecl,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
+    isJavaPackage,
+    isJavaTypeRef,
     isLibFunction,
     isMemberCall,
-    isMethodDecl,
-    isParameterDecl,
+    isMethodCall,
+    isParameterCall,
     isProgram,
     isRemoveCallbackStatement,
-    isStatement, isSymbolRef, isUse, isVariableDecl, JavaClass,
+    isStatement, isSymbolRef, isUse, JavaClass,
+    JavaSymbol,
     LibEventType,
     LibMember, MethodDecl, NamedElement, Program,
     Statement, Use
@@ -45,6 +48,9 @@ import {
 import { JavaInteropService } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { resolve } from 'path';
+import { assertType } from './utils.js';
+import { getClass } from './bbj-nodedescription-provider.js';
+import { assertTrue } from './assertions.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
@@ -67,25 +73,43 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
-        if (isBbjClass(context.container)) {
-            if (context.property === 'extends' && context.container.extends && typeof context.index === 'number') {
-                return this.resolveClassScopeByName(context, context.container.extends[context.index].$refText);
-            } else if (context.property === 'implements' && context.container.implements && typeof context.index === 'number') {
-                return this.resolveClassScopeByName(context, context.container.implements[context.index].$refText);
+        const container = context.container as AstNodeTypesWithCrossReferences<BBjAstType>;
+        switch (container.$type) {
+            case 'SimpleTypeRef': {
+                const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
+                if (property === 'simpleClass') {
+                    return this.resolveClassScopeByName(context, container.simpleClass.$refText);
+                }
+                return EMPTY_SCOPE;
             }
-        } else if (isVariableDecl(context.container) && context.container.type) {
-            return this.resolveClassScopeByName(context, context.container.type.$refText);
-        } else if (isConstructorCall(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class?.$refText);
-        } else if (isBBjTypeRef(context.container) && context.property === 'class') {
-            return this.resolveClassScopeByName(context, context.container.class?.$refText);
-        } else if (isFieldDecl(context.container) && context.container.type) {
-            return this.resolveClassScopeByName(context, context.container.type.$refText);
-        } else if (isMethodDecl(context.container) && context.container.returnType) {
-            return this.resolveClassScopeByName(context, context.container.returnType.$refText);
-        } else if (isParameterDecl(context.container)) {
-            return this.resolveClassScopeByName(context, context.container.type.$refText);
-        } else if (
+            case 'BBjTypeRef': {
+                assertType<BBjTypeRef>(container);
+                const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
+                if (property === 'klass') {
+                    return this.resolveClassScopeByName(context, container.klass?.$refText);
+                }
+                return EMPTY_SCOPE;
+            }
+            case 'JavaSymbol': {
+                assertType<JavaSymbol>(container);
+                const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
+                if (property === 'symbol') {
+                    if (isJavaTypeRef(container.$container)) {
+                        assertTrue(container.$containerIndex !== undefined);
+                        if (container.$containerIndex === 0) {
+                            return this.createScopeForNodes(this.javaInterop.getChildrenOf());
+                        } else {
+                            const previousPart = container.$container.pathParts[container.$containerIndex - 1].symbol.ref;
+                            if (previousPart) {
+                                return this.createScopeForNodes(this.javaInterop.getChildrenOf(previousPart));
+                            }
+                        }
+                    }
+                }
+                return EMPTY_SCOPE;
+            }
+        }
+        if (
             (context.property === 'resolvedType' && (isJavaField(context.container) || isJavaMethodParameter(context.container)))
             || (context.property === 'resolvedReturnType' && isJavaMethod(context.container))
         ) {
@@ -111,7 +135,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return EMPTY_SCOPE;
         }
         if (context.property === 'member' && isMemberCall(context.container)) {
-            const receiverType = this.typeInferer.getType(context.container.receiver);
+            const receiver = context.container.receiver
+            const receiverType = this.typeInferer.getType(receiver);
             if (!receiverType) {
                 return EMPTY_SCOPE;
             }
@@ -119,6 +144,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
             } else if (isBbjClass(receiverType)) {
                 return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
+            } else if (isJavaPackage(receiverType)) {
+                return this.createScopeForNodes(this.javaInterop.getChildrenOf(receiverType));
             }
         } else if (isUse(context.container)) {
             const match = context.container.bbjFilePath?.match(BBjPathPattern);
@@ -127,31 +154,36 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return EMPTY_SCOPE;
         } else if (isSymbolRef(context.container)) {
+            var membersStream = EMPTY_STREAM;
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
-            var memberScope = EMPTY_STREAM;
             if (bbjType) {
                 if (context.container.instanceAccess) {
-                    memberScope = this.createBBjClassMemberScope(bbjType, context.container.isMethodCall).getAllElements()
+                    membersStream = this.createBBjClassMemberScope(bbjType, false).getAllElements()
                 }
             }
-
+            const program = AstUtils.getContainerOfType(context.container, isProgram);
             const memberAndImports = new StreamScopeWithPredicate(
-                memberScope.concat(this.importedBBjClasses(AstUtils.getContainerOfType(context.container, isProgram))),
+                membersStream.concat(this.importedBBjClasses(program)),
                 this.superGetScope(context)
-            )
+            );
 
             if (context.container.$containerProperty === 'left' // left side of an assignment
                 && isBinaryExpression(context.container.$container)
-                && context.container.$container.$containerProperty === 'args' // function call args
-                && isSymbolRef(context.container.$container.$container)
+                && context.container.$container.$containerProperty === 'expression' // parameter call args
+                && isParameterCall(context.container.$container.$container)
+                && context.container.$container.$container.$containerProperty === 'args'  // method call args
+                && isMethodCall(context.container.$container.$container.$container)
             ) {
                 // named parameter scope
-                const symbol = context.container.$container.$container.symbol.ref
-                if (isLibFunction(symbol)) {
-                    const namedParams = stream(symbol.parameters)
-                        .filter(param => param.refByName === true)
-                        .map(param => this.descriptions.createDescription(param, param.name));
-                    return this.createScope(namedParams, memberAndImports)
+                const method = context.container.$container.$container.$container.method;
+                if (isSymbolRef(method)) {
+                    const symbol = method.symbol.ref;
+                    if (isLibFunction(symbol)) {
+                        const namedParams = stream(symbol.parameters)
+                            .filter(param => param.refByName === true)
+                            .map(param => this.descriptions.createDescription(param, param.name));
+                        return this.createScope(namedParams, memberAndImports)
+                    }
                 }
             }
             return memberAndImports
@@ -221,6 +253,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         function libraryIndex(indexManager: IndexManager): Stream<AstNodeDescription> {
             return indexManager.allElements(LibMember);
         }
+        // Add java root packages to be linked in expressions like: java.util.List
+        const javaRoots = this.javaInterop.getChildrenOf().filter(it => isJavaPackage(it));
+        let javaPackageScope: Scope = EMPTY_SCOPE;
+        if (javaRoots.length > 0) {
+            javaPackageScope = this.createCaseSensitiveScope(javaRoots);
+        }
+
         switch (referenceType) {
             case Class: {
                 const program = AstUtils.getContainerOfType(_context.container, isProgram)
@@ -232,12 +271,19 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return new StreamScopeWithPredicate(this.indexManager.allElements(LibEventType), undefined, { caseInsensitive: true });
             }
             case NamedElement: {
-                if (isSymbolRef(_context.container) && _context.property === 'symbol')
-                    // when looking for NamedElement Symbols consider JavaClasses (case sensitive) and LibMembers (case insensitive)
-                    return new StreamScopeWithPredicate(libraryIndex(this.indexManager), new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass)), { caseInsensitive: true });
+                if (isSymbolRef(_context.container) && _context.property === 'symbol') {
+                    // when looking for NamedElement Symbols consider:
+                    // - LibMembers (case insensitive)
+                    // - JavaClasses (case sensitive) 
+                    // - JavaPackageRoots (case sensitive) 
+                    return new StreamScopeWithPredicate(libraryIndex(this.indexManager),
+                        new StreamScopeWithPredicate(this.indexManager.allElements(JavaClass), javaPackageScope),
+                        { caseInsensitive: true }
+                    );
+                }
             }
             default:
-                return new StreamScopeWithPredicate(libraryIndex(this.indexManager), undefined, { caseInsensitive: true });
+                return new StreamScopeWithPredicate(libraryIndex(this.indexManager), javaPackageScope, { caseInsensitive: true });
         }
 
 
@@ -245,8 +291,28 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     importedBBjClasses(root: Program | undefined): AstNodeDescription[] {
         if (root) {
-            return collectAllUseStatements(root).filter(it => it.bbjClass?.ref)
-                .map(it => it.bbjClass!.$nodeDescription!)
+            const useStatements = collectAllUseStatements(root);
+            return useStatements.filter(it => it.bbjClass?.ref)
+                .map(it => it.bbjClass!.$nodeDescription!);
+        }
+        return []
+    }
+
+    importedClasses(root: Program | undefined): AstNodeDescription[] {
+        if (root) {
+            const useStatements = collectAllUseStatements(root);
+            return useStatements.map(use => {
+                if (use.bbjClass && use.bbjClass.ref) {
+                    return this.descriptions.createDescription(use.bbjClass.ref, use.bbjClass.ref.name);
+                } else if (use.javaClass) {
+                    const lastPart = use.javaClass.pathParts[use.javaClass.pathParts.length - 1];
+                    const klass = lastPart.symbol.ref;
+                    if (klass) {
+                        return this.descriptions.createDescription(klass, klass.name);
+                    }
+                }
+                return undefined;
+            }).filter(a => a) as AstNodeDescription[];
         }
         return []
     }
@@ -259,7 +325,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             descriptions.push(...typeScope.filter(member => !methodsOnly || member.type === MethodDecl))
         }
         if (bbjType.extends.length == 1) {
-            const superType = bbjType.extends[0].ref;
+            const superType = getClass(bbjType.extends[0]);
             if (isBbjClass(superType)) {
                 return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly))
             } else if (isJavaClass(superType)) {

@@ -11,20 +11,21 @@ import {
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
-import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter } from './generated/ast.js';
+import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
+import { assertType } from './utils.js';
 
 const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.class'
-
-
 export class JavaInteropService {
 
     private connection?: MessageConnection;
-    private readonly resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
+    private resolvedClassesLock: Promise<void> = Promise.resolve();
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -33,9 +34,15 @@ export class JavaInteropService {
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
+            $container: undefined!,
             $type: Classpath,
+            packages: [],
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
+    }
+
+    private get resolvedClasses(): Map<string, JavaClass> {
+        return this._resolvedClasses;
     }
 
     protected async connect(): Promise<MessageConnection> {
@@ -66,7 +73,7 @@ export class JavaInteropService {
         });
     }
 
-    get classpath(): Classpath {
+    protected get classpath(): Classpath {
         return this.classpathDocument.parseResult.value;
     }
 
@@ -95,7 +102,7 @@ export class JavaInteropService {
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         console.warn("Load classpath from: " + classPath.join(', '))
         try {
-            const entries = classPath.map(entry => 'file:' + entry);
+            const entries = classPath.filter(entry => entry.length > 0).map(entry => 'file:' + entry);
             const connection = await this.connect();
             return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
         } catch (e) {
@@ -105,22 +112,54 @@ export class JavaInteropService {
     }
 
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
-        console.warn("Load package classes: " + implicitJavaImports.join(', '))
+        console.warn("Load package classes: ", implicitJavaImports.join(', '))
         try {
             const connection = await this.connect();
-            await Promise.all(implicitJavaImports.map(async pack => {
+            await Promise.all(implicitJavaImports.concat('java.sql').map(async pack => {
                 const classInfos = await connection.sendRequest(getClassInfosRequest, { packageName: pack }, token);
                 await Promise.all(classInfos.map(async javaClass => {
                     await this.resolveClass(javaClass, token)
-                    // add as implicit Java package import
-                    const simpleNameCopy = { ...javaClass }
-                    simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
-                    simpleNameCopy.$containerIndex = this.classpath.classes.length;
-                    this.classpath.classes.push(simpleNameCopy);
-                    this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+
+                    if (pack !== 'java.sql') { // Not an implicit import but sql package preload.
+                        // add as implicit Java package import
+                        const simpleNameCopy = { ...javaClass }
+                        simpleNameCopy.name = javaClass.name.replace(pack + '.', '')
+                        simpleNameCopy.$containerIndex = this.classpath.classes.length;
+                        this.classpath.classes.push(simpleNameCopy);
+                        this.resolvedClasses.set(simpleNameCopy.name, simpleNameCopy);
+                    }
                 }))
             }))
             console.debug("Loaded " + this.classpath.classes.length + " classes")
+
+            if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
+                this.langiumDocuments.addDocument(this.classpathDocument);
+            }
+            const topLevelPackages = await connection.sendRequest(getTopLevelPackages, {}, token);
+            for (const pack of topLevelPackages) {
+                const parts = pack.packageName.split('.');
+                let parent: Classpath | JavaPackage  = this.classpath;
+                parts.forEach((part, index) => {
+                    if (!this.childrenOfByName.has(parent)) {
+                        this.childrenOfByName.set(parent, new Map());
+                    }
+                    const children = this.childrenOfByName.get(parent)!;
+                    if (!children.get(part)) {
+                        const javaPackage: JavaPackage = {
+                            $container: parent,
+                            $type: JavaPackage,
+                            classes: [],
+                            packages: [],
+                            name: part,
+                            $containerIndex: parent.packages.length,
+                            $containerProperty: 'packages',
+                        };
+                        parent.packages.push(javaPackage);
+                        children.set(part, javaPackage);
+                    }
+                    parent = children.get(part) as JavaPackage;
+                })
+            }
             return true;
         } catch (e) {
             console.error(e)
@@ -129,11 +168,16 @@ export class JavaInteropService {
     }
 
     async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
-        if (this.resolvedClasses.has(className)) {
-            return this.resolvedClasses.get(className)!;
+        await this.acquireLock();
+        try {
+            if (this.resolvedClasses.has(className)) {
+                return this.resolvedClasses.get(className)!;
+            }
+            const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
+            return await this.resolveClass(javaClass, token);
+        } finally {
+            // unlocked
         }
-        const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
-        return await this.resolveClass(javaClass, token);
     }
 
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
@@ -146,8 +190,13 @@ export class JavaInteropService {
         }
 
         javaClass.$type = JavaClass; // make isJavaClass work
+        const lastIndexOfDot = className.lastIndexOf('.');
+        javaClass.packageName = lastIndexOfDot > -1 ? className.substring(0, lastIndexOfDot) : '';
+        javaClass.classes ??= [];
 
+        this.storeJavaClass(javaClass);
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
+
         try {
             const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
@@ -185,21 +234,74 @@ export class JavaInteropService {
             console.error(e)
         }
         AstUtils.linkContentToContainer(javaClass);
-
-        const classpath = this.classpath;
-        javaClass.$type = JavaClass;
-        javaClass.$container = classpath;
-        javaClass.$containerProperty = 'classes';
-        javaClass.$containerIndex = classpath.classes.length;
-        classpath.classes.push(javaClass);
         return javaClass;
     }
 
+    getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
+        const children = this.childrenOfByName.get(javaPackageLike ?? this.classpath);
+        if (!children) {
+            return [];
+        }
+        return [...children.values()];
+    }
+
+    getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath = this.classpath, childName: string): JavaClass | JavaPackage | undefined {
+        return this.childrenOfByName.get(javaPackageLike)?.get(childName);
+    }
+
+    storeJavaClass(javaClass: Mutable<JavaClass>) {
+        const classpath = this.classpath;
+        javaClass.$type = JavaClass;
+
+        let parent: Classpath | JavaPackage | JavaClass = classpath;
+        const parts = javaClass.name.split('.');
+        parts.forEach((part, index) => {
+            if (!this.childrenOfByName.has(parent)) {
+                this.childrenOfByName.set(parent, new Map());
+            }
+            const children = this.childrenOfByName.get(parent)!;
+            if (!children.has(part)) {
+                if (index === parts.length - 1) {
+                    javaClass.$container = parent;
+                    javaClass.$containerProperty = 'classes';
+                    javaClass.$containerIndex = parent.classes.length;
+                    javaClass.name = part;
+                    parent.classes.push(javaClass);
+                    children.set(part, javaClass);
+                } else {
+                    assertType<JavaPackage>(parent);
+                    const javaPackage: JavaPackage = {
+                        $container: parent,
+                        $type: JavaPackage,
+                        classes: [],
+                        packages: [],
+                        name: part,
+                        $containerIndex: parent.packages.length,
+                        $containerProperty: 'packages',
+                    };
+                    parent.packages.push(javaPackage);
+                    children.set(part, javaPackage);
+                }
+            }
+            parent = children.get(part)!;
+        });
+    }
+
+    private async acquireLock(): Promise<void> {
+        let release: () => void;
+        const lock = new Promise<void>((resolve) => (release = resolve));
+        const previousLock = this.resolvedClassesLock;
+        this.resolvedClassesLock = lock;
+        await previousLock;
+        release!();
+    }
 }
 
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
+
+const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
 
 interface ClassInfoParams {
     className: string

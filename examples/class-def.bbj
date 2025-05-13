@@ -7,7 +7,7 @@ REM  */
  
 use ::BBjWidget/BBjWidget.bbj::BBjWidget
 use ::BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget
-use ::BBjGridExWidget/BBjGridExWidgetState.bbj::BBjGridExWidgetState 
+REM use ::BBjGridExWidget/BBjGridExWidgetState.bbj::BBjGridExWidgetState 
 use ::ConfigurationWidget/CustomConfigurationsBC.bbj::CustomConfigurationsBC
 use ::ConfigurationWidget/ConfigurationStateHandler.bbj::ConfigurationStateHandler
 use ::ConfigurationWidget/IPersistentState.bbj::IPersistentState 
@@ -453,6 +453,7 @@ REM         BBjAPI().setCustomEventCallback(#getOnStateChangeEventName(), #this!
         text! = #listEditOptions!.getEditText()
         if text! = null() or text!.trim().equals("") then methodret ""
         adminPrefix! = "(default)"
+        declare String userPrefix!
         userPrefix! = "(" + #userName!+ ")"
         if text!.startsWith(adminPrefix!) then
             methodret text!.substring(adminPrefix!.length()).trim()
