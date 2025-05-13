@@ -129,7 +129,7 @@ const Commands = {
   compile: function (params) {
     const home = getBBjHome();
     if (!home) return;
-    const cmd = `${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""} ${vscode.window.activeTextEditor.document.fileName}`;
+    const cmd = `"${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""}" "${vscode.window.activeTextEditor.document.fileName}"`;
 
     const active = vscode.window.activeTextEditor;
 
@@ -140,17 +140,17 @@ const Commands = {
         return;
       }
     });
-    vscode.window.showInformationMessage(`Successfully compile "${fileName}"`);
+    vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
   },
 
-  decompile: async function (params) {
+  decompile: function (params) {
     const home = getBBjHome();
     if (!home) return;
   
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const lstFileName = fileName + '.lst';
-    const cmd = `${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''} ${fileName}`;
+    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${fileName}"`;
   
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
@@ -160,14 +160,13 @@ const Commands = {
   
       fs.unlink(fileName, (unlinkErr) => {
         if (unlinkErr) {
-          console.log("UNLINK");
           vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
           return;
         }
 
-        fs.rename(lstFileName, fileName, (renameErr) => {
+
+        fs.rename(path.resolve(lstFileName), path.resolve(fileName), (renameErr) => {
           if (renameErr) {
-            console.log("RENAME");
             vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
             return;
           }
