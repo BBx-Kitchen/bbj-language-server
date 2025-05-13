@@ -134,7 +134,7 @@
           "light": "./images/bbj-compile-light.svg",
           "dark": "./images/bbj-compile-dark.svg"
         },
-        "key": "alt+x"
+        "key": "alt+c"
       }
     ],
     "keybindings": [
@@ -346,7 +346,6 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
-    "bbj-lang": "file:",
     "chevrotain": "^11.0.3",
     "langium": "~3.2.0",
     "properties-file": "~3.2.5",
