@@ -26,12 +26,16 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     constructor(services: LangiumSharedServices) {
         super(services);
-        services.lsp.LanguageServer.onInitialize(params => {
-            this.bbjdir = params.initializationOptions;
-        });
+        
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
         this.javaInterop = bbjServices.java.JavaInteropService;
+        
+        services.lsp.LanguageServer.onInitialize(params => {
+            this.bbjdir = params.initializationOptions.home;
+            this.javaInterop.port = params.initializationOptions.port || 5008;
+            this.javaInterop.hostname = params.initializationOptions.hostname || "localhost";
+        });
     }
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {

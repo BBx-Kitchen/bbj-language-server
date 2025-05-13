@@ -39,6 +39,12 @@ Failing to do so may result in unpredictable failure.
 2. Install the extension using the Extensions functionality in VSCode
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
+## Optional Setup
+1. The VS Code extension connects to a Java interop service running inside BBj. By default, this service is expected to be available on localhost at port 5008. However, you can customize the connection by specifying the hostname and port using the following settings:
+
+`bbj.interop-hostname` – Defines the host where the interop service is running.
+
+`bbj.interop-port` – Specifies the port used to connect to the interop service.
 
 ### Credits
 

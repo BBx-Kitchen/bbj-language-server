@@ -31,7 +31,6 @@ export function activate(context: vscode.ExtensionContext): void {
         "bbj",
         DocumentFormatter
     );
-
 }
 
 // This function is called when the extension is deactivated.
@@ -62,6 +61,8 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
     const fileSystemWatcher = vscode.workspace.createFileSystemWatcher('**/*.bbj');
     context.subscriptions.push(fileSystemWatcher);
 
+    const config = vscode.workspace.getConfiguration("bbj");
+
     // Options to control the language client
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'bbj' }],
@@ -69,8 +70,11 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             // Notify the server about file changes to files contained in the workspace
             fileEvents: fileSystemWatcher
         },
-        initializationOptions:  vscode.workspace.getConfiguration("bbj").home
-
+        initializationOptions:  {
+            home: config.get("home"),
+            hostname: config.get("interop-hostname"),
+            port: config.get("interop-port")
+        }
     };
 
     // Create the language client and start the client.
@@ -80,6 +84,11 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
         serverOptions,
         clientOptions
     );
+
+    client.onDidChangeState(() => {
+        client.onNotification('bbj/connectionStatus/success', (connectionMessage: string) => { vscode.window.showInformationMessage(connectionMessage)});
+        client.onNotification('bbj/connectionStatus/error', (connectionMessage: string) => { vscode.window.showErrorMessage(connectionMessage)});
+    });
 
     // Start the client. This will also launch the server
     client.start();
