@@ -154,25 +154,28 @@ const Commands = {
   
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        vscode.window.showErrorMessage(`Failed to decompile ${fileName}: ${stderr || err.message}`);
+        vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
         return;
       }
   
       fs.unlink(fileName, (unlinkErr) => {
         if (unlinkErr) {
-          vscode.window.showErrorMessage(`Failed to delete original file "${fileName}": ${unlinkErr.message}`);
+          console.log("UNLINK");
+          vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
           return;
         }
-  
+
         fs.rename(lstFileName, fileName, (renameErr) => {
           if (renameErr) {
-            vscode.window.showErrorMessage(`Failed to rename ${lstFileName} to ${fileName}: ${renameErr.message}`);
+            console.log("RENAME");
+            vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
             return;
           }
-  
-          const virtualUri = vscode.Uri.file(fileName).with({ scheme });
-          vscode.commands.executeCommand('vscode.open', virtualUri);
-          vscode.window.showInformationMessage(`Successfully decompiled and opened "${fileName}"`);
+
+          const uri = vscode.Uri.file(fileName);
+          vscode.workspace.openTextDocument(uri).then((doc) => {
+            vscode.window.showTextDocument(doc, { preview: false });
+          });
         });
       });
     });
