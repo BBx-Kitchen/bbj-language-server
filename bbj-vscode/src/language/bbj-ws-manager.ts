@@ -132,7 +132,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
+                if (prefix.length > 0 && documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
                     return true;
                 }
             }
