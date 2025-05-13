@@ -794,7 +794,7 @@ StringLiteral:
 ;
 
 Mnemonic:
-    name=MNEMONIC ('(' params+=Expression (',' params+=Expression)*RPAREN)?
+    MNEMONIC ('(' params+=Expression (',' params+=Expression)*RPAREN)?
 ;
 
 PositionalMnemonic:
