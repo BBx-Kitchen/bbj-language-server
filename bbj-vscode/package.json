@@ -203,11 +203,11 @@
         },
         {
           "command": "bbj.compile",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "bbj.decompile",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
