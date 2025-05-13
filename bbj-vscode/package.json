@@ -206,6 +206,15 @@
           "description": "BBj Classpath to use for starting applications",
           "scope": "window"
         },
+        "bbj.configFile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "BBj Config File to use for starting applications",
+          "scope": "window"
+        },
         "bbj.web.username": {
           "type": [
             "string",

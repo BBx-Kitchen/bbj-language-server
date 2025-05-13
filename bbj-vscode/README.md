@@ -39,6 +39,9 @@ Failing to do so may result in unpredictable failure.
 2. Install the extension using the Extensions functionality in VSCode
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
+## Optional Setup
+1. Config.bbx:
+To configure Visual Studio Code to use your own custom config.bbx file, specify its path in the settings under BBj: Config File. This allows the BBj extension to reference your custom configuration for enhanced control over project behavior and environment setup.
 
 ### Credits
 
