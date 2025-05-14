@@ -2,6 +2,7 @@ const vscode = require("vscode");
 const path = require("path");
 const { exec } = require("child_process");
 const os = require("os");
+const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 
 const getBBjHome = () => {
@@ -124,6 +125,44 @@ const Commands = {
 
   runDWC: function (params) {
     runWeb(params, "DWC");
+  },
+
+  denumber: function(params) {
+    const home = getBBjHome();
+    if (!home) return;
+
+    const active = vscode.window.activeTextEditor;
+    const fileName = active ? active.document.fileName : params.fsPath;
+    const resolvedFileName = path.resolve(fileName);
+    const resolvedLstFileName = path.resolve(fileName) + ".lst";
+
+    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${resolvedFileName}" -l`;
+
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
+        return;
+      }
+
+      fs.unlink(resolvedFileName, (unlinkErr) => {
+        if (unlinkErr) {
+          vscode.window.showErrorMessage(`Failed to remove original file "${fileName}": ${unlinkErr.message}`);
+          return;
+        }
+
+        fs.rename(resolvedLstFileName, resolvedFileName, (renameErr) => {
+          if (renameErr) {
+            vscode.window.showErrorMessage(`Failed to rename decompiled file "${fileName}": ${renameErr.message}`);
+            return;
+          }
+
+          const uri = vscode.Uri.file(resolvedFileName);
+          vscode.workspace.openTextDocument(uri).then((doc) => {
+            vscode.window.showTextDocument(doc, { preview: false });
+          });
+        });
+      });
+    });
   }
 };
 

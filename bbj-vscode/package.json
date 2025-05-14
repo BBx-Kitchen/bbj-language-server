@@ -120,6 +120,35 @@
         "category": "BBj",
         "command": "bbj.showClasspathEntries",
         "title": "Show Available Classpath Entries"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.decompile",
+        "title": "Decompile BBj Program",
+        "icon": {
+          "light": "./images/bbj-decompile-light.svg",
+          "dark": "./images/bbj-decompile-dark.svg"
+        },
+        "key": "alt+x"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.compile",
+        "title": "Compile BBj Program",
+        "icon": {
+          "light": "./images/bbj-compile-light.svg",
+          "dark": "./images/bbj-compile-dark.svg"
+        },
+        "key": "alt+c"
+      },
+      {
+        "command": "bbj.denumber",
+        "title": "Denumber BBj Program",
+        "icon": {
+          "light": "./images/bbj-denumber-light.svg",
+          "dark": "./images/bbj-denumber-dark.svg"
+        },
+        "key": "alt+n"
       }
     ],
     "keybindings": [
@@ -134,6 +163,14 @@
       {
         "command": "bbj.runDWC",
         "key": "alt+d"
+      },
+      {
+        "command": "bbj.compile",
+        "key": "alt+c"
+      },
+      {
+        "command": "bbj.denumber",
+        "key": "alt+n"
       }
     ],
     "menus": {
@@ -152,6 +189,18 @@
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
           "group": "BBj@3"
+        },
+        {
+          "command": "bbj.compile",
+          "group": "BBj@4"
+        },
+        {
+          "command": "bbj.decompile",
+          "group": "BBj@5"
+        },
+        {
+          "command": "bbj.denumber",
+          "group": "BBj@6"
         }
       ],
       "editor/title": [
@@ -169,6 +218,18 @@
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
           "group": "navigation"
+        },
+        {
+          "command": "bbj.compile",
+          "group": "navigation@2"
+        },
+        {
+          "command": "bbj.decompile",
+          "group": "navigation@2"
+        },
+        {
+          "command": "bbj.denumber",
+          "group": "navigation@2"
         }
       ],
       "explorer/context": [
@@ -185,7 +246,21 @@
         {
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
-          "group": "BBj32"
+          "group": "BBj@3"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.compile",
+          "group": "BBj@4"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.decompile",
+          "group": "BBj@5"
+        },
+        {
+          "command": "bbj.denumber",
+          "group": "BBj@6"
         }
       ]
     },
@@ -273,7 +348,10 @@
     "onCommand:bbj.run",
     "onCommand:bbj.runBUI",
     "onCommand:bbj.runDWC",
-    "onCommand:bbj.autoComment"
+    "onCommand:bbj.autoComment",
+    "onCommand:bbj.compile",
+    "onCommand:bbj.decompile",
+    "onCommand:bbj.denumber"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
