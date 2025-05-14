@@ -28,6 +28,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);
     vscode.commands.registerCommand("bbj.decompile", Commands.decompile);
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
+    vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
 
     vscode.languages.registerDocumentFormattingEditProvider(
         "bbj",
