@@ -3,6 +3,7 @@ const path = require("path");
 const { exec } = require("child_process");
 const os = require("os");
 const PropertiesReader = require("properties-reader");
+const fs = require("fs");
 
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
@@ -149,29 +150,30 @@ const Commands = {
   
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
-    const lstFileName = fileName + '.lst';
-    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${fileName}"`;
+    const resolvedFileName = path.resolve(fileName);
+    const resolvedLstFileName = path.resolve(fileName) + ".lst";
+    
+    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${resolvedFileName}"`;
   
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
+        vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
         return;
       }
-  
-      fs.unlink(fileName, (unlinkErr) => {
+
+      fs.unlink(resolvedFileName, (unlinkErr) => {
         if (unlinkErr) {
-          vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
+          vscode.window.showErrorMessage(`Failed to remove original file "${fileName}": ${unlinkErr.message}`);
           return;
         }
 
-
-        fs.rename(path.resolve(lstFileName), path.resolve(fileName), (renameErr) => {
+        fs.rename(resolvedLstFileName, resolvedFileName, (renameErr) => {
           if (renameErr) {
-            vscode.window.showErrorMessage(`Failed to decompile ${fileName}`);
+            vscode.window.showErrorMessage(`Failed to rename decompiled file "${fileName}": ${renameErr.message}`);
             return;
           }
 
-          const uri = vscode.Uri.file(fileName);
+          const uri = vscode.Uri.file(resolvedFileName);
           vscode.workspace.openTextDocument(uri).then((doc) => {
             vscode.window.showTextDocument(doc, { preview: false });
           });
