@@ -135,6 +135,15 @@
           "dark": "./images/bbj-compile-dark.svg"
         },
         "key": "alt+c"
+      },
+      {
+        "command": "bbj.denumber",
+        "title": "Denumber BBj Program",
+        "icon": {
+          "light": "./images/bbj-denumber-light.svg",
+          "dark": "./images/bbj-denumber-dark.svg"
+        },
+        "key": "alt+n"
       }
     ],
     "keybindings": [
@@ -152,11 +161,11 @@
       },
       {
         "command": "bbj.compile",
-        "key": "alt+x"
+        "key": "alt+c"
       },
       {
-        "command": "bbj.compile",
-        "key": "alt+x"
+        "command": "bbj.denumber",
+        "key": "alt+n"
       }
     ],
     "menus": {
@@ -183,6 +192,10 @@
         {
           "command": "bbj.decompile",
           "group": "BBj@5"
+        },
+        {
+          "command": "bbj.denumber",
+          "group": "BBj@4"
         }
       ],
       "editor/title": [
@@ -207,6 +220,10 @@
         },
         {
           "command": "bbj.decompile",
+          "group": "navigation@2"
+        },
+        {
+          "command": "bbj.denumber",
           "group": "navigation@2"
         }
       ],
@@ -235,6 +252,10 @@
           "when": "resourceLangId == bbj",
           "command": "bbj.decompile",
           "group": "BBj@5"
+        },
+        {
+          "command": "bbj.denumber",
+          "group": "BBj@6"
         }
       ]
     },
@@ -327,7 +348,8 @@
     "onCommand:bbj.runDWC",
     "onCommand:bbj.autoComment",
     "onCommand:bbj.compile",
-    "onCommand:bbj.decompile"
+    "onCommand:bbj.decompile",
+    "onCommand:bbj.denumber"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
@@ -346,6 +368,7 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
+    "bbj-lang": "file:",
     "chevrotain": "^11.0.3",
     "langium": "~3.2.0",
     "properties-file": "~3.2.5",

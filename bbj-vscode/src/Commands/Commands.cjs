@@ -127,34 +127,17 @@ const Commands = {
     runWeb(params, "DWC");
   },
 
-  compile: function (params) {
+  denumber: function(params) {
     const home = getBBjHome();
     if (!home) return;
-    const cmd = `"${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""}" "${vscode.window.activeTextEditor.document.fileName}"`;
 
-    const active = vscode.window.activeTextEditor;
-
-    const fileName = active ? active.document.fileName : params.fsPath;;
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) {
-        vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
-        return;
-      }
-    });
-    vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
-  },
-
-  decompile: function (params) {
-    const home = getBBjHome();
-    if (!home) return;
-  
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const resolvedFileName = path.resolve(fileName);
     const resolvedLstFileName = path.resolve(fileName) + ".lst";
-    
-    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${resolvedFileName}"`;
-  
+
+    const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" "${resolvedFileName}" -l`;
+
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
         vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
@@ -180,7 +163,7 @@ const Commands = {
         });
       });
     });
-  },
+  }
 };
 
 module.exports = Commands;
