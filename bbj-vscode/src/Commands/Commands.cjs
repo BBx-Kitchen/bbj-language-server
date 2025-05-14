@@ -51,42 +51,52 @@ const runWeb = (params, client) => {
 
 const decompile = (params, options = {}) => {
   const home = getBBjHome();
-  if (!home) return;  
-  
+  if (!home) return;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
   const resolvedFileName = path.resolve(fileName);
-  const resolvedLstFileName = resolvedFileName + '.lst';
-  
-  const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(".lst", "");
-  
-  const flags = options.denumber ? ' -l ' : '';
-  const cmd = `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}" ${flags} "${resolvedFileName}"`;
+  const resolvedLstFileName = resolvedFileName.endsWith('.lst')
+    ? resolvedFileName
+    : resolvedFileName + '.lst';
+
+  const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
+
+  console.log(resolvedFileName.endsWith('.lst'));
+  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') && '-xlst'}` : '';
+
+  const cmd = `"${home}/bin/bbjlst${
+    os.platform() === 'win32' ? '.exe' : ''
+  }" ${flags} "${resolvedFileName}"`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      console.log(err.message);
       vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
       return;
     }
 
-    fs.unlink(resolvedFileName, (unlinkErr) => {
-      if (unlinkErr) {
-        vscode.window.showErrorMessage(`Failed to remove original file "${fileName}": ${unlinkErr.message}`);
-        return;
-      }      
-      
-      fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
-        if (renameErr) {
-          vscode.window.showErrorMessage(`Failed to rename decompiled file "${fileName}": ${renameErr.message}`);
+    if (!options.denumber) {
+      fs.unlink(resolvedFileName, (unlinkErr) => {
+        if (unlinkErr) {
+          vscode.window.showErrorMessage(
+            `Failed to remove original file "${fileName}": ${unlinkErr.message}`
+          );
           return;
         }
-
-        const uri = vscode.Uri.file(newFileName);
-        vscode.workspace.openTextDocument(uri).then((doc) => {
-          vscode.window.showTextDocument(doc, { preview: false });
-        });
       });
+    }
+
+    fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
+      if (renameErr) {
+        vscode.window.showErrorMessage(
+          `Failed to rename file "${resolvedLstFileName}": ${renameErr.message}`
+        );
+        return;
+      }
+    });
+
+    const uri = vscode.Uri.file(newFileName);
+    vscode.workspace.openTextDocument(uri).then((doc) => {
+      vscode.window.showTextDocument(doc, { preview: false });
     });
   });
 };
@@ -96,11 +106,9 @@ const Commands = {
     const home = getBBjHome();
 
     if (home) {
-      return vscode.workspace
-        .openTextDocument(`${home}/cfg/config.bbx`)
-        .then(doc => {
-          vscode.window.showTextDocument(doc);
-        });
+      return vscode.workspace.openTextDocument(`${home}/cfg/config.bbx`).then((doc) => {
+        vscode.window.showTextDocument(doc);
+      });
     }
   },
 
@@ -108,11 +116,9 @@ const Commands = {
     const home = getBBjHome();
 
     if (home) {
-      return vscode.workspace
-        .openTextDocument(`${home}/cfg/BBj.properties`)
-        .then(doc => {
-          vscode.window.showTextDocument(doc);
-        });
+      return vscode.workspace.openTextDocument(`${home}/cfg/BBj.properties`).then((doc) => {
+        vscode.window.showTextDocument(doc);
+      });
     }
   },
 
@@ -120,7 +126,13 @@ const Commands = {
     const home = getBBjHome();
     if (home) {
       const properties = PropertiesReader(`${home}/cfg/BBj.properties`);
-      const url = `${"http://" + properties.get('com.basis.jetty.host') + ":" + properties.get('com.basis.jetty.port') + "/bbjem/em"}`;
+      const url = `${
+        'http://' +
+        properties.get('com.basis.jetty.host') +
+        ':' +
+        properties.get('com.basis.jetty.port') +
+        '/bbjem/em'
+      }`;
       vscode.commands.executeCommand('vscode.open', vscode.Uri.parse(url));
     }
   },
@@ -129,18 +141,18 @@ const Commands = {
     const home = getBBjHome();
     if (!home) return;
 
-    const webConfig = vscode.workspace.getConfiguration("bbj.web");
-    var sscp = vscode.workspace.getConfiguration("bbj").classpath;
-    
-    const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
+    const webConfig = vscode.workspace.getConfiguration('bbj.web');
+    var sscp = vscode.workspace.getConfiguration('bbj').classpath;
+
+    const bbj = `${home}/bin/bbj${os.platform() === 'win32' ? '.exe' : ''}`;
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
 
-    if (sscp != null && sscp>"") {
-      sscp = "-CP"+sscp;
+    if (sscp != null && sscp > '') {
+      sscp = '-CP' + sscp;
     } else {
-      sscp = "";
+      sscp = '';
     }
 
     const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
@@ -161,21 +173,23 @@ const Commands = {
   },
 
   runBUI: function (params) {
-    runWeb(params, "BUI");
+    runWeb(params, 'BUI');
   },
 
   runDWC: function (params) {
-    runWeb(params, "DWC");
+    runWeb(params, 'DWC');
   },
 
   compile: function (params) {
     const home = getBBjHome();
     if (!home) return;
-    const cmd = `"${home}/bin/bbjcpl${os.platform() === "win32" ? ".exe" : ""}" "${vscode.window.activeTextEditor.document.fileName}"`;
+    const cmd = `"${home}/bin/bbjcpl${os.platform() === 'win32' ? '.exe' : ''}" "${
+      vscode.window.activeTextEditor.document.fileName
+    }"`;
 
     const active = vscode.window.activeTextEditor;
 
-    const fileName = active ? active.document.fileName : params.fsPath;;
+    const fileName = active ? active.document.fileName : params.fsPath;
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
         vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
@@ -188,9 +202,9 @@ const Commands = {
     decompile(params);
   },
 
-  denumber: function(params) {
+  denumber: function (params) {
     decompile(params, { denumber: true });
-  }
+  },
 };
 
 module.exports = Commands;
