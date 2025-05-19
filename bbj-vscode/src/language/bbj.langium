@@ -55,6 +55,7 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     FileOptStatement |
+    FileStatement |
     FnErrStatement |
     ForStatement |
     FulltextStatement |
@@ -176,7 +177,11 @@ DumpStatement:
     'DUMP' ('(' channelno=Expression Mode? Err? Ind? RPAREN_NL)?
     ;
 
-// Add 'FILE' | 'XFILE' here
+
+FileStatement:
+    ('FILE' | 'XFILE') string1=Expression (',' string2=Expression)? Mode? Err?
+;
+
 FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
 ;

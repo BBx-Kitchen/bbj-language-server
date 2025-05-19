@@ -2081,4 +2081,22 @@ describe('Parser Tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+
+    test('FILE, XFILE #152', async () => {
+        const result = await parse(`
+        file fid$
+        file fid$,fin$(86)
+        file fid$,fin$(86),mode="options"
+        file fid$,fin$(86),err=*next
+        file fid$,fin$(86),mode="options",err=*next
+        open (1)"states.dat"
+        fid$=fid(1),fin$=fin(1)
+        close(1)
+        erase "states.dat"
+        file fid$,fin$(86),mode=""
+        open(1)"states.dat"
+        call"_fids"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
 });
