@@ -26,6 +26,7 @@ Statement:
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
     ReadStatement |
+    ExtendedInputStatement |
     SqlCloseStatement |
     SqlCommitStatement |
     SqlRollbackStatement |
@@ -571,6 +572,10 @@ ReadStatement:
     kind=READ_KINDS record?='RECORD'? WithChannelAndOptionsAndInputItems?
 ;
 
+ExtendedInputStatement:
+    kind=('INPUTN' | 'INPUTE') WithChannelAndOptionsAndInputItems?
+;
+
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
 ;
@@ -605,7 +610,7 @@ VerifyOptions:
 ;
 
 VerifyOption:
-    key=StringLiteral '=' lineref=LabelRef
+    key=StringLiteral '=' lineref=(LabelRef | NUMBER)
 ;
 
 LastVerifyOption:
