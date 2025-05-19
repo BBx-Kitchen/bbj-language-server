@@ -39,7 +39,7 @@ describe('Parser Tests', () => {
         console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
         // In a bad state it took 48 seconds
         // TODO do something against the flakiness: sometimes it hits the timeout; was at 5s once
-        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(11);
+        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(14);
     });
 
     test('Program definition test', async () => {
@@ -2096,6 +2096,15 @@ describe('Parser Tests', () => {
         file fid$,fin$(86),mode=""
         open(1)"states.dat"
         call"_fids"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('INPUTE, INPUTN #153', async () => {
+        const result = await parse(`
+        INPUTE (0,ERR=*next) C,R,M$,P$,A$:("end"=3000,LEN=1,5)
+        INPUTE(0,ERR=1020)COL,ROW,LEN,PAD$,CURPOS,SAVE$,A$
+        INPUTE (0,ERR=2000) C,R,M$,P$,A$:("end"=3000,LEN=1,5)
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
