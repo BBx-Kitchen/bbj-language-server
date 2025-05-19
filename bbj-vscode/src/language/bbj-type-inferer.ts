@@ -1,9 +1,10 @@
 import { BBjServices } from "./bbj-module.js";
-import { Expression, Class, Assignment, isArrayDecl, isAssignment, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isLibFunction, isMemberCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, isMethodCall, isBBjTypeRef } from "./generated/ast.js";
+import { getClass } from "./bbj-nodedescription-provider.js";
+import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isMemberCall, isMethodCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
-    getType(expression: Expression): Class | undefined;
+    getType(expression: Expression): JavaPackage |Class | undefined;
 }
 
 export class BBjTypeInferer implements TypeInferer {
@@ -13,7 +14,7 @@ export class BBjTypeInferer implements TypeInferer {
         this.javaInterop = services.java.JavaInteropService;
     }
 
-    public getType(expression: Expression): Class | undefined {
+    public getType(expression: Expression): JavaPackage | Class | undefined {
         if (isSymbolRef(expression)) {
             const reference = expression.symbol.ref
             if (isAssignment(reference)) {
@@ -21,18 +22,15 @@ export class BBjTypeInferer implements TypeInferer {
             } else if (isClass(reference)) {
                 return reference
             } else if (isFieldDecl(reference) || isArrayDecl(reference) || isVariableDecl(reference)) {
-                return reference.type?.ref
+                return getClass(reference.type);
             } else if (isMethodDecl(reference)) {
-                return reference.returnType?.ref
-            } else if (isLibFunction(reference) && reference.name.toLowerCase() === 'cast') {
-                if (expression.args.length > 0) {
-                    // CAST function return type is the first arg which is a Class reference
-                    return this.getType(expression.args[0])
-                }
+                return getClass(reference.returnType);
+            } else if (isJavaPackage(reference)) {
+                return reference;
             }
             return undefined;
         } else if (isConstructorCall(expression)) {
-            return expression.class.ref;
+            return getClass(expression.klass);
         } else if (isMemberCall(expression)) {
             const member = expression.member.ref;
             if (member) {
@@ -41,7 +39,9 @@ export class BBjTypeInferer implements TypeInferer {
                 } else if (isJavaMethod(member)) {
                     return member.resolvedReturnType?.ref;
                 } else if (isMethodDecl(member)) {
-                    return member.returnType?.ref
+                    return getClass(member.returnType);
+                } else if (isJavaPackage(member) || isClass(member)) {
+                    return member;
                 }
             } else {
                 return undefined
@@ -51,7 +51,7 @@ export class BBjTypeInferer implements TypeInferer {
         } else if(isMethodCall(expression)) {
             return this.getType(expression.method);
         } else if(isBBjTypeRef(expression)) {
-            return expression.class.ref;
+            return expression.klass.ref;
         }
         return undefined;
     }
