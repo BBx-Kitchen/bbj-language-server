@@ -1,5 +1,6 @@
 touch = BBjAPI.TRUE
 web = BBjAPI.TRUE
+declare String result!
 result! = 0
 index = -1
 index! = 2
@@ -8,6 +9,7 @@ value$ = ""
 c=9
 f=8
 X=99
+declare StringBuilder html!
 html! = ""
 html=0
 result! = 0

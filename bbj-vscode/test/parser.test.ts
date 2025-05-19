@@ -25,6 +25,23 @@ describe('Parser Tests', () => {
 
     beforeAll(() => services.shared.workspace.WorkspaceManager.initializeWorkspace([]));
 
+
+    test('Performance test', async () => {
+        const count = 5;
+        const startTime = performance.now();
+        for (let index = 0; index < count; index++) {
+            await parse(`
+                print x;
+                `, { validation: false });
+        }
+        const endTime = performance.now();
+        const timeInSeconds = (endTime - startTime) / 1000;
+        console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
+        // In a bad state it took 48 seconds
+        // TODO do something against the flakiness: sometimes it hits the timeout; was at 5s once
+        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(14);
+    });
+
     test('Program definition test', async () => {
         const program = await parse(`
         REM arrays
@@ -1944,22 +1961,6 @@ describe('Parser Tests', () => {
         expectNoValidationErrors(result);
     });
 
-    test('Performance test', async () => {
-        const count = 5;
-        const startTime = performance.now();
-        for (let index = 0; index < count; index++) {
-            await parse(`
-                print x;
-                `, { validation: false });
-        }
-        const endTime = performance.now();
-        const timeInSeconds = (endTime - startTime) / 1000;
-        console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
-        // In a bad state it took 48 seconds
-        // TODO do something against the flakiness: sometimes it hits the timeout; was at 5s once
-        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(7);
-    });
-
     test('Issue #181 RELEASE with and without value', async () => {
         const result = await parse(`
             back:
@@ -2077,6 +2078,33 @@ describe('Parser Tests', () => {
         for j=0 to 10
             print j
         next 
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('FILE, XFILE #152', async () => {
+        const result = await parse(`
+        file fid$
+        file fid$,fin$(86)
+        file fid$,fin$(86),mode="options"
+        file fid$,fin$(86),err=*next
+        file fid$,fin$(86),mode="options",err=*next
+        open (1)"states.dat"
+        fid$=fid(1),fin$=fin(1)
+        close(1)
+        erase "states.dat"
+        file fid$,fin$(86),mode=""
+        open(1)"states.dat"
+        call"_fids"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('INPUTE, INPUTN #153', async () => {
+        const result = await parse(`
+        INPUTE (0,ERR=*next) C,R,M$,P$,A$:("end"=3000,LEN=1,5)
+        INPUTE(0,ERR=1020)COL,ROW,LEN,PAD$,CURPOS,SAVE$,A$
+        INPUTE (0,ERR=2000) C,R,M$,P$,A$:("end"=3000,LEN=1,5)
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });

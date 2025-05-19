@@ -49,13 +49,14 @@ class JavaInteropTestService extends JavaInteropService {
 
     constructor(services: BBjServices) {
         super(services)
-        
-        
+
+
         this.index = () => services.shared.workspace.IndexManager
-        
+
         // Init JavadocProvider otherwise adding Classes will throw an error
-        JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
-        
+        if (!JavadocProvider.getInstance().isInitialized()) {
+            JavadocProvider.getInstance().initialize([], services.shared.workspace.FileSystemProvider);
+        }
         // Add some faked Java classes to test java service related code.
         const fakeJavaClasses: JavaClass[] = [
             createBBjApiClass(this.classpath),
@@ -85,8 +86,10 @@ function createBBjApiClass(container: Classpath) {
     const clazz: JavaClass = {
         $type: JavaClass,
         name: 'BBjAPI',
+        packageName: '',
         $container: container,
         $containerProperty: 'classes',
+        classes: [],
         fields: [],
         methods: []
     }
@@ -107,8 +110,10 @@ function createHashMapClass(container: Classpath) {
     const clazz: JavaClass = {
         $type: JavaClass,
         name: 'java.util.HashMap',
+        packageName: 'java.util',
         $container: container,
         $containerProperty: 'classes',
+        classes: [],
         fields: [],
         methods: []
     }
@@ -129,9 +134,11 @@ function createJavaLangStringClass(container: Classpath): JavaClass {
     const fakeStringClass: JavaClass = {
         $type: JavaClass,
         name: 'java.lang.String',
+        packageName: 'java.lang',
         $container: container,
         $containerProperty: 'classes',
         fields: [],
+        classes: [],
         methods: []
     }
     fakeStringClass.methods = [
