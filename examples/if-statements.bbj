@@ -1,7 +1,7 @@
 x = 1, z = 2
 
 some_object! = ""
-a!
+a! = 3
 next 
 
 IF some_object! <> 3 THEN ?"x", STR(some_object!); ?"y"; ? "z"; rem af

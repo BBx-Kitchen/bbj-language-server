@@ -1,3 +1,4 @@
+declare Object proc_id$
 class public QVGrid implements BBjControl
 
     method public void clearProcCallback (BBjNumber eventType)

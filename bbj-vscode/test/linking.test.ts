@@ -5,12 +5,18 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
+import { isPortOpen } from './test-helper.js';
+import { JavadocProvider } from '../src/language/java-javadoc.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    beforeAll(() => initializeWorkspace(services.shared));
+    let isInteropRunning: boolean = await isPortOpen(5008);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
 
     function findLinkingErrors(document: LangiumDocument): Diagnostic[] {
         return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError) ?? []
@@ -123,7 +129,8 @@ describe('Linking Tests', async () => {
         `)
         expectNoErrors(document)
     })
-    /* Needs running java service
+    
+    describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
                 class public MyClass
@@ -133,15 +140,101 @@ describe('Linking Tests', async () => {
                 t.toString()
             `)
             expectNoErrors(document)
-        })
-    */
-    test('Imported java classes resolves', async () => {
-        const document = await validate(`
-            use java.util.HashMap
-            hm! = new HashMap()
-            hm!.put("JKH","HJ")
-        `)
-        expectNoErrors(document)
-    })
+        });
+    	
+		test('Imported java classes resolves', async () => {
+        	const document = await validate(`
+            	use java.util.HashMap
+            	hm! = new HashMap()
+            	hm!.put("JKH","HJ")
+        	`)
+        	expectNoErrors(document)
+   		})
+        test('Import and declare simple Java class without using FQNs', async () => {
+            const document = await validate(`
+                use java.util.Date
+                declare Date jsonobj!
+            `)
+            expectNoErrors(document)
+        });
 
+        test('Import Java class', async () => {
+            const document = await validate(`
+                use java.util.Date
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Declare with direct import', async () => {
+            const document = await validate(`
+                declare java.util.Date date!
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Class definition with direct import in extends', async () => {
+            const document = await validate(`
+                class MyDate extends java.util.Date
+                classend
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Class definition with direct import in implements', async () => {
+            const document = await validate(`
+                class List implements java.util.List
+                classend
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Object construction with direct import', async () => {
+            const document = await validate(`
+                let hashMap! = new java.util.HashMap()
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Test for #67', async () => {
+            const document = await validate(`
+                use java.lang.Class
+                declare Class thinClientClass!
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Unloaded Java FQN access - test for #6', async () => {
+            const document = await validate(`
+                A$ = java.sql.Date.valueOf("2305-07-23")
+            `)
+            expectNoErrors(document)
+        });
+        
+        test('Java FQN access - test for #6', async () => {
+            const document = await validate(`
+                use java.sql.Date
+                b! = java.lang.Boolean.TRUE 
+                A$ = java.sql.Date.valueOf("2305-07-23")
+                hm! = new java.util.HashMap()
+            `)
+            expectNoErrors(document)
+        });
+
+
+
+        test('Linked List is resolved', async () => {
+            const document = await validate(`
+                let list! = new java.util.LinkedList()
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Package scope as most outer scope', async () => {
+            const document = await validate(`
+                declare java.lang.String com
+                com.charAt(3)
+            `)
+            expectNoErrors(document)
+        });
+    });
 });
