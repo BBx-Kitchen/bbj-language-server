@@ -1,0 +1,14 @@
+REM Test file for AI completions
+REM Type after the lines below and wait for suggestions
+
+REM Example 1: Complete a method signature
+method public void
+
+REM Example 2: Complete a variable declaration
+dim customer
+
+REM Example 3: Complete a control structure
+if x > 10 then
+
+REM Example 4: Complete a BBj function call
+msgbox(
