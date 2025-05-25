@@ -196,7 +196,13 @@ export class OllamaLLMService extends LLMService {
             const requestTime = Date.now() - startTime;
             this.log(`Response received in ${requestTime}ms`);
             this.log(`Response status: ${response.status} ${response.statusText}`);
-            this.log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+            
+            // Log headers in a compatible way
+            const headers: Record<string, string> = {};
+            response.headers.forEach((value, key) => {
+                headers[key] = value;
+            });
+            this.log(`Response headers: ${JSON.stringify(headers)}`);
 
             if (!response.ok) {
                 const errorText = await response.text();
