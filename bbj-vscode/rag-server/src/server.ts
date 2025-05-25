@@ -81,6 +81,19 @@ app.locals.services = {
     logger
 };
 
+// Request logging middleware
+app.use((req, _res, next) => {
+    logger.info(`${req.method} ${req.path}`, {
+        query: req.query,
+        body: req.body,
+        headers: {
+            'content-type': req.headers['content-type'],
+            'user-agent': req.headers['user-agent']
+        }
+    });
+    next();
+});
+
 // Routes
 app.use('/health', healthRouter);
 app.use('/api', limiter, apiRouter);
@@ -88,7 +101,7 @@ app.use('/api/search', searchLimiter); // Additional rate limit for search
 app.use('/admin', authService.authenticate, adminRouter);
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     logger.error('Unhandled error:', err);
     res.status(500).json({
         error: 'Internal server error',

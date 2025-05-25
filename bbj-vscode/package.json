@@ -308,10 +308,17 @@
           "description": "Ollama model to use for completions",
           "scope": "window"
         },
-        "bbj.ai.ragEnabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable Retrieval-Augmented Generation (RAG) for context-aware completions",
+        "bbj.ai.ragMode": {
+          "type": "string",
+          "enum": ["disabled", "local", "remote", "hybrid"],
+          "default": "disabled",
+          "description": "RAG (Retrieval-Augmented Generation) mode: disabled, local only, remote only, or hybrid (both)",
+          "enumDescriptions": [
+            "No RAG - only use AI model training data",
+            "Local RAG - index workspace files locally",
+            "Remote RAG - use centralized RAG server only", 
+            "Hybrid - use both local and remote RAG sources"
+          ],
           "scope": "window"
         },
         "bbj.ai.embeddingUrl": {
@@ -324,12 +331,6 @@
           "type": "string",
           "default": "nomic-embed-text",
           "description": "Model to use for generating embeddings (for RAG)",
-          "scope": "window"
-        },
-        "bbj.ai.useRemoteRag": {
-          "type": "boolean",
-          "default": false,
-          "description": "Use centralized RAG server instead of local indexing",
           "scope": "window"
         },
         "bbj.ai.remoteRagUrl": {

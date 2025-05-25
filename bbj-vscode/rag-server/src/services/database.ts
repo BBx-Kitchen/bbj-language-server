@@ -31,16 +31,23 @@ export interface Documentation {
 
 export class DatabaseService {
     private db: Database.Database;
-    private logger: Logger;
+    private logger?: Logger;
+    private dbPath: string;
     
-    constructor(logger: Logger) {
-        this.logger = logger;
-        const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/rag.db');
+    constructor(dbPathOrLogger: string | Logger, logger?: Logger) {
+        // Support both old and new constructor signatures
+        if (typeof dbPathOrLogger === 'string') {
+            this.dbPath = dbPathOrLogger;
+            this.logger = logger;
+        } else {
+            this.logger = dbPathOrLogger;
+            this.dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/rag.db');
+        }
         
         // Ensure data directory exists
-        this.ensureDataDirectory(path.dirname(dbPath));
+        this.ensureDataDirectory(path.dirname(this.dbPath));
         
-        this.db = new Database(dbPath);
+        this.db = new Database(this.dbPath);
         this.db.pragma('journal_mode = WAL'); // Better performance
         this.db.pragma('synchronous = NORMAL');
     }
@@ -49,12 +56,12 @@ export class DatabaseService {
         try {
             await fs.mkdir(dirPath, { recursive: true });
         } catch (error) {
-            this.logger.error('Failed to create data directory:', error);
+            this.logger?.error('Failed to create data directory:', error);
         }
     }
     
     async initialize() {
-        this.logger.info('Initializing database...');
+        this.logger?.info('Initializing database...');
         
         // Create tables
         this.db.exec(`
@@ -114,7 +121,7 @@ export class DatabaseService {
             CREATE INDEX IF NOT EXISTS idx_usage_stats_created ON usage_stats(created_at);
         `);
         
-        this.logger.info('Database initialized successfully');
+        this.logger?.info('Database initialized successfully');
     }
     
     // Code Examples CRUD
@@ -155,7 +162,7 @@ export class DatabaseService {
         const stmt = this.db.prepare(query);
         const rows = stmt.all(...params);
         
-        return rows.map(row => ({
+        return rows.map((row: any) => ({
             ...row,
             keywords: JSON.parse(row.keywords || '[]'),
             embedding: JSON.parse(row.embedding || '[]'),
@@ -170,7 +177,7 @@ export class DatabaseService {
         
         // Calculate similarities
         const results = rows
-            .map(row => ({
+            .map((row: any) => ({
                 ...row,
                 keywords: JSON.parse(row.keywords || '[]'),
                 embedding: JSON.parse(row.embedding || '[]'),
@@ -208,7 +215,7 @@ export class DatabaseService {
         const rows = stmt.all();
         
         const results = rows
-            .map(row => ({
+            .map((row: any) => ({
                 ...row,
                 tags: JSON.parse(row.tags || '[]'),
                 embedding: JSON.parse(row.embedding || '[]'),
@@ -243,7 +250,7 @@ export class DatabaseService {
         const keyHash = crypto.createHash('sha256').update(key).digest('hex');
         
         const stmt = this.db.prepare('SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1');
-        const row = stmt.get(keyHash);
+        const row = stmt.get(keyHash) as any;
         
         if (!row) {
             return { valid: false };
@@ -287,6 +294,57 @@ export class DatabaseService {
         if (normA === 0 || normB === 0) return 0;
         
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+    
+    // Additional methods for CLI
+    async getAllApiKeys(): Promise<any[]> {
+        const stmt = this.db.prepare('SELECT id, name, created_at, last_used FROM api_keys WHERE is_active = 1');
+        return stmt.all();
+    }
+    
+    async revokeApiKey(keyId: number | string): Promise<boolean> {
+        const stmt = this.db.prepare('UPDATE api_keys SET is_active = 0 WHERE id = ?');
+        const result = stmt.run(keyId);
+        return result.changes > 0;
+    }
+    
+    async getStats(): Promise<{ totalExamples: number; totalDocumentation: number; totalCategories: number }> {
+        const examplesCount = this.db.prepare('SELECT COUNT(*) as count FROM code_examples').get() as any;
+        const docsCount = this.db.prepare('SELECT COUNT(*) as count FROM documentation').get() as any;
+        const categoriesCount = this.db.prepare('SELECT COUNT(DISTINCT category) as count FROM code_examples').get() as any;
+        
+        return {
+            totalExamples: examplesCount.count,
+            totalDocumentation: docsCount.count,
+            totalCategories: categoriesCount.count
+        };
+    }
+    
+    async vacuum(): Promise<void> {
+        this.db.exec('VACUUM');
+    }
+    
+    async clearOldUsageStats(days: number): Promise<number> {
+        const stmt = this.db.prepare(`
+            DELETE FROM usage_stats 
+            WHERE created_at < datetime('now', '-' || ? || ' days')
+        `);
+        const result = stmt.run(days);
+        return result.changes;
+    }
+    
+    async getTopQueries(limit: number): Promise<{ query: string; count: number }[]> {
+        // Since we don't have a separate queries table, we'll extract from usage_stats
+        // This is a simplified version - in production you'd want to track actual search queries
+        const stmt = this.db.prepare(`
+            SELECT endpoint as query, COUNT(*) as count 
+            FROM usage_stats 
+            WHERE endpoint LIKE '/api/search%'
+            GROUP BY endpoint 
+            ORDER BY count DESC 
+            LIMIT ?
+        `);
+        return stmt.all(limit) as { query: string; count: number }[];
     }
     
     async close() {

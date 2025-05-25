@@ -38,10 +38,10 @@ export class BBjInlineCompletionProvider implements vscode.InlineCompletionItemP
         // Initialize RAG service
         this.ragService = new RAGService(outputChannel);
         
-        // Check if RAG is enabled
-        const ragEnabled = config.get<boolean>('ragEnabled', false);
-        if (ragEnabled) {
-            this.log('RAG enabled - will retrieve relevant examples');
+        // Check RAG mode
+        const ragMode = config.get<string>('ragMode', 'disabled');
+        if (ragMode !== 'disabled') {
+            this.log(`RAG enabled in ${ragMode} mode - will retrieve relevant examples`);
             this.ragService.initialize().catch(error => {
                 this.log(`RAG initialization failed: ${error}`);
             });
@@ -406,11 +406,11 @@ Return ONLY the syntax needed to complete this line:`;
         
         // Get RAG context if enabled
         const config = vscode.workspace.getConfiguration('bbj.ai');
-        const ragEnabled = config.get<boolean>('ragEnabled', false);
+        const ragMode = config.get<string>('ragMode', 'disabled');
         
         let ragContext: { examples: string[], documentation: string[] } | undefined;
         
-        if (ragEnabled) {
+        if (ragMode !== 'disabled') {
             try {
                 const query = isEmptyLine ? contextBefore : currentLine;
                 const retrievalResult = await this.ragService.retrieveRelevantContext(
@@ -443,28 +443,36 @@ Return ONLY the syntax needed to complete this line:`;
         const beforeCursor = line.substring(0, position.character);
         const afterCursor = line.substring(position.character);
         
-        // Check if we're inside parentheses
-        const lastOpenParen = beforeCursor.lastIndexOf('(');
-        const lastCloseParen = beforeCursor.lastIndexOf(')');
-        const hasClosingParen = afterCursor.indexOf(')') !== -1;
+        // Count parentheses to check balance
+        const openParensBeforeCursor = (beforeCursor.match(/\(/g) || []).length;
+        const closeParensBeforeCursor = (beforeCursor.match(/\)/g) || []).length;
+        const openParensAfterCursor = (afterCursor.match(/\(/g) || []).length;
+        const closeParensAfterCursor = (afterCursor.match(/\)/g) || []).length;
         
-        // We're inside parentheses if the last open paren is after the last close paren
-        const insideParens = lastOpenParen > lastCloseParen && lastOpenParen !== -1;
+        // Check if we're inside unclosed parentheses
+        const unclosedParens = openParensBeforeCursor > closeParensBeforeCursor;
+        const hasClosingParenAfterCursor = closeParensAfterCursor > 0;
         
-        if (insideParens && hasClosingParen) {
-            // We're inside parentheses that already have a closing paren
-            // Remove leading parenthesis from completion if it exists
-            if (completion.startsWith('(')) {
-                const adjusted = completion.substring(1);
-                // Also remove trailing parenthesis if it exists
-                if (adjusted.endsWith(')')) {
-                    const withoutClosing = adjusted.substring(0, adjusted.length - 1);
-                    this.log(`Adjusted for existing parentheses: "${completion}" → "${withoutClosing}"`);
-                    return withoutClosing;
-                }
-                this.log(`Removed leading parenthesis: "${completion}" → "${adjusted}"`);
+        this.log(`Parentheses check - Before: (${openParensBeforeCursor} open, ${closeParensBeforeCursor} close), After: (${openParensAfterCursor} open, ${closeParensAfterCursor} close)`);
+        this.log(`Unclosed parens: ${unclosedParens}, Has closing after: ${hasClosingParenAfterCursor}`);
+        
+        // If we have unclosed parentheses and there's already a closing paren after cursor
+        if (unclosedParens && hasClosingParenAfterCursor) {
+            // Check if completion ends with a closing paren
+            if (completion.endsWith(')')) {
+                // Remove the trailing closing paren from completion
+                const adjusted = completion.substring(0, completion.length - 1);
+                this.log(`Removed trailing ) due to existing closing paren: "${completion}" → "${adjusted}"`);
                 return adjusted;
             }
+        }
+        
+        // Also handle the case where completion starts with ( but we already have one
+        const lastCharBeforeCursor = beforeCursor.trim().slice(-1);
+        if (lastCharBeforeCursor === '(' && completion.startsWith('(')) {
+            const adjusted = completion.substring(1);
+            this.log(`Removed leading ( due to existing open paren: "${completion}" → "${adjusted}"`);
+            return adjusted;
         }
         
         return completion;

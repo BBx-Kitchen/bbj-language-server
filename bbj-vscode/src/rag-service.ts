@@ -22,38 +22,46 @@ export class RAGService {
     private isInitialized = false;
     private remoteRagUrl?: string;
     private remoteRagApiKey?: string;
-    private useRemoteRag: boolean = false;
+    private ragMode: 'disabled' | 'local' | 'remote' | 'hybrid' = 'disabled';
     
     constructor(outputChannel: vscode.OutputChannel) {
         this.outputChannel = outputChannel;
         this.embeddingService = new EmbeddingService(outputChannel);
         
-        // Check for remote RAG configuration
+        // Check RAG configuration
         const config = vscode.workspace.getConfiguration('bbj.ai');
+        this.ragMode = config.get<'disabled' | 'local' | 'remote' | 'hybrid'>('ragMode', 'disabled');
         this.remoteRagUrl = config.get<string>('remoteRagUrl');
         this.remoteRagApiKey = config.get<string>('remoteRagApiKey');
-        this.useRemoteRag = config.get<boolean>('useRemoteRag', false) && !!this.remoteRagUrl;
         
-        if (this.useRemoteRag) {
-            this.log(`Using remote RAG service at: ${this.remoteRagUrl}`);
-        } else {
-            this.log('Using local RAG indexing');
+        // Validate remote configuration
+        if ((this.ragMode === 'remote' || this.ragMode === 'hybrid') && !this.remoteRagUrl) {
+            this.log('Warning: Remote RAG enabled but no URL configured. Falling back to local mode.');
+            this.ragMode = this.ragMode === 'remote' ? 'disabled' : 'local';
+        }
+        
+        this.log(`RAG mode: ${this.ragMode}`);
+        if (this.ragMode === 'remote' || this.ragMode === 'hybrid') {
+            this.log(`Remote RAG service: ${this.remoteRagUrl}`);
         }
     }
     
     async initialize(): Promise<void> {
-        if (this.isInitialized) return;
+        if (this.isInitialized || this.ragMode === 'disabled') return;
         
         this.log('Initializing RAG service...');
         
-        // Index workspace BBj files
-        await this.indexWorkspaceFiles();
-        
-        // Index built-in BBj examples and documentation
-        await this.indexBuiltInExamples();
+        // Only index locally if using local or hybrid mode
+        if (this.ragMode === 'local' || this.ragMode === 'hybrid') {
+            // Index workspace BBj files
+            await this.indexWorkspaceFiles();
+            
+            // Index built-in BBj examples and documentation
+            await this.indexBuiltInExamples();
+        }
         
         this.isInitialized = true;
-        this.log('RAG service initialized');
+        this.log(`RAG service initialized in ${this.ragMode} mode`);
     }
     
     async retrieveRelevantContext(
@@ -61,34 +69,83 @@ export class RAGService {
         currentContext: string,
         maxExamples: number = 3
     ): Promise<RetrievalResult> {
+        this.log(`\n=== RAG Search Started ===`);
+        this.log(`Mode: ${this.ragMode}`);
+        this.log(`Query: "${query}"`);
+        this.log(`Context length: ${currentContext.length} chars`);
+        this.log(`Max examples: ${maxExamples}`);
+        
+        if (this.ragMode === 'disabled') {
+            this.log('RAG is disabled - returning empty results');
+            return { examples: [], documentation: [] };
+        }
+        
         if (!this.isInitialized) {
+            this.log('Initializing RAG service...');
             await this.initialize();
         }
         
-        // Use remote RAG if configured
-        if (this.useRemoteRag) {
-            return await this.retrieveFromRemoteRag(query, currentContext, maxExamples);
+        let localResults: RetrievalResult = { examples: [], documentation: [] };
+        let remoteResults: RetrievalResult = { examples: [], documentation: [] };
+        
+        // Get local results if using local or hybrid mode
+        if (this.ragMode === 'local' || this.ragMode === 'hybrid') {
+            const queryEmbedding = await this.embeddingService.getEmbedding(query);
+            const localExamples = await this.findSimilarExamples(queryEmbedding, maxExamples);
+            const localDocs = await this.getRelevantDocumentation(query);
+            
+            localResults = {
+                examples: localExamples,
+                documentation: localDocs
+            };
         }
         
-        // Otherwise use local RAG
-        // Create embedding for the query
-        const queryEmbedding = await this.embeddingService.getEmbedding(query);
+        // Get remote results if using remote or hybrid mode
+        if (this.ragMode === 'remote' || this.ragMode === 'hybrid') {
+            if (!this.remoteRagUrl) {
+                this.log('Remote RAG URL not configured!');
+                if (this.ragMode === 'remote') {
+                    return { examples: [], documentation: [] };
+                }
+            } else {
+                this.log(`Attempting remote RAG search to: ${this.remoteRagUrl}`);
+                try {
+                    remoteResults = await this.retrieveFromRemoteRag(query, currentContext, maxExamples);
+                } catch (error) {
+                    this.log(`Remote RAG error: ${error}`);
+                    if (this.ragMode === 'remote') {
+                        // Remote only mode - return empty if remote fails
+                        this.log('Remote-only mode failed - returning empty results');
+                        return { examples: [], documentation: [] };
+                    }
+                    // Hybrid mode continues with local results only
+                    this.log('Hybrid mode - continuing with local results');
+                }
+            }
+        }
         
-        // Find similar code examples
-        const relevantExamples = await this.findSimilarExamples(
-            queryEmbedding, 
-            maxExamples
-        );
+        // Combine results for hybrid mode
+        if (this.ragMode === 'hybrid') {
+            const combinedExamples = [...localResults.examples, ...remoteResults.examples]
+                .slice(0, maxExamples);
+            const combinedDocs = [...localResults.documentation, ...remoteResults.documentation];
+            
+            this.log(`Retrieved ${combinedExamples.length} examples (${localResults.examples.length} local, ${remoteResults.examples.length} remote)`);
+            
+            return {
+                examples: combinedExamples,
+                documentation: combinedDocs
+            };
+        }
         
-        // Get relevant documentation
-        const documentation = await this.getRelevantDocumentation(query);
+        // Return appropriate results based on mode
+        const result = this.ragMode === 'remote' ? remoteResults : localResults;
+        this.log(`\n=== RAG Search Complete ===`);
+        this.log(`Total examples: ${result.examples.length}`);
+        this.log(`Total docs: ${result.documentation.length}`);
+        this.log(`========================\n`);
         
-        this.log(`Retrieved ${relevantExamples.length} examples and ${documentation.length} docs for query: ${query}`);
-        
-        return {
-            examples: relevantExamples,
-            documentation
-        };
+        return result;
     }
     
     private async retrieveFromRemoteRag(
@@ -96,23 +153,36 @@ export class RAGService {
         context: string,
         maxExamples: number
     ): Promise<RetrievalResult> {
+        const requestUrl = `${this.remoteRagUrl}/api/search`;
+        const requestBody = {
+            query,
+            context,
+            maxExamples,
+            maxDocs: 2,
+            apiKey: this.remoteRagApiKey
+        };
+        
+        this.log(`\nMaking remote RAG request:`);
+        this.log(`  URL: ${requestUrl}`);
+        this.log(`  Query: "${query}"`);
+        this.log(`  Max examples: ${maxExamples}`);
+        
         try {
-            const response = await fetch(`${this.remoteRagUrl}/api/search`, {
+            const response = await fetch(requestUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.remoteRagApiKey}`
                 },
-                body: JSON.stringify({
-                    query,
-                    context,
-                    maxExamples,
-                    maxDocs: 2
-                })
+                body: JSON.stringify(requestBody)
             });
             
+            this.log(`  Response status: ${response.status} ${response.statusText}`);
+            
             if (!response.ok) {
-                throw new Error(`Remote RAG error: ${response.statusText}`);
+                const errorText = await response.text();
+                this.log(`  Error response: ${errorText}`);
+                throw new Error(`Remote RAG error: ${response.status} ${response.statusText}`);
             }
             
             const data = await response.json() as {
@@ -136,19 +206,15 @@ export class RAGService {
             
             const documentation = data.documentation.map(doc => doc.content);
             
-            this.log(`Retrieved ${examples.length} examples and ${documentation.length} docs from remote RAG`);
+            this.log(`  Success! Retrieved ${examples.length} examples and ${documentation.length} docs from remote RAG\n`);
             
             return { examples, documentation };
-        } catch (error) {
-            this.log(`Remote RAG error: ${error}`);
-            this.log('Falling back to local RAG');
-            
-            // Fallback to local RAG
-            const queryEmbedding = await this.embeddingService.getEmbedding(query);
-            const relevantExamples = await this.findSimilarExamples(queryEmbedding, maxExamples);
-            const documentation = await this.getRelevantDocumentation(query);
-            
-            return { examples: relevantExamples, documentation };
+        } catch (error: any) {
+            this.log(`  Remote RAG failed: ${error.message || error}`);
+            if (error.cause?.code === 'ECONNREFUSED') {
+                this.log(`  Is the RAG server running? Expected at: ${this.remoteRagUrl}`);
+            }
+            throw error; // Re-throw to let caller handle
         }
     }
     
