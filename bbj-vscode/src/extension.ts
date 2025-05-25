@@ -12,12 +12,17 @@ import {
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
 import { BBjInlineCompletionProvider } from './bbj-inline-completion-provider.js';
+import { ChatViewProvider } from './chat-view-provider.js';
+import { LLMService, OllamaLLMService } from './llm-service.js';
+import { RAGService } from './rag-service.js';
 
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
 let aiOutputChannel: vscode.OutputChannel;
 let inlineCompletionProvider: BBjInlineCompletionProvider | undefined;
+let chatViewProvider: ChatViewProvider | undefined;
+let chatPanel: vscode.WebviewPanel | undefined;
 
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
@@ -50,7 +55,49 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         context.subscriptions.push(disposable);
         
-        aiOutputChannel.appendLine('BBj AI completions activated');
+        // Set up chat view
+        const serverUrl = aiConfig.get<string>('serverUrl', 'http://localhost:8080');
+        const llmService = serverUrl.includes('11434') 
+            ? new OllamaLLMService(aiOutputChannel)
+            : new LLMService(aiOutputChannel);
+        const ragService = new RAGService(aiOutputChannel);
+        chatViewProvider = new ChatViewProvider(
+            context.extensionUri,
+            llmService,
+            ragService,
+            aiOutputChannel
+        );
+        
+        // Register chat command
+        context.subscriptions.push(
+            vscode.commands.registerCommand('bbj.openChat', () => {
+                // If panel exists, reveal it, otherwise create new one
+                if (chatPanel) {
+                    chatPanel.reveal(vscode.ViewColumn.Two);
+                } else {
+                    // Create new panel
+                    chatPanel = vscode.window.createWebviewPanel(
+                        'bbjChat',
+                        'BBj Chat',
+                        vscode.ViewColumn.Two,
+                        {
+                            enableScripts: true,
+                            retainContextWhenHidden: true
+                        }
+                    );
+                    
+                    // Set the webview content
+                    chatViewProvider?.resolveWebviewPanel(chatPanel);
+                    
+                    // Reset when panel is closed
+                    chatPanel.onDidDispose(() => {
+                        chatPanel = undefined;
+                    });
+                }
+            })
+        );
+        
+        aiOutputChannel.appendLine('BBj AI completions and chat activated');
     }
 
     // Listen for configuration changes

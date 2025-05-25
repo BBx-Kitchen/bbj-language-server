@@ -60,7 +60,7 @@ export class LLMService {
         }
     }
 
-    async getCompletion(prompt: string, token: vscode.CancellationToken): Promise<string | null> {
+    async getCompletion(prompt: string, token: vscode.CancellationToken, cleanResponse: boolean = true): Promise<string | null> {
         const config = vscode.workspace.getConfiguration('bbj.ai');
         const maxTokens = config.get<number>('maxTokens', 150);
         const temperature = config.get<number>('temperature', 0.2);
@@ -97,10 +97,16 @@ export class LLMService {
             }
 
             const data = await response.json() as { content?: string };
-            const cleanedCompletion = this.cleanCompletion(data.content || '');
-            this.log(`Received raw completion: ${data.content}`);
-            this.log(`Cleaned completion: ${cleanedCompletion}`);
-            return cleanedCompletion;
+            const rawCompletion = data.content || '';
+            if (cleanResponse) {
+                const cleanedCompletion = this.cleanCompletion(rawCompletion);
+                this.log(`Received raw completion: ${rawCompletion}`);
+                this.log(`Cleaned completion: ${cleanedCompletion}`);
+                return cleanedCompletion;
+            } else {
+                this.log(`Received completion: ${rawCompletion}`);
+                return rawCompletion;
+            }
         } catch (error: any) {
             if (error.name === 'AbortError') {
                 this.log('Request cancelled by user');
@@ -173,21 +179,24 @@ export class OllamaLLMService extends LLMService {
         this.log(`Initialized Ollama service at ${this.serverUrl}`);
     }
 
-    override async getCompletion(prompt: string, token: vscode.CancellationToken): Promise<string | null> {
+    override async getCompletion(prompt: string, token: vscode.CancellationToken, cleanResponse: boolean = true): Promise<string | null> {
         const config = vscode.workspace.getConfiguration('bbj.ai');
         const maxTokens = config.get<number>('maxTokens', 150);
         const temperature = config.get<number>('temperature', 0.2);
         const model = config.get<string>('ollamaModel', 'codellama:34b');
 
         // Log the full request details
+        // For chat mode (cleanResponse=false), don't use aggressive stop tokens
+        const stopTokens = cleanResponse ? ['\n\n', 'REM', 'rem'] : [];
+        
         const requestBody = {
             model: model,
             prompt: prompt,
             stream: false,
             options: {
-                num_predict: maxTokens,
-                temperature: temperature,
-                stop: ['\n\n', 'REM', 'rem']
+                num_predict: cleanResponse ? maxTokens : config.get<number>('chatMaxTokens', 2000),
+                temperature: cleanResponse ? temperature : config.get<number>('chatTemperature', 0.7),
+                stop: stopTokens
             }
         };
 
@@ -254,13 +263,17 @@ export class OllamaLLMService extends LLMService {
             }
 
             const rawCompletion = data.response || '';
-            const cleanedCompletion = this.cleanCompletion(rawCompletion);
             
             this.log(`=== Ollama Response ===`);
             this.log(`Raw completion (${rawCompletion.length} chars): ${rawCompletion}`);
-            this.log(`Cleaned completion (${cleanedCompletion.length} chars): ${cleanedCompletion}`);
             
-            return cleanedCompletion.length > 0 ? cleanedCompletion : null;
+            if (cleanResponse) {
+                const cleanedCompletion = this.cleanCompletion(rawCompletion);
+                this.log(`Cleaned completion (${cleanedCompletion.length} chars): ${cleanedCompletion}`);
+                return cleanedCompletion.length > 0 ? cleanedCompletion : null;
+            } else {
+                return rawCompletion.length > 0 ? rawCompletion : null;
+            }
         } catch (error: any) {
             if (error.name === 'AbortError') {
                 this.log('Request cancelled by user');

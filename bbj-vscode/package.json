@@ -115,6 +115,15 @@
           "dark": "./images/run-dwc-dark.svg"
         },
         "key": "alt+d"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.openChat",
+        "title": "Open BBj Chat",
+        "icon": {
+          "light": "./images/chat-icon.svg",
+          "dark": "./images/chat-icon.svg"
+        }
       }
     ],
     "keybindings": [
@@ -163,6 +172,11 @@
         {
           "when": "resourceLangId == bbj",
           "command": "bbj.runDWC",
+          "group": "navigation"
+        },
+        {
+          "when": "resourceLangId == bbj",
+          "command": "bbj.openChat",
           "group": "navigation"
         }
       ],
@@ -344,6 +358,20 @@
           "default": "",
           "description": "API key for accessing the centralized RAG server",
           "scope": "window"
+        },
+        "bbj.ai.chatMaxTokens": {
+          "type": "number",
+          "default": 2000,
+          "description": "Maximum tokens for chat responses (longer than inline completions)",
+          "scope": "window"
+        },
+        "bbj.ai.chatTemperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "Temperature for chat responses (higher = more creative, lower = more focused)",
+          "scope": "window"
         }
       }
     }
@@ -356,7 +384,8 @@
     "onCommand:bbj.run",
     "onCommand:bbj.runBUI",
     "onCommand:bbj.runDWC",
-    "onCommand:bbj.autoComment"
+    "onCommand:bbj.autoComment",
+    "onCommand:bbj.openChat"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
