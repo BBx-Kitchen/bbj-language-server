@@ -11,10 +11,13 @@ import {
 } from 'vscode-languageclient/node.js';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
+import { BBjInlineCompletionProvider } from './bbj-inline-completion-provider.js';
 
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
+let aiOutputChannel: vscode.OutputChannel;
+let inlineCompletionProvider: BBjInlineCompletionProvider | undefined;
 
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
@@ -32,10 +35,61 @@ export function activate(context: vscode.ExtensionContext): void {
         DocumentFormatter
     );
 
+    // Set up AI completions if enabled
+    const aiConfig = vscode.workspace.getConfiguration('bbj.ai');
+    if (aiConfig.get<boolean>('enabled', true)) {
+        // Create output channel for AI debugging
+        aiOutputChannel = vscode.window.createOutputChannel('BBj AI Completions');
+        context.subscriptions.push(aiOutputChannel);
+        
+        // Create and register inline completion provider
+        inlineCompletionProvider = new BBjInlineCompletionProvider(aiOutputChannel);
+        const disposable = vscode.languages.registerInlineCompletionItemProvider(
+            { language: 'bbj' },
+            inlineCompletionProvider
+        );
+        context.subscriptions.push(disposable);
+        
+        aiOutputChannel.appendLine('BBj AI completions activated');
+    }
+
+    // Listen for configuration changes
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('bbj.ai.enabled')) {
+                const enabled = vscode.workspace.getConfiguration('bbj.ai').get<boolean>('enabled', true);
+                if (enabled && !inlineCompletionProvider) {
+                    // Enable AI completions
+                    if (!aiOutputChannel) {
+                        aiOutputChannel = vscode.window.createOutputChannel('BBj AI Completions');
+                        context.subscriptions.push(aiOutputChannel);
+                    }
+                    inlineCompletionProvider = new BBjInlineCompletionProvider(aiOutputChannel);
+                    const disposable = vscode.languages.registerInlineCompletionItemProvider(
+                        { language: 'bbj' },
+                        inlineCompletionProvider
+                    );
+                    context.subscriptions.push(disposable);
+                    aiOutputChannel.appendLine('BBj AI completions enabled');
+                } else if (!enabled && inlineCompletionProvider) {
+                    // Disable AI completions
+                    inlineCompletionProvider.dispose();
+                    inlineCompletionProvider = undefined;
+                    if (aiOutputChannel) {
+                        aiOutputChannel.appendLine('BBj AI completions disabled');
+                    }
+                }
+            }
+        })
+    );
+
 }
 
 // This function is called when the extension is deactivated.
 export function deactivate(): Thenable<void> | undefined {
+    if (inlineCompletionProvider) {
+        inlineCompletionProvider.dispose();
+    }
     if (client) {
         return client.stop();
     }

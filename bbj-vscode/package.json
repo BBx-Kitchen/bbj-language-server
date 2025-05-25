@@ -259,6 +259,90 @@
           "default": false,
           "description": "Enable/disable single line IF statements",
           "scope": "window"
+        },
+        "bbj.ai.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable AI-powered code completions",
+          "scope": "window"
+        },
+        "bbj.ai.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "URL of the LLM server (default is Ollama, use 8080 for llama.cpp)",
+          "scope": "window"
+        },
+        "bbj.ai.modelPath": {
+          "type": "string",
+          "default": "./models/model.gguf",
+          "description": "Path to the GGUF model file (for llama.cpp server)",
+          "scope": "window"
+        },
+        "bbj.ai.maxTokens": {
+          "type": "number",
+          "default": 150,
+          "description": "Maximum number of tokens to generate",
+          "scope": "window"
+        },
+        "bbj.ai.temperature": {
+          "type": "number",
+          "default": 0.3,
+          "description": "Temperature for completion generation (0.0-1.0)",
+          "scope": "window"
+        },
+        "bbj.ai.debounceDelay": {
+          "type": "number",
+          "default": 150,
+          "description": "Delay in milliseconds before triggering completion during rapid typing",
+          "scope": "window"
+        },
+        "bbj.ai.pauseBeforeRequest": {
+          "type": "number",
+          "default": 500,
+          "description": "Wait time in milliseconds after typing stops before requesting completion",
+          "scope": "window"
+        },
+        "bbj.ai.ollamaModel": {
+          "type": "string",
+          "default": "codellama:code",
+          "description": "Ollama model to use for completions",
+          "scope": "window"
+        },
+        "bbj.ai.ragEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Retrieval-Augmented Generation (RAG) for context-aware completions",
+          "scope": "window"
+        },
+        "bbj.ai.embeddingUrl": {
+          "type": "string",
+          "default": "http://localhost:11434/api/embeddings",
+          "description": "URL for embedding service (for RAG)",
+          "scope": "window"
+        },
+        "bbj.ai.embeddingModel": {
+          "type": "string",
+          "default": "nomic-embed-text",
+          "description": "Model to use for generating embeddings (for RAG)",
+          "scope": "window"
+        },
+        "bbj.ai.useRemoteRag": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use centralized RAG server instead of local indexing",
+          "scope": "window"
+        },
+        "bbj.ai.remoteRagUrl": {
+          "type": "string",
+          "default": "",
+          "description": "URL of the centralized RAG server (e.g., https://rag.company.com)",
+          "scope": "window"
+        },
+        "bbj.ai.remoteRagApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for accessing the centralized RAG server",
+          "scope": "window"
         }
       }
     }
