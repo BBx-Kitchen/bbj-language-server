@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)",
+      "Bash(grep:*)",
+      "Bash(npm start)",
+      "Bash(touch:*)",
+      "Bash(ollama list:*)",
+      "Bash(sqlite3:*)",
+      "Bash(npm run cli import:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

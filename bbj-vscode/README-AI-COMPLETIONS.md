@@ -106,7 +106,11 @@ ollama pull nomic-embed-text
 1. Open VS Code Settings (Cmd/Ctrl + ,)
 2. Search for "bbj.ai"
 3. ✅ Enable `BBj AI: Enabled`
-4. ✅ Enable `BBj AI: RAG Enabled` (optional but recommended)
+4. Set `BBj AI: RAG Mode` to your preferred mode:
+   - `local` - Use workspace files only (recommended for most users)
+   - `remote` - Use centralized RAG server only
+   - `hybrid` - Use both local and remote sources
+   - `disabled` - No RAG, just AI model training data
 5. Set `BBj AI: Ollama Model` to your model name (e.g., `codellama:7b`)
 
 **Step 4: Start Coding!**
@@ -584,18 +588,32 @@ For organizations that want to share BBj knowledge across teams, we offer a **Ce
 
 ### Quick Setup for Clients
 
-To use a centralized RAG server instead of local indexing:
+To use a centralized RAG server:
 
 1. **Get your API key** from your administrator
 2. **Configure VS Code**:
    ```json
    {
-     "bbj.ai.useRemoteRag": true,
+     "bbj.ai.ragMode": "remote",
      "bbj.ai.remoteRagUrl": "https://rag.yourcompany.com",
      "bbj.ai.remoteRagApiKey": "bbj_your-api-key-here"
    }
    ```
 3. **That's it!** The extension will now use the centralized knowledge base
+
+### Hybrid Setup (Recommended)
+
+For the best experience, use both local and remote sources:
+
+```json
+{
+  "bbj.ai.ragMode": "hybrid",
+  "bbj.ai.embeddingUrl": "http://127.0.0.1:11434/api/embeddings",
+  "bbj.ai.embeddingModel": "nomic-embed-text",
+  "bbj.ai.remoteRagUrl": "https://rag.yourcompany.com",
+  "bbj.ai.remoteRagApiKey": "bbj_your-api-key-here"
+}
+```
 
 ### Benefits Over Local RAG
 
@@ -623,21 +641,33 @@ For administrators who want to deploy a centralized RAG server:
 
 2. **Load Documentation**:
    ```bash
-   # Import BBj official docs
-   docker exec bbj-rag import-docs /docs/bbj --category official
-   
-   # Import company examples
-   docker exec bbj-rag import-examples /company/examples --category internal
+   # Use the admin API to import documentation
+   curl -X POST http://localhost:3000/admin/import \
+     -H "Authorization: Bearer <admin-api-key>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "type": "directory",
+       "path": "/docs/bbj",
+       "category": "official",
+       "recursive": true
+     }'
    ```
 
 3. **Create API Keys**:
    ```bash
-   docker exec bbj-rag create-api-key "Development Team" --permissions read
+   # Use the admin API to create keys
+   curl -X POST http://localhost:3000/admin/api-keys \
+     -H "Authorization: Bearer <admin-api-key>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "Development Team",
+       "permissions": ["read"]
+     }'
    ```
 
 4. **Configure Ollama** for embeddings on the server
 
-For detailed server setup instructions, see the [rag-server/README.md](rag-server/README.md).
+For detailed server setup and API documentation, see the [rag-server/README.md](rag-server/README.md).
 
 ### Security Considerations
 
@@ -646,23 +676,84 @@ For detailed server setup instructions, see the [rag-server/README.md](rag-serve
 - **Network Access**: Restrict server access to company networks
 - **Audit Logs**: Monitor usage through server analytics
 
-### Hybrid Approach
 
-You can use both local and centralized RAG:
+## 🔧 RAG Configuration Modes
 
+The BBj AI completions now support flexible RAG (Retrieval-Augmented Generation) configuration through the `bbj.ai.ragMode` setting:
+
+### Available RAG Modes
+
+| Mode | Description | Use Case | Requirements |
+|------|-------------|-----------|--------------|
+| **`disabled`** | No RAG - only AI model training data | Simple completions without context | None |
+| **`local`** | Local workspace indexing only | Single developer, offline work | Ollama with embedding model |
+| **`remote`** | Centralized RAG server only | Team with shared knowledge base | RAG server + API key |
+| **`hybrid`** | Both local and remote sources | Best of both worlds | Ollama + RAG server + API key |
+
+### Configuration Examples
+
+#### Local RAG Only
 ```json
 {
-  "bbj.ai.ragEnabled": true,           // Enable RAG
-  "bbj.ai.useRemoteRag": true,         // Use remote for BBj docs
-  "bbj.ai.remoteRagUrl": "https://rag.company.com",
-  "bbj.ai.remoteRagApiKey": "${env:BBJ_RAG_KEY}",
-  // Local RAG still indexes your project files
+  "bbj.ai.enabled": true,
+  "bbj.ai.ragMode": "local",
+  "bbj.ai.embeddingUrl": "http://127.0.0.1:11434/api/embeddings",
+  "bbj.ai.embeddingModel": "nomic-embed-text"
 }
 ```
 
-This gives you the best of both worlds:
-- **Official BBj documentation** from the central server
-- **Project-specific code** from local indexing
+#### Remote RAG Only
+```json
+{
+  "bbj.ai.enabled": true,
+  "bbj.ai.ragMode": "remote", 
+  "bbj.ai.remoteRagUrl": "https://rag.company.com",
+  "bbj.ai.remoteRagApiKey": "bbj_your-api-key-here"
+}
+```
+
+#### Hybrid Mode (Best of Both)
+```json
+{
+  "bbj.ai.enabled": true,
+  "bbj.ai.ragMode": "hybrid",
+  "bbj.ai.embeddingUrl": "http://127.0.0.1:11434/api/embeddings", 
+  "bbj.ai.embeddingModel": "nomic-embed-text",
+  "bbj.ai.remoteRagUrl": "https://rag.company.com",
+  "bbj.ai.remoteRagApiKey": "bbj_your-api-key-here"
+}
+```
+
+### RAG Mode Comparison
+
+| Feature | Local | Remote | Hybrid |
+|---------|--------|---------|---------|
+| **Workspace Indexing** | ✅ | ❌ | ✅ |
+| **Company Knowledge** | ❌ | ✅ | ✅ |
+| **Offline Support** | ✅ | ❌ | ✅ (fallback) |
+| **Resource Usage** | High | Low | Medium |
+| **Setup Complexity** | Medium | Low | High |
+| **Update Speed** | Instant | Manual | Mixed |
+
+### When to Use Each Mode
+
+**Use `local` when:**
+- Working on individual projects
+- No internet connection
+- Company doesn't have a RAG server
+- Need immediate indexing of new code
+
+**Use `remote` when:**
+- Part of a team with shared documentation
+- Want consistent completions across team
+- Don't want to run Ollama locally
+- Company maintains central knowledge base
+
+**Use `hybrid` when:**
+- Want both local project awareness AND company knowledge
+- Have reliable internet but also work offline
+- Want the best possible completion quality
+- Resources allow running both local and remote
 
 ## Configuration Settings
 
@@ -676,10 +767,9 @@ This gives you the best of both worlds:
 | `bbj.ai.debounceDelay` | Delay before triggering (ms) | `150` |
 | `bbj.ai.pauseBeforeRequest` | Wait time after typing stops (ms) | `500` |
 | `bbj.ai.ollamaModel` | Ollama model name (when using Ollama) | `codellama:code` |
-| `bbj.ai.ragEnabled` | Enable RAG for context-aware completions | `false` |
-| `bbj.ai.embeddingUrl` | Embedding service URL | `http://localhost:11434/api/embeddings` |
+| **`bbj.ai.ragMode`** | **RAG mode: `disabled`, `local`, `remote`, or `hybrid`** | **`disabled`** |
+| `bbj.ai.embeddingUrl` | Embedding service URL (for local RAG) | `http://localhost:11434/api/embeddings` |
 | `bbj.ai.embeddingModel` | Embedding model for RAG | `nomic-embed-text` |
-| `bbj.ai.useRemoteRag` | Use centralized RAG server | `false` |
 | `bbj.ai.remoteRagUrl` | Centralized RAG server URL | `""` |
 | `bbj.ai.remoteRagApiKey` | API key for centralized RAG | `""` |
 
@@ -809,11 +899,12 @@ code --list-extensions | grep bbj
 # Check memory usage
 docker stats bbj-rag-server
 
-# Optimize embeddings cache
-docker exec bbj-rag-server node dist/cli.js optimize-cache
+# Monitor database size
+docker exec bbj-rag-server ls -lh /data/rag.db
 
-# Reduce index size
-docker exec bbj-rag-server node dist/cli.js prune-old-entries --days 90
+# Clean up old usage stats (manual SQL needed)
+docker exec bbj-rag-server sqlite3 /data/rag.db \
+  "DELETE FROM api_usage WHERE created_at < date('now', '-90 days');"
 ```
 
 **"Slow search performance"**
@@ -874,7 +965,7 @@ services:
       - NODE_ENV=production
       - DB_PATH=/data/rag.db
       - OLLAMA_URL=http://ollama:11434
-      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=info
     volumes:
       - rag-data:/data
       - rag-logs:/app/logs
@@ -926,26 +1017,26 @@ RAG_CONTAINER="bbj-rag-server"
 DOCS_BASE="/opt/bbj-docs"
 
 echo "🔄 Loading BBj official documentation..."
-docker exec $RAG_CONTAINER node dist/cli.js import-docs \
-  $DOCS_BASE/official \
-  --category "official" \
-  --recursive
-
-echo "📚 Loading company code standards..."
-docker exec $RAG_CONTAINER node dist/cli.js import-docs \
-  $DOCS_BASE/standards \
-  --category "standards"
+curl -X POST http://localhost:3000/admin/import \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "directory",
+    "path": "'$DOCS_BASE'/official",
+    "category": "official",
+    "recursive": true
+  }'
 
 echo "💡 Loading code examples..."
-docker exec $RAG_CONTAINER node dist/cli.js import-examples \
-  $DOCS_BASE/examples \
-  --category "examples" \
-  --language "bbj"
-
-echo "📖 Loading API documentation..."
-docker exec $RAG_CONTAINER node dist/cli.js import-javadoc \
-  $DOCS_BASE/javadoc \
-  --category "api"
+curl -X POST http://localhost:3000/admin/import \
+  -H "Authorization: Bearer $ADMIN_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "directory",
+    "path": "'$DOCS_BASE'/examples",
+    "category": "examples",
+    "recursive": true
+  }'
 
 echo "✅ Initial load complete!"
 ```
