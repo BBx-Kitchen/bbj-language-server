@@ -5,3 +5,9 @@ bbj-vscode/LICENSE
 bbj-vscode/java-interop/bin/
 bbj-vscode/java-interop/lib/
 /.idea/
+
+# RAG server files
+bbj-vscode/rag-server/.env
+bbj-vscode/rag-server/data/
+bbj-vscode/rag-server/dist/
+bbj-vscode/rag-server/logs/
