@@ -17,16 +17,10 @@ classend
 class public TestDX extends Test 
     method public doNew()
         #this!.doProtected()               ; REM no error
-        #this!.doPrivately()               ; REM error
         let local1 = #this!.fieldProtected ; REM no error
-        let local2 = #this!.fieldPrivate   ; REM error
     methodend
 classend
 
 t! = new Test()
-t!.doPrivately()                           ; REM error
-t!.doProtected()                           ; REM error
 t!.doPublic()                              ; REM no error
-let global1 = t!.fieldPrivate              ; REM error
-let global2 = t!.fieldProtected            ; REM error
 let global3 = t!.fieldPublic               ; REM no error

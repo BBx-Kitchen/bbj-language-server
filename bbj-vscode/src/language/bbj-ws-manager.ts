@@ -1,4 +1,4 @@
-import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, } from "langium";
+import { AstNode, DefaultWorkspaceManager, FileSystemProvider, LangiumDocument, LangiumDocumentFactory, } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
@@ -70,8 +70,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 );
             }
             console.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
-
-            await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
+            await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             if (this.settings!.classpath.length > 0) {
                 const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
@@ -133,7 +132,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
+                if (prefix.length > 0 && documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
                     return true;
                 }
             }
@@ -175,5 +174,13 @@ export function collectPrefixes(input: string): string[] {
 
 export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
+}
+
+async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
+    try {
+        return await JavadocProvider.getInstance().initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
+    } catch (e) {
+        console.error(e);
+    }
 }
 
