@@ -115,21 +115,44 @@ export class LLMService {
         // Remove any markdown code blocks if present
         completion = completion.replace(/```[a-zA-Z]*\n?/g, '');
         
+        // Remove leading newlines/whitespace
+        completion = completion.trimStart();
+        
         // Remove trailing explanation text (often starts with newline and comment)
         const lines = completion.split('\n');
         const codeLines: string[] = [];
         
         for (const line of lines) {
+            const trimmedLine = line.trim().toLowerCase();
+            
             // Stop if we hit explanation text
-            if (line.trim().toLowerCase().startsWith('this') || 
-                line.trim().toLowerCase().startsWith('here') ||
-                line.trim().toLowerCase().startsWith('the above')) {
+            if (trimmedLine.startsWith('this') || 
+                trimmedLine.startsWith('here') ||
+                trimmedLine.startsWith('the above') ||
+                trimmedLine.startsWith('the code') ||
+                trimmedLine.includes('provided is') ||
+                trimmedLine.includes('you are trying') ||
+                trimmedLine.includes('i can') ||
+                trimmedLine.includes('however')) {
                 break;
             }
+            
+            // Skip lines that look like explanations
+            if (trimmedLine.length > 50 && !trimmedLine.includes('=') && !trimmedLine.includes('(')) {
+                continue;
+            }
+            
             codeLines.push(line);
         }
         
-        return codeLines.join('\n').trimEnd();
+        const result = codeLines.join('\n').trimEnd();
+        
+        // If the result doesn't look like code, return empty
+        if (result.length > 100 && !result.includes('(') && !result.includes('=') && !result.includes(';')) {
+            return '';
+        }
+        
+        return result;
     }
 
     dispose() {
