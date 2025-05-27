@@ -26,7 +26,7 @@ The BBj RAG (Retrieval-Augmented Generation) Server provides a centralized API f
 ```bash
 # Clone the repository
 git clone <your-repo-url>
-cd bbj-vscode/rag-server
+cd bbj-language-server/rag-server
 
 # Install dependencies
 npm install
@@ -40,6 +40,9 @@ cp .env.example .env
 
 # Initialize the database
 npm run init-db
+
+# Note: The database will be created at ./data/rag.db
+# You can change this location by editing DB_PATH in .env
 
 # Create your first API key
 npm run cli api-key create "Admin" -- --permissions admin
@@ -690,6 +693,89 @@ The server uses SQLite with the following main tables:
 - `documentation`: Stores documentation entries
 - `api_keys`: Authentication keys
 - `api_usage`: Usage tracking
+
+### Database Persistence and Storage
+
+#### Default Location
+
+By default, the SQLite database is stored at:
+```
+./data/rag.db
+```
+
+This path is relative to the directory where you run the server. For example:
+- If you run the server from `/opt/rag-server/`, the database will be at `/opt/rag-server/data/rag.db`
+- If you run the server from `/home/user/bbj-language-server/rag-server/`, the database will be at `/home/user/bbj-language-server/rag-server/data/rag.db`
+
+#### Configuring Database Location
+
+You can customize the database location using the `DB_PATH` environment variable:
+
+```bash
+# In .env file
+DB_PATH=/var/lib/rag-server/rag.db
+
+# Or via environment variable
+DB_PATH=/data/rag.db npm start
+```
+
+**Important**: The directory must exist and be writable by the process running the server.
+
+#### Database Files
+
+The SQLite database consists of several files:
+- `rag.db` - Main database file containing all data
+- `rag.db-shm` - Shared memory file (created during write operations)
+- `rag.db-wal` - Write-Ahead Log file (for transaction durability)
+
+The `-shm` and `-wal` files are temporary and managed by SQLite automatically.
+
+#### Backup Recommendations
+
+To backup the database safely:
+
+```bash
+# Option 1: Using SQLite backup command (recommended)
+sqlite3 ./data/rag.db ".backup /path/to/backup/rag_backup.db"
+
+# Option 2: Using the CLI tool to export data
+npm run cli db vacuum  # Optimize before backup
+cp ./data/rag.db /path/to/backup/rag_backup.db
+
+# Option 3: Automated daily backups with cron
+# Add to crontab: crontab -e
+0 2 * * * sqlite3 /opt/rag-server/data/rag.db ".backup /backup/rag_$(date +\%Y\%m\%d).db"
+```
+
+#### Storage Considerations
+
+- **Size**: Database size depends on the number of code examples and embeddings
+  - Each code example with embeddings: ~5-10 KB
+  - 10,000 examples ≈ 50-100 MB
+  - Use `npm run cli db stats` to check current size
+
+- **Performance**: SQLite performs well up to several GB
+  - For databases > 1GB, ensure sufficient disk I/O performance
+  - Consider SSD storage for better performance
+
+- **Permissions**: Ensure proper file permissions
+  ```bash
+  # Set appropriate permissions
+  chmod 644 ./data/rag.db
+  chmod 755 ./data/
+  ```
+
+#### Migration and Portability
+
+The database is fully portable between systems:
+
+```bash
+# Move to new server
+scp ./data/rag.db user@newserver:/opt/rag-server/data/
+
+# Or use rsync for larger databases
+rsync -avz ./data/rag.db user@newserver:/opt/rag-server/data/
+```
 
 ### Adding New Features
 
