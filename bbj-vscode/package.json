@@ -277,56 +277,56 @@
         "bbj.ai.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Enable/disable AI-powered code completions",
+          "description": "(Experimental) Enable/disable AI-powered code completions",
           "scope": "window"
         },
         "bbj.ai.serverUrl": {
           "type": "string",
           "default": "http://localhost:11434",
-          "description": "URL of the LLM server (default is Ollama, use 8080 for llama.cpp)",
+          "description": "(Experimental) URL of the LLM server (default is Ollama, use 8080 for llama.cpp)",
           "scope": "window"
         },
         "bbj.ai.modelPath": {
           "type": "string",
           "default": "./models/model.gguf",
-          "description": "Path to the GGUF model file (for llama.cpp server)",
+          "description": "(Experimental) Path to the GGUF model file (for llama.cpp server)",
           "scope": "window"
         },
         "bbj.ai.maxTokens": {
           "type": "number",
           "default": 150,
-          "description": "Maximum number of tokens to generate",
+          "description": "(Experimental) Maximum number of tokens to generate",
           "scope": "window"
         },
         "bbj.ai.temperature": {
           "type": "number",
           "default": 0.3,
-          "description": "Temperature for completion generation (0.0-1.0)",
+          "description": "(Experimental) Temperature for completion generation (0.0-1.0)",
           "scope": "window"
         },
         "bbj.ai.debounceDelay": {
           "type": "number",
           "default": 150,
-          "description": "Delay in milliseconds before triggering completion during rapid typing",
+          "description": "(Experimental) Delay in milliseconds before triggering completion during rapid typing",
           "scope": "window"
         },
         "bbj.ai.pauseBeforeRequest": {
           "type": "number",
           "default": 500,
-          "description": "Wait time in milliseconds after typing stops before requesting completion",
+          "description": "(Experimental) Wait time in milliseconds after typing stops before requesting completion",
           "scope": "window"
         },
         "bbj.ai.ollamaModel": {
           "type": "string",
           "default": "codellama:code",
-          "description": "Ollama model to use for completions",
+          "description": "(Experimental) Ollama model to use for completions",
           "scope": "window"
         },
         "bbj.ai.ragMode": {
           "type": "string",
           "enum": ["disabled", "local", "remote", "hybrid"],
           "default": "disabled",
-          "description": "RAG (Retrieval-Augmented Generation) mode: disabled, local only, remote only, or hybrid (both)",
+          "description": "(Experimental) RAG (Retrieval-Augmented Generation) mode: disabled, local only, remote only, or hybrid (both)",
           "enumDescriptions": [
             "No RAG - only use AI model training data",
             "Local RAG - index workspace files locally",
@@ -338,31 +338,31 @@
         "bbj.ai.embeddingUrl": {
           "type": "string",
           "default": "http://localhost:11434/api/embeddings",
-          "description": "URL for embedding service (for RAG)",
+          "description": "(Experimental) URL for embedding service (for RAG)",
           "scope": "window"
         },
         "bbj.ai.embeddingModel": {
           "type": "string",
           "default": "nomic-embed-text",
-          "description": "Model to use for generating embeddings (for RAG)",
+          "description": "(Experimental) Model to use for generating embeddings (for RAG)",
           "scope": "window"
         },
         "bbj.ai.remoteRagUrl": {
           "type": "string",
           "default": "",
-          "description": "URL of the centralized RAG server (e.g., https://rag.company.com)",
+          "description": "(Experimental) URL of the centralized RAG server (e.g., https://rag.company.com)",
           "scope": "window"
         },
         "bbj.ai.remoteRagApiKey": {
           "type": "string",
           "default": "",
-          "description": "API key for accessing the centralized RAG server",
+          "description": "(Experimental) API key for accessing the centralized RAG server",
           "scope": "window"
         },
         "bbj.ai.chatMaxTokens": {
           "type": "number",
           "default": 2000,
-          "description": "Maximum tokens for chat responses (longer than inline completions)",
+          "description": "(Experimental) Maximum tokens for chat responses (longer than inline completions)",
           "scope": "window"
         },
         "bbj.ai.chatTemperature": {
@@ -370,7 +370,7 @@
           "default": 0.7,
           "minimum": 0,
           "maximum": 2,
-          "description": "Temperature for chat responses (higher = more creative, lower = more focused)",
+          "description": "(Experimental) Temperature for chat responses (higher = more creative, lower = more focused)",
           "scope": "window"
         }
       }
