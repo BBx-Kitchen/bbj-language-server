@@ -7,7 +7,7 @@ bbj-vscode/java-interop/lib/
 /.idea/
 
 # RAG server files
-bbj-vscode/rag-server/.env
-bbj-vscode/rag-server/data/
-bbj-vscode/rag-server/dist/
-bbj-vscode/rag-server/logs/
+rag-server/.env
+rag-server/data/
+rag-server/dist/
+rag-server/logs/
