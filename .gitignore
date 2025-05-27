@@ -4,6 +4,10 @@ node_modules/
 bbj-vscode/LICENSE
 bbj-vscode/java-interop/bin/
 bbj-vscode/java-interop/lib/
-/.claude
-/bbj-vscode/.claude
-/.idea
+/.idea/
+
+# RAG server files
+bbj-vscode/rag-server/.env
+bbj-vscode/rag-server/data/
+bbj-vscode/rag-server/dist/
+bbj-vscode/rag-server/logs/
