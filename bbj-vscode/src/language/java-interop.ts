@@ -135,30 +135,40 @@ export class JavaInteropService {
             if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
                 this.langiumDocuments.addDocument(this.classpathDocument);
             }
-            const topLevelPackages = await connection.sendRequest(getTopLevelPackages, {}, token);
-            for (const pack of topLevelPackages) {
-                const parts = pack.packageName.split('.');
-                let parent: Classpath | JavaPackage  = this.classpath;
-                parts.forEach((part, index) => {
-                    if (!this.childrenOfByName.has(parent)) {
-                        this.childrenOfByName.set(parent, new Map());
-                    }
-                    const children = this.childrenOfByName.get(parent)!;
-                    if (!children.get(part)) {
-                        const javaPackage: JavaPackage = {
-                            $container: parent,
-                            $type: JavaPackage,
-                            classes: [],
-                            packages: [],
-                            name: part,
-                            $containerIndex: parent.packages.length,
-                            $containerProperty: 'packages',
-                        };
-                        parent.packages.push(javaPackage);
-                        children.set(part, javaPackage);
-                    }
-                    parent = children.get(part) as JavaPackage;
-                })
+            // Try to get top level packages, but handle gracefully if not supported
+            try {
+                const topLevelPackages = await connection.sendRequest(getTopLevelPackages, {}, token);
+                for (const pack of topLevelPackages) {
+                    const parts = pack.packageName.split('.');
+                    let parent: Classpath | JavaPackage  = this.classpath;
+                    parts.forEach((part, index) => {
+                        if (!this.childrenOfByName.has(parent)) {
+                            this.childrenOfByName.set(parent, new Map());
+                        }
+                        const children = this.childrenOfByName.get(parent)!;
+                        if (!children.get(part)) {
+                            // Ensure parent.packages exists
+                            if (!parent.packages) {
+                                parent.packages = [];
+                            }
+                            const javaPackage: JavaPackage = {
+                                $container: parent,
+                                $type: JavaPackage,
+                                classes: [],
+                                packages: [],
+                                name: part,
+                                $containerIndex: parent.packages.length,
+                                $containerProperty: 'packages',
+                            };
+                            parent.packages.push(javaPackage);
+                            children.set(part, javaPackage);
+                        }
+                        parent = children.get(part) as JavaPackage;
+                    })
+                }
+            } catch (topLevelErr) {
+                // getTopLevelPackages might not be supported by older Java interop versions
+                console.debug("getTopLevelPackages not supported, skipping top-level package initialization");
             }
             return true;
         } catch (e) {
@@ -253,6 +263,12 @@ export class JavaInteropService {
         const classpath = this.classpath;
         javaClass.$type = JavaClass;
 
+        // Defensive check for javaClass.name
+        if (!javaClass.name || typeof javaClass.name !== 'string') {
+            console.error('Invalid javaClass.name:', javaClass.name);
+            return;
+        }
+
         let parent: Classpath | JavaPackage | JavaClass = classpath;
         const parts = javaClass.name.split('.');
         parts.forEach((part, index) => {
@@ -264,12 +280,20 @@ export class JavaInteropService {
                 if (index === parts.length - 1) {
                     javaClass.$container = parent;
                     javaClass.$containerProperty = 'classes';
+                    // Ensure parent.classes exists
+                    if (!parent.classes) {
+                        parent.classes = [];
+                    }
                     javaClass.$containerIndex = parent.classes.length;
                     javaClass.name = part;
                     parent.classes.push(javaClass);
                     children.set(part, javaClass);
                 } else {
                     assertType<JavaPackage>(parent);
+                    // Ensure parent.packages exists
+                    if (!parent.packages) {
+                        parent.packages = [];
+                    }
                     const javaPackage: JavaPackage = {
                         $container: parent,
                         $type: JavaPackage,
