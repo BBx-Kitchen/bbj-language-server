@@ -39,10 +39,17 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             let propcontents = "";
             let prefixfromconfig;
             if (folders.length > 0) {
-                const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
-                const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
-                if (confFile) {
-                    propcontents = await this.fileSystemProvider.readFile(confFile.uri);
+                const rootFolder = this.getRootFolder(folders[0]);
+                // Skip project.properties if workspace is in examples folder
+                const isExamplesFolder = rootFolder.path.includes('/examples') || rootFolder.path.includes('\\examples');
+                if (!isExamplesFolder) {
+                    const content = await this.fileSystemProvider.readDirectory(rootFolder);
+                    const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+                    if (confFile) {
+                        propcontents = await this.fileSystemProvider.readFile(confFile.uri);
+                    }
+                } else {
+                    console.warn("Skipping project.properties from examples folder");
                 }
                 if (this.bbjdir) {
                     try {
