@@ -102,7 +102,14 @@ export class JavaInteropService {
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         console.warn("Load classpath from: " + classPath.join(', '))
         try {
-            const entries = classPath.filter(entry => entry.length > 0).map(entry => 'file:' + entry);
+            const entries = classPath.filter(entry => entry.length > 0).map(entry => {
+                // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
+                // Otherwise, add 'file:' prefix for regular file paths
+                if (entry.startsWith('[') && entry.endsWith(']')) {
+                    return entry;
+                }
+                return 'file:' + entry;
+            });
             const connection = await this.connect();
             return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
         } catch (e) {
