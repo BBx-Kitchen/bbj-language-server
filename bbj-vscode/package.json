@@ -199,7 +199,7 @@
             "null"
           ],
           "default": null,
-          "description": "Specify the path to the BBj executable",
+          "description": "Specify the path to the BBj home directory",
           "scope": "window"
         },
         "bbj.classpath": {
