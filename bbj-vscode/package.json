@@ -293,7 +293,7 @@
   },
   "dependencies": {
     "chevrotain": "^11.0.3",
-    "langium": "~3.2.1",
+    "langium": "~3.5.0",
     "properties-file": "~3.2.5",
     "properties-reader": "^2.2.0",
     "vscode-jsonrpc": "^8.2.1",
