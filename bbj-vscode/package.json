@@ -303,7 +303,7 @@
   "devDependencies": {
     "@types/node": "^18.0.0",
     "@types/vscode": "^1.67.0",
-    "@typescript-eslint/eslint-plugin": "^5.28.0",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^5.28.0",
     "concurrently": "^8.2.0",
     "esbuild": "^0.18.12",
