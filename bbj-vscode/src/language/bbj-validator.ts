@@ -13,6 +13,7 @@ import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
 import { NegativeLabelIdList } from './constants.js';
+import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
 
 /**
  * Register custom validation checks.
@@ -70,7 +71,7 @@ export class BBjValidator {
         if (!type || ![JavaField, JavaMethod, MethodDecl, FieldDecl].includes(type)) {
             return;
         }
-        const classOfDeclaration = memberCall.member.ref?.$container;
+        const classOfDeclaration = memberCall.member.ref?.$container as Class;
         const classOfUsage = AstUtils.getContainerOfType(memberCall, isClass);
         if (!classOfDeclaration) {
             return;
@@ -88,7 +89,7 @@ export class BBjValidator {
                         break;
                     }
                     if (isBbjClass(c)) {
-                        remainingClasses.push(...c.extends.map(x => x.ref).filter(x => x !== undefined).map(x => x as Class))
+                        remainingClasses.push(...c.extends.map(x => getClass(x)).filter(x => x !== undefined).map(x => x as Class))
                     }
                 }
             }
@@ -170,13 +171,14 @@ export class BBjValidator {
 
 
     checkUsedClassExists(use: Use, accept: ValidationAcceptor): void {
-        const className = use.javaClassName
-        if (className) {
-            const resolvedClass = this.javaInterop.getResolvedClass(className);
-            if (!resolvedClass) {
+        if (use.javaClass) {
+            const className = getFQNFullname(use.javaClass);
+            if(use.javaClass.pathParts.some(pp => pp.symbol.ref === undefined)) {
                 accept('error', `Class ${className} is not in the class path.`, { node: use });
-            } else if (resolvedClass.error) {
-                accept('error', `Error when loading ${className}: ${resolvedClass.error}`, { node: use });
+            }
+            const errorPart = use.javaClass.pathParts.find(pp => pp.symbol.error !== undefined)
+            if (errorPart) {
+                accept('error', `Error when loading ${className}: ${errorPart.symbol.error}`, { node: use, property: 'javaClass' });
             }
         }
     }

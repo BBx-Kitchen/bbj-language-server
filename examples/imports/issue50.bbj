@@ -4,18 +4,18 @@ CLASSEND
 
 let yyy = XXX.field
 
-CLASS PUBLIC XXX
+CLASS PUBLIC XXX2
     METHOD STATIC ::./importMe.bbj::ImportMe doIt()
         METHODRET new ::./importMe.bbj::ImportMe()
     METHODEND
 CLASSEND
 
-let yyy = XXX.doIt()
+let yyy = XXX2.doIt()
 
-CLASS PUBLIC XXX
+CLASS PUBLIC XXX3
     METHOD String doIt(::./importMe.bbj::ImportMe aaa)
         METHODRET ''
     METHODEND
 CLASSEND
 
-let yyy = XXX.doIt(new ::./importMe.bbj::ImportMe())
+let yyy = XXX3.doIt(new ::./importMe.bbj::ImportMe())

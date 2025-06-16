@@ -4,3 +4,6 @@ node_modules/
 bbj-vscode/LICENSE
 bbj-vscode/java-interop/bin/
 bbj-vscode/java-interop/lib/
+/.claude
+/bbj-vscode/.claude
+/.idea

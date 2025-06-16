@@ -26,6 +26,7 @@ Statement:
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
     ReadStatement |
+    ExtendedInputStatement |
     SqlCloseStatement |
     SqlCommitStatement |
     SqlRollbackStatement |
@@ -55,6 +56,7 @@ SingleStatement:
     ExitToStatement |
     ExitWithNumberStatement |
     FileOptStatement |
+    FileStatement |
     FnErrStatement |
     ForStatement |
     FulltextStatement |
@@ -176,9 +178,14 @@ DumpStatement:
     'DUMP' ('(' channelno=Expression Mode? Err? Ind? RPAREN_NL)?
     ;
 
+
+FileStatement:
+    ('FILE' | 'XFILE') string1=Expression (',' string2=Expression)? Mode? Err?
+;
+
 FileOptStatement:
     'FILEOPT' str1=Expression Mode? Err?
-    ;
+;
 
 FulltextStatement:
     'FULLTEXT' fileid=Expression ',' template=Expression ',' keyfield=Expression Mode? Err?
@@ -274,11 +281,11 @@ CommentStatement:
 
 Use:
     'use' (bbjFilePath=BBjFilePath bbjClass=[BbjClass:ValidName]) | 
-    'use' javaClassName=QualifiedJavaClassName
+    'use' javaClass=JavaTypeRef
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' 'auto'? type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName;
+    'declare' 'auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
@@ -286,7 +293,7 @@ Assignment:
 ClassDecl returns BbjClass:
     'CLASS' Visibility Static name=ValidName 
         Extends?
-        ('IMPLEMENTS' implements+=[Class:QualifiedClassName])? (',' implements+=[Class:QualifiedClassName])*  (';' comments+=CommentStatement)?
+        ('IMPLEMENTS' implements+=QualifiedClass)? (',' implements+=QualifiedClass)*  (';' comments+=CommentStatement)?
     (members+=ClassMember | Comments)*
     'CLASSEND'
 ;
@@ -308,7 +315,7 @@ Modifier returns string:
 ;
 
 fragment Extends:
-    ('EXTENDS' extends+=[Class:QualifiedClassName] (',' extends+=[Class:QualifiedClassName])*)
+    ('EXTENDS' extends+=QualifiedClass (',' extends+=QualifiedClass)*)
 ;
 
 fragment Comments:
@@ -320,7 +327,7 @@ ClassMember returns ClassMember:
 ;
 
 FieldDecl returns FieldDecl:
-    'FIELD' Visibility Static type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
+    'FIELD' Visibility Static type=QualifiedClass (array?='[' ']')? name=FeatureName ('=' init=Expression)?  (';' comments+=CommentStatement)?
 ;
 
 MethodDecl returns MethodDecl:
@@ -333,7 +340,7 @@ MethodDecl returns MethodDecl:
 ;
 
 fragment MethodDeclStart returns MethodDecl:
-    'METHOD' Visibility Static (returnType=[Class:QualifiedClassName] (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (returnType=QualifiedClass (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
 InterfaceMethodDecl returns MethodDecl:
@@ -345,7 +352,7 @@ MethodReturnStatement:
 ;
 
 ParameterDecl returns VariableDecl:
-    {infer ParameterDecl} type=[Class:QualifiedClassName] (array?='[' ']')? name=FeatureName
+    {infer ParameterDecl} type=QualifiedClass (array?='[' ']')? name=FeatureName
 ;
 
 /**
@@ -565,6 +572,10 @@ ReadStatement:
     kind=READ_KINDS record?='RECORD'? WithChannelAndOptionsAndInputItems?
 ;
 
+ExtendedInputStatement:
+    kind=('INPUTN' | 'INPUTE') WithChannelAndOptionsAndInputItems?
+;
+
 READ_KINDS returns string:
     'READ' | 'INPUT' | 'EXTRACT' | 'FIND'
 ;
@@ -599,7 +610,7 @@ VerifyOptions:
 ;
 
 VerifyOption:
-    key=StringLiteral '=' lineref=LabelRef
+    key=StringLiteral '=' lineref=(LabelRef | NUMBER)
 ;
 
 LastVerifyOption:
@@ -751,9 +762,9 @@ PrefixExpression infers Expression:
 MemberCall infers Expression:
     PrimaryExpression
     (
-        {infer MemberCall.receiver=current} '.' member=[ClassMember:FeatureName]
+        {infer MemberCall.receiver=current} '.' member=[NamedElement:FeatureName]
         | {infer ArrayElement.receiver=current} "[" (all?="ALL" | indices+=Expression (',' indices+=Expression)*) "]"
-        | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? RPAREN
+        | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? Err? RPAREN
     )*
 ;
 
@@ -770,14 +781,15 @@ PrimaryExpression infers Expression:
     | ConstructorCall
     | SymbolicLabelName
     | BBjTypeRef
+    | JavaSymbol
     ;
 
 BBjTypeRef:
-    class=[Class:QualifiedBBjClassName]
+    klass=[Class:QualifiedBBjClassName]
     ;
 
 SymbolRef infers Expression:
-    {infer SymbolRef} instanceAccess?='#'? symbol=[NamedElement:FeatureName]  (isMethodCall?='(' (args+=Expression (',' args+=Expression)*)? Err? RPAREN)?
+    {infer SymbolRef} instanceAccess?='#'? symbol=[NamedElement:FeatureName]
 ;
 
 Literal:
@@ -792,7 +804,7 @@ StringLiteral:
 ;
 
 Mnemonic:
-    name=MNEMONIC ('(' params+=Expression (',' params+=Expression)*RPAREN)?
+    MNEMONIC ('(' params+=Expression (',' params+=Expression)*RPAREN)?
 ;
 
 PositionalMnemonic:
@@ -800,19 +812,28 @@ PositionalMnemonic:
 ;
 
 ConstructorCall:
-    // TODO: Possibly use ID instead of QualifiedClassName
-    'new' class=[Class:QualifiedClassName] 
+    'new' klass=QualifiedClass
     (
         ('(' (args+=Expression (',' args+=Expression)*)? RPAREN)
         | ('[' (args+=Expression (',' args+=Expression)*)? ']')
     )
     ;
 
-QualifiedClassName returns string:
-    QualifiedBBjClassName | QualifiedJavaClassName;
+QualifiedClass:
+    BBjTypeRef | SimpleTypeRef | JavaTypeRef;
 
-QualifiedJavaClassName returns string:
-    ID ('.' ID)*;
+type JavaPackageLike = JavaClass | JavaPackage;
+
+SimpleTypeRef:
+    simpleClass=[Class:ID]
+    ;
+
+JavaTypeRef:
+    pathParts+=JavaSymbol ('.' pathParts+=JavaSymbol)*
+    ;
+
+JavaSymbol:
+    symbol=[JavaPackageLike:ID];
 
 QualifiedBBjClassName returns string:
     BBjFilePath ID;
@@ -906,7 +927,7 @@ interface DefFunction extends NamedElement {
 }
 
 interface VariableDecl extends NamedElement {
-    type?: @Class
+    type?: QualifiedClass
     array?: boolean
 }
 
@@ -920,7 +941,7 @@ interface FieldDecl extends VariableDecl {
 interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
-    returnType?: @Class
+    returnType?: QualifiedClass
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
@@ -939,8 +960,8 @@ interface BbjClass extends Class {
     visibility?: string
     static?: boolean
     interface: boolean
-    extends?: @Class[]
-    implements?: @Class[]
+    extends?: QualifiedClass[]
+    implements?: QualifiedClass[]
     comments: CommentStatement[]
     members: ClassMember[]
 }

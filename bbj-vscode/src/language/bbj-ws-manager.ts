@@ -1,4 +1,4 @@
-import { AstNode, DefaultWorkspaceManager, LangiumDocument, LangiumDocumentFactory, } from "langium";
+import { AstNode, DefaultWorkspaceManager, FileSystemProvider, LangiumDocument, LangiumDocumentFactory, } from "langium";
 import { LangiumSharedServices } from "langium/lsp";
 import { KeyValuePairObject, getProperties } from 'properties-file';
 import { CancellationToken, WorkspaceFolder } from 'vscode-languageserver';
@@ -23,11 +23,22 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private javaInterop: JavaInteropService;
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
+    private classpathFromSettings = "";
 
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
-            this.bbjdir = params.initializationOptions;
+            console.log('Initialization options received:', JSON.stringify(params.initializationOptions));
+            if (typeof params.initializationOptions === 'string') {
+                // Legacy: just the home directory
+                this.bbjdir = params.initializationOptions;
+            } else if (params.initializationOptions) {
+                // New format: object with home and classpath
+                this.bbjdir = params.initializationOptions.home || "";
+                this.classpathFromSettings = params.initializationOptions.classpath || "";
+                console.log(`BBj home: ${this.bbjdir}`);
+                console.log(`Classpath from settings: ${this.classpathFromSettings}`);
+            }
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;
         const bbjServices = services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj') as BBjServices;
@@ -70,12 +81,27 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 );
             }
             console.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
+            await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
-            await JavadocProvider.getInstance().initialize(wsJavadocFolders, this.fileSystemProvider, cancelToken);
-
-            if (this.settings!.classpath.length > 0) {
-                const loaded = await this.javaInterop.loadClasspath(this.settings.classpath, cancelToken)
-                console.debug(`Java Classes ${loaded ? '' : 'not '}loaded`)
+            // Use classpath from project.properties if available, otherwise fall back to VS Code settings
+            let classpathToUse = this.settings!.classpath;
+            
+            // Check if classpath is effectively empty (no entries or just one empty string)
+            const isClasspathEmpty = classpathToUse.length === 0 || 
+                                   (classpathToUse.length === 1 && classpathToUse[0] === "");
+            
+            if (isClasspathEmpty && this.classpathFromSettings) {
+                // The setting value should be wrapped in square brackets
+                // For example: if bbj.classpath = "something", we pass ["[something]"]
+                classpathToUse = [`[${this.classpathFromSettings}]`];
+                console.log(`Using classpath from VS Code settings: bbj.classpath="${this.classpathFromSettings}"`);
+                console.log(`Formatted for Java interop: ${JSON.stringify(classpathToUse)}`);
+            }
+            
+            if (classpathToUse.length > 0) {
+                console.log(`Loading classpath with entries: ${JSON.stringify(classpathToUse)}`);
+                const loaded = await this.javaInterop.loadClasspath(classpathToUse, cancelToken)
+                console.log(`Java Classes ${loaded ? '' : 'not '}loaded`)
             } else {
                 console.warn("No classpath set. No Java classes loaded.")
             }
@@ -133,7 +159,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         if (this.settings?.prefixes) {
             for (const prefix of this.settings?.prefixes) {
                 // TODO check that document is part of the workspace folders
-                if (documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
+                if (prefix.length > 0 && documentUri.fsPath.startsWith(URI.file(prefix).fsPath)) {
                     return true;
                 }
             }
@@ -175,5 +201,13 @@ export function collectPrefixes(input: string): string[] {
 
 export function resolveTilde(input: string): string {
     return input.replaceAll('~', os.homedir())
+}
+
+async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
+    try {
+        return await JavadocProvider.getInstance().initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
+    } catch (e) {
+        console.error(e);
+    }
 }
 

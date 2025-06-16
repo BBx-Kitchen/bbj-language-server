@@ -1,8 +1,6 @@
-import { AstNode, AstNodeDescription, AstUtils, DefaultAstNodeDescriptionProvider, LangiumDocument, isAstNodeDescription } from "langium";
-import { JavaMethod, LibEventType, LibFunction, MethodDecl } from "./generated/ast.js";
+import { AstNode, AstNodeDescription, AstUtils, CstNode, DefaultAstNodeDescriptionProvider, LangiumDocument, Reference, assertUnreachable, isAstNodeDescription } from "langium";
+import { Class, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl, QualifiedClass } from "./generated/ast.js";
 import { documentationHeader } from "./bbj-hover.js";
-
-
 
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
 
@@ -27,8 +25,59 @@ function enhanceFunctionDescription(descr: AstNodeDescription, func: MethodData)
 export function toMethodData(methDecl: MethodDecl): MethodData {
     return {
         name: methDecl.name,
-        parameters: methDecl.params.map(p => { return { name: p.name, type: p.type?.$refText ?? '' } }),
-        returnType: methDecl.returnType?.$refText ?? ''
+        parameters: methDecl.params.map(p => { return { name: p.name, type: getFQNFullname(p.type) } }),
+        returnType: getFQNFullname(methDecl.returnType)
+    }
+}
+
+export function getFQNFullname(klass: QualifiedClass|undefined) {
+    if(klass) {
+        switch(klass.$type) {
+            case 'BBjTypeRef': return klass.klass.$refText;
+            case 'SimpleTypeRef': return klass.simpleClass.$refText;
+            case "JavaTypeRef": return klass.pathParts.map(m => m.symbol.$refText).join('.')  
+            default: assertUnreachable(klass);
+        }
+    }
+    return '';
+}
+
+export function getClassRefNode(klass: QualifiedClass): CstNode|undefined {
+    switch(klass.$type) {
+        case 'BBjTypeRef': return klass.klass.$refNode;
+        case 'SimpleTypeRef': return klass.simpleClass.$refNode;
+        case "JavaTypeRef": return klass.pathParts[klass.pathParts.length-1].symbol.$refNode;
+        default: assertUnreachable(klass);
+    }
+}
+
+export function getClass(klass: QualifiedClass|undefined): Class|undefined {
+    if(!klass) {
+        return undefined;
+    }
+    switch(klass.$type) {
+        case 'BBjTypeRef': return klass.klass.ref;
+        case 'SimpleTypeRef': return klass.simpleClass.ref;
+        case "JavaTypeRef":
+            const parts = klass.pathParts;
+            const symbol = parts[parts.length - 1].symbol;
+            return symbol && symbol.ref && symbol.ref.$type === "JavaClass" ? symbol.ref : undefined;
+        default: assertUnreachable(klass);
+    }
+}
+
+export function getClassRef(klass: QualifiedClass|undefined): Reference<Class>|undefined {
+    if(!klass) {
+        return undefined;
+    }
+    switch(klass.$type) {
+        case 'BBjTypeRef': return klass.klass;
+        case 'SimpleTypeRef': return klass.simpleClass;
+        case "JavaTypeRef":
+            const parts = klass.pathParts;
+            const symbol = parts[parts.length - 1].symbol;
+            return symbol && symbol.ref && symbol.ref.$type === "JavaClass" ? symbol as Reference<JavaClass> : undefined;
+        default: assertUnreachable(klass);
     }
 }
 

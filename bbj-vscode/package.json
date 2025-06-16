@@ -1,6 +1,6 @@
 {
   "name": "bbj-lang",
-  "version": "0.2.6",
+  "version": "0.2.14",
   "publisher": "basis-intl",
   "displayName": " BBj Programming Language Support",
   "description": "BBj Language Support for Visual Studio Code",
@@ -115,6 +115,11 @@
           "dark": "./images/run-dwc-dark.svg"
         },
         "key": "alt+d"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.showClasspathEntries",
+        "title": "Show Available Classpath Entries"
       }
     ],
     "keybindings": [
@@ -194,16 +199,13 @@
             "null"
           ],
           "default": null,
-          "description": "Specify the path to the BBj executable",
+          "description": "Specify the path to the BBj home directory",
           "scope": "window"
         },
         "bbj.classpath": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": "string",
           "default": "bbj_default",
-          "description": "BBj Classpath to use for starting applications",
+          "description": "BBj Classpath entry name to use for starting applications (e.g., 'bbj_default', 'addon', 'barista'). Run 'BBj: Show Available Classpath Entries' to see all available options.",
           "scope": "window"
         },
         "bbj.configFile": {
@@ -300,7 +302,7 @@
   },
   "dependencies": {
     "chevrotain": "^11.0.3",
-    "langium": "~3.2.0",
+    "langium": "~3.2.1",
     "properties-file": "~3.2.5",
     "properties-reader": "^2.2.0",
     "vscode-jsonrpc": "^8.2.1",
@@ -315,7 +317,7 @@
     "concurrently": "^8.2.0",
     "esbuild": "^0.18.12",
     "eslint": "^8.17.0",
-    "langium-cli": "^3.2.0",
+    "langium-cli": "~3.2.0",
     "shx": "^0.3.4",
     "typescript": "^4.9.4",
     "vitest": "~1.4.0"
