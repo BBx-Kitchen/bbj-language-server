@@ -5,13 +5,15 @@ import {
     DefaultScopeComputation,
     DocumentSegment,
     GrammarUtils,
+    interruptAndCheck,
     LangiumDocument,
     MapScope,
+    MultiMap,
     PrecomputedScopes
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
-import { collectAllUseStatements } from './bbj-scope.js';
+import { getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
 import {
     ArrayDecl,
     Assignment,
@@ -21,11 +23,15 @@ import {
     isClasspath,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
+    isJavaPackage,
+    isJavaTypeRef,
     isLetStatement,
     isLibEventType,
     isLibMember,
-    isProgram, isReadStatement,
+    isMemberCall,
+    isReadStatement,
     isSymbolRef, isUse,
+    MemberCall,
     MethodDecl
 } from './generated/ast.js';
 import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
@@ -49,42 +55,39 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
         const rootNode = document.parseResult.value;
-        if (isProgram(rootNode) && rootNode.$type === 'Program') {
-            for (const use of collectAllUseStatements(rootNode)) {
-                const className = use.javaClassName
-                if (className != null) {
-                    try {
-                        await this.javaInterop.resolveClassByName(className, cancelToken);
-                    } catch (e) {
-                        console.error(e)
-                    }
-                }
-            }
+        const scopes = new MultiMap<AstNode, AstNodeDescription>();
+        // Override to process node in an async way
+        // to trigger backend resolution of Java class references.
+        for (const node of AstUtils.streamAllContents(rootNode)) {
+            await interruptAndCheck(cancelToken);
+            await this.processNode(node, document, scopes);
         }
+
         if (JavaSyntheticDocUri === document.uri.toString() && isClasspath(rootNode)) {
-            const computed = await super.computeLocalScopes(document, cancelToken);
             // Cache classes as map scope. It is used very often and not changing.
-            (document as JavaDocument).classesMapScope = new MapScope(computed.get(rootNode))
-            return computed;
+            (document as JavaDocument).classesMapScope = new MapScope(scopes.get(rootNode))
         }
-        return super.computeLocalScopes(document, cancelToken);
+        return scopes;
     }
 
-    protected override processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): void {
-        if (isUse(node)) {
-            if (node.javaClassName) {
-                const javaClass = this.javaInterop.getResolvedClass(node.javaClassName);
-                if (!javaClass) {
-                    return;
-                }
-                if (javaClass.error) {
-                    console.warn(`Java class resolution error: ${javaClass.error}`)
-                    return;
-                }
-                const program = node.$container;
-                const simpleName = node.javaClassName.substring(node.javaClassName.lastIndexOf('.') + 1);
-                this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
+    protected override async processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): Promise<void> {
+        if (isUse(node) && node.javaClass) {
+            const javaClassName = getFQNFullname(node.javaClass);
+            const javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
+            if (!javaClass) {
+                return;
             }
+            if (javaClass.error) {
+                console.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
+                return;
+            }
+            const program = node.$container;
+            const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
+            this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
+        } else if (isJavaTypeRef(node) && node.pathParts.length > 1) { // resolve only qualified names
+            const javaClassName = getFQNFullname(node);
+            // just trigger resolution so the class reference is loaded into the synthetic document.
+            await this.tryResolveJavaReference(javaClassName, this.javaInterop);
         } else if (isAssignment(node) && !node.instanceAccess && node.variable && !isFieldDecl(node.variable)) {
             const scopeHolder = this.findScopeHolder(node)
             if (isSymbolRef(node.variable)) {
@@ -116,8 +119,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 const superType = node.extends[0]
                 this.addToScope(scopes, node, {
                     name: 'super!',
-                    nameSegment: CstUtils.toDocumentSegment(superType.$refNode),
-                    selectionSegment: CstUtils.toDocumentSegment(superType.$refNode),
+                    nameSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
+                    selectionSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
                     type: FieldDecl,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)
@@ -169,6 +172,21 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     this.addToScope(scopes, scopeHolder, { ...description, name: node.name.slice(0, -1) });
                 }
             }
+        } else if (isMemberCall(node) && isMemberCall(node.receiver) && this.isPotentiallyJavaFqn(node, node.receiver)) {
+            // Preload FQN Java classes
+            const qualifiers = this.collectMemberQualifier(node);
+            if (qualifiers.length > 1) {
+                // first part should match one of the known top level packages
+                const rootPackage = this.javaInterop.getChildOf(undefined, qualifiers[0])
+                if (isJavaPackage(rootPackage)) {
+                    const classFqn = qualifiers.concat(node.member.$refText).join('.');
+                    if (!this.javaInterop.getResolvedClass(classFqn)) {
+                        console.debug(`Java class ${classFqn}, check it is resolved.`)
+                        // Just try resolve FQN class.
+                        await this.tryResolveJavaReference(classFqn, this.javaInterop)
+                    }
+                }
+            }
         } else {
             // Almost super implementation, but CompoundStatement is considered
             const container = node.$container;
@@ -179,6 +197,48 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 }
             }
         }
+    }
+
+    private collectMemberQualifier(node: MemberCall) {
+        // collect all member calls in the chain
+        const qualifiers: string[] = [];
+        let currentNode: MemberCall | undefined = node;
+        while (currentNode) {
+            if (isMemberCall(currentNode.receiver)) {
+                // Following the Java name convention, prevent match of plain member calls like: `List.class`
+                const memberId = currentNode.receiver.member?.$refText
+                if (memberId?.length > 0 && /^[a-z]/.test(memberId)) {
+                    qualifiers.push(memberId)
+                    currentNode = currentNode.receiver;
+                } else {
+                    return [];
+                }
+            } else if (isSymbolRef(currentNode.receiver)) {
+                // first part of the chain is a symbol reference
+                qualifiers.push(currentNode.receiver.symbol?.$refText);
+                break;
+            } else {
+                break;
+            }
+        }
+        return qualifiers.reverse();
+    }
+
+    private isPotentiallyJavaFqn(node: MemberCall, receiver: MemberCall): boolean {
+        return node.member?.$refText?.length > 0 && /^[A-Z]/.test(node.member.$refText) && receiver.member?.$refText?.length > 0 && /^[a-z]/.test(receiver.member.$refText);
+    }
+
+    private async tryResolveJavaReference(javaClassName: string, javaInterop: JavaInteropService) {
+        let javaClass = javaInterop.getResolvedClass(javaClassName)
+        if (!javaClass) {
+            // try resolve using Java service
+            try {
+                javaClass = await this.javaInterop.resolveClassByName(javaClassName);
+            } catch (e) {
+                console.warn(e)
+            }
+        }
+        return javaClass;
     }
 
     /**

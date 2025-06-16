@@ -36,6 +36,9 @@ map.add(err=*BReak)
 map.add(err=*STOP)
 map.add(err=*next)
 
+declare String database$
+declare String modes$
+declare String select$
 
 orderDetailRecordSet! = BBjAPI().createSQLRecordSet(database$,modes$,select$,err=*ENDIF)
 if !(orderDetailRecordSet!.isEmpty()) then
@@ -47,6 +50,7 @@ endif
 
 OPEN (unt,mode="",tim="",isz="",err=finish)"path/"+"html.png"
 
+declare String serverfile
 bytes = dec(fin(serverfile)(1,4))
 a$=STR(1234)(1,2)
 

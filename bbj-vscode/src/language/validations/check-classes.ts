@@ -1,7 +1,7 @@
-import { AstNode, AstUtils, DiagnosticInfo, Reference, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
-import { BBjAstType, BbjClass, Class, isBbjClass } from '../generated/ast.js';
+import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { dirname, isAbsolute, relative } from 'path';
-import { assertTrue } from '../assertions.js';
+import { getClassRef } from '../bbj-nodedescription-provider.js';
+import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
     const validator = new ClassValidator();
@@ -21,8 +21,16 @@ export function registerClassChecks(registry: ValidationRegistry) {
             }
         },
         BbjClass: (decl, accept) => {
-            decl.extends.forEach((implement, index) => {
-                validator.checkClassReference(accept, implement, {
+            if(!decl.visibility) {
+                const typeName = decl.interface ? 'Interface' : 'Class';
+                accept("warning", `${typeName} visibility (public, protected, or private) declaration is missing.`, {
+                    node: decl,
+                    property: 'name'
+                });
+                return;
+            }
+            decl.extends.forEach((extend, index) => {
+                validator.checkClassReference(accept, extend, {
                     node: decl,
                     property: 'extends',
                     index
@@ -36,9 +44,9 @@ export function registerClassChecks(registry: ValidationRegistry) {
                 });
             });
         },
-        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.class, {
+        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.klass, {
             node: call,
-            property: 'class'
+            property: 'klass'
         }),
         MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType, {
             node: meth,
@@ -65,7 +73,8 @@ class ClassValidator {
         return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath);
     }
 
-    public checkClassReference<N extends AstNode>(accept: ValidationAcceptor, ref: Reference<Class>|undefined, info: DiagnosticInfo<N>): void {
+    public checkClassReference<N extends AstNode>(accept: ValidationAcceptor, qclass: QualifiedClass|undefined, info: DiagnosticInfo<N>): void {
+        const ref = qclass ? getClassRef(qclass) : undefined;
         if(!ref) {
             return;
         }
@@ -81,9 +90,13 @@ class ClassValidator {
     }
 
     public checkBBjClass<N extends AstNode>(klass: BbjClass, uriOfDeclaration: string, uriOfUsage: string, accept: ValidationAcceptor, info: DiagnosticInfo<N>) {
-        assertTrue(klass.visibility !== undefined);
         const typeName = klass.interface ? 'interface' : 'class';
         
+        if(!klass.visibility) {
+            accept("warning", `Visibility of ${typeName} '${klass.name}' is not declared and might not be accessible here.`, info);
+            return;
+        }
+
         switch (klass.visibility.toUpperCase()) {
             case "PUBLIC":
                 //everything is allowed
@@ -92,12 +105,12 @@ class ClassValidator {
                 const dirOfDeclaration = dirname(uriOfDeclaration);
                 const dirOfUsage = dirname(uriOfUsage);
                 if (!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                    accept("error", `Protected ${typeName} '${klass.name}' is not visible from this directory!`, info);
+                    accept("error", `Protected ${typeName} '${klass.name}' is not visible from this directory.`, info);
                 }
                 break;
             case "PRIVATE":
                 if (uriOfUsage !== uriOfDeclaration) {
-                    accept("error", `Private ${typeName} '${klass.name}' is not visible from this file!`, info);
+                    accept("error", `Private ${typeName} '${klass.name}' is not visible from this file.`, info);
                 }
                 break;
         }

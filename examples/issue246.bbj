@@ -1,0 +1,7 @@
+use java.util.HashMap
+
+declare HashMap jsonobj!
+jsonobj! = new HashMap()
+
+fileopen("Open Server File", "", "", "", "", MODE="CLIENT")
+filesave("Open Server File", "", "", "", "", MODE="CLIENT")

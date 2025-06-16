@@ -1,7 +1,7 @@
 import { AstNode, DocumentationProvider, isJSDoc, parseJSDoc } from "langium";
 import { AstNodeHoverProvider, LangiumServices } from "langium/lsp";
 import { Hover } from "vscode-languageclient";
-import { MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
+import { getFQNFullname, MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
 import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast.js";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
@@ -113,11 +113,11 @@ export function documentationHeader(node: AstNode): string | undefined {
     // Other (BBj)
     if (isMethodDecl(node)) {
         const owner = ownerClass(node)
-        const type = (node.returnType && javaTypeAdjust(node.returnType.$refText))
+        const type = (node.returnType && javaTypeAdjust(getFQNFullname(node.returnType)))
         return `${type ? type + ' ' : ''}${owner}${methodSignature(toMethodData(node))}`;
     }
     if (isFieldDecl(node)) {
-        return `${javaTypeAdjust(node.type?.ref?.name ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
+        return `${javaTypeAdjust(getFQNFullname(node.type) ?? 'Object')} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
     }
     if (isBbjClass(node)) {
         return `${node.interface ? 'interface' : 'class'} ${(node as any)['simpleName'] ? (node as any)['simpleName'] : node.name}`;
