@@ -105,7 +105,7 @@ const Commands = {
       sscp = "";
     }
 
-    const cmd = `${bbj} -q ${sscp} -WD${workingDir} -c${getConfig()} ${fileName}`;
+    const cmd = `${bbj} -q ${sscp} -WD"${workingDir}" -c"${getConfig()}" "${fileName}"`;
     console.log(cmd);
 
     const runCommand = () => {
