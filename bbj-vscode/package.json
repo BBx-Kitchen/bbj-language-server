@@ -306,7 +306,7 @@
     "@typescript-eslint/eslint-plugin": "^5.28.0",
     "@typescript-eslint/parser": "^5.28.0",
     "concurrently": "^8.2.0",
-    "esbuild": "^0.18.12",
+    "esbuild": "^0.25.6",
     "eslint": "^8.17.0",
     "langium-cli": "~3.2.0",
     "shx": "^0.3.4",
