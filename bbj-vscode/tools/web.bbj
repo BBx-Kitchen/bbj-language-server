@@ -40,6 +40,7 @@ while(it!.hasNext())
 wend
 
 rem create the app if it wasn't in the list of registered apps
+if app! = null() then
     app! = configuration!.createApplication()
 fi
 
