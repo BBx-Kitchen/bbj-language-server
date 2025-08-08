@@ -236,5 +236,20 @@ describe('Linking Tests', async () => {
             `)
             expectNoErrors(document)
         });
+
+        test('Resolve nested class in use statement', async () => {
+            const document = await validate(`
+                use java.util.Map.Entry
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Resolve nested class FQN', async () => {
+            const document = await validate(`
+                e = new java.util.Map.Entry()
+                comp = e.getValue()
+            `)
+            expectNoErrors(document)
+        });
     });
 });

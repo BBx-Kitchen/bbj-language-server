@@ -147,7 +147,7 @@ export class JavaInteropService {
                 const topLevelPackages = await connection.sendRequest(getTopLevelPackages, {}, token);
                 for (const pack of topLevelPackages) {
                     const parts = pack.packageName.split('.');
-                    let parent: Classpath | JavaPackage  = this.classpath;
+                    let parent: Classpath | JavaPackage = this.classpath;
                     parts.forEach((part, index) => {
                         if (!this.childrenOfByName.has(parent)) {
                             this.childrenOfByName.set(parent, new Map());
@@ -202,16 +202,25 @@ export class JavaInteropService {
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
         }
+
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
 
         javaClass.$type = JavaClass; // make isJavaClass work
-        const lastIndexOfDot = className.lastIndexOf('.');
-        javaClass.packageName = lastIndexOfDot > -1 ? className.substring(0, lastIndexOfDot) : '';
+        const packageName = extractPackageName(className);
+
+        if (!javaClass.packageName) {
+            // can happen if the class was not found by Java backend
+            javaClass.packageName = packageName;
+        }
         javaClass.classes ??= [];
 
-        this.storeJavaClass(javaClass);
+        this.storeJavaClass(javaClass, javaClass.packageName);
+        if (javaClass.$container === undefined) {
+            console.error(`Java class ${className} has no container, packageName: ${javaClass.packageName}`);
+            javaClass.$container = this.classpath; // fallback to classpath
+        }
         this.resolvedClasses.set(className, javaClass); // add class even if it has an error
 
         try {
@@ -266,18 +275,25 @@ export class JavaInteropService {
         return this.childrenOfByName.get(javaPackageLike)?.get(childName);
     }
 
-    storeJavaClass(javaClass: Mutable<JavaClass>) {
-        const classpath = this.classpath;
-        javaClass.$type = JavaClass;
+    storeJavaClass(javaClass: Mutable<JavaClass>, packageName: string): void {
 
         // Defensive check for javaClass.name
         if (!javaClass.name || typeof javaClass.name !== 'string') {
             console.error('Invalid javaClass.name:', javaClass.name);
             return;
         }
+        javaClass.$type = JavaClass;
 
+        const simpleName = (packageName.length > 0) ? javaClass.name.replace(packageName + '.', '') : javaClass.name;
+        if (javaClass.packageName !== packageName) {
+            console.warn(`Package name mismatch for class ${javaClass.name}: expected '${javaClass.packageName}', got '${packageName}'`);
+        }
+
+        const classpath = this.classpath;
         let parent: Classpath | JavaPackage | JavaClass = classpath;
-        const parts = javaClass.name.split('.');
+
+        const parts = packageName.split('.').concat(simpleName);
+
         parts.forEach((part, index) => {
             if (!this.childrenOfByName.has(parent)) {
                 this.childrenOfByName.set(parent, new Map());
@@ -326,6 +342,19 @@ export class JavaInteropService {
         await previousLock;
         release!();
     }
+}
+
+function extractPackageName(className: string): string {
+    const lastIndexOfDot = className.lastIndexOf('.');
+    if (lastIndexOfDot === -1) {
+        return ''; // No package name
+    }
+    const match = className.match(/\.(?=[A-Z])/);
+    if (match && match.index !== undefined) {
+        return className.substring(0, match.index); // Extract package name
+    }
+
+    return className.substring(0, lastIndexOfDot); // Fallback to last dot
 }
 
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');

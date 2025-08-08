@@ -101,7 +101,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                         } else {
                             const previousPart = container.$container.pathParts[container.$containerIndex - 1].symbol.ref;
                             if (previousPart) {
-                                return this.createScopeForNodes(this.javaInterop.getChildrenOf(previousPart));
+                                let outerScope: Scope | undefined = undefined;
+                                if (isJavaClass(previousPart)) {
+                                    // nested class
+                                    const pack = AstUtils.getContainerOfType(previousPart, isJavaPackage)
+                                    if (pack) {
+                                        const nestedClasses = this.javaInterop.getChildrenOf(pack).filter(it => isJavaClass(it) && it.name.startsWith(previousPart.name + '.'))
+                                        outerScope = new StreamScope(stream(nestedClasses).map((it) => {
+                                            const simpleName = it.name.split('.').pop()
+                                            if (simpleName) {
+                                                return this.descriptions.createDescription(it, simpleName);
+                                            }
+                                            return undefined;
+                                        }).nonNullable());
+                                    }
+                                }
+                                return this.createScopeForNodes(this.javaInterop.getChildrenOf(previousPart), outerScope);
                             }
                         }
                     }

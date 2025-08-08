@@ -238,6 +238,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 console.warn(e)
             }
         }
+        if (!javaClass?.$container) {
+            console.error(`Check Java class '${javaClassName}' has no container.`)
+            return undefined;
+        }
         return javaClass;
     }
 
