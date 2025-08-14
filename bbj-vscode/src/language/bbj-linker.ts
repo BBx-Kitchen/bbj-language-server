@@ -32,7 +32,6 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override async link(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
-        const started = Date.now()
         const wsManager = this.wsManager()
         const externalDoc = (wsManager instanceof BBjWorkspaceManager)
             && (wsManager as BBjWorkspaceManager).isExternalDocument(document.uri)
@@ -52,11 +51,6 @@ export class BbjLinker extends DefaultLinker {
             } else {
                 AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
             }
-        }
-        const elapsed = Date.now() - started
-        const threshold = 500
-        if (elapsed > threshold) {
-            console.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
         }
         document.state = DocumentState.Linked;
     }
