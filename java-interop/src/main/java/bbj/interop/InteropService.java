@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -168,7 +169,7 @@ public class InteropService {
 		try {
 			Optional<Class<?>> primitiv = Primitives.allPrimitiveTypes().stream()
 					.filter(it -> it.getSimpleName().equals(className)).findFirst();
-			var clazz = primitiv.isPresent() ? primitiv.get() : Class.forName(className, false, classLoader);
+			var clazz = primitiv.isPresent() ? primitiv.get() : loadClassByName(className);
 
 			classInfo.simpleName = clazz.getCanonicalName();
 			classInfo.packageName = clazz.getPackageName();
@@ -208,6 +209,40 @@ public class InteropService {
 			classInfo.error = "No class definition found: " + error.getMessage();
 		}
 		return classInfo;
+	}
+
+	private static Pattern FIRST_UPPER_SEGMENT = Pattern.compile("\\.[A-Z]");
+
+	private Class<?> loadClassByName(String className) throws ClassNotFoundException {
+		try {
+			return Class.forName(className, false, classLoader);
+		} catch (ClassNotFoundException e) {
+			var matches = FIRST_UPPER_SEGMENT.matcher(className).results().limit(2).count();
+			if (matches > 1) {
+				// Probably nested class FQN
+				var segements = className.split("\\.");
+				var delim = ".";
+				if (segements.length > 1) {
+					// Try with canonical name
+					var canonicalName = new StringBuilder();
+					for (int i = 0; i < segements.length; i++) {
+						var qualifier = segements[i];
+						canonicalName.append(qualifier);
+						if (i < (segements.length - 1)) {
+							if (!qualifier.isEmpty() && Character.isUpperCase(qualifier.charAt(0))) {
+								delim = "$";
+							}
+							canonicalName.append(delim);
+						}
+					}
+					if ("$".equals(delim)) {
+						// Nested class, try to load with canonical name
+						return Class.forName(canonicalName.toString(), false, classLoader);
+					}
+				}
+			}
+			throw e;
+		}
 	}
 
 	private String getProperTypeName(Class<?> clazz) {
