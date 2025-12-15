@@ -38,7 +38,7 @@ const runWeb = (params, client) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} -c"${getConfig()}" ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
@@ -48,19 +48,23 @@ const runWeb = (params, client) => {
   });
 };
 
+const getConfig = () => {
+  const home = getBBjHome();
+  const declaredConfig = vscode.workspace.getConfiguration("bbj").configFile;
+  const defaultConfig = home && `${home}/cfg/config.bbx`;
+  const config = declaredConfig || defaultConfig;
+
+  return config;
+}
+  
 
 const Commands = {
   openConfigFile: function () {
-    const home = getBBjHome();
-
-    if (home) {
-      return vscode.workspace
-        .openTextDocument(`${home}/cfg/config.bbx`)
-        .then(doc => {
-          vscode.window.showTextDocument(doc);
-        });
-    }
+    const config = getConfig();
+    return vscode.workspace.openTextDocument(config)
+      .then(doc => vscode.window.showTextDocument(doc));
   },
+  
 
   openPropertiesFile: function () {
     const home = getBBjHome();
@@ -101,7 +105,8 @@ const Commands = {
       sscp = "";
     }
 
-    const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
+    const cmd = `${bbj} -q ${sscp} -WD"${workingDir}" -c"${getConfig()}" "${fileName}"`;
+    console.log(cmd);
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {

@@ -208,6 +208,15 @@
           "description": "BBj Classpath entry name to use for starting applications (e.g., 'bbj_default', 'addon', 'barista'). Run 'BBj: Show Available Classpath Entries' to see all available options.",
           "scope": "window"
         },
+        "bbj.configFile": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "BBj Config File to use for starting applications",
+          "scope": "window"
+        },
         "bbj.web.username": {
           "type": [
             "string",
