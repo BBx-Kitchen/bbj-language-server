@@ -39,6 +39,10 @@ Failing to do so may result in unpredictable failure.
 2. Install the extension using the Extensions functionality in VSCode
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
+## Optional Setup
+1. Auth Token:
+To provide an authentication token for launching Web Apps, set the value in the settings using bbj.web.authToken.
+
 
 ### Credits
 

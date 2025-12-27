@@ -26,6 +26,7 @@ const runWeb = (params, client) => {
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
   const username = vscode.workspace.getConfiguration("bbj").web.username;
   const password = vscode.workspace.getConfiguration("bbj").web.password;
+  const authToken = vscode.workspace.getConfiguration("bbj").web.authToken;
   const sscp = vscode.workspace.getConfiguration("bbj").classpath;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
@@ -38,7 +39,12 @@ const runWeb = (params, client) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+  let cmd = "";
+  if (authToken) {
+    cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${authToken}" "${sscp}"`;
+  } else {
+    cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+  }
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {

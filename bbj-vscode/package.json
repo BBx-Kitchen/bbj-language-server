@@ -226,6 +226,15 @@
           "description": "EM password",
           "scope": "window"
         },
+        "bbj.web.authToken": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "EM auth Token",
+          "scope": "window"
+        },
         "bbj.web.apps": {
           "type": "object",
           "default": {},
@@ -292,6 +301,7 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
+    "bbj-lang": "file:",
     "chevrotain": "^11.0.3",
     "langium": "~3.2.1",
     "properties-file": "~3.2.5",
