@@ -39,7 +39,7 @@ const runWeb = (params, client) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `${bbj} -q -WD${webRunnerWorkingDir} ${webRunnerWorkingDir}/web.bbj - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
@@ -155,7 +155,7 @@ const Commands = {
       sscp = '';
     }
 
-    const cmd = `${bbj} -q ${sscp} -WD${workingDir} ${fileName}`;
+    const cmd = `"${bbj}" -q "${sscp}" -WD"${workingDir}" "${fileName}"`;
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
