@@ -32,7 +32,7 @@ Failing to do so may result in unpredictable failure.
 2. Install the extension using the Extensions functionality in VSCode
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
-![Enable BBj Language Service](enable_ls_in_bbj.png)
+![Enable BBj Language Service](https://raw.githubusercontent.com/BBx-Kitchen/bbj-language-server/main/bbj-vscode/enable_ls_in_bbj.png)
 
 ### Credits
 
