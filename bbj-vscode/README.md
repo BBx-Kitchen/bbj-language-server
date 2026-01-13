@@ -2,13 +2,6 @@
 
 This extension adds support for the BBj language. It allows you to locate your local BBj installation for resolution of Classpath and PREFIX, running your code from the editor, and to host the Java-part of the language server.
 
-## Disclaimer
-
-This extension is in an early pre-release state. We know that it's still missing essential features and still has flaws.
-Nevertheless we are greatful to feedback and issue reports. Like the extension in the marketplace if you find it useful, and see https://github.com/BBx-Kitchen/bbj-language-server/issues for our issue tracking. 
-
-Contributors welcome!
-
 ## Features
 
 * Syntax Highlight for bbj files and config.bbx
@@ -39,6 +32,7 @@ Failing to do so may result in unpredictable failure.
 2. Install the extension using the Extensions functionality in VSCode
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
+![Enable BBj Language Service](enable_ls_in_bbj.png)
 
 ### Credits
 
