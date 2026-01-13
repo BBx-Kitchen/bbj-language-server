@@ -62,26 +62,29 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("bbj.run", Commands.run);
     vscode.commands.registerCommand("bbj.runBUI", Commands.runBUI);
     vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);
-    
+    vscode.commands.registerCommand("bbj.decompile", Commands.decompile);
+    vscode.commands.registerCommand("bbj.compile", Commands.compile);
+    vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
+
     // Register command to show available classpath entries
     vscode.commands.registerCommand("bbj.showClasspathEntries", async () => {
         const config = vscode.workspace.getConfiguration("bbj");
         const bbjHome = config.get<string>("home");
-        
+
         if (!bbjHome) {
             vscode.window.showErrorMessage("Please set bbj.home first to see available classpath entries");
             return;
         }
-        
+
         const entries = getBBjClasspathEntries(bbjHome);
-        
+
         if (entries.length === 0) {
             vscode.window.showWarningMessage("No classpath entries found in BBj.properties");
             return;
         }
-        
+
         const currentClasspath = config.get<string>("classpath") || "";
-        
+
         // Create a quick pick to show entries and allow selection
         const selected = await vscode.window.showQuickPick(entries.map(entry => ({
             label: entry,
@@ -91,7 +94,7 @@ export function activate(context: vscode.ExtensionContext): void {
             placeHolder: "Select a classpath entry to use it",
             title: "Available BBj Classpath Entries"
         });
-        
+
         if (selected) {
             await config.update("classpath", selected.label, vscode.ConfigurationTarget.Workspace);
             vscode.window.showInformationMessage(`BBj classpath set to: ${selected.label}`);
