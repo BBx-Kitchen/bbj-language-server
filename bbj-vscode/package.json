@@ -385,7 +385,7 @@
     "@typescript-eslint/parser": "^5.62.0",
     "concurrently": "^8.2.2",
     "esbuild": "^0.25.12",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.2",
     "langium-cli": "~3.2.0",
     "shx": "^0.3.4",
     "typescript": "^5.8.3",
