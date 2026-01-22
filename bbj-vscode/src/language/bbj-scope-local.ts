@@ -32,7 +32,8 @@ import {
     isReadStatement,
     isSymbolRef, isUse,
     MemberCall,
-    MethodDecl
+    MethodDecl,
+    Use
 } from './generated/ast.js';
 import { JavaInteropService, JavaSyntheticDocUri } from './java-interop.js';
 
@@ -293,4 +294,12 @@ export interface JavaDocument extends LangiumDocument {
 
 export function isJavaDocument(item: unknown): item is JavaDocument {
     return typeof item === 'object' && item !== null && item.hasOwnProperty('classesMapScope');
+}
+
+export interface BbjDocument extends LangiumDocument {
+    cachedUseStatements: Use[] | undefined;
+}
+
+export function isBbjDocument(item: unknown): item is BbjDocument {
+    return typeof item === 'object' && item !== null && item.hasOwnProperty('cachedUseStatements');
 }
