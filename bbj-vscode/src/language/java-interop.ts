@@ -85,6 +85,11 @@ export class JavaInteropService {
         return this.classpathDocument.parseResult.value;
     }
 
+    /**
+     * Retrieves a previously resolved Java class by its fully qualified name.
+     * @param className fully qualified class name (e.g., "java.lang.String")
+     * @returns the resolved JavaClass or undefined if not found
+     */
     getResolvedClass(className: string): JavaClass | undefined {
         if (className === 'java.lang.Object') {
             // called very often, so cache it
@@ -107,6 +112,12 @@ export class JavaInteropService {
         return connection.sendRequest(getClassInfoRequest, { className }, token);
     }
 
+    /**
+     * Loads the Java classpath from the specified entries.
+     * @param classPath array of classpath entries (file paths or BBj classpath notation)
+     * @param token cancellation token for request cancellation
+     * @returns true if classpath was loaded successfully, false otherwise
+     */
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         console.warn("Load classpath from: " + classPath.join(', '))
         try {
@@ -126,6 +137,11 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Loads implicit Java imports including standard packages and BBj-specific packages.
+     * @param token cancellation token for request cancellation
+     * @returns true if implicit imports were loaded successfully, false otherwise
+     */
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
         console.warn("Load package classes: ", implicitJavaImports.join(', '))
         try {
