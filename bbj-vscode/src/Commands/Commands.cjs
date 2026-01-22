@@ -128,7 +128,8 @@ const decompile = (params, options = {}) => {
       const doc = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(doc, { preview: false });
     } catch (err) {
-      vscode.window.showErrorMessage(`Failed to decompile "${fileName}": ${err.message || err}`);
+      const errorMsg = `Failed to decompile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
+      vscode.window.showErrorMessage(errorMsg);
     }
   });
 };
