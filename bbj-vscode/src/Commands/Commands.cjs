@@ -85,36 +85,44 @@ const decompile = (params, options = {}) => {
     os.platform() === 'win32' ? '.exe' : ''
   }" ${flags} "${resolvedFileName}"`;
 
-  exec(cmd, (err, stdout, stderr) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
-      return;
-    }
+  const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
 
-    if (!options.denumber) {
-      fs.unlink(resolvedFileName, (unlinkErr) => {
-        if (unlinkErr) {
-          vscode.window.showErrorMessage(
-            `Failed to remove original file "${fileName}": ${unlinkErr.message}`
-          );
-          return;
-        }
-      });
-    }
+  vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: title,
+    cancellable: false
+  }, async () => {
+    try {
+      await execWithProgress(cmd);
 
-    fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
-      if (renameErr) {
-        vscode.window.showErrorMessage(
-          `Failed to rename file "${resolvedLstFileName}": ${renameErr.message}`
-        );
-        return;
+      if (!options.denumber) {
+        await new Promise((resolve, reject) => {
+          fs.unlink(resolvedFileName, (unlinkErr) => {
+            if (unlinkErr) {
+              reject(unlinkErr);
+            } else {
+              resolve();
+            }
+          });
+        });
       }
-    });
 
-    const uri = vscode.Uri.file(newFileName);
-    vscode.workspace.openTextDocument(uri).then((doc) => {
-      vscode.window.showTextDocument(doc, { preview: false });
-    });
+      await new Promise((resolve, reject) => {
+        fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
+          if (renameErr) {
+            reject(renameErr);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      const uri = vscode.Uri.file(newFileName);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { preview: false });
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to decompile "${fileName}": ${err.message || err}`);
+    }
   });
 };
 
