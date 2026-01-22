@@ -207,13 +207,19 @@ const Commands = {
     const active = vscode.window.activeTextEditor;
 
     const fileName = active ? active.document.fileName : params.fsPath;
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) {
+
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Compiling BBj Program...",
+      cancellable: false
+    }, async () => {
+      try {
+        await execWithProgress(cmd);
+        vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
+      } catch (err) {
         vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
-        return;
       }
     });
-    vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
   },
   decompile: function (params) {
     decompile(params);
