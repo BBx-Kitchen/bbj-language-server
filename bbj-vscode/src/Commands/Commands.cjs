@@ -27,8 +27,13 @@ const getBBjHome = () => {
 
   if (!home) {
     vscode.window.showErrorMessage(
-      "bbj.home settings cannot be found - you must add this to the configuration"
-    );
+      "bbj.home settings cannot be found - you must add this to the configuration",
+      "Open Settings"
+    ).then(selection => {
+      if (selection === "Open Settings") {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'bbj.home');
+      }
+    });
     return "";
   }
 
