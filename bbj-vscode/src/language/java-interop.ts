@@ -301,6 +301,11 @@ export class JavaInteropService {
         return javaClass;
     }
 
+    /**
+     * Retrieves all child packages and classes of a given package-like container.
+     * @param javaPackageLike the parent container (JavaClass, JavaPackage, or undefined for classpath root)
+     * @returns array of child JavaClass and JavaPackage elements
+     */
     getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
         const children = this.childrenOfByName.get(javaPackageLike ?? this.classpath);
         if (!children) {
@@ -309,10 +314,22 @@ export class JavaInteropService {
         return [...children.values()];
     }
 
+    /**
+     * Retrieves a specific child package or class by name from a parent container.
+     * @param javaPackageLike the parent container (defaults to classpath root)
+     * @param childName the name of the child to retrieve
+     * @returns the matching JavaClass or JavaPackage, or undefined if not found
+     */
     getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath = this.classpath, childName: string): JavaClass | JavaPackage | undefined {
         return this.childrenOfByName.get(javaPackageLike)?.get(childName);
     }
 
+    /**
+     * Stores a Java class in the AST hierarchy, creating intermediate packages as needed.
+     * This method builds the complete package structure and links the class to its parent container.
+     * @param javaClass the Java class to store in the hierarchy
+     * @param packageName the fully qualified package name (e.g., "java.lang")
+     */
     storeJavaClass(javaClass: Mutable<JavaClass>, packageName: string): void {
 
         // Defensive check for javaClass.name
