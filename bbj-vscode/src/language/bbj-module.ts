@@ -32,6 +32,7 @@ import { BBjGeneratedModule, BBjGeneratedSharedModule } from './generated/module
 import { JavaInteropService } from './java-interop.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
+import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
 
 
 /**
@@ -84,6 +85,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         HoverProvider: (services) => new BBjHoverProvider(services),
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
+        SignatureHelpProvider: (services) => new BBjSignatureHelpProvider(services),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),
