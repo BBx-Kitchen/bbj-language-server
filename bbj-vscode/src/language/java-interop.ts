@@ -20,6 +20,11 @@ const DEFAULT_PORT = 5008;
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.class'
+
+/**
+ * Manages Java interop operations including class resolution, classpath loading,
+ * and communication with the Java backend service.
+ */
 export class JavaInteropService {
 
     private connection?: MessageConnection;
@@ -31,6 +36,9 @@ export class JavaInteropService {
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
 
+    /**
+     * @param services BBj language services providing access to documents and workspace
+     */
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
