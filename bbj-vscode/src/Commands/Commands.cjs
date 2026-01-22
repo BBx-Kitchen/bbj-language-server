@@ -5,6 +5,23 @@ const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 
+/**
+ * Helper function to wrap child_process.exec() in a Promise for use with withProgress
+ * @param {string} cmd - The command to execute
+ * @returns {Promise<{stdout: string, stderr: string}>} Promise that resolves with stdout/stderr or rejects with error
+ */
+const execWithProgress = (cmd) => {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+};
+
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
 
@@ -61,43 +78,50 @@ const decompile = (params, options = {}) => {
 
   const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
 
-  console.log(resolvedFileName.endsWith('.lst'));
-  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') && '-xlst'}` : '';
+  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') ? '-xlst' : ''}` : '';
 
   const cmd = `"${home}/bin/bbjlst${
     os.platform() === 'win32' ? '.exe' : ''
   }" ${flags} "${resolvedFileName}"`;
 
-  exec(cmd, (err, stdout, stderr) => {
-    if (err) {
-      vscode.window.showErrorMessage(`Failed to decompile "${fileName}"`);
-      return;
-    }
+  const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
 
-    if (!options.denumber) {
-      fs.unlink(resolvedFileName, (unlinkErr) => {
-        if (unlinkErr) {
-          vscode.window.showErrorMessage(
-            `Failed to remove original file "${fileName}": ${unlinkErr.message}`
-          );
-          return;
-        }
-      });
-    }
+  vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: title,
+    cancellable: false
+  }, async () => {
+    try {
+      await execWithProgress(cmd);
 
-    fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
-      if (renameErr) {
-        vscode.window.showErrorMessage(
-          `Failed to rename file "${resolvedLstFileName}": ${renameErr.message}`
-        );
-        return;
+      if (!options.denumber) {
+        await new Promise((resolve, reject) => {
+          fs.unlink(resolvedFileName, (unlinkErr) => {
+            if (unlinkErr) {
+              reject(unlinkErr);
+            } else {
+              resolve();
+            }
+          });
+        });
       }
-    });
 
-    const uri = vscode.Uri.file(newFileName);
-    vscode.workspace.openTextDocument(uri).then((doc) => {
-      vscode.window.showTextDocument(doc, { preview: false });
-    });
+      await new Promise((resolve, reject) => {
+        fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
+          if (renameErr) {
+            reject(renameErr);
+          } else {
+            resolve();
+          }
+        });
+      });
+
+      const uri = vscode.Uri.file(newFileName);
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { preview: false });
+    } catch (err) {
+      vscode.window.showErrorMessage(`Failed to decompile "${fileName}": ${err.message || err}`);
+    }
   });
 };
 
@@ -190,13 +214,19 @@ const Commands = {
     const active = vscode.window.activeTextEditor;
 
     const fileName = active ? active.document.fileName : params.fsPath;
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) {
+
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Compiling BBj Program...",
+      cancellable: false
+    }, async () => {
+      try {
+        await execWithProgress(cmd);
+        vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
+      } catch (err) {
         vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
-        return;
       }
     });
-    vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
   },
   decompile: function (params) {
     decompile(params);
