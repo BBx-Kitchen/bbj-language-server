@@ -208,6 +208,13 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Resolves a Java class by its fully qualified name, fetching from the Java backend if not already cached.
+     * This method acquires a lock to prevent concurrent resolution of the same class.
+     * @param className fully qualified class name (e.g., "java.lang.String")
+     * @param token cancellation token for request cancellation
+     * @returns the resolved JavaClass with all dependencies linked
+     */
     async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
         await this.acquireLock();
         try {
@@ -221,6 +228,13 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Resolves and links a Java class with its dependencies including fields, methods, parameters, and documentation.
+     * This method processes the raw class data, resolves type references, links Javadoc, and stores the class in the AST hierarchy.
+     * @param javaClass the Java class to resolve and link
+     * @param token cancellation token for request cancellation
+     * @returns the resolved and linked JavaClass
+     */
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
         const className = javaClass.name
         if (this.resolvedClasses.has(className)) {
