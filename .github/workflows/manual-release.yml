@@ -32,19 +32,21 @@ jobs:
 
       - name: Validate version input
         working-directory: bbj-vscode
+        env:
+          VERSION_INPUT: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$VERSION_INPUT"
           echo "Target version: $VERSION"
-      
+
           CURRENT=$(jq -r .version package.json)
           echo "Current version in package.json: $CURRENT"
-      
+
           # Must be in x.y.0 format
           if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0]+$ ]]; then
             echo "❌ Error: Version must be in format x.y.0, e.g. 25.12.0"
             exit 1
           fi
-      
+
           # Ensure new version is greater
           if npx semver "$VERSION" -r ">$CURRENT"; then
             echo "✅ Version $VERSION is valid and greater than $CURRENT"
@@ -55,16 +57,19 @@ jobs:
 
       - name: Set package.json version
         working-directory: bbj-vscode
+        env:
+          VERSION_INPUT: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$VERSION_INPUT"
           jq ".version = \"$VERSION\"" package.json > tmp && mv tmp package.json
 
       - name: Commit and tag version
         working-directory: bbj-vscode
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_INPUT: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$VERSION_INPUT"
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add package.json
