@@ -5,6 +5,23 @@ const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 
+/**
+ * Helper function to wrap child_process.exec() in a Promise for use with withProgress
+ * @param {string} cmd - The command to execute
+ * @returns {Promise<{stdout: string, stderr: string}>} Promise that resolves with stdout/stderr or rejects with error
+ */
+const execWithProgress = (cmd) => {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+};
+
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
 
