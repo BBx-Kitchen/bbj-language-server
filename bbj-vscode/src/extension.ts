@@ -72,7 +72,14 @@ export function activate(context: vscode.ExtensionContext): void {
         const bbjHome = config.get<string>("home");
 
         if (!bbjHome) {
-            vscode.window.showErrorMessage("Please set bbj.home first to see available classpath entries");
+            vscode.window.showErrorMessage(
+                "Please set bbj.home first to see available classpath entries",
+                "Open Settings"
+            ).then(selection => {
+                if (selection === "Open Settings") {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'bbj.home');
+                }
+            });
             return;
         }
 
