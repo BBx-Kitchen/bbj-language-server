@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
 import { NodeFileSystem } from 'langium/node';
+import { isBbjDocument } from '../src/language/bbj-scope-local';
 
 function expectNoParserLexerErrors(document: LangiumDocument) {
     expect(document.parseResult.lexerErrors.join('\n')).toBe('')
@@ -159,6 +160,26 @@ describe('Import tests', () => {
         `, { validation: true });
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);
+    });
+
+    test('USE statements are cached after scope computation', async () => {
+        const document = await parse(`
+            use ::importMe.bbj::ImportMe
+            use java.util.List
+            let x = new ImportMe()
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+
+        // Verify that the document has cachedUseStatements populated
+        expect(isBbjDocument(document)).toBe(true);
+        if (isBbjDocument(document)) {
+            expect(document.cachedUseStatements).toBeDefined();
+            expect(document.cachedUseStatements).toHaveLength(2);
+            // Verify the USE statements have the expected structure
+            expect(document.cachedUseStatements![0].bbjFilePath).toBe('::importMe.bbj::');
+            expect(document.cachedUseStatements![1].javaClass).toBeDefined();
+        }
     });
 });
 
