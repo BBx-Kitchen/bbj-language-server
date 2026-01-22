@@ -78,8 +78,7 @@ const decompile = (params, options = {}) => {
 
   const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
 
-  console.log(resolvedFileName.endsWith('.lst'));
-  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') && '-xlst'}` : '';
+  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') ? '-xlst' : ''}` : '';
 
   const cmd = `"${home}/bin/bbjlst${
     os.platform() === 'win32' ? '.exe' : ''
