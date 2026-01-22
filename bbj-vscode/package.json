@@ -18,6 +18,7 @@
     "type": "git",
     "directory": "bbj-vscode"
   },
+  "homepage": "https://BBx-Kitchen.github.io/bbj-language-server/",
   "contributes": {
     "languages": [
       {
