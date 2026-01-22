@@ -21,7 +21,7 @@ import {
     UriUtils
 } from 'langium';
 import { BBjServices } from './bbj-module.js';
-import { isJavaDocument } from './bbj-scope-local.js';
+import { isBbjDocument, isJavaDocument } from './bbj-scope-local.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import {
     BBjAstType,
@@ -408,6 +408,11 @@ export class BbjNameProvider extends DefaultNameProvider {
 
 
 export function collectAllUseStatements(program: Program): Use[] {
+    // Check if USE statements are already cached in the document
+    const document = AstUtils.getDocument(program);
+    if (isBbjDocument(document) && document.cachedUseStatements) {
+        return document.cachedUseStatements;
+    }
     return collectUseStatements(program.statements.filter(isStatement))
 }
 
