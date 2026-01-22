@@ -40,6 +40,16 @@ If you have a `.vsix` file:
 
 After installation, configure the extension to work with your BBj installation:
 
+### Enable BBj Language Service
+
+BBj 25.00 introduces a new server component, the BBj Language Service. You must enable it in Enterprise Manager:
+
+1. Open BBj Enterprise Manager
+2. Navigate to the server settings
+3. Enable the "BBj Language Service"
+
+![Enable BBj Language Service in Enterprise Manager](/img/enable_ls_in_bbj.png)
+
 ### Setting BBj Home
 
 1. Open VS Code Settings (`Ctrl+,` or `Cmd+,`)
