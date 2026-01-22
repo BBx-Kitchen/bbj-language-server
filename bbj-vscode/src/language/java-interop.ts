@@ -53,6 +53,9 @@ export class JavaInteropService {
         return this._resolvedClasses;
     }
 
+    /**
+     * Establishes connection to the Java backend service
+     */
     protected async connect(): Promise<MessageConnection> {
         if (this.connection) {
             return this.connection;
@@ -72,6 +75,9 @@ export class JavaInteropService {
         return connection;
     }
 
+    /**
+     * Creates a socket connection to the Java service on localhost
+     */
     protected createSocket(): Promise<Socket> {
         return new Promise((resolve, reject) => {
             const socket = new Socket();
@@ -107,6 +113,11 @@ export class JavaInteropService {
         return this.JAVA_LANG_OBJECT;
     }
 
+    /**
+     * Retrieves raw class information from the Java backend service
+     * @param className fully qualified name of the class to retrieve
+     * @param token cancellation token for request cancellation
+     */
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         const connection = await this.connect();
         return connection.sendRequest(getClassInfoRequest, { className }, token);
