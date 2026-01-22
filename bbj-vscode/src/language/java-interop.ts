@@ -20,6 +20,11 @@ const DEFAULT_PORT = 5008;
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.class'
+
+/**
+ * Manages Java interop operations including class resolution, classpath loading,
+ * and communication with the Java backend service.
+ */
 export class JavaInteropService {
 
     private connection?: MessageConnection;
@@ -31,6 +36,9 @@ export class JavaInteropService {
     protected readonly classpathDocument: LangiumDocument<Classpath>;
     protected javadocProvider = JavadocProvider.getInstance();
 
+    /**
+     * @param services BBj language services providing access to documents and workspace
+     */
     constructor(services: BBjServices) {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
@@ -45,6 +53,9 @@ export class JavaInteropService {
         return this._resolvedClasses;
     }
 
+    /**
+     * Establishes connection to the Java backend service
+     */
     protected async connect(): Promise<MessageConnection> {
         if (this.connection) {
             return this.connection;
@@ -64,6 +75,9 @@ export class JavaInteropService {
         return connection;
     }
 
+    /**
+     * Creates a socket connection to the Java service on localhost
+     */
     protected createSocket(): Promise<Socket> {
         return new Promise((resolve, reject) => {
             const socket = new Socket();
@@ -77,6 +91,11 @@ export class JavaInteropService {
         return this.classpathDocument.parseResult.value;
     }
 
+    /**
+     * Retrieves a previously resolved Java class by its fully qualified name.
+     * @param className fully qualified class name (e.g., "java.lang.String")
+     * @returns the resolved JavaClass or undefined if not found
+     */
     getResolvedClass(className: string): JavaClass | undefined {
         if (className === 'java.lang.Object') {
             // called very often, so cache it
@@ -94,11 +113,22 @@ export class JavaInteropService {
         return this.JAVA_LANG_OBJECT;
     }
 
+    /**
+     * Retrieves raw class information from the Java backend service
+     * @param className fully qualified name of the class to retrieve
+     * @param token cancellation token for request cancellation
+     */
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         const connection = await this.connect();
         return connection.sendRequest(getClassInfoRequest, { className }, token);
     }
 
+    /**
+     * Loads the Java classpath from the specified entries.
+     * @param classPath array of classpath entries (file paths or BBj classpath notation)
+     * @param token cancellation token for request cancellation
+     * @returns true if classpath was loaded successfully, false otherwise
+     */
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         console.warn("Load classpath from: " + classPath.join(', '))
         try {
@@ -118,6 +148,11 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Loads implicit Java imports including standard packages and BBj-specific packages.
+     * @param token cancellation token for request cancellation
+     * @returns true if implicit imports were loaded successfully, false otherwise
+     */
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
         console.warn("Load package classes: ", implicitJavaImports.join(', '))
         try {
@@ -184,6 +219,13 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Resolves a Java class by its fully qualified name, fetching from the Java backend if not already cached.
+     * This method acquires a lock to prevent concurrent resolution of the same class.
+     * @param className fully qualified class name (e.g., "java.lang.String")
+     * @param token cancellation token for request cancellation
+     * @returns the resolved JavaClass with all dependencies linked
+     */
     async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
         await this.acquireLock();
         try {
@@ -197,6 +239,13 @@ export class JavaInteropService {
         }
     }
 
+    /**
+     * Resolves and links a Java class with its dependencies including fields, methods, parameters, and documentation.
+     * This method processes the raw class data, resolves type references, links Javadoc, and stores the class in the AST hierarchy.
+     * @param javaClass the Java class to resolve and link
+     * @param token cancellation token for request cancellation
+     * @returns the resolved and linked JavaClass
+     */
     protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
         const className = javaClass.name
         if (this.resolvedClasses.has(className)) {
@@ -263,6 +312,11 @@ export class JavaInteropService {
         return javaClass;
     }
 
+    /**
+     * Retrieves all child packages and classes of a given package-like container.
+     * @param javaPackageLike the parent container (JavaClass, JavaPackage, or undefined for classpath root)
+     * @returns array of child JavaClass and JavaPackage elements
+     */
     getChildrenOf(javaPackageLike?: JavaClass | JavaPackage) {
         const children = this.childrenOfByName.get(javaPackageLike ?? this.classpath);
         if (!children) {
@@ -271,10 +325,22 @@ export class JavaInteropService {
         return [...children.values()];
     }
 
+    /**
+     * Retrieves a specific child package or class by name from a parent container.
+     * @param javaPackageLike the parent container (defaults to classpath root)
+     * @param childName the name of the child to retrieve
+     * @returns the matching JavaClass or JavaPackage, or undefined if not found
+     */
     getChildOf(javaPackageLike: JavaClass | JavaPackage | Classpath = this.classpath, childName: string): JavaClass | JavaPackage | undefined {
         return this.childrenOfByName.get(javaPackageLike)?.get(childName);
     }
 
+    /**
+     * Stores a Java class in the AST hierarchy, creating intermediate packages as needed.
+     * This method builds the complete package structure and links the class to its parent container.
+     * @param javaClass the Java class to store in the hierarchy
+     * @param packageName the fully qualified package name (e.g., "java.lang")
+     */
     storeJavaClass(javaClass: Mutable<JavaClass>, packageName: string): void {
 
         // Defensive check for javaClass.name
@@ -344,6 +410,9 @@ export class JavaInteropService {
     }
 }
 
+/** Extracts package name from fully qualified class name
+ * @param className fully qualified class name
+ * @returns package name or empty string if no package */
 function extractPackageName(className: string): string {
     const lastIndexOfDot = className.lastIndexOf('.');
     if (lastIndexOfDot === -1) {
@@ -357,19 +426,43 @@ function extractPackageName(className: string): string {
     return className.substring(0, lastIndexOfDot); // Fallback to last dot
 }
 
+/**
+ * Request type for loading classpath entries into the Java backend service.
+ */
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
+
+/**
+ * Request type for retrieving information about a single Java class.
+ */
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
+
+/**
+ * Request type for retrieving information about all classes in a package.
+ */
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
 
+/**
+ * Request type for retrieving all top-level packages available in the classpath.
+ */
 const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
 
+/**
+ * Parameters for class information requests.
+ */
 interface ClassInfoParams {
     className: string
 }
+
+/**
+ * Parameters for package information requests.
+ */
 interface PackageInfoParams {
     packageName: string
 }
 
+/**
+ * Parameters for classpath loading requests.
+ */
 interface ClassPathInfoParams {
     classPathEntries: string[]
 }
