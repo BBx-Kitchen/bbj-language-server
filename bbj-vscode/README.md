@@ -2,6 +2,10 @@
 
 This extension adds support for the BBj language. It allows you to locate your local BBj installation for resolution of Classpath and PREFIX, running your code from the editor, and to host the Java-part of the language server.
 
+## Documentation
+
+📖 **[Full Documentation](https://BBx-Kitchen.github.io/bbj-language-server/)** | [Getting Started](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/getting-started) | [Features](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/features) | [Configuration](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/configuration) | [Commands](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/commands)
+
 ## Features
 
 * Syntax Highlight for bbj files and config.bbx
@@ -33,6 +37,10 @@ Failing to do so may result in unpredictable failure.
 3. Configure the BBj directory by opening the settings, then search for "BBj" and edit the "Bbj: Home" variable in your settings.json
 
 ![Enable BBj Language Service](https://raw.githubusercontent.com/BBx-Kitchen/bbj-language-server/main/bbj-vscode/enable_ls_in_bbj.png)
+
+## Learn More
+
+For detailed documentation including all features, configuration options, and keyboard shortcuts, visit the **[BBj Language Server Documentation](https://BBx-Kitchen.github.io/bbj-language-server/)**.
 
 ### Credits
 
