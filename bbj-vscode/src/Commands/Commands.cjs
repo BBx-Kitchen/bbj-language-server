@@ -14,6 +14,8 @@ const execWithProgress = (cmd) => {
   return new Promise((resolve, reject) => {
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
+        // Attach stderr to the error object for better error messages
+        err.stderr = stderr;
         reject(err);
       } else {
         resolve({ stdout, stderr });
@@ -65,7 +67,8 @@ const runWeb = (params, client) => {
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
-      vscode.window.showErrorMessage(`Failed to run "${programme}"`);
+      const errorMsg = `Failed to run "${programme}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
+      vscode.window.showErrorMessage(errorMsg);
       return;
     }
   });
@@ -189,7 +192,8 @@ const Commands = {
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
         if (err) {
-          vscode.window.showErrorMessage(`Failed to run "${fileName}"`);
+          const errorMsg = `Failed to run "${fileName}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
+          vscode.window.showErrorMessage(errorMsg);
         }
       });
     };
@@ -229,7 +233,8 @@ const Commands = {
         await execWithProgress(cmd);
         vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
       } catch (err) {
-        vscode.window.showErrorMessage(`Failed to compile "${fileName}"`);
+        const errorMsg = `Failed to compile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
+        vscode.window.showErrorMessage(errorMsg);
       }
     });
   },
