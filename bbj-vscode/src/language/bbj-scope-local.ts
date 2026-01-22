@@ -14,6 +14,7 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
+import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -29,6 +30,7 @@ import {
     isLibEventType,
     isLibMember,
     isMemberCall,
+    isProgram,
     isReadStatement,
     isSymbolRef, isUse,
     MemberCall,
@@ -62,6 +64,11 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         for (const node of AstUtils.streamAllContents(rootNode)) {
             await interruptAndCheck(cancelToken);
             await this.processNode(node, document, scopes);
+        }
+
+        if (isProgram(rootNode)) {
+            // Cache USE statements. They are used frequently during scope resolution.
+            (document as BbjDocument).cachedUseStatements = collectAllUseStatements(rootNode);
         }
 
         if (JavaSyntheticDocUri === document.uri.toString() && isClasspath(rootNode)) {
