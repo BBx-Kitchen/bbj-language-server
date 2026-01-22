@@ -410,6 +410,9 @@ export class JavaInteropService {
     }
 }
 
+/** Extracts package name from fully qualified class name
+ * @param className fully qualified class name
+ * @returns package name or empty string if no package */
 function extractPackageName(className: string): string {
     const lastIndexOfDot = className.lastIndexOf('.');
     if (lastIndexOfDot === -1) {
@@ -423,19 +426,43 @@ function extractPackageName(className: string): string {
     return className.substring(0, lastIndexOfDot); // Fallback to last dot
 }
 
+/**
+ * Request type for loading classpath entries into the Java backend service.
+ */
 const loadClasspathRequest = new RequestType<ClassPathInfoParams, boolean, null>('loadClasspath');
+
+/**
+ * Request type for retrieving information about a single Java class.
+ */
 const getClassInfoRequest = new RequestType<ClassInfoParams, JavaClass, null>('getClassInfo');
+
+/**
+ * Request type for retrieving information about all classes in a package.
+ */
 const getClassInfosRequest = new RequestType<PackageInfoParams, JavaClass[], null>('getClassInfos');
 
+/**
+ * Request type for retrieving all top-level packages available in the classpath.
+ */
 const getTopLevelPackages = new RequestType<null, PackageInfoParams[], null>('getTopLevelPackages');
 
+/**
+ * Parameters for class information requests.
+ */
 interface ClassInfoParams {
     className: string
 }
+
+/**
+ * Parameters for package information requests.
+ */
 interface PackageInfoParams {
     packageName: string
 }
 
+/**
+ * Parameters for classpath loading requests.
+ */
 interface ClassPathInfoParams {
     classPathEntries: string[]
 }
