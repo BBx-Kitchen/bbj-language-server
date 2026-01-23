@@ -144,6 +144,11 @@
         "key": "alt+c"
       },
       {
+        "category": "BBj",
+        "command": "bbj.configureCompileOptions",
+        "title": "Configure Compile Options"
+      },
+      {
         "command": "bbj.denumber",
         "title": "Denumber BBj Program",
         "icon": {
@@ -338,6 +343,138 @@
           "default": false,
           "description": "Enable/disable single line IF statements",
           "scope": "window"
+        },
+        "bbj.compiler.typeChecking.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable static type checking (-t)",
+          "scope": "window"
+        },
+        "bbj.compiler.typeChecking.warnings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable warnings about undeclared code (-W). Requires type checking to be enabled.",
+          "scope": "window"
+        },
+        "bbj.compiler.typeChecking.configFile": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Configuration file for type checker to resolve USE statements (-c). Cannot be used with prefix directories.",
+          "scope": "window"
+        },
+        "bbj.compiler.typeChecking.prefixDirectories": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Prefix directories for custom object resolution (-P). Cannot be used with config file.",
+          "scope": "window"
+        },
+        "bbj.compiler.typeChecking.classpath": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Session-Specific Classpath for type-checking Java class references (-CP)",
+          "scope": "window"
+        },
+        "bbj.compiler.lineNumbering.renumber": {
+          "type": "boolean",
+          "default": false,
+          "description": "Renumber the generated program (-n)",
+          "scope": "window"
+        },
+        "bbj.compiler.lineNumbering.startLine": {
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Starting line number for programs without line numbers (-s)",
+          "scope": "window"
+        },
+        "bbj.compiler.lineNumbering.interval": {
+          "type": ["number", "null"],
+          "default": null,
+          "description": "Line number increment for programs without line numbers (-i)",
+          "scope": "window"
+        },
+        "bbj.compiler.lineNumbering.processRenum": {
+          "type": "boolean",
+          "default": false,
+          "description": "Process renumbering commands in REM statements (--renum)",
+          "scope": "window"
+        },
+        "bbj.compiler.lineNumbering.removeLineNumbers": {
+          "type": "boolean",
+          "default": false,
+          "description": "Remove line numbers, inserting labels where needed (-D)",
+          "scope": "window"
+        },
+        "bbj.compiler.output.directory": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Output directory for compiled files (-d)",
+          "scope": "window"
+        },
+        "bbj.compiler.output.extension": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Append extension to output filenames (-x). Cannot be used with keepExtension.",
+          "scope": "window"
+        },
+        "bbj.compiler.output.keepExtension": {
+          "type": "boolean",
+          "default": false,
+          "description": "Keep the extension of input files (-X). Cannot be used with custom extension.",
+          "scope": "window"
+        },
+        "bbj.compiler.output.forceOverwrite": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force overwriting of input files if output would conflict (-F)",
+          "scope": "window"
+        },
+        "bbj.compiler.output.validateOnly": {
+          "type": "boolean",
+          "default": false,
+          "description": "Validate only, do not write output files (-N)",
+          "scope": "window"
+        },
+        "bbj.compiler.content.removeRem": {
+          "type": "boolean",
+          "default": false,
+          "description": "Remove all REM statements (-r)",
+          "scope": "window"
+        },
+        "bbj.compiler.content.protect": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate protected program (-p)",
+          "scope": "window"
+        },
+        "bbj.compiler.content.protectPassword": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "Password for protected program. Empty = unclearable password.",
+          "scope": "window"
+        },
+        "bbj.compiler.input.recursive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Recursively compile all files in directory and subdirectories (-R)",
+          "scope": "window"
+        },
+        "bbj.compiler.input.fileList": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "File containing list of filenames to compile (-@)",
+          "scope": "window"
+        },
+        "bbj.compiler.diagnostics.errorLog": {
+          "type": ["string", "null"],
+          "default": null,
+          "description": "File to write error output (-e)",
+          "scope": "window"
+        },
+        "bbj.compiler.diagnostics.verbose": {
+          "type": "boolean",
+          "default": false,
+          "description": "Print debugging information (--verbose)",
+          "scope": "window"
         }
       }
     }
@@ -352,6 +489,7 @@
     "onCommand:bbj.runDWC",
     "onCommand:bbj.autoComment",
     "onCommand:bbj.compile",
+    "onCommand:bbj.configureCompileOptions",
     "onCommand:bbj.decompile",
     "onCommand:bbj.denumber"
   ],
