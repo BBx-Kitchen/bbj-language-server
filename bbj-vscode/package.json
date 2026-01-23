@@ -452,18 +452,6 @@
           "description": "Password for protected program. Empty = unclearable password.",
           "scope": "window"
         },
-        "bbj.compiler.input.recursive": {
-          "type": "boolean",
-          "default": false,
-          "description": "Recursively compile all files in directory and subdirectories (-R)",
-          "scope": "window"
-        },
-        "bbj.compiler.input.fileList": {
-          "type": ["string", "null"],
-          "default": null,
-          "description": "File containing list of filenames to compile (-@)",
-          "scope": "window"
-        },
         "bbj.compiler.diagnostics.errorLog": {
           "type": ["string", "null"],
           "default": null,

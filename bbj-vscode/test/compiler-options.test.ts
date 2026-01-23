@@ -198,22 +198,6 @@ describe('CompilerOptions - buildCompileOptions', () => {
         expect(result.filter(o => o === '-p')).toHaveLength(0);
     });
 
-    test('correctly builds -R flag for recursive compilation', () => {
-        const config = createMockConfig({
-            'compiler.input.recursive': true
-        });
-        const result = buildCompileOptions(config);
-        expect(result).toContain('-R');
-    });
-
-    test('correctly builds -@<filelist> for file list', () => {
-        const config = createMockConfig({
-            'compiler.input.fileList': '/path/to/files.txt'
-        });
-        const result = buildCompileOptions(config);
-        expect(result).toContain('-@/path/to/files.txt');
-    });
-
     test('correctly builds -e<errorlog> for error log', () => {
         const config = createMockConfig({
             'compiler.diagnostics.errorLog': '/path/to/errors.log'
@@ -415,9 +399,10 @@ describe('CompilerOptions - validateOptions', () => {
 
 describe('CompilerOptions - COMPILER_OPTIONS constant', () => {
 
-    test('contains all 22 compiler options', () => {
-        // 22 options as defined in the module (including both protect boolean and password)
-        expect(COMPILER_OPTIONS.length).toBe(22);
+    test('contains all 20 compiler options', () => {
+        // 20 options as defined in the module (including both protect boolean and password)
+        // Note: -R (recursive) and -@ (fileList) removed as they don't apply to single-file compilation
+        expect(COMPILER_OPTIONS.length).toBe(20);
     });
 
     test('all options have required properties', () => {
@@ -438,7 +423,6 @@ describe('CompilerOptions - COMPILER_OPTIONS constant', () => {
             'Line Numbering',
             'Output Control',
             'Content Modification',
-            'Input Handling',
             'Diagnostics'
         ];
         for (const option of COMPILER_OPTIONS) {
@@ -459,12 +443,11 @@ describe('CompilerOptions - getOptionsGrouped', () => {
 
     test('groups options correctly by group name', () => {
         const groups = getOptionsGrouped();
-        expect(groups.size).toBe(6);
+        expect(groups.size).toBe(5);
         expect(groups.has('Type Checking')).toBe(true);
         expect(groups.has('Line Numbering')).toBe(true);
         expect(groups.has('Output Control')).toBe(true);
         expect(groups.has('Content Modification')).toBe(true);
-        expect(groups.has('Input Handling')).toBe(true);
         expect(groups.has('Diagnostics')).toBe(true);
     });
 
@@ -497,12 +480,6 @@ describe('CompilerOptions - getOptionsGrouped', () => {
         expect(contentMod.length).toBe(3); // -r, -p (boolean), -p (password)
     });
 
-    test('Input Handling group has correct options', () => {
-        const groups = getOptionsGrouped();
-        const inputHandling = groups.get('Input Handling')!;
-        expect(inputHandling.length).toBe(2); // -R, -@
-    });
-
     test('Diagnostics group has correct options', () => {
         const groups = getOptionsGrouped();
         const diagnostics = groups.get('Diagnostics')!;
@@ -513,13 +490,12 @@ describe('CompilerOptions - getOptionsGrouped', () => {
 
 describe('CompilerOptions - OPTION_GROUP_ORDER', () => {
 
-    test('contains all 6 groups in correct order', () => {
+    test('contains all 5 groups in correct order', () => {
         expect(OPTION_GROUP_ORDER).toEqual([
             'Type Checking',
             'Line Numbering',
             'Output Control',
             'Content Modification',
-            'Input Handling',
             'Diagnostics'
         ]);
     });

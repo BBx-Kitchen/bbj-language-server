@@ -14,7 +14,6 @@ export type CompilerOptionGroup =
     | 'Line Numbering'
     | 'Output Control'
     | 'Content Modification'
-    | 'Input Handling'
     | 'Diagnostics';
 
 /**
@@ -254,28 +253,6 @@ export const COMPILER_OPTIONS: CompilerOption[] = [
         label: 'Protection Password',
         description: 'Password for protected program. Empty = unclearable password.',
         group: 'Content Modification',
-        type: 'string',
-        defaultValue: null,
-        hasParameter: true
-    },
-
-    // Input Handling group
-    {
-        flag: '-R',
-        configKey: 'input.recursive',
-        label: 'Recursive Compilation',
-        description: 'Recursively compile all files in directory and subdirectories',
-        group: 'Input Handling',
-        type: 'boolean',
-        defaultValue: false,
-        hasParameter: false
-    },
-    {
-        flag: '-@',
-        configKey: 'input.fileList',
-        label: 'File List',
-        description: 'File containing list of filenames to compile',
-        group: 'Input Handling',
         type: 'string',
         defaultValue: null,
         hasParameter: true
@@ -525,6 +502,5 @@ export const OPTION_GROUP_ORDER: CompilerOptionGroup[] = [
     'Line Numbering',
     'Output Control',
     'Content Modification',
-    'Input Handling',
     'Diagnostics'
 ];
