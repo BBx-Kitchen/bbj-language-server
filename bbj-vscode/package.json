@@ -31,8 +31,7 @@
           ".bbj",
           ".bbl",
           ".bbjt",
-          ".src",
-          ".arc"
+          ".src"
         ],
         "icon": {
           "light": "./images/bbj-file-light.svg",
