@@ -1,6 +1,6 @@
 {
   "name": "bbj-lang",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "publisher": "basis-intl",
   "displayName": " BBj Programming Language Support",
   "description": "BBj Language Support for Visual Studio Code",
@@ -357,19 +357,28 @@
           "scope": "window"
         },
         "bbj.compiler.typeChecking.configFile": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Configuration file for type checker to resolve USE statements (-c). Cannot be used with prefix directories.",
           "scope": "window"
         },
         "bbj.compiler.typeChecking.prefixDirectories": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Prefix directories for custom object resolution (-P). Cannot be used with config file.",
           "scope": "window"
         },
         "bbj.compiler.typeChecking.classpath": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Session-Specific Classpath for type-checking Java class references (-CP)",
           "scope": "window"
@@ -381,13 +390,19 @@
           "scope": "window"
         },
         "bbj.compiler.lineNumbering.startLine": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "default": null,
           "description": "Starting line number for programs without line numbers (-s)",
           "scope": "window"
         },
         "bbj.compiler.lineNumbering.interval": {
-          "type": ["number", "null"],
+          "type": [
+            "number",
+            "null"
+          ],
           "default": null,
           "description": "Line number increment for programs without line numbers (-i)",
           "scope": "window"
@@ -405,13 +420,19 @@
           "scope": "window"
         },
         "bbj.compiler.output.directory": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Output directory for compiled files (-d)",
           "scope": "window"
         },
         "bbj.compiler.output.extension": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Append extension to output filenames (-x). Cannot be used with keepExtension.",
           "scope": "window"
@@ -447,13 +468,19 @@
           "scope": "window"
         },
         "bbj.compiler.content.protectPassword": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "Password for protected program. Empty = unclearable password.",
           "scope": "window"
         },
         "bbj.compiler.diagnostics.errorLog": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
           "default": null,
           "description": "File to write error output (-e)",
           "scope": "window"
