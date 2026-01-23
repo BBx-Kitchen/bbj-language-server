@@ -348,7 +348,59 @@ function isOptionEnabled(config: vscode.WorkspaceConfiguration, configKey: strin
 }
 
 /**
+ * Mutual exclusivity rules:
+ * - configFile (-c) and prefixDirectories (-P) cannot both be specified
+ * - extension (-x) and keepExtension (-X) cannot both be specified
+ *
+ * Dependency rules:
+ * - warnings (-W) requires typeChecking (-t) to be enabled
+ * - configFile (-c) requires typeChecking (-t) to be enabled
+ * - prefixDirectories (-P) requires typeChecking (-t) to be enabled
+ */
+
+/**
+ * Check if a dependency requirement is satisfied
+ * @param config The VSCode workspace configuration for 'bbj'
+ * @param option The option that has dependencies
+ * @param dependency The configKey of the required dependency
+ * @returns Object with satisfied status and the dependency option details
+ */
+function checkDependency(
+    config: vscode.WorkspaceConfiguration,
+    option: CompilerOption,
+    dependency: string
+): { satisfied: boolean; depOption: CompilerOption | undefined } {
+    const depOption = COMPILER_OPTIONS.find(o => o.configKey === dependency);
+    const satisfied = isOptionEnabled(config, dependency);
+    return { satisfied, depOption };
+}
+
+/**
+ * Check if a mutual exclusivity rule is violated
+ * @param config The VSCode workspace configuration for 'bbj'
+ * @param option The option to check
+ * @param conflict The configKey of the conflicting option
+ * @returns Object with conflict status and the conflicting option details
+ */
+function checkMutualExclusivity(
+    config: vscode.WorkspaceConfiguration,
+    option: CompilerOption,
+    conflict: string
+): { hasConflict: boolean; conflictOption: CompilerOption | undefined } {
+    const conflictOption = COMPILER_OPTIONS.find(o => o.configKey === conflict);
+    const hasConflict = isOptionEnabled(config, conflict);
+    return { hasConflict, conflictOption };
+}
+
+/**
  * Validate compiler options configuration for conflicts and dependencies
+ *
+ * This function checks:
+ * 1. Dependency rules - certain options require other options to be enabled
+ *    (e.g., -W requires -t to be enabled)
+ * 2. Mutual exclusivity rules - certain options cannot be used together
+ *    (e.g., -c and -P cannot both be specified)
+ *
  * @param config The VSCode workspace configuration for 'bbj'
  * @returns Validation result with errors and warnings
  */
@@ -366,11 +418,12 @@ export function validateOptions(config: vscode.WorkspaceConfiguration): Validati
             continue;
         }
 
-        // Check dependencies
+        // Check dependency rules
+        // Options may require other options to be enabled to function correctly
         if (option.dependsOn && option.dependsOn.length > 0) {
             for (const dependency of option.dependsOn) {
-                if (!isOptionEnabled(config, dependency)) {
-                    const depOption = COMPILER_OPTIONS.find(o => o.configKey === dependency);
+                const { satisfied, depOption } = checkDependency(config, option, dependency);
+                if (!satisfied) {
                     const depLabel = depOption?.label || dependency;
                     result.warnings.push(
                         `"${option.label}" (${option.flag}) requires "${depLabel}" to be enabled`
@@ -379,11 +432,12 @@ export function validateOptions(config: vscode.WorkspaceConfiguration): Validati
             }
         }
 
-        // Check conflicts (mutual exclusivity)
+        // Check mutual exclusivity rules (conflicts)
+        // Certain options cannot be used together
         if (option.conflictsWith && option.conflictsWith.length > 0) {
             for (const conflict of option.conflictsWith) {
-                if (isOptionEnabled(config, conflict)) {
-                    const conflictOption = COMPILER_OPTIONS.find(o => o.configKey === conflict);
+                const { hasConflict, conflictOption } = checkMutualExclusivity(config, option, conflict);
+                if (hasConflict) {
                     const conflictLabel = conflictOption?.label || conflict;
                     // Only add the error once (avoid duplicates for both sides of the conflict)
                     const errorMsg = `"${option.label}" (${option.flag}) cannot be used with "${conflictLabel}" (${conflictOption?.flag || conflict})`;
