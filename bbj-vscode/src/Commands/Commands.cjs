@@ -4,6 +4,7 @@ const { exec } = require("child_process");
 const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader");
+const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
 
 /**
  * Helper function to wrap child_process.exec() in a Promise for use with withProgress
@@ -217,13 +218,38 @@ const Commands = {
   compile: function (params) {
     const home = getBBjHome();
     if (!home) return;
-    const cmd = `"${home}/bin/bbjcpl${os.platform() === 'win32' ? '.exe' : ''}" "${
-      vscode.window.activeTextEditor.document.fileName
-    }"`;
 
     const active = vscode.window.activeTextEditor;
-
     const fileName = active ? active.document.fileName : params.fsPath;
+
+    // Read compiler configuration
+    const config = vscode.workspace.getConfiguration('bbj');
+
+    // Validate options for conflicts and dependencies
+    const validation = validateOptions(config);
+
+    // If there are validation errors, show them and abort compilation
+    if (!validation.isValid) {
+      const errorMessage = 'Compiler options have conflicts:\n• ' + validation.errors.join('\n• ');
+      vscode.window.showErrorMessage(errorMessage, 'Configure Options').then(selection => {
+        if (selection === 'Configure Options') {
+          vscode.commands.executeCommand('bbj.configureCompileOptions');
+        }
+      });
+      return;
+    }
+
+    // Show warnings if any (but continue with compilation)
+    if (validation.warnings.length > 0) {
+      const warningMessage = 'Compiler options warnings:\n• ' + validation.warnings.join('\n• ');
+      vscode.window.showWarningMessage(warningMessage);
+    }
+
+    // Build the compiler options from configuration
+    const compilerOptions = buildCompileOptions(config);
+    const optionsStr = compilerOptions.length > 0 ? compilerOptions.join(' ') + ' ' : '';
+
+    const cmd = `"${home}/bin/bbjcpl${os.platform() === 'win32' ? '.exe' : ''}" ${optionsStr}"${fileName}"`;
 
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
