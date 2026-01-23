@@ -1,15 +1,11 @@
-import { AstNode, AstUtils, CstNode, MaybePromise, CancellationToken } from "langium";
-import { AbstractSignatureHelpProvider, LangiumServices } from "langium/lsp";
-import { SignatureHelp, SignatureInformation, ParameterInformation, SignatureHelpOptions } from "vscode-languageserver";
+import { AstNode, MaybePromise, Reference } from "langium";
+import { AbstractSignatureHelpProvider } from "langium/lsp";
+import { SignatureHelp, SignatureInformation, ParameterInformation, SignatureHelpOptions, CancellationToken } from "vscode-languageserver";
 import { methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription } from "./bbj-nodedescription-provider.js";
-import { isCallExpression, isMethodCall } from "./generated/ast.js";
+import { isMemberCall, isMethodCall, isSymbolRef, MethodCall, NamedElement } from "./generated/ast.js";
 
 export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
-
-    constructor(services: LangiumServices) {
-        super(services);
-    }
 
     override get signatureHelpOptions(): SignatureHelpOptions {
         return {
@@ -18,32 +14,22 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
         };
     }
 
-    protected override getSignatureFromElement(element: AstNode, cancelToken: CancellationToken): MaybePromise<SignatureHelp | undefined> {
-        // Find the enclosing call expression or method call
+    protected override getSignatureFromElement(element: AstNode, _cancelToken: CancellationToken): MaybePromise<SignatureHelp | undefined> {
+        // Find the enclosing method call
         const callNode = this.findEnclosingCall(element);
         if (!callNode) {
             return undefined;
         }
 
-        // Get the function being called
+        // Get the reference to the function/method being called
         const functionRef = this.getFunctionReference(callNode);
-        if (!functionRef || !functionRef.$refText) {
+        if (!functionRef) {
             return undefined;
         }
 
         // Get the node description for the function
-        const scope = this.scopeProvider.getScope({ reference: functionRef, container: callNode });
-        const nodeDescriptions = scope.getAllElements();
-        let functionDescription: FunctionNodeDescription | undefined;
-
-        for (const desc of nodeDescriptions) {
-            if (desc.name === functionRef.$refText && isFunctionNodeDescription(desc)) {
-                functionDescription = desc;
-                break;
-            }
-        }
-
-        if (!functionDescription) {
+        const functionDescription = functionRef.$nodeDescription;
+        if (!functionDescription || !isFunctionNodeDescription(functionDescription)) {
             return undefined;
         }
 
@@ -60,10 +46,10 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
         };
     }
 
-    protected findEnclosingCall(node: AstNode): AstNode | undefined {
+    protected findEnclosingCall(node: AstNode): MethodCall | undefined {
         let current: AstNode | undefined = node;
         while (current) {
-            if (isCallExpression(current) || isMethodCall(current)) {
+            if (isMethodCall(current)) {
                 return current;
             }
             current = current.$container;
@@ -71,18 +57,19 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
         return undefined;
     }
 
-    protected getFunctionReference(callNode: AstNode): any {
-        if (isCallExpression(callNode)) {
-            return callNode.function;
-        } else if (isMethodCall(callNode)) {
-            return callNode.method;
+    protected getFunctionReference(callNode: MethodCall): Reference<NamedElement> | undefined {
+        const method = callNode.method;
+        if (isSymbolRef(method)) {
+            return method.symbol;
+        } else if (isMemberCall(method)) {
+            return method.member;
         }
         return undefined;
     }
 
-    protected getActiveParameter(callNode: AstNode, cursorNode: AstNode): number {
-        const args = this.getArguments(callNode);
-        if (!args || args.length === 0) {
+    protected getActiveParameter(callNode: MethodCall, cursorNode: AstNode): number {
+        const args = callNode.args || [];
+        if (args.length === 0) {
             return 0;
         }
 
@@ -109,15 +96,6 @@ export class BBjSignatureHelpProvider extends AbstractSignatureHelpProvider {
         }
 
         return Math.min(paramIndex, args.length - 1);
-    }
-
-    protected getArguments(callNode: AstNode): AstNode[] {
-        if (isCallExpression(callNode)) {
-            return callNode.args || [];
-        } else if (isMethodCall(callNode)) {
-            return callNode.args || [];
-        }
-        return [];
     }
 
     protected createSignatureInformation(functionDescription: FunctionNodeDescription): SignatureInformation {

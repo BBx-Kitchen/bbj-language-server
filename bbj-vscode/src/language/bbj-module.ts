@@ -85,7 +85,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         HoverProvider: (services) => new BBjHoverProvider(services),
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
-        SignatureHelpProvider: (services) => new BBjSignatureHelpProvider(services),
+        SignatureHelp: () => new BBjSignatureHelpProvider(),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),
