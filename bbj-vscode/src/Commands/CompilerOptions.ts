@@ -465,7 +465,6 @@ export function buildCompileOptions(config: vscode.WorkspaceConfiguration): stri
     // If protectPassword is set, use it; otherwise use protect boolean
     const protectPassword = config.get<string | null>(getFullConfigKey('content.protectPassword'));
     const protect = config.get<boolean>(getFullConfigKey('content.protect'));
-    let protectHandled = false;
 
     for (const option of COMPILER_OPTIONS) {
         // Skip the protectPassword entry - we handle it with protect
@@ -478,11 +477,9 @@ export function buildCompileOptions(config: vscode.WorkspaceConfiguration): stri
             if (protectPassword !== null && protectPassword !== undefined && protectPassword !== '') {
                 // Use password version: -p<password>
                 options.push(`-p${protectPassword}`);
-                protectHandled = true;
             } else if (protect === true) {
                 // Use boolean version: -p (unclearable password)
                 options.push('-p');
-                protectHandled = true;
             }
             continue;
         }
