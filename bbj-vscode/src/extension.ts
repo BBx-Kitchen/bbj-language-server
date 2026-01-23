@@ -337,6 +337,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("bbj.decompile", Commands.decompile);
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
+    vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions);
 
     // Register command to show available classpath entries
     vscode.commands.registerCommand("bbj.showClasspathEntries", async () => {
