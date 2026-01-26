@@ -525,7 +525,7 @@
     "langium:watch": "langium generate --watch"
   },
   "dependencies": {
-    "chevrotain": "~11.0.3",
+    "chevrotain": "~11.1.1",
     "langium": "~3.2.1",
     "properties-file": "^3.6.3",
     "properties-reader": "^2.3.0",
