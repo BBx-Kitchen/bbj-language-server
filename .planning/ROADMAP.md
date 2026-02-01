@@ -34,10 +34,10 @@ See .planning/MILESTONES.md for details. 6 phases, 19 plans completed.
   2. Opening a .bbx file shows the BBj config icon in the editor tab and project tree (both light and dark themes)
   3. The plugin listing in Settings > Plugins shows the BBj brand icon
   4. Run GUI, Run BUI, and Run DWC toolbar buttons each display their distinct brand icons (light and dark)
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 07-01: Harvest VSCode SVG icons, convert to IntelliJ format, register file type and run action icons
+- [ ] 07-01-PLAN.md — Convert VSCode SVGs to IntelliJ format, register .bbx file type, wire all icon constants
 
 ### Phase 8: Run Commands
 **Goal**: Users can run BBj programs directly from IntelliJ as GUI, BUI, or DWC with one click or keyboard shortcut
