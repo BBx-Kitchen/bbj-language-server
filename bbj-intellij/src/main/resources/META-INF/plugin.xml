@@ -28,6 +28,13 @@
             language="BBj"
             extensions="bbj;bbl;bbjt;src"/>
 
+        <fileType
+            name="BBx Config"
+            implementationClass="com.basis.bbj.intellij.BbxConfigFileType"
+            fieldName="INSTANCE"
+            language="BBj"
+            extensions="bbx"/>
+
         <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
         <lang.parserDefinition
             language="BBj"
@@ -124,5 +131,10 @@
         <languageMapping language="BBj"
                          serverId="bbjLanguageServer"
                          languageId="bbj"/>
+
+        <languageMapping language="BBj"
+                         serverId="bbjLanguageServer"
+                         languageId="bbx"
+                         fileType="BBx Config"/>
     </extensions>
 </idea-plugin>
