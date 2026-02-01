@@ -100,9 +100,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | LSI-07 | Phase 4 | Complete |
 | LSI-08 | Phase 4 | Complete |
 | LSI-09 | Phase 4 | Complete |
-| JAVA-01 | Phase 5 | Pending |
-| JAVA-02 | Phase 5 | Pending |
-| JAVA-03 | Phase 5 | Pending |
+| JAVA-01 | Phase 5 | Complete |
+| JAVA-02 | Phase 5 | Complete |
+| JAVA-03 | Phase 5 | Complete |
 | UX-01 | Phase 4 | Complete |
 | UX-02 | Phase 3 | Complete |
 | UX-03 | Phase 4 | Complete |
