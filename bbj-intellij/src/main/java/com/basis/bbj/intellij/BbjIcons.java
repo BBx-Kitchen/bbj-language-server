@@ -11,4 +11,5 @@ public interface BbjIcons {
     Icon STATUS_READY = IconLoader.getIcon("/icons/bbj-status-ready.svg", BbjIcons.class);
     Icon STATUS_STARTING = IconLoader.getIcon("/icons/bbj-status-starting.svg", BbjIcons.class);
     Icon STATUS_ERROR = IconLoader.getIcon("/icons/bbj-status-error.svg", BbjIcons.class);
+    Icon TOOL_WINDOW = IconLoader.getIcon("/icons/bbj-toolwindow.svg", BbjIcons.class);
 }

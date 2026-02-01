@@ -69,6 +69,10 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjMissingNodeNotificationProvider"/>
 
+        <!-- Editor banner for server crash state -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.ui.BbjServerCrashNotificationProvider"/>
+
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
@@ -76,6 +80,17 @@
         <statusBarWidgetFactory
             id="BbjLanguageServerStatus"
             implementation="com.basis.bbj.intellij.ui.BbjStatusBarWidgetFactory"/>
+
+        <!-- Server log tool window -->
+        <toolWindow id="BBj Language Server"
+                    factoryClass="com.basis.bbj.intellij.ui.BbjServerLogToolWindowFactory"
+                    anchor="bottom"
+                    icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
+                    canCloseContents="false"/>
+
+        <!-- Notification group for crash/error balloons -->
+        <notificationGroup id="BBj Language Server"
+                           displayType="STICKY_BALLOON"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
