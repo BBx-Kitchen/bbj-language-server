@@ -1,0 +1,8 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Suppress spell checking for BBj files (LSP handles diagnostics) -->
+        <spellchecker.support
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjSpellcheckingStrategy"/>
+    </extensions>
+</idea-plugin>
