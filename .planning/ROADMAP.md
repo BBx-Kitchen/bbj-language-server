@@ -55,11 +55,13 @@ Plans:
 **Depends on**: Phase 2
 **Requirements**: FOUND-04, FOUND-05, LSI-01, UX-02
 **Success Criteria** (what must be TRUE):
-  1. Settings UI (Preferences > Languages & Frameworks > BBj) shows BBj home path field and classpath table
-  2. User can set BBj home path and add/remove classpath entries, changes persist across IDE restarts
-  3. Plugin detects Node.js from system PATH and displays version in settings
-  4. User sees clear error notification when Node.js not found, with instructions to install or configure path
-  5. Settings changes saved to IntelliJ project configuration (accessible to language server)
+  1. Settings UI (Preferences > Languages & Frameworks > BBj) shows BBj home path field, Node.js path field, and classpath dropdown
+  2. BBj home auto-detects from ~/BASIS/Install.properties and common locations, with manual browse override
+  3. Classpath dropdown lists named entries from BBj.properties (e.g., bbj_default, addon); user selects one
+  4. Plugin detects Node.js from system PATH, displays version, allows manual path override
+  5. Editor banner appears on BBj files when BBj home or Node.js is missing/invalid, with action links
+  6. Settings persist as application-level (global) config across IDE restarts
+  7. Settings changes auto-restart the language server (Phase 4 will consume these settings)
 **Plans**: TBD
 
 Plans:
