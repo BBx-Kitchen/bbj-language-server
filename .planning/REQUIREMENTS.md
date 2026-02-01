@@ -18,18 +18,18 @@ Requirements for v1.1 Polish & Run Commands milestone. Each maps to roadmap phas
 
 ### Run Commands
 
-- [ ] **RUN-01**: User can run current BBj file as GUI program via menu action (spawns bbj executable with -q flag and file path)
-- [ ] **RUN-02**: User can run current BBj file as BUI program via menu action (uses bundled web.bbj runner with BUI client type)
-- [ ] **RUN-03**: User can run current BBj file as DWC program via menu action (uses bundled web.bbj runner with DWC client type)
-- [ ] **RUN-04**: Run GUI/BUI/DWC actions appear as toolbar buttons in the editor toolbar
-- [ ] **RUN-05**: Run GUI action has keyboard shortcut Alt+G
-- [ ] **RUN-06**: Run BUI action has keyboard shortcut Alt+B
-- [ ] **RUN-07**: Run DWC action has keyboard shortcut Alt+D
-- [ ] **RUN-08**: Run commands use BBj home path from plugin settings to locate bbj executable
-- [ ] **RUN-09**: Run commands use classpath from plugin settings when configured
-- [ ] **RUN-10**: Run commands auto-save the active file before execution (configurable)
-- [ ] **RUN-11**: Run command errors display in IntelliJ notification balloons
-- [ ] **RUN-12**: Plugin bundles web.bbj runner script for BUI/DWC execution
+- [x] **RUN-01**: User can run current BBj file as GUI program via menu action (spawns bbj executable with -q flag and file path)
+- [x] **RUN-02**: User can run current BBj file as BUI program via menu action (uses bundled web.bbj runner with BUI client type)
+- [x] **RUN-03**: User can run current BBj file as DWC program via menu action (uses bundled web.bbj runner with DWC client type)
+- [x] **RUN-04**: Run GUI/BUI/DWC actions appear as toolbar buttons in the editor toolbar
+- [x] **RUN-05**: Run GUI action has keyboard shortcut Alt+G
+- [x] **RUN-06**: Run BUI action has keyboard shortcut Alt+B
+- [x] **RUN-07**: Run DWC action has keyboard shortcut Alt+D
+- [x] **RUN-08**: Run commands use BBj home path from plugin settings to locate bbj executable
+- [x] **RUN-09**: Run commands use classpath from plugin settings when configured
+- [x] **RUN-10**: Run commands auto-save the active file before execution (configurable)
+- [x] **RUN-11**: Run command errors display in IntelliJ notification balloons
+- [x] **RUN-12**: Plugin bundles web.bbj runner script for BUI/DWC execution
 
 ### Structure View
 
@@ -87,18 +87,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ICON-04 | Phase 7 | Complete |
 | ICON-05 | Phase 7 | Complete |
 | ICON-06 | Phase 7 | Complete |
-| RUN-01 | Phase 8 | Pending |
-| RUN-02 | Phase 8 | Pending |
-| RUN-03 | Phase 8 | Pending |
-| RUN-04 | Phase 8 | Pending |
-| RUN-05 | Phase 8 | Pending |
-| RUN-06 | Phase 8 | Pending |
-| RUN-07 | Phase 8 | Pending |
-| RUN-08 | Phase 8 | Pending |
-| RUN-09 | Phase 8 | Pending |
-| RUN-10 | Phase 8 | Pending |
-| RUN-11 | Phase 8 | Pending |
-| RUN-12 | Phase 8 | Pending |
+| RUN-01 | Phase 8 | Complete |
+| RUN-02 | Phase 8 | Complete |
+| RUN-03 | Phase 8 | Complete |
+| RUN-04 | Phase 8 | Complete |
+| RUN-05 | Phase 8 | Complete |
+| RUN-06 | Phase 8 | Complete |
+| RUN-07 | Phase 8 | Complete |
+| RUN-08 | Phase 8 | Complete |
+| RUN-09 | Phase 8 | Complete |
+| RUN-10 | Phase 8 | Complete |
+| RUN-11 | Phase 8 | Complete |
+| RUN-12 | Phase 8 | Complete |
 | STRUC-01 | Phase 9 | Pending |
 | STRUC-02 | Phase 9 | Pending |
 | STRUC-03 | Phase 9 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 after Phase 7 completion*
+*Last updated: 2026-02-01 after Phase 8 completion*

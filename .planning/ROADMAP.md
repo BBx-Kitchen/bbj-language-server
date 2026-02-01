@@ -19,7 +19,7 @@ See .planning/MILESTONES.md for details. 6 phases, 19 plans completed.
 **Milestone Goal:** Bring IntelliJ plugin to feature parity with VSCode for icons and run commands, fix all known v1.0 issues, and restore structure view.
 
 - [x] **Phase 7: Brand Icons** - Harvest VSCode brand icons and wire them into file types, plugin listing, and run actions
-- [ ] **Phase 8: Run Commands** - Run BBj programs as GUI/BUI/DWC with toolbar buttons, shortcuts, and error handling
+- [x] **Phase 8: Run Commands** - Run BBj programs as GUI/BUI/DWC with toolbar buttons, shortcuts, and error handling
 - [ ] **Phase 9: Structure View** - Document outline via LSP DocumentSymbol with navigation
 - [ ] **Phase 10: Bug Fixes & Polish** - Resolve all 7 carried-forward v1.0 issues
 
@@ -52,8 +52,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — GUI run action with base class, settings integration, and error handling
-- [ ] 08-02-PLAN.md — BUI/DWC run actions, web.bbj bundling, toolbar buttons, and keyboard shortcuts
+- [x] 08-01-PLAN.md — GUI run action with base class, settings integration, and error handling
+- [x] 08-02-PLAN.md — BUI/DWC run actions, web.bbj bundling, toolbar buttons, and keyboard shortcuts
 
 ### Phase 9: Structure View
 **Goal**: Users can see and navigate the document outline of BBj files via the Structure tool window
@@ -91,6 +91,6 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 7. Brand Icons | v1.1 | 1/1 | Complete | 2026-02-01 |
-| 8. Run Commands | v1.1 | 0/2 | Not started | - |
+| 8. Run Commands | v1.1 | 2/2 | Complete | 2026-02-01 |
 | 9. Structure View | v1.1 | 0/1 | Not started | - |
 | 10. Bug Fixes & Polish | v1.1 | 0/2 | Not started | - |
