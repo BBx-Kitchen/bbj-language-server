@@ -12,7 +12,7 @@ This roadmap delivers a working IntelliJ plugin that brings BBj language support
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Plugin Scaffolding** - Gradle project with file type registration
+- [▶] **Phase 1: Plugin Scaffolding** - Gradle project with file type registration
 - [ ] **Phase 2: Syntax Highlighting** - TextMate grammar integration for visual feedback
 - [ ] **Phase 3: Settings & Runtime** - Configuration UI and Node.js detection
 - [ ] **Phase 4: Language Server Integration** - Core LSP features with process management
@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Gradle project setup with IntelliJ Platform SDK
+- [x] 01-01-PLAN.md — Gradle project setup with IntelliJ Platform SDK
 - [ ] 01-02-PLAN.md — BBj file type registration with custom icon
 
 ### Phase 2: Syntax Highlighting
@@ -120,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Plugin Scaffolding | 0/2 | Planned | - |
+| 1. Plugin Scaffolding | 1/2 | In progress | - |
 | 2. Syntax Highlighting | 0/? | Not started | - |
 | 3. Settings & Runtime | 0/? | Not started | - |
 | 4. Language Server Integration | 0/? | Not started | - |
