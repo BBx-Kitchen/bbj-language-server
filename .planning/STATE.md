@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 4 of 6 (Language Server Integration)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-01 — Completed 04-01-PLAN.md (LSP core integration)
+Last activity: 2026-02-01 — Completed 04-02-PLAN.md (status bar widget)
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: 6.5 minutes
-- Total execution time: 0.85 hours
+- Total plans completed: 9
+- Average duration: 6.0 minutes
+- Total execution time: 0.90 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [██████░░░░] 62%
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
-| 4 - Language Server Integration | 1 | 4 min | 4 min |
+| 4 - Language Server Integration | 2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (1 min), 03-02 (2 min), 03-03 (20 min), 04-01 (4 min)
-- Trend: 04-01 fast execution - straightforward LSP4IJ integration with one API adaptation
+- Last 5 plans: 03-02 (2 min), 03-03 (20 min), 04-01 (4 min), 04-02 (4 min)
+- Trend: Phase 4 maintaining fast execution - UI components straightforward with LSP4IJ foundation
 
 *Updated after each plan completion*
 
@@ -99,6 +99,12 @@ Recent decisions affecting current work:
 - BbjCompletionFeature as utility class (LSP4IJ API simpler than expected)
 - Language ID lowercase 'bbj' to match Langium server expectations
 
+**From Plan 04-02:**
+- Simplified LanguageServerManager.stop() without StopOptions (not exposed in LSP4IJ 0.19.0)
+- Status bar visibility controlled by BBj file focus (hide when irrelevant)
+- 500ms debounce delay for settings-change restart (balance responsiveness/stability)
+- Message bus broadcast for status updates (extensible for future subscribers)
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
@@ -110,7 +116,7 @@ None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 15:28 UTC
-Stopped at: Completed 04-01-PLAN.md (LSP core integration)
+Last session: 2026-02-01 16:36 UTC
+Stopped at: Completed 04-02-PLAN.md (status bar widget)
 Resume file: None
-Next: Plan 04-02 — Status bar widget
+Next: Plan 04-03 — Tool window logging
