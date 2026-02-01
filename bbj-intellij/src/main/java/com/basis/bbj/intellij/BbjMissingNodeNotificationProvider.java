@@ -8,11 +8,13 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.EditorNotificationPanel;
 import com.intellij.ui.EditorNotificationProvider;
+import com.intellij.ui.EditorNotifications;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.function.Function;
 
 /**
@@ -48,16 +50,25 @@ public final class BbjMissingNodeNotificationProvider
                             BbjNodeDetector.getNodeVersion(detected))) {
                 return null;
             }
+
+            // Check for cached downloaded Node.js
+            Path cachedNode = BbjNodeDownloader.getCachedNodePath();
+            if (cachedNode != null) {
+                return null;
+            }
         }
 
         return fileEditor -> {
             EditorNotificationPanel panel = new EditorNotificationPanel(
                     fileEditor, EditorNotificationPanel.Status.Warning);
             panel.setText("Node.js 18+ is required to run the BBj language server");
+            panel.createActionLabel("Download Node.js", () ->
+                    BbjNodeDownloader.downloadNodeAsync(project, () ->
+                            EditorNotifications.getInstance(project).updateAllNotifications()));
             panel.createActionLabel("Configure Node.js Path", () ->
                     ShowSettingsUtil.getInstance()
                             .showSettingsDialog(project, BbjSettingsConfigurable.class));
-            panel.createActionLabel("Install Node.js", () ->
+            panel.createActionLabel("Install Node.js Manually", () ->
                     BrowserUtil.browse("https://nodejs.org/"));
             return panel;
         };

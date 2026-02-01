@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjNodeDetector;
+import com.basis.bbj.intellij.BbjNodeDownloader;
 import com.basis.bbj.intellij.BbjSettings;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
@@ -52,6 +53,12 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
         nodePath = BbjNodeDetector.detectNodePath();
         if (nodePath != null) {
             return nodePath;
+        }
+
+        // Check for cached downloaded Node.js
+        Path cachedNode = BbjNodeDownloader.getCachedNodePath();
+        if (cachedNode != null) {
+            return cachedNode.toString();
         }
 
         // Fallback to system PATH
