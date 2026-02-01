@@ -30,10 +30,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. BBj files (.bbj, .bbl, .bbjt, .src) appear with custom icon in Project view
   3. Opening a BBj file creates an editor instance (even without syntax highlighting yet)
   4. Plugin builds successfully via `./gradlew buildPlugin` and produces installable ZIP
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD
+- [ ] 01-01-PLAN.md — Gradle project setup with IntelliJ Platform SDK
+- [ ] 01-02-PLAN.md — BBj file type registration with custom icon
 
 ### Phase 2: Syntax Highlighting
 **Goal**: BBj code displays with color syntax highlighting
@@ -119,7 +120,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Plugin Scaffolding | 0/? | Not started | - |
+| 1. Plugin Scaffolding | 0/2 | Planned | - |
 | 2. Syntax Highlighting | 0/? | Not started | - |
 | 3. Settings & Runtime | 0/? | Not started | - |
 | 4. Language Server Integration | 0/? | Not started | - |
