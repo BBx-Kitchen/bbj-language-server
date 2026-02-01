@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 4 - Language Server Integration (in progress)
+**Current focus:** Phase 4 - Language Server Integration (complete)
 
 ## Current Position
 
 Phase: 4 of 6 (Language Server Integration)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 04-03-PLAN.md (tool window & crash recovery)
+Plan: 4 of 4 in current phase
+Status: Complete
+Last activity: 2026-02-01 — Completed Phase 4 (all 10 success criteria verified)
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 5.8 minutes
-- Total execution time: 0.97 hours
+- Total plans completed: 14
+- Average duration: 6.4 minutes
+- Total execution time: 1.5 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: [████████░░] 77%
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
-| 4 - Language Server Integration | 3 | 12 min | 4 min |
+| 4 - Language Server Integration | 4 | 57 min | 14.3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (20 min), 04-01 (4 min), 04-02 (4 min), 04-03 (4 min)
-- Trend: Phase 4 maintaining fast execution - UI components straightforward with LSP4IJ foundation
+- Last 5 plans: 04-01 (4 min), 04-02 (4 min), 04-03 (4 min), 04-04 (45 min)
+- Trend: 04-04 was human verification with 4 bug fixes discovered during testing
 
 *Updated after each plan completion*
 
@@ -113,18 +113,28 @@ Recent decisions affecting current work:
 - Editor banner persists until crash state cleared or server successfully restarts
 - Log level sent to server in createSettings() alongside BBj home and classpath
 
+**From Plan 04-04 (human verification):**
+- Document link feature disabled via LSPClientFeatures — Langium advertises it but has no provider
+- initializationOptions passed via LSPClientFeatures.initializeParams(), not createSettings()
+- Minimal ParserDefinition with word-level lexer fixes Cmd+hover range (whole-file PsiElement problem)
+- BundledDictionaryProvider registered directly in plugin.xml (spellchecker is platform core, not separate plugin)
+- Parameter hints via Ctrl+P is standard IntelliJ behavior (not auto-triggered like VS Code)
+- Custom Language + no ParserDefinition = one giant PsiElement (breaks LSP4IJ navigation)
+- "LSP Symbol ..." popup text on Cmd+hover is cosmetic — can be polished later
+
 ### Pending Todos
 
-1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
-2. **Bracket/keyword matching** — Requires custom lexer or LSP. Deferred to Phase 4.
+1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. May need investigation.
+2. **Bracket/keyword matching** — Requires custom lexer or LSP support. Low priority.
+3. **"LSP Symbol ..." popup text** — Cosmetic issue on Cmd+hover. Polish later.
 
 ### Blockers/Concerns
 
-None blocking. Parked items above are non-critical for Phase 2 goals.
+None blocking.
 
 ## Session Continuity
 
-Last session: 2026-02-01 15:43 UTC
-Stopped at: Completed 04-03-PLAN.md (tool window & crash recovery)
+Last session: 2026-02-01
+Stopped at: Completed Phase 4 (Language Server Integration)
 Resume file: None
-Next: Plan 04-04 — Final plan in Phase 4
+Next: Phase 5 — Java Interop

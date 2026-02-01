@@ -12,20 +12,20 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 - [x] **FOUND-01**: IntelliJ plugin project builds with Gradle and LSP4IJ dependency, targeting Community Edition
 - [x] **FOUND-02**: BBj file types (.bbj, .bbl, .bbjt, .src) registered with custom icon and language association
 - [x] **FOUND-03**: TextMate grammar (bbj.tmLanguage.json) provides syntax highlighting for BBj code in IntelliJ
-- [ ] **FOUND-04**: Settings UI allows user to configure BBj home path and classpath entries
-- [ ] **FOUND-05**: Settings UI allows user to configure or override Node.js runtime path
+- [x] **FOUND-04**: Settings UI allows user to configure BBj home path and classpath entries
+- [x] **FOUND-05**: Settings UI allows user to configure or override Node.js runtime path
 
 ### Language Server Integration
 
-- [ ] **LSI-01**: Plugin detects system Node.js installation and validates version (16+)
-- [ ] **LSI-02**: Plugin starts language server process (node main.cjs) over stdio when BBj file is opened
-- [ ] **LSI-03**: Plugin stops language server process cleanly when project closes (no zombie processes)
-- [ ] **LSI-04**: Plugin restarts language server when settings change (BBj home path, classpath)
-- [ ] **LSI-05**: Syntax errors and validation warnings appear as inline diagnostics in the editor
-- [ ] **LSI-06**: Code completion provides BBj keywords, built-in functions, and variables
-- [ ] **LSI-07**: Go-to-definition navigates to symbol declarations (Ctrl+Click / Cmd+Click)
-- [ ] **LSI-08**: Hover shows documentation and type information for symbols
-- [ ] **LSI-09**: Signature help shows parameter hints when typing function calls
+- [x] **LSI-01**: Plugin detects system Node.js installation and validates version (16+)
+- [x] **LSI-02**: Plugin starts language server process (node main.cjs) over stdio when BBj file is opened
+- [x] **LSI-03**: Plugin stops language server process cleanly when project closes (no zombie processes)
+- [x] **LSI-04**: Plugin restarts language server when settings change (BBj home path, classpath)
+- [x] **LSI-05**: Syntax errors and validation warnings appear as inline diagnostics in the editor
+- [x] **LSI-06**: Code completion provides BBj keywords, built-in functions, and variables
+- [x] **LSI-07**: Go-to-definition navigates to symbol declarations (Ctrl+Click / Cmd+Click)
+- [x] **LSI-08**: Hover shows documentation and type information for symbols
+- [x] **LSI-09**: Signature help shows parameter hints when typing function calls
 
 ### Java Interop
 
@@ -35,10 +35,10 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 
 ### Error Handling & UX
 
-- [ ] **UX-01**: Plugin shows balloon notification when language server fails to start (with actionable message)
-- [ ] **UX-02**: Plugin shows clear error when Node.js is not found (with installation instructions)
-- [ ] **UX-03**: Status bar widget shows language server connection state (Running / Disconnected / Error)
-- [ ] **UX-04**: "Restart BBj Language Server" action available in Tools menu
+- [x] **UX-01**: Plugin shows balloon notification when language server fails to start (with actionable message)
+- [x] **UX-02**: Plugin shows clear error when Node.js is not found (with installation instructions)
+- [x] **UX-03**: Status bar widget shows language server connection state (Running / Disconnected / Error)
+- [x] **UX-04**: "Restart BBj Language Server" action available in Tools menu
 
 ### Distribution & Packaging
 
@@ -89,24 +89,24 @@ Deferred to future release. Tracked but not in current roadmap.
 | FOUND-01 | Phase 1 | Complete |
 | FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 2 | Complete |
-| FOUND-04 | Phase 3 | Pending |
-| FOUND-05 | Phase 3 | Pending |
-| LSI-01 | Phase 3 | Pending |
-| LSI-02 | Phase 3 | Pending |
-| LSI-03 | Phase 3 | Pending |
-| LSI-04 | Phase 3 | Pending |
-| LSI-05 | Phase 4 | Pending |
-| LSI-06 | Phase 4 | Pending |
-| LSI-07 | Phase 4 | Pending |
-| LSI-08 | Phase 4 | Pending |
-| LSI-09 | Phase 4 | Pending |
+| FOUND-04 | Phase 3 | Complete |
+| FOUND-05 | Phase 3 | Complete |
+| LSI-01 | Phase 3 | Complete |
+| LSI-02 | Phase 4 | Complete |
+| LSI-03 | Phase 4 | Complete |
+| LSI-04 | Phase 4 | Complete |
+| LSI-05 | Phase 4 | Complete |
+| LSI-06 | Phase 4 | Complete |
+| LSI-07 | Phase 4 | Complete |
+| LSI-08 | Phase 4 | Complete |
+| LSI-09 | Phase 4 | Complete |
 | JAVA-01 | Phase 5 | Pending |
 | JAVA-02 | Phase 5 | Pending |
 | JAVA-03 | Phase 5 | Pending |
-| UX-01 | Phase 4 | Pending |
-| UX-02 | Phase 3 | Pending |
-| UX-03 | Phase 5 | Pending |
-| UX-04 | Phase 4 | Pending |
+| UX-01 | Phase 4 | Complete |
+| UX-02 | Phase 3 | Complete |
+| UX-03 | Phase 4 | Complete |
+| UX-04 | Phase 4 | Complete |
 | DIST-01 | Phase 6 | Pending |
 | DIST-02 | Phase 2 | Complete |
 | DIST-03 | Phase 6 | Pending |
@@ -119,4 +119,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 — Phase 2 complete (FOUND-03, DIST-02)*
+*Last updated: 2026-02-01 — Phase 4 complete (LSI-02 through LSI-09, UX-01, UX-03, UX-04)*
