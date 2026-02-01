@@ -1,20 +1,16 @@
 package com.basis.bbj.intellij;
 
-import com.intellij.psi.PsiElement;
-import com.intellij.spellchecker.tokenizer.SpellcheckingStrategy;
-import com.intellij.spellchecker.tokenizer.Tokenizer;
-import org.jetbrains.annotations.NotNull;
+import com.intellij.spellchecker.BundledDictionaryProvider;
 
 /**
- * Suppresses IntelliJ's spell checker for BBj files.
+ * Provides a bundled dictionary of BBj keywords to IntelliJ's spell checker.
  * BBj keywords like "classend", "methodend" etc. are not English words
- * and would otherwise be flagged as typos. The LSP server handles all
- * real diagnostics.
+ * and would otherwise be flagged as typos.
  */
-public final class BbjSpellcheckingStrategy extends SpellcheckingStrategy {
+public final class BbjSpellcheckingStrategy implements BundledDictionaryProvider {
 
     @Override
-    public @NotNull Tokenizer<?> getTokenizer(PsiElement element) {
-        return EMPTY_TOKENIZER;
+    public String[] getBundledDictionaries() {
+        return new String[]{"/dictionaries/bbj.dic"};
     }
 }
