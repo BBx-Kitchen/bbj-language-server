@@ -54,6 +54,7 @@ public final class BbjJavaInteropService implements Disposable {
     private final Alarm checkAlarm;
     private InteropStatus currentStatus = InteropStatus.DISCONNECTED;
     private long disconnectedSince = 0;  // timestamp for grace period
+    private boolean firstCheckCompleted = false; // suppress banner until first check runs
     private static final int CHECK_INTERVAL_MS = 5000;  // check every 5s
     private static final long GRACE_PERIOD_MS = 2000;   // 2s grace before broadcasting disconnect
     private static final int TCP_TIMEOUT_MS = 1000;     // 1s TCP connect timeout
@@ -74,6 +75,11 @@ public final class BbjJavaInteropService implements Disposable {
                 }
             }
         );
+
+        // If language server is already running, start health checks immediately
+        if (BbjServerService.getInstance(project).getCurrentStatus() == ServerStatus.started) {
+            startChecking();
+        }
     }
 
     public static BbjJavaInteropService getInstance(@NotNull Project project) {
@@ -138,6 +144,9 @@ public final class BbjJavaInteropService implements Disposable {
             }
         }
 
+        // Mark first check as completed
+        firstCheckCompleted = true;
+
         // Update status and broadcast if changed
         updateStatus(newStatus);
 
@@ -174,6 +183,15 @@ public final class BbjJavaInteropService implements Disposable {
      */
     public InteropStatus getCurrentStatus() {
         return currentStatus;
+    }
+
+    /**
+     * Whether the first health check has completed.
+     * Used to suppress the "disconnected" banner during startup before
+     * the service has had a chance to check the connection.
+     */
+    public boolean isFirstCheckCompleted() {
+        return firstCheckCompleted;
     }
 
     @Override

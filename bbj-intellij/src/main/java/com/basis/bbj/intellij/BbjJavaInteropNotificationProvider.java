@@ -33,6 +33,11 @@ public final class BbjJavaInteropNotificationProvider
         BbjJavaInteropService service = BbjJavaInteropService.getInstance(project);
         BbjJavaInteropService.InteropStatus currentStatus = service.getCurrentStatus();
 
+        // Suppress banner until first health check completes (avoids flash on startup)
+        if (!service.isFirstCheckCompleted()) {
+            return null;
+        }
+
         // Only show banner when disconnected (not when CONNECTED or CHECKING)
         if (currentStatus == BbjJavaInteropService.InteropStatus.CONNECTED ||
             currentStatus == BbjJavaInteropService.InteropStatus.CHECKING) {
