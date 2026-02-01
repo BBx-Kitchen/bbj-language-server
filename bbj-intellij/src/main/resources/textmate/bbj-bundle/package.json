@@ -3,24 +3,24 @@
   "contributes": {
     "languages": [
       {
-        "id": "bbj",
+        "id": "BBj",
         "extensions": [".bbj", ".bbl", ".bbjt", ".src"],
         "configuration": "./bbj-language-configuration.json"
       },
       {
-        "id": "bbx",
+        "id": "BBx",
         "extensions": [".bbx"],
         "configuration": "./bbx-language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "bbj",
+        "language": "BBj",
         "scopeName": "source.bbj",
         "path": "./syntaxes/bbj.tmLanguage.json"
       },
       {
-        "language": "bbx",
+        "language": "BBx",
         "scopeName": "source.bbx",
         "path": "./syntaxes/bbx.tmLanguage.json"
       }
