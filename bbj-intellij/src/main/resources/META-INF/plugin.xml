@@ -12,4 +12,13 @@
     <idea-version since-build="242"/>
 
     <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType
+            name="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjFileType"
+            fieldName="INSTANCE"
+            language="BBj"
+            extensions="bbj;bbl;bbjt;src"/>
+    </extensions>
 </idea-plugin>
