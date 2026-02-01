@@ -91,6 +91,11 @@
         <!-- Notification group for crash/error balloons -->
         <notificationGroup id="BBj Language Server"
                            displayType="STICKY_BALLOON"/>
+
+        <!-- Suppress spell checking for BBj files (LSP handles diagnostics) -->
+        <spellchecker.support
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjSpellcheckingStrategy"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
