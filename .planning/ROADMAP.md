@@ -37,17 +37,18 @@ Plans:
 - [x] 01-02-PLAN.md — BBj file type registration with custom icon
 
 ### Phase 2: Syntax Highlighting
-**Goal**: BBj code displays with color syntax highlighting
+**Goal**: BBj code displays with color syntax highlighting via TextMate grammar integration
 **Depends on**: Phase 1
 **Requirements**: FOUND-03, DIST-02
 **Success Criteria** (what must be TRUE):
   1. BBj keywords (IF, WHILE, FOR, etc.) appear in distinct color from identifiers
   2. String literals and comments display in different colors from code
   3. Syntax highlighting appears immediately when opening BBj file (no delay waiting for server)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] TBD
+- [ ] 02-01-PLAN.md — TextMate grammar integration with Gradle sync and bundle provider
+- [ ] 02-02-PLAN.md — Color Scheme settings page for BBj token customization
 
 ### Phase 3: Settings & Runtime
 **Goal**: Users can configure BBj environment and plugin detects Node.js
@@ -121,7 +122,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Plugin Scaffolding | 2/2 | ✓ Complete | 2026-02-01 |
-| 2. Syntax Highlighting | 0/? | Not started | - |
+| 2. Syntax Highlighting | 0/2 | Not started | - |
 | 3. Settings & Runtime | 0/? | Not started | - |
 | 4. Language Server Integration | 0/? | Not started | - |
 | 5. Java Interop | 0/? | Not started | - |
