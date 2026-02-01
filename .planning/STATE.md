@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 4 of 6 (Language Server Integration)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-01 — Completed 04-02-PLAN.md (status bar widget)
+Last activity: 2026-02-01 — Completed 04-03-PLAN.md (tool window & crash recovery)
 
-Progress: [███████░░░] 69%
+Progress: [████████░░] 77%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 6.0 minutes
-- Total execution time: 0.90 hours
+- Total plans completed: 10
+- Average duration: 5.8 minutes
+- Total execution time: 0.97 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [███████░░░] 69%
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
-| 4 - Language Server Integration | 2 | 8 min | 4 min |
+| 4 - Language Server Integration | 3 | 12 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (2 min), 03-03 (20 min), 04-01 (4 min), 04-02 (4 min)
+- Last 5 plans: 03-03 (20 min), 04-01 (4 min), 04-02 (4 min), 04-03 (4 min)
 - Trend: Phase 4 maintaining fast execution - UI components straightforward with LSP4IJ foundation
 
 *Updated after each plan completion*
@@ -105,6 +105,14 @@ Recent decisions affecting current work:
 - 500ms debounce delay for settings-change restart (balance responsiveness/stability)
 - Message bus broadcast for status updates (extensible for future subscribers)
 
+**From Plan 04-03:**
+- ConsoleView created via TextConsoleBuilderFactory for proper lifecycle management
+- Crash detection: ServerStatus.stopped when previous was started/starting = unexpected crash
+- Auto-restart once on first crash, stop and notify on second crash within 30s
+- Balloon notification includes Show Log and Restart actions for user recovery
+- Editor banner persists until crash state cleared or server successfully restarts
+- Log level sent to server in createSettings() alongside BBj home and classpath
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
@@ -116,7 +124,7 @@ None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 16:36 UTC
-Stopped at: Completed 04-02-PLAN.md (status bar widget)
+Last session: 2026-02-01 15:43 UTC
+Stopped at: Completed 04-03-PLAN.md (tool window & crash recovery)
 Resume file: None
-Next: Plan 04-03 — Tool window logging
+Next: Plan 04-04 — Final plan in Phase 4
