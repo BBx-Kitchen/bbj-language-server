@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An IntelliJ plugin that brings BBj language support to JetBrains IDEs by connecting to the existing Langium-based language server via LSP4IJ. This reuses 100% of the existing language server — syntax highlighting, diagnostics, code completion, and Java interop — without reimplementing any language features.
+An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, hover, signature help, and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features.
 
 ## Core Value
 
@@ -20,60 +20,64 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - ✓ TextMate grammar for syntax highlighting (bbj.tmLanguage.json) — existing
 - ✓ Language server runs as standalone Node.js process over stdio/IPC — existing
 - ✓ java-interop runs as separate Java process over JSON-RPC socket — existing
+- ✓ IntelliJ plugin project with Gradle build and LSP4IJ dependency — v1.0
+- ✓ Language server process management (start/stop/restart from IntelliJ) — v1.0
+- ✓ Syntax highlighting in IntelliJ via TextMate grammar — v1.0
+- ✓ Diagnostics/error display in IntelliJ editor — v1.0
+- ✓ Code completion for BBj constructs in IntelliJ — v1.0
+- ✓ Java interop completion working end-to-end in IntelliJ — v1.0
+- ✓ BBj file type registration (.bbj, .bbl, .bbjt, .src) — v1.0
+- ✓ Settings UI for BBj home path and classpath configuration — v1.0
+- ✓ Bundled language server (compiled JS) in plugin distribution — v1.0
+- ✓ Node.js runtime detection with automatic download fallback — v1.0
+- ✓ java-interop connection health monitoring with status bar widget — v1.0
 
 ### Active
 
-- [ ] IntelliJ plugin project with Gradle build and LSP4IJ dependency
-- [ ] Language server process management (start/stop/restart from IntelliJ)
-- [ ] java-interop process management from IntelliJ context
-- [ ] Syntax highlighting in IntelliJ via TextMate grammar or LSP semantic tokens
-- [ ] Diagnostics/error display in IntelliJ editor
-- [ ] Code completion for BBj constructs in IntelliJ
-- [ ] Java interop completion working end-to-end in IntelliJ
-- [ ] BBj file type registration (.bbj, .bbl, .bbjt, .src)
-- [ ] Settings UI for BBj home path and classpath configuration
-- [ ] Bundled language server (compiled JS) in plugin distribution
-- [ ] Node.js runtime bundling or detection strategy
+(None — next milestone requirements TBD via `/gsd:new-milestone`)
 
 ### Out of Scope
 
 - Native IntelliJ parser/lexer rewrite — LSP4IJ approach reuses existing LS
-- JetBrains Marketplace publishing — this milestone targets internal alpha
 - Debugging support — future milestone
 - BBj project wizard/templates — future milestone
-- Formatter integration — future milestone (LS already supports it, but not priority for alpha)
-- Refactoring support — future milestone
+- Refactoring support (rename across files) — future milestone
 - Run configurations for BBj programs — future milestone
 
 ## Context
 
-**Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The only VS Code-specific code is in `extension.ts` and `fs-provider.ts`, both on the extension side. This means the IntelliJ plugin can consume the exact same language server binary.
+**Current state:** v1.0 internal alpha shipped 2026-02-01. Plugin is a 671KB ZIP containing a JAR with 35 Java source classes, bundled language server (main.cjs, 1.8MB), and TextMate grammars. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
 
-**java-interop:** Runs as a separate Java process on localhost:5008 via JSON-RPC. The language server connects to it for Java class metadata. The IntelliJ plugin needs to manage this process lifecycle — the exact strategy (plugin manages both, or LS spawns it) is TBD.
+**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
 
-**Target users:** BBj developers using IntelliJ, primarily Community Edition. Most clients use Community, so LSP4IJ (which works with all editions) is the right approach over JetBrains' native LSP API (Ultimate-only).
+**Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary.
 
-**LSP4IJ:** Red Hat's library for LSP support in IntelliJ. Used by major projects (Quarkus, Liberty Tools). Supports Community Edition. Active development.
+**java-interop:** Runs as a separate Java process on localhost:5008 via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. The IntelliJ plugin monitors connection health via independent TCP probes and shows status in the status bar.
 
-**Repo structure:** New `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Work happens in a feature branch to avoid polluting main. Future consideration: splitting the language server into its own package so both editors consume it as a dependency.
+**Target users:** BBj developers using IntelliJ, primarily Community Edition.
+
+**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `feat_intellij` branch.
 
 ## Constraints
 
 - **Community Edition**: Plugin must work with IntelliJ Community Edition (rules out JetBrains native LSP API)
-- **Node.js dependency**: Language server requires Node.js runtime — must bundle or detect
-- **Feature branch**: All work in a dedicated branch, not polluting main until ready
+- **Node.js dependency**: Language server requires Node.js runtime — auto-downloaded if not available
 - **Existing LS unchanged**: No modifications to the language server for IntelliJ support — IntelliJ adapts to what the LS provides
-- **Internal alpha**: Target is internal testing with a few BBj developers, not public release
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| LSP4IJ over native JetBrains LSP | Community Edition support needed; reuses existing LS | — Pending |
-| LSP4IJ over native IntelliJ plugin | Ship fast; avoid multi-month rewrite; single source of truth | — Pending |
-| Same repo, new subdirectory | Keep related code together during active development; split later | — Pending |
-| Feature branch workflow | Avoid polluting main while IntelliJ support matures | — Pending |
-| Bundle Node.js or detect | Users shouldn't need to install Node.js separately | — Pending |
+| LSP4IJ over native JetBrains LSP | Community Edition support needed; reuses existing LS | ✓ Good — works on both CE and Ultimate |
+| LSP4IJ over native IntelliJ plugin | Ship fast; avoid multi-month rewrite; single source of truth | ✓ Good — shipped in 1 day |
+| Same repo, new subdirectory | Keep related code together during active development; split later | ✓ Good — shared TextMate grammars and LS bundle |
+| Feature branch workflow | Avoid polluting main while IntelliJ support matures | ✓ Good — main unchanged |
+| 4-step Node.js resolution | settings > detect > cached download > PATH fallback | ✓ Good — zero-install experience on Windows tested |
+| TextMate grammar reuse | Single source of truth; no IntelliJ lexer maintenance | ✓ Good — instant highlighting without server |
+| Application-level settings | Global config, not per-project | ✓ Good — matches BBj installation pattern |
+| Independent TCP health check for java-interop | Don't rely on LS reporting java-interop status | ✓ Good — clear status bar with grace period |
+| stdio transport for LS | Simpler than TCP; LSP4IJ handles it natively | ✓ Good — reliable process management |
+| `untilBuild = ""` (no cap) | Forward compatibility with future IntelliJ versions | ✓ Good — fixed after 2025.3 incompatibility |
 
 ---
-*Last updated: 2026-02-01 after initialization*
+*Last updated: 2026-02-01 after v1.0 milestone*
