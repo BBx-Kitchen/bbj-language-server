@@ -16,12 +16,35 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
+        <!-- BBj Run Actions (GUI, BUI, DWC) -->
         <action id="bbj.runGui"
                 class="com.basis.bbj.intellij.actions.BbjRunGuiAction"
                 text="Run As BBj Program"
                 description="Run current BBj file as GUI program"
                 icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <add-to-group group-id="MainToolBar" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt G"/>
+        </action>
+
+        <action id="bbj.runBui"
+                class="com.basis.bbj.intellij.actions.BbjRunBuiAction"
+                text="Run As BUI Program"
+                description="Run current BBj file as BUI program in browser"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_BUI">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runGui"/>
+            <add-to-group group-id="MainToolBar" anchor="after" relative-to-action="bbj.runGui"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt B"/>
+        </action>
+
+        <action id="bbj.runDwc"
+                class="com.basis.bbj.intellij.actions.BbjRunDwcAction"
+                text="Run As DWC Program"
+                description="Run current BBj file as DWC program in browser"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_DWC">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runBui"/>
+            <add-to-group group-id="MainToolBar" anchor="after" relative-to-action="bbj.runBui"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt D"/>
         </action>
     </actions>
 
