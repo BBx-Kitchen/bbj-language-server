@@ -27,6 +27,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String classpathEntry = "";
         public String logLevel = "Info";  // Default: Info. Options: Error, Warn, Info, Debug
         public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
+        public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
     }
 
     private State myState = new State();
