@@ -50,7 +50,10 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getNodeJsPath(), state.nodeJsPath)
             || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry)
             || !Objects.equals(myComponent.getLogLevel(), state.logLevel)
-            || state.javaInteropPort != myComponent.getJavaInteropPort();
+            || state.javaInteropPort != myComponent.getJavaInteropPort()
+            || !Objects.equals(myComponent.getEmUsername(), state.emUsername)
+            || !Objects.equals(myComponent.getEmPassword(), state.emPassword)
+            || state.autoSaveBeforeRun != myComponent.isAutoSaveBeforeRun();
     }
 
     @Override
@@ -64,6 +67,9 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.classpathEntry = myComponent.getClasspathEntry();
         state.logLevel = myComponent.getLogLevel();
         state.javaInteropPort = myComponent.getJavaInteropPort();
+        state.emUsername = myComponent.getEmUsername();
+        state.emPassword = myComponent.getEmPassword();
+        state.autoSaveBeforeRun = myComponent.isAutoSaveBeforeRun();
 
         // Refresh editor notifications so banners update immediately
         for (var project : ProjectManager.getInstance().getOpenProjects()) {
@@ -124,6 +130,11 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             }
         }
         myComponent.setJavaInteropPort(javaInteropPort);
+
+        // Load EM credentials and auto-save setting
+        myComponent.setEmUsername(state.emUsername != null ? state.emUsername : "admin");
+        myComponent.setEmPassword(state.emPassword != null ? state.emPassword : "admin123");
+        myComponent.setAutoSaveBeforeRun(state.autoSaveBeforeRun);
     }
 
     @Override

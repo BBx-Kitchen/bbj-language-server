@@ -68,9 +68,17 @@ val copyLanguageServer by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("resources/main/language-server"))
 }
 
+val copyWebRunner by tasks.registering(Copy::class) {
+    from("${projectDir}/../bbj-vscode/tools/") {
+        include("web.bbj")
+    }
+    into(layout.buildDirectory.dir("resources/main/tools"))
+}
+
 tasks.named("processResources") {
     dependsOn(copyTextMateBundle)
     dependsOn(copyLanguageServer)
+    dependsOn(copyWebRunner)
 }
 
 tasks.named<PrepareSandboxTask>("prepareSandbox") {
@@ -80,6 +88,10 @@ tasks.named<PrepareSandboxTask>("prepareSandbox") {
     }
     from(layout.buildDirectory.dir("resources/main/textmate")) {
         into("${pluginName.get()}/lib/textmate")
+    }
+    from("${projectDir}/../bbj-vscode/tools/") {
+        include("web.bbj")
+        into("${pluginName.get()}/lib/tools")
     }
 }
 

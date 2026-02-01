@@ -121,6 +121,32 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
+     * Returns the path to the bundled web.bbj runner script.
+     * This file is bundled at lib/tools/web.bbj relative to the plugin installation.
+     *
+     * @return absolute path to web.bbj, or null if not found
+     */
+    @Nullable
+    protected String getWebBbjPath() {
+        try {
+            com.intellij.ide.plugins.PluginManagerCore pluginManagerCore = com.intellij.ide.plugins.PluginManagerCore.INSTANCE;
+            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = pluginManagerCore.getPlugin(
+                com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj.intellij")
+            );
+            if (plugin == null) {
+                return null;
+            }
+            java.nio.file.Path webBbjPath = plugin.getPluginPath().resolve("lib/tools/web.bbj");
+            if (!java.nio.file.Files.exists(webBbjPath)) {
+                return null;
+            }
+            return webBbjPath.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * Auto-saves all open documents if the setting is enabled.
      */
     protected void autoSaveIfNeeded() {

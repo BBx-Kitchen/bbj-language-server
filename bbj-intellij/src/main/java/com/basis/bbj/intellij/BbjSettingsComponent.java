@@ -33,6 +33,9 @@ public class BbjSettingsComponent {
     private final ComboBox<String> classpathCombo;
     private final ComboBox<String> logLevelCombo;
     private final JTextField javaInteropPortField;
+    private final JTextField emUsernameField;
+    private final JTextField emPasswordField;
+    private final JCheckBox autoSaveCheckbox;
 
     public BbjSettingsComponent(@NotNull Disposable parentDisposable) {
         // --- BBj Home field ---
@@ -126,6 +129,16 @@ public class BbjSettingsComponent {
             })
             .installOn(javaInteropPortField);
 
+        // --- Run Commands settings ---
+        emUsernameField = new JBTextField();
+        emUsernameField.setText("admin");
+
+        emPasswordField = new JBTextField();
+        emPasswordField.setText("admin123");
+
+        autoSaveCheckbox = new JCheckBox("Auto-save before run");
+        autoSaveCheckbox.setSelected(true);
+
         // --- Wire document listeners ---
         bbjHomeField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
@@ -163,6 +176,11 @@ public class BbjSettingsComponent {
             .addComponent(new TitledSeparator("Java Interop"))
             .addLabeledComponent(new JBLabel("Host:"), new JBLabel("localhost"), 1, false)
             .addLabeledComponent(new JBLabel("Port:"), javaInteropPortField, 1, false)
+
+            .addComponent(new TitledSeparator("Run Commands"))
+            .addLabeledComponent(new JBLabel("EM Username:"), emUsernameField, 1, false)
+            .addLabeledComponent(new JBLabel("EM Password:"), emPasswordField, 1, false)
+            .addComponent(autoSaveCheckbox)
 
             .addComponentFillVertically(new JPanel(), 0)
             .getPanel();
@@ -272,5 +290,29 @@ public class BbjSettingsComponent {
 
     public void setJavaInteropPort(int port) {
         javaInteropPortField.setText(String.valueOf(port));
+    }
+
+    public @NotNull String getEmUsername() {
+        return emUsernameField.getText().trim();
+    }
+
+    public void setEmUsername(@NotNull String username) {
+        emUsernameField.setText(username);
+    }
+
+    public @NotNull String getEmPassword() {
+        return emPasswordField.getText().trim();
+    }
+
+    public void setEmPassword(@NotNull String password) {
+        emPasswordField.setText(password);
+    }
+
+    public boolean isAutoSaveBeforeRun() {
+        return autoSaveCheckbox.isSelected();
+    }
+
+    public void setAutoSaveBeforeRun(boolean autoSave) {
+        autoSaveCheckbox.setSelected(autoSave);
     }
 }
