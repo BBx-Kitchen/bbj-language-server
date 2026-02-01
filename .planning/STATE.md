@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 1 - Plugin Scaffolding
+**Current focus:** Phase 2 - Syntax Highlighting
 
 ## Current Position
 
-Phase: 1 of 6 (Plugin Scaffolding)
-Plan: 2 of 2 in current phase
+Phase: 2 of 6 (Syntax Highlighting)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-01 — Completed 01-02-PLAN.md (File type registration)
+Last activity: 2026-02-01 — Completed 02-01-PLAN.md (TextMate grammar integration)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 30%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 3 minutes
-- Total execution time: 0.11 hours
+- Total plans completed: 3
+- Average duration: 2.7 minutes
+- Total execution time: 0.13 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
+| 2 - Syntax Highlighting | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min)
-- Trend: Improving efficiency
+- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (2 min)
+- Trend: Consistent efficiency
 
 *Updated after each plan completion*
 
@@ -62,6 +63,12 @@ Recent decisions affecting current work:
 - getName() returns "BBj" matching plugin.xml name attribute exactly
 - Single SVG icon in neutral blue visible on both light/dark themes
 
+**From Plan 02-01:**
+- Grammar files copied from bbj-vscode at build time, not duplicated in source tree
+- Static package.json in src/main/resources, grammar files in build/resources/main
+- Both BBj and BBx grammars included in single bundle
+- lang.syntaxHighlighterFactory bridges custom FileType to TextMate engine
+
 ### Pending Todos
 
 None yet.
@@ -72,7 +79,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-01 08:52 UTC
-Stopped at: Completed 01-02-PLAN.md (File type registration) - Phase 1 complete
+Last session: 2026-02-01 11:24 UTC
+Stopped at: Completed 02-01-PLAN.md (TextMate grammar integration) - Phase 2 complete
 Resume file: None
-Next: Phase 2 (Syntax Highlighting)
+Next: Phase 3 (LSP Integration)
