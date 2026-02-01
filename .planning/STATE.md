@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 5 of 6 (Java Interop)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-01 — Completed 05-01-PLAN.md
+Last activity: 2026-02-01 — Completed 05-02-PLAN.md
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
-- Average duration: 6.3 minutes
+- Total plans completed: 16
+- Average duration: 6.0 minutes
 - Total execution time: 1.6 hours
 
 **By Phase:**
@@ -31,11 +31,11 @@ Progress: [█████████░] 87%
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
 | 4 - Language Server Integration | 4 | 57 min | 14.3 min |
-| 5 - Java Interop | 1 | 4 min | 4 min |
+| 5 - Java Interop | 2 | 6.5 min | 3.25 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (4 min), 04-03 (4 min), 04-04 (45 min), 05-01 (4 min)
-- Trend: Consistent execution time for implementation tasks (~4 min)
+- Last 5 plans: 04-03 (4 min), 04-04 (45 min), 05-01 (4 min), 05-02 (2.5 min)
+- Trend: Consistent execution time for implementation tasks (~3-4 min)
 
 *Updated after each plan completion*
 
@@ -132,6 +132,14 @@ Recent decisions affecting current work:
 - 2-second grace period prevents flashing disconnected status on transient network issues
 - Health checks tied to LS lifecycle: start when LS starts, stop when LS stops (via message bus subscription)
 
+**From Plan 05-02:**
+- Status widget separate from LSP widget - java-interop is independent service (BBjServices)
+- Gray icon for disconnected (not red) - gray implies "not available/inactive" vs red implies "error/crash"
+- Widget only visible when BBj file is open - matches LSP widget pattern
+- Reconnect via full LS restart - no separate java-interop reconnect path
+- Banner non-dismissible - user fundamentally needs BBjServices for Java completions
+- javaInteropHost/Port passed to LS now even though LS currently ignores them - forward-compatible for when LS is updated
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. May need investigation.
@@ -145,6 +153,6 @@ None blocking.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 05-01-PLAN.md
+Stopped at: Completed 05-02-PLAN.md
 Resume file: None
-Next: Plan 05-02 — Status bar widget, editor banner, and initializationOptions
+Next: Plan 05-03 — Human verification of all 5 success criteria
