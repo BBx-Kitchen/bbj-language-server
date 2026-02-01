@@ -27,6 +27,7 @@ public final class BbjLanguageClient extends LanguageClientImpl {
         JsonObject settings = new JsonObject();
         settings.addProperty("home", state.bbjHomePath);
         settings.addProperty("classpath", state.classpathEntry);
+        settings.addProperty("logLevel", state.logLevel);
         return settings;
     }
 

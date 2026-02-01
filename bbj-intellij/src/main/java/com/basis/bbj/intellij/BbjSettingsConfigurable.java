@@ -48,7 +48,8 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         return !Objects.equals(myComponent.getBbjHomePath(), state.bbjHomePath)
             || !Objects.equals(myComponent.getNodeJsPath(), state.nodeJsPath)
-            || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry);
+            || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry)
+            || !Objects.equals(myComponent.getLogLevel(), state.logLevel);
     }
 
     @Override
@@ -60,6 +61,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.bbjHomePath = myComponent.getBbjHomePath();
         state.nodeJsPath = myComponent.getNodeJsPath();
         state.classpathEntry = myComponent.getClasspathEntry();
+        state.logLevel = myComponent.getLogLevel();
 
         // Refresh editor notifications so banners update immediately
         for (var project : ProjectManager.getInstance().getOpenProjects()) {
@@ -99,6 +101,13 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         myComponent.setNodeJsPath(nodeJs);
 
         myComponent.setClasspathEntry(state.classpathEntry);
+
+        // Set log level, defaulting to "Info" if empty
+        String logLevel = state.logLevel;
+        if (logLevel == null || logLevel.isEmpty()) {
+            logLevel = "Info";
+        }
+        myComponent.setLogLevel(logLevel);
     }
 
     @Override

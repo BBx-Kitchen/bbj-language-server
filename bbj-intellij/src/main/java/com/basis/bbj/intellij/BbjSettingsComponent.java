@@ -30,6 +30,7 @@ public class BbjSettingsComponent {
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
+    private final ComboBox<String> logLevelCombo;
 
     public BbjSettingsComponent(@NotNull Disposable parentDisposable) {
         // --- BBj Home field ---
@@ -95,6 +96,12 @@ public class BbjSettingsComponent {
         ));
         classpathCombo.setEnabled(false);
 
+        // --- Log level dropdown ---
+        logLevelCombo = new ComboBox<>(new CollectionComboBoxModel<>(
+            List.of("Error", "Warn", "Info", "Debug")
+        ));
+        logLevelCombo.setSelectedItem("Info");
+
         // --- Wire document listeners ---
         bbjHomeField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
@@ -125,6 +132,9 @@ public class BbjSettingsComponent {
 
             .addComponent(new TitledSeparator("Classpath"))
             .addLabeledComponent(new JBLabel("Classpath entry:"), classpathCombo, 1, false)
+
+            .addComponent(new TitledSeparator("Language Server"))
+            .addLabeledComponent(new JBLabel("Log level:"), logLevelCombo, 1, false)
 
             .addComponentFillVertically(new JPanel(), 0)
             .getPanel();
@@ -209,5 +219,14 @@ public class BbjSettingsComponent {
 
     public void setClasspathEntry(@NotNull String entry) {
         classpathCombo.setSelectedItem(entry);
+    }
+
+    public @NotNull String getLogLevel() {
+        Object selected = logLevelCombo.getSelectedItem();
+        return selected != null ? selected.toString() : "Info";
+    }
+
+    public void setLogLevel(@NotNull String level) {
+        logLevelCombo.setSelectedItem(level);
     }
 }

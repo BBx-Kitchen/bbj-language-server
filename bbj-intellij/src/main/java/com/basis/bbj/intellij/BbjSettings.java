@@ -25,6 +25,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String bbjHomePath = "";
         public String nodeJsPath = "";
         public String classpathEntry = "";
+        public String logLevel = "Info";  // Default: Info. Options: Error, Warn, Info, Debug
     }
 
     private State myState = new State();
