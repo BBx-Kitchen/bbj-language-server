@@ -84,10 +84,13 @@ Plans:
   8. Closing project cleanly stops language server (no zombie processes remain)
   9. Tools menu includes "Restart BBj Language Server" action that works when clicked
   10. Language server crash triggers balloon notification with error message and restart option
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD
+- [ ] 04-01-PLAN.md — LSP4IJ dependency, language server bundle, and core LSP classes
+- [ ] 04-02-PLAN.md — Status bar widget, restart action, and debounced settings restart
+- [ ] 04-03-PLAN.md — Tool window, crash recovery, notifications, and log level setting
+- [ ] 04-04-PLAN.md — Human verification of all 10 success criteria
 
 ### Phase 5: Java Interop
 **Goal**: Java class and method completions work via java-interop service
@@ -128,6 +131,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Plugin Scaffolding | 2/2 | ✓ Complete | 2026-02-01 |
 | 2. Syntax Highlighting | 2/2 | ✓ Complete | 2026-02-01 |
 | 3. Settings & Runtime | 3/3 | ✓ Complete | 2026-02-01 |
-| 4. Language Server Integration | 0/? | Not started | - |
+| 4. Language Server Integration | 0/4 | Not started | - |
 | 5. Java Interop | 0/? | Not started | - |
 | 6. Distribution | 0/? | Not started | - |
