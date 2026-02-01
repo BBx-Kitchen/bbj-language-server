@@ -10,6 +10,7 @@ import com.intellij.ui.CollectionComboBoxModel;
 import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.TitledSeparator;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.FormBuilder;
 import org.jetbrains.annotations.NotNull;
 
@@ -31,6 +32,7 @@ public class BbjSettingsComponent {
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
     private final ComboBox<String> logLevelCombo;
+    private final JTextField javaInteropPortField;
 
     public BbjSettingsComponent(@NotNull Disposable parentDisposable) {
         // --- BBj Home field ---
@@ -102,6 +104,28 @@ public class BbjSettingsComponent {
         ));
         logLevelCombo.setSelectedItem("Info");
 
+        // --- Java Interop Port field ---
+        javaInteropPortField = new JBTextField();
+        javaInteropPortField.setText("5008");
+
+        new ComponentValidator(parentDisposable)
+            .withValidator(() -> {
+                String text = javaInteropPortField.getText().trim();
+                if (text.isEmpty()) {
+                    return null; // Empty is valid, will use default 5008
+                }
+                try {
+                    int port = Integer.parseInt(text);
+                    if (port < 1 || port > 65535) {
+                        return new ValidationInfo("Port must be between 1 and 65535", javaInteropPortField);
+                    }
+                } catch (NumberFormatException e) {
+                    return new ValidationInfo("Port must be a valid number", javaInteropPortField);
+                }
+                return null;
+            })
+            .installOn(javaInteropPortField);
+
         // --- Wire document listeners ---
         bbjHomeField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
@@ -135,6 +159,10 @@ public class BbjSettingsComponent {
 
             .addComponent(new TitledSeparator("Language Server"))
             .addLabeledComponent(new JBLabel("Log level:"), logLevelCombo, 1, false)
+
+            .addComponent(new TitledSeparator("Java Interop"))
+            .addLabeledComponent(new JBLabel("Host:"), new JBLabel("localhost"), 1, false)
+            .addLabeledComponent(new JBLabel("Port:"), javaInteropPortField, 1, false)
 
             .addComponentFillVertically(new JPanel(), 0)
             .getPanel();
@@ -228,5 +256,21 @@ public class BbjSettingsComponent {
 
     public void setLogLevel(@NotNull String level) {
         logLevelCombo.setSelectedItem(level);
+    }
+
+    public int getJavaInteropPort() {
+        String text = javaInteropPortField.getText().trim();
+        if (text.isEmpty()) {
+            return 5008; // Default when empty
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException e) {
+            return 5008; // Default when invalid
+        }
+    }
+
+    public void setJavaInteropPort(int port) {
+        javaInteropPortField.setText(String.valueOf(port));
     }
 }

@@ -49,7 +49,8 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         return !Objects.equals(myComponent.getBbjHomePath(), state.bbjHomePath)
             || !Objects.equals(myComponent.getNodeJsPath(), state.nodeJsPath)
             || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry)
-            || !Objects.equals(myComponent.getLogLevel(), state.logLevel);
+            || !Objects.equals(myComponent.getLogLevel(), state.logLevel)
+            || state.javaInteropPort != myComponent.getJavaInteropPort();
     }
 
     @Override
@@ -62,6 +63,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.nodeJsPath = myComponent.getNodeJsPath();
         state.classpathEntry = myComponent.getClasspathEntry();
         state.logLevel = myComponent.getLogLevel();
+        state.javaInteropPort = myComponent.getJavaInteropPort();
 
         // Refresh editor notifications so banners update immediately
         for (var project : ProjectManager.getInstance().getOpenProjects()) {
@@ -108,6 +110,20 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             logLevel = "Info";
         }
         myComponent.setLogLevel(logLevel);
+
+        // Load java-interop port with auto-detection
+        int javaInteropPort = state.javaInteropPort;
+        if (javaInteropPort == 5008) {
+            // Default value -- try auto-detection from BBjServices config
+            // Reuse bbjHome from earlier (already includes auto-detection)
+            if (!bbjHome.isEmpty()) {
+                int detected = BbjSettings.detectJavaInteropPort(bbjHome);
+                if (detected != 5008) {
+                    javaInteropPort = detected;
+                }
+            }
+        }
+        myComponent.setJavaInteropPort(javaInteropPort);
     }
 
     @Override
