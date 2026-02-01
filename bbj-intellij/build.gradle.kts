@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.tasks.PrepareSandboxTask
+
 plugins {
     id("java")
     id("org.jetbrains.intellij.platform")
@@ -29,6 +31,26 @@ dependencies {
     }
 }
 
+intellijPlatform {
+    pluginConfiguration {
+        name = "BBj Language Support"
+        version = project.version.toString()
+
+        vendor {
+            name = "BASIS International Ltd."
+            email = "support@basis.cloud"
+            url = "https://basis.cloud"
+        }
+
+        description = file("src/main/resources/META-INF/description.html").readText()
+
+        ideaVersion {
+            sinceBuild = "242"
+            untilBuild = "243.*"
+        }
+    }
+}
+
 val copyTextMateBundle by tasks.registering(Copy::class) {
     from("${projectDir}/../bbj-vscode/") {
         include("syntaxes/bbj.tmLanguage.json")
@@ -51,12 +73,17 @@ tasks.named("processResources") {
     dependsOn(copyLanguageServer)
 }
 
-tasks {
-    patchPluginXml {
-        sinceBuild.set("242")
-        untilBuild.set("243.*")
+tasks.named<PrepareSandboxTask>("prepareSandbox") {
+    from("${projectDir}/../bbj-vscode/out/language/") {
+        include("main.cjs")
+        into("${pluginName.get()}/lib/language-server")
     }
+    from(layout.buildDirectory.dir("resources/main/textmate")) {
+        into("${pluginName.get()}/lib/textmate")
+    }
+}
 
+tasks {
     runIde {
         args = listOf(System.getProperty("user.home") + "/tinybbj")
     }
