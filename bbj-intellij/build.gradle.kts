@@ -22,6 +22,7 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.2")
         bundledPlugin("org.jetbrains.plugins.textmate")
+        plugin("com.redhat.devtools.lsp4ij:0.19.0")
         pluginVerifier()
         zipSigner()
         instrumentationTools()
@@ -38,8 +39,16 @@ val copyTextMateBundle by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("resources/main/textmate/bbj-bundle"))
 }
 
+val copyLanguageServer by tasks.registering(Copy::class) {
+    from("${projectDir}/../bbj-vscode/out/language/") {
+        include("main.cjs")
+    }
+    into(layout.buildDirectory.dir("resources/main/language-server"))
+}
+
 tasks.named("processResources") {
     dependsOn(copyTextMateBundle)
+    dependsOn(copyLanguageServer)
 }
 
 tasks {
