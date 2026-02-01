@@ -118,10 +118,12 @@ Plans:
   2. Plugin ZIP installs via "Install Plugin from Disk" on fresh IntelliJ instance without errors
   3. After installation from ZIP, all Phase 4 and Phase 5 features work identically to development sandbox
   4. Plugin tested and working on macOS, Windows, and Linux environments
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 06-01-PLAN.md — Build configuration, marketplace metadata, and welcome notification
+- [ ] 06-02-PLAN.md — Node.js on-demand download for systems without Node.js
+- [ ] 06-03-PLAN.md — Human verification of ZIP install and cross-platform features
 
 ## Progress
 
@@ -135,4 +137,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Settings & Runtime | 3/3 | ✓ Complete | 2026-02-01 |
 | 4. Language Server Integration | 4/4 | ✓ Complete | 2026-02-01 |
 | 5. Java Interop | 3/3 | ✓ Complete | 2026-02-01 |
-| 6. Distribution | 0/? | Not started | - |
+| 6. Distribution | 0/3 | Planning complete | - |
