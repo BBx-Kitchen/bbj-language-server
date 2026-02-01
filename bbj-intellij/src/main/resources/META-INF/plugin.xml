@@ -1,15 +1,7 @@
 <idea-plugin>
     <id>com.basis.bbj.intellij</id>
     <name>BBj Language Support</name>
-    <version>0.1.0</version>
-    <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International</vendor>
-
-    <description><![CDATA[
-        BBj language support for IntelliJ IDEA. Provides file type recognition,
-        syntax highlighting, and language server integration for BBj development.
-    ]]></description>
-
-    <idea-version since-build="242"/>
+    <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International Ltd.</vendor>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.textmate</depends>
@@ -26,6 +18,9 @@
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- Welcome notification on first launch -->
+        <postStartupActivity implementation="com.basis.bbj.intellij.BbjWelcomeNotification"/>
+
         <fileType
             name="BBj"
             implementationClass="com.basis.bbj.intellij.BbjFileType"
