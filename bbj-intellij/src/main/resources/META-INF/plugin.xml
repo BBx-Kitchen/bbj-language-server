@@ -34,6 +34,11 @@
         <textmate.bundleProvider
             implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
 
+        <!-- Comment toggling (Cmd+/ on macOS, Ctrl+/ on Linux/Windows) -->
+        <lang.commenter
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjCommenter"/>
+
         <!-- Color Scheme settings page for BBj -->
         <colorSettingsPage implementation="com.basis.bbj.intellij.BbjColorSettingsPage"/>
     </extensions>
