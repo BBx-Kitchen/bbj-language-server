@@ -1,7 +1,9 @@
 package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
@@ -31,7 +33,9 @@ public final class BbjLanguageClient extends LanguageClientImpl {
     @Override
     public void handleServerStatusChanged(ServerStatus serverStatus) {
         super.handleServerStatusChanged(serverStatus);
-        // Log status change (temporary - Plan 03 will replace with tool window logging)
-        System.out.println("BBj LS status: " + serverStatus);
+        ApplicationManager.getApplication().invokeLater(() -> {
+            BbjServerService service = BbjServerService.getInstance(getProject());
+            service.updateStatus(serverStatus);
+        });
     }
 }

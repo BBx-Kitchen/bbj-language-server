@@ -59,6 +59,14 @@
             implementation="com.basis.bbj.intellij.BbjMissingHomeNotificationProvider"/>
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjMissingNodeNotificationProvider"/>
+
+        <!-- Project-level server lifecycle service -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
+
+        <!-- Status bar widget -->
+        <statusBarWidgetFactory
+            id="BbjLanguageServerStatus"
+            implementation="com.basis.bbj.intellij.ui.BbjStatusBarWidgetFactory"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
