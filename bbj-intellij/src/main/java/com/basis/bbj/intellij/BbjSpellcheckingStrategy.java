@@ -11,6 +11,6 @@ public final class BbjSpellcheckingStrategy implements BundledDictionaryProvider
 
     @Override
     public String[] getBundledDictionaries() {
-        return new String[]{"/dictionaries/bbj.dic"};
+        return new String[]{"bbj.dic"};
     }
 }
