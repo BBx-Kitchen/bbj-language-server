@@ -63,10 +63,10 @@ Plans:
   1. Opening the Structure tool window for a BBj file shows a tree of symbols (classes, methods, variables, labels) from the language server
   2. Editing the BBj file updates the Structure view to reflect new/removed/renamed symbols
   3. Clicking any symbol in the Structure view moves the cursor to that symbol's location in the editor
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 09-01: Enable LSP4IJ DocumentSymbol integration and verify Structure view rendering and navigation
+- [ ] 09-01-PLAN.md — Register LSP4IJ psiStructureViewFactory extension point and verify Structure View rendering and navigation
 
 ### Phase 10: Bug Fixes & Polish
 **Goal**: All 7 carried-forward v1.0 issues are resolved, completing the polish pass
