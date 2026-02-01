@@ -5,34 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 2 - Syntax Highlighting
+**Current focus:** Phase 2 - Syntax Highlighting (complete)
 
 ## Current Position
 
 Phase: 2 of 6 (Syntax Highlighting)
-Plan: 1 of 1 in current phase
+Plan: 2 of 2 in current phase
 Status: Phase complete
-Last activity: 2026-02-01 — Completed 02-01-PLAN.md (TextMate grammar integration)
+Last activity: 2026-02-01 — Completed 02-02-PLAN.md (Color Scheme settings page)
 
-Progress: [███░░░░░░░] 30%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 2.7 minutes
-- Total execution time: 0.13 hours
+- Total plans completed: 4
+- Average duration: 5 minutes
+- Total execution time: 0.33 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
-| 2 - Syntax Highlighting | 1 | 2 min | 2 min |
+| 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (2 min)
-- Trend: Consistent efficiency
+- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (2 min), 02-02 (15 min)
+- Trend: 02-02 longer due to debugging TextMate/FileType integration issues
 
 *Updated after each plan completion*
 
@@ -67,19 +67,26 @@ Recent decisions affecting current work:
 - Grammar files copied from bbj-vscode at build time, not duplicated in source tree
 - Static package.json in src/main/resources, grammar files in build/resources/main
 - Both BBj and BBx grammars included in single bundle
-- lang.syntaxHighlighterFactory bridges custom FileType to TextMate engine
+- editorHighlighterProvider + lang.syntaxHighlighterFactory both needed to bridge custom FileType to TextMate engine
+- TextMate bundle language IDs must match IntelliJ Language ID exactly (case-sensitive)
+
+**From Plan 02-02:**
+- ColorSettingsPage uses tag-based demo text highlighting (no custom lexer)
+- Native Commenter/BraceMatcher required — TextMate language-configuration.json is NOT used by IntelliJ when custom FileType is registered
+- Comment toggling and bracket matching deferred to Phase 4 (LSP integration)
 
 ### Pending Todos
 
-None yet.
+1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
+2. **Bracket/keyword matching** — Requires custom lexer or LSP. Deferred to Phase 4.
 
 ### Blockers/Concerns
 
-None yet.
+None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 11:24 UTC
-Stopped at: Completed 02-01-PLAN.md (TextMate grammar integration) - Phase 2 complete
+Last session: 2026-02-01 13:45 UTC
+Stopped at: Completed 02-02-PLAN.md (Color Scheme settings page) - Phase 2 complete
 Resume file: None
-Next: Phase 3 (LSP Integration)
+Next: Phase 2 verification, then Phase 3 (Settings & Runtime)
