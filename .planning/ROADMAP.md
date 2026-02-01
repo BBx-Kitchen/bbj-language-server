@@ -49,11 +49,11 @@ Plans:
   3. Pressing Alt+G / Alt+B / Alt+D triggers the corresponding run action from any BBj file
   4. Run commands respect BBj home and classpath from plugin settings; missing BBj home shows a clear error notification
   5. Active file is auto-saved before run execution
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01: Implement GUI run action (bbj executable spawning, settings integration, error handling)
-- [ ] 08-02: Implement BUI/DWC run actions (web.bbj bundling, browser launch) and wire toolbar buttons + shortcuts
+- [ ] 08-01-PLAN.md — GUI run action with base class, settings integration, and error handling
+- [ ] 08-02-PLAN.md — BUI/DWC run actions, web.bbj bundling, toolbar buttons, and keyboard shortcuts
 
 ### Phase 9: Structure View
 **Goal**: Users can see and navigate the document outline of BBj files via the Structure tool window
