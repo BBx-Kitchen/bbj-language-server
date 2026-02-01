@@ -35,25 +35,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
     @Override
     public JComponent createComponent() {
         myComponent = new BbjSettingsComponent(this);
-        reset();
-
-        // Auto-detect BBj home if stored value is empty
-        BbjSettings.State state = BbjSettings.getInstance().getState();
-        if (state.bbjHomePath.isEmpty()) {
-            String detected = BbjHomeDetector.detectBbjHome();
-            if (detected != null) {
-                myComponent.setBbjHomePath(detected);
-            }
-        }
-
-        // Auto-detect Node.js path if stored value is empty
-        if (state.nodeJsPath.isEmpty()) {
-            String detected = BbjNodeDetector.detectNodePath();
-            if (detected != null) {
-                myComponent.setNodeJsPath(detected);
-            }
-        }
-
+        // Don't call reset() here — the platform calls it immediately after createComponent()
         return myComponent.getPanel();
     }
 
@@ -90,8 +72,26 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             return;
         }
         BbjSettings.State state = BbjSettings.getInstance().getState();
-        myComponent.setBbjHomePath(state.bbjHomePath);
-        myComponent.setNodeJsPath(state.nodeJsPath);
+
+        // Load persisted values, falling back to auto-detection for empty fields
+        String bbjHome = state.bbjHomePath;
+        if (bbjHome.isEmpty()) {
+            String detected = BbjHomeDetector.detectBbjHome();
+            if (detected != null) {
+                bbjHome = detected;
+            }
+        }
+        myComponent.setBbjHomePath(bbjHome);
+
+        String nodeJs = state.nodeJsPath;
+        if (nodeJs.isEmpty()) {
+            String detected = BbjNodeDetector.detectNodePath();
+            if (detected != null) {
+                nodeJs = detected;
+            }
+        }
+        myComponent.setNodeJsPath(nodeJs);
+
         myComponent.setClasspathEntry(state.classpathEntry);
     }
 

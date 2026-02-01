@@ -47,4 +47,8 @@ tasks {
         sinceBuild.set("242")
         untilBuild.set("243.*")
     }
+
+    runIde {
+        args = listOf(System.getProperty("user.home") + "/tinybbj")
+    }
 }

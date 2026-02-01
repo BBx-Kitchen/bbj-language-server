@@ -34,6 +34,14 @@ public final class BbjMissingHomeNotificationProvider
             return null;
         }
 
+        // Try auto-detection when no path is configured
+        if (bbjHomePath.isEmpty()) {
+            String detected = BbjHomeDetector.detectBbjHome();
+            if (detected != null) {
+                return null;
+            }
+        }
+
         return fileEditor -> {
             EditorNotificationPanel panel = new EditorNotificationPanel(
                     fileEditor, EditorNotificationPanel.Status.Warning);
