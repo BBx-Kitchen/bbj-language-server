@@ -1,0 +1,15 @@
+<idea-plugin>
+    <id>com.basis.bbj.intellij</id>
+    <name>BBj Language Support</name>
+    <version>0.1.0</version>
+    <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International</vendor>
+
+    <description><![CDATA[
+        BBj language support for IntelliJ IDEA. Provides file type recognition,
+        syntax highlighting, and language server integration for BBj development.
+    ]]></description>
+
+    <idea-version since-build="242"/>
+
+    <depends>com.intellij.modules.platform</depends>
+</idea-plugin>
