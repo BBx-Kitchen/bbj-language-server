@@ -105,7 +105,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Settings port configuration and java-interop connection health service
+- [x] 05-01-PLAN.md — Settings port configuration and java-interop connection health service
 - [ ] 05-02-PLAN.md — Status bar widget, editor banner, and initializationOptions
 - [ ] 05-03-PLAN.md — Human verification of all 5 success criteria
 

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 4 - Language Server Integration (complete)
+**Current focus:** Phase 5 - Java Interop (in progress)
 
 ## Current Position
 
-Phase: 4 of 6 (Language Server Integration)
-Plan: 4 of 4 in current phase
-Status: Complete
-Last activity: 2026-02-01 — Completed Phase 4 (all 10 success criteria verified)
+Phase: 5 of 6 (Java Interop)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 05-01-PLAN.md
 
-Progress: [████████░░] 83%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 6.4 minutes
-- Total execution time: 1.5 hours
+- Total plans completed: 15
+- Average duration: 6.3 minutes
+- Total execution time: 1.6 hours
 
 **By Phase:**
 
@@ -31,10 +31,11 @@ Progress: [████████░░] 83%
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
 | 4 - Language Server Integration | 4 | 57 min | 14.3 min |
+| 5 - Java Interop | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (4 min), 04-02 (4 min), 04-03 (4 min), 04-04 (45 min)
-- Trend: 04-04 was human verification with 4 bug fixes discovered during testing
+- Last 5 plans: 04-02 (4 min), 04-03 (4 min), 04-04 (45 min), 05-01 (4 min)
+- Trend: Consistent execution time for implementation tasks (~4 min)
 
 *Updated after each plan completion*
 
@@ -122,6 +123,15 @@ Recent decisions affecting current work:
 - Custom Language + no ParserDefinition = one giant PsiElement (breaks LSP4IJ navigation)
 - "LSP Symbol ..." popup text on Cmd+hover is cosmetic — can be polished later
 
+**From Plan 05-01:**
+- Port field is int (not String) - port is numeric data, validates 1-65535
+- Auto-detection searches BBj.properties for java.interop.port or bridge.port properties (poorly documented)
+- Auto-detection is best-effort: never throws, returns 5008 default on any error
+- Plugin-side TCP health check required because LS does not expose java-interop status via LSP protocol
+- TCP check is for UI status display only - plugin does not manage LS-to-java-interop connection
+- 2-second grace period prevents flashing disconnected status on transient network issues
+- Health checks tied to LS lifecycle: start when LS starts, stop when LS stops (via message bus subscription)
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. May need investigation.
@@ -135,6 +145,6 @@ None blocking.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed Phase 4 (Language Server Integration)
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
-Next: Phase 5 — Java Interop
+Next: Plan 05-02 — Status bar widget, editor banner, and initializationOptions
