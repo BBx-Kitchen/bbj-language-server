@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 1 of 6 (Plugin Scaffolding)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 01-01-PLAN.md (Gradle project skeleton)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 — Completed 01-02-PLAN.md (File type registration)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 4 minutes
-- Total execution time: 0.07 hours
+- Total plans completed: 2
+- Average duration: 3 minutes
+- Total execution time: 0.11 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1 - Plugin Scaffolding | 1 | 4 min | 4 min |
+| 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min)
-- Trend: N/A (insufficient data)
+- Last 5 plans: 01-01 (4 min), 01-02 (2 min)
+- Trend: Improving efficiency
 
 *Updated after each plan completion*
 
@@ -55,6 +55,13 @@ Recent decisions affecting current work:
 - Java 17 target compatibility
 - Version-less plugin declaration in build.gradle.kts (version in settings.gradle.kts only)
 
+**From Plan 01-02:**
+- Private constructors for singleton Language and FileType classes
+- Leading slash in icon path (/icons/bbj.svg) for absolute resource loading
+- BbjFileType must be final class per IntelliJ Platform convention
+- getName() returns "BBj" matching plugin.xml name attribute exactly
+- Single SVG icon in neutral blue visible on both light/dark themes
+
 ### Pending Todos
 
 None yet.
@@ -65,7 +72,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-01 08:46 UTC
-Stopped at: Completed 01-01-PLAN.md (Gradle project skeleton)
+Last session: 2026-02-01 08:52 UTC
+Stopped at: Completed 01-02-PLAN.md (File type registration) - Phase 1 complete
 Resume file: None
-Next: 01-02-PLAN.md (File type registration)
+Next: Phase 2 (Syntax Highlighting)
