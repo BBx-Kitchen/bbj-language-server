@@ -79,6 +79,10 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.ui.BbjServerCrashNotificationProvider"/>
 
+        <!-- Editor banner for java-interop unavailable -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjJavaInteropNotificationProvider"/>
+
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
@@ -89,6 +93,11 @@
         <statusBarWidgetFactory
             id="BbjLanguageServerStatus"
             implementation="com.basis.bbj.intellij.ui.BbjStatusBarWidgetFactory"/>
+
+        <!-- Java-interop status bar widget -->
+        <statusBarWidgetFactory
+            id="BbjJavaInteropStatus"
+            implementation="com.basis.bbj.intellij.ui.BbjJavaInteropStatusBarWidgetFactory"/>
 
         <!-- Server log tool window -->
         <toolWindow id="BBj Language Server"
