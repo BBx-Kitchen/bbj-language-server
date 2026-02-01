@@ -1,9 +1,12 @@
 package com.basis.bbj.intellij;
 
 import com.intellij.ide.util.PropertiesComponent;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -75,9 +78,7 @@ public final class BbjNodeDownloader {
                 props.setValue(DOWNLOAD_IN_PROGRESS_KEY, true);
                 try {
                     downloadAndExtractNode(indicator, project);
-                    showNotification(project,
-                            "Node.js " + NODE_VERSION + " downloaded successfully. Restart BBj Language Server to activate.",
-                            NotificationType.INFORMATION);
+                    showDownloadSuccessNotification(project);
                 } catch (Exception e) {
                     showNotification(project,
                             "Failed to download Node.js: " + e.getMessage(),
@@ -241,6 +242,23 @@ public final class BbjNodeDownloader {
         Path dataDir = Paths.get(PathManager.getPluginsPath(), "bbj-intellij-data", "nodejs");
         Files.createDirectories(dataDir);
         return dataDir;
+    }
+
+    private static void showDownloadSuccessNotification(@NotNull Project project) {
+        Notification notification = new Notification(
+                "BBj Language Server",
+                "BBj Language Server",
+                "Node.js " + NODE_VERSION + " downloaded successfully.",
+                NotificationType.INFORMATION
+        );
+        notification.addAction(new NotificationAction("Restart Language Server") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
+                n.expire();
+                BbjServerService.getInstance(project).restart();
+            }
+        });
+        Notifications.Bus.notify(notification, project);
     }
 
     private static void showNotification(@NotNull Project project, @NotNull String content,
