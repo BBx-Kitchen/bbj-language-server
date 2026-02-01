@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 3 - Settings & Runtime (complete)
+**Current focus:** Phase 4 - Language Server Integration (in progress)
 
 ## Current Position
 
-Phase: 3 of 6 (Settings & Runtime)
-Plan: 3 of 3 in current phase
-Status: Complete
-Last activity: 2026-02-01 — Completed 03-03-PLAN.md (Editor notification banners + human verification)
+Phase: 4 of 6 (Language Server Integration)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 04-01-PLAN.md (LSP core integration)
 
-Progress: [██████░░░░] 54%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 7 minutes
-- Total execution time: 0.77 hours
+- Total plans completed: 8
+- Average duration: 6.5 minutes
+- Total execution time: 0.85 hours
 
 **By Phase:**
 
@@ -30,10 +30,11 @@ Progress: [██████░░░░] 54%
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
+| 4 - Language Server Integration | 1 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (15 min), 03-01 (1 min), 03-02 (2 min), 03-03 (20 min)
-- Trend: 03-03 took longer due to auto-detection lifecycle debugging (platform calls reset() after createComponent())
+- Last 5 plans: 03-01 (1 min), 03-02 (2 min), 03-03 (20 min), 04-01 (4 min)
+- Trend: 04-01 fast execution - straightforward LSP4IJ integration with one API adaptation
 
 *Updated after each plan completion*
 
@@ -90,6 +91,14 @@ Recent decisions affecting current work:
 - Banner providers include auto-detection fallback to suppress false warnings
 - runIde configured to open ~/tinybbj directly (skip project picker)
 
+**From Plan 04-01:**
+- LSP4IJ 0.19.0 as LSP integration layer (Community Edition compatible)
+- Language server bundle copied at build time from bbj-vscode/out/language/
+- Node.js path resolution: settings → auto-detection → system PATH fallback
+- Server path resolution: plugin installation path → classloader resource extraction
+- BbjCompletionFeature as utility class (LSP4IJ API simpler than expected)
+- Language ID lowercase 'bbj' to match Langium server expectations
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
@@ -101,7 +110,7 @@ None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 15:05 UTC
-Stopped at: Completed Phase 3 (Settings & Runtime)
+Last session: 2026-02-01 15:28 UTC
+Stopped at: Completed 04-01-PLAN.md (LSP core integration)
 Resume file: None
-Next: Phase 4 — Language Server Integration
+Next: Plan 04-02 — Status bar widget
