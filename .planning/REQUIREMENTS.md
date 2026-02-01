@@ -11,7 +11,7 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 
 - [x] **FOUND-01**: IntelliJ plugin project builds with Gradle and LSP4IJ dependency, targeting Community Edition
 - [x] **FOUND-02**: BBj file types (.bbj, .bbl, .bbjt, .src) registered with custom icon and language association
-- [ ] **FOUND-03**: TextMate grammar (bbj.tmLanguage.json) provides syntax highlighting for BBj code in IntelliJ
+- [x] **FOUND-03**: TextMate grammar (bbj.tmLanguage.json) provides syntax highlighting for BBj code in IntelliJ
 - [ ] **FOUND-04**: Settings UI allows user to configure BBj home path and classpath entries
 - [ ] **FOUND-05**: Settings UI allows user to configure or override Node.js runtime path
 
@@ -43,7 +43,7 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 ### Distribution & Packaging
 
 - [ ] **DIST-01**: Language server bundle (main.cjs) packaged inside plugin distribution
-- [ ] **DIST-02**: TextMate grammar files packaged inside plugin distribution
+- [x] **DIST-02**: TextMate grammar files packaged inside plugin distribution
 - [ ] **DIST-03**: Plugin builds as installable ZIP for manual IntelliJ installation
 - [ ] **DIST-04**: Plugin works on macOS, Windows, and Linux
 
@@ -88,7 +88,7 @@ Deferred to future release. Tracked but not in current roadmap.
 |-------------|-------|--------|
 | FOUND-01 | Phase 1 | Complete |
 | FOUND-02 | Phase 1 | Complete |
-| FOUND-03 | Phase 2 | Pending |
+| FOUND-03 | Phase 2 | Complete |
 | FOUND-04 | Phase 3 | Pending |
 | FOUND-05 | Phase 3 | Pending |
 | LSI-01 | Phase 3 | Pending |
@@ -108,7 +108,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | UX-03 | Phase 5 | Pending |
 | UX-04 | Phase 4 | Pending |
 | DIST-01 | Phase 6 | Pending |
-| DIST-02 | Phase 6 | Pending |
+| DIST-02 | Phase 2 | Complete |
 | DIST-03 | Phase 6 | Pending |
 | DIST-04 | Phase 6 | Pending |
 
@@ -119,4 +119,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 — Phase 1 complete (FOUND-01, FOUND-02)*
+*Last updated: 2026-02-01 — Phase 2 complete (FOUND-03, DIST-02)*

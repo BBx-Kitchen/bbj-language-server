@@ -13,7 +13,7 @@ This roadmap delivers a working IntelliJ plugin that brings BBj language support
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Plugin Scaffolding** - Gradle project with file type registration
-- [ ] **Phase 2: Syntax Highlighting** - TextMate grammar integration for visual feedback
+- [x] **Phase 2: Syntax Highlighting** - TextMate grammar integration for visual feedback
 - [ ] **Phase 3: Settings & Runtime** - Configuration UI and Node.js detection
 - [ ] **Phase 4: Language Server Integration** - Core LSP features with process management
 - [ ] **Phase 5: Java Interop** - Full Java completion via java-interop service
@@ -47,8 +47,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — TextMate grammar integration with Gradle sync and bundle provider
-- [ ] 02-02-PLAN.md — Color Scheme settings page for BBj token customization
+- [x] 02-01-PLAN.md — TextMate grammar integration with Gradle sync and bundle provider
+- [x] 02-02-PLAN.md — Color Scheme settings page for BBj token customization
 
 ### Phase 3: Settings & Runtime
 **Goal**: Users can configure BBj environment and plugin detects Node.js
@@ -122,7 +122,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Plugin Scaffolding | 2/2 | ✓ Complete | 2026-02-01 |
-| 2. Syntax Highlighting | 0/2 | Not started | - |
+| 2. Syntax Highlighting | 2/2 | ✓ Complete | 2026-02-01 |
 | 3. Settings & Runtime | 0/? | Not started | - |
 | 4. Language Server Integration | 0/? | Not started | - |
 | 5. Java Interop | 0/? | Not started | - |
