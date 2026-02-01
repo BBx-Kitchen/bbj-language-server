@@ -21,10 +21,25 @@ repositories {
 dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.2")
+        bundledPlugin("org.jetbrains.plugins.textmate")
         pluginVerifier()
         zipSigner()
         instrumentationTools()
     }
+}
+
+val copyTextMateBundle by tasks.registering(Copy::class) {
+    from("${projectDir}/../bbj-vscode/") {
+        include("syntaxes/bbj.tmLanguage.json")
+        include("syntaxes/bbx.tmLanguage.json")
+        include("bbj-language-configuration.json")
+        include("bbx-language-configuration.json")
+    }
+    into(layout.buildDirectory.dir("resources/main/textmate/bbj-bundle"))
+}
+
+tasks.named("processResources") {
+    dependsOn(copyTextMateBundle)
 }
 
 tasks {

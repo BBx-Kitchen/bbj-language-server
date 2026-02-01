@@ -1,0 +1,29 @@
+{
+  "name": "bbj-textmate-bundle",
+  "contributes": {
+    "languages": [
+      {
+        "id": "bbj",
+        "extensions": [".bbj", ".bbl", ".bbjt", ".src"],
+        "configuration": "./bbj-language-configuration.json"
+      },
+      {
+        "id": "bbx",
+        "extensions": [".bbx"],
+        "configuration": "./bbx-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bbj",
+        "scopeName": "source.bbj",
+        "path": "./syntaxes/bbj.tmLanguage.json"
+      },
+      {
+        "language": "bbx",
+        "scopeName": "source.bbx",
+        "path": "./syntaxes/bbx.tmLanguage.json"
+      }
+    ]
+  }
+}
