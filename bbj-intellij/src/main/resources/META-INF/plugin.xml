@@ -23,6 +23,9 @@
             extensions="bbj;bbl;bbjt;src"/>
 
         <!-- Bridge custom FileType to TextMate highlighting engine -->
+        <editorHighlighterProvider
+            filetype="BBj"
+            implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
         <lang.syntaxHighlighterFactory
             language="BBj"
             implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
