@@ -12,6 +12,7 @@
     <idea-version since-build="242"/>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType
@@ -20,5 +21,14 @@
             fieldName="INSTANCE"
             language="BBj"
             extensions="bbj;bbl;bbjt;src"/>
+
+        <!-- Bridge custom FileType to TextMate highlighting engine -->
+        <lang.syntaxHighlighterFactory
+            language="BBj"
+            implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
+
+        <!-- Register TextMate grammar bundle -->
+        <textmate.bundleProvider
+            implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
     </extensions>
 </idea-plugin>
