@@ -34,7 +34,21 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ### Active
 
-(None — next milestone requirements TBD via `/gsd:new-milestone`)
+#### v1.1 — Polish, Icons, Run Commands & Fixes
+
+- [ ] Harvest VSCode brand icons (file, config, run) and adapt for IntelliJ light/dark conventions
+- [ ] Run BBj program as GUI (spawn bbj executable with current file)
+- [ ] Run BBj program as BUI (web runner with bundled web.bbj)
+- [ ] Run BBj program as DWC (web runner with bundled web.bbj)
+- [ ] Run command toolbar buttons, menu actions, and keyboard shortcuts
+- [ ] Document outline / Structure view via LSP DocumentSymbol
+- [ ] Comment toggling with REM keyword
+- [ ] Bracket/keyword matching
+- [ ] Fix "LSP Symbol ..." popup text cosmetic issue
+- [ ] Fix LS shutdown delay on last file close
+- [ ] Wire BbjCompletionFeature custom icons into completion pipeline
+- [ ] Clean up stale bbj-intellij/META-INF/plugin.xml
+- [ ] Linux code path review
 
 ### Out of Scope
 
@@ -42,11 +56,11 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - Debugging support — future milestone
 - BBj project wizard/templates — future milestone
 - Refactoring support (rename across files) — future milestone
-- Run configurations for BBj programs — future milestone
+- Run configurations for BBj programs — moved to v1.1 (run actions, not full run configs)
 
 ## Context
 
-**Current state:** v1.0 internal alpha shipped 2026-02-01. Plugin is a 671KB ZIP containing a JAR with 35 Java source classes, bundled language server (main.cjs, 1.8MB), and TextMate grammars. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
+**Current state:** v1.0 internal alpha shipped 2026-02-01. v1.1 in progress — adding run commands, brand icons, structure view, and fixing carried-forward issues. Plugin is a 671KB ZIP containing a JAR with 35 Java source classes, bundled language server (main.cjs, 1.8MB), and TextMate grammars. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
 
@@ -79,5 +93,15 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | stdio transport for LS | Simpler than TCP; LSP4IJ handles it natively | ✓ Good — reliable process management |
 | `untilBuild = ""` (no cap) | Forward compatibility with future IntelliJ versions | ✓ Good — fixed after 2025.3 incompatibility |
 
+## Current Milestone: v1.1 Polish & Run Commands
+
+**Goal:** Bring IntelliJ plugin to feature parity with VSCode for icons and run commands, fix all known v1.0 issues, and restore structure view.
+
+**Target features:**
+- Brand icons harvested from VSCode extension (file types, run buttons, plugin icon)
+- Run GUI / BUI / DWC commands with toolbar buttons and keyboard shortcuts
+- Document outline / Structure view working via LSP DocumentSymbol
+- All 7 carried-forward issues resolved
+
 ---
-*Last updated: 2026-02-01 after v1.0 milestone*
+*Last updated: 2026-02-01 after v1.1 milestone start*

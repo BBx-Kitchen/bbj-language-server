@@ -5,13 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** v1.0 shipped — planning next milestone
+**Current focus:** v1.1 Polish & Run Commands
 
 ## Current Position
 
-Milestone: v1.0 Internal Alpha — SHIPPED
-Status: Between milestones
-Last activity: 2026-02-01 — v1.0 milestone archived
+Milestone: v1.1 Polish & Run Commands
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-01 — Milestone v1.1 started
 
 ## Milestone History
 
@@ -23,7 +25,7 @@ See: .planning/MILESTONES.md
 
 ## Accumulated Context
 
-### Known Issues (from v1.0)
+### Known Issues (from v1.0 — being addressed in v1.1)
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing
 2. **Bracket/keyword matching** — Requires custom lexer or LSP support
@@ -40,6 +42,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: v1.0 milestone completed and archived
+Stopped at: Milestone v1.1 initialized, defining requirements
 Resume file: None
-Next: /gsd:new-milestone (if continuing development)
+Next: Define requirements → create roadmap
