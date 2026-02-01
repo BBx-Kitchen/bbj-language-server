@@ -1,5 +1,6 @@
 package com.basis.bbj.intellij;
 
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.ProjectManager;
@@ -63,6 +64,11 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         // Refresh editor notifications so banners update immediately
         for (var project : ProjectManager.getInstance().getOpenProjects()) {
             EditorNotifications.getInstance(project).updateAllNotifications();
+        }
+
+        // Trigger debounced language server restart
+        for (var project : ProjectManager.getInstance().getOpenProjects()) {
+            BbjServerService.getInstance(project).scheduleRestart();
         }
     }
 

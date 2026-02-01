@@ -15,6 +15,15 @@
     <depends>org.jetbrains.plugins.textmate</depends>
     <depends>com.redhat.devtools.lsp4ij</depends>
 
+    <actions>
+        <action id="bbj.restartLanguageServer"
+                class="com.basis.bbj.intellij.ui.BbjRestartServerAction"
+                text="Restart BBj Language Server"
+                description="Restart the BBj language server">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+
     <extensions defaultExtensionNs="com.intellij">
         <fileType
             name="BBj"
