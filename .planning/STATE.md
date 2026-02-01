@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 2 - Syntax Highlighting (complete)
+**Current focus:** Phase 3 - Settings & Runtime (in progress)
 
 ## Current Position
 
-Phase: 2 of 6 (Syntax Highlighting)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 — Completed 02-02-PLAN.md (Color Scheme settings page)
+Phase: 3 of 6 (Settings & Runtime)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 03-01-PLAN.md (Settings state & runtime detection)
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 5 minutes
-- Total execution time: 0.33 hours
+- Total execution time: 0.35 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [███░░░░░░░] 33%
 |-------|-------|-------|----------|
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
+| 3 - Settings & Runtime | 1 | 1 min | 1 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min), 02-01 (2 min), 02-02 (15 min)
-- Trend: 02-02 longer due to debugging TextMate/FileType integration issues
+- Last 5 plans: 01-02 (2 min), 02-01 (2 min), 02-02 (15 min), 03-01 (1 min)
+- Trend: 03-01 fast — straightforward Java class creation with no integration issues
 
 *Updated after each plan completion*
 
@@ -75,6 +76,11 @@ Recent decisions affecting current work:
 - Native Commenter/BraceMatcher required — TextMate language-configuration.json is NOT used by IntelliJ when custom FileType is registered
 - Comment toggling and bracket matching deferred to Phase 4 (LSP integration)
 
+**From Plan 03-01:**
+- No @Service annotation on BbjSettings — registered via plugin.xml applicationService in Plan 02
+- getBBjClasspathEntries does not filter underscore-prefixed entries, matching VS Code parity
+- Utility classes use private constructors with all static methods
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. Investigate further or resolve via LSP in Phase 4.
@@ -86,7 +92,7 @@ None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 13:45 UTC
-Stopped at: Completed 02-02-PLAN.md (Color Scheme settings page) - Phase 2 complete
+Last session: 2026-02-01 13:37 UTC
+Stopped at: Completed 03-01-PLAN.md (Settings state & runtime detection)
 Resume file: None
-Next: Phase 2 verification, then Phase 3 (Settings & Runtime)
+Next: 03-02-PLAN.md (Settings UI page), then 03-03-PLAN.md (Editor notification banners)
