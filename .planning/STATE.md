@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 3 - Settings & Runtime (in progress)
+**Current focus:** Phase 3 - Settings & Runtime (complete)
 
 ## Current Position
 
 Phase: 3 of 6 (Settings & Runtime)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 03-02-PLAN.md (Settings UI page)
+Plan: 3 of 3 in current phase
+Status: Complete
+Last activity: 2026-02-01 — Completed 03-03-PLAN.md (Editor notification banners + human verification)
 
-Progress: [█████░░░░░] 46%
+Progress: [██████░░░░] 54%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 5 minutes
-- Total execution time: 0.38 hours
+- Total plans completed: 7
+- Average duration: 7 minutes
+- Total execution time: 0.77 hours
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [█████░░░░░] 46%
 |-------|-------|-------|----------|
 | 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
-| 3 - Settings & Runtime | 2 | 3 min | 1.5 min |
+| 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (2 min), 02-02 (15 min), 03-01 (1 min), 03-02 (2 min)
-- Trend: Phase 3 plans executing fast — well-defined MVC pattern with clear APIs
+- Last 5 plans: 02-02 (15 min), 03-01 (1 min), 03-02 (2 min), 03-03 (20 min)
+- Trend: 03-03 took longer due to auto-detection lifecycle debugging (platform calls reset() after createComponent())
 
 *Updated after each plan completion*
 
@@ -82,8 +82,13 @@ Recent decisions affecting current work:
 - Utility classes use private constructors with all static methods
 
 **From Plan 03-02:**
-- Auto-detection fills fields on createComponent() but requires explicit Apply to persist
+- Auto-detection fills fields in reset() and requires explicit Apply to persist
 - Node.js version detection runs synchronously on document change in settings page
+
+**From Plan 03-03:**
+- Auto-detection must run in Configurable.reset(), NOT createComponent() — platform calls reset() after createComponent()
+- Banner providers include auto-detection fallback to suppress false warnings
+- runIde configured to open ~/tinybbj directly (skip project picker)
 
 ### Pending Todos
 
@@ -96,7 +101,7 @@ None blocking. Parked items above are non-critical for Phase 2 goals.
 
 ## Session Continuity
 
-Last session: 2026-02-01 13:41 UTC
-Stopped at: Completed 03-02-PLAN.md (Settings UI page)
+Last session: 2026-02-01 15:05 UTC
+Stopped at: Completed Phase 3 (Settings & Runtime)
 Resume file: None
-Next: 03-03-PLAN.md (Editor notification banners)
+Next: Phase 4 — Language Server Integration

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Plugin Scaffolding** - Gradle project with file type registration
 - [x] **Phase 2: Syntax Highlighting** - TextMate grammar integration for visual feedback
-- [ ] **Phase 3: Settings & Runtime** - Configuration UI and Node.js detection
+- [x] **Phase 3: Settings & Runtime** - Configuration UI and Node.js detection
 - [ ] **Phase 4: Language Server Integration** - Core LSP features with process management
 - [ ] **Phase 5: Java Interop** - Full Java completion via java-interop service
 - [ ] **Phase 6: Distribution** - Cross-platform packaging and bundling
@@ -65,9 +65,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Settings state model and runtime detection utilities
-- [ ] 03-02-PLAN.md — Settings UI page with validation and classpath dropdown
-- [ ] 03-03-PLAN.md — Editor notification banners and human verification
+- [x] 03-01-PLAN.md — Settings state model and runtime detection utilities
+- [x] 03-02-PLAN.md — Settings UI page with validation and classpath dropdown
+- [x] 03-03-PLAN.md — Editor notification banners and human verification
 
 ### Phase 4: Language Server Integration
 **Goal**: Core LSP features work end-to-end (diagnostics, completion, navigation, hover)
@@ -127,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Plugin Scaffolding | 2/2 | ✓ Complete | 2026-02-01 |
 | 2. Syntax Highlighting | 2/2 | ✓ Complete | 2026-02-01 |
-| 3. Settings & Runtime | 0/3 | In progress | - |
+| 3. Settings & Runtime | 3/3 | ✓ Complete | 2026-02-01 |
 | 4. Language Server Integration | 0/? | Not started | - |
 | 5. Java Interop | 0/? | Not started | - |
 | 6. Distribution | 0/? | Not started | - |
