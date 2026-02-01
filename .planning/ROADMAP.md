@@ -62,10 +62,12 @@ Plans:
   5. Editor banner appears on BBj files when BBj home or Node.js is missing/invalid, with action links
   6. Settings persist as application-level (global) config across IDE restarts
   7. Settings changes auto-restart the language server (Phase 4 will consume these settings)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 03-01-PLAN.md — Settings state model and runtime detection utilities
+- [ ] 03-02-PLAN.md — Settings UI page with validation and classpath dropdown
+- [ ] 03-03-PLAN.md — Editor notification banners and human verification
 
 ### Phase 4: Language Server Integration
 **Goal**: Core LSP features work end-to-end (diagnostics, completion, navigation, hover)
@@ -125,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Plugin Scaffolding | 2/2 | ✓ Complete | 2026-02-01 |
 | 2. Syntax Highlighting | 2/2 | ✓ Complete | 2026-02-01 |
-| 3. Settings & Runtime | 0/? | Not started | - |
+| 3. Settings & Runtime | 0/3 | In progress | - |
 | 4. Language Server Integration | 0/? | Not started | - |
 | 5. Java Interop | 0/? | Not started | - |
 | 6. Distribution | 0/? | Not started | - |
