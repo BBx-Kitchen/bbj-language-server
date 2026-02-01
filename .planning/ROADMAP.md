@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Settings & Runtime** - Configuration UI and Node.js detection
 - [x] **Phase 4: Language Server Integration** - Core LSP features with process management
 - [x] **Phase 5: Java Interop** - Full Java completion via java-interop service
-- [ ] **Phase 6: Distribution** - Cross-platform packaging and bundling
+- [x] **Phase 6: Distribution** - Cross-platform packaging and bundling
 
 ## Phase Details
 
@@ -121,9 +121,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Build configuration, marketplace metadata, and welcome notification
-- [ ] 06-02-PLAN.md — Node.js on-demand download for systems without Node.js
-- [ ] 06-03-PLAN.md — Human verification of ZIP install and cross-platform features
+- [x] 06-01-PLAN.md — Build configuration, marketplace metadata, and welcome notification
+- [x] 06-02-PLAN.md — Node.js on-demand download for systems without Node.js
+- [x] 06-03-PLAN.md — Human verification of ZIP install and cross-platform features
 
 ## Progress
 
@@ -137,4 +137,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Settings & Runtime | 3/3 | ✓ Complete | 2026-02-01 |
 | 4. Language Server Integration | 4/4 | ✓ Complete | 2026-02-01 |
 | 5. Java Interop | 3/3 | ✓ Complete | 2026-02-01 |
-| 6. Distribution | 0/3 | Planning complete | - |
+| 6. Distribution | 3/3 | ✓ Complete | 2026-02-01 |

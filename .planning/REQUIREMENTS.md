@@ -42,10 +42,10 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 
 ### Distribution & Packaging
 
-- [ ] **DIST-01**: Language server bundle (main.cjs) packaged inside plugin distribution
+- [x] **DIST-01**: Language server bundle (main.cjs) packaged inside plugin distribution
 - [x] **DIST-02**: TextMate grammar files packaged inside plugin distribution
-- [ ] **DIST-03**: Plugin builds as installable ZIP for manual IntelliJ installation
-- [ ] **DIST-04**: Plugin works on macOS, Windows, and Linux
+- [x] **DIST-03**: Plugin builds as installable ZIP for manual IntelliJ installation
+- [x] **DIST-04**: Plugin works on macOS, Windows, and Linux
 
 ## v2 Requirements
 
@@ -107,10 +107,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | UX-02 | Phase 3 | Complete |
 | UX-03 | Phase 4 | Complete |
 | UX-04 | Phase 4 | Complete |
-| DIST-01 | Phase 6 | Pending |
+| DIST-01 | Phase 6 | Complete |
 | DIST-02 | Phase 2 | Complete |
-| DIST-03 | Phase 6 | Pending |
-| DIST-04 | Phase 6 | Pending |
+| DIST-03 | Phase 6 | Complete |
+| DIST-04 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total
