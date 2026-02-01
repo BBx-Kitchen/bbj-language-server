@@ -82,6 +82,9 @@
         <!-- Project-level server lifecycle service -->
         <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
 
+        <!-- Project-level java-interop health check service -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjJavaInteropService"/>
+
         <!-- Status bar widget -->
         <statusBarWidgetFactory
             id="BbjLanguageServerStatus"
