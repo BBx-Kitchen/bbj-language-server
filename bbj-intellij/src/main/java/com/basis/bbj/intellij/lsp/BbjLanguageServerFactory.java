@@ -38,6 +38,8 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 JsonObject options = new JsonObject();
                 options.addProperty("home", state.bbjHomePath);
                 options.addProperty("classpath", state.classpathEntry);
+                options.addProperty("javaInteropHost", "127.0.0.1");
+                options.addProperty("javaInteropPort", state.javaInteropPort);
                 params.setInitializationOptions(options);
             }
         }
