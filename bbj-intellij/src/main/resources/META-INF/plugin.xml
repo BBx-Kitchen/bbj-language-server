@@ -60,4 +60,20 @@
         <editorNotificationProvider
             implementation="com.basis.bbj.intellij.BbjMissingNodeNotificationProvider"/>
     </extensions>
+
+    <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+        <server id="bbjLanguageServer"
+                name="BBj Language Server"
+                factoryClass="com.basis.bbj.intellij.lsp.BbjLanguageServerFactory">
+            <description><![CDATA[
+                BBj Language Server powered by Langium. Provides diagnostics,
+                code completion, go-to-definition, hover, and signature help
+                for BBj source files.
+            ]]></description>
+        </server>
+
+        <languageMapping language="BBj"
+                         serverId="bbjLanguageServer"
+                         languageId="bbj"/>
+    </extensions>
 </idea-plugin>
