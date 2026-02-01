@@ -30,5 +30,8 @@
         <!-- Register TextMate grammar bundle -->
         <textmate.bundleProvider
             implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
+
+        <!-- Color Scheme settings page for BBj -->
+        <colorSettingsPage implementation="com.basis.bbj.intellij.BbjColorSettingsPage"/>
     </extensions>
 </idea-plugin>
