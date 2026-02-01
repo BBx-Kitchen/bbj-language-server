@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 5 - Java Interop (complete)
+**Current focus:** Phase 6 - Distribution (in progress)
 
 ## Current Position
 
-Phase: 5 of 6 (Java Interop)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 — Completed Phase 5 (all 5 success criteria verified)
+Phase: 6 of 6 (Distribution)
+Plan: 2 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 06-02-PLAN.md (Node.js auto-download)
 
-Progress: [██████████] 97%
+Progress: [███████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17
-- Average duration: 6.5 minutes
-- Total execution time: 1.8 hours
+- Total plans completed: 18
+- Average duration: 6.3 minutes
+- Total execution time: 1.9 hours
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [██████████] 97%
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
 | 4 - Language Server Integration | 4 | 57 min | 14.3 min |
 | 5 - Java Interop | 3 | 21.5 min | 7.2 min |
+| 6 - Distribution | 2 | 18 min | 9 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-04 (45 min), 05-01 (4 min), 05-02 (2.5 min), 05-03 (15 min)
-- Trend: 05-03 was human verification with 2 bug fixes discovered during testing
+- Last 5 plans: 05-01 (4 min), 05-02 (2.5 min), 05-03 (15 min), 06-01 (15 min), 06-02 (3 min)
+- Trend: Velocity returning to fast execution after verification phases
 
 *Updated after each plan completion*
 
@@ -145,6 +146,21 @@ Recent decisions affecting current work:
 - Banner suppressed until first health check completes (firstCheckCompleted flag prevents startup flash)
 - LS lifecycle concern: stopping LS when last BBj file closes causes noticeable reconnect delay when switching files
 
+**From Plan 06-01:**
+- Plugin version in settings.gradle.kts only (not duplicated in build.gradle.kts)
+- JetBrains Marketplace channel "default" for stable releases
+- Plugin ID matches package: com.basis.bbj.intellij
+- Language server bundle copied from bbj-vscode/out/language/ at build time
+- 3 required icons: 40x40, 80x80, 512x512 in resources/META-INF/
+
+**From Plan 06-02:**
+- Node.js v20.18.1 LTS as bundled version (meets minimum v18+)
+- Download from official nodejs.org distribution (not third-party mirrors)
+- Synchronous cache check (getCachedNodePath) with async download (downloadNodeAsync)
+- Editor banner shows Download action first (most common user path)
+- 4-step Node.js resolution: settings → auto-detect → cached download → fallback
+- Platform detection using SystemInfo (not System.getProperty) for edge case handling
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. May need investigation.
@@ -159,6 +175,6 @@ None blocking.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed Phase 5 (Java Interop)
+Stopped at: Completed 06-02-PLAN.md (Node.js auto-download)
 Resume file: None
-Next: Phase 6 — Distribution
+Next: Phase 6 Plan 03 — Plugin Marketplace Publishing
