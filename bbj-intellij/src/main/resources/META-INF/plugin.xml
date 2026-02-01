@@ -15,6 +15,14 @@
                 description="Restart the BBj language server">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
+
+        <action id="bbj.runGui"
+                class="com.basis.bbj.intellij.actions.BbjRunGuiAction"
+                text="Run As BBj Program"
+                description="Run current BBj file as GUI program"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
