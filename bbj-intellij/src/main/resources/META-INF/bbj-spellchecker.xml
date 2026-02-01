@@ -1,7 +1,0 @@
-<idea-plugin>
-    <extensions defaultExtensionNs="com.intellij">
-        <!-- BBj keyword dictionary so spell checker doesn't flag them as typos -->
-        <spellchecker.bundledDictionaryProvider
-            implementation="com.basis.bbj.intellij.BbjSpellcheckingStrategy"/>
-    </extensions>
-</idea-plugin>

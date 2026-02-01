@@ -14,7 +14,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>org.jetbrains.plugins.textmate</depends>
     <depends>com.redhat.devtools.lsp4ij</depends>
-    <depends optional="true" config-file="bbj-spellchecker.xml">com.intellij.spellchecker</depends>
+
 
     <actions>
         <action id="bbj.restartLanguageServer"
@@ -93,6 +93,9 @@
         <notificationGroup id="BBj Language Server"
                            displayType="STICKY_BALLOON"/>
 
+        <!-- BBj keyword dictionary so spell checker doesn't flag them as typos -->
+        <spellchecker.bundledDictionaryProvider
+            implementation="com.basis.bbj.intellij.BbjSpellcheckingStrategy"/>
     </extensions>
 
     <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
