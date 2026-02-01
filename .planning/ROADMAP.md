@@ -102,10 +102,12 @@ Plans:
   3. After selecting Java class, typing period shows method completion with Java method signatures
   4. Status bar widget shows java-interop connection state alongside language server state
   5. If java-interop service is unreachable (BBjServices not running), user sees notification explaining BBjServices requirement
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD
+- [ ] 05-01-PLAN.md — Settings port configuration and java-interop connection health service
+- [ ] 05-02-PLAN.md — Status bar widget, editor banner, and initializationOptions
+- [ ] 05-03-PLAN.md — Human verification of all 5 success criteria
 
 ### Phase 6: Distribution
 **Goal**: Plugin packages for installation on Windows, macOS, and Linux
@@ -132,5 +134,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Syntax Highlighting | 2/2 | ✓ Complete | 2026-02-01 |
 | 3. Settings & Runtime | 3/3 | ✓ Complete | 2026-02-01 |
 | 4. Language Server Integration | 4/4 | ✓ Complete | 2026-02-01 |
-| 5. Java Interop | 0/? | Not started | - |
+| 5. Java Interop | 0/3 | In progress | - |
 | 6. Distribution | 0/? | Not started | - |
