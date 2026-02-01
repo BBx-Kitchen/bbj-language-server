@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** v1.1 Phase 7 — Brand Icons
+**Current focus:** v1.1 Phase 8 — Run Commands
 
 ## Current Position
 
 Milestone: v1.1 Polish & Run Commands
-Phase: 7 of 10 (Brand Icons)
-Plan: 0 of 1 in current phase
-Status: Ready to plan
-Last activity: 2026-02-01 — Roadmap created for v1.1
+Phase: 7 of 10 (Brand Icons) — COMPLETE
+Plan: 1 of 1 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 — Completed 07-01-PLAN.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░] 1/6 (17%)
 
 ## Milestone History
 
@@ -28,20 +28,29 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0)
-- v1.1 plans completed: 0
+- Total plans completed: 19 (v1.0) + 1 (v1.1) = 20
+- v1.1 plans completed: 1
 - v1.1 total plans: 6
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 7. Brand Icons | 0/1 | - | - |
+| 7. Brand Icons | 1/1 | ~12min | ~12min |
 | 8. Run Commands | 0/2 | - | - |
 | 9. Structure View | 0/1 | - | - |
 | 10. Bug Fixes | 0/2 | - | - |
 
 ## Accumulated Context
+
+### Decisions (v1.1)
+
+| Phase | Decision | Rationale |
+|-------|----------|-----------|
+| 07-01 | viewBox 0 0 3000 3000 with translate/scale for B-logo SVGs | Preserves original path coordinates from VSCode source without rescaling |
+| 07-01 | Stroke-based rendering for Tabler icons | IntelliJ renders strokes correctly; simpler than converting to fill paths |
+| 07-01 | BbxConfigFileType uses BbjLanguage.INSTANCE | Shares BBj syntax highlighting and LSP support for .bbx files |
+| 07-01 | Icon colors: #6E6E6E light, #AFB1B3 dark | IntelliJ standard icon color convention |
 
 ### Known Issues (from v1.0 -- being addressed in Phase 10)
 
@@ -60,6 +69,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Roadmap created for v1.1, ready to plan Phase 7
+Stopped at: Completed 07-01-PLAN.md (Phase 7 complete)
 Resume file: None
-Next: /gsd:plan-phase 7
+Next: /gsd:plan-phase 8
