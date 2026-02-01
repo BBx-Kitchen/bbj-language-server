@@ -52,5 +52,11 @@
             instance="com.basis.bbj.intellij.BbjSettingsConfigurable"
             id="com.basis.bbj.intellij.BbjSettingsConfigurable"
             displayName="BBj"/>
+
+        <!-- Editor banners for missing configuration -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjMissingHomeNotificationProvider"/>
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjMissingNodeNotificationProvider"/>
     </extensions>
 </idea-plugin>
