@@ -41,5 +41,16 @@
 
         <!-- Color Scheme settings page for BBj -->
         <colorSettingsPage implementation="com.basis.bbj.intellij.BbjColorSettingsPage"/>
+
+        <!-- Application-level settings service -->
+        <applicationService
+            serviceImplementation="com.basis.bbj.intellij.BbjSettings"/>
+
+        <!-- Settings page under Languages & Frameworks > BBj -->
+        <applicationConfigurable
+            parentId="language"
+            instance="com.basis.bbj.intellij.BbjSettingsConfigurable"
+            id="com.basis.bbj.intellij.BbjSettingsConfigurable"
+            displayName="BBj"/>
     </extensions>
 </idea-plugin>
