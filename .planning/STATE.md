@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 5 - Java Interop (in progress)
+**Current focus:** Phase 5 - Java Interop (complete)
 
 ## Current Position
 
 Phase: 5 of 6 (Java Interop)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 05-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 — Completed Phase 5 (all 5 success criteria verified)
 
-Progress: [█████████░] 93%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16
-- Average duration: 6.0 minutes
-- Total execution time: 1.6 hours
+- Total plans completed: 17
+- Average duration: 6.5 minutes
+- Total execution time: 1.8 hours
 
 **By Phase:**
 
@@ -31,11 +31,11 @@ Progress: [█████████░] 93%
 | 2 - Syntax Highlighting | 2 | 17 min | 8.5 min |
 | 3 - Settings & Runtime | 3 | 23 min | 7.7 min |
 | 4 - Language Server Integration | 4 | 57 min | 14.3 min |
-| 5 - Java Interop | 2 | 6.5 min | 3.25 min |
+| 5 - Java Interop | 3 | 21.5 min | 7.2 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-03 (4 min), 04-04 (45 min), 05-01 (4 min), 05-02 (2.5 min)
-- Trend: Consistent execution time for implementation tasks (~3-4 min)
+- Last 5 plans: 04-04 (45 min), 05-01 (4 min), 05-02 (2.5 min), 05-03 (15 min)
+- Trend: 05-03 was human verification with 2 bug fixes discovered during testing
 
 *Updated after each plan completion*
 
@@ -140,11 +140,17 @@ Recent decisions affecting current work:
 - Banner non-dismissible - user fundamentally needs BBjServices for Java completions
 - javaInteropHost/Port passed to LS now even though LS currently ignores them - forward-compatible for when LS is updated
 
+**From Plan 05-03 (human verification):**
+- Health check must start immediately if LS already running (check in constructor, not just on future events)
+- Banner suppressed until first health check completes (firstCheckCompleted flag prevents startup flash)
+- LS lifecycle concern: stopping LS when last BBj file closes causes noticeable reconnect delay when switching files
+
 ### Pending Todos
 
 1. **Comment toggling (REM)** — BbjCommenter registered but not functional in testing. May need investigation.
 2. **Bracket/keyword matching** — Requires custom lexer or LSP support. Low priority.
 3. **"LSP Symbol ..." popup text** — Cosmetic issue on Cmd+hover. Polish later.
+4. **LS shutdown delay on last file close** — Closing last BBj file immediately stops LS, causing reconnect delay when opening another. Consider keeping LS alive for ~30s after last file closes.
 
 ### Blockers/Concerns
 
@@ -153,6 +159,6 @@ None blocking.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 05-02-PLAN.md
+Stopped at: Completed Phase 5 (Java Interop)
 Resume file: None
-Next: Plan 05-03 — Human verification of all 5 success criteria
+Next: Phase 6 — Distribution

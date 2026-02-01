@@ -29,9 +29,9 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 
 ### Java Interop
 
-- [ ] **JAVA-01**: Language server connects to running java-interop service (hosted by BBjServices on localhost:5008)
-- [ ] **JAVA-02**: Code completion includes Java class names and method signatures from java-interop
-- [ ] **JAVA-03**: Plugin shows user-visible error if java-interop service is unreachable (BBjServices not running)
+- [x] **JAVA-01**: Language server connects to running java-interop service (hosted by BBjServices on localhost:5008)
+- [x] **JAVA-02**: Code completion includes Java class names and method signatures from java-interop
+- [x] **JAVA-03**: Plugin shows user-visible error if java-interop service is unreachable (BBjServices not running)
 
 ### Error Handling & UX
 
