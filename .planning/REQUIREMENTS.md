@@ -9,8 +9,8 @@ Requirements for internal alpha release. Each maps to roadmap phases.
 
 ### Plugin Foundation
 
-- [ ] **FOUND-01**: IntelliJ plugin project builds with Gradle and LSP4IJ dependency, targeting Community Edition
-- [ ] **FOUND-02**: BBj file types (.bbj, .bbl, .bbjt, .src) registered with custom icon and language association
+- [x] **FOUND-01**: IntelliJ plugin project builds with Gradle and LSP4IJ dependency, targeting Community Edition
+- [x] **FOUND-02**: BBj file types (.bbj, .bbl, .bbjt, .src) registered with custom icon and language association
 - [ ] **FOUND-03**: TextMate grammar (bbj.tmLanguage.json) provides syntax highlighting for BBj code in IntelliJ
 - [ ] **FOUND-04**: Settings UI allows user to configure BBj home path and classpath entries
 - [ ] **FOUND-05**: Settings UI allows user to configure or override Node.js runtime path
@@ -86,8 +86,8 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
+| FOUND-01 | Phase 1 | Complete |
+| FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 2 | Pending |
 | FOUND-04 | Phase 3 | Pending |
 | FOUND-05 | Phase 3 | Pending |
@@ -119,4 +119,4 @@ Deferred to future release. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 after initial definition*
+*Last updated: 2026-02-01 — Phase 1 complete (FOUND-01, FOUND-02)*
