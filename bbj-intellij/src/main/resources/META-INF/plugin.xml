@@ -33,6 +33,11 @@
             language="BBj"
             extensions="bbj;bbl;bbjt;src"/>
 
+        <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
+        <lang.parserDefinition
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjParserDefinition"/>
+
         <!-- Bridge custom FileType to TextMate highlighting engine -->
         <editorHighlighterProvider
             filetype="BBj"
