@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 
 Milestone: v1.1 Polish & Run Commands
 Phase: 8 of 10 (Run Commands)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 08-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 — Completed 08-02-PLAN.md
 
-Progress: [██░░░░] 2/6 (33%)
+Progress: [███░░░] 3/6 (50%)
 
 ## Milestone History
 
@@ -28,8 +28,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0) + 2 (v1.1) = 21
-- v1.1 plans completed: 2
+- Total plans completed: 19 (v1.0) + 3 (v1.1) = 22
+- v1.1 plans completed: 3
 - v1.1 total plans: 6
 
 **By Phase:**
@@ -37,7 +37,7 @@ See: .planning/MILESTONES.md
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 7. Brand Icons | 1/1 | ~12min | ~12min |
-| 8. Run Commands | 1/2 | ~2min | ~2min |
+| 8. Run Commands | 2/2 | ~6min | ~3min |
 | 9. Structure View | 0/1 | - | - |
 | 10. Bug Fixes | 0/2 | - | - |
 
@@ -54,6 +54,10 @@ See: .planning/MILESTONES.md
 | 08-01 | Project root as working directory | Uses project.getBasePath() for -WD flag instead of VSCode's file directory |
 | 08-01 | ActionUpdateThread.BGT for update() | File extension check is cheap, safe to run on background thread |
 | 08-01 | Auto-save defaults to true | Matches VSCode behavior, prevents running stale code |
+| 08-02 | web.bbj path via PluginManagerCore | PluginManagerCore.getPlugin().getPluginPath() more robust than PathManager |
+| 08-02 | Separate BUI/DWC action classes | Clearer action registry than single parameterized class |
+| 08-02 | web.bbj working directory is tools dir | Matches VSCode webRunnerWorkingDir pattern |
+| 08-02 | Three separate toolbar buttons | Individual MainToolBar registrations for visible buttons vs dropdown group |
 
 ### Known Issues (from v1.0 -- being addressed in Phase 10)
 
@@ -71,7 +75,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-01 23:56
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-02-01 23:02
+Stopped at: Completed 08-02-PLAN.md (Phase 08 complete)
 Resume file: None
-Next: Execute 08-02-PLAN.md
+Next: Phase 09 (Structure View) or Phase 10 (Bug Fixes)
