@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Milestone: v1.1 Polish & Run Commands
-Phase: 7 of 10 (Brand Icons) — COMPLETE
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 — Completed 07-01-PLAN.md
+Phase: 8 of 10 (Run Commands)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 08-01-PLAN.md
 
-Progress: [█░░░░░] 1/6 (17%)
+Progress: [██░░░░] 2/6 (33%)
 
 ## Milestone History
 
@@ -28,8 +28,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0) + 1 (v1.1) = 20
-- v1.1 plans completed: 1
+- Total plans completed: 19 (v1.0) + 2 (v1.1) = 21
+- v1.1 plans completed: 2
 - v1.1 total plans: 6
 
 **By Phase:**
@@ -37,7 +37,7 @@ See: .planning/MILESTONES.md
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 7. Brand Icons | 1/1 | ~12min | ~12min |
-| 8. Run Commands | 0/2 | - | - |
+| 8. Run Commands | 1/2 | ~2min | ~2min |
 | 9. Structure View | 0/1 | - | - |
 | 10. Bug Fixes | 0/2 | - | - |
 
@@ -51,6 +51,9 @@ See: .planning/MILESTONES.md
 | 07-01 | Stroke-based rendering for Tabler icons | IntelliJ renders strokes correctly; simpler than converting to fill paths |
 | 07-01 | BbxConfigFileType uses BbjLanguage.INSTANCE | Shares BBj syntax highlighting and LSP support for .bbx files |
 | 07-01 | Icon colors: #6E6E6E light, #AFB1B3 dark | IntelliJ standard icon color convention |
+| 08-01 | Project root as working directory | Uses project.getBasePath() for -WD flag instead of VSCode's file directory |
+| 08-01 | ActionUpdateThread.BGT for update() | File extension check is cheap, safe to run on background thread |
+| 08-01 | Auto-save defaults to true | Matches VSCode behavior, prevents running stale code |
 
 ### Known Issues (from v1.0 -- being addressed in Phase 10)
 
@@ -68,7 +71,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Completed 07-01-PLAN.md (Phase 7 complete)
+Last session: 2026-02-01 23:56
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
-Next: /gsd:plan-phase 8
+Next: Execute 08-02-PLAN.md
