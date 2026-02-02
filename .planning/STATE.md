@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v1.2 Run Fixes & Marketplace
-Phase: 12 (Marketplace Preparation) — COMPLETE
-Plan: 2 of 2 complete
-Status: Plugin verifier compliance complete, ready for Marketplace submission
-Last activity: 2026-02-02 — Completed 12-02-PLAN.md
+Phase: 13 (Plugin ID Fix) — COMPLETE
+Plan: 1 of 1 complete
+Status: Plugin ID mismatch fixed, ready for Marketplace submission
+Last activity: 2026-02-02 — Completed 13-01-PLAN.md
 
-Progress: ████████████████████████░ 96% (25/26 plans complete)
+Progress: █████████████████████████ 100% (26/26 plans complete)
 
 ## Milestone History
 
@@ -23,7 +23,7 @@ Progress: ███████████████████████�
 |-----------|--------|-------|---------|
 | v1.0 Internal Alpha | 1-6 | 19 | 2026-02-01 |
 | v1.1 Polish & Run Commands | 7-10 | 6 | 2026-02-02 |
-| v1.2 Run Fixes & Marketplace | 11-12 | 4+ | In progress |
+| v1.2 Run Fixes & Marketplace | 11-13 | 5 | 2026-02-02 |
 
 See: .planning/MILESTONES.md
 
@@ -35,6 +35,7 @@ See: .planning/MILESTONES.md
 2. ~~Run commands broken — BBj executable "not found" despite configured BBj Home path.~~ **FIXED in 11-01**
 3. ~~Run command output not captured in IntelliJ console tool window~~ **FIXED in 11-01 — stderr now routed to LS log window**
 4. ~~Toolbar buttons not visible in new UI.~~ **FIXED in 11-02 — replaced with ProjectViewPopupMenu submenu**
+5. ~~Plugin ID mismatch breaking BUI/DWC run commands~~ **FIXED in 13-01**
 
 ### Tech Debt
 
@@ -47,10 +48,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-02T20:44:41Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-02-02T21:47:23Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
-Next: Phase 12 complete. Ready for Marketplace submission.
+Next: Milestone v1.2 complete. Ready for Marketplace submission.
 
 ## Recent Decisions
 
@@ -69,3 +70,4 @@ Next: Phase 12 complete. Ready for Marketplace submission.
 | Use recommended() for pluginVerification IDE selection | 12-01 | Auto-aligns with sinceBuild/untilBuild, prevents version mismatches |
 | Changed plugin ID from 'com.basis.bbj.intellij' to 'com.basis.bbj' | 12-02 | Marketplace rule: no 'intellij' keyword in plugin ID |
 | Changed untilBuild to '242.*' wildcard format | 12-02 | Empty string not allowed; wildcard format required for version compatibility |
+| Fixed PluginId.getId() hardcoded references to match plugin.xml | 13-01 | Phase 12 changed plugin.xml but left Java code referencing old ID |
