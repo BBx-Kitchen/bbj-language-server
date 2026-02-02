@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** v1.1 Phase 9 — Structure View
+**Current focus:** v1.1 Phase 10 — Bug Fixes & Polish
 
 ## Current Position
 
 Milestone: v1.1 Polish & Run Commands
-Phase: 9 of 10 (Structure View)
-Plan: 1 of 1 in current phase
-Status: Phase complete
-Last activity: 2026-02-02 — Completed 09-01-PLAN.md
+Phase: 10 of 10 (Bug Fixes & Polish)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-02 — Completed 10-01-PLAN.md
 
-Progress: [████░░] 4/6 (67%)
+Progress: [█████░] 5/6 (83%)
 
 ## Milestone History
 
@@ -28,8 +28,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0) + 4 (v1.1) = 23
-- v1.1 plans completed: 4
+- Total plans completed: 19 (v1.0) + 5 (v1.1) = 24
+- v1.1 plans completed: 5
 - v1.1 total plans: 6
 
 **By Phase:**
@@ -39,7 +39,7 @@ See: .planning/MILESTONES.md
 | 7. Brand Icons | 1/1 | ~12min | ~12min |
 | 8. Run Commands | 2/2 | ~6min | ~3min |
 | 9. Structure View | 1/1 | - | - |
-| 10. Bug Fixes | 0/2 | - | - |
+| 10. Bug Fixes | 1/2 | ~2min | ~2min |
 
 ## Accumulated Context
 
@@ -59,12 +59,15 @@ See: .planning/MILESTONES.md
 | 08-02 | web.bbj working directory is tools dir | Matches VSCode webRunnerWorkingDir pattern |
 | 08-02 | Three separate toolbar buttons | Individual MainToolBar registrations for visible buttons vs dropdown group |
 | 09-01 | Single XML extension point, no custom Java class | LSP4IJ's LSPDocumentSymbolStructureViewFactory handles all mapping |
+| 10-01 | LINE_COMMENT_AT_FIRST_COLUMN = true for REM placement | Forces REM at column 0 via code style settings, comment stacking automatic |
+| 10-01 | Distinct bracket token types for matching | PairedBraceMatcher requires LPAREN/RPAREN/etc., not generic SYMBOL |
+| 10-01 | LSPHoverFeature.isSupported() = false | Suppresses hover placeholder; language server doesn't implement hover anyway |
 
 ### Known Issues (from v1.0 -- being addressed in Phase 10)
 
-1. Comment toggling (REM) -- FIX-01
-2. Bracket/keyword matching -- FIX-02
-3. "LSP Symbol ..." popup text -- FIX-03
+1. ~~Comment toggling (REM) -- FIX-01~~ RESOLVED in 10-01
+2. ~~Bracket/keyword matching -- FIX-02~~ RESOLVED in 10-01
+3. ~~"LSP Symbol ..." popup text -- FIX-03~~ RESOLVED in 10-01
 4. LS shutdown delay on last file close -- FIX-04
 5. BbjCompletionFeature orphaned icons -- FIX-05
 6. Stale bbj-intellij/META-INF/plugin.xml -- FIX-06
@@ -81,6 +84,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 09-01-PLAN.md (Phase 09 complete)
+Stopped at: Completed 10-01-PLAN.md
 Resume file: None
-Next: Phase 10 (Bug Fixes & Polish)
+Next: 10-02-PLAN.md (LS shutdown grace period, completion icons, META-INF cleanup, Linux review)
