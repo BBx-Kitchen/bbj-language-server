@@ -88,6 +88,10 @@
             language="BBj"
             implementationClass="com.basis.bbj.intellij.BbjCommenter"/>
 
+        <!-- Code style settings - forces REM at column 0 -->
+        <langCodeStyleSettingsProvider
+            implementation="com.basis.bbj.intellij.BbjLanguageCodeStyleSettingsProvider"/>
+
         <!-- LSP textDocument/documentSymbol -> Structure View -->
         <lang.psiStructureViewFactory
             language="BBj"
