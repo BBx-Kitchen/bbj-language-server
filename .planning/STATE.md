@@ -10,10 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v1.2 Run Fixes & Marketplace
-Phase: 12 (Marketplace Preparation) — IN PROGRESS
-Plan: 1 of 2+ complete
-Status: Plan 12-01 complete, ready for Plan 12-02 (icon assets)
-Last activity: 2026-02-02 — Completed 12-01-PLAN.md
+Phase: 12 (Marketplace Preparation) — COMPLETE
+Plan: 2 of 2 complete
+Status: Plugin verifier compliance complete, ready for Marketplace submission
+Last activity: 2026-02-02 — Completed 12-02-PLAN.md
+
+Progress: ████████████████████████░ 96% (25/26 plans complete)
 
 ## Milestone History
 
@@ -45,10 +47,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-02T20:09:53Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-02-02T20:44:41Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
-Next: /gsd:execute-plan 12-02 (or create plan if doesn't exist)
+Next: Phase 12 complete. Ready for Marketplace submission.
 
 ## Recent Decisions
 
@@ -65,3 +67,5 @@ Next: /gsd:execute-plan 12-02 (or create plan if doesn't exist)
 | Only list features with confirmed codebase implementation evidence | 12-01 | Ensures honest marketplace listing (CONTEXT.md requirement) |
 | Remove CDATA wrapper from Gradle changeNotes | 12-01 | patchPluginXml adds it automatically; manual wrapper causes build error |
 | Use recommended() for pluginVerification IDE selection | 12-01 | Auto-aligns with sinceBuild/untilBuild, prevents version mismatches |
+| Changed plugin ID from 'com.basis.bbj.intellij' to 'com.basis.bbj' | 12-02 | Marketplace rule: no 'intellij' keyword in plugin ID |
+| Changed untilBuild to '242.*' wildcard format | 12-02 | Empty string not allowed; wildcard format required for version compatibility |
