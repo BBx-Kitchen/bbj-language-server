@@ -92,6 +92,11 @@
         <langCodeStyleSettingsProvider
             implementation="com.basis.bbj.intellij.BbjLanguageCodeStyleSettingsProvider"/>
 
+        <!-- Bracket matching for (), [], {} -->
+        <lang.braceMatcher
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjPairedBraceMatcher"/>
+
         <!-- LSP textDocument/documentSymbol -> Structure View -->
         <lang.psiStructureViewFactory
             language="BBj"

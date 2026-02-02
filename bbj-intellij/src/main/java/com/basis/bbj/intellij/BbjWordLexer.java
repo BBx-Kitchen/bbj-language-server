@@ -81,7 +81,15 @@ public final class BbjWordLexer extends LexerBase {
         } else {
             // Punctuation / operators — single character each
             tokenEnd = tokenStart + 1;
-            tokenType = BbjTokenTypes.SYMBOL;
+            tokenType = switch (c) {
+                case '(' -> BbjTokenTypes.LPAREN;
+                case ')' -> BbjTokenTypes.RPAREN;
+                case '[' -> BbjTokenTypes.LBRACKET;
+                case ']' -> BbjTokenTypes.RBRACKET;
+                case '{' -> BbjTokenTypes.LBRACE;
+                case '}' -> BbjTokenTypes.RBRACE;
+                default -> BbjTokenTypes.SYMBOL;
+            };
         }
     }
 
