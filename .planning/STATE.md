@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** v1.1 Phase 8 — Run Commands
+**Current focus:** v1.1 Phase 9 — Structure View
 
 ## Current Position
 
 Milestone: v1.1 Polish & Run Commands
-Phase: 8 of 10 (Run Commands)
-Plan: 2 of 2 in current phase
+Phase: 9 of 10 (Structure View)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-01 — Completed 08-02-PLAN.md
+Last activity: 2026-02-02 — Completed 09-01-PLAN.md
 
-Progress: [███░░░] 3/6 (50%)
+Progress: [████░░] 4/6 (67%)
 
 ## Milestone History
 
@@ -28,8 +28,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0) + 3 (v1.1) = 22
-- v1.1 plans completed: 3
+- Total plans completed: 19 (v1.0) + 4 (v1.1) = 23
+- v1.1 plans completed: 4
 - v1.1 total plans: 6
 
 **By Phase:**
@@ -38,7 +38,7 @@ See: .planning/MILESTONES.md
 |-------|-------|-------|----------|
 | 7. Brand Icons | 1/1 | ~12min | ~12min |
 | 8. Run Commands | 2/2 | ~6min | ~3min |
-| 9. Structure View | 0/1 | - | - |
+| 9. Structure View | 1/1 | - | - |
 | 10. Bug Fixes | 0/2 | - | - |
 
 ## Accumulated Context
@@ -58,6 +58,7 @@ See: .planning/MILESTONES.md
 | 08-02 | Separate BUI/DWC action classes | Clearer action registry than single parameterized class |
 | 08-02 | web.bbj working directory is tools dir | Matches VSCode webRunnerWorkingDir pattern |
 | 08-02 | Three separate toolbar buttons | Individual MainToolBar registrations for visible buttons vs dropdown group |
+| 09-01 | Single XML extension point, no custom Java class | LSP4IJ's LSPDocumentSymbolStructureViewFactory handles all mapping |
 
 ### Known Issues (from v1.0 -- being addressed in Phase 10)
 
@@ -69,13 +70,17 @@ See: .planning/MILESTONES.md
 6. Stale bbj-intellij/META-INF/plugin.xml -- FIX-06
 7. Linux code path review -- FIX-07
 
+### New Issues Found (v1.1)
+
+8. Structure View symbol kind differentiation -- labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. GitHub issue filed.
+
 ### Blockers/Concerns
 
 None.
 
 ## Session Continuity
 
-Last session: 2026-02-01 23:02
-Stopped at: Completed 08-02-PLAN.md (Phase 08 complete)
+Last session: 2026-02-02
+Stopped at: Completed 09-01-PLAN.md (Phase 09 complete)
 Resume file: None
-Next: Phase 09 (Structure View) or Phase 10 (Bug Fixes)
+Next: Phase 10 (Bug Fixes & Polish)

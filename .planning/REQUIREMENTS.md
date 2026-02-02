@@ -33,9 +33,9 @@ Requirements for v1.1 Polish & Run Commands milestone. Each maps to roadmap phas
 
 ### Structure View
 
-- [ ] **STRUC-01**: Document outline / Structure tool window shows symbols from the language server (classes, methods, variables, labels)
-- [ ] **STRUC-02**: Structure view updates when document changes
-- [ ] **STRUC-03**: Clicking a symbol in Structure view navigates to its location in the editor
+- [x] **STRUC-01**: Document outline / Structure tool window shows symbols from the language server (classes, methods, variables, labels)
+- [x] **STRUC-02**: Structure view updates when document changes
+- [x] **STRUC-03**: Clicking a symbol in Structure view navigates to its location in the editor
 
 ### Bug Fixes
 
@@ -99,9 +99,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-10 | Phase 8 | Complete |
 | RUN-11 | Phase 8 | Complete |
 | RUN-12 | Phase 8 | Complete |
-| STRUC-01 | Phase 9 | Pending |
-| STRUC-02 | Phase 9 | Pending |
-| STRUC-03 | Phase 9 | Pending |
+| STRUC-01 | Phase 9 | Complete |
+| STRUC-02 | Phase 9 | Complete |
+| STRUC-03 | Phase 9 | Complete |
 | FIX-01 | Phase 10 | Pending |
 | FIX-02 | Phase 10 | Pending |
 | FIX-03 | Phase 10 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-01 after Phase 8 completion*
+*Last updated: 2026-02-02 after Phase 9 completion*

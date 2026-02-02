@@ -20,7 +20,7 @@ See .planning/MILESTONES.md for details. 6 phases, 19 plans completed.
 
 - [x] **Phase 7: Brand Icons** - Harvest VSCode brand icons and wire them into file types, plugin listing, and run actions
 - [x] **Phase 8: Run Commands** - Run BBj programs as GUI/BUI/DWC with toolbar buttons, shortcuts, and error handling
-- [ ] **Phase 9: Structure View** - Document outline via LSP DocumentSymbol with navigation
+- [x] **Phase 9: Structure View** - Document outline via LSP DocumentSymbol with navigation
 - [ ] **Phase 10: Bug Fixes & Polish** - Resolve all 7 carried-forward v1.0 issues
 
 ## Phase Details
@@ -66,7 +66,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 09-01-PLAN.md — Register LSP4IJ psiStructureViewFactory extension point and verify Structure View rendering and navigation
+- [x] 09-01-PLAN.md — Register LSP4IJ psiStructureViewFactory extension point and verify Structure View rendering and navigation
 
 ### Phase 10: Bug Fixes & Polish
 **Goal**: All 7 carried-forward v1.0 issues are resolved, completing the polish pass
@@ -92,5 +92,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 7. Brand Icons | v1.1 | 1/1 | Complete | 2026-02-01 |
 | 8. Run Commands | v1.1 | 2/2 | Complete | 2026-02-01 |
-| 9. Structure View | v1.1 | 0/1 | Not started | - |
+| 9. Structure View | v1.1 | 1/1 | Complete | 2026-02-02 |
 | 10. Bug Fixes & Polish | v1.1 | 0/2 | Not started | - |
