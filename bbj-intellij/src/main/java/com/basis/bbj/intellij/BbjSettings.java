@@ -40,6 +40,20 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
 
     @Override
     public State getState() {
+        // Auto-detect BBj Home on first access if not configured
+        if (myState.bbjHomePath == null || myState.bbjHomePath.isEmpty()) {
+            String detected = BbjHomeDetector.detectBbjHome();
+            if (detected != null) {
+                myState.bbjHomePath = detected;
+            }
+        }
+        // Auto-detect Node.js path on first access if not configured
+        if (myState.nodeJsPath == null || myState.nodeJsPath.isEmpty()) {
+            String detected = BbjNodeDetector.detectNodePath();
+            if (detected != null) {
+                myState.nodeJsPath = detected;
+            }
+        }
         return myState;
     }
 
