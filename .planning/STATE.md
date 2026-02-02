@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 
 Milestone: v1.2 Run Fixes & Marketplace
 Phase: 11 (Run Command Fixes)
-Plan: Ready to plan Phase 11
-Status: Roadmap created, awaiting phase planning
-Last activity: 2026-02-02 — Roadmap created for v1.2 milestone
+Plan: 01 of 2 complete
+Status: In progress
+Last activity: 2026-02-02 — Completed 11-01-PLAN.md (Run command fixes)
 
 ## Milestone History
 
@@ -30,8 +30,9 @@ See: .planning/MILESTONES.md
 ### Known Issues
 
 1. Structure View symbol kind differentiation — labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. (Deferred from v1.1)
-2. Run commands broken — BBj executable "not found" despite configured BBj Home path. Toolbar buttons not visible in new UI. (Active in Phase 11)
-3. Run command output not captured in IntelliJ console tool window (Active in Phase 11)
+2. ~~Run commands broken — BBj executable "not found" despite configured BBj Home path.~~ **FIXED in 11-01**
+3. ~~Run command output not captured in IntelliJ console tool window~~ **FIXED in 11-01 - stderr now routed to LS log window**
+4. Toolbar buttons not visible in new UI. (Active in Phase 11-02)
 
 ### Tech Debt
 
@@ -44,7 +45,16 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-02
-Stopped at: Roadmap creation complete
+Last session: 2026-02-02T14:18:23Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
-Next: /gsd:plan-phase 11
+Next: Continue Phase 11 with Plan 02 (toolbar visibility)
+
+## Recent Decisions
+
+| Decision | Phase | Rationale |
+|----------|-------|-----------|
+| Use java.nio.file.Files API for executable resolution | 11-01 | Handles symbolic links correctly (JDK-4956115), fixes "not found" errors |
+| Route run command errors to LS log window only (no balloons) | 11-01 | Centralized error output, auto-show only on errors |
+| Attach ProcessAdapter before startNotify() | 11-01 | Captures early stderr output (per RESEARCH.md pitfall #3) |
+| Pre-launch validation before process spawn | 11-01 | Catches BBj Home, directory, executable issues before confusing errors |
