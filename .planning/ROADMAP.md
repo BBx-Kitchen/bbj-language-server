@@ -1,6 +1,6 @@
 # Milestone v1.2: Run Fixes & Marketplace
 
-**Status:** IN PROGRESS (gap closure)
+**Status:** COMPLETE
 **Phases:** 11-13
 **Total Plans:** 5
 
@@ -58,7 +58,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 13-01-PLAN.md — Fix PluginId.getId() callsites and rebuild distribution
+- [x] 13-01-PLAN.md — Fix PluginId.getId() callsites and rebuild distribution
 
 ## Progress
 
@@ -68,7 +68,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 11. Run Command Fixes | 2/2 | ✓ Complete | 2026-02-02 |
 | 12. Marketplace Preparation | 2/2 | ✓ Complete | 2026-02-02 |
-| 13. Plugin ID Fix | 0/1 | Pending | - |
+| 13. Plugin ID Fix | 1/1 | ✓ Complete | 2026-02-02 |
 
 ---
 
@@ -102,6 +102,10 @@ Plans:
 - Plugin icon SVGs (40x40 scalable) already existed, verified in distribution
 - All 9 features verified against codebase before claiming in marketplace listing
 - MIT License and third-party NOTICES included in distribution META-INF
+
+**Issues Resolved (Gap Closure):**
+
+- Plugin ID mismatch: PluginId.getId() calls used old "com.basis.bbj.intellij" instead of "com.basis.bbj" — broke BUI/DWC run and degraded LS startup in production
 
 **Issues Deferred:**
 
