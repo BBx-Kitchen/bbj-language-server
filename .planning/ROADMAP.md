@@ -78,11 +78,11 @@ Plans:
   3. Cmd+hover no longer shows "LSP Symbol ..." placeholder text (either suppressed or replaced with meaningful content)
   4. Closing the last BBj file does not immediately kill the language server; reopening a BBj file within a few seconds reuses the running server
   5. Completion popup shows distinct icons for functions, variables, and keywords instead of generic icons
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 10-01: Fix comment toggling (REM), bracket matching, and LSP Symbol popup
-- [ ] 10-02: Fix LS shutdown grace period, wire completion icons, remove stale META-INF, review Linux paths
+- [ ] 10-01-PLAN.md — Fix comment toggling (REM), bracket matching, and LSP Symbol popup
+- [ ] 10-02-PLAN.md — Fix LS shutdown grace period, wire completion icons, remove stale META-INF, review Linux paths
 
 ## Progress
 
