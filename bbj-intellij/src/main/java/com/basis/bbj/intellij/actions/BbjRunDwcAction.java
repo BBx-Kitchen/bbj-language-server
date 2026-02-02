@@ -23,17 +23,13 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
     @Override
     @Nullable
     protected GeneralCommandLine buildCommandLine(@NotNull VirtualFile file, @NotNull Project project) {
-        // Get BBj executable path
+        // Get BBj executable path (validation already done in actionPerformed)
         String bbjPath = getBbjExecutablePath();
-        if (bbjPath == null) {
-            showError(project, "BBj home is not configured or bbj executable not found");
-            return null;
-        }
 
         // Get web.bbj path
         String webBbjPath = getWebBbjPath();
         if (webBbjPath == null) {
-            showError(project, "web.bbj runner not found in plugin bundle");
+            logError(project, "web.bbj runner not found in plugin bundle");
             return null;
         }
 

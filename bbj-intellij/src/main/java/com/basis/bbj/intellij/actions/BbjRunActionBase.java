@@ -1,24 +1,29 @@
 package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.notification.NotificationGroupManager;
-import com.intellij.notification.NotificationType;
+import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Abstract base class for BBj run actions (GUI, BUI, DWC).
@@ -42,6 +47,11 @@ public abstract class BbjRunActionBase extends AnAction {
         // Auto-save if enabled
         autoSaveIfNeeded();
 
+        // Validate before running
+        if (!validateBeforeRun(project)) {
+            return;
+        }
+
         // Build command line (subclass responsibility)
         GeneralCommandLine cmd = buildCommandLine(file, project);
         if (cmd == null) {
@@ -53,9 +63,9 @@ public abstract class BbjRunActionBase extends AnAction {
         try {
             OSProcessHandler handler = new OSProcessHandler(cmd);
             handler.startNotify();
-            showSuccess(project, file.getName(), getRunMode());
+            logInfo(project, "[" + getRunMode() + "] Launched " + file.getName());
         } catch (ExecutionException ex) {
-            showError(project, "Failed to launch: " + ex.getMessage());
+            logError(project, "Failed to launch: " + ex.getMessage());
         }
     }
 
@@ -79,8 +89,42 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
+     * Validates BBj environment before running: checks that BBj Home is configured,
+     * directory exists, and executable is found. Logs errors to LS log window if validation fails.
+     *
+     * @param project the current project
+     * @return true if validation passes, false otherwise
+     */
+    protected boolean validateBeforeRun(@NotNull Project project) {
+        BbjSettings.State state = BbjSettings.getInstance().getState();
+        String bbjHomePath = state.bbjHomePath;
+
+        // Check BBj Home is configured
+        if (bbjHomePath == null || bbjHomePath.isEmpty()) {
+            logError(project, "BBj Home is not configured. Set it in Settings > Languages & Frameworks > BBj.");
+            return false;
+        }
+
+        // Check BBj Home directory exists
+        Path bbjHomeDir = Paths.get(bbjHomePath);
+        if (!Files.isDirectory(bbjHomeDir)) {
+            logError(project, "BBj Home directory does not exist: " + bbjHomePath);
+            return false;
+        }
+
+        // Check BBj executable exists
+        String executablePath = getBbjExecutablePath();
+        if (executablePath == null) {
+            logError(project, "BBj executable not found in " + bbjHomePath + "/bin/. Verify your BBj installation.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * Returns the BBj executable path from settings.
-     * Checks both that bbjHomePath is configured and that the executable exists.
+     * Uses java.nio.file.Files API to handle symbolic links correctly.
      *
      * @return absolute path to bbj executable, or null if not found
      */
@@ -93,14 +137,21 @@ public abstract class BbjRunActionBase extends AnAction {
             return null;
         }
 
+        // Try bin/bbj (unix) or bin/bbj.exe (windows)
         String exeName = SystemInfo.isWindows ? "bbj.exe" : "bbj";
-        File executable = new File(bbjHome, "bin/" + exeName);
+        Path executablePath = Paths.get(bbjHome, "bin", exeName);
 
-        if (!executable.exists() || !executable.isFile()) {
-            return null;
+        if (Files.exists(executablePath) && Files.isRegularFile(executablePath) && Files.isExecutable(executablePath)) {
+            return executablePath.toAbsolutePath().toString();
         }
 
-        return executable.getAbsolutePath();
+        // Try direct path without bin/ prefix (some installations differ)
+        executablePath = Paths.get(bbjHome, exeName);
+        if (Files.exists(executablePath) && Files.isRegularFile(executablePath) && Files.isExecutable(executablePath)) {
+            return executablePath.toAbsolutePath().toString();
+        }
+
+        return null;
     }
 
     /**
@@ -157,30 +208,33 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Shows an error notification balloon.
+     * Logs an error message to the LS log window and auto-shows the window.
      *
      * @param project the current project
      * @param message the error message to display
      */
-    protected void showError(@NotNull Project project, @NotNull String message) {
-        NotificationGroupManager.getInstance()
-                .getNotificationGroup("BBj Language Server")
-                .createNotification(message, NotificationType.ERROR)
-                .notify(project);
+    protected void logError(@NotNull Project project, @NotNull String message) {
+        BbjServerService service = BbjServerService.getInstance(project);
+        service.logToConsole(message, ConsoleViewContentType.ERROR_OUTPUT);
+
+        // Auto-show log window on error
+        ApplicationManager.getApplication().invokeLater(() -> {
+            ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow("BBj Language Server");
+            if (tw != null && !tw.isVisible()) {
+                tw.show();
+            }
+        });
     }
 
     /**
-     * Shows a brief success notification.
+     * Logs an info message to the LS log window.
      *
      * @param project the current project
-     * @param fileName the name of the file being launched
-     * @param mode the run mode (GUI, BUI, DWC)
+     * @param message the info message to display
      */
-    protected void showSuccess(@NotNull Project project, @NotNull String fileName, @NotNull String mode) {
-        NotificationGroupManager.getInstance()
-                .getNotificationGroup("BBj Language Server")
-                .createNotification("Launched " + fileName + " (" + mode + ")", NotificationType.INFORMATION)
-                .notify(project);
+    protected void logInfo(@NotNull Project project, @NotNull String message) {
+        BbjServerService service = BbjServerService.getInstance(project);
+        service.logToConsole(message, ConsoleViewContentType.SYSTEM_OUTPUT);
     }
 
     /**

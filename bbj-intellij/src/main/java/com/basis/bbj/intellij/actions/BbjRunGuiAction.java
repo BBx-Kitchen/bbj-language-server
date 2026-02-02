@@ -20,12 +20,8 @@ public final class BbjRunGuiAction extends BbjRunActionBase {
     @Override
     @Nullable
     protected GeneralCommandLine buildCommandLine(@NotNull VirtualFile file, @NotNull Project project) {
-        // Get BBj executable path
+        // Get BBj executable path (validation already done in actionPerformed)
         String bbjPath = getBbjExecutablePath();
-        if (bbjPath == null) {
-            showError(project, "BBj home is not configured or bbj executable not found");
-            return null;
-        }
 
         // Build command line
         GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
