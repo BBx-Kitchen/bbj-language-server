@@ -79,7 +79,7 @@ See: .planning/MILESTONES.md
 ### New Issues Found (v1.1)
 
 8. Structure View symbol kind differentiation -- labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. GitHub issue filed.
-9. Completion icon mapping not yet wired into LSP4IJ -- BbjCompletionFeature ready with platform icons and Java-interop distinction, but LSPCompletionFeature API doesn't exist in LSP4IJ 0.19.0. TODO added for future wiring.
+~~9. Completion icon mapping not yet wired into LSP4IJ~~ RESOLVED -- BbjCompletionFeature extends LSPCompletionFeature, wired via setCompletionFeature() in BbjLanguageServerFactory.
 
 ### Blockers/Concerns
 

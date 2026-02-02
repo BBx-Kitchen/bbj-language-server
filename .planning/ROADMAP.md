@@ -3,7 +3,7 @@
 ## Milestones
 
 - v1.0 Internal Alpha - Phases 1-6 (shipped 2026-02-01)
-- v1.1 Polish & Run Commands - Phases 7-10 (in progress)
+- v1.1 Polish & Run Commands - Phases 7-10 (shipped 2026-02-02)
 
 ## Phases
 
@@ -14,14 +14,14 @@ See .planning/MILESTONES.md for details. 6 phases, 19 plans completed.
 
 </details>
 
-### v1.1 Polish & Run Commands (In Progress)
+### v1.1 Polish & Run Commands (Complete)
 
 **Milestone Goal:** Bring IntelliJ plugin to feature parity with VSCode for icons and run commands, fix all known v1.0 issues, and restore structure view.
 
 - [x] **Phase 7: Brand Icons** - Harvest VSCode brand icons and wire them into file types, plugin listing, and run actions
 - [x] **Phase 8: Run Commands** - Run BBj programs as GUI/BUI/DWC with toolbar buttons, shortcuts, and error handling
 - [x] **Phase 9: Structure View** - Document outline via LSP DocumentSymbol with navigation
-- [ ] **Phase 10: Bug Fixes & Polish** - Resolve all 7 carried-forward v1.0 issues
+- [x] **Phase 10: Bug Fixes & Polish** - Resolve all 7 carried-forward v1.0 issues
 
 ## Phase Details
 
@@ -81,8 +81,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Fix comment toggling (REM), bracket matching, and LSP Symbol popup
-- [ ] 10-02-PLAN.md — Fix LS shutdown grace period, wire completion icons, remove stale META-INF, review Linux paths
+- [x] 10-01-PLAN.md — Fix comment toggling (REM), bracket matching, and LSP Symbol popup
+- [x] 10-02-PLAN.md — Fix LS shutdown grace period, wire completion icons, remove stale META-INF, review Linux paths
 
 ## Progress
 
@@ -93,4 +93,4 @@ Plans:
 | 7. Brand Icons | v1.1 | 1/1 | Complete | 2026-02-01 |
 | 8. Run Commands | v1.1 | 2/2 | Complete | 2026-02-01 |
 | 9. Structure View | v1.1 | 1/1 | Complete | 2026-02-02 |
-| 10. Bug Fixes & Polish | v1.1 | 0/2 | Not started | - |
+| 10. Bug Fixes & Polish | v1.1 | 2/2 | Complete | 2026-02-02 |

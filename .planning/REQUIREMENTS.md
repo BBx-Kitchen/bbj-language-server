@@ -9,12 +9,12 @@ Requirements for v1.1 Polish & Run Commands milestone. Each maps to roadmap phas
 
 ### Icons
 
-- [ ] **ICON-01**: Plugin uses BBj brand file icon (from VSCode bbj-file SVGs) for .bbj/.bbl/.bbjt/.src files in light and dark themes
-- [ ] **ICON-02**: Plugin uses BBj config icon (from VSCode bbj-config SVGs) for .bbx files in light and dark themes
-- [ ] **ICON-03**: Plugin uses BBj brand icon (from VSCode icon.png) as marketplace/plugin listing icon
-- [ ] **ICON-04**: Run GUI toolbar button uses VSCode run-gui icon (light/dark)
-- [ ] **ICON-05**: Run BUI toolbar button uses VSCode run-bui icon (light/dark)
-- [ ] **ICON-06**: Run DWC toolbar button uses VSCode run-dwc icon (light/dark)
+- [x] **ICON-01**: Plugin uses BBj brand file icon (from VSCode bbj-file SVGs) for .bbj/.bbl/.bbjt/.src files in light and dark themes
+- [x] **ICON-02**: Plugin uses BBj config icon (from VSCode bbj-config SVGs) for .bbx files in light and dark themes
+- [x] **ICON-03**: Plugin uses BBj brand icon (from VSCode icon.png) as marketplace/plugin listing icon
+- [x] **ICON-04**: Run GUI toolbar button uses VSCode run-gui icon (light/dark)
+- [x] **ICON-05**: Run BUI toolbar button uses VSCode run-bui icon (light/dark)
+- [x] **ICON-06**: Run DWC toolbar button uses VSCode run-dwc icon (light/dark)
 
 ### Run Commands
 
@@ -39,13 +39,13 @@ Requirements for v1.1 Polish & Run Commands milestone. Each maps to roadmap phas
 
 ### Bug Fixes
 
-- [ ] **FIX-01**: Comment toggling (Ctrl+/ / Cmd+/) inserts/removes REM prefix on selected lines
-- [ ] **FIX-02**: Bracket matching works for parentheses, square brackets, and curly braces
-- [ ] **FIX-03**: "LSP Symbol ..." popup text on Cmd+hover is suppressed or shows meaningful content
-- [ ] **FIX-04**: Language server stays alive briefly after last BBj file is closed (grace period to avoid restart on quick file switches)
-- [ ] **FIX-05**: BbjCompletionFeature custom icons (function, variable, keyword) display in completion popup
-- [ ] **FIX-06**: Stale bbj-intellij/META-INF/plugin.xml file removed or consolidated
-- [ ] **FIX-07**: Linux code paths reviewed for correctness (process spawning, path separators, Node.js detection)
+- [x] **FIX-01**: Comment toggling (Ctrl+/ / Cmd+/) inserts/removes REM prefix on selected lines
+- [x] **FIX-02**: Bracket matching works for parentheses, square brackets, and curly braces
+- [x] **FIX-03**: "LSP Symbol ..." popup text on Cmd+hover is suppressed or shows meaningful content
+- [x] **FIX-04**: Language server stays alive briefly after last BBj file is closed (grace period to avoid restart on quick file switches)
+- [x] **FIX-05**: BbjCompletionFeature custom icons (function, variable, keyword) display in completion popup
+- [x] **FIX-06**: Stale bbj-intellij/META-INF/plugin.xml file removed or consolidated
+- [x] **FIX-07**: Linux code paths reviewed for correctness (process spawning, path separators, Node.js detection)
 
 ## Future Requirements
 
@@ -102,13 +102,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | STRUC-01 | Phase 9 | Complete |
 | STRUC-02 | Phase 9 | Complete |
 | STRUC-03 | Phase 9 | Complete |
-| FIX-01 | Phase 10 | Pending |
-| FIX-02 | Phase 10 | Pending |
-| FIX-03 | Phase 10 | Pending |
-| FIX-04 | Phase 10 | Pending |
-| FIX-05 | Phase 10 | Pending |
-| FIX-06 | Phase 10 | Pending |
-| FIX-07 | Phase 10 | Pending |
+| FIX-01 | Phase 10 | Complete |
+| FIX-02 | Phase 10 | Complete |
+| FIX-03 | Phase 10 | Complete |
+| FIX-04 | Phase 10 | Complete |
+| FIX-05 | Phase 10 | Complete |
+| FIX-06 | Phase 10 | Complete |
+| FIX-07 | Phase 10 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 28 total
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-01*
-*Last updated: 2026-02-02 after Phase 9 completion*
+*Last updated: 2026-02-02 after Phase 10 completion (v1.1 complete)*
