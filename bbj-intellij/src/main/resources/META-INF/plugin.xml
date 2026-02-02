@@ -1,5 +1,5 @@
 <idea-plugin>
-    <id>com.basis.bbj.intellij</id>
+    <id>com.basis.bbj</id>
     <name>BBj Language Support</name>
     <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International Ltd.</vendor>
 
