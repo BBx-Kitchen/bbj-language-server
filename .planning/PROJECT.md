@@ -2,11 +2,11 @@
 
 ## What This Is
 
-An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, hover, signature help, and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features.
+An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features.
 
 ## Core Value
 
-BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
+BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
 
 ## Requirements
 
@@ -31,24 +31,18 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - ✓ Bundled language server (compiled JS) in plugin distribution — v1.0
 - ✓ Node.js runtime detection with automatic download fallback — v1.0
 - ✓ java-interop connection health monitoring with status bar widget — v1.0
+- ✓ BBj brand icons (file, config, run actions) with light/dark themes — v1.1
+- ✓ Run BBj programs as GUI/BUI/DWC from toolbar and keyboard shortcuts — v1.1
+- ✓ Document outline / Structure view via LSP DocumentSymbol — v1.1
+- ✓ REM comment toggling (Cmd+/ / Ctrl+/) — v1.1
+- ✓ Bracket matching for (), [], {} — v1.1
+- ✓ Completion popup icons with Java-interop distinction — v1.1
+- ✓ 30-second LS shutdown grace period — v1.1
+- ✓ Linux/ARM64 code path review — v1.1
 
 ### Active
 
-#### v1.1 — Polish, Icons, Run Commands & Fixes
-
-- [ ] Harvest VSCode brand icons (file, config, run) and adapt for IntelliJ light/dark conventions
-- [ ] Run BBj program as GUI (spawn bbj executable with current file)
-- [ ] Run BBj program as BUI (web runner with bundled web.bbj)
-- [ ] Run BBj program as DWC (web runner with bundled web.bbj)
-- [ ] Run command toolbar buttons, menu actions, and keyboard shortcuts
-- [ ] Document outline / Structure view via LSP DocumentSymbol
-- [ ] Comment toggling with REM keyword
-- [ ] Bracket/keyword matching
-- [ ] Fix "LSP Symbol ..." popup text cosmetic issue
-- [ ] Fix LS shutdown delay on last file close
-- [ ] Wire BbjCompletionFeature custom icons into completion pipeline
-- [ ] Clean up stale bbj-intellij/META-INF/plugin.xml
-- [ ] Linux code path review
+(No active milestone — planning next)
 
 ### Out of Scope
 
@@ -56,11 +50,10 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - Debugging support — future milestone
 - BBj project wizard/templates — future milestone
 - Refactoring support (rename across files) — future milestone
-- Run configurations for BBj programs — moved to v1.1 (run actions, not full run configs)
 
 ## Context
 
-**Current state:** v1.0 internal alpha shipped 2026-02-01. v1.1 in progress — adding run commands, brand icons, structure view, and fixing carried-forward issues. Plugin is a 671KB ZIP containing a JAR with 35 Java source classes, bundled language server (main.cjs, 1.8MB), and TextMate grammars. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
+**Current state:** v1.1 shipped 2026-02-02. Plugin provides full BBj language support including run commands, Structure view, and brand icons. 35 Java source classes, bundled language server (main.cjs, 1.8MB), TextMate grammars, and web.bbj runner. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
 
@@ -71,6 +64,11 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 **Target users:** BBj developers using IntelliJ, primarily Community Edition.
 
 **Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `feat_intellij` branch.
+
+**Known tech debt:**
+- Structure View symbol kind differentiation (language server issue in bbj-node-kind.ts)
+- Run command output not captured in IntelliJ console tool window
+- EM credentials stored as plaintext in settings
 
 ## Constraints
 
@@ -92,16 +90,13 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | Independent TCP health check for java-interop | Don't rely on LS reporting java-interop status | ✓ Good — clear status bar with grace period |
 | stdio transport for LS | Simpler than TCP; LSP4IJ handles it natively | ✓ Good — reliable process management |
 | `untilBuild = ""` (no cap) | Forward compatibility with future IntelliJ versions | ✓ Good — fixed after 2025.3 incompatibility |
-
-## Current Milestone: v1.1 Polish & Run Commands
-
-**Goal:** Bring IntelliJ plugin to feature parity with VSCode for icons and run commands, fix all known v1.0 issues, and restore structure view.
-
-**Target features:**
-- Brand icons harvested from VSCode extension (file types, run buttons, plugin icon)
-- Run GUI / BUI / DWC commands with toolbar buttons and keyboard shortcuts
-- Document outline / Structure view working via LSP DocumentSymbol
-- All 7 carried-forward issues resolved
+| IntelliJ _dark.svg suffix convention | Auto-selected by IntelliJ theme system | ✓ Good — zero code for theme switching |
+| Project root as run working directory | Consistent across GUI/BUI/DWC modes | ✓ Good — differs from VSCode but simpler |
+| Abstract BbjRunActionBase pattern | Shared auto-save, settings, error handling across 3 run modes | ✓ Good — DRY, extensible |
+| web.bbj path via PluginManagerCore | Robust plugin path discovery for bundled runner | ✓ Good — works in sandbox and production |
+| Single XML for Structure View | LSP4IJ handles DocumentSymbol → tree mapping | ✓ Good — 5 lines, no custom Java |
+| 30-second LS grace period | Prevents disruptive restarts when switching files | ✓ Good — smooth UX |
+| Platform AllIcons.Nodes for completion | Native look; Java-interop distinction via detail heuristic | ✓ Good — consistent with IntelliJ |
 
 ---
-*Last updated: 2026-02-01 after v1.1 milestone start*
+*Last updated: 2026-02-02 after v1.1 milestone completion*

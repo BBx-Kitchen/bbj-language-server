@@ -2,84 +2,39 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-01)
+See: .planning/PROJECT.md (updated 2026-02-02)
 
-**Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** v1.1 Phase 10 — Bug Fixes & Polish
+**Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Milestone: v1.1 Polish & Run Commands
-Phase: 10 of 10 (Bug Fixes & Polish)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-02 — Completed 10-02-PLAN.md
-
-Progress: [██████] 6/6 (100%)
+Milestone: None active (v1.1 complete)
+Phase: N/A
+Plan: N/A
+Status: Ready for next milestone
+Last activity: 2026-02-02 — v1.1 milestone complete
 
 ## Milestone History
 
 | Milestone | Phases | Plans | Shipped |
 |-----------|--------|-------|---------|
 | v1.0 Internal Alpha | 1-6 | 19 | 2026-02-01 |
+| v1.1 Polish & Run Commands | 7-10 | 6 | 2026-02-02 |
 
 See: .planning/MILESTONES.md
 
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 19 (v1.0) + 6 (v1.1) = 25
-- v1.1 plans completed: 6
-- v1.1 total plans: 6
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 7. Brand Icons | 1/1 | ~12min | ~12min |
-| 8. Run Commands | 2/2 | ~6min | ~3min |
-| 9. Structure View | 1/1 | - | - |
-| 10. Bug Fixes | 2/2 | ~7min | ~3.5min |
-
 ## Accumulated Context
 
-### Decisions (v1.1)
+### Known Issues
 
-| Phase | Decision | Rationale |
-|-------|----------|-----------|
-| 07-01 | viewBox 0 0 3000 3000 with translate/scale for B-logo SVGs | Preserves original path coordinates from VSCode source without rescaling |
-| 07-01 | Stroke-based rendering for Tabler icons | IntelliJ renders strokes correctly; simpler than converting to fill paths |
-| 07-01 | BbxConfigFileType uses BbjLanguage.INSTANCE | Shares BBj syntax highlighting and LSP support for .bbx files |
-| 07-01 | Icon colors: #6E6E6E light, #AFB1B3 dark | IntelliJ standard icon color convention |
-| 08-01 | Project root as working directory | Uses project.getBasePath() for -WD flag instead of VSCode's file directory |
-| 08-01 | ActionUpdateThread.BGT for update() | File extension check is cheap, safe to run on background thread |
-| 08-01 | Auto-save defaults to true | Matches VSCode behavior, prevents running stale code |
-| 08-02 | web.bbj path via PluginManagerCore | PluginManagerCore.getPlugin().getPluginPath() more robust than PathManager |
-| 08-02 | Separate BUI/DWC action classes | Clearer action registry than single parameterized class |
-| 08-02 | web.bbj working directory is tools dir | Matches VSCode webRunnerWorkingDir pattern |
-| 08-02 | Three separate toolbar buttons | Individual MainToolBar registrations for visible buttons vs dropdown group |
-| 09-01 | Single XML extension point, no custom Java class | LSP4IJ's LSPDocumentSymbolStructureViewFactory handles all mapping |
-| 10-01 | LINE_COMMENT_AT_FIRST_COLUMN = true for REM placement | Forces REM at column 0 via code style settings, comment stacking automatic |
-| 10-01 | Distinct bracket token types for matching | PairedBraceMatcher requires LPAREN/RPAREN/etc., not generic SYMBOL |
-| 10-01 | LSPHoverFeature.isSupported() = false | Suppresses hover placeholder; language server doesn't implement hover anyway |
-| 10-02 | 30-second grace period with FileEditorManagerListener | Prevents disruptive LS restarts when switching files; cancels shutdown if BBj file reopens |
-| 10-02 | Platform icons via AllIcons.Nodes for completion | Native look consistent with IntelliJ; Java-interop distinction via detail field heuristic |
-| 10-02 | ARM64 detection on all platforms | SystemInfo.isAarch64 check before platform-specific logic; works on Linux ARM64 now |
+1. Structure View symbol kind differentiation — labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue.
 
-### Known Issues (from v1.0 -- ALL RESOLVED in Phase 10)
+### Tech Debt
 
-1. ~~Comment toggling (REM) -- FIX-01~~ RESOLVED in 10-01
-2. ~~Bracket/keyword matching -- FIX-02~~ RESOLVED in 10-01
-3. ~~"LSP Symbol ..." popup text -- FIX-03~~ RESOLVED in 10-01
-4. ~~LS shutdown delay on last file close -- FIX-04~~ RESOLVED in 10-02
-5. ~~BbjCompletionFeature orphaned icons -- FIX-05~~ RESOLVED in 10-02
-6. ~~Stale bbj-intellij/META-INF/plugin.xml -- FIX-06~~ RESOLVED in 10-02
-7. ~~Linux code path review -- FIX-07~~ RESOLVED in 10-02
-
-### New Issues Found (v1.1)
-
-8. Structure View symbol kind differentiation -- labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. GitHub issue filed.
-~~9. Completion icon mapping not yet wired into LSP4IJ~~ RESOLVED -- BbjCompletionFeature extends LSPCompletionFeature, wired via setCompletionFeature() in BbjLanguageServerFactory.
+- Run command output not captured in IntelliJ console tool window
+- EM credentials stored as plaintext in settings
+- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 
 ### Blockers/Concerns
 
@@ -88,6 +43,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 10-02-PLAN.md (Phase 10 complete, v1.1 milestone complete)
+Stopped at: v1.1 milestone archived
 Resume file: None
-Next: None - v1.1 milestone complete
+Next: /gsd:new-milestone when ready to start next version
