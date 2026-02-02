@@ -5,6 +5,9 @@ import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
+import com.intellij.execution.process.ProcessAdapter;
+import com.intellij.execution.process.ProcessEvent;
+import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
@@ -13,6 +16,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
@@ -62,6 +66,38 @@ public abstract class BbjRunActionBase extends AnAction {
         // Execute the command
         try {
             OSProcessHandler handler = new OSProcessHandler(cmd);
+
+            // Attach ProcessAdapter BEFORE startNotify() to capture all output
+            handler.addProcessListener(new ProcessAdapter() {
+                @Override
+                public void onTextAvailable(@NotNull ProcessEvent event, @NotNull Key outputType) {
+                    if (outputType == ProcessOutputTypes.STDERR) {
+                        String text = event.getText();
+                        if (text != null && !text.isBlank()) {
+                            BbjServerService service = BbjServerService.getInstance(project);
+                            service.logToConsole("[" + getRunMode() + "] " + text.stripTrailing(), ConsoleViewContentType.ERROR_OUTPUT);
+
+                            // Auto-show log window on stderr
+                            ApplicationManager.getApplication().invokeLater(() -> {
+                                ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow("BBj Language Server");
+                                if (tw != null && !tw.isVisible()) {
+                                    tw.show();
+                                }
+                            });
+                        }
+                    }
+                }
+
+                @Override
+                public void processTerminated(@NotNull ProcessEvent event) {
+                    int exitCode = event.getExitCode();
+                    if (exitCode != 0) {
+                        BbjServerService service = BbjServerService.getInstance(project);
+                        service.logToConsole("[" + getRunMode() + "] Process exited with code " + exitCode, ConsoleViewContentType.ERROR_OUTPUT);
+                    }
+                }
+            });
+
             handler.startNotify();
             logInfo(project, "[" + getRunMode() + "] Launched " + file.getName());
         } catch (ExecutionException ex) {
