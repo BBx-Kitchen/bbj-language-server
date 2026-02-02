@@ -228,7 +228,7 @@ public abstract class BbjRunActionBase extends AnAction {
         try {
             com.intellij.ide.plugins.PluginManagerCore pluginManagerCore = com.intellij.ide.plugins.PluginManagerCore.INSTANCE;
             com.intellij.ide.plugins.IdeaPluginDescriptor plugin = pluginManagerCore.getPlugin(
-                com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj.intellij")
+                com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj")
             );
             if (plugin == null) {
                 return null;

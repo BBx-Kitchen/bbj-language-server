@@ -67,7 +67,7 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
     private String resolveServerPath() {
         // Try plugin installation path first
-        PluginId pluginId = PluginId.getId("com.basis.bbj.intellij");
+        PluginId pluginId = PluginId.getId("com.basis.bbj");
         IdeaPluginDescriptor plugin = PluginManagerCore.getPlugin(pluginId);
         if (plugin != null) {
             Path serverPath = plugin.getPluginPath().resolve("lib").resolve("language-server").resolve("main.cjs");
