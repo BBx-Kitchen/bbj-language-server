@@ -24,8 +24,8 @@ Fix broken run commands, capture console output for proper debugging, and prepar
 **Plans:** 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Fix executable resolution and add stderr capture
-- [ ] 11-02-PLAN.md — Fix toolbar visibility and add context menu
+- [x] 11-01-PLAN.md — Fix executable resolution and add stderr capture
+- [x] 11-02-PLAN.md — Fix toolbar visibility and add context menu
 
 ### Phase 12: Marketplace Preparation
 
@@ -48,7 +48,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 11. Run Command Fixes | 0/2 | Not started | - |
+| 11. Run Command Fixes | 2/2 | ✓ Complete | 2026-02-02 |
 | 12. Marketplace Preparation | 0/? | Not started | - |
 
 ---
@@ -57,19 +57,28 @@ Plans:
 
 **Key Decisions:**
 
-(To be filled during execution)
+- Use java.nio.file.Files API for executable resolution (JDK-4956115 symbolic link handling)
+- Route all run errors to LS log window only (no notification balloons)
+- Gate run actions on LS started status to prevent bad state
+- Eager BBj Home auto-detection in BbjSettings.getState()
+- Move process launch off EDT to pooled thread
+- Replace MainToolBar with ProjectViewPopupMenu submenu
 
 **Issues Resolved:**
 
-(To be filled during execution)
+- BBj executable "not found" despite valid BBj Home (symbolic link issue)
+- Toolbar buttons hidden in IntelliJ new UI (MainToolBar not shown by default)
+- Process stderr silently lost (no capture)
+- IDE lockup when running without LS connected
+- BBj Home "not configured" false positive (auto-detection only in settings dialog)
 
 **Issues Deferred:**
 
-(To be filled during execution)
+- Windows end-to-end testing (RUN-05) — no Windows environment available for automated testing
 
 **Technical Debt Incurred:**
 
-(To be filled during execution)
+None
 
 ---
 

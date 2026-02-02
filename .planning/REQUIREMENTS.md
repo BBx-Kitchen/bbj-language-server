@@ -9,11 +9,11 @@ Requirements for Milestone v1.2: Run Fixes & Marketplace. Each maps to roadmap p
 
 ### Run Commands
 
-- [ ] **RUN-01**: BBj executable is correctly resolved from configured BBj Home path
-- [ ] **RUN-02**: Run toolbar buttons (GUI/BUI/DWC) are visible in IntelliJ new UI
-- [ ] **RUN-03**: Run command stdout/stderr is captured and displayed in IntelliJ console tool window
-- [ ] **RUN-04**: Run commands work end-to-end on macOS (GUI/BUI/DWC)
-- [ ] **RUN-05**: Run commands work end-to-end on Windows (GUI/BUI/DWC)
+- [x] **RUN-01**: BBj executable is correctly resolved from configured BBj Home path
+- [x] **RUN-02**: Run toolbar buttons (GUI/BUI/DWC) are visible in IntelliJ new UI
+- [x] **RUN-03**: Run command stdout/stderr is captured and displayed in IntelliJ console tool window
+- [x] **RUN-04**: Run commands work end-to-end on macOS (GUI/BUI/DWC)
+- [x] **RUN-05**: Run commands work end-to-end on Windows (GUI/BUI/DWC)
 
 ### Marketplace
 
@@ -57,11 +57,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUN-01 | 11 | Pending |
-| RUN-02 | 11 | Pending |
-| RUN-03 | 11 | Pending |
-| RUN-04 | 11 | Pending |
-| RUN-05 | 11 | Pending |
+| RUN-01 | 11 | Complete |
+| RUN-02 | 11 | Complete |
+| RUN-03 | 11 | Complete |
+| RUN-04 | 11 | Complete |
+| RUN-05 | 11 | Complete |
 | MKT-01 | 12 | Pending |
 | MKT-02 | 12 | Pending |
 | MKT-03 | 12 | Pending |
