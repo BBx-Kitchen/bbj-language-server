@@ -21,11 +21,11 @@ Fix broken run commands, capture console output for proper debugging, and prepar
   3. User runs a BBj program, and stdout/stderr output appears in IntelliJ's console tool window (not lost)
   4. User runs a BBj program as GUI/BUI/DWC on macOS and all three modes execute successfully
   5. User runs a BBj program as GUI/BUI/DWC on Windows and all three modes execute successfully
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — TBD
-- [ ] 11-02-PLAN.md — TBD
+- [ ] 11-01-PLAN.md — Fix executable resolution and add stderr capture
+- [ ] 11-02-PLAN.md — Fix toolbar visibility and add context menu
 
 ### Phase 12: Marketplace Preparation
 
@@ -48,7 +48,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 11. Run Command Fixes | 0/? | Not started | - |
+| 11. Run Command Fixes | 0/2 | Not started | - |
 | 12. Marketplace Preparation | 0/? | Not started | - |
 
 ---
