@@ -23,7 +23,6 @@
                 description="Run current BBj file as GUI program"
                 icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
-            <add-to-group group-id="MainToolBar" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="alt G"/>
         </action>
 
@@ -33,7 +32,6 @@
                 description="Run current BBj file as BUI program in browser"
                 icon="com.basis.bbj.intellij.BbjIcons.RUN_BUI">
             <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runGui"/>
-            <add-to-group group-id="MainToolBar" anchor="after" relative-to-action="bbj.runGui"/>
             <keyboard-shortcut keymap="$default" first-keystroke="alt B"/>
         </action>
 
@@ -43,9 +41,20 @@
                 description="Run current BBj file as DWC program in browser"
                 icon="com.basis.bbj.intellij.BbjIcons.RUN_DWC">
             <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runBui"/>
-            <add-to-group group-id="MainToolBar" anchor="after" relative-to-action="bbj.runBui"/>
             <keyboard-shortcut keymap="$default" first-keystroke="alt D"/>
         </action>
+
+        <!-- BBj Run submenu for Project View context menu -->
+        <group id="bbj.runGroup"
+               text="BBj Run"
+               description="Run BBj program"
+               icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI"
+               popup="true">
+            <reference ref="bbj.runGui"/>
+            <reference ref="bbj.runBui"/>
+            <reference ref="bbj.runDwc"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="$Cut"/>
+        </group>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
