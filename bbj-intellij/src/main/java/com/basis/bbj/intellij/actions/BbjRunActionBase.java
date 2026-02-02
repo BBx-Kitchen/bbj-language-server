@@ -63,46 +63,48 @@ public abstract class BbjRunActionBase extends AnAction {
             return;
         }
 
-        // Execute the command
-        try {
-            OSProcessHandler handler = new OSProcessHandler(cmd);
+        // Execute the command off EDT to avoid UI freezing
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                OSProcessHandler handler = new OSProcessHandler(cmd);
 
-            // Attach ProcessAdapter BEFORE startNotify() to capture all output
-            handler.addProcessListener(new ProcessAdapter() {
-                @Override
-                public void onTextAvailable(@NotNull ProcessEvent event, @NotNull Key outputType) {
-                    if (outputType == ProcessOutputTypes.STDERR) {
-                        String text = event.getText();
-                        if (text != null && !text.isBlank()) {
-                            BbjServerService service = BbjServerService.getInstance(project);
-                            service.logToConsole("[" + getRunMode() + "] " + text.stripTrailing(), ConsoleViewContentType.ERROR_OUTPUT);
+                // Attach ProcessAdapter BEFORE startNotify() to capture all output
+                handler.addProcessListener(new ProcessAdapter() {
+                    @Override
+                    public void onTextAvailable(@NotNull ProcessEvent event, @NotNull Key outputType) {
+                        if (outputType == ProcessOutputTypes.STDERR) {
+                            String text = event.getText();
+                            if (text != null && !text.isBlank()) {
+                                BbjServerService service = BbjServerService.getInstance(project);
+                                service.logToConsole("[" + getRunMode() + "] " + text.stripTrailing(), ConsoleViewContentType.ERROR_OUTPUT);
 
-                            // Auto-show log window on stderr
-                            ApplicationManager.getApplication().invokeLater(() -> {
-                                ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow("BBj Language Server");
-                                if (tw != null && !tw.isVisible()) {
-                                    tw.show();
-                                }
-                            });
+                                // Auto-show log window on stderr
+                                ApplicationManager.getApplication().invokeLater(() -> {
+                                    ToolWindow tw = ToolWindowManager.getInstance(project).getToolWindow("BBj Language Server");
+                                    if (tw != null && !tw.isVisible()) {
+                                        tw.show();
+                                    }
+                                });
+                            }
                         }
                     }
-                }
 
-                @Override
-                public void processTerminated(@NotNull ProcessEvent event) {
-                    int exitCode = event.getExitCode();
-                    if (exitCode != 0) {
-                        BbjServerService service = BbjServerService.getInstance(project);
-                        service.logToConsole("[" + getRunMode() + "] Process exited with code " + exitCode, ConsoleViewContentType.ERROR_OUTPUT);
+                    @Override
+                    public void processTerminated(@NotNull ProcessEvent event) {
+                        int exitCode = event.getExitCode();
+                        if (exitCode != 0) {
+                            BbjServerService service = BbjServerService.getInstance(project);
+                            service.logToConsole("[" + getRunMode() + "] Process exited with code " + exitCode, ConsoleViewContentType.ERROR_OUTPUT);
+                        }
                     }
-                }
-            });
+                });
 
-            handler.startNotify();
-            logInfo(project, "[" + getRunMode() + "] Launched " + file.getName());
-        } catch (ExecutionException ex) {
-            logError(project, "Failed to launch: " + ex.getMessage());
-        }
+                handler.startNotify();
+                logInfo(project, "[" + getRunMode() + "] Launched " + file.getName());
+            } catch (ExecutionException ex) {
+                logError(project, "Failed to launch: " + ex.getMessage());
+            }
+        });
     }
 
     @Override
@@ -116,7 +118,15 @@ public abstract class BbjRunActionBase extends AnAction {
             isBbjFile = ext != null && (ext.equals("bbj") || ext.equals("bbl") || ext.equals("bbjt") || ext.equals("src") || ext.equals("bbx"));
         }
 
-        e.getPresentation().setEnabledAndVisible(project != null && isBbjFile);
+        // Only enable run actions when language server is connected
+        boolean serverReady = false;
+        if (project != null && isBbjFile) {
+            BbjServerService service = BbjServerService.getInstance(project);
+            com.redhat.devtools.lsp4ij.ServerStatus status = service.getCurrentStatus();
+            serverReady = status == com.redhat.devtools.lsp4ij.ServerStatus.started;
+        }
+
+        e.getPresentation().setEnabledAndVisible(project != null && isBbjFile && serverReady);
     }
 
     @Override
