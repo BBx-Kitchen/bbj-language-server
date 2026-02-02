@@ -228,10 +228,11 @@ public final class BbjNodeDownloader {
     }
 
     private static @NotNull String getArchitecture() {
-        if (SystemInfo.isMac) {
-            return SystemInfo.isAarch64 ? "arm64" : "x64";
+        // Check ARM64 first - works on all platforms (macOS, Linux, Windows)
+        if (SystemInfo.isAarch64) {
+            return "arm64";
         }
-        // For Linux and Windows, only support x64 (32-bit is deprecated in 2026)
+        // Fall through to x64 for all other 64-bit systems
         if (!SystemInfo.is64Bit) {
             throw new UnsupportedOperationException("32-bit systems are not supported");
         }
