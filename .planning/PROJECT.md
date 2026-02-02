@@ -2,7 +2,7 @@
 
 ## What This Is
 
-An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features.
+An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features. Published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
@@ -39,19 +39,19 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - ✓ Completion popup icons with Java-interop distinction — v1.1
 - ✓ 30-second LS shutdown grace period — v1.1
 - ✓ Linux/ARM64 code path review — v1.1
+- ✓ BBj executable resolution using java.nio.file.Files API (symbolic link handling) — v1.2
+- ✓ Run toolbar visible in IntelliJ new UI via ProjectViewPopupMenu — v1.2
+- ✓ Run command stderr captured in LS log window — v1.2
+- ✓ Run commands work end-to-end on macOS (GUI/BUI/DWC) — v1.2
+- ✓ Run commands work end-to-end on Windows (GUI/BUI/DWC) — v1.2
+- ✓ Marketplace logo/icon (pluginIcon.svg with dark variant) — v1.2
+- ✓ Marketplace description, vendor info, and change notes — v1.2
+- ✓ MIT License and third-party NOTICES in distribution — v1.2
+- ✓ Plugin verifier passes with zero compatibility errors — v1.2
 
 ### Active
 
-**Current Milestone: v1.2 Run Fixes & Marketplace**
-
-**Goal:** Fix broken run commands, capture run output in console, and meet all JetBrains Marketplace approval criteria for first publication.
-
-**Target features:**
-- Fix BBj executable resolution (reported "not found" despite configured BBj Home)
-- Fix toolbar button visibility in IntelliJ new UI (Community + Ultimate)
-- Verify run commands end-to-end on macOS and Windows
-- Capture run command output in IntelliJ console tool window
-- Meet JetBrains Marketplace approval guidelines (logo, description, EULA, plugin verifier)
+(No active milestone — next milestone TBD)
 
 ### Out of Scope
 
@@ -62,7 +62,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ## Context
 
-**Current state:** v1.1 shipped 2026-02-02. Plugin provides full BBj language support including run commands, Structure view, and brand icons. 35 Java source classes, bundled language server (main.cjs, 1.8MB), TextMate grammars, and web.bbj runner. Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
+**Current state:** v1.2 shipped 2026-02-02. Plugin provides full BBj language support including run commands, Structure view, brand icons, and is ready for JetBrains Marketplace publication. 35 Java source classes (3,902 LOC), bundled language server (main.cjs, 1.8MB), TextMate grammars, and web.bbj runner. Distribution ZIP: bbj-intellij-0.1.0.zip (685KB). Plugin verifier passes across 6 IDE versions (IC-242 through IU-261). Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
 
@@ -76,8 +76,8 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 **Known tech debt:**
 - Structure View symbol kind differentiation (language server issue in bbj-node-kind.ts)
-- Run command output not captured in IntelliJ console tool window
 - EM credentials stored as plaintext in settings
+- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 
 ## Constraints
 
@@ -98,7 +98,6 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | Application-level settings | Global config, not per-project | ✓ Good — matches BBj installation pattern |
 | Independent TCP health check for java-interop | Don't rely on LS reporting java-interop status | ✓ Good — clear status bar with grace period |
 | stdio transport for LS | Simpler than TCP; LSP4IJ handles it natively | ✓ Good — reliable process management |
-| `untilBuild = ""` (no cap) | Forward compatibility with future IntelliJ versions | ✓ Good — fixed after 2025.3 incompatibility |
 | IntelliJ _dark.svg suffix convention | Auto-selected by IntelliJ theme system | ✓ Good — zero code for theme switching |
 | Project root as run working directory | Consistent across GUI/BUI/DWC modes | ✓ Good — differs from VSCode but simpler |
 | Abstract BbjRunActionBase pattern | Shared auto-save, settings, error handling across 3 run modes | ✓ Good — DRY, extensible |
@@ -106,6 +105,15 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | Single XML for Structure View | LSP4IJ handles DocumentSymbol → tree mapping | ✓ Good — 5 lines, no custom Java |
 | 30-second LS grace period | Prevents disruptive restarts when switching files | ✓ Good — smooth UX |
 | Platform AllIcons.Nodes for completion | Native look; Java-interop distinction via detail heuristic | ✓ Good — consistent with IntelliJ |
+| java.nio.file.Files API for executable resolution | JDK-4956115 symbolic link handling | ✓ Good — fixed "not found" bug |
+| LS log window only (no notification balloons) | Centralized error output for run commands | ✓ Good — clean UX |
+| Gate run actions on LS started status | Prevents IDE lockup when LS stopped | ✓ Good — prevents bad state |
+| Eager BBj Home auto-detection in getState() | Zero-config experience without visiting settings | ✓ Good — works on first run |
+| Process launch off EDT to pooled thread | Prevents UI freezing during process startup | ✓ Good — responsive UI |
+| ProjectViewPopupMenu instead of MainToolBar | MainToolBar hidden in IntelliJ new UI (2024.2+) | ✓ Good — reliable access |
+| Plugin ID `com.basis.bbj` (no 'intellij') | Marketplace naming rules prohibit 'intellij' keyword | ✓ Good — compliant |
+| `recommended()` for plugin verifier | Auto-aligns with sinceBuild/untilBuild range | ✓ Good — no version mismatches |
+| Only claim features with implementation evidence | Ensures honest marketplace listing | ✓ Good — all 9 features verified |
 
 ---
-*Last updated: 2026-02-02 after v1.2 milestone start*
+*Last updated: 2026-02-02 after v1.2 milestone completion*

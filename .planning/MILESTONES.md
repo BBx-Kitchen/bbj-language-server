@@ -1,5 +1,33 @@
 # Project Milestones: BBj Language Server - IntelliJ Integration
 
+## v1.2 Run Fixes & Marketplace (Shipped: 2026-02-02)
+
+**Delivered:** Fixed all broken run commands with proper stderr capture, prepared plugin for JetBrains Marketplace publication with verified metadata, licensing, and plugin verifier compliance — ready for first public release.
+
+**Phases completed:** 11-13 (5 plans total)
+
+**Key accomplishments:**
+
+- Fixed BBj executable resolution using java.nio.file.Files API (handles symbolic links correctly)
+- Added process stderr capture via ProcessAdapter routed to LS log window with auto-show on errors
+- Replaced MainToolBar with ProjectViewPopupMenu submenu for IntelliJ new UI compatibility
+- Prepared complete Marketplace metadata (description, icons, MIT License, NOTICES, change notes)
+- Passed JetBrains plugin verifier with zero compatibility errors across 6 IDE versions
+- Fixed plugin ID mismatch that broke BUI/DWC run commands in production installs
+
+**Stats:**
+
+- 33 files created/modified
+- 3,902 lines of Java (plugin source, cumulative)
+- 3 phases, 5 plans
+- 1 day (2026-02-02)
+
+**Git range:** `68d2672` → `439ce83`
+
+**What's next:** Upload bbj-intellij-0.1.0.zip to JetBrains Marketplace for first public publication.
+
+---
+
 ## v1.1 Polish & Run Commands (Shipped: 2026-02-02)
 
 **Delivered:** Brand icons, run commands (GUI/BUI/DWC), Structure view, and all 7 carried-forward v1.0 bug fixes — bringing the IntelliJ plugin to feature parity with VSCode for daily development workflows.
