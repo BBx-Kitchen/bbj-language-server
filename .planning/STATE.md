@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Milestone: v1.2 Run Fixes & Marketplace
-Phase: 11 (Run Command Fixes) — COMPLETE
-Plan: All plans complete (2/2)
-Status: Phase 11 verified, ready for Phase 12
-Last activity: 2026-02-02 — Phase 11 execution complete, human-verified
+Phase: 12 (Marketplace Preparation) — IN PROGRESS
+Plan: 1 of 2+ complete
+Status: Plan 12-01 complete, ready for Plan 12-02 (icon assets)
+Last activity: 2026-02-02 — Completed 12-01-PLAN.md
 
 ## Milestone History
 
@@ -45,10 +45,10 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-02
-Stopped at: Phase 11 execution complete
+Last session: 2026-02-02T20:09:53Z
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None
-Next: /gsd:discuss-phase 12
+Next: /gsd:execute-plan 12-02 (or create plan if doesn't exist)
 
 ## Recent Decisions
 
@@ -62,3 +62,6 @@ Next: /gsd:discuss-phase 12
 | Gate run actions on LS started status | 11-02 | Prevents bad state when LS stopped via grace period |
 | Move process launch off EDT to pooled thread | 11-02 | Prevents UI freezing during process startup |
 | Eager BBj Home auto-detection in getState() | 11-02 | Users shouldn't need to visit settings dialog for auto-detection |
+| Only list features with confirmed codebase implementation evidence | 12-01 | Ensures honest marketplace listing (CONTEXT.md requirement) |
+| Remove CDATA wrapper from Gradle changeNotes | 12-01 | patchPluginXml adds it automatically; manual wrapper causes build error |
+| Use recommended() for pluginVerification IDE selection | 12-01 | Auto-aligns with sinceBuild/untilBuild, prevents version mismatches |
