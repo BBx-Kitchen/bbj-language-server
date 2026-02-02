@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.basis.bbj"
-version = "0.1.0-alpha"
+version = "0.1.0"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -44,9 +44,30 @@ intellijPlatform {
 
         description = file("src/main/resources/META-INF/description.html").readText()
 
+        changeNotes = """
+            <h3>0.1.0 - Initial Release</h3>
+            <ul>
+              <li>Syntax highlighting with TextMate grammars for BBj and BBx config files</li>
+              <li>Real-time error diagnostics and validation</li>
+              <li>Intelligent code completion for BBj keywords and Java classes</li>
+              <li>Go-to-definition navigation</li>
+              <li>Hover documentation for symbols and methods</li>
+              <li>Signature help for method calls</li>
+              <li>Java interop intelligence for BASIS.BBjAPI classes</li>
+              <li>Run commands for GUI, BUI, and DWC programs</li>
+              <li>Document outline and structure view</li>
+            </ul>
+        """.trimIndent()
+
         ideaVersion {
             sinceBuild = "242"
             untilBuild = provider { "" }
+        }
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
         }
     }
 }
