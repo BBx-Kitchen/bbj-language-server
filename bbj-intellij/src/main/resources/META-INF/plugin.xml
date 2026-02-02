@@ -88,6 +88,11 @@
             language="BBj"
             implementationClass="com.basis.bbj.intellij.BbjCommenter"/>
 
+        <!-- LSP textDocument/documentSymbol -> Structure View -->
+        <lang.psiStructureViewFactory
+            language="BBj"
+            implementationClass="com.redhat.devtools.lsp4ij.features.documentSymbol.LSPDocumentSymbolStructureViewFactory"/>
+
         <!-- Color Scheme settings page for BBj -->
         <colorSettingsPage implementation="com.basis.bbj.intellij.BbjColorSettingsPage"/>
 
