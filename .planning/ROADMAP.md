@@ -37,10 +37,11 @@ Plans:
   2. plugin.xml contains complete description, vendor information, and change notes suitable for Marketplace listing
   3. Plugin distribution includes EULA or license text that users see during installation
   4. Running JetBrains plugin verifier produces zero errors (warnings acceptable)
-**Plans:** TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — TBD
+- [ ] 12-01-PLAN.md — Marketplace metadata, licensing, and Gradle configuration
+- [ ] 12-02-PLAN.md — Plugin verifier compliance and final verification
 
 ## Progress
 
@@ -49,7 +50,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Run Command Fixes | 2/2 | ✓ Complete | 2026-02-02 |
-| 12. Marketplace Preparation | 0/? | Not started | - |
+| 12. Marketplace Preparation | 0/2 | Not started | - |
 
 ---
 
