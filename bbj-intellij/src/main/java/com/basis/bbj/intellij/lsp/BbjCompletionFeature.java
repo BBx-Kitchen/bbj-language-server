@@ -1,105 +1,77 @@
 package com.basis.bbj.intellij.lsp;
 
 import com.intellij.icons.AllIcons;
+import com.redhat.devtools.lsp4ij.client.features.LSPCompletionFeature;
 import org.eclipse.lsp4j.CompletionItem;
 import org.eclipse.lsp4j.CompletionItemKind;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
 
 /**
- * Utility for mapping LSP completion item kinds to IntelliJ platform icons.
- * Uses AllIcons.Nodes for native look and feel consistent with other languages.
- * Distinguishes Java-interop completions by detail field heuristic.
+ * Maps LSP CompletionItemKind to IntelliJ platform icons.
+ * Distinguishes Java-interop completions from BBj completions
+ * by inspecting the completion item's detail field.
  *
- * TODO: Wire into LSP4IJ completion pipeline when LSPCompletionFeature API becomes available.
+ * Uses native platform icons for consistency with other languages.
  */
-public final class BbjCompletionFeature {
+public class BbjCompletionFeature extends LSPCompletionFeature {
 
-    private BbjCompletionFeature() {
-    }
-
-    /**
-     * Maps a completion item to an appropriate platform icon.
-     * Distinguishes Java class/method completions from BBj completions.
-     *
-     * @param item the LSP completion item
-     * @return icon for the item, or null for default LSP4IJ handling
-     */
-    public static @Nullable Icon getIcon(@Nullable CompletionItem item) {
-        if (item == null || item.getKind() == null) {
-            return null;
+    @Override
+    public @Nullable Icon getIcon(@NotNull CompletionItem item) {
+        if (item.getKind() == null) {
+            return super.getIcon(item);
         }
 
         CompletionItemKind kind = item.getKind();
         boolean isJavaInterop = isJavaInteropCompletion(item);
 
-        // Java-interop completions get Java-specific icons
         if (isJavaInterop) {
-            switch (kind) {
-                case Class:
-                    return AllIcons.Nodes.Class;
-                case Interface:
-                    return AllIcons.Nodes.Interface;
-                case Method:
-                    return AllIcons.Nodes.Method;
-                case Field:
-                    return AllIcons.Nodes.Field;
-                default:
-                    return null;
-            }
+            return switch (kind) {
+                case Class -> AllIcons.Nodes.AbstractClass;
+                case Interface -> AllIcons.Nodes.Interface;
+                case Method, Function -> AllIcons.Nodes.AbstractMethod;
+                case Field -> AllIcons.Nodes.Field;
+                default -> super.getIcon(item);
+            };
         }
 
-        // BBj completions use platform icons
-        switch (kind) {
-            case Function:
-            case Method:
-                return AllIcons.Nodes.Method;
-            case Class:
-                return AllIcons.Nodes.Class;
-            case Interface:
-                return AllIcons.Nodes.Interface;
-            case Variable:
-            case Field:
-                return AllIcons.Nodes.Field;
-            case Property:
-                return AllIcons.Nodes.Property;
-            case Keyword:
-                return AllIcons.Nodes.Static; // Static marker for keywords
-            case Event:
-                return AllIcons.Nodes.Lambda;
-            case Module:
-                return AllIcons.Nodes.Package;
-            case Constant:
-                return AllIcons.Nodes.Constant;
-            case Enum:
-                return AllIcons.Nodes.Enum;
-            case EnumMember:
-                return AllIcons.Nodes.Field;
-            default:
-                return null; // Use LSP4IJ default
-        }
+        return switch (kind) {
+            case Function, Method -> AllIcons.Nodes.Method;
+            case Class -> AllIcons.Nodes.Class;
+            case Interface -> AllIcons.Nodes.Interface;
+            case Variable -> AllIcons.Nodes.Variable;
+            case Field -> AllIcons.Nodes.Field;
+            case Property -> AllIcons.Nodes.Property;
+            case Keyword -> AllIcons.Nodes.Tag;
+            case Constant -> AllIcons.Nodes.Constant;
+            case Enum -> AllIcons.Nodes.Enum;
+            case EnumMember -> AllIcons.Nodes.Field;
+            case Module -> AllIcons.Nodes.Package;
+            case Snippet -> AllIcons.Nodes.Template;
+            case Event -> AllIcons.Nodes.Lambda;
+            default -> super.getIcon(item);
+        };
     }
 
     /**
      * Heuristic to detect Java-interop completions from BBj language server.
-     * The java-interop service provides completions with detail field containing
-     * Java package/class information (e.g., "java.lang.String", "java.util.List").
-     *
-     * @param item the completion item
-     * @return true if this appears to be a Java class/method completion
+     * Java-interop completions have detail fields containing Java package/class info.
      */
-    private static boolean isJavaInteropCompletion(@Nullable CompletionItem item) {
-        if (item == null || item.getDetail() == null) {
+    private static boolean isJavaInteropCompletion(@NotNull CompletionItem item) {
+        String detail = item.getDetail();
+        if (detail == null || detail.isEmpty()) {
             return false;
         }
 
-        String detail = item.getDetail();
-        // Java-interop completions typically have detail starting with "java." or containing fully-qualified class names
-        return detail.startsWith("java.") ||
-               detail.startsWith("javax.") ||
-               detail.startsWith("com.") ||
-               detail.startsWith("org.") ||
-               detail.matches(".*\\.[A-Z][a-zA-Z0-9]*$"); // Ends with capitalized class name
+        CompletionItemKind kind = item.getKind();
+        if (kind != CompletionItemKind.Function && kind != CompletionItemKind.Method
+                && kind != CompletionItemKind.Class && kind != CompletionItemKind.Interface) {
+            return false;
+        }
+
+        return detail.contains("java.") || detail.contains("javax.")
+                || detail.contains("com.basis.") || detail.contains("throws ");
     }
 }

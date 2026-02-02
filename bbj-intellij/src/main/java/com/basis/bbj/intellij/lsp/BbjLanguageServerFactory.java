@@ -56,6 +56,7 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 // Suppress "LSP Symbol ..." hover placeholder
                 return false;
             }
-        });
+        })
+        .setCompletionFeature(new BbjCompletionFeature());
     }
 }
