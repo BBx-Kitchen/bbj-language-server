@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 
 Milestone: v1.1 Polish & Run Commands
 Phase: 10 of 10 (Bug Fixes & Polish)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-02 — Completed 10-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-02 — Completed 10-02-PLAN.md
 
-Progress: [█████░] 5/6 (83%)
+Progress: [██████] 6/6 (100%)
 
 ## Milestone History
 
@@ -28,8 +28,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v1.0) + 5 (v1.1) = 24
-- v1.1 plans completed: 5
+- Total plans completed: 19 (v1.0) + 6 (v1.1) = 25
+- v1.1 plans completed: 6
 - v1.1 total plans: 6
 
 **By Phase:**
@@ -39,7 +39,7 @@ See: .planning/MILESTONES.md
 | 7. Brand Icons | 1/1 | ~12min | ~12min |
 | 8. Run Commands | 2/2 | ~6min | ~3min |
 | 9. Structure View | 1/1 | - | - |
-| 10. Bug Fixes | 1/2 | ~2min | ~2min |
+| 10. Bug Fixes | 2/2 | ~7min | ~3.5min |
 
 ## Accumulated Context
 
@@ -62,20 +62,24 @@ See: .planning/MILESTONES.md
 | 10-01 | LINE_COMMENT_AT_FIRST_COLUMN = true for REM placement | Forces REM at column 0 via code style settings, comment stacking automatic |
 | 10-01 | Distinct bracket token types for matching | PairedBraceMatcher requires LPAREN/RPAREN/etc., not generic SYMBOL |
 | 10-01 | LSPHoverFeature.isSupported() = false | Suppresses hover placeholder; language server doesn't implement hover anyway |
+| 10-02 | 30-second grace period with FileEditorManagerListener | Prevents disruptive LS restarts when switching files; cancels shutdown if BBj file reopens |
+| 10-02 | Platform icons via AllIcons.Nodes for completion | Native look consistent with IntelliJ; Java-interop distinction via detail field heuristic |
+| 10-02 | ARM64 detection on all platforms | SystemInfo.isAarch64 check before platform-specific logic; works on Linux ARM64 now |
 
-### Known Issues (from v1.0 -- being addressed in Phase 10)
+### Known Issues (from v1.0 -- ALL RESOLVED in Phase 10)
 
 1. ~~Comment toggling (REM) -- FIX-01~~ RESOLVED in 10-01
 2. ~~Bracket/keyword matching -- FIX-02~~ RESOLVED in 10-01
 3. ~~"LSP Symbol ..." popup text -- FIX-03~~ RESOLVED in 10-01
-4. LS shutdown delay on last file close -- FIX-04
-5. BbjCompletionFeature orphaned icons -- FIX-05
-6. Stale bbj-intellij/META-INF/plugin.xml -- FIX-06
-7. Linux code path review -- FIX-07
+4. ~~LS shutdown delay on last file close -- FIX-04~~ RESOLVED in 10-02
+5. ~~BbjCompletionFeature orphaned icons -- FIX-05~~ RESOLVED in 10-02
+6. ~~Stale bbj-intellij/META-INF/plugin.xml -- FIX-06~~ RESOLVED in 10-02
+7. ~~Linux code path review -- FIX-07~~ RESOLVED in 10-02
 
 ### New Issues Found (v1.1)
 
 8. Structure View symbol kind differentiation -- labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. GitHub issue filed.
+9. Completion icon mapping not yet wired into LSP4IJ -- BbjCompletionFeature ready with platform icons and Java-interop distinction, but LSPCompletionFeature API doesn't exist in LSP4IJ 0.19.0. TODO added for future wiring.
 
 ### Blockers/Concerns
 
@@ -84,6 +88,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 10-01-PLAN.md
+Stopped at: Completed 10-02-PLAN.md (Phase 10 complete, v1.1 milestone complete)
 Resume file: None
-Next: 10-02-PLAN.md (LS shutdown grace period, completion icons, META-INF cleanup, Linux review)
+Next: None - v1.1 milestone complete
