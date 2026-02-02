@@ -57,21 +57,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RUN-01 | — | Pending |
-| RUN-02 | — | Pending |
-| RUN-03 | — | Pending |
-| RUN-04 | — | Pending |
-| RUN-05 | — | Pending |
-| MKT-01 | — | Pending |
-| MKT-02 | — | Pending |
-| MKT-03 | — | Pending |
-| MKT-04 | — | Pending |
+| RUN-01 | 11 | Pending |
+| RUN-02 | 11 | Pending |
+| RUN-03 | 11 | Pending |
+| RUN-04 | 11 | Pending |
+| RUN-05 | 11 | Pending |
+| MKT-01 | 12 | Pending |
+| MKT-02 | 12 | Pending |
+| MKT-03 | 12 | Pending |
+| MKT-04 | 12 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 9 total
-- Mapped to phases: 0
-- Unmapped: 9 (pending roadmap)
+- Mapped to phases: 9/9 (100%)
+- Phase 11 (Run Command Fixes): 5 requirements
+- Phase 12 (Marketplace Preparation): 4 requirements
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 after initial definition*
+*Last updated: 2026-02-02 after roadmap creation*
