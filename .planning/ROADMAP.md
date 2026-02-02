@@ -35,7 +35,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. Plugin has a 40x40 and 80x80 logo/icon that displays correctly in JetBrains Marketplace listings
   2. plugin.xml contains complete description, vendor information, and change notes suitable for Marketplace listing
-  3. Plugin distribution includes EULA or license text that users see during installation
+  3. Plugin distribution includes MIT License file in META-INF
   4. Running JetBrains plugin verifier produces zero errors (warnings acceptable)
 **Plans:** 2 plans
 
