@@ -42,7 +42,16 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ### Active
 
-(No active milestone — planning next)
+**Current Milestone: v1.2 Run Fixes & Marketplace**
+
+**Goal:** Fix broken run commands, capture run output in console, and meet all JetBrains Marketplace approval criteria for first publication.
+
+**Target features:**
+- Fix BBj executable resolution (reported "not found" despite configured BBj Home)
+- Fix toolbar button visibility in IntelliJ new UI (Community + Ultimate)
+- Verify run commands end-to-end on macOS and Windows
+- Capture run command output in IntelliJ console tool window
+- Meet JetBrains Marketplace approval guidelines (logo, description, EULA, plugin verifier)
 
 ### Out of Scope
 
@@ -99,4 +108,4 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | Platform AllIcons.Nodes for completion | Native look; Java-interop distinction via detail heuristic | ✓ Good — consistent with IntelliJ |
 
 ---
-*Last updated: 2026-02-02 after v1.1 milestone completion*
+*Last updated: 2026-02-02 after v1.2 milestone start*
