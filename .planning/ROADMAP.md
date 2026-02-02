@@ -1,8 +1,8 @@
 # Milestone v1.2: Run Fixes & Marketplace
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE
 **Phases:** 11-12
-**Total Plans:** TBD
+**Total Plans:** 4
 
 ## Overview
 
@@ -40,8 +40,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Marketplace metadata, licensing, and Gradle configuration
-- [ ] 12-02-PLAN.md — Plugin verifier compliance and final verification
+- [x] 12-01-PLAN.md — Marketplace metadata, licensing, and Gradle configuration
+- [x] 12-02-PLAN.md — Plugin verifier compliance and final verification
 
 ## Progress
 
@@ -50,7 +50,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Run Command Fixes | 2/2 | ✓ Complete | 2026-02-02 |
-| 12. Marketplace Preparation | 0/2 | Not started | - |
+| 12. Marketplace Preparation | 2/2 | ✓ Complete | 2026-02-02 |
 
 ---
 
@@ -64,6 +64,10 @@ Plans:
 - Eager BBj Home auto-detection in BbjSettings.getState()
 - Move process launch off EDT to pooled thread
 - Replace MainToolBar with ProjectViewPopupMenu submenu
+- Only list features with confirmed codebase implementation evidence in marketplace listing
+- Plugin ID `com.basis.bbj` (removed 'intellij' per Marketplace naming rules)
+- Use `recommended()` for pluginVerification IDE selection
+- untilBuild `242.*` wildcard format (empty string not valid)
 
 **Issues Resolved:**
 
@@ -72,6 +76,14 @@ Plans:
 - Process stderr silently lost (no capture)
 - IDE lockup when running without LS connected
 - BBj Home "not configured" false positive (auto-detection only in settings dialog)
+- Plugin verifier errors: plugin ID contained 'intellij' keyword, untilBuild empty string
+- CDATA wrapper collision in Gradle changeNotes (patchPluginXml adds it automatically)
+
+**Issues Resolved (Marketplace):**
+
+- Plugin icon SVGs (40x40 scalable) already existed, verified in distribution
+- All 9 features verified against codebase before claiming in marketplace listing
+- MIT License and third-party NOTICES included in distribution META-INF
 
 **Issues Deferred:**
 

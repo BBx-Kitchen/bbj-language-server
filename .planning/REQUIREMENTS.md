@@ -17,10 +17,10 @@ Requirements for Milestone v1.2: Run Fixes & Marketplace. Each maps to roadmap p
 
 ### Marketplace
 
-- [ ] **MKT-01**: Plugin has a logo/icon for JetBrains Marketplace listing
-- [ ] **MKT-02**: Plugin has a complete description and metadata for Marketplace listing
-- [ ] **MKT-03**: Plugin includes EULA or license text
-- [ ] **MKT-04**: Plugin passes JetBrains plugin verifier with no errors
+- [x] **MKT-01**: Plugin has a logo/icon for JetBrains Marketplace listing
+- [x] **MKT-02**: Plugin has a complete description and metadata for Marketplace listing
+- [x] **MKT-03**: Plugin includes EULA or license text
+- [x] **MKT-04**: Plugin passes JetBrains plugin verifier with no errors
 
 ## Future Requirements
 
@@ -62,10 +62,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-03 | 11 | Complete |
 | RUN-04 | 11 | Complete |
 | RUN-05 | 11 | Complete |
-| MKT-01 | 12 | Pending |
-| MKT-02 | 12 | Pending |
-| MKT-03 | 12 | Pending |
-| MKT-04 | 12 | Pending |
+| MKT-01 | 12 | Complete |
+| MKT-02 | 12 | Complete |
+| MKT-03 | 12 | Complete |
+| MKT-04 | 12 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 9 total
@@ -75,4 +75,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 after roadmap creation*
+*Last updated: 2026-02-02 after Phase 12 completion*
