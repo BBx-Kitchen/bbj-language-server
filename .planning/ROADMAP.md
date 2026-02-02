@@ -1,8 +1,8 @@
 # Milestone v1.2: Run Fixes & Marketplace
 
-**Status:** COMPLETE
-**Phases:** 11-12
-**Total Plans:** 4
+**Status:** IN PROGRESS (gap closure)
+**Phases:** 11-13
+**Total Plans:** 5
 
 ## Overview
 
@@ -43,14 +43,32 @@ Plans:
 - [x] 12-01-PLAN.md — Marketplace metadata, licensing, and Gradle configuration
 - [x] 12-02-PLAN.md — Plugin verifier compliance and final verification
 
+### Phase 13: Plugin ID Fix
+
+**Goal**: Fix plugin ID mismatch so BUI/DWC run commands and LS path resolution work in production Marketplace installs
+**Depends on**: Phase 12 (plugin ID was changed in 12-02)
+**Requirements**: (closes audit gaps, no new requirements)
+**Gap Closure**: Fixes integration gap and 2 broken E2E flows from v1.2-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. All `PluginId.getId()` calls in Java source use `"com.basis.bbj"` matching plugin.xml `<id>`
+  2. BUI/DWC run commands can resolve web.bbj path from plugin bundle in production installs
+  3. Language server resolves main.cjs via plugin path (not classloader fallback) in production installs
+  4. Plugin verifier still passes with zero compatibility errors after fix
+  5. Distribution ZIP rebuilt with corrected classes
+**Plans:** 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md — Fix PluginId.getId() callsites and rebuild distribution
+
 ## Progress
 
-**Execution Order:** 11 -> 12
+**Execution Order:** 11 -> 12 -> 13
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 11. Run Command Fixes | 2/2 | ✓ Complete | 2026-02-02 |
 | 12. Marketplace Preparation | 2/2 | ✓ Complete | 2026-02-02 |
+| 13. Plugin ID Fix | 0/1 | Pending | - |
 
 ---
 
