@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 Milestone: v2.0 Langium 4 Upgrade
 Phase: 17 of 18 (Build Verification & Test Suite)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-03 -- Phase 16 complete and verified (4/4 must-haves passed)
+Plan: 01 of 2
+Status: In progress
+Last activity: 2026-02-03 -- Completed 17-01-PLAN.md (TypeScript compilation errors resolved)
 
-Progress: [██████....] 60% (3/5 v2.0 phases)
+Progress: [███████...] 70% (3.5/5 v2.0 phases)
 
 ## Milestone History
 
@@ -30,9 +30,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4 (v2.0)
-- Average duration: 1.5 min
-- Total execution time: 6 min
+- Total plans completed: 5 (v2.0)
+- Average duration: 2.0 min
+- Total execution time: 10.7 min
 
 *Updated after each plan completion*
 
@@ -53,6 +53,10 @@ Recent decisions affecting current work:
 - [15-gap]: Verifier caught 5 missed usages in linker/java-interop; orchestrator fixed directly (13 total across 2 files)
 - [16-01]: Completion provider override uses 3-param signature (nodeDescription, ReferenceInfo, CompletionContext)
 - [16-01]: Linker uses isReference type guard for defensive MultiReference handling
+- [17-01]: LocalSymbols stream API pattern (.getStream().toArray()) for array conversion
+- [17-01]: MultiMap type casting required for mutation operations on LocalSymbols
+- [17-01]: Hover provider returns markdown string instead of Hover object (Langium 4 content/presentation separation)
+- [17-01]: Workspace manager binary file filtering deferred (base class traversal API changed)
 
 ### Known Issues
 
@@ -70,6 +74,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Phase 16 complete and verified -- ready for Phase 17
+Stopped at: Completed 17-01-PLAN.md (all TypeScript compilation errors resolved)
 Resume file: None
-Next: `/gsd:discuss-phase 17` or `/gsd:plan-phase 17`
+Next: Continue Phase 17 with remaining plans (test suite execution, build verification)
