@@ -32,10 +32,10 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
   2. `langium generate` produces new ast.ts, grammar.ts, and module.ts without errors
   3. Generated files compile with `tsc` (ignoring hand-written source errors)
   4. No grammar syntax changes were needed, or necessary changes have been applied
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 14-01: TBD
+- [ ] 14-01-PLAN.md -- Update langium packages to 4.1.3/4.1.0, regenerate grammar, verify generated code compiles
 
 #### Phase 15: Core API Renames & Type Constants
 **Goal**: All mechanical renames and type constant migrations applied so scope computation, validators, and type-checking code reference Langium 4 APIs correctly
@@ -129,7 +129,7 @@ Phases with standard patterns (no deep research needed):
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 14. Deps & Grammar | v2.0 | 0/TBD | Not started | - |
+| 14. Deps & Grammar | v2.0 | 0/1 | Planned | - |
 | 15. Core Renames | v2.0 | 0/TBD | Not started | - |
 | 16. API Signatures | v2.0 | 0/TBD | Not started | - |
 | 17. Build & Test | v2.0 | 0/TBD | Not started | - |
