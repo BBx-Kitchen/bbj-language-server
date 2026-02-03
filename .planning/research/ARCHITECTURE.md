@@ -1,912 +1,555 @@
-# Architecture Integration: v1.2 Run Fixes, Console Output, and Marketplace Readiness
+# Architecture: Langium 3.2.1 to 4.x Migration Impact
 
-**Domain:** IntelliJ Platform Plugin Development
-**Researched:** 2026-02-02
-**Confidence:** HIGH
+**Domain:** Language Server framework upgrade (Langium 3 to 4)
+**Researched:** 2026-02-03
+**Target version:** Langium 4.1.3 / langium-cli 4.1.0
+**Confidence:** MEDIUM-HIGH (based on official blog post, CHANGELOG, and codebase analysis; WebFetch to official docs was unavailable for deep verification of some specifics)
 
 ## Executive Summary
 
-This research examines how run command fixes, console output capture, and Marketplace publication integrate with the existing BBj IntelliJ plugin architecture. The plugin follows standard IntelliJ Platform patterns with an `AnAction`-based run system, tool window infrastructure for console output, and Gradle build tasks for publication. The v1.2 milestone requires targeted fixes to existing components plus new console integration components.
+The Langium 3.2.1 to 4.x upgrade introduces roughly 10 breaking changes, of which 6 directly impact the BBj language server codebase. The DI module system (`inject`, `createDefaultModule`, `createDefaultSharedModule`) and the LS entry point (`main.ts`, `startLanguageServer`) are structurally unchanged -- this is good news. The main effort concentrates on: (1) renaming `PrecomputedScopes` to `LocalSymbols` and updating the `document.precomputedScopes` property to `document.localSymbols`, (2) updating AST type string constants from `TypeName` to `TypeName.$type` across ~25 usage sites, (3) adapting the linker and scope provider for `Reference | MultiReference`, (4) updating the `createReferenceCompletionItem` signature, and (5) regenerating all grammar-derived code. The bundling (esbuild to CJS) and VS Code / IntelliJ consumption patterns are unaffected.
 
-## Existing Architecture Overview
+## Current Architecture (Langium 3.2.1)
 
-### Run Action Hierarchy
+### Component Map
+
 ```
-BbjRunActionBase (abstract)
-├── getBbjExecutablePath() → File validation
-├── buildCommandLine() → GeneralCommandLine construction
-├── actionPerformed() → OSProcessHandler → startNotify()
-└── Subclasses:
-    ├── BbjRunGuiAction (-q flag)
-    ├── BbjRunBuiAction (web.bbj + BUI mode)
-    └── BbjRunDwcAction (web.bbj + DWC mode)
+src/language/
+  bbj.langium              (999 lines)  -- Main grammar
+  java-types.langium       (62 lines)   -- Java type declarations (interfaces only, no parser rules)
+  generated/
+    ast.ts                 (~4000 lines) -- Generated: AST types, type guards, reflection
+    grammar.ts             (~large)      -- Generated: Grammar JSON
+    module.ts              (31 lines)    -- Generated: DI module with AstReflection, Grammar, LanguageMetaData
+  bbj-module.ts                         -- Custom DI module + createBBjServices()
+  main.ts                               -- LS entry point
+  bbj-scope-local.ts                    -- ScopeComputation (uses PrecomputedScopes)
+  bbj-scope.ts                          -- ScopeProvider (uses precomputedScopes property)
+  bbj-linker.ts                         -- Linker (uses ReferenceInfo, doLink)
+  bbj-completion-provider.ts            -- CompletionProvider (uses createReferenceCompletionItem)
+  bbj-lexer.ts                          -- Custom lexer (line continuation handling)
+  bbj-token-builder.ts                  -- Custom token builder (context-sensitive tokens)
+  bbj-hover.ts                          -- Hover provider
+  bbj-validator.ts                      -- Validation checks
+  bbj-document-validator.ts             -- DocumentValidator (linking error downgrade)
+  bbj-document-builder.ts               -- DocumentBuilder (transitive BBj imports)
+  bbj-ws-manager.ts                     -- WorkspaceManager (settings, library loading)
+  bbj-index-manager.ts                  -- IndexManager (external document filtering)
+  bbj-nodedescription-provider.ts       -- AST description provider
+  bbj-semantic-token-provider.ts        -- Semantic tokens
+  bbj-signature-help-provider.ts        -- Signature help
+  bbj-type-inferer.ts                   -- Type inference
+  bbj-value-converter.ts                -- Value converter
+  bbj-comment-provider.ts               -- Comment provider
+  java-interop.ts                       -- Java backend JSON-RPC client
+  validations/                          -- Additional validation checks
 ```
 
-**Current flow:**
-1. User triggers action → `actionPerformed()`
-2. Auto-save if enabled → `autoSaveIfNeeded()`
-3. Build command → `buildCommandLine()` (subclass responsibility)
-4. Execute → `new OSProcessHandler(cmd).startNotify()`
-5. Fire and forget → No output capture, no process tracking
+### Dependency Injection Flow (Unchanged in Langium 4)
 
-### Settings Architecture
-- **BbjSettings**: Application-level PersistentStateComponent
-- **Storage**: `BbjSettings.xml` in IDE config directory
-- **Key fields**: `bbjHomePath`, `nodeJsPath`, `classpathEntry`, `autoSaveBeforeRun`
-- **Validation**: `BbjHomeDetector.isValidBbjHome()` checks for `cfg/BBj.properties`
+```
+main.ts
+  createConnection(ProposedFeatures.all)
+  createBBjServices({ connection, ...NodeFileSystem })
+    inject(createDefaultSharedModule(context), BBjGeneratedSharedModule, BBjSharedModule)
+    inject(createDefaultModule({ shared }), BBjGeneratedModule, BBjModule)
+    shared.ServiceRegistry.register(BBj)
+    registerValidationChecks(BBj)
+  startLanguageServer(shared)
+```
 
-### Tool Window Architecture
-- **BbjServerLogToolWindowFactory**: Creates console for LSP server output
-- **BbjServerService**: Project-level service managing LSP lifecycle
-- **Pattern**: ConsoleView created via `TextConsoleBuilderFactory`, registered with service, service writes via `console.print()`
+This pattern is standard Langium 3.x and remains valid in Langium 4.x. The `inject()`, `createDefaultSharedModule()`, `createDefaultModule()`, and `startLanguageServer()` functions have not changed their signatures.
 
-### Build System
-- **Gradle**: Kotlin DSL with IntelliJ Platform Gradle Plugin 2.x
-- **Dependencies**: `intellijIdeaCommunity("2024.2")`, `lsp4ij:0.19.0`, `pluginVerifier()`, `zipSigner()`
-- **Tasks**: `prepareSandbox`, `buildPlugin`, `signPlugin`, `publishPlugin`
+### Import Path Pattern (Already Correct)
 
-## Problem Analysis: Why Run Commands Fail
+The codebase already uses the post-3.0 import split:
+- `'langium'` for core types (AstNode, Reference, DefaultLinker, etc.)
+- `'langium/lsp'` for LSP types (LangiumServices, LangiumSharedServices, createDefaultModule, etc.)
+- `'langium/node'` for NodeFileSystem
 
-### Issue 1: Executable Path Resolution on Windows
+These import paths are unchanged in Langium 4.
 
-**Current code (BbjRunActionBase.java:88-104):**
-```java
-String exeName = SystemInfo.isWindows ? "bbj.exe" : "bbj";
-File executable = new File(bbjHome, "bin/" + exeName);
-if (!executable.exists() || !executable.isFile()) {
-    return null;
+## Breaking Changes Impact Analysis
+
+### BREAKING CHANGE 1: PrecomputedScopes renamed to LocalSymbols (#1788)
+
+**Severity: HIGH -- direct code changes required in 3 files**
+
+**What changed:**
+- Type `PrecomputedScopes` renamed to `LocalSymbols`
+- `LangiumDocument.precomputedScopes` property renamed to `LangiumDocument.localSymbols`
+- A dedicated `LocalSymbols` interface was introduced (may differ from the raw `MultiMap<AstNode, AstNodeDescription>` that `PrecomputedScopes` was an alias for)
+
+**Files impacted:**
+
+| File | Usage | Change Required |
+|------|-------|-----------------|
+| `bbj-scope-local.ts` | `PrecomputedScopes` type in 4 locations (import, return type, parameter types) | Rename to `LocalSymbols` |
+| `bbj-scope.ts` | `document.precomputedScopes` in 3 locations (lines 133, 248, 337) | Rename to `document.localSymbols` |
+| `bbj-scope-local.ts` | `computeLocalScopes` return type `Promise<PrecomputedScopes>` | Rename return type |
+
+**Specific code sites:**
+
+```typescript
+// bbj-scope-local.ts line 12 (import)
+import { PrecomputedScopes } from 'langium';
+// CHANGE TO:
+import { LocalSymbols } from 'langium';
+
+// bbj-scope-local.ts line 59 (method signature)
+override async computeLocalScopes(...): Promise<PrecomputedScopes>
+// CHANGE TO:
+override async computeLocalScopes(...): Promise<LocalSymbols>
+
+// bbj-scope-local.ts line 81, 260 (parameter types)
+protected override async processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes)
+private addToScope(scopes: PrecomputedScopes, scopeHolder: AstNode, descr: AstNodeDescription)
+// CHANGE TO: LocalSymbols
+
+// bbj-scope.ts lines 133, 248, 337
+const precomputed = doc.precomputedScopes
+document.precomputedScopes?.get(program)
+document?.precomputedScopes?.get(bbjType)
+// CHANGE TO: doc.localSymbols, document.localSymbols?.get(...)
+```
+
+**Confidence: HIGH** -- Rename confirmed in CHANGELOG as breaking change. The property rename on `LangiumDocument` is confirmed by multiple sources. The exact interface shape of `LocalSymbols` vs old `MultiMap` needs verification during implementation (may need to check if `.get()` and `.add()` still work the same way).
+
+**Risk factor:** LOW if `LocalSymbols` is structurally compatible with `MultiMap<AstNode, AstNodeDescription>`. The `computeLocalScopes` in `BbjScopeComputation` creates `new MultiMap<AstNode, AstNodeDescription>()` directly (line 61). If `LocalSymbols` is a different interface, the constructor pattern may also need updating.
+
+---
+
+### BREAKING CHANGE 2: AST Type String Constants ($type suffix) (#1942)
+
+**Severity: HIGH -- ~25+ code sites to update across many files**
+
+**What changed:**
+In Langium 3.x, generated `ast.ts` exports string constants like:
+```typescript
+export const FieldDecl = 'FieldDecl';
+export const MethodDecl = 'MethodDecl';
+```
+
+In Langium 4.x, these constants have moved to a `$type` property, so access becomes `FieldDecl.$type` instead of just `FieldDecl`.
+
+**Files impacted (every file using AST type string constants):**
+
+| File | Usage Pattern | Sites |
+|------|--------------|-------|
+| `bbj-scope-local.ts` | `type: FieldDecl`, `type: MethodDecl`, `$type === CompoundStatement` | 6 |
+| `bbj-linker.ts` | `type: VariableDecl`, `$type === BinaryExpression`, `$type === ParameterCall`, `$type === ConstructorCall`, `descr.type !== MethodDecl`, `descr.type !== LibFunction` | 6 |
+| `bbj-nodedescription-provider.ts` | `case MethodDecl:`, `case LibFunction:`, `case JavaMethod:`, `case LibEventType:` in switch | 4 |
+| `bbj-semantic-token-provider.ts` | `case ParameterDecl:`, `case SymbolRef:`, `case MethodCall:` | 3 |
+| `bbj-scope.ts` | `descr.type === MethodDecl`, type arguments to `allElements()`, `getGlobalScope()` calls | ~8 |
+| `bbj-validator.ts` | `ValidationChecks<BBjAstType>` registration keys | ~12 |
+| `java-interop.ts` | `$type: Classpath` in synthetic document creation | 1 |
+| `validations/check-classes.ts` | `ValidationChecks<BBjAstType>` registration keys | ~6 |
+| `bbj-document-validator.ts` | `DocumentValidator.LinkingError` (may be unaffected if this is a static const) | 1 |
+
+**Example transformations:**
+
+```typescript
+// BEFORE (Langium 3.x)
+type: FieldDecl,
+descr.type !== MethodDecl
+case MethodDecl: return enhanceFunctionDescription(...)
+scopeHolder.$type === CompoundStatement
+
+// AFTER (Langium 4.x) -- NEEDS VERIFICATION
+type: FieldDecl.$type,
+descr.type !== MethodDecl.$type
+case MethodDecl.$type: return enhanceFunctionDescription(...)
+scopeHolder.$type === CompoundStatement.$type
+```
+
+**Confidence: MEDIUM** -- The CHANGELOG confirms "generated type names from ast.ts have been moved from `<typeName>` to `<typeName>.$type`". However, the exact mechanism needs verification: do the existing string constant exports still exist alongside a new object export, or are they completely replaced? The search results suggest the constants move from being strings to being something with a `.$type` property. This needs to be confirmed by regenerating the grammar and examining the output.
+
+**CRITICAL NOTE:** The `ValidationChecks<BBjAstType>` registrations in `bbj-validator.ts` and `check-classes.ts` use type names as keys:
+```typescript
+const checks: ValidationChecks<BBjAstType> = {
+    LabelDecl: validator.checkLabelDecl,
+    Use: validator.checkUsedClassExists,
+    // ...
+};
+```
+These are TypeScript literal types (property names), not runtime string values. They may or may not be affected by this change depending on how `ValidationChecks` is typed in Langium 4. This needs careful verification.
+
+---
+
+### BREAKING CHANGE 3: Reference | MultiReference in Linker and Scope (#1509)
+
+**Severity: MEDIUM -- impacts custom linker**
+
+**What changed:**
+- The type of references used throughout the linker service and scope provider is now `Reference | MultiReference`
+- `References#findDeclaration` renamed to `findDeclarations` and returns an array
+
+**Files impacted:**
+
+| File | Usage | Impact |
+|------|-------|--------|
+| `bbj-linker.ts` | `doLink(refInfo: ReferenceInfo, document: LangiumDocument)` | Method signature may need `Reference \| MultiReference` handling |
+| `bbj-linker.ts` | `getCandidate(refInfo: ReferenceInfo)` | May need to handle MultiReference cases |
+| `bbj-scope.ts` | `getScope(context: ReferenceInfo)` | ReferenceInfo type may include MultiReference fields |
+
+**Current doLink signature:**
+```typescript
+override doLink(refInfo: ReferenceInfo, document: LangiumDocument): void {
+    // accesses refInfo.container, refInfo.property, refInfo.reference
+    // refInfo.reference.$refText is used for matching
 }
 ```
 
-**Why this can fail:**
-1. **Symlinks**: `File.exists()` returns `false` for broken symlinks even if link file exists
-2. **Case sensitivity**: Windows NTFS is case-insensitive but `File` operations respect exact case
-3. **Path separators**: Hardcoded `"bin/"` assumes forward slash works (it does in Java, but clarity matters)
-4. **Executable bit irrelevant**: `File.isFile()` doesn't check if file is actually runnable
-5. **No logging**: When `null` is returned, caller shows generic error with no diagnostic info
+**Impact analysis:**
+- `BbjLinker.doLink()` receives `ReferenceInfo` which contains a `.reference` field. If this field type changed from `Reference` to `Reference | MultiReference`, the code accessing `refInfo.reference.$refText` and `refInfo.reference.$refNode` must handle both cases.
+- `BbjLinker.getCandidate()` returns `AstNodeDescription | LinkingError` -- this return type may change if Langium 4 expects support for multiple candidates.
+- The BBj grammar currently does not use multi-references (no `@=` syntax), so the actual runtime behavior should be single references. But the TypeScript types must be correct.
 
-**Impact on phases:**
-- Phase 7 (Executable Path Fix) must add diagnostics
-- Phase 8 (Console Output) needs process tracking to detect launch failures
+**Confidence: MEDIUM** -- The change is confirmed but the exact TypeScript type signatures need verification against Langium 4 source. The BBj language does not use multi-references, so the adaptation likely involves union type handling only.
 
-### Issue 2: OSProcessHandler Without Output Capture
+---
 
-**Current code (BbjRunActionBase.java:54-56):**
-```java
-OSProcessHandler handler = new OSProcessHandler(cmd);
-handler.startNotify();
-showSuccess(project, file.getName(), getRunMode());
+### BREAKING CHANGE 4: createReferenceCompletionItem Signature (#1976)
+
+**Severity: MEDIUM -- 1 file, 2 sites**
+
+**What changed:**
+`DefaultCompletionProvider#createReferenceCompletionItem` now requires more arguments.
+
+**File impacted:**
+
+```typescript
+// bbj-completion-provider.ts lines 15-16
+override createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
+    const superImpl = super.createReferenceCompletionItem(nodeDescription)
 ```
 
-**Problems:**
-1. **No process listeners**: Output goes to void
-2. **No termination detection**: Process may fail immediately, no feedback
-3. **No console attachment**: User sees notification but not actual output
-4. **Fire-and-forget**: Handler becomes garbage-collectable after `startNotify()`
-5. **No error stream capture**: stderr lost
+Both the override signature and the `super` call need to be updated to include the new required arguments.
 
-**IntelliJ Platform best practices (2024):**
-- Attach `ProcessTerminatedListener` for exit code display
-- Use `ColoredProcessHandler` for ANSI escape code support
-- Avoid EDT blocking: Launch in pooled thread
-- Provide `ProgressIndicator` context for cancellation support
+**Confidence: MEDIUM** -- The change is confirmed in the CHANGELOG but the exact new parameters are unknown without checking Langium 4 source code. Will need to check the `DefaultCompletionProvider` class API during implementation.
 
-### Issue 3: Environment Variable Inheritance
+---
 
-**Current code:** No explicit environment configuration on `GeneralCommandLine`
+### BREAKING CHANGE 5: DefaultServiceRegistry Singleton Removed (#1768)
 
-**Default behavior:**
-- GeneralCommandLine uses `ParentEnvironmentType.CONSOLE` by default
-- On macOS, simulates console environment (loads shell profile)
-- On Windows/Linux, equivalent to SYSTEM environment
+**Severity: LOW -- may or may not impact**
 
-**Why this matters for BBj:**
-- BBj executable may depend on `BBXDIR` or `BASIS_HOME` environment variables
-- Classpath entries in `BBj.properties` may reference `$BBXDIR`
-- Web mode runners may need `PATH` to find `java` executable
+**What changed:**
+The singleton item in `DefaultServiceRegistry` has been removed. The `DefaultServiceRegistry#map` field has been deprecated in favor of `fileExtensionMap` and `languageIdMap`.
 
-**Recommendation:** Explicitly set `ParentEnvironmentType.CONSOLE` for clarity
+**File impacted:**
 
-## Architecture Changes Required
-
-### Component: BbjRunActionBase (MODIFIED)
-
-**File:** `src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java`
-
-**Changes:**
-1. **Enhanced executable validation:**
-   ```java
-   protected String getBbjExecutablePath() {
-       String bbjHome = BbjSettings.getInstance().getState().bbjHomePath;
-       if (bbjHome == null || bbjHome.isEmpty()) {
-           return null; // Caller shows "BBj home not configured"
-       }
-
-       String exeName = SystemInfo.isWindows ? "bbj.exe" : "bbj";
-       Path executablePath = Paths.get(bbjHome, "bin", exeName);
-
-       if (!Files.exists(executablePath)) {
-           // Return null + log diagnostic
-           return null;
-       }
-
-       if (!Files.isRegularFile(executablePath)) {
-           // Directory named bbj.exe? Symlink to directory?
-           return null;
-       }
-
-       // Windows: Check readable, Unix: Check executable bit
-       if (!Files.isReadable(executablePath)) {
-           return null;
-       }
-
-       return executablePath.toString();
-   }
-   ```
-
-2. **Console-aware process execution:**
-   ```java
-   protected void executeWithConsole(GeneralCommandLine cmd, VirtualFile file, Project project) {
-       // Get or create "BBj Run Output" tool window
-       BbjRunConsoleService consoleService = BbjRunConsoleService.getInstance(project);
-
-       // Create console view for this run
-       String tabTitle = file.getName() + " (" + getRunMode() + ")";
-       ConsoleView console = consoleService.createConsoleTab(tabTitle);
-
-       // Launch process in background thread
-       ApplicationManager.getApplication().executeOnPooledThread(() -> {
-           try {
-               OSProcessHandler handler = new OSProcessHandler(cmd);
-
-               // Attach console
-               console.attachToProcess(handler);
-
-               // Add termination listener
-               handler.addProcessListener(new ProcessTerminatedListener(
-                   ProcessTerminatedListener.generateCommandLineText(cmd)
-               ));
-
-               // Start process
-               handler.startNotify();
-
-               // Optionally: Wait for completion and check exit code
-               // handler.waitFor();
-
-           } catch (ExecutionException ex) {
-               console.print("Failed to launch: " + ex.getMessage() + "\n",
-                             ConsoleViewContentType.ERROR_OUTPUT);
-           }
-       });
-   }
-   ```
-
-3. **Environment type configuration:**
-   ```java
-   protected GeneralCommandLine buildCommandLine(...) {
-       GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
-       cmd.withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE);
-       // ... rest of command line setup
-       return cmd;
-   }
-   ```
-
-**Integration points:**
-- Reads `BbjSettings.bbjHomePath`
-- Creates `GeneralCommandLine` with console environment
-- Calls new `BbjRunConsoleService` for output capture
-- Notifications remain for user feedback
-
-### Component: BbjRunConsoleService (NEW)
-
-**File:** `src/main/java/com/basis/bbj/intellij/ui/BbjRunConsoleService.java`
-
-**Responsibility:** Manage "BBj Run Output" tool window with dynamic console tabs
-
-**Key methods:**
-```java
-public class BbjRunConsoleService implements Disposable {
-    private final Project project;
-    private final Map<String, ConsoleView> activeConsoles = new ConcurrentHashMap<>();
-
-    public static BbjRunConsoleService getInstance(@NotNull Project project);
-
-    // Create new console tab in "BBj Run Output" tool window
-    public ConsoleView createConsoleTab(@NotNull String title);
-
-    // Remove console tab when process terminates
-    public void removeConsoleTab(@NotNull String title);
-
-    // Get existing console or create new one
-    public ConsoleView getOrCreateConsole(@NotNull String title);
-}
+```typescript
+// bbj-ws-manager.ts line 44
+const bbjServices = services.ServiceRegistry.all.find(
+    service => service.LanguageMetaData.languageId === 'bbj'
+) as BBjServices;
 ```
 
-**Architecture pattern (follows BbjServerService):**
-1. Project-level service registered in plugin.xml
-2. Tool window registered separately (BbjRunConsoleToolWindowFactory)
-3. Service gets reference to tool window's ContentManager
-4. Creates Content instances with ConsoleView components
-5. Manages lifecycle: create on run, cleanup on dispose
+This code uses `ServiceRegistry.all` which iterates all registered services. This should still work, but needs verification. The `.all` property may return a different structure if the internal registry changed.
 
-**Integration points:**
-- Called by `BbjRunActionBase.executeWithConsole()`
-- Retrieves tool window via `ToolWindowManager.getInstance(project).getToolWindow("BBj Run Output")`
-- Creates ConsoleView via `TextConsoleBuilderFactory`
-- Manages Content via `toolWindow.getContentManager()`
+**Confidence: LOW** -- The specific impact on `.all` iteration is not confirmed. The code pattern is unusual (looking up language services from shared services by ID); it may need adaptation.
 
-### Component: BbjRunConsoleToolWindowFactory (NEW)
+---
 
-**File:** `src/main/java/com/basis/bbj/intellij/ui/BbjRunConsoleToolWindowFactory.java`
+### BREAKING CHANGE 6: FileSystemProvider Extended Interface (#1784)
 
-**Responsibility:** Factory for "BBj Run Output" tool window (registered in plugin.xml)
+**Severity: LOW -- likely no custom FS provider**
 
-**Pattern (identical to BbjServerLogToolWindowFactory):**
-```java
-public class BbjRunConsoleToolWindowFactory implements ToolWindowFactory, DumbAware {
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        // Initial placeholder content
-        ConsoleView initialConsole = TextConsoleBuilderFactory.getInstance()
-            .createBuilder(project)
-            .getConsole();
+**What changed:** The extended file system provider interface requires implementing more methods.
 
-        Content content = ContentFactory.getInstance()
-            .createContent(initialConsole.getComponent(), "Welcome", false);
-        toolWindow.getContentManager().addContent(content);
+**Impact analysis:** The BBj LS uses `NodeFileSystem` from `'langium/node'` which provides the standard Node.js filesystem implementation. Since `NodeFileSystem` is maintained by Langium, it will be updated to match the new interface. No custom `FileSystemProvider` is implemented in the BBj codebase.
 
-        // Register service reference (service will manage tabs)
-        BbjRunConsoleService service = BbjRunConsoleService.getInstance(project);
-        service.initialize(toolWindow);
+However, `BBjWorkspaceManager` directly calls `this.fileSystemProvider.readDirectory()` and `this.fileSystemProvider.readFile()`. If these methods changed signatures, updates would be needed.
+
+**Confidence: MEDIUM** -- No custom FS provider, but method signatures on the existing provider may have changed.
+
+---
+
+### BREAKING CHANGE 7: TypeScript 5.8+ Required
+
+**Severity: NONE (already satisfied)**
+
+Current `package.json` has `"typescript": "^5.8.3"` which satisfies the `>= 5.8.0` requirement.
+
+---
+
+### BREAKING CHANGE 8: Grammar Rule Naming Restrictions (#1979)
+
+**Severity: NONE (not affected)**
+
+Rules cannot share names with the grammar they are in, and grammar names must be unique. The BBj grammar is named `BBj` (line 6 of `bbj.langium`). Checking rule names:
+- No rule is named `BBj` (there is `BbjClass`, `BBjTypeRef`, etc., but not exactly `BBj`)
+- There is only one grammar file with parser rules (`bbj.langium`); `java-types.langium` has only `interface` declarations
+- Grammar names are already unique (`BBj` is the only grammar name)
+
+---
+
+### BREAKING CHANGE 9: Removed Deprecated Fields/Functions (#1991)
+
+**Severity: UNKNOWN -- needs verification during implementation**
+
+Several deprecated fields and functions were removed. The exact list is not available from the CHANGELOG; it requires checking PR #1991. The BBj codebase uses these Langium APIs that might be affected:
+
+| API | File | Risk |
+|-----|------|------|
+| `prepareLangiumParser` | `bbj-module.ts` | MEDIUM -- may have been deprecated |
+| `DocumentState.Linked` / `DocumentState.Validated` | `bbj-linker.ts`, `bbj-document-builder.ts` | LOW -- likely still exists |
+| `DocumentValidator.LinkingError` | `bbj-document-validator.ts` | LOW -- likely still exists |
+
+**`prepareLangiumParser` is the highest risk item.** The `bbj-module.ts` uses:
+```typescript
+import { prepareLangiumParser } from 'langium';
+const parser = prepareLangiumParser(services);
+```
+If `prepareLangiumParser` was deprecated in 3.x and removed in 4.0, this will be a compile error. The alternative would be constructing the parser differently.
+
+**Confidence: LOW** -- Cannot confirm without checking Langium 4 exports. Flag for immediate verification.
+
+---
+
+### BREAKING CHANGE 10: Refined EBNF Terminals (#1966)
+
+**Severity: LOW -- grammar regeneration handles this**
+
+Refined EBNF-based terminals to avoid synthetic capturing groups. This affects how terminal rules with character classes and alternations are compiled. Since the BBj grammar uses custom `BBjTokenBuilder` that overrides `buildTerminalToken` for most custom terminals, and the standard terminals (ID, STRING_LITERAL, etc.) are defined with simple regex patterns, this should have minimal impact.
+
+**Action:** Regenerate grammar and verify terminal behavior with the test suite.
+
+## Generated Code Changes
+
+### What Regeneration Produces
+
+Running `langium generate` with `langium-cli@4.1.0` will regenerate three files in `src/language/generated/`:
+
+1. **`ast.ts`** -- This will change significantly:
+   - Type constant exports change from `export const TypeName = 'TypeName'` to a pattern using `TypeName.$type`
+   - `BBjAstReflection` class may have structural changes
+   - Type guard functions (`isXxx`) should remain functionally equivalent
+   - `TypeMetaData` entries may change structure
+
+2. **`grammar.ts`** -- The grammar JSON structure should be largely the same, but may include new metadata fields
+
+3. **`module.ts`** -- The generated module structure should remain compatible. Current structure:
+   ```typescript
+   export const BBjGeneratedSharedModule: Module<LangiumSharedCoreServices, LangiumGeneratedSharedCoreServices> = {
+       AstReflection: () => new BBjAstReflection()
+   };
+   export const BBjGeneratedModule: Module<LangiumCoreServices, LangiumGeneratedCoreServices> = {
+       Grammar: () => BBjGrammar(),
+       LanguageMetaData: () => BBjLanguageMetaData,
+       parser: { ParserConfig: () => parserConfig }
+   };
+   ```
+   This may have the same or slightly different types. The `LangiumGeneratedCoreServices` type may have new fields.
+
+### langium-config.json Changes
+
+The current `langium-config.json` is:
+```json
+{
+    "projectName": "BBj",
+    "languages": [{
+        "id": "bbj",
+        "grammar": "src/language/bbj.langium",
+        "fileExtensions": [".bbj", ".bbl", ".bbjt"],
+        "caseInsensitive": true,
+        "textMate": { "out": "syntaxes/gen-bbj.tmLanguage.json" }
+    }],
+    "out": "src/language/generated",
+    "chevrotainParserConfig": {
+        "recoveryEnabled": true,
+        "nodeLocationTracking": "full"
     }
 }
 ```
 
-**plugin.xml registration:**
-```xml
-<toolWindow id="BBj Run Output"
-            factoryClass="com.basis.bbj.intellij.ui.BbjRunConsoleToolWindowFactory"
-            anchor="bottom"
-            icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
-            canCloseContents="true"/>
+**New options available in Langium 4 (optional):**
+- `strict: true` -- disallows inferred types (not recommended to enable during migration; adds complexity)
+- `fileNames` -- improved control over file associations
+
+**No required changes** to the config format. The existing config should work with langium-cli 4.1.0.
+
+## Components: Changed vs Unchanged
+
+### UNCHANGED (No code changes needed)
+
+| Component | File | Why Unchanged |
+|-----------|------|---------------|
+| Entry point | `main.ts` | `startLanguageServer`, `createConnection`, `NodeFileSystem` patterns identical |
+| Extension | `extension.ts` | VS Code client side, no Langium API usage |
+| Lexer | `bbj-lexer.ts` | Extends `DefaultLexer`, no changed APIs |
+| Value converter | `bbj-value-converter.ts` | Extends `DefaultValueConverter`, no changed APIs |
+| Comment provider | `bbj-comment-provider.ts` | Implements `CommentProvider`, interface unchanged |
+| Hover provider | `bbj-hover.ts` | Extends `AstNodeHoverProvider`, no changed APIs |
+| Type inferer | `bbj-type-inferer.ts` | Custom service, no Langium base class changes |
+| Java interop | `java-interop.ts` | Custom service, minor `$type: Classpath` update only |
+| Signature help | `bbj-signature-help-provider.ts` | Extends `AbstractSignatureHelpProvider`, no changed APIs |
+| esbuild config | `esbuild.mjs` | Bundler config unchanged; CJS output still works |
+
+### MODIFIED (Code changes required)
+
+| Component | File | Changes |
+|-----------|------|---------|
+| **DI Module** | `bbj-module.ts` | `prepareLangiumParser` may be removed; verify and update parser creation |
+| **Scope computation** | `bbj-scope-local.ts` | `PrecomputedScopes` -> `LocalSymbols` (4 sites); AST type constants -> `.$type` (6 sites) |
+| **Scope provider** | `bbj-scope.ts` | `document.precomputedScopes` -> `document.localSymbols` (3 sites); AST type constants (8 sites) |
+| **Linker** | `bbj-linker.ts` | `Reference \| MultiReference` type handling; AST type constants (6 sites) |
+| **Completion** | `bbj-completion-provider.ts` | `createReferenceCompletionItem` new signature (2 sites) |
+| **Node descriptions** | `bbj-nodedescription-provider.ts` | AST type constants in switch cases (4 sites) |
+| **Semantic tokens** | `bbj-semantic-token-provider.ts` | AST type constants in switch cases (3 sites) |
+| **Validator** | `bbj-validator.ts` | AST type constants in ValidationChecks keys (verify if affected) |
+| **Class checks** | `validations/check-classes.ts` | AST type constants in ValidationChecks keys (verify if affected) |
+| **Document builder** | `bbj-document-builder.ts` | Possibly unchanged; verify `BuildOptions` type |
+| **Workspace manager** | `bbj-ws-manager.ts` | `ServiceRegistry.all` usage; verify FS provider methods |
+| **Index manager** | `bbj-index-manager.ts` | Likely unchanged; verify `isAffected` signature |
+| **Document validator** | `bbj-document-validator.ts` | Likely unchanged; verify `DiagnosticData`, `DocumentValidator.LinkingError` |
+
+### REGENERATED (Automatic, no manual changes)
+
+| Component | File | Notes |
+|-----------|------|-------|
+| AST types | `generated/ast.ts` | Full regeneration; type constant format changes |
+| Grammar | `generated/grammar.ts` | Full regeneration; JSON structure may change slightly |
+| Module | `generated/module.ts` | Full regeneration; types may change slightly |
+
+## Data Flow Changes
+
+### Scope Computation Flow
+
+**Before (Langium 3.x):**
+```
+computeLocalScopes() → returns MultiMap<AstNode, AstNodeDescription> as PrecomputedScopes
+  → stored in document.precomputedScopes
+  → consumed by ScopeProvider via document.precomputedScopes.get(node)
 ```
 
-**Differences from BbjServerLogToolWindowFactory:**
-- `canCloseContents="true"` (users can close individual run tabs)
-- Service manages multiple tabs instead of single console
-- No auto-initialization message (tabs created on demand)
-
-### Component: plugin.xml (MODIFIED)
-
-**File:** `src/main/resources/META-INF/plugin.xml`
-
-**Changes:**
-1. **Add project service:**
-   ```xml
-   <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjRunConsoleService"/>
-   ```
-
-2. **Add tool window:**
-   ```xml
-   <toolWindow id="BBj Run Output"
-               factoryClass="com.basis.bbj.intellij.ui.BbjRunConsoleToolWindowFactory"
-               anchor="bottom"
-               icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
-               canCloseContents="true"/>
-   ```
-
-**No changes needed:** Action registrations remain the same (behavior changes internal to actions)
-
-### Component: build.gradle.kts (MODIFIED for Marketplace)
-
-**File:** `bbj-intellij/build.gradle.kts`
-
-**Current state:** Already includes `pluginVerifier()` and `zipSigner()` dependencies
-
-**Changes for Marketplace:**
-1. **Version bump** (alpha → beta or 1.0.0):
-   ```kotlin
-   version = "1.0.0"
-   ```
-
-2. **Add signing configuration:**
-   ```kotlin
-   intellijPlatform {
-       signing {
-           certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
-           privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
-           password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
-       }
-   }
-   ```
-
-3. **Add publishing configuration:**
-   ```kotlin
-   intellijPlatform {
-       publishing {
-           token.set(providers.environmentVariable("PUBLISH_TOKEN"))
-           channels.set(listOf("stable")) // or "beta"
-       }
-   }
-   ```
-
-4. **Add verifyPlugin task configuration:**
-   ```kotlin
-   tasks {
-       verifyPlugin {
-           // Verify against multiple IDE versions
-           ides {
-               ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2")
-               ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3")
-           }
-       }
-   }
-   ```
-
-**Integration with CI:** Environment variables set in GitHub Actions secrets
-
-### Component: Description and Change Notes (NEW/MODIFIED)
-
-**Files:**
-- `src/main/resources/META-INF/description.html` (already exists, may need editing)
-- `src/main/resources/META-INF/changeNotes.html` (NEW, created per release)
-
-**Format:** Simple HTML (paragraphs, lists, text formatting)
-
-**Example description.html:**
-```html
-<p>
-BBj Language Support provides code intelligence for BBj source files in IntelliJ IDEA.
-</p>
-
-<ul>
-  <li>Syntax highlighting for .bbj, .bbl, .bbjt, .src, and .bbx files</li>
-  <li>Code completion, go-to-definition, and hover documentation</li>
-  <li>Real-time error checking and diagnostics</li>
-  <li>Run actions for GUI, BUI, and DWC programs</li>
-  <li>Integrated console output for program execution</li>
-</ul>
-
-<p>
-Powered by the BBj Language Server (Langium-based).
-</p>
+**After (Langium 4.x):**
+```
+computeLocalScopes() → returns LocalSymbols (new dedicated interface)
+  → stored in document.localSymbols
+  → consumed by ScopeProvider via document.localSymbols.get(node)
 ```
 
-**Example changeNotes.html:**
-```html
-<h3>Version 1.0.0</h3>
-<ul>
-  <li>Fixed: Run commands now properly detect BBj executable on all platforms</li>
-  <li>New: Console output capture in "BBj Run Output" tool window</li>
-  <li>New: Multiple concurrent run outputs with separate tabs</li>
-  <li>Improved: Better error messages when BBj home not configured</li>
-</ul>
+**Key question:** Does `LocalSymbols` still support `new MultiMap<AstNode, AstNodeDescription>()` as its implementation? The `BbjScopeComputation.computeLocalScopes()` creates `const scopes = new MultiMap<AstNode, AstNodeDescription>()` and returns it. If `LocalSymbols` requires a different type, the construction pattern must change. **Flag for immediate verification.**
+
+### Linking Flow
+
+**Before (Langium 3.x):**
+```
+AstUtils.streamReferences(node) → Stream<ReferenceInfo>
+  each ReferenceInfo contains: { container, property, reference: Reference }
+  doLink(refInfo, document) → processes single Reference
 ```
 
-**Gradle integration:**
-```kotlin
-intellijPlatform {
-    pluginConfiguration {
-        description = file("src/main/resources/META-INF/description.html").readText()
-        changeNotes.set(file("src/main/resources/META-INF/changeNotes.html").readText())
-    }
-}
+**After (Langium 4.x):**
+```
+AstUtils.streamReferences(node) → Stream<ReferenceInfo>
+  each ReferenceInfo may contain: { container, property, reference: Reference | MultiReference }
+  doLink(refInfo, document) → must handle Reference | MultiReference
 ```
 
-## Data Flow: Run Action with Console
+Since the BBj grammar does not use multi-references (`@=` syntax), all actual references at runtime will be single `Reference` objects. The code must compile with the wider union type, but behavior should be identical.
 
-### Before (Current v1.1)
-```
-User clicks "Run As BBj Program"
-  ↓
-BbjRunGuiAction.actionPerformed()
-  ↓
-buildCommandLine() → GeneralCommandLine
-  ↓
-new OSProcessHandler(cmd).startNotify()
-  ↓
-[Process output lost]
-  ↓
-showSuccess() notification
-```
+## Recommended Migration Order
 
-### After (v1.2)
-```
-User clicks "Run As BBj Program"
-  ↓
-BbjRunGuiAction.actionPerformed()
-  ↓
-buildCommandLine() → GeneralCommandLine with CONSOLE env
-  ↓
-executeWithConsole(cmd, file, project)
-  ↓
-BbjRunConsoleService.createConsoleTab(title)
-  ↓
-  ├─ Get/show "BBj Run Output" tool window
-  ├─ Create new ConsoleView
-  └─ Add as Content tab
-  ↓
-ApplicationManager.executeOnPooledThread()
-  ↓
-new OSProcessHandler(cmd)
-  ↓
-console.attachToProcess(handler)
-  ↓
-handler.addProcessListener(ProcessTerminatedListener)
-  ↓
-handler.startNotify()
-  ↓
-[Process output → ConsoleView in real-time]
-  ↓
-[Process terminates → exit code displayed]
-```
+### Phase 1: Dependency Update + Grammar Regeneration (Foundation)
 
-## Data Flow: Marketplace Publication
+**Why first:** Establishes the new baseline. Generated code must be regenerated before any hand-written code changes can compile against it.
 
-### One-time Setup
-```
-Developer generates signing certificate
-  ↓
-Certificate chain + private key stored in GitHub Secrets
-  ↓
-JetBrains Account Personal Access Token stored in GitHub Secrets
-```
+1. Update `package.json`:
+   - `"langium": "~4.1.3"`
+   - `"langium-cli": "~4.1.0"`
+   - `"chevrotain": "~11.0.3"` (verify compatibility)
+2. Run `npm install`
+3. Run `npx langium generate`
+4. Examine regenerated `ast.ts`, `grammar.ts`, `module.ts` for structural changes
+5. **DO NOT expect compilation to succeed yet** -- this establishes the new generated code
 
-### Per-Release Flow
-```
-Update version in build.gradle.kts
-  ↓
-Update changeNotes.html
-  ↓
-Run `./gradlew verifyPlugin` (local testing)
-  ↓
-  ├─ Checks plugin.xml structure
-  ├─ Verifies dependencies exist
-  ├─ Tests against IDE version range
-  └─ Reports API compatibility issues
-  ↓
-Commit and tag release
-  ↓
-GitHub Actions CI triggered
-  ↓
-CI runs: buildPlugin → signPlugin → publishPlugin
-  ↓
-  ├─ buildPlugin: Creates ZIP with all resources
-  ├─ signPlugin: Signs ZIP with certificate
-  └─ publishPlugin: Uploads to Marketplace
-  ↓
-JetBrains Marketplace automated review
-  ↓
-  ├─ Binary verification
-  ├─ Approval guidelines check
-  └─ Compatibility verification
-  ↓
-Plugin published (visible in Marketplace + IDE plugin browser)
+### Phase 2: Fix Compile Errors - Type Renames (Quick wins)
+
+**Why second:** These are mechanical renames with no logic changes.
+
+1. `PrecomputedScopes` -> `LocalSymbols` in imports and type annotations
+2. `document.precomputedScopes` -> `document.localSymbols` in property access
+3. Verify `MultiMap` is still valid for `LocalSymbols` construction
+4. Fix any removed deprecated imports that cause immediate compile errors
+
+### Phase 3: Fix Compile Errors - AST Type Constants (Systematic)
+
+**Why third:** Most files affected, but changes are mechanical once the new pattern is understood.
+
+1. Examine the new `ast.ts` to understand the exact new constant format
+2. If constants moved to `TypeName.$type`: Update all `type: TypeName` to `type: TypeName.$type`
+3. If constants moved to `TypeName.$type`: Update all `case TypeName:` to `case TypeName.$type:`
+4. If constants moved to `TypeName.$type`: Update all `$type === TypeName` to `$type === TypeName.$type`
+5. Verify `ValidationChecks<BBjAstType>` key syntax (these are TypeScript property names, may work differently)
+
+### Phase 4: Fix Compile Errors - API Signature Changes (Careful)
+
+**Why fourth:** These require understanding the new API shapes, not just renaming.
+
+1. Update `createReferenceCompletionItem` signature and `super` call
+2. Update `doLink` / `getCandidate` for `Reference | MultiReference` type
+3. Verify/fix `prepareLangiumParser` usage (may need replacement)
+4. Check `ServiceRegistry.all` usage pattern
+
+### Phase 5: Verification and Testing
+
+**Why last:** Full integration testing after all compile errors resolved.
+
+1. Build passes (`tsc -b tsconfig.json`)
+2. Bundle succeeds (`node esbuild.mjs`)
+3. Run existing test suite (`vitest run`)
+4. Manual testing: Start VS Code extension, verify:
+   - Parsing works (syntax highlighting, error detection)
+   - Completion works
+   - Go-to-definition works
+   - Hover works
+   - Java interop works
+   - Validation works
+5. Manual testing: Start IntelliJ plugin (uses same `main.cjs`), verify basic functionality
+
+## Bundling and Distribution: No Changes
+
+The esbuild configuration remains valid:
+
+```javascript
+// esbuild.mjs -- NO CHANGES NEEDED
+entryPoints: ['src/extension.ts', 'src/language/main.ts'],
+outdir: 'out',
+outExtension: { '.js': '.cjs' },
+bundle: true,
+target: "es6",
+format: 'cjs',
+external: ['vscode'],
+platform: 'node',
 ```
 
-## Component Interaction Map
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    User Action Layer                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │ BbjRunGui    │  │ BbjRunBui    │  │ BbjRunDwc    │      │
-│  │   Action     │  │   Action     │  │   Action     │      │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
-│         └──────────────────┴──────────────────┘             │
-└────────────────────────────┬────────────────────────────────┘
-                             │ extends
-                             ↓
-┌─────────────────────────────────────────────────────────────┐
-│                 BbjRunActionBase                            │
-│  ┌────────────────────────────────────────────────┐         │
-│  │ getBbjExecutablePath() [MODIFIED]              │         │
-│  │ - Enhanced diagnostics                         │         │
-│  │ - Files.exists() + Files.isReadable()          │         │
-│  │                                                 │         │
-│  │ executeWithConsole() [NEW]                     │         │
-│  │ - Creates console tab                          │         │
-│  │ - Launches in pooled thread                    │         │
-│  │ - Attaches OSProcessHandler to ConsoleView     │         │
-│  └───────────────────┬────────────────────────────┘         │
-└────────────────────────┼────────────────────────────────────┘
-                         │ uses
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│              BbjRunConsoleService [NEW]                     │
-│  ┌────────────────────────────────────────────────┐         │
-│  │ Project-level service                          │         │
-│  │                                                 │         │
-│  │ createConsoleTab(title) → ConsoleView          │         │
-│  │ - Gets ToolWindow from ToolWindowManager       │         │
-│  │ - Creates ConsoleView via                      │         │
-│  │   TextConsoleBuilderFactory                    │         │
-│  │ - Adds Content to ContentManager               │         │
-│  │                                                 │         │
-│  │ removeConsoleTab(title)                        │         │
-│  │ - Cleanup on process termination (optional)    │         │
-│  └───────────────────┬────────────────────────────┘         │
-└────────────────────────┼────────────────────────────────────┘
-                         │ manages
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│          BbjRunConsoleToolWindowFactory [NEW]               │
-│  ┌────────────────────────────────────────────────┐         │
-│  │ Creates "BBj Run Output" ToolWindow            │         │
-│  │                                                 │         │
-│  │ createToolWindowContent()                      │         │
-│  │ - Initial placeholder console                  │         │
-│  │ - Registers with BbjRunConsoleService          │         │
-│  └────────────────────────────────────────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ registered in
-                         ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      plugin.xml                             │
-│  <projectService ... BbjRunConsoleService />                │
-│  <toolWindow id="BBj Run Output" ... />                     │
-│  <action id="bbj.runGui" ... />  (existing)                 │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Build Order Recommendations
-
-### Phase 7: Run Command Fixes (Foundation)
-**Goal:** Make executable path resolution robust + add diagnostics
-
-**Build order:**
-1. **Modify `BbjRunActionBase.getBbjExecutablePath()`**
-   - Replace `File` with `Files` (NIO2)
-   - Add `Files.isReadable()` check
-   - Add diagnostic logging when returning null
-   - **Why first:** All run actions depend on this, must be stable before console integration
-
-2. **Add environment type to `buildCommandLine()`**
-   - Set `ParentEnvironmentType.CONSOLE`
-   - **Why second:** Simple addition, no dependencies on other changes
-
-3. **Test manually with missing/broken BBj home**
-   - Verify error messages are clear
-   - Verify no crashes
-   - **Why third:** Validates foundation before moving forward
-
-### Phase 8: Console Integration (Feature)
-**Goal:** Capture process output in tool window
-
-**Build order:**
-1. **Create `BbjRunConsoleToolWindowFactory`**
-   - Copy pattern from `BbjServerLogToolWindowFactory`
-   - Register in plugin.xml
-   - **Why first:** Tool window must exist before service can use it
-
-2. **Register tool window in plugin.xml**
-   - Add `<toolWindow id="BBj Run Output" .../>`
-   - Test that window appears (even if empty)
-   - **Why second:** Validates registration before wiring logic
-
-3. **Create `BbjRunConsoleService`**
-   - Implement `getInstance()`, `createConsoleTab()`, `Disposable`
-   - Register as projectService in plugin.xml
-   - **Why third:** Service depends on tool window existing
-
-4. **Wire service to tool window factory**
-   - Factory calls `service.initialize(toolWindow)`
-   - Service stores ContentManager reference
-   - **Why fourth:** Establishes communication channel
-
-5. **Add `executeWithConsole()` to `BbjRunActionBase`**
-   - Call `BbjRunConsoleService.createConsoleTab()`
-   - Create `OSProcessHandler` in pooled thread
-   - Attach console with `console.attachToProcess(handler)`
-   - Add `ProcessTerminatedListener`
-   - **Why fifth:** Integrates all components
-
-6. **Modify subclass `actionPerformed()`**
-   - Replace direct `new OSProcessHandler()` with `executeWithConsole()`
-   - Keep error handling for `buildCommandLine() == null`
-   - **Why sixth:** Activates new behavior
-
-7. **Test end-to-end**
-   - Run GUI program, verify output appears
-   - Run multiple programs, verify separate tabs
-   - Close tab, verify cleanup
-   - **Why last:** Full integration validation
-
-### Phase 9: Marketplace Preparation (Publication)
-**Goal:** Sign, verify, and publish plugin
-
-**Build order:**
-1. **Generate signing certificate**
-   - Follow [Plugin Signing docs](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
-   - Store in 1Password or secure location
-   - **Why first:** One-time setup, blocks signing tasks
-
-2. **Add GitHub Secrets**
-   - `CERTIFICATE_CHAIN`, `PRIVATE_KEY`, `PRIVATE_KEY_PASSWORD`
-   - `PUBLISH_TOKEN` (from JetBrains Account)
-   - **Why second:** CI will fail without these
-
-3. **Update build.gradle.kts**
-   - Bump version to 1.0.0
-   - Add `signing {}` block
-   - Add `publishing {}` block
-   - **Why third:** Configuration before attempting build
-
-4. **Create/update description.html**
-   - Clear value proposition
-   - Feature list
-   - **Why fourth:** Required for Marketplace listing
-
-5. **Create changeNotes.html**
-   - v1.0.0 changes
-   - Bug fixes and new features
-   - **Why fifth:** Required for release
-
-6. **Run `./gradlew verifyPlugin` locally**
-   - Fix any compatibility issues
-   - **Why sixth:** Catch problems before CI
-
-7. **Create GitHub Actions workflow**
-   - Trigger on tag push
-   - Run: verifyPlugin → buildPlugin → signPlugin → publishPlugin
-   - **Why seventh:** Automates release process
-
-8. **Tag release and push**
-   - CI builds and publishes
-   - Monitor for errors
-   - **Why eighth:** Final publication
-
-9. **Verify on Marketplace**
-   - Check plugin page displays correctly
-   - Test installation in clean IDE
-   - **Why last:** Validates public release
-
-## Common Pitfalls and Mitigations
-
-### Pitfall 1: EDT Blocking with Process Wait
-
-**Problem:** Calling `handler.waitFor()` on Event Dispatch Thread freezes UI
-
-**Detection:** IntelliJ 2024.1+ logs "There is no ProgressIndicator or Job in this thread"
-
-**Mitigation:**
-- Always launch process in `ApplicationManager.getApplication().executeOnPooledThread()`
-- Never call synchronous process operations in `actionPerformed()` directly
-- Use process listeners for completion detection instead of blocking waits
-
-**Phase affected:** Phase 8 (Console Integration)
-
-### Pitfall 2: Plugin Verifier Fails on Missing Dependencies
-
-**Problem:** Plugin references classes not available in target IDE version
-
-**Detection:** `./gradlew verifyPlugin` reports "Plugin references a class which is not available in the IDE"
-
-**Common causes:**
-- Using API added in newer IDE version
-- Missing dependency plugin declaration
-- Incorrect `sinceBuild` in plugin.xml
-
-**Mitigation:**
-- Run verifyPlugin against minimum supported IDE version (2024.2)
-- Check [IntelliJ Platform API Changes](https://plugins.jetbrains.com/docs/intellij/api-changes-list.html)
-- Test in IDE matching `sinceBuild` version
-
-**Phase affected:** Phase 9 (Marketplace Preparation)
-
-### Pitfall 3: Process Output Encoding Issues
-
-**Problem:** BBj output contains non-ASCII characters (errors in Spanish locale), displays as garbage in console
-
-**Detection:** Console shows `??????` or box characters
-
-**Mitigation:**
-- Set charset on `GeneralCommandLine`: `cmd.withCharset(StandardCharsets.UTF_8)`
-- BBj typically outputs in platform default encoding
-- On Windows, may need `Charset.forName("windows-1252")`
-- Test with non-ASCII file paths and error messages
-
-**Phase affected:** Phase 8 (Console Integration)
-
-### Pitfall 4: Tool Window Content Leak
-
-**Problem:** Creating ConsoleView tabs without disposal causes memory leak
-
-**Detection:** Multiple runs → OutOfMemoryError or IDE slowdown
-
-**Mitigation:**
-- Register each ConsoleView with `Disposer.register(toolWindow.getDisposable(), console)`
-- Remove Content from ContentManager when tab closed
-- Listen for Content removal events: `ContentManager.addContentManagerListener()`
-
-**Phase affected:** Phase 8 (Console Integration)
-
-### Pitfall 5: Marketplace Rejection for Missing Organization
-
-**Problem:** First-time publication fails with "Plugin must be published by an organization"
-
-**Detection:** JetBrains Marketplace returns error during upload
-
-**Mitigation:**
-- Create organization on [JetBrains Marketplace](https://plugins.jetbrains.com/author/me)
-- Add `organizationId` to plugin.xml (not currently in build.gradle.kts config)
-- Re-upload plugin
-
-**Phase affected:** Phase 9 (Marketplace Preparation)
-
-### Pitfall 6: BBj Executable Path with Spaces
-
-**Problem:** BBj installed in `C:\Program Files\BBx\` fails to launch
-
-**Detection:** `ExecutionException: Cannot run program "C:\Program": CreateProcess error=2, The system cannot find the file specified`
-
-**Root cause:** GeneralCommandLine splits on spaces if not properly quoted
-
-**Mitigation:**
-- `GeneralCommandLine` constructor handles quoting automatically
-- Verify with: `cmd.getCommandLineString()` (should show quoted path)
-- Do NOT manually quote executable path
-- Working: `new GeneralCommandLine("C:\\Program Files\\BBx\\bin\\bbj.exe")`
-- Broken: `new GeneralCommandLine("\"C:\\Program Files\\BBx\\bin\\bbj.exe\"")`
-
-**Phase affected:** Phase 7 (Run Command Fixes)
-
-## Testing Strategy
-
-### Unit Testing Approach
-
-**Current state:** No unit tests exist
-
-**Recommendation:** Unit tests for Phase 9 only (v1.2 is bug fix + small feature)
-
-**Testable components:**
-1. **BbjRunActionBase.getBbjExecutablePath()**
-   - Mock file system with jimfs
-   - Test: null when bbjHome unset
-   - Test: null when bin/bbj missing
-   - Test: null when bin/bbj is directory
-   - Test: valid path when all conditions met
-
-2. **BbjRunConsoleService tab management**
-   - Test: createConsoleTab() adds Content
-   - Test: duplicate title handling
-   - Test: removeConsoleTab() cleanup
-
-**Phase affected:** Optional for v1.2, recommended for v1.3+
-
-### Manual Testing Checklist
-
-**Phase 7: Run Command Fixes**
-- [ ] Run GUI program with valid BBj home → Success
-- [ ] Run GUI program with unset BBj home → Clear error
-- [ ] Run GUI program with wrong BBj home → Clear error
-- [ ] Run GUI program with bbj.exe renamed → Clear error (Windows)
-- [ ] Run BUI program → Same validations
-- [ ] Run DWC program → Same validations
-
-**Phase 8: Console Integration**
-- [ ] Run GUI program → Output appears in "BBj Run Output" window
-- [ ] Run GUI program twice → Two separate tabs
-- [ ] Close console tab → Tab removed, no errors
-- [ ] Run program that prints to stdout → Text appears in real-time
-- [ ] Run program that prints to stderr → Text appears (colored red)
-- [ ] Run program that exits with error → Exit code displayed
-- [ ] Run program with non-ASCII characters → No encoding issues
-
-**Phase 9: Marketplace Preparation**
-- [ ] `./gradlew verifyPlugin` → No errors
-- [ ] `./gradlew buildPlugin` → ZIP created in build/distributions/
-- [ ] `./gradlew signPlugin` → ZIP signature valid
-- [ ] Install signed plugin in clean IDE → Plugin loads
-- [ ] Upload to Marketplace → Accepted
-- [ ] View plugin page on Marketplace → Description displays correctly
-- [ ] Install from Marketplace → Works in fresh IDE
-
-## Performance Considerations
-
-### OSProcessHandler Thread Pool
-
-**Current:** Each run action creates new `OSProcessHandler`, runs on pooled thread
-
-**Impact:** Multiple concurrent runs use separate threads (OK, thread pool managed by platform)
-
-**Recommendation:** No change needed. Platform handles thread lifecycle.
-
-### Console Buffer Size
-
-**Default:** IntelliJ ConsoleView has configurable buffer limit
-
-**Concern:** BBj program with massive output (e.g., debug logging loop) could cause:
-- Memory pressure
-- UI lag scrolling console
-
-**Mitigation:**
-- Accept default buffer size (typically 1 MB)
-- Document: Users should avoid `PRINT` loops for large datasets
-- Future: Add "Clear Console" action to toolbar
-
-### Tool Window Activation
-
-**Current:** Tool window activation on every run could be disruptive
-
-**Recommendation:**
-- Do NOT auto-show tool window on every run
-- User must manually open "BBj Run Output" window first time
-- Subsequent runs add tabs without stealing focus
-- Use `toolWindow.show()` only on explicit user action
-
-## Version Compatibility Matrix
-
-| Component | Minimum Version | Maximum Version | Notes |
-|-----------|----------------|-----------------|-------|
-| IntelliJ IDEA | 2024.2 (242) | 2024.3+ (open) | `sinceBuild="242"`, `untilBuild=""` |
-| Java (plugin) | 17 | 21 | Plugin compiled with Java 17 target |
-| Java (runtime) | 17 | 21+ | IntelliJ 2024.2 requires Java 17+ |
-| Gradle | 8.5+ | 8.x | Kotlin DSL, IntelliJ Platform Plugin 2.x |
-| LSP4IJ | 0.19.0 | 0.19.x | Language Server Protocol support |
-| BBj (target) | 23.00+ | 24.x | User's BBj installation |
-
-**Implications for Marketplace:**
-- Plugin compatible with IntelliJ 2024.2, 2024.3, and future versions
-- Marketplace verifier checks API usage against 2024.2
-- Users on 2024.1 or earlier cannot install (enforced by platform)
-
-## Success Criteria
-
-### Phase 7: Run Command Fixes
-- [x] Executable path validation uses NIO2 `Files` API
-- [x] Clear error message when BBj home not configured
-- [x] Clear error message when bbj executable missing
-- [x] No crashes with broken symlinks or special file types
-- [x] Diagnostic logging for troubleshooting
-
-### Phase 8: Console Integration
-- [x] "BBj Run Output" tool window appears in bottom panel
-- [x] Each run creates separate console tab with title format: `{filename} ({mode})`
-- [x] Process stdout/stderr captured in real-time
-- [x] Process exit code displayed on termination
-- [x] Multiple concurrent runs supported (separate tabs)
-- [x] Console tabs closeable by user
-- [x] No memory leaks from unclosed consoles
-- [x] Process launched on pooled thread (no EDT blocking)
-
-### Phase 9: Marketplace Preparation
-- [x] Plugin signed with valid certificate
-- [x] `verifyPlugin` task passes with no errors
-- [x] Plugin uploaded to JetBrains Marketplace
-- [x] Plugin page displays correctly (description, version, compatibility)
-- [x] Plugin installable from Marketplace in fresh IDE
-- [x] CI pipeline automates: build → sign → publish
-- [x] Change notes document v1.0.0 features
+Langium 4.x continues to be ESM-native but fully bundleable to CJS via esbuild. The VS Code extension expects `out/extension.cjs` and the LS expects `out/language/main.cjs` -- both produced by this config.
+
+The IntelliJ plugin bundles and runs `main.cjs` via Node.js stdio -- this is completely transparent to the Langium version.
+
+## Risk Assessment
+
+| Risk | Probability | Impact | Mitigation |
+|------|-------------|--------|------------|
+| `prepareLangiumParser` removed | Medium | High (blocks parser creation) | Check Langium 4 exports immediately; alternative: use standard parser creation |
+| `LocalSymbols` interface incompatible with `MultiMap` | Low | High (blocks scope computation) | Check interface definition; may need adapter |
+| `ValidationChecks` key format changed | Low | Medium (breaks validation registration) | Regenerate and inspect; keys are TypeScript literal types |
+| Hidden deprecated API removals (#1991) | Medium | Medium (compile errors) | Systematic: fix all compile errors after dependency update |
+| Chevrotain version incompatibility | Low | High (parser breaks) | Langium 4 pins its own chevrotain; verify peer dependency |
+| Test suite assumptions broken | Medium | Low (tests fail) | Run tests early; fix assertions |
 
 ## Sources
 
-**IntelliJ Platform SDK (Official):**
-- [Execution | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/execution.html)
-- [Tool Windows | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tool-windows.html)
-- [Plugin Signing | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
-- [Publishing a Plugin | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
-- [Preparing your plugin for publication | JetBrains Marketplace Documentation](https://plugins.jetbrains.com/docs/marketplace/prepare-your-plugin-for-publication.html)
-- [Tasks | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
-
-**IntelliJ Platform API Documentation:**
-- [OSProcessHandler (JetBrains intellij-community)](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-util-io/src/com/intellij/execution/process/OSProcessHandler.java)
-- [GeneralCommandLine (JetBrains intellij-community)](https://github.com/17712484466/intellij-community/blob/master/platform/platform-api/src/com/intellij/execution/configurations/GeneralCommandLine.java)
-- [ToolWindowManager.kt (JetBrains intellij-community)](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-api/src/com/intellij/openapi/wm/ToolWindowManager.kt)
-
-**Community Support:**
-- [How to make a simple console output – IDEs Support](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206756385-How-to-make-a-simple-console-output)
-- [Running commands in console from IntelliJ plugin actions – Create & Learn](https://javaworklife.wordpress.com/2020/11/02/running-console-commands-from-intellij-plugin-actions/)
-- [How to automatically open a 'Tool Window' used as a custom console view – IDEs Support](https://intellij-support.jetbrains.com/hc/en-us/community/posts/4407224795794-How-to-automatically-open-a-Tool-Window-used-as-a-custom-console-view-when-launching-a-action)
-
-**IntelliJ Plugin Verifier:**
-- [intellij-plugin-verifier (GitHub)](https://github.com/JetBrains/intellij-plugin-verifier)
-- [Verifying Plugin Compatibility | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
-
-**Code Examples:**
-- [ConsoleView.attachToProcess examples (Tabnine)](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
-- [GeneralCommandLine examples (Tabnine)](https://www.tabnine.com/code/java/classes/com.intellij.execution.configurations.GeneralCommandLine)
-
-**Platform Updates:**
-- [Busy Plugin Developers Newsletter – Q4 2025 | JetBrains Platform Blog](https://blog.jetbrains.com/platform/2026/01/busy-plugin-developers-newsletter-q4-2025/)
+- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/) -- Official announcement with feature overview
+- [Langium CHANGELOG](https://github.com/eclipse-langium/langium/blob/main/packages/langium/CHANGELOG.md) -- Detailed breaking changes list
+- [Langium GitHub Releases](https://github.com/langium/langium/releases) -- Version-specific release notes
+- [Langium npm package](https://www.npmjs.com/package/langium) -- Latest version 4.1.3
+- [langium-cli npm package](https://www.npmjs.com/package/langium-cli) -- Latest version 4.1.0
+- [PR #1788: PrecomputedScopes to LocalSymbols](https://github.com/eclipse-langium/langium/pull/1788) -- Rename details
+- [PR #1509: MultiReference support](https://github.com/eclipse-langium/langium/pull/1509) -- Reference type changes
+- [PR #1942: AST type name changes](https://github.com/eclipse-langium/langium/pull/1942) -- $type constant migration
+- [PR #1976: CompletionProvider changes](https://github.com/eclipse-langium/langium/pull/1976) -- New required arguments
+- [PR #1991: Removed deprecated items](https://github.com/eclipse-langium/langium/pull/1991) -- Full list of removed APIs (not enumerated in CHANGELOG)

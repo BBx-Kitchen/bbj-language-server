@@ -1,476 +1,553 @@
-# Domain Pitfalls: IntelliJ Plugin Run Commands, Console Integration, and Marketplace Publication
+# Domain Pitfalls: Langium 3.2.1 to 4.2.0 Migration
 
-**Domain:** IntelliJ Platform Plugin Development (2024.2+)
-**Researched:** 2026-02-02
-**Context:** v1.2 milestone - fixing run commands, adding console output capture, preparing for JetBrains Marketplace
+**Domain:** Langium-based language server upgrade (BBj)
+**Researched:** 2026-02-03
+**Overall Confidence:** MEDIUM-HIGH (verified against npm registry, CHANGELOG, and codebase analysis; some details from web search only)
+
+---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites or major issues.
-
-### Pitfall 1: MainToolBar Action Registration Broken in New UI (2024.2+)
-
-**What goes wrong:** Actions registered to `group-id="MainToolBar"` in plugin.xml appear in Classic UI but are invisible in the New UI (enabled by default in IntelliJ 2024.2+). Toolbar appears empty despite correct XML registration.
-
-**Why it happens:** IntelliJ 2024.2 introduced a redesigned "New UI" with different toolbar architecture. The `MainToolBar` group ID still exists for backward compatibility but is not automatically surfaced in the New UI. Actions need explicit registration to New UI-specific toolbar groups.
-
-**Consequences:**
-- Users on default New UI see no toolbar buttons
-- Plugin appears broken on fresh IntelliJ installations
-- Manual "Customize Toolbar" required to surface actions
-- Affects both Community and Ultimate editions
-
-**Prevention:**
-1. Register actions to **both** Classic and New UI toolbar groups:
-   - Classic UI: `group-id="MainToolBar"`
-   - New UI: `group-id="MainToolBarSettings"` or alternative New UI groups (`NavBarVcsGroup`, `VcsToobarActions`)
-2. Test plugin with **New UI enabled** (Settings > Appearance & Behavior > New UI)
-3. Test on both IntelliJ Community Edition and Ultimate Edition
-4. Check toolbar visibility immediately after plugin installation (not just after customization)
-
-**Detection:**
-- Install plugin in fresh IntelliJ 2024.2+ instance with New UI enabled
-- Check if toolbar actions visible without manual customization
-- Switch between Classic UI and New UI to verify both work
-
-**References:**
-- [New UI toolbar registration discussion](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
-- [Action group icons not showing in New UI](https://intellij-support.jetbrains.com/hc/en-us/community/posts/15268937638290-Action-group-Icon-doesn-t-show-up-for-newUI)
-- [Action System documentation](https://plugins.jetbrains.com/docs/intellij/action-system.html)
+Mistakes that cause the migration to fail, produce silent runtime bugs, or require significant rework.
 
 ---
 
-### Pitfall 2: ProcessHandler Lifecycle Violation - startNotify() Not Called
+### Pitfall 1: AST Type Name Constants Restructured (`<Type>` to `<Type>.$type`)
 
-**What goes wrong:** Creating `OSProcessHandler` or `GeneralCommandLine.createProcess()` but forgetting to call `processHandler.startNotify()`. Process starts but output is never captured. Console remains blank even though process executes.
+**What goes wrong:** Langium 4 changed how generated `ast.ts` exports type name constants. In Langium 3, the generated code exports `export const JavaClass = 'JavaClass'`. In Langium 4, the type name is accessed via `<TypeName>.$type` instead (#1942). Every place in the codebase that uses these constants as string comparisons will compile but produce incorrect runtime behavior, OR will fail to compile if the type system catches the mismatch.
 
-**Why it happens:** The ProcessHandler API requires explicit `startNotify()` call to begin capturing stdout/stderr. Many developers assume `new OSProcessHandler(commandLine)` or executing the command line automatically starts monitoring, but it doesn't.
+**Why it happens:** The Langium team restructured `ast.ts` to provide richer type metadata (property constants, better TypeScript integration). The string constants changed from being direct exports to properties on type objects.
 
 **Consequences:**
-- Process runs but console shows no output
-- `ProcessListener` events never fire
-- `processTerminated()` event never fires
-- Cannot detect when process completes
-- Silent failures - process errors invisible to users
+- Switch statements using `case ParameterDecl:`, `case SymbolRef:`, `case MethodCall:` (as in `bbj-semantic-token-provider.ts`) will silently stop matching if the constant shape changes.
+- Comparisons like `descr.type !== MethodDecl` (in `bbj-linker.ts`) and `descr.type === MethodDecl` (in `bbj-scope.ts`) will fail silently.
+- The `$type:` property in synthetic AST node creation (test module: `$type: JavaClass`) may stop working.
+- `AstNodeDescription` objects with `type: FieldDecl` or `type: VariableDecl` (in `bbj-scope-local.ts`, `bbj-linker.ts`) will break.
+
+**Specific locations in the BBj codebase:**
+| File | Pattern | Lines |
+|------|---------|-------|
+| `bbj-semantic-token-provider.ts` | `case ParameterDecl:`, `case SymbolRef:`, `case MethodCall:` | 13, 15, 17 |
+| `bbj-linker.ts` | `type: VariableDecl`, `$type === BinaryExpression`, `$type === ParameterCall`, `$type === ConstructorCall`, `descr.type !== MethodDecl && descr.type !== LibFunction` | 21, 85, 87, 94 |
+| `bbj-scope.ts` | `member.type === MethodDecl`, `nodeDescription.type === LibSymbolicLabelDecl`, `nodeDescription.type === LibEventType` | 340, plus scope.ts and completion-provider.ts |
+| `bbj-scope-local.ts` | `type: FieldDecl` (5 occurrences), `type: MethodDecl` (1 occurrence), `$type === CompoundStatement` | 109, 122, 132, 163, 261, 282 |
+| `bbj-completion-provider.ts` | `nodeDescription.type === LibSymbolicLabelDecl`, `nodeDescription.type === LibEventType` | 43, 46 |
+| `test/bbj-test-module.ts` | `$type: JavaClass`, `$type: JavaMethod` | 87, 102, 111, 126, 135, 150 |
 
 **Prevention:**
-1. **Always call `startNotify()` after creating ProcessHandler:**
-   ```java
-   OSProcessHandler handler = new OSProcessHandler(cmd);
-   handler.addProcessListener(listener); // Optional
-   handler.startNotify(); // REQUIRED - do not forget
-   ```
-2. Attach `ProcessTerminatedListener.attach(handler)` for proper exit status display
-3. Create ConsoleView and call `consoleView.attachToProcess(handler)` **before** `startNotify()`
-4. Follow strict lifecycle order:
-   - Create ProcessHandler
-   - Attach listeners
-   - Attach ConsoleView
-   - Call `startNotify()`
+1. After regenerating with `langium-cli` 4.x, inspect the new `generated/ast.ts` to understand the exact new pattern before changing any code.
+2. Use TypeScript strict mode to catch type mismatches at compile time.
+3. Systematically grep for all string constant usages: `grep -rn "type: [A-Z]" src/` and `grep -rn "case [A-Z]" src/` and `grep -rn "\$type === [A-Z]" src/` and `grep -rn "\$type: [A-Z]" test/`.
+4. The compiler WILL catch many of these if TypeScript is strict enough, but `case` statements with string literals that happen to match may slip through.
 
-**Detection:**
-- Process launches but console tool window shows nothing
-- No process output despite verbose program execution
-- Process termination events never fire
-- IDE shows "Running..." status indefinitely
+**Detection:** TypeScript compilation errors after regeneration; runtime `switch` statements that never match (semantic tokens stop working, scope resolution returns wrong results).
 
-**References:**
-- [Execution documentation](https://plugins.jetbrains.com/docs/intellij/execution.html)
-- [ProcessHandler lifecycle order](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
+**Confidence:** HIGH (verified via npm, CHANGELOG #1942, and also confirmed via the related change: "`BBjAstType` changed from string enumeration to object type mapping" #738).
+
+**Phase:** Must be addressed during the "regenerate and update generated code" step, then immediately followed by a full codebase sweep.
 
 ---
 
-### Pitfall 3: File.separator Path Construction Fails Cross-Platform
+### Pitfall 2: `PrecomputedScopes` Renamed to `LocalSymbols`
 
-**What goes wrong:** Building file paths using `new File(bbjHome, "bin/" + exeName)` with hardcoded forward slash. On Windows, this constructs paths like `C:\BBj\bin/bbj.exe` (mixed separators), which may exist but fail `File.exists()` checks in certain contexts. On macOS with special characters in paths, mixed separators cause path resolution failures.
+**What goes wrong:** The `PrecomputedScopes` type is renamed to `LocalSymbols` with a new dedicated interface (#1788). All imports, type annotations, and method signatures that reference `PrecomputedScopes` will break.
 
-**Why it happens:**
-- Java `File` constructor accepts both separators on most platforms but mixing them is fragile
-- IntelliJ VirtualFileSystem normalizes to forward slashes, creating inconsistency
-- Windows tolerates mixed separators but some File API methods fail unpredictably
-- Developers test on one platform (macOS uses `/`) and miss Windows-specific issues
+**Why it happens:** Langium 4 introduced a cleaner abstraction for local symbol storage.
 
-**Consequences:**
-- `getBbjExecutablePath()` returns null even when BBj Home is correctly configured
-- Run actions disabled despite valid configuration
-- Different behavior on Windows vs macOS/Linux
-- Hard to debug - path "looks correct" when printed
+**Consequences:** Direct compilation failure in `bbj-scope-local.ts` (4 occurrences of `PrecomputedScopes`).
+
+**Specific locations:**
+| File | Usage |
+|------|-------|
+| `bbj-scope-local.ts` | Import on line 12, return type on line 59, parameter type on line 81, parameter type on line 260 |
 
 **Prevention:**
-1. **Use File constructor chaining** instead of string concatenation:
-   ```java
-   File binDir = new File(bbjHome, "bin");
-   File executable = new File(binDir, exeName);
-   ```
-2. **Or use Path API** (Java 7+) with platform-agnostic separators:
-   ```java
-   Path executable = Paths.get(bbjHome, "bin", exeName);
-   ```
-3. **Never hardcode `/` or `\\`** in path construction
-4. Use `File.separator` only if absolutely necessary (avoid string concatenation)
-5. Test on **both** Windows and macOS/Linux before release
+1. Simple find-and-replace: `PrecomputedScopes` to `LocalSymbols`.
+2. But ALSO check whether the new `LocalSymbols` interface has different methods than the old `PrecomputedScopes` type. The old type was `MultiMap<AstNode, AstNodeDescription>`. If the new `LocalSymbols` has additional required methods, the `addToScope` pattern using `scopes.add(key, descr)` and `scopes.get(scopeHolder)` may need updating.
 
-**Detection:**
-- Run action returns "BBj executable not found" despite valid BBj Home
-- Print `executable.getAbsolutePath()` and observe mixed separators
-- `File.exists()` returns false but manual navigation finds the file
-- Works on macOS, fails on Windows (or vice versa)
+**Detection:** Immediate TypeScript compilation failure.
 
-**References:**
-- [VirtualFile path format (always forward slashes)](https://plugins.jetbrains.com/docs/intellij/virtual-file.html)
-- [Cross-platform file path discussion](https://dev.to/kailashnirmal/understanding-file-path-formats-in-windows-and-java-for-cross-platform-compatibility-2im3)
-- [Hardcoded file separator issues](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206131989--IG-Hardcoded-file-separator-should-be-more-selective)
+**Confidence:** HIGH (verified via CHANGELOG, confirmed by codebase grep).
+
+**Phase:** Early in the migration, during "fix compilation errors" step.
 
 ---
 
-### Pitfall 4: JetBrains Marketplace Plugin Verifier Fails on Internal API Usage
+### Pitfall 3: `Reference | MultiReference` Throughout Linker and Scope Provider
 
-**What goes wrong:** Plugin uses `@ApiStatus.Internal` annotated classes or methods (e.g., `PlatformUtils.isRider()`, `PlatformUtils.isCLion()`) that appear in IDE autocomplete. Plugin builds successfully locally but fails Plugin Verifier during Marketplace upload, causing automatic rejection.
+**What goes wrong:** Langium 4 changes the reference type used throughout the linker and scope provider from `Reference` to `Reference | MultiReference` (#1509). The custom `BbjLinker` and `BbjScopeProvider` override methods that accept `ReferenceInfo` and work with references. If these methods don't handle the new `MultiReference` union, they will crash at runtime when the linker encounters multi-references.
 
-**Why it happens:**
-- IntelliJ IDEA autocomplete suggests internal APIs without clear warnings
-- APIs marked `@Internal` are private and subject to breaking changes without notice
-- Plugin Verifier enforces this constraint but local builds do not
-- Kotlin `internal` visibility modifier also triggers violations
+**Why it happens:** Langium 4 added multi-reference support (a single grammar property can reference multiple targets).
 
 **Consequences:**
-- Plugin rejected by Marketplace automated checks
-- Upload fails with cryptic "internal API usage" errors
-- Must refactor and re-upload, delaying release
-- Breaking changes in future IntelliJ versions silently break plugin
+- `BbjLinker.doLink(refInfo: ReferenceInfo, ...)` -- the `ReferenceInfo` type may now carry `MultiReference` instances.
+- `BbjLinker.getCandidate(refInfo: ReferenceInfo)` -- same issue.
+- All code accessing `refInfo.reference.$refText` or `refInfo.reference.ref` may need to check for multi-reference.
+- `BbjScopeProvider.getScope(context: ReferenceInfo)` -- all the scope resolution logic.
 
 **Prevention:**
-1. **Enable IDE inspections before submission:**
-   - Settings > Editor > Inspections > JVM languages > "Unstable API Usage"
-   - Plugin DevKit > Code > "Usages of ApiStatus.@Obsolete"
-   - Plugin DevKit > Code > "Usage of IntelliJ API not available in older IDEs"
-2. **Run Plugin Verifier locally** before upload:
-   ```bash
-   ./gradlew runPluginVerifier
-   ```
-3. **Integrate into CI pipeline** to catch violations automatically
-4. **Consult [Internal API Migration guide](https://plugins.jetbrains.com/docs/intellij/api-internal.html)** when flagged
-5. **Review [Incompatible Changes](https://plugins.jetbrains.com/docs/intellij/api-changes-list-2025.html)** for your target platform version
+1. After upgrading, check whether `ReferenceInfo.reference` is now typed as `Reference | MultiReference`.
+2. In practice, the BBj grammar likely does NOT use multi-references, so the actual runtime risk is low. But the TYPE system will enforce handling of the union.
+3. Add runtime guards (`if ('ref' in refInfo.reference)` or use Langium's utility functions) where needed.
 
-**Detection:**
-- IDE inspection highlights usage in yellow/red
-- Plugin Verifier output shows "Internal API must not be used"
-- Marketplace upload fails with compatibility errors
-- Scheduled CI builds fail after IntelliJ platform update
+**Detection:** TypeScript compilation errors in linker and scope provider overrides.
 
-**References:**
-- [Plugin Verifier documentation](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
-- [Internal API migration](https://plugins.jetbrains.com/docs/intellij/api-internal.html)
-- [Plugin Verifier livestream](https://blog.jetbrains.com/platform/2025/05/plugin-verifier-and-api-compatibility-maintenance-livestream-recording-amp-key-takeaways/)
+**Confidence:** HIGH (verified via CHANGELOG #1509).
+
+**Phase:** During "fix compilation errors" step, after linker/scope provider files fail to compile.
+
+---
+
+### Pitfall 4: `prepareLangiumParser` Removal or Signature Change
+
+**What goes wrong:** The `bbj-module.ts` file uses `prepareLangiumParser(services)` on line 104 to create a custom parser with modified ambiguity logging. Langium 4 removed several deprecated functions (#1991). If `prepareLangiumParser` was among them, the custom parser creation code will break entirely.
+
+**Why it happens:** Langium 4 cleaned up deprecated APIs in a batch removal.
+
+**Consequences:**
+- The entire parser initialization fails.
+- The custom ambiguity logging workaround stops working.
+- The `parser.finalize()` call pattern may also have changed.
+
+**Specific location:**
+```typescript
+// bbj-module.ts lines 103-117
+function createBBjParser(services: LangiumServices): LangiumParser {
+    const parser = prepareLangiumParser(services);
+    const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
+    // ...
+    parser.finalize();
+    return parser;
+}
+```
+
+**Prevention:**
+1. Before upgrading, check whether `prepareLangiumParser` still exists in Langium 4 by examining the package exports.
+2. The internal `(parser as any).wrapper.lookaheadStrategy` access is already fragile (uses `any` cast). This may break independently.
+3. Alternative: See if Langium 4 provides a cleaner way to customize parser ambiguity handling.
+
+**Detection:** Import error or runtime crash on startup.
+
+**Confidence:** MEDIUM (the function is known to exist in 3.x; #1991 removed "several deprecated fields and functions" but the exact list is not publicly enumerated in the CHANGELOG. Need to verify by checking actual Langium 4 exports).
+
+**Phase:** Early in migration, during parser module compilation.
+
+---
+
+### Pitfall 5: `DefaultCompletionProvider.createReferenceCompletionItem` Signature Change
+
+**What goes wrong:** The `BBjCompletionProvider` overrides `createReferenceCompletionItem(nodeDescription)`. Langium 4 changed this method to require additional `refInfo` and `context` parameters (#1976). The override will either fail to compile or fail to be called (if the base class method has a different name/arity).
+
+**Why it happens:** Langium 4 enriched the completion provider API to pass more context.
+
+**Consequences:**
+- All custom completion logic in `BBjCompletionProvider` stops working.
+- The method override is silently ignored if arity changes (TypeScript `noImplicitOverride` would catch this).
+
+**Additionally:** `DefaultCompletionProvider.filterCrossReference` was replaced by `getReferenceCandidates`. If `BBjCompletionProvider` uses `filterCrossReference` (does not appear to, based on grep), that would also break.
+
+**Specific location:**
+```typescript
+// bbj-completion-provider.ts line 15
+override createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
+```
+
+**Prevention:**
+1. The project uses `noImplicitOverride: true` in tsconfig.json. This will produce a compilation error if the parent method signature changes.
+2. Check the new signature and adapt the override.
+3. Check whether `FunctionNodeDescription` (a custom type) is still compatible with what the new API expects.
+
+**Detection:** TypeScript compilation error (due to `noImplicitOverride`).
+
+**Confidence:** HIGH (verified via CHANGELOG #1976).
+
+**Phase:** During "fix compilation errors" step.
+
+---
+
+### Pitfall 6: Chevrotain Version Bump (11.0.3 to 11.1.1)
+
+**What goes wrong:** Langium 4.2.0 depends on `chevrotain ~11.1.1` (verified via npm). The project explicitly pins `chevrotain ~11.0.3` in its own `package.json` dependencies. If both versions coexist or if 11.1.x has breaking changes in token handling, the custom `BBjTokenBuilder` and `BbjLexer` could malfunction.
+
+**Why it happens:** The project lists `chevrotain` as a direct dependency (not just a transitive one), and the version ranges don't overlap.
+
+**Consequences:**
+- Duplicate chevrotain instances in node_modules causing "use only a single bundling tool" warnings from Chevrotain.
+- Token type mismatch between Langium's internal chevrotain and the project's.
+- The custom `BBjTokenBuilder.buildTerminalToken` returns `TokenType` objects from the wrong chevrotain instance.
+- `regexPatternFunction` (used 13 times in `bbj-token-builder.ts`) may behave differently.
+
+**Prevention:**
+1. Remove the direct `chevrotain` dependency from `package.json` and rely on Langium's transitive dependency.
+2. If chevrotain APIs are used directly, import from `langium` re-exports instead of from `chevrotain` directly.
+3. Check `bbj-token-builder.ts` line 1: `import { TokenType, TokenVocabulary } from "chevrotain"` -- this direct import is the risk point.
+
+**Detection:** Runtime tokenization failures, "use only a single bundling tool" warnings, esbuild duplicate module warnings.
+
+**Confidence:** HIGH (verified exact version mismatch via `npm view langium@4.2.0 dependencies`).
+
+**Phase:** During the dependency update step, before any code changes.
+
+---
+
+### Pitfall 7: Module Registration / Service Registry Changes
+
+**What goes wrong:** The `DefaultServiceRegistry` singleton was removed (#1768) and the `map` field was deprecated in favor of `fileExtensionMap`/`languageIdMap`. The `bbj-module.ts` calls `shared.ServiceRegistry.register(BBj)` (line 159). If the `register` method signature changed or the singleton removal affects how services are looked up, the entire service wiring breaks.
+
+**Also:** The `BBjWorkspaceManager` constructor accesses `services.ServiceRegistry.all` to find BBj services (line 44):
+```typescript
+const bbjServices = services.ServiceRegistry.all.find(
+    service => service.LanguageMetaData.languageId === 'bbj'
+) as BBjServices;
+```
+If `.all` was removed or renamed, this lookup fails.
+
+**Consequences:**
+- Java interop service never initializes.
+- Language server starts but provides no functionality.
+- Silent failure (no crash, just no features).
+
+**Prevention:**
+1. Check whether `ServiceRegistry.register()` and `ServiceRegistry.all` still exist in Langium 4.
+2. Check the Langium 4 module registration examples for the current pattern.
+3. The test module (`bbj-test-module.ts`) also uses this pattern, so it needs updating too.
+
+**Detection:** Runtime: Java interop fails to load, features silently missing. TypeScript: compilation error if `.all` is removed.
+
+**Confidence:** MEDIUM (singleton removal is confirmed via #1768, but exact impact on `register()` and `.all` methods needs verification against Langium 4 source).
+
+**Phase:** During the module/DI wiring phase of migration.
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays or technical debt.
-
-### Pitfall 5: Console Output Lost Due to Execution Context Mismatch
-
-**What goes wrong:** Creating `OSProcessHandler` and calling `startNotify()` but not displaying output in a tool window. Output is captured but never shown to the user. Process succeeds/fails silently.
-
-**Why it happens:** ProcessHandler captures output but requires explicit connection to `ConsoleView` to display it. Developers focus on launching the process and forget the UI presentation layer.
-
-**Prevention:**
-1. Create `ConsoleView` using `TextConsoleBuilderFactory`:
-   ```java
-   ConsoleView console = TextConsoleBuilderFactory.getInstance()
-       .createBuilder(project)
-       .getConsole();
-   ```
-2. Attach to process **before** `startNotify()`:
-   ```java
-   console.attachToProcess(processHandler);
-   ```
-3. Display in tool window using `ToolWindowManager` or `ExecutionManager`
-4. Study reference implementations like `MavenRunConfiguration` or `BuildView`
-
-**Detection:**
-- Process runs but no output visible anywhere
-- Users cannot see compilation errors or runtime output
-- Success/failure unclear without checking exit code manually
-
-**References:**
-- [Running console command from plugin](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360007850040-Running-console-command-from-plugin-and-displaying-the-output)
-- [ConsoleView integration examples](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
+Mistakes that cause delays, test failures, or require rework but don't block the entire migration.
 
 ---
 
-### Pitfall 6: Marketplace Rejection - Plugin Name Too Long or Contains Restricted Terms
+### Pitfall 8: TypeScript Version Requirement (>= 5.8.0)
 
-**What goes wrong:** Plugin submitted with name like "BBj Language Support Plugin for IntelliJ IDEA" (47 chars). Marketplace rejects due to:
-- Name exceeds 30 character limit
-- Contains restricted word "Plugin"
-- Contains restricted word "IntelliJ"
+**What goes wrong:** Langium 4 requires TypeScript >= 5.8.0. The project currently uses `typescript ^5.8.3` which satisfies this, but older CI environments or lock files might pin an earlier version.
 
-**Why it happens:** Developers create descriptive names without reading approval guidelines. Common pattern: "{Language} {Feature} Plugin for IntelliJ IDEA".
+**Prevention:** Verify `typescript` version in lock file. The `^5.8.3` range is compatible, but ensure `npm install` actually resolves to >= 5.8.0.
 
-**Prevention:**
-1. **Keep name ≤30 characters**
-2. **Avoid restricted terms:** "Plugin", "IntelliJ", "JetBrains", "IDEA"
-3. **Use description field for detail**, not the name
-4. **Examples of compliant names:**
-   - "BBj Language Support" ✓ (21 chars)
-   - "BBj Tools" ✓ (9 chars)
-   - "BBj Language Plugin" ✗ (contains "Plugin")
-   - "IntelliJ BBj Support" ✗ (contains "IntelliJ")
+**Detection:** Compilation errors with cryptic type messages.
 
-**Detection:**
-- Marketplace upload form shows character count
-- Automated approval check flags restricted terms
-- Review feedback from JetBrains within 3-4 days
+**Confidence:** HIGH (verified via CHANGELOG).
 
-**References:**
-- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
-- [Best practices for listing](https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html)
+**Phase:** During dependency update.
 
 ---
 
-### Pitfall 7: Marketplace Rejection - Missing or Invalid Custom Logo
+### Pitfall 9: Node.js Engine Requirement Jump
 
-**What goes wrong:** Plugin submitted with:
-- Default IntelliJ plugin icon (template)
-- Logo not 40x40px SVG format
-- Logo too similar to JetBrains branding
-
-Marketplace rejects for "missing unique plugin logo."
-
-**Why it happens:** Developers focus on functionality and treat branding as optional polish. Guidelines require **unique, distinct** logo before approval.
+**What goes wrong:** Langium 3.2.1 requires Node >= 16.0.0. Langium 4.2.0 requires Node >= 20.10.0 and npm >= 10.2.3 (verified via `npm view langium@4.2.0 engines`). CI/CD pipelines, developer machines, or the VS Code extension host may run older Node versions.
 
 **Prevention:**
-1. Create **custom 40x40px SVG icon** (not PNG, not template)
-2. Ensure icon is **visually distinct** from JetBrains logos
-3. Test in both light and dark themes (provide `_dark.svg` variant if needed)
-4. Upload via Plugin Upload page > Plugin Icon field
-5. Reference in `plugin.xml` if bundled
+1. Update `engines` field in `package.json` to match.
+2. Update CI/CD pipeline Node version.
+3. VS Code's built-in Node is usually recent enough, but verify.
 
-**Detection:**
-- Marketplace review feedback: "unique plugin icon required"
-- Upload form shows default icon preview
-- Compare with approved plugins in Marketplace
+**Detection:** `npm install` warnings or runtime crashes on older Node.
 
-**References:**
-- [Marketplace Approval Guidelines - Logo requirements](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
-- [Uploading a new plugin](https://plugins.jetbrains.com/docs/marketplace/uploading-a-new-plugin.html)
+**Confidence:** HIGH (verified via npm).
+
+**Phase:** Very first step, before any dependency changes.
 
 ---
 
-### Pitfall 8: Execution Fails Silently - No Exception Shown to User
+### Pitfall 10: `DefaultDocumentBuilder` Changes (Custom Validation Categories)
 
-**What goes wrong:** `OSProcessHandler` construction throws `ExecutionException` but it's caught and logged without user-visible error. User clicks "Run" and nothing happens - no notification, no console, no error dialog.
+**What goes wrong:** The `BBjDocumentBuilder` extends `DefaultDocumentBuilder` and overrides `shouldValidate`, `buildDocuments`, and the constructor. Langium 4 added custom validation categories (#1837) which likely changed the `DefaultDocumentBuilder` interface. The `shouldValidate` method signature or the `BuildOptions` type may have new required fields.
 
-**Why it happens:**
-- Catch block logs exception via `LOG.error()` but doesn't show notification
-- Gradle integration may suppress exception details showing only "non-zero exit code"
-- Process fails before ConsoleView attachment, so errors never reach UI
+**Consequences:**
+- The custom `shouldValidate` override may not align with the new base class signature.
+- The `buildDocuments` override may miss new build phases.
+- The `addImportedBBjDocuments` method calls `this.update(addedDocuments, [], cancelToken)` -- the `update` method signature may have changed.
 
 **Prevention:**
-1. **Always show user-visible error** when execution fails:
-   ```java
-   try {
-       OSProcessHandler handler = new OSProcessHandler(cmd);
-       handler.startNotify();
-   } catch (ExecutionException ex) {
-       showError(project, "Failed to launch: " + ex.getMessage());
-   }
-   ```
-2. Include **actionable error details** (missing executable, permission denied, etc.)
-3. Consider adding console output even for setup failures
-4. Test with **invalid configurations** to verify error handling
+1. Check the `DefaultDocumentBuilder` API in Langium 4 for new abstract methods.
+2. Check whether `BuildOptions` has new fields.
+3. Verify that `this.langiumDocumentFactory`, `this.langiumDocuments`, and `this.update()` still exist on the base class.
 
-**Detection:**
-- Click "Run" and nothing happens
-- No console window opens
-- No error notification appears
-- Check IDE logs to find hidden exception
+**Detection:** TypeScript compilation errors on the override methods.
 
-**References:**
-- [Process.exec different results within IntelliJ](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360003376100-Process-exec-different-results-within-IntelliJ)
-- [Gradle console output cleared after error](https://intellij-support.jetbrains.com/hc/en-us/community/posts/7582027179282-Gradle-console-output-cleared-after-error)
+**Confidence:** MEDIUM (the feature addition is confirmed, but exact API impact on the base class is not fully documented).
+
+**Phase:** During "fix compilation errors" step.
 
 ---
 
-### Pitfall 9: Marketplace Rejection - Broken or Inaccessible Repository Link
+### Pitfall 11: `DefaultDocumentValidator.toDiagnostic` Protected Method Changes
 
-**What goes wrong:** Plugin submitted with repository link pointing to:
-- Private GitHub repository (not publicly accessible)
-- Incorrect URL (404 error)
-- Repository with no content or README
+**What goes wrong:** `BBjDocumentValidator` overrides `toDiagnostic` to downgrade linking errors to warnings. It also imports `getDiagnosticRange`, `toDiagnosticSeverity`, `DiagnosticData`, and `DocumentValidator.LinkingError` from `langium`. If any of these utility exports were moved, renamed, or had signature changes, the custom validator breaks.
 
-Marketplace rejects because reviewers cannot verify source code or validate open-source claims.
-
-**Why it happens:** Plugin developed in private repo, developer forgets to make public before submission. Or link copy-pasted incorrectly from browser.
+**Specific imports at risk:**
+```typescript
+import { getDiagnosticRange, toDiagnosticSeverity, DiagnosticData, DiagnosticInfo, DocumentValidator } from "langium";
+```
 
 **Prevention:**
-1. **Make repository public** before Marketplace submission
-2. **Test link in private browser** to verify accessibility
-3. Include **working README** with build instructions
-4. For open-source plugins, link is **mandatory** per guidelines
-5. Add repository URL in `plugin.xml`:
-   ```xml
-   <vendor url="https://github.com/your-org/your-plugin">...</vendor>
-   ```
+1. Check whether `getDiagnosticRange`, `toDiagnosticSeverity`, and `DocumentValidator.LinkingError` are still exported from `langium` core.
+2. The `toDiagnostic` method signature uses generics -- check for changes.
+3. Langium moved all LSP-related functionality to `langium/lsp` in earlier versions; verify these utilities are still in core.
 
-**Detection:**
-- Marketplace review feedback: "repository inaccessible"
-- Open link in incognito/private browser - does it work?
-- Check GitHub repo settings - is it public?
+**Detection:** TypeScript import errors or compilation errors.
 
-**References:**
-- [Webinar: Uploading a Plugin to Marketplace](https://blog.jetbrains.com/platform/2023/11/webinar-recording-uploading-a-plugin-to-jetbrains-marketplace/)
-- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
+**Confidence:** MEDIUM (these are internal/protected APIs that could have changed without being highlighted in the CHANGELOG).
+
+**Phase:** During "fix compilation errors" step.
+
+---
+
+### Pitfall 12: `FileSystemProvider` Interface Extension
+
+**What goes wrong:** Langium 4 extended the `FileSystemProvider` interface with new required methods (#1784). The `BBjWorkspaceManager` and `BBjDocumentBuilder` use `this.fileSystemProvider` extensively. If the default implementation gained new methods that the code depends on, or if the project provides a custom `FileSystemProvider`, it must implement the new methods.
+
+**Prevention:**
+1. The project uses `NodeFileSystem` from `langium/node` (in `main.ts`), which should provide the updated implementation.
+2. The test setup uses `EmptyFileSystem` (in `parser.test.ts`). Check whether `EmptyFileSystem` was updated for Langium 4.
+3. If the project has any custom file system provider implementation, it must implement new methods.
+
+**Detection:** TypeScript compilation error on missing interface methods.
+
+**Confidence:** HIGH (verified via CHANGELOG #1784).
+
+**Phase:** During "fix compilation errors" step, especially in test files.
+
+---
+
+### Pitfall 13: `References.findDeclaration` Renamed to `findDeclarations` (Plural)
+
+**What goes wrong:** The `References.findDeclaration` method was renamed to `findDeclarations` and now returns an array (#1509). If any BBj code calls this method, it will break.
+
+**Prevention:** Grep the codebase for `findDeclaration` and update to `findDeclarations` with appropriate array handling.
+
+**Detection:** TypeScript compilation error.
+
+**Confidence:** HIGH (verified via CHANGELOG #1509). LOW confidence on codebase impact (did not find direct usage in grepping, but it could be used indirectly).
+
+**Phase:** During "fix compilation errors" step.
+
+---
+
+### Pitfall 14: Regeneration Order Mistake
+
+**What goes wrong:** Running `langium generate` with the OLD `langium-cli` (3.2.0) after updating the `langium` runtime to 4.x, or vice versa. The generated `ast.ts`, `grammar.ts`, and `module.ts` files will be incompatible with the runtime if the CLI and library versions don't match.
+
+**Why it happens:** `npm install` might update `langium` but leave `langium-cli` at 3.2.0 if version ranges are too tight. Or the developer regenerates before updating both packages.
+
+**Consequences:**
+- Generated `module.ts` imports types from `langium` that don't exist in the installed version.
+- Generated `ast.ts` uses the old constant format with the new runtime.
+- Grammar JSON format in `grammar.ts` may be incompatible.
+- Confusing compilation errors that look like the grammar is wrong.
+
+**Prevention:**
+1. Update BOTH `langium` and `langium-cli` to 4.2.0 in the SAME step.
+2. Then run `langium generate` immediately after.
+3. Commit the generated files.
+4. Only then start fixing compilation errors in custom code.
+
+**Correct order:**
+```
+1. npm install langium@~4.2.0 langium-cli@~4.2.0
+2. npx langium generate
+3. Inspect generated files for new patterns
+4. Fix custom code
+```
+
+**Detection:** Bizarre compilation errors in generated files, type mismatches between generated and runtime code.
+
+**Confidence:** HIGH (structural certainty -- version mismatch always causes issues).
+
+**Phase:** The very first step of the actual code migration.
+
+---
+
+### Pitfall 15: Grammar Validation Stricter in Langium 4
+
+**What goes wrong:** Langium 4 added grammar validations: rules cannot use the same name as the grammar (#1979), grammar names must be unique (#1979), and unused Xtext features were removed (#1945). Running `langium generate` on the existing grammar may produce NEW validation errors that didn't exist in Langium 3.
+
+**Specific risk for BBj:**
+- Grammar name is `BBj`. No rule is named `BBj` (verified), so #1979 is safe.
+- The `java-types.langium` file defines interfaces only (no parser rules), which uses Langium's "declared types" syntax. Check this is still valid in Langium 4.
+- Any Xtext-inherited grammar features used (like `hidden()` syntax, or old-style actions) may now produce errors.
+
+**Prevention:**
+1. Run `langium generate` and carefully review ALL warnings and errors before proceeding.
+2. The `caseInsensitive: true` config may need verification -- check if it's still supported.
+3. The `chevrotainParserConfig` in `langium-config.json` should still work but verify.
+
+**Detection:** `langium generate` command fails or produces warnings.
+
+**Confidence:** HIGH for the grammar name rule; MEDIUM for other grammar validations.
+
+**Phase:** During the `langium generate` step.
+
+---
+
+### Pitfall 16: Test Suite Breakage from `parseHelper` and `EmptyFileSystem`
+
+**What goes wrong:** Tests import `parseHelper` from `langium/test` and use `EmptyFileSystem` from `langium`. Both of these test utilities may have changed in Langium 4. The `expectFunction` from `langium/test` was deprecated. If test utilities were reorganized, all test files will need import path changes.
+
+**Specific risks:**
+- `parser.test.ts` line 3: `import { parseHelper } from 'langium/test'` -- check if this export still exists.
+- `parser.test.ts` line 8: `createBBjServices(EmptyFileSystem)` -- check `EmptyFileSystem` shape.
+- `test-helper.ts`: `initializeWorkspace` calls `wsManager.initializeWorkspace([{ name: 'test', uri: 'file:/test' }])` -- check if `initializeWorkspace` signature changed.
+- All 15 test files may need `import` updates.
+
+**Prevention:**
+1. Run `npm run test` immediately after compilation succeeds.
+2. Fix test infrastructure (`bbj-test-module.ts`, `test-helper.ts`) first, then individual tests.
+3. The synthetic AST nodes in `bbj-test-module.ts` (with `$type: JavaClass`) are the highest risk.
+
+**Detection:** Test compilation failures or runtime test failures.
+
+**Confidence:** MEDIUM (test utility changes are not well-documented in the CHANGELOG).
+
+**Phase:** After all source code compiles, before declaring migration complete.
+
+---
+
+### Pitfall 17: Esbuild Bundle Compatibility
+
+**What goes wrong:** The project bundles via `esbuild.mjs` with `format: 'cjs'`. Langium 4 continues to be ESM-first. The project already handles the ESM-to-CJS conversion, but Chevrotain 11.1.1 may have different ESM/CJS compatibility characteristics than 11.0.3. The known `__esModule` export conflict with Chevrotain's ESM bundle could resurface.
+
+**Current esbuild config:**
+```javascript
+entryPoints: ['src/extension.ts', 'src/language/main.ts'],
+outExtension: { '.js': '.cjs' },
+format: 'cjs',
+platform: 'node'
+```
+
+**Prevention:**
+1. Test the esbuild bundle after upgrading, before testing in VS Code.
+2. If Chevrotain ESM issues appear, try adding `chevrotain` to the `external` array or use the `--main-fields=module,main` flag.
+3. Verify the bundle works by running `node out/main.cjs` (it should fail gracefully with "no connection" rather than with import errors).
+
+**Detection:** Bundle build failures, or runtime `require()` errors when loading the extension.
+
+**Confidence:** MEDIUM (esbuild/Chevrotain ESM issues are documented for other versions but not specifically for this exact version combination).
+
+**Phase:** After code changes, during the "build and verify" step.
 
 ---
 
 ## Minor Pitfalls
 
-Mistakes that cause annoyance but are fixable.
-
-### Pitfall 10: Action Update Performance - Slow Toolbar State Checks
-
-**What goes wrong:** `AnAction.update()` method performs heavy computation (file system access, network calls, parsing) to determine if action should be enabled. Toolbar freezes or lags on every focus change or user activity.
-
-**Why it happens:** Developers don't realize `update()` is called **frequently** - on every user activity, focus transfer, or keystroke. Treating it like `actionPerformed()` causes performance issues.
-
-**Prevention:**
-1. **Keep `update()` fast** - official docs: "no real work must be performed"
-2. **Cache state** and invalidate on meaningful events
-3. Use `ActionUpdateThread.BGT` (background thread) to avoid EDT blocking
-4. If state changes outside user activity, call `ActivityTracker.getInstance().inc()` to refresh
-5. For file checks, use `VirtualFile` API (cached) not `java.io.File` (disk access)
-
-**Detection:**
-- Toolbar or menu feels sluggish
-- IDE freezes briefly on file switching
-- Profiler shows high CPU in `update()` method
-- Users report "unresponsive UI"
-
-**References:**
-- [Action System - Target Component](https://plugins.jetbrains.com/docs/intellij/action-system.html)
-- [Creating Actions tutorial](https://plugins.jetbrains.com/docs/intellij/working-with-custom-actions.html)
+Annoyances or issues that are easily fixable but worth knowing about.
 
 ---
 
-### Pitfall 11: ConsoleView ProcessListener Events Not Firing
+### Pitfall 18: Import Path Changes for LSP-Related Types
 
-**What goes wrong:** Added `ProcessListener` to capture `processTerminated()` or `onTextAvailable()` events, but callbacks never fire. Process completes but listener remains silent.
+**What goes wrong:** Various types and functions may have moved between `langium` and `langium/lsp` entry points. The project already uses the split imports (e.g., `from 'langium/lsp'`), but any new type movements in v4 could cause import errors.
 
-**Why it happens:** Listener added **after** `startNotify()` was called. ProcessHandler fires events only to listeners registered **before** `startNotify()`.
+**Known import patterns in the project:**
+- `from 'langium'` -- core types
+- `from 'langium/lsp'` -- LSP service types
+- `from 'langium/test'` -- test utilities
+- `from 'langium/node'` -- Node.js file system
 
-**Prevention:**
-1. **Add listeners BEFORE `startNotify()`:**
-   ```java
-   OSProcessHandler handler = new OSProcessHandler(cmd);
-   handler.addProcessListener(new ProcessAdapter() {
-       @Override
-       public void processTerminated(@NotNull ProcessEvent event) {
-           // Handle termination
-       }
-   });
-   handler.startNotify(); // Now listener will receive events
-   ```
-2. Verify listener attachment order in code review
-3. Use `ProcessTerminatedListener.attach(handler)` for standard exit status handling
+**Prevention:** If an import fails, check whether the type moved to a different entry point.
 
-**Detection:**
-- `processTerminated()` never called
-- Console doesn't show "Process finished with exit code X"
-- Cannot detect when process completes
-- Callbacks work in unit tests but not production
+**Confidence:** MEDIUM.
 
-**References:**
-- [ProcessHandler lifecycle](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
-- [ProcessListener examples](https://www.javatips.net/api/com.intellij.execution.process.processhandler)
+**Phase:** During "fix compilation errors" step.
 
 ---
 
-### Pitfall 12: Windows Path Length Limit (260 chars) Not Handled
+### Pitfall 19: `BBjAstType` Change from String Enumeration to Object Type
 
-**What goes wrong:** Plugin works on macOS/Linux but fails on Windows when project path exceeds 260 characters. File operations fail with cryptic errors like "The filename or extension is too long."
+**What goes wrong:** The generated `BBjAstType` type (from `ast.ts`) changed from "an enumeration of string types to an object type mapping AST type names to their type declarations" (#738). The `BbjScopeProvider.getScope` method uses `AstNodeTypesWithCrossReferences<BBjAstType>` and `CrossReferencesOfAstNodeType<typeof container>` which depend on the exact shape of `BBjAstType`.
 
-**Why it happens:** Windows has legacy MAX_PATH limitation (260 chars) unless long path support is explicitly enabled. Deep project structures with long artifact names hit this limit.
+**Specific risk:**
+```typescript
+// bbj-scope.ts line 76
+const container = context.container as AstNodeTypesWithCrossReferences<BBjAstType>;
+```
+If `BBjAstType` is now an object map instead of a union of string literals, this type utility may work differently.
 
-**Prevention:**
-1. **Warn users** if project path approaching limit
-2. Use relative paths where possible
-3. Document Windows long path workaround in plugin description
-4. Consider shorter artifact names in plugin distribution
-5. Test on Windows with nested project structure (e.g., `C:\Users\VeryLongUserName\Projects\...`)
+**Prevention:** After regeneration, inspect `BBjAstType` in the new `ast.ts` and check TypeScript errors in `bbj-scope.ts`.
 
-**Detection:**
-- Plugin works on macOS, fails on Windows
-- Error: "The filename or extension is too long"
-- File operations return unexpected null/errors
-- Works in shallow directories, fails in deep ones
+**Detection:** TypeScript compilation errors in scope provider.
 
-**References:**
-- [Windows path length limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation)
+**Confidence:** MEDIUM (the change is documented but exact impact on these utility types needs verification).
+
+**Phase:** During "fix compilation errors" step.
+
+---
+
+### Pitfall 20: `loadGrammarFromJson` Changes
+
+**What goes wrong:** The generated `grammar.ts` uses `loadGrammarFromJson()` from `langium`. If the JSON serialization format for grammars changed in Langium 4, the old generated `grammar.ts` won't work with the new runtime. Conversely, the new generated `grammar.ts` won't work with the old runtime.
+
+**Prevention:** This is automatically handled by regenerating with the matching `langium-cli` version. Just ensure regeneration happens.
+
+**Detection:** Runtime crash when trying to load the grammar.
+
+**Confidence:** HIGH (structural certainty that regeneration is needed).
+
+**Phase:** Handled by the regeneration step.
+
+---
+
+### Pitfall 21: `StreamScope` Protected Field Access Changes
+
+**What goes wrong:** The `StreamScopeWithPredicate` class (in `bbj-scope.ts`) extends `StreamScope` and accesses protected fields: `this.caseInsensitive`, `this.elements`, and `this.outerScope`. If Langium 4 changed the visibility or naming of these fields, the custom scope class breaks.
+
+**Prevention:** Check whether `StreamScope` protected fields are stable in Langium 4.
+
+**Detection:** TypeScript compilation error on field access.
+
+**Confidence:** LOW (no evidence of change, but protected field access is inherently fragile).
+
+**Phase:** During "fix compilation errors" step.
 
 ---
 
 ## Phase-Specific Warnings
 
-| Phase Topic | Likely Pitfall | Mitigation |
-|-------------|---------------|------------|
-| Fix run command path resolution | Pitfall 3: Mixed separators in File paths | Use `File(parent, child)` constructor, test on Windows |
-| Add toolbar button visibility | Pitfall 1: MainToolBar not visible in New UI | Register to both MainToolBar and MainToolBarSettings groups |
-| Integrate console output | Pitfall 2: startNotify() not called | Follow strict lifecycle: create → attach → startNotify() |
-| Integrate console output | Pitfall 5: ConsoleView not displayed | Create ConsoleView and show in tool window via ToolWindowManager |
-| Prepare Marketplace submission | Pitfall 4: Internal API usage | Run `./gradlew runPluginVerifier` before upload |
-| Prepare Marketplace submission | Pitfall 6: Plugin name too long | Rename to ≤30 chars, remove "Plugin"/"IntelliJ" words |
-| Prepare Marketplace submission | Pitfall 7: Missing custom logo | Create 40x40px SVG logo, test in both themes |
-| Prepare Marketplace submission | Pitfall 9: Private repository link | Make repo public, test link in private browser |
-| Cross-platform testing | Pitfall 3: Path separator issues | Test on both Windows and macOS before release |
-| Cross-platform testing | Pitfall 12: Windows path length | Test with deep project path on Windows |
+| Migration Phase | Likely Pitfall | Mitigation |
+|----------------|---------------|------------|
+| **1. Environment prep** | Node.js version too old (#9) | Require Node >= 20.10.0 |
+| **2. Dependency update** | Chevrotain version mismatch (#6), TypeScript version (#8) | Update langium + langium-cli + remove direct chevrotain dep simultaneously |
+| **3. Grammar regeneration** | Wrong regeneration order (#14), grammar validation errors (#15) | Update deps first, then regenerate, inspect output |
+| **4. Fix compilation** | PrecomputedScopes rename (#2), type constant changes (#1), completion provider (#5), linker/scope Reference union (#3), parser creation (#4) | Fix in dependency order: generated types first, then services |
+| **5. Module wiring** | Service registry changes (#7) | Check register/all patterns against Langium 4 examples |
+| **6. Runtime testing** | Silent behavior changes from type constants (#1), esbuild bundle (#17) | Run full test suite, test in VS Code manually |
+| **7. Test suite** | Test utility changes (#16), synthetic AST nodes (#1) | Fix test module first, then individual tests |
 
----
+## Recommended Migration Order
 
-## Research Confidence
+Based on pitfall dependencies, the migration should proceed in this exact order:
 
-| Area | Confidence | Source Quality |
-|------|------------|----------------|
-| New UI toolbar issues | HIGH | Official JetBrains forums + SDK docs + recent 2025 discussions |
-| ProcessHandler lifecycle | HIGH | Official execution.html docs + IntelliJ source code |
-| File path cross-platform | HIGH | VirtualFile docs + community discussions + Java best practices |
-| Marketplace approval | HIGH | Official approval guidelines + submission docs |
-| Plugin Verifier | HIGH | Official verifier docs + livestream recording |
-| Console integration | MEDIUM | Community forums + code examples (no single authoritative source) |
-| Windows path limits | MEDIUM | General Windows API knowledge + IntelliJ support forums |
-
----
+1. **Verify environment:** Node >= 20.10.0, TypeScript >= 5.8.0
+2. **Update dependencies atomically:** `langium`, `langium-cli` to ~4.2.0, remove direct `chevrotain` dependency
+3. **Regenerate:** `npx langium generate` -- fix any grammar validation errors
+4. **Inspect generated `ast.ts`:** Understand the new type constant pattern before touching any code
+5. **Fix generated module imports:** `module.ts` type imports
+6. **Fix `PrecomputedScopes` to `LocalSymbols`:** Simple rename with possible interface adaptation
+7. **Fix type constant usages across ALL files:** The biggest single task (Pitfalls #1 and #19)
+8. **Fix linker/scope provider for Reference | MultiReference:** #3
+9. **Fix completion provider:** #5
+10. **Fix parser creation:** #4
+11. **Fix document builder/validator:** #10, #11
+12. **Fix service registry usage:** #7
+13. **Compile and fix remaining errors**
+14. **Run test suite and fix test infrastructure:** #16
+15. **Build esbuild bundle and verify:** #17
+16. **Manual smoke test in VS Code**
 
 ## Sources
 
-**New UI and Toolbar Actions:**
-- [New UI toolbar registration](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
-- [New UI lost toolbars](https://intellij-support.jetbrains.com/hc/en-us/community/posts/20802107307154--New-UI-lost-toolbars-and-settings)
-- [Action group icons not showing in New UI](https://intellij-support.jetbrains.com/hc/en-us/community/posts/15268937638290-Action-group-Icon-doesn-t-show-up-for-newUI)
-- [Action System documentation](https://plugins.jetbrains.com/docs/intellij/action-system.html)
-
-**ProcessHandler and Execution:**
-- [Execution documentation](https://plugins.jetbrains.com/docs/intellij/execution.html)
-- [ProcessHandler source code](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
-- [Running console command from plugin](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360007850040-Running-console-command-from-plugin-and-displaying-the-output)
-- [Process exec different results](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360003376100-Process-exec-different-results-within-IntelliJ)
-
-**Cross-Platform File Paths:**
-- [VirtualFile documentation](https://plugins.jetbrains.com/docs/intellij/virtual-file.html)
-- [File path formats for cross-platform compatibility](https://dev.to/kailashnirmal/understanding-file-path-formats-in-windows-and-java-for-cross-platform-compatibility-2im3)
-- [Hardcoded file separator issues](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206131989--IG-Hardcoded-file-separator-should-be-more-selective)
-
-**JetBrains Marketplace:**
-- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
-- [Publishing and listing your plugin](https://plugins.jetbrains.com/docs/marketplace/publishing-and-listing-your-plugin.html)
-- [Uploading a new plugin](https://plugins.jetbrains.com/docs/marketplace/uploading-a-new-plugin.html)
-- [Webinar: Uploading a Plugin to Marketplace](https://blog.jetbrains.com/platform/2023/11/webinar-recording-uploading-a-plugin-to-jetbrains-marketplace/)
-
-**Plugin Verifier:**
-- [Verifying Plugin Compatibility](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
-- [Plugin Verifier GitHub](https://github.com/JetBrains/intellij-plugin-verifier)
-- [Plugin Verifier and API Compatibility Maintenance](https://blog.jetbrains.com/platform/2025/05/plugin-verifier-and-api-compatibility-maintenance-livestream-recording-amp-key-takeaways/)
-- [Internal API Migration](https://plugins.jetbrains.com/docs/intellij/api-internal.html)
-- [Incompatible Changes in 2025](https://plugins.jetbrains.com/docs/intellij/api-changes-list-2025.html)
+- [Langium CHANGELOG](https://github.com/langium/langium/blob/main/packages/langium/CHANGELOG.md) -- PRIMARY source for all breaking changes
+- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/) -- Overview of new features
+- [npm: langium@4.2.0 dependencies](https://www.npmjs.com/package/langium) -- Verified Chevrotain ~11.1.1 requirement
+- [npm: langium@4.2.0 engines](https://www.npmjs.com/package/langium) -- Verified Node >= 20.10.0 requirement
+- [Langium Code Bundling Guide](https://langium.org/docs/recipes/code-bundling/) -- esbuild guidance
+- [Langium Document Lifecycle](https://langium.org/docs/reference/document-lifecycle/) -- DocumentState reference
+- Codebase analysis of `/Users/beff/_workspace/bbj-language-server/bbj-vscode/src/language/` -- all file-specific findings
