@@ -73,12 +73,12 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
         if (JavaSyntheticDocUri === document.uri.toString() && isClasspath(rootNode)) {
             // Cache classes as map scope. It is used very often and not changing.
-            (document as JavaDocument).classesMapScope = new MapScope(scopes.get(rootNode))
+            (document as JavaDocument).classesMapScope = new MapScope(scopes.getStream(rootNode).toArray())
         }
         return scopes;
     }
 
-    protected override async processNode(node: AstNode, document: LangiumDocument, scopes: LocalSymbols): Promise<void> {
+    protected async processNode(node: AstNode, document: LangiumDocument, scopes: LocalSymbols): Promise<void> {
         if (isUse(node) && node.javaClass) {
             const javaClassName = getFQNFullname(node.javaClass);
             const javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
@@ -101,7 +101,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (isSymbolRef(node.variable)) {
                 // case: `foo$ = ""` without declaring foo$
                 const symbol = node.variable.symbol
-                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === symbol.$refText) === -1) {
+                if (scopes.getStream(scopeHolder).toArray().findIndex((descr: AstNodeDescription) => descr.name === symbol.$refText) === -1) {
                     this.addToScope(scopes, scopeHolder, {
                         name: symbol.$refText,
                         nameSegment: CstUtils.toDocumentSegment(symbol.$refNode),
@@ -155,7 +155,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (isSymbolRef(node)) {
                 const scopeHolder = node.$container.$container
                 const inputName = node.symbol.$refText
-                if (scopes.get(scopeHolder).findIndex((descr) => descr.name === inputName) === -1) {
+                if (scopes.getStream(scopeHolder).toArray().findIndex((descr: AstNodeDescription) => descr.name === inputName) === -1) {
                     this.addToScope(scopes, scopeHolder, {
                         name: inputName,
                         nameSegment: CstUtils.toDocumentSegment(node.symbol.$refNode),
@@ -258,8 +258,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     * Case: title$ = "" ; rem Title
     */
     private addToScope(scopes: LocalSymbols, scopeHolder: AstNode, descr: AstNodeDescription): void {
-        const key = scopeHolder.$type === CompoundStatement.$type ? scopeHolder.$container! : scopeHolder
-        scopes.add(key, descr);
+        const key = scopeHolder.$type === CompoundStatement.$type ? scopeHolder.$container! : scopeHolder;
+        (scopes as MultiMap<AstNode, AstNodeDescription>).add(key, descr);
     }
 
     private findScopeHolder(assignment: Assignment) {

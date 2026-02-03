@@ -115,25 +115,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         return await super.initializeWorkspace(folders, cancelToken);
     }
 
-    protected override async traverseFolder(workspaceFolder: WorkspaceFolder, folderPath: URI, fileExtensions: string[], collector: (document: LangiumDocument) => void): Promise<void> {
-        const content = await this.fileSystemProvider.readDirectory(folderPath);
-        await Promise.all(content.map(async entry => {
-            if (this.includeEntry(workspaceFolder, entry, fileExtensions)) {
-                if (entry.isDirectory) {
-                    await this.traverseFolder(workspaceFolder, entry.uri, fileExtensions, collector);
-                } else if (entry.isFile) {
-                    const fileContent = await this.fileSystemProvider.readFile(entry.uri);
-                    if (!fileContent.startsWith('<<bbj>>')) {
-                        if (!this.langiumDocuments.hasDocument(entry.uri)) {
-                            collector(this.documentFactory.fromString(fileContent, entry.uri));
-                        }
-                    } else {
-                        // TODO Read binary file
-                        console.warn(`Skipped binary file from index: ${entry.uri}`)
-                    }
-                }
-            }
-        }));
+    override shouldIncludeEntry(entry: { isFile: boolean; isDirectory: boolean; uri: URI }): boolean {
+        // Note: Binary file filtering (files starting with '<<bbj>>') is now handled
+        // during document building phase via document validators, not during traversal
+        return super.shouldIncludeEntry(entry);
     }
 
     protected override async loadAdditionalDocuments(

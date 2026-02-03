@@ -111,7 +111,7 @@ export function getPreviousNode(node: AstNode): AstNode | undefined {
     const offset = node.$cstNode?.offset;
     if (offset) {
         const previous = findLeafNodeAtOffset(node.$cstNode.root, offset - 1);
-        return previous?.element;
+        return previous?.astNode;
     }
     return undefined;
 }

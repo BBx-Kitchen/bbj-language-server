@@ -68,7 +68,8 @@ export class BBjValidator {
             return;
         }
         const type = memberCall.member.$nodeDescription?.type ?? memberCall.member.ref?.$type;
-        if (!type || ![JavaField, JavaMethod, MethodDecl, FieldDecl].includes(type)) {
+        const validTypes = [JavaField.$type, JavaMethod.$type, MethodDecl.$type, FieldDecl.$type] as const;
+        if (!type || !(validTypes as readonly string[]).includes(type)) {
             return;
         }
         const classOfDeclaration = memberCall.member.ref?.$container as Class;
@@ -268,12 +269,12 @@ export function findLeafNodeAtOffset(node: CstNode, offset: number): LeafCstNode
 
 function binarySearch(node: CompositeCstNode, offset: number): CstNode | undefined {
     let left = 0;
-    let right = node.children.length - 1;
+    let right = node.content.length - 1;
     let closest: CstNode | undefined = undefined;
 
     while (left <= right) {
         const middle = Math.floor((left + right) / 2);
-        const middleNode = node.children[middle];
+        const middleNode = node.content[middle];
 
         if (middleNode.offset === offset) {
             // Found an exact match
