@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 16 - API Signature & Deprecated API Migration
+**Current focus:** Phase 17 - Build Verification & Test Suite
 
 ## Current Position
 
 Milestone: v2.0 Langium 4 Upgrade
-Phase: 16 of 18 (API Signature & Deprecated API Migration)
-Plan: 01 of 01
-Status: In progress
-Last activity: 2026-02-03 -- Completed 16-01-PLAN.md
+Phase: 17 of 18 (Build Verification & Test Suite)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-03 -- Phase 16 complete and verified (4/4 must-haves passed)
 
-Progress: [█████.....] 50% (2.5/5 v2.0 phases)
+Progress: [██████....] 60% (3/5 v2.0 phases)
 
 ## Milestone History
 
@@ -70,6 +70,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 16-01-PLAN.md
+Stopped at: Phase 16 complete and verified -- ready for Phase 17
 Resume file: None
-Next: Phase 16 complete -- ready for Phase 17 (Compilation Verification)
+Next: `/gsd:discuss-phase 17` or `/gsd:plan-phase 17`

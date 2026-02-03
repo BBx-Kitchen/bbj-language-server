@@ -25,11 +25,11 @@ Requirements for the v2.0 milestone. Each maps to roadmap phases.
 - [x] **MIGR-01**: AST type constants migrated to Langium 4 format (`TypeName.$type`) across all source files
 - [x] **MIGR-02**: `PrecomputedScopes` renamed to `LocalSymbols` in all references
 - [x] **MIGR-03**: `document.precomputedScopes` property accessor updated
-- [ ] **MIGR-04**: `Reference | MultiReference` union type handled in linker and scope provider
-- [ ] **MIGR-05**: Completion provider signature updated (`createReferenceCompletionItem` new params)
-- [ ] **MIGR-06**: `prepareLangiumParser` usage resolved (updated or replaced if removed)
+- [x] **MIGR-04**: `Reference | MultiReference` union type handled in linker and scope provider
+- [x] **MIGR-05**: Completion provider signature updated (`createReferenceCompletionItem` new params)
+- [x] **MIGR-06**: `prepareLangiumParser` usage resolved (updated or replaced if removed)
 - [x] **MIGR-07**: Scope computation method renames applied (if `computeLocalScopes`/`computeExports` renamed)
-- [ ] **MIGR-08**: All remaining deprecated API usages resolved (PR #1991 removals)
+- [x] **MIGR-08**: All remaining deprecated API usages resolved (PR #1991 removals)
 - [x] **MIGR-09**: All import paths updated for renamed/moved exports
 
 ### Build & Test
@@ -92,11 +92,11 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | MIGR-01 | Phase 15 | Complete |
 | MIGR-02 | Phase 15 | Complete |
 | MIGR-03 | Phase 15 | Complete |
-| MIGR-04 | Phase 16 | Pending |
-| MIGR-05 | Phase 16 | Pending |
-| MIGR-06 | Phase 16 | Pending |
+| MIGR-04 | Phase 16 | Complete |
+| MIGR-05 | Phase 16 | Complete |
+| MIGR-06 | Phase 16 | Complete |
 | MIGR-07 | Phase 15 | Complete |
-| MIGR-08 | Phase 16 | Pending |
+| MIGR-08 | Phase 16 | Complete |
 | MIGR-09 | Phase 15 | Complete |
 | BLDT-01 | Phase 17 | Pending |
 | BLDT-02 | Phase 17 | Pending |
@@ -124,4 +124,4 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after Phase 15 completion*
+*Last updated: 2026-02-03 after Phase 16 completion*
