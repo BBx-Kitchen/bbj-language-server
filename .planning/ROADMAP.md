@@ -47,10 +47,11 @@ Plans:
   3. All `document.precomputedScopes` property accesses updated to new name
   4. Scope computation method names updated if renamed in Langium 4
   5. All import paths resolve correctly for renamed/moved Langium exports
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: TBD
+- [ ] 15-01-PLAN.md -- Migrate type constants to .$type in provider files (node-kind, description, semantic-token, completion)
+- [ ] 15-02-PLAN.md -- Rename PrecomputedScopes to LocalSymbols, scope methods, and type constants in scope files
 
 #### Phase 16: API Signature & Deprecated API Migration
 **Goal**: All complex API shape changes resolved -- linker handles new Reference union type, completion provider uses new signature, parser creation updated, and no deprecated API usages remain
@@ -130,7 +131,7 @@ Phases with standard patterns (no deep research needed):
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
-| 15. Core Renames | v2.0 | 0/TBD | Not started | - |
+| 15. Core Renames | v2.0 | 0/2 | Not started | - |
 | 16. API Signatures | v2.0 | 0/TBD | Not started | - |
 | 17. Build & Test | v2.0 | 0/TBD | Not started | - |
 | 18. Verify & Release | v2.0 | 0/TBD | Not started | - |
