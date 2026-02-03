@@ -7,9 +7,9 @@ import {
     GrammarUtils,
     interruptAndCheck,
     LangiumDocument,
+    LocalSymbols,
     MapScope,
-    MultiMap,
-    PrecomputedScopes
+    MultiMap
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
@@ -51,12 +51,12 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         this.astNodeLocator = services.workspace.AstNodeLocator;
     }
 
-    override async computeExports(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
+    override async collectExportedSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
         // Only make classes and library elements globally "visible" in index
-        return this.computeExportsForNode(document.parseResult.value, document, (node) => AstUtils.streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
+        return this.collectExportedSymbolsForNode(document.parseResult.value, document, (node) => AstUtils.streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
     }
 
-    override async computeLocalScopes(document: LangiumDocument, cancelToken: CancellationToken): Promise<PrecomputedScopes> {
+    override async collectLocalSymbols(document: LangiumDocument, cancelToken: CancellationToken): Promise<LocalSymbols> {
         const rootNode = document.parseResult.value;
         const scopes = new MultiMap<AstNode, AstNodeDescription>();
         // Override to process node in an async way
@@ -78,7 +78,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
         return scopes;
     }
 
-    protected override async processNode(node: AstNode, document: LangiumDocument, scopes: PrecomputedScopes): Promise<void> {
+    protected override async processNode(node: AstNode, document: LangiumDocument, scopes: LocalSymbols): Promise<void> {
         if (isUse(node) && node.javaClass) {
             const javaClassName = getFQNFullname(node.javaClass);
             const javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
@@ -106,7 +106,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                         name: symbol.$refText,
                         nameSegment: CstUtils.toDocumentSegment(symbol.$refNode),
                         selectionSegment: CstUtils.toDocumentSegment(symbol.$refNode),
-                        type: FieldDecl,
+                        type: FieldDecl.$type,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)
                     })
@@ -119,7 +119,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 name: 'this!',
                 nameSegment: CstUtils.toDocumentSegment(classNameNode),
                 selectionSegment: CstUtils.toDocumentSegment(classNameNode),
-                type: FieldDecl,
+                type: FieldDecl.$type,
                 documentUri: document.uri,
                 path: this.astNodeLocator.getAstNodePath(node)
             })
@@ -129,7 +129,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     name: 'super!',
                     nameSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
                     selectionSegment: CstUtils.toDocumentSegment(getClassRefNode(superType)),
-                    type: FieldDecl,
+                    type: FieldDecl.$type,
                     documentUri: document.uri,
                     path: this.astNodeLocator.getAstNodePath(node)
                 })
@@ -160,7 +160,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                         name: inputName,
                         nameSegment: CstUtils.toDocumentSegment(node.symbol.$refNode),
                         selectionSegment: CstUtils.toDocumentSegment(node.symbol.$refNode),
-                        type: FieldDecl,
+                        type: FieldDecl.$type,
                         documentUri: document.uri,
                         path: this.astNodeLocator.getAstNodePath(node)
                     })
@@ -257,8 +257,8 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     * if scopeHolder is a CompoundStatement, add to parent scope.
     * Case: title$ = "" ; rem Title
     */
-    private addToScope(scopes: PrecomputedScopes, scopeHolder: AstNode, descr: AstNodeDescription): void {
-        const key = scopeHolder.$type === CompoundStatement ? scopeHolder.$container! : scopeHolder
+    private addToScope(scopes: LocalSymbols, scopeHolder: AstNode, descr: AstNodeDescription): void {
+        const key = scopeHolder.$type === CompoundStatement.$type ? scopeHolder.$container! : scopeHolder
         scopes.add(key, descr);
     }
 
@@ -279,7 +279,7 @@ function createAccessorDescription(astNodeLocator: AstNodeLocator, member: Field
     return {
         name: toAccessorName(member.name, setter),
         nameSegment,
-        type: MethodDecl,
+        type: MethodDecl.$type,
         documentUri: AstUtils.getDocument(member).uri,
         path: astNodeLocator.getAstNodePath(member)
     }
