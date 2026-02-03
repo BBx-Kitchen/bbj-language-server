@@ -9,16 +9,16 @@ Requirements for the v2.0 milestone. Each maps to roadmap phases.
 
 ### Dependencies
 
-- [ ] **DEPS-01**: Langium updated from 3.2.1 to 4.1.3
-- [ ] **DEPS-02**: langium-cli updated from 3.2.0 to 4.1.0
-- [ ] **DEPS-03**: Chevrotain version conflict resolved (direct dependency aligned with Langium 4's requirement)
-- [ ] **DEPS-04**: All other dependencies compatible with Langium 4 (no peer dependency conflicts)
+- [x] **DEPS-01**: Langium updated from 3.2.1 to 4.1.3
+- [x] **DEPS-02**: langium-cli updated from 3.2.0 to 4.1.0
+- [x] **DEPS-03**: Chevrotain version conflict resolved (direct dependency aligned with Langium 4's requirement)
+- [x] **DEPS-04**: All other dependencies compatible with Langium 4 (no peer dependency conflicts)
 
 ### Grammar & Generated Code
 
-- [ ] **GRAM-01**: Grammar regenerated with langium-cli 4.1.0 (ast.ts, grammar.ts, module.ts)
-- [ ] **GRAM-02**: Generated code compiles without errors
-- [ ] **GRAM-03**: No grammar syntax changes needed (or applied if required)
+- [x] **GRAM-01**: Grammar regenerated with langium-cli 4.1.0 (ast.ts, grammar.ts, module.ts)
+- [x] **GRAM-02**: Generated code compiles without errors
+- [x] **GRAM-03**: No grammar syntax changes needed (or applied if required)
 
 ### Source Migration
 
@@ -82,13 +82,13 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01 | Phase 14 | Pending |
-| DEPS-02 | Phase 14 | Pending |
-| DEPS-03 | Phase 14 | Pending |
-| DEPS-04 | Phase 14 | Pending |
-| GRAM-01 | Phase 14 | Pending |
-| GRAM-02 | Phase 14 | Pending |
-| GRAM-03 | Phase 14 | Pending |
+| DEPS-01 | Phase 14 | Complete |
+| DEPS-02 | Phase 14 | Complete |
+| DEPS-03 | Phase 14 | Complete |
+| DEPS-04 | Phase 14 | Complete |
+| GRAM-01 | Phase 14 | Complete |
+| GRAM-02 | Phase 14 | Complete |
+| GRAM-03 | Phase 14 | Complete |
 | MIGR-01 | Phase 15 | Pending |
 | MIGR-02 | Phase 15 | Pending |
 | MIGR-03 | Phase 15 | Pending |
@@ -124,4 +124,4 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after roadmap creation*
+*Last updated: 2026-02-03 after Phase 14 completion*

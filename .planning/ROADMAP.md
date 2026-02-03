@@ -15,7 +15,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 
 ### Phases
 
-- [ ] **Phase 14: Dependency Update & Grammar Regeneration** - New packages installed, grammar regenerated, generated code compiles
+- [x] **Phase 14: Dependency Update & Grammar Regeneration** - New packages installed, grammar regenerated, generated code compiles
 - [ ] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
 - [ ] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
 - [ ] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
@@ -35,7 +35,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 **Plans**: 1 plan
 
 Plans:
-- [ ] 14-01-PLAN.md -- Update langium packages to 4.1.3/4.1.0, regenerate grammar, verify generated code compiles
+- [x] 14-01-PLAN.md -- Update langium packages to 4.1.3/4.1.0, regenerate grammar, verify generated code compiles
 
 #### Phase 15: Core API Renames & Type Constants
 **Goal**: All mechanical renames and type constant migrations applied so scope computation, validators, and type-checking code reference Langium 4 APIs correctly
@@ -129,7 +129,7 @@ Phases with standard patterns (no deep research needed):
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 14. Deps & Grammar | v2.0 | 0/1 | Planned | - |
+| 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 15. Core Renames | v2.0 | 0/TBD | Not started | - |
 | 16. API Signatures | v2.0 | 0/TBD | Not started | - |
 | 17. Build & Test | v2.0 | 0/TBD | Not started | - |

@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 14 - Dependency Update & Grammar Regeneration
+**Current focus:** Phase 15 - Core API Renames & Type Constants
 
 ## Current Position
 
 Milestone: v2.0 Langium 4 Upgrade
-Phase: 14 of 18 (Dependency Update & Grammar Regeneration)
-Plan: 1 of 1 (complete)
-Status: Phase complete
-Last activity: 2026-02-03 -- Completed 14-01-PLAN.md (Dependency Update & Grammar Regeneration)
+Phase: 15 of 18 (Core API Renames & Type Constants)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-03 -- Phase 14 complete and verified (6/6 must-haves passed)
 
-Progress: [█.........] 6% (1/18 phases)
+Progress: [██........] 20% (1/5 v2.0 phases)
 
 ## Milestone History
 
@@ -63,7 +63,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-03 10:44 UTC
-Stopped at: Completed Phase 14 Plan 01 (Dependency Update & Grammar Regeneration)
+Last session: 2026-02-03
+Stopped at: Phase 14 complete and verified -- ready for Phase 15
 Resume file: None
-Next: Plan Phase 15 (Type System Migration) - 77 TypeScript errors to resolve
+Next: `/gsd:discuss-phase 15` or `/gsd:plan-phase 15`
