@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 Milestone: v2.0 Langium 4 Upgrade
 Phase: 15 of 18 (Core API Renames & Type Constants)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-03 -- Phase 14 complete and verified (6/6 must-haves passed)
+Plan: 01 of 01
+Status: In progress
+Last activity: 2026-02-03 -- Completed 15-01-PLAN.md
 
 Progress: [██........] 20% (1/5 v2.0 phases)
 
@@ -30,9 +30,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1 (v2.0)
-- Average duration: 2 min
-- Total execution time: 2 min
+- Total plans completed: 2 (v2.0)
+- Average duration: 1.5 min
+- Total execution time: 3 min
 
 *Updated after each plan completion*
 
@@ -47,6 +47,7 @@ Recent decisions affecting current work:
 - [v2.0 start]: Keep chevrotain ~11.0.3 pin (compatible with Langium 4.1.x)
 - [14-01]: Tilde version ranges (~4.1.3, ~4.1.0) for consistency with project convention
 - [14-01]: Generated files remain gitignored (regenerated at build time)
+- [15-01]: All type constant usages migrated to .$type pattern for Langium 4 compatibility
 
 ### Known Issues
 
@@ -64,6 +65,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Phase 14 complete and verified -- ready for Phase 15
+Stopped at: Completed 15-01-PLAN.md
 Resume file: None
-Next: `/gsd:discuss-phase 15` or `/gsd:plan-phase 15`
+Next: Phase 15 complete -- ready for Phase 16 (Explicit AST Properties)
