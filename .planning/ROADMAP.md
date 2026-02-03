@@ -18,7 +18,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 - [x] **Phase 14: Dependency Update & Grammar Regeneration** - New packages installed, grammar regenerated, generated code compiles
 - [x] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
 - [x] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
-- [ ] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
+- [x] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
 - [ ] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, extensions published
 
 ### Phase Details
@@ -80,8 +80,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md -- Fix all 21 TypeScript compilation errors across 7 source files (LocalSymbols API, CstNode API, method signatures, type constants)
-- [ ] 17-02-PLAN.md -- Fix test failures, build esbuild bundle, smoke-test main.cjs, verify IntelliJ Gradle build
+- [x] 17-01-PLAN.md -- Fix all 21 TypeScript compilation errors across 7 source files (LocalSymbols API, CstNode API, method signatures, type constants)
+- [x] 17-02-PLAN.md -- Fix test failures, build esbuild bundle, smoke-test main.cjs, verify IntelliJ Gradle build
 
 #### Phase 18: Functional Verification & Release
 **Goal**: Every existing language server feature works identically in both VS Code and IntelliJ after the upgrade, and updated extensions are published
@@ -134,5 +134,5 @@ Phases with standard patterns (no deep research needed):
 | 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 16. API Signatures | v2.0 | 1/1 | Complete | 2026-02-03 |
-| 17. Build & Test | v2.0 | 0/2 | Not started | - |
+| 17. Build & Test | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 18. Verify & Release | v2.0 | 0/TBD | Not started | - |

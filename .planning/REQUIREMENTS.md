@@ -34,11 +34,11 @@ Requirements for the v2.0 milestone. Each maps to roadmap phases.
 
 ### Build & Test
 
-- [ ] **BLDT-01**: TypeScript compilation passes with zero errors
-- [ ] **BLDT-02**: esbuild bundle produces valid main.cjs
-- [ ] **BLDT-03**: Existing test suite passes (all tests green)
-- [ ] **BLDT-04**: VS Code extension builds successfully
-- [ ] **BLDT-05**: IntelliJ plugin builds with updated bundled main.cjs
+- [x] **BLDT-01**: TypeScript compilation passes with zero errors
+- [x] **BLDT-02**: esbuild bundle produces valid main.cjs
+- [x] **BLDT-03**: Existing test suite passes (all tests green)
+- [x] **BLDT-04**: VS Code extension builds successfully
+- [x] **BLDT-05**: IntelliJ plugin builds with updated bundled main.cjs
 
 ### Functional Verification
 
@@ -98,11 +98,11 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | MIGR-07 | Phase 15 | Complete |
 | MIGR-08 | Phase 16 | Complete |
 | MIGR-09 | Phase 15 | Complete |
-| BLDT-01 | Phase 17 | Pending |
-| BLDT-02 | Phase 17 | Pending |
-| BLDT-03 | Phase 17 | Pending |
-| BLDT-04 | Phase 17 | Pending |
-| BLDT-05 | Phase 17 | Pending |
+| BLDT-01 | Phase 17 | Complete |
+| BLDT-02 | Phase 17 | Complete |
+| BLDT-03 | Phase 17 | Complete |
+| BLDT-04 | Phase 17 | Complete |
+| BLDT-05 | Phase 17 | Complete |
 | FUNC-01 | Phase 18 | Pending |
 | FUNC-02 | Phase 18 | Pending |
 | FUNC-03 | Phase 18 | Pending |
@@ -124,4 +124,4 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after Phase 16 completion*
+*Last updated: 2026-02-03 after Phase 17 completion*
