@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-03)
 
 Milestone: v2.0 Langium 4 Upgrade
 Phase: 16 of 18 (API Signature & Deprecated API Migration)
-Plan: --
-Status: Ready to plan
-Last activity: 2026-02-03 -- Phase 15 complete and verified (5/5 must-haves passed)
+Plan: 01 of 01
+Status: In progress
+Last activity: 2026-02-03 -- Completed 16-01-PLAN.md
 
-Progress: [████......] 40% (2/5 v2.0 phases)
+Progress: [█████.....] 50% (2.5/5 v2.0 phases)
 
 ## Milestone History
 
@@ -30,9 +30,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3 (v2.0)
-- Average duration: 1.7 min
-- Total execution time: 5 min
+- Total plans completed: 4 (v2.0)
+- Average duration: 1.5 min
+- Total execution time: 6 min
 
 *Updated after each plan completion*
 
@@ -51,6 +51,8 @@ Recent decisions affecting current work:
 - [15-02]: PrecomputedScopes → LocalSymbols, computeExports/computeLocalScopes → collectExportedSymbols/collectLocalSymbols
 - [15-02]: document.precomputedScopes → document.localSymbols property access pattern
 - [15-gap]: Verifier caught 5 missed usages in linker/java-interop; orchestrator fixed directly (13 total across 2 files)
+- [16-01]: Completion provider override uses 3-param signature (nodeDescription, ReferenceInfo, CompletionContext)
+- [16-01]: Linker uses isReference type guard for defensive MultiReference handling
 
 ### Known Issues
 
@@ -68,6 +70,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Phase 15 complete and verified -- ready for Phase 16
+Stopped at: Completed 16-01-PLAN.md
 Resume file: None
-Next: `/gsd:discuss-phase 16` or `/gsd:plan-phase 16`
+Next: Phase 16 complete -- ready for Phase 17 (Compilation Verification)
