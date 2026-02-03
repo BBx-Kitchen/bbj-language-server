@@ -1,12 +1,12 @@
-# BBj Language Server - IntelliJ Integration
+# BBj Language Server
 
 ## What This Is
 
-An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features. Published as `com.basis.bbj` on JetBrains Marketplace.
+A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
-BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
+BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
 ## Requirements
 
@@ -51,7 +51,16 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ### Active
 
-(No active milestone — next milestone TBD)
+## Current Milestone: v2.0 Langium 3 Upgrade
+
+**Goal:** Upgrade the language server from Langium 2 to Langium 3 (latest stable) with zero feature regressions, then publish updated VS Code extension and IntelliJ plugin.
+
+**Target features:**
+- Langium 2 → 3 migration (grammar, services, API changes)
+- All existing LS features preserved (diagnostics, completion, hover, signatures, symbols)
+- VS Code extension builds and works with upgraded LS
+- IntelliJ plugin builds and works with upgraded LS (bundled main.cjs)
+- Published updates for both VS Code extension and IntelliJ plugin
 
 ### Out of Scope
 
@@ -62,7 +71,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ## Context
 
-**Current state:** v1.2 shipped 2026-02-02. Plugin provides full BBj language support including run commands, Structure view, brand icons, and is ready for JetBrains Marketplace publication. 35 Java source classes (3,902 LOC), bundled language server (main.cjs, 1.8MB), TextMate grammars, and web.bbj runner. Distribution ZIP: bbj-intellij-0.1.0.zip (685KB). Plugin verifier passes across 6 IDE versions (IC-242 through IU-261). Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
+**Current state:** v1.2 shipped 2026-02-02. IntelliJ plugin provides full BBj language support including run commands, Structure view, brand icons, and is ready for JetBrains Marketplace publication. VS Code extension is the primary development environment. Language server built on Langium 2.x — upgrading to Langium 3 for long-term maintainability and future AI/BNF features.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
 
@@ -72,7 +81,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 **Target users:** BBj developers using IntelliJ, primarily Community Edition.
 
-**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `feat_intellij` branch.
+**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `langium_upgrade` branch.
 
 **Known tech debt:**
 - Structure View symbol kind differentiation (language server issue in bbj-node-kind.ts)
@@ -84,6 +93,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - **Community Edition**: Plugin must work with IntelliJ Community Edition (rules out JetBrains native LSP API)
 - **Node.js dependency**: Language server requires Node.js runtime — auto-downloaded if not available
 - **Existing LS unchanged**: No modifications to the language server for IntelliJ support — IntelliJ adapts to what the LS provides
+- **No new Langium 3 features**: v2.0 is a clean upgrade only — BNF syntax, AI features, etc. deferred to future milestones
 
 ## Key Decisions
 
@@ -115,5 +125,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | `recommended()` for plugin verifier | Auto-aligns with sinceBuild/untilBuild range | ✓ Good — no version mismatches |
 | Only claim features with implementation evidence | Ensures honest marketplace listing | ✓ Good — all 9 features verified |
 
+| Langium 2 → 3 upgrade (no new features) | Stay current; enable future AI/BNF features; avoid falling behind | — Pending |
+
 ---
-*Last updated: 2026-02-02 after v1.2 milestone completion*
+*Last updated: 2026-02-03 after v2.0 milestone start*

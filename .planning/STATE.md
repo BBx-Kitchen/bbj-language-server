@@ -2,20 +2,18 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-02)
+See: .planning/PROJECT.md (updated 2026-02-03)
 
-**Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
-**Current focus:** Planning next milestone
+**Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
+**Current focus:** v2.0 Langium 3 Upgrade
 
 ## Current Position
 
-Milestone: v1.2 Run Fixes & Marketplace — COMPLETE
-Phase: All phases complete (13/13)
-Plan: All plans complete (26/26 cumulative)
-Status: Ready for Marketplace submission and next milestone planning
-Last activity: 2026-02-02 — v1.2 milestone archived
-
-Progress: █████████████████████████ 100% (26/26 plans complete)
+Milestone: v2.0 Langium 3 Upgrade
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-03 — Milestone v2.0 started
 
 ## Milestone History
 
@@ -44,7 +42,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-02
-Stopped at: v1.2 milestone archived
+Last session: 2026-02-03
+Stopped at: Milestone v2.0 started — defining requirements
 Resume file: None
-Next: `/gsd:new-milestone` to plan next version, or upload bbj-intellij-0.1.0.zip to JetBrains Marketplace.
+Next: Complete requirements and roadmap for v2.0
