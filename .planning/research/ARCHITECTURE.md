@@ -1,1130 +1,912 @@
-# IntelliJ LSP Plugin Architecture
+# Architecture Integration: v1.2 Run Fixes, Console Output, and Marketplace Readiness
 
-## Research Context
-**Project:** BBj Language Server - IntelliJ Integration
-**Approach:** LSP4IJ-based plugin consuming existing Langium language server
-**Date:** 2026-02-01
-**Status:** Architecture Research
+**Domain:** IntelliJ Platform Plugin Development
+**Researched:** 2026-02-02
+**Confidence:** HIGH
 
 ## Executive Summary
 
-IntelliJ LSP plugins using LSP4IJ follow a three-layer architecture:
+This research examines how run command fixes, console output capture, and Marketplace publication integrate with the existing BBj IntelliJ plugin architecture. The plugin follows standard IntelliJ Platform patterns with an `AnAction`-based run system, tool window infrastructure for console output, and Gradle build tasks for publication. The v1.2 milestone requires targeted fixes to existing components plus new console integration components.
 
-1. **Plugin Layer** - IntelliJ extension points, UI components, settings
-2. **LSP Adapter Layer** - LSP4IJ framework managing client/server communication
-3. **External Processes** - Language server (Node.js) and supporting services (java-interop)
+## Existing Architecture Overview
 
-The critical architectural challenge is **process lifecycle management** - orchestrating two external processes (language server + java-interop) with proper startup sequencing, health monitoring, and graceful shutdown.
-
-## Component Architecture
-
-### Layer 1: IntelliJ Plugin (Java/Kotlin)
-
-**Location:** `bbj-intellij/src/main/` (proposed)
-
-#### 1.1 Plugin Descriptor (`plugin.xml`)
-
-Defines extension points and services:
-
-```xml
-<extensions defaultExtensionNs="com.intellij">
-  <!-- File type registration -->
-  <fileType name="BBj"
-            implementationClass="com.basis.bbj.intellij.BbjFileType"
-            fieldName="INSTANCE"
-            language="BBj"
-            extensions="bbj;bbl;bbjt;src"/>
-
-  <!-- Language definition -->
-  <lang.language id="BBj"
-                 implementationClass="com.basis.bbj.intellij.BbjLanguage"/>
-
-  <!-- LSP4IJ language server definition -->
-  <languageServer id="bbj-ls"
-                  name="BBj Language Server"
-                  serverInterface="com.basis.bbj.intellij.BbjLanguageServerDefinition"
-                  factoryClass="com.basis.bbj.intellij.BbjLanguageServerFactory"/>
-
-  <!-- TextMate grammar support -->
-  <textMate.bundleProvider implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
-
-  <!-- Settings UI -->
-  <projectConfigurable instance="com.basis.bbj.intellij.settings.BbjSettingsConfigurable"
-                       displayName="BBj"
-                       id="bbj.settings"/>
-</extensions>
-
-<depends>com.redhat.devtools.lsp4ij</depends>
+### Run Action Hierarchy
+```
+BbjRunActionBase (abstract)
+├── getBbjExecutablePath() → File validation
+├── buildCommandLine() → GeneralCommandLine construction
+├── actionPerformed() → OSProcessHandler → startNotify()
+└── Subclasses:
+    ├── BbjRunGuiAction (-q flag)
+    ├── BbjRunBuiAction (web.bbj + BUI mode)
+    └── BbjRunDwcAction (web.bbj + DWC mode)
 ```
 
-**Key Extension Points:**
-- `fileType` - Associates .bbj/.bbl/.bbjt/.src files with BBj language
-- `languageServer` - Registers BBj language server with LSP4IJ
-- `textMate.bundleProvider` - Provides TextMate grammar for syntax highlighting
-- `projectConfigurable` - Settings UI for BBj home path and classpath
+**Current flow:**
+1. User triggers action → `actionPerformed()`
+2. Auto-save if enabled → `autoSaveIfNeeded()`
+3. Build command → `buildCommandLine()` (subclass responsibility)
+4. Execute → `new OSProcessHandler(cmd).startNotify()`
+5. Fire and forget → No output capture, no process tracking
 
-#### 1.2 File Type & Language Registration
+### Settings Architecture
+- **BbjSettings**: Application-level PersistentStateComponent
+- **Storage**: `BbjSettings.xml` in IDE config directory
+- **Key fields**: `bbjHomePath`, `nodeJsPath`, `classpathEntry`, `autoSaveBeforeRun`
+- **Validation**: `BbjHomeDetector.isValidBbjHome()` checks for `cfg/BBj.properties`
 
-**BbjFileType.java:**
+### Tool Window Architecture
+- **BbjServerLogToolWindowFactory**: Creates console for LSP server output
+- **BbjServerService**: Project-level service managing LSP lifecycle
+- **Pattern**: ConsoleView created via `TextConsoleBuilderFactory`, registered with service, service writes via `console.print()`
+
+### Build System
+- **Gradle**: Kotlin DSL with IntelliJ Platform Gradle Plugin 2.x
+- **Dependencies**: `intellijIdeaCommunity("2024.2")`, `lsp4ij:0.19.0`, `pluginVerifier()`, `zipSigner()`
+- **Tasks**: `prepareSandbox`, `buildPlugin`, `signPlugin`, `publishPlugin`
+
+## Problem Analysis: Why Run Commands Fail
+
+### Issue 1: Executable Path Resolution on Windows
+
+**Current code (BbjRunActionBase.java:88-104):**
 ```java
-public class BbjFileType extends LanguageFileType {
-    public static final BbjFileType INSTANCE = new BbjFileType();
-
-    private BbjFileType() {
-        super(BbjLanguage.INSTANCE);
-    }
-
-    @Override
-    public String getName() { return "BBj"; }
-
-    @Override
-    public String getDescription() { return "BBj source file"; }
-
-    @Override
-    public String getDefaultExtension() { return "bbj"; }
-
-    @Override
-    public Icon getIcon() { /* BBj icon */ }
+String exeName = SystemInfo.isWindows ? "bbj.exe" : "bbj";
+File executable = new File(bbjHome, "bin/" + exeName);
+if (!executable.exists() || !executable.isFile()) {
+    return null;
 }
 ```
 
-**BbjLanguage.java:**
-```java
-public class BbjLanguage extends Language {
-    public static final BbjLanguage INSTANCE = new BbjLanguage();
+**Why this can fail:**
+1. **Symlinks**: `File.exists()` returns `false` for broken symlinks even if link file exists
+2. **Case sensitivity**: Windows NTFS is case-insensitive but `File` operations respect exact case
+3. **Path separators**: Hardcoded `"bin/"` assumes forward slash works (it does in Java, but clarity matters)
+4. **Executable bit irrelevant**: `File.isFile()` doesn't check if file is actually runnable
+5. **No logging**: When `null` is returned, caller shows generic error with no diagnostic info
 
-    private BbjLanguage() {
-        super("BBj");
-    }
-}
+**Impact on phases:**
+- Phase 7 (Executable Path Fix) must add diagnostics
+- Phase 8 (Console Output) needs process tracking to detect launch failures
+
+### Issue 2: OSProcessHandler Without Output Capture
+
+**Current code (BbjRunActionBase.java:54-56):**
+```java
+OSProcessHandler handler = new OSProcessHandler(cmd);
+handler.startNotify();
+showSuccess(project, file.getName(), getRunMode());
 ```
 
-**Purpose:** Registers BBj as a recognized language in IntelliJ, enabling syntax highlighting, file associations, and LSP integration.
+**Problems:**
+1. **No process listeners**: Output goes to void
+2. **No termination detection**: Process may fail immediately, no feedback
+3. **No console attachment**: User sees notification but not actual output
+4. **Fire-and-forget**: Handler becomes garbage-collectable after `startNotify()`
+5. **No error stream capture**: stderr lost
 
-#### 1.3 TextMate Grammar Provider
+**IntelliJ Platform best practices (2024):**
+- Attach `ProcessTerminatedListener` for exit code display
+- Use `ColoredProcessHandler` for ANSI escape code support
+- Avoid EDT blocking: Launch in pooled thread
+- Provide `ProgressIndicator` context for cancellation support
 
-**BbjTextMateBundleProvider.java:**
+### Issue 3: Environment Variable Inheritance
+
+**Current code:** No explicit environment configuration on `GeneralCommandLine`
+
+**Default behavior:**
+- GeneralCommandLine uses `ParentEnvironmentType.CONSOLE` by default
+- On macOS, simulates console environment (loads shell profile)
+- On Windows/Linux, equivalent to SYSTEM environment
+
+**Why this matters for BBj:**
+- BBj executable may depend on `BBXDIR` or `BASIS_HOME` environment variables
+- Classpath entries in `BBj.properties` may reference `$BBXDIR`
+- Web mode runners may need `PATH` to find `java` executable
+
+**Recommendation:** Explicitly set `ParentEnvironmentType.CONSOLE` for clarity
+
+## Architecture Changes Required
+
+### Component: BbjRunActionBase (MODIFIED)
+
+**File:** `src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java`
+
+**Changes:**
+1. **Enhanced executable validation:**
+   ```java
+   protected String getBbjExecutablePath() {
+       String bbjHome = BbjSettings.getInstance().getState().bbjHomePath;
+       if (bbjHome == null || bbjHome.isEmpty()) {
+           return null; // Caller shows "BBj home not configured"
+       }
+
+       String exeName = SystemInfo.isWindows ? "bbj.exe" : "bbj";
+       Path executablePath = Paths.get(bbjHome, "bin", exeName);
+
+       if (!Files.exists(executablePath)) {
+           // Return null + log diagnostic
+           return null;
+       }
+
+       if (!Files.isRegularFile(executablePath)) {
+           // Directory named bbj.exe? Symlink to directory?
+           return null;
+       }
+
+       // Windows: Check readable, Unix: Check executable bit
+       if (!Files.isReadable(executablePath)) {
+           return null;
+       }
+
+       return executablePath.toString();
+   }
+   ```
+
+2. **Console-aware process execution:**
+   ```java
+   protected void executeWithConsole(GeneralCommandLine cmd, VirtualFile file, Project project) {
+       // Get or create "BBj Run Output" tool window
+       BbjRunConsoleService consoleService = BbjRunConsoleService.getInstance(project);
+
+       // Create console view for this run
+       String tabTitle = file.getName() + " (" + getRunMode() + ")";
+       ConsoleView console = consoleService.createConsoleTab(tabTitle);
+
+       // Launch process in background thread
+       ApplicationManager.getApplication().executeOnPooledThread(() -> {
+           try {
+               OSProcessHandler handler = new OSProcessHandler(cmd);
+
+               // Attach console
+               console.attachToProcess(handler);
+
+               // Add termination listener
+               handler.addProcessListener(new ProcessTerminatedListener(
+                   ProcessTerminatedListener.generateCommandLineText(cmd)
+               ));
+
+               // Start process
+               handler.startNotify();
+
+               // Optionally: Wait for completion and check exit code
+               // handler.waitFor();
+
+           } catch (ExecutionException ex) {
+               console.print("Failed to launch: " + ex.getMessage() + "\n",
+                             ConsoleViewContentType.ERROR_OUTPUT);
+           }
+       });
+   }
+   ```
+
+3. **Environment type configuration:**
+   ```java
+   protected GeneralCommandLine buildCommandLine(...) {
+       GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
+       cmd.withParentEnvironmentType(GeneralCommandLine.ParentEnvironmentType.CONSOLE);
+       // ... rest of command line setup
+       return cmd;
+   }
+   ```
+
+**Integration points:**
+- Reads `BbjSettings.bbjHomePath`
+- Creates `GeneralCommandLine` with console environment
+- Calls new `BbjRunConsoleService` for output capture
+- Notifications remain for user feedback
+
+### Component: BbjRunConsoleService (NEW)
+
+**File:** `src/main/java/com/basis/bbj/intellij/ui/BbjRunConsoleService.java`
+
+**Responsibility:** Manage "BBj Run Output" tool window with dynamic console tabs
+
+**Key methods:**
 ```java
-public class BbjTextMateBundleProvider implements TextMateBundleProvider {
-    @Override
-    public @NotNull TextMateBundle getBundle() {
-        // Load bbj.tmLanguage.json from plugin resources
-        return TextMateBundle.create(
-            "BBj",
-            getClass().getResourceAsStream("/textmate/bbj.tmLanguage.json")
-        );
-    }
-}
-```
-
-**Data Flow:**
-1. IntelliJ detects .bbj file opening
-2. TextMate bundle loads grammar rules from bundled JSON
-3. IntelliJ's TextMate support applies syntax highlighting
-4. LSP semantic tokens (if provided) overlay additional highlighting
-
-**Note:** TextMate provides fast initial highlighting; LSP semantic tokens can provide more precise highlighting based on language server analysis.
-
-#### 1.4 Settings Management
-
-**BbjSettings.java (Application Service):**
-```java
-@State(
-    name = "BbjSettings",
-    storages = {@Storage("bbj.xml")}
-)
-public class BbjSettings implements PersistentStateComponent<BbjSettings.State> {
-    public static class State {
-        public String bbjHomePath;
-        public List<String> classpathEntries = new ArrayList<>();
-    }
-
-    private State state = new State();
-
-    public static BbjSettings getInstance() {
-        return ApplicationManager.getApplication().getService(BbjSettings.class);
-    }
-
-    @Override
-    public State getState() { return state; }
-
-    @Override
-    public void loadState(State state) { this.state = state; }
-}
-```
-
-**BbjSettingsConfigurable.java (UI):**
-```java
-public class BbjSettingsConfigurable implements Configurable {
-    private BbjSettingsPanel panel;
-
-    @Override
-    public JComponent createComponent() {
-        panel = new BbjSettingsPanel();
-        return panel.getPanel();
-    }
-
-    @Override
-    public boolean isModified() {
-        BbjSettings settings = BbjSettings.getInstance();
-        return !Objects.equals(panel.getBbjHomePath(), settings.getState().bbjHomePath);
-    }
-
-    @Override
-    public void apply() {
-        BbjSettings settings = BbjSettings.getInstance();
-        settings.getState().bbjHomePath = panel.getBbjHomePath();
-        settings.getState().classpathEntries = panel.getClasspathEntries();
-
-        // Restart language server with new settings
-        restartLanguageServer();
-    }
-}
-```
-
-**Purpose:** Stores BBj home path and classpath configuration; triggers language server restart when settings change.
-
-### Layer 2: LSP4IJ Adapter
-
-**Location:** LSP4IJ library (dependency)
-
-#### 2.1 Language Server Factory
-
-**BbjLanguageServerFactory.java:**
-```java
-public class BbjLanguageServerFactory implements LanguageServerFactory {
-
-    @Override
-    public ServerCapabilities createServerCapabilities(@NotNull ProcessDescriptor descriptor) {
-        return new BbjLanguageServerDefinition().getServerCapabilities(descriptor);
-    }
-
-    @Override
-    public LanguageServerDefinition createServerDefinition(@NotNull Project project) {
-        return new BbjLanguageServerDefinition(project);
-    }
-}
-```
-
-**Purpose:** Factory pattern for creating language server instances per-project.
-
-#### 2.2 Language Server Definition
-
-**BbjLanguageServerDefinition.java:**
-```java
-public class BbjLanguageServerDefinition extends LanguageServerDefinition {
+public class BbjRunConsoleService implements Disposable {
     private final Project project;
-    private ProcessHandle javaInteropProcess;
+    private final Map<String, ConsoleView> activeConsoles = new ConcurrentHashMap<>();
 
-    public BbjLanguageServerDefinition(Project project) {
-        this.project = project;
-    }
+    public static BbjRunConsoleService getInstance(@NotNull Project project);
 
+    // Create new console tab in "BBj Run Output" tool window
+    public ConsoleView createConsoleTab(@NotNull String title);
+
+    // Remove console tab when process terminates
+    public void removeConsoleTab(@NotNull String title);
+
+    // Get existing console or create new one
+    public ConsoleView getOrCreateConsole(@NotNull String title);
+}
+```
+
+**Architecture pattern (follows BbjServerService):**
+1. Project-level service registered in plugin.xml
+2. Tool window registered separately (BbjRunConsoleToolWindowFactory)
+3. Service gets reference to tool window's ContentManager
+4. Creates Content instances with ConsoleView components
+5. Manages lifecycle: create on run, cleanup on dispose
+
+**Integration points:**
+- Called by `BbjRunActionBase.executeWithConsole()`
+- Retrieves tool window via `ToolWindowManager.getInstance(project).getToolWindow("BBj Run Output")`
+- Creates ConsoleView via `TextConsoleBuilderFactory`
+- Manages Content via `toolWindow.getContentManager()`
+
+### Component: BbjRunConsoleToolWindowFactory (NEW)
+
+**File:** `src/main/java/com/basis/bbj/intellij/ui/BbjRunConsoleToolWindowFactory.java`
+
+**Responsibility:** Factory for "BBj Run Output" tool window (registered in plugin.xml)
+
+**Pattern (identical to BbjServerLogToolWindowFactory):**
+```java
+public class BbjRunConsoleToolWindowFactory implements ToolWindowFactory, DumbAware {
     @Override
-    public @NotNull ProcessDescriptor createProcessDescriptor() {
-        // 1. Resolve Node.js runtime
-        String nodePath = detectNodeJs();
-        if (nodePath == null) {
-            throw new RuntimeException("Node.js not found. Please install Node.js 18+");
-        }
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        // Initial placeholder content
+        ConsoleView initialConsole = TextConsoleBuilderFactory.getInstance()
+            .createBuilder(project)
+            .getConsole();
 
-        // 2. Resolve language server bundle
-        String serverPath = resolveLanguageServerPath();
+        Content content = ContentFactory.getInstance()
+            .createContent(initialConsole.getComponent(), "Welcome", false);
+        toolWindow.getContentManager().addContent(content);
 
-        // 3. Start java-interop process FIRST
-        startJavaInteropProcess();
-
-        // 4. Build command line
-        List<String> command = new ArrayList<>();
-        command.add(nodePath);
-
-        // Add debug flags if needed
-        if (isDebugMode()) {
-            command.add("--inspect=6009");
-        }
-
-        command.add(serverPath);
-
-        ProcessBuilder builder = new ProcessBuilder(command);
-        builder.redirectErrorStream(true);
-
-        return new ProcessDescriptor(builder);
-    }
-
-    @Override
-    public void dispose() {
-        // Shutdown java-interop process when language server stops
-        if (javaInteropProcess != null && javaInteropProcess.isAlive()) {
-            javaInteropProcess.destroy();
-            try {
-                javaInteropProcess.waitFor(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                javaInteropProcess.destroyForcibly();
-            }
-        }
-        super.dispose();
-    }
-
-    private String detectNodeJs() {
-        // Strategy 1: Check bundled Node.js in plugin resources
-        String bundledNode = getBundledNodePath();
-        if (bundledNode != null) return bundledNode;
-
-        // Strategy 2: Check system PATH
-        String systemNode = findInPath("node");
-        if (systemNode != null) return systemNode;
-
-        // Strategy 3: Check common install locations
-        return checkCommonNodeLocations();
-    }
-
-    private String resolveLanguageServerPath() {
-        // Language server is bundled with plugin
-        // Path: bbj-intellij/src/main/resources/language-server/main.cjs
-        File serverFile = new File(
-            PluginManager.getPlugin(PluginId.getId("com.basis.bbj"))
-                         .getPath()
-                         .resolve("language-server/main.cjs")
-                         .toString()
-        );
-
-        if (!serverFile.exists()) {
-            throw new RuntimeException("Language server bundle not found at: " + serverFile);
-        }
-
-        return serverFile.getAbsolutePath();
-    }
-
-    private void startJavaInteropProcess() {
-        BbjSettings settings = BbjSettings.getInstance();
-        String bbjHome = settings.getState().bbjHomePath;
-
-        if (bbjHome == null || bbjHome.isEmpty()) {
-            throw new RuntimeException("BBj home path not configured");
-        }
-
-        // Build java-interop command
-        // Assumes java-interop.jar is bundled with plugin
-        String jarPath = resolveJavaInteropJarPath();
-
-        List<String> command = Arrays.asList(
-            "java",
-            "-cp", bbjHome + "/lib/*:" + jarPath,
-            "bbj.interop.SocketServiceApp",
-            "--port", "5008"
-        );
-
-        try {
-            ProcessBuilder builder = new ProcessBuilder(command);
-            builder.redirectErrorStream(true);
-            Process process = builder.start();
-            javaInteropProcess = process.toHandle();
-
-            // Wait for java-interop to start accepting connections
-            waitForJavaInterop(5000);
-
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to start java-interop service", e);
-        }
-    }
-
-    private void waitForJavaInterop(int timeoutMs) {
-        long startTime = System.currentTimeMillis();
-        while (System.currentTimeMillis() - startTime < timeoutMs) {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress("127.0.0.1", 5008), 1000);
-                return; // Connection successful
-            } catch (IOException e) {
-                // Retry
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException("Interrupted waiting for java-interop");
-                }
-            }
-        }
-        throw new RuntimeException("java-interop failed to start within " + timeoutMs + "ms");
+        // Register service reference (service will manage tabs)
+        BbjRunConsoleService service = BbjRunConsoleService.getInstance(project);
+        service.initialize(toolWindow);
     }
 }
 ```
 
-**Critical Design Points:**
-
-1. **Startup Sequencing:** java-interop MUST start before language server
-   - Language server immediately connects to java-interop on startup
-   - If java-interop not available, language server connection fails
-   - Wait for socket to accept connections before starting LS
-
-2. **Process Ownership:** LanguageServerDefinition owns both processes
-   - Creates java-interop in `createProcessDescriptor()`
-   - Destroys java-interop in `dispose()`
-   - Ensures proper cleanup when project closes
-
-3. **Node.js Detection Strategy:**
-   - Priority 1: Bundled Node.js (recommended for production)
-   - Priority 2: System PATH
-   - Priority 3: Common install locations (/usr/local/bin, etc.)
-
-4. **Resource Bundling:**
-   - Language server bundle: `resources/language-server/main.cjs`
-   - java-interop JAR: `resources/java-interop/java-interop.jar`
-   - TextMate grammar: `resources/textmate/bbj.tmLanguage.json`
-
-#### 2.3 LSP Client Communication
-
-**Managed by LSP4IJ:**
-```
-IntelliJ Editor
-     |
-     v
-LSP4IJ Client (automatic)
-     |
-     v (JSON-RPC over stdio)
-Language Server Process
-     |
-     v (JSON-RPC over socket)
-java-interop Process
+**plugin.xml registration:**
+```xml
+<toolWindow id="BBj Run Output"
+            factoryClass="com.basis.bbj.intellij.ui.BbjRunConsoleToolWindowFactory"
+            anchor="bottom"
+            icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
+            canCloseContents="true"/>
 ```
 
-**Data Flow:**
-1. User types in IntelliJ editor
-2. IntelliJ generates document change events
-3. LSP4IJ converts to LSP `textDocument/didChange` notifications
-4. Sends JSON-RPC message to language server via stdio
-5. Language server processes, may query java-interop via socket
-6. Language server responds with diagnostics/completions
-7. LSP4IJ converts LSP responses to IntelliJ UI updates
+**Differences from BbjServerLogToolWindowFactory:**
+- `canCloseContents="true"` (users can close individual run tabs)
+- Service manages multiple tabs instead of single console
+- No auto-initialization message (tabs created on demand)
 
-**Transport Mechanisms:**
-- **IntelliJ ↔ LS:** stdio (ProcessBuilder input/output streams)
-- **LS ↔ java-interop:** TCP socket (localhost:5008)
+### Component: plugin.xml (MODIFIED)
 
-### Layer 3: External Processes
+**File:** `src/main/resources/META-INF/plugin.xml`
 
-#### 3.1 Language Server (Node.js)
+**Changes:**
+1. **Add project service:**
+   ```xml
+   <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjRunConsoleService"/>
+   ```
 
-**Location:** `bbj-vscode/out/language/main.cjs` (existing, bundled)
+2. **Add tool window:**
+   ```xml
+   <toolWindow id="BBj Run Output"
+               factoryClass="com.basis.bbj.intellij.ui.BbjRunConsoleToolWindowFactory"
+               anchor="bottom"
+               icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
+               canCloseContents="true"/>
+   ```
 
-**Entry Point:**
-```typescript
-// bbj-vscode/src/language/main.ts
-import { startLanguageServer } from 'langium/lsp';
-import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
+**No changes needed:** Action registrations remain the same (behavior changes internal to actions)
 
-const connection = createConnection(ProposedFeatures.all);
-const { shared } = createBBjServices({ connection, ...NodeFileSystem });
-startLanguageServer(shared);
+### Component: build.gradle.kts (MODIFIED for Marketplace)
+
+**File:** `bbj-intellij/build.gradle.kts`
+
+**Current state:** Already includes `pluginVerifier()` and `zipSigner()` dependencies
+
+**Changes for Marketplace:**
+1. **Version bump** (alpha → beta or 1.0.0):
+   ```kotlin
+   version = "1.0.0"
+   ```
+
+2. **Add signing configuration:**
+   ```kotlin
+   intellijPlatform {
+       signing {
+           certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+           privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+           password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+       }
+   }
+   ```
+
+3. **Add publishing configuration:**
+   ```kotlin
+   intellijPlatform {
+       publishing {
+           token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+           channels.set(listOf("stable")) // or "beta"
+       }
+   }
+   ```
+
+4. **Add verifyPlugin task configuration:**
+   ```kotlin
+   tasks {
+       verifyPlugin {
+           // Verify against multiple IDE versions
+           ides {
+               ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.2")
+               ide(IntelliJPlatformType.IntellijIdeaCommunity, "2024.3")
+           }
+       }
+   }
+   ```
+
+**Integration with CI:** Environment variables set in GitHub Actions secrets
+
+### Component: Description and Change Notes (NEW/MODIFIED)
+
+**Files:**
+- `src/main/resources/META-INF/description.html` (already exists, may need editing)
+- `src/main/resources/META-INF/changeNotes.html` (NEW, created per release)
+
+**Format:** Simple HTML (paragraphs, lists, text formatting)
+
+**Example description.html:**
+```html
+<p>
+BBj Language Support provides code intelligence for BBj source files in IntelliJ IDEA.
+</p>
+
+<ul>
+  <li>Syntax highlighting for .bbj, .bbl, .bbjt, .src, and .bbx files</li>
+  <li>Code completion, go-to-definition, and hover documentation</li>
+  <li>Real-time error checking and diagnostics</li>
+  <li>Run actions for GUI, BUI, and DWC programs</li>
+  <li>Integrated console output for program execution</li>
+</ul>
+
+<p>
+Powered by the BBj Language Server (Langium-based).
+</p>
 ```
 
-**Process Characteristics:**
-- **Runtime:** Node.js 18+
-- **Communication:** stdio (stdin/stdout for JSON-RPC)
-- **Lifecycle:** Started by IntelliJ plugin, exits when stdio closes
-- **Dependencies:** java-interop service (localhost:5008)
-
-**Capabilities Provided:**
-```json
-{
-  "textDocumentSync": "incremental",
-  "completionProvider": {
-    "triggerCharacters": [".", ":", "(", " "]
-  },
-  "hoverProvider": true,
-  "signatureHelpProvider": {
-    "triggerCharacters": ["(", ","]
-  },
-  "definitionProvider": true,
-  "referencesProvider": true,
-  "documentSymbolProvider": true,
-  "workspaceSymbolProvider": true,
-  "semanticTokensProvider": {
-    "legend": { /* token types */ },
-    "full": true
-  },
-  "diagnosticProvider": {
-    "interFileDependencies": true,
-    "workspaceDiagnostics": true
-  }
-}
+**Example changeNotes.html:**
+```html
+<h3>Version 1.0.0</h3>
+<ul>
+  <li>Fixed: Run commands now properly detect BBj executable on all platforms</li>
+  <li>New: Console output capture in "BBj Run Output" tool window</li>
+  <li>New: Multiple concurrent run outputs with separate tabs</li>
+  <li>Improved: Better error messages when BBj home not configured</li>
+</ul>
 ```
 
-#### 3.2 Java Interop Service
-
-**Location:** `java-interop/build/libs/java-interop.jar` (existing, bundled)
-
-**Entry Point:**
-```java
-// java-interop/src/main/java/bbj/interop/SocketServiceApp.java
-public class SocketServiceApp {
-    public static void main(String[] args) {
-        int port = 5008; // Default
-        ServerSocket serverSocket = new ServerSocket(port);
-        Socket socket = serverSocket.accept();
-
-        MessageConnection connection = createMessageConnection(
-            new SocketMessageReader(socket),
-            new SocketMessageWriter(socket)
-        );
-
-        connection.listen();
-    }
-}
-```
-
-**Process Characteristics:**
-- **Runtime:** Java 17+
-- **Communication:** TCP socket (localhost:5008)
-- **Lifecycle:** Started by IntelliJ plugin before LS, exits when socket closes
-- **Classpath:** Requires BBj lib JARs (from BBj home path)
-
-**RPC Methods:**
-```java
-interface JavaInteropRPC {
-    Classpath loadClasspath(ClasspathRequest request);
-    JavaClass getClassInfo(ClassInfoRequest request);
-    List<JavaClass> getClassInfos(PackageRequest request);
-    List<JavaPackage> getTopLevelPackages();
-}
-```
-
-## Process Lifecycle Management
-
-### Startup Sequence
-
-```
-1. User opens IntelliJ project with .bbj files
-   ↓
-2. IntelliJ detects BBj file type
-   ↓
-3. LSP4IJ framework calls BbjLanguageServerDefinition.createProcessDescriptor()
-   ↓
-4. Plugin starts java-interop process
-   - Validates BBj home path from settings
-   - Builds classpath: BBj libs + java-interop.jar
-   - Executes: java -cp ... bbj.interop.SocketServiceApp --port 5008
-   - Waits for socket on localhost:5008 (max 5s timeout)
-   ↓
-5. Plugin starts language server process
-   - Detects Node.js runtime (bundled or system)
-   - Executes: node out/language/main.cjs
-   - Language server immediately connects to java-interop:5008
-   ↓
-6. Language server sends initialize request
-   ↓
-7. LSP4IJ responds with client capabilities
-   ↓
-8. Language server sends initialized notification
-   ↓
-9. READY: IntelliJ can send document events
-```
-
-**Critical Dependency:** Step 4 must complete before step 5. If java-interop fails to start or times out, language server startup aborts with user-visible error.
-
-### Health Monitoring
-
-**Process Monitoring:**
-```java
-public class BbjLanguageServerDefinition {
-    private ProcessHandle languageServerProcess;
-    private ProcessHandle javaInteropProcess;
-
-    public void monitorProcesses() {
-        // Watch for unexpected exits
-        javaInteropProcess.onExit().thenRun(() -> {
-            if (languageServerProcess.isAlive()) {
-                // java-interop crashed, restart both
-                restartBothProcesses();
-            }
-        });
-
-        languageServerProcess.onExit().thenRun(() -> {
-            // Language server exited, clean up java-interop
-            if (javaInteropProcess.isAlive()) {
-                javaInteropProcess.destroy();
-            }
-        });
-    }
-}
-```
-
-**Connection Health:**
-- LSP4IJ handles LS connection failures via automatic retry
-- java-interop connection failures logged by LS, no auto-retry
-- Restart strategy: User action or settings change triggers full restart
-
-### Shutdown Sequence
-
-```
-1. User closes IntelliJ project
-   ↓
-2. IntelliJ disposes project services
-   ↓
-3. LSP4IJ calls LanguageServerDefinition.dispose()
-   ↓
-4. Plugin sends shutdown request to language server
-   ↓
-5. Language server closes connection to java-interop
-   ↓
-6. Plugin terminates language server process (graceful)
-   ↓
-7. Plugin terminates java-interop process (graceful)
-   ↓
-8. If processes don't exit in 5s, forcibly kill
-```
-
-### Error Recovery
-
-**Failure Scenarios:**
-
-| Failure | Detection | Recovery |
-|---------|-----------|----------|
-| Node.js not found | Startup | Show error dialog, link to Node.js download |
-| java-interop startup timeout | Startup | Show error with BBj home path validation |
-| java-interop crash | Runtime | Log error, restart both processes |
-| Language server crash | Runtime | LSP4IJ auto-restarts LS |
-| BBj home path invalid | Startup | Show settings dialog |
-| Port 5008 already in use | Startup | Show error, suggest killing existing process |
-
-## Build Structure
-
-### Gradle Plugin Configuration
-
-**Location:** `bbj-intellij/build.gradle.kts`
-
+**Gradle integration:**
 ```kotlin
-plugins {
-    id("java")
-    id("org.jetbrains.intellij") version "1.17.2"
-}
-
-group = "com.basis.bbj"
-version = "0.1.0-alpha"
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation("com.redhat.devtools:lsp4ij:0.0.1") // LSP4IJ library
-}
-
-intellij {
-    version.set("2023.2") // IntelliJ Community 2023.2
-    type.set("IC") // Community Edition
-    plugins.set(listOf("com.redhat.devtools.lsp4ij"))
-}
-
-tasks {
-    patchPluginXml {
-        sinceBuild.set("232")
-        untilBuild.set("242.*")
-    }
-
-    // Copy language server bundle to resources
-    register("copyLanguageServer", Copy::class) {
-        from("../bbj-vscode/out/language/main.cjs")
-        into("src/main/resources/language-server/")
-    }
-
-    // Copy java-interop JAR to resources
-    register("copyJavaInterop", Copy::class) {
-        from("../java-interop/build/libs/java-interop.jar")
-        into("src/main/resources/java-interop/")
-    }
-
-    // Copy TextMate grammar to resources
-    register("copyTextMateGrammar", Copy::class) {
-        from("../bbj-vscode/syntaxes/bbj.tmLanguage.json")
-        into("src/main/resources/textmate/")
-    }
-
-    buildPlugin {
-        dependsOn("copyLanguageServer", "copyJavaInterop", "copyTextMateGrammar")
+intellijPlatform {
+    pluginConfiguration {
+        description = file("src/main/resources/META-INF/description.html").readText()
+        changeNotes.set(file("src/main/resources/META-INF/changeNotes.html").readText())
     }
 }
 ```
 
-**Build Dependencies:**
-1. `bbj-vscode` must build first → produces `out/language/main.cjs`
-2. `java-interop` must build first → produces `java-interop.jar`
-3. `bbj-intellij` copies artifacts and packages into plugin ZIP
+## Data Flow: Run Action with Console
 
-### Directory Structure
-
+### Before (Current v1.1)
 ```
-bbj-intellij/
-├── build.gradle.kts
-├── settings.gradle.kts
-├── src/
-│   ├── main/
-│   │   ├── java/com/basis/bbj/intellij/
-│   │   │   ├── BbjFileType.java
-│   │   │   ├── BbjLanguage.java
-│   │   │   ├── BbjLanguageServerFactory.java
-│   │   │   ├── BbjLanguageServerDefinition.java
-│   │   │   ├── BbjTextMateBundleProvider.java
-│   │   │   └── settings/
-│   │   │       ├── BbjSettings.java
-│   │   │       ├── BbjSettingsConfigurable.java
-│   │   │       └── BbjSettingsPanel.java
-│   │   └── resources/
-│   │       ├── META-INF/
-│   │       │   └── plugin.xml
-│   │       ├── language-server/
-│   │       │   └── main.cjs (copied from bbj-vscode)
-│   │       ├── java-interop/
-│   │       │   └── java-interop.jar (copied from java-interop)
-│   │       └── textmate/
-│   │           └── bbj.tmLanguage.json (copied from bbj-vscode)
-│   └── test/
-│       └── java/com/basis/bbj/intellij/
-│           └── BbjLanguageServerTest.java
-└── build/ (generated)
-    └── distributions/
-        └── bbj-intellij-0.1.0-alpha.zip
+User clicks "Run As BBj Program"
+  ↓
+BbjRunGuiAction.actionPerformed()
+  ↓
+buildCommandLine() → GeneralCommandLine
+  ↓
+new OSProcessHandler(cmd).startNotify()
+  ↓
+[Process output lost]
+  ↓
+showSuccess() notification
 ```
 
-## Data Flow Diagrams
-
-### Completion Request Flow
-
+### After (v1.2)
 ```
-User types "obj." in IntelliJ editor
-    ↓
-IntelliJ generates document change event
-    ↓
-LSP4IJ sends textDocument/didChange (JSON-RPC over stdio)
-    ↓
-Language Server updates document AST
-    ↓
-User triggers completion (Ctrl+Space)
-    ↓
-LSP4IJ sends textDocument/completion (JSON-RPC over stdio)
-    ↓
-Language Server analyzes AST
-    ↓
-If obj is Java type:
-    Language Server → java-interop: getClassInfo("ClassName") (JSON-RPC over socket)
-    java-interop → Java reflection → return methods/fields
-    Language Server receives Java class info
-    ↓
-Language Server builds completion items
-    ↓
-Language Server responds with CompletionList (JSON-RPC over stdio)
-    ↓
-LSP4IJ converts to IntelliJ completion UI
-    ↓
-IntelliJ shows completion popup
+User clicks "Run As BBj Program"
+  ↓
+BbjRunGuiAction.actionPerformed()
+  ↓
+buildCommandLine() → GeneralCommandLine with CONSOLE env
+  ↓
+executeWithConsole(cmd, file, project)
+  ↓
+BbjRunConsoleService.createConsoleTab(title)
+  ↓
+  ├─ Get/show "BBj Run Output" tool window
+  ├─ Create new ConsoleView
+  └─ Add as Content tab
+  ↓
+ApplicationManager.executeOnPooledThread()
+  ↓
+new OSProcessHandler(cmd)
+  ↓
+console.attachToProcess(handler)
+  ↓
+handler.addProcessListener(ProcessTerminatedListener)
+  ↓
+handler.startNotify()
+  ↓
+[Process output → ConsoleView in real-time]
+  ↓
+[Process terminates → exit code displayed]
 ```
 
-### Diagnostics Flow
+## Data Flow: Marketplace Publication
 
+### One-time Setup
 ```
-User saves .bbj file
-    ↓
-IntelliJ triggers save event
-    ↓
-LSP4IJ sends textDocument/didSave (JSON-RPC over stdio)
-    ↓
-Language Server re-validates document
-    ↓
-Language Server runs BBj validators:
-    - Syntax errors (lexer/parser)
-    - Type checking (may query java-interop for Java types)
-    - Semantic analysis (undefined variables, etc.)
-    ↓
-Language Server sends textDocument/publishDiagnostics (JSON-RPC over stdio)
-    ↓
-LSP4IJ converts to IntelliJ error markers
-    ↓
-IntelliJ shows red squiggles and error panel
+Developer generates signing certificate
+  ↓
+Certificate chain + private key stored in GitHub Secrets
+  ↓
+JetBrains Account Personal Access Token stored in GitHub Secrets
 ```
 
-### Settings Change Flow
-
+### Per-Release Flow
 ```
-User changes BBj home path in IntelliJ settings
-    ↓
-BbjSettingsConfigurable.apply() called
-    ↓
-Settings persisted to bbj.xml
-    ↓
-BbjSettingsConfigurable.restartLanguageServer() called
-    ↓
-LSP4IJ.restartServer(project, "bbj-ls") called
-    ↓
-Language server dispose() → shutdown request → process exit
-    ↓
-java-interop dispose() → socket close → process exit
-    ↓
-LSP4IJ creates new LanguageServerDefinition
-    ↓
-New java-interop process started with new BBj home classpath
-    ↓
-New language server process started
-    ↓
-Language server reconnects to java-interop
-    ↓
-READY with new settings
-```
-
-## Component Boundaries
-
-### Plugin ↔ LSP4IJ Interface
-
-**Boundary:** Plugin provides `LanguageServerDefinition`, LSP4IJ manages everything else
-
-**Plugin Responsibilities:**
-- File type registration
-- TextMate grammar loading
-- Settings UI
-- Process creation (language server + java-interop)
-- Node.js detection
-- Resource bundling
-
-**LSP4IJ Responsibilities:**
-- JSON-RPC protocol implementation
-- Document synchronization
-- Request/response routing
-- Capability negotiation
-- Connection lifecycle (start/stop/restart)
-- Error recovery and retry logic
-
-**Interface Contract:**
-```java
-interface LanguageServerDefinition {
-    ProcessDescriptor createProcessDescriptor(); // Plugin implements
-    void dispose(); // Plugin implements cleanup
-}
+Update version in build.gradle.kts
+  ↓
+Update changeNotes.html
+  ↓
+Run `./gradlew verifyPlugin` (local testing)
+  ↓
+  ├─ Checks plugin.xml structure
+  ├─ Verifies dependencies exist
+  ├─ Tests against IDE version range
+  └─ Reports API compatibility issues
+  ↓
+Commit and tag release
+  ↓
+GitHub Actions CI triggered
+  ↓
+CI runs: buildPlugin → signPlugin → publishPlugin
+  ↓
+  ├─ buildPlugin: Creates ZIP with all resources
+  ├─ signPlugin: Signs ZIP with certificate
+  └─ publishPlugin: Uploads to Marketplace
+  ↓
+JetBrains Marketplace automated review
+  ↓
+  ├─ Binary verification
+  ├─ Approval guidelines check
+  └─ Compatibility verification
+  ↓
+Plugin published (visible in Marketplace + IDE plugin browser)
 ```
 
-### Language Server ↔ java-interop Interface
-
-**Boundary:** Socket-based JSON-RPC (existing contract, unchanged)
-
-**Language Server Responsibilities:**
-- Connect to java-interop on startup
-- Send classpath load request (BBj home + entries)
-- Request Java class metadata during completion/validation
-- Handle connection failures gracefully (log errors)
-
-**java-interop Responsibilities:**
-- Listen on localhost:5008
-- Load BBj classpath JARs
-- Reflect over Java classes
-- Respond to RPC requests with class/method/field info
-- Cache class metadata for performance
-
-**Interface Contract:**
-```typescript
-interface JavaInteropRPC {
-    loadClasspath(entries: string[]): Promise<Classpath>;
-    getClassInfo(className: string): Promise<JavaClass>;
-    getClassInfos(packageName: string): Promise<JavaClass[]>;
-    getTopLevelPackages(): Promise<JavaPackage[]>;
-}
-```
-
-**Port Configuration:** Hardcoded to 5008 (potential future enhancement: make configurable)
-
-### IntelliJ UI ↔ Plugin Interface
-
-**Boundary:** IntelliJ Platform APIs
-
-**IntelliJ Provides:**
-- File system events (open/save/close)
-- Editor events (typing, cursor movement)
-- UI components (error markers, completion popups)
-- Settings persistence
-- Project lifecycle events
-
-**Plugin Consumes:**
-- `FileType` API - file associations
-- `Language` API - language registration
-- `PersistentStateComponent` API - settings storage
-- `Configurable` API - settings UI
-- Extension point system - hooking into IntelliJ
-
-## Suggested Build Order
-
-### Phase 1: Minimal Plugin Skeleton
-**Goal:** IntelliJ recognizes .bbj files, loads TextMate grammar
-
-**Components:**
-1. Gradle build configuration (`build.gradle.kts`)
-2. `plugin.xml` with file type + language extensions
-3. `BbjFileType.java`
-4. `BbjLanguage.java`
-5. `BbjTextMateBundleProvider.java`
-6. Copy task for TextMate grammar
-
-**Validation:** Open .bbj file → syntax highlighting works
-
-**Estimated Effort:** 1-2 days
-
-### Phase 2: Settings UI
-**Goal:** User can configure BBj home path and classpath
-
-**Components:**
-1. `BbjSettings.java` (state persistence)
-2. `BbjSettingsConfigurable.java` (settings page)
-3. `BbjSettingsPanel.java` (UI form)
-4. Extension point in `plugin.xml`
-
-**Validation:** IntelliJ → Settings → BBj → enter BBj home → persists across restarts
-
-**Estimated Effort:** 1 day
-
-### Phase 3: Language Server Integration (No java-interop)
-**Goal:** Language server starts, basic LSP features work (syntax errors, hover)
-
-**Components:**
-1. `BbjLanguageServerFactory.java`
-2. `BbjLanguageServerDefinition.java` (simplified - no java-interop startup yet)
-3. Node.js detection logic
-4. Language server bundle copy task
-5. Extension point in `plugin.xml`
-
-**Validation:**
-- Open .bbj file → LS starts
-- Syntax errors appear as red squiggles
-- Hover over keyword → shows info
-
-**Estimated Effort:** 2-3 days
-
-### Phase 4: java-interop Integration
-**Goal:** Full BBj features work (Java completions, type checking)
-
-**Components:**
-1. Update `BbjLanguageServerDefinition.java` with java-interop startup
-2. java-interop JAR copy task
-3. Startup sequencing logic (java-interop → wait → LS)
-4. Shutdown cleanup logic
-
-**Validation:**
-- Type `obj = new BBjAPI()` → completion shows BBj API methods
-- Java class completions work end-to-end
-
-**Estimated Effort:** 2 days
-
-### Phase 5: Process Management & Error Handling
-**Goal:** Robust process lifecycle, graceful error recovery
-
-**Components:**
-1. Process health monitoring
-2. Restart on settings change
-3. Error dialogs for common failures
-4. Logging and diagnostics
-
-**Validation:**
-- Change BBj home → both processes restart
-- Kill java-interop → user sees actionable error
-- Invalid BBj home → settings dialog appears
-
-**Estimated Effort:** 2 days
-
-### Phase 6: Node.js Bundling (Optional)
-**Goal:** Plugin works without user-installed Node.js
-
-**Components:**
-1. Download Node.js binaries (per platform: Windows/Mac/Linux)
-2. Bundle in plugin resources
-3. Update detection logic to prefer bundled Node
-4. Platform-specific logic for executable permissions
-
-**Validation:** Fresh machine without Node.js → plugin works
-
-**Estimated Effort:** 3-4 days
-
-**Note:** This is optional for alpha release if target users already have Node.js installed.
-
-## Key Design Decisions
-
-### 1. Process Ownership Model
-
-**Decision:** Plugin owns both language server and java-interop processes
-
-**Rationale:**
-- IntelliJ plugin has access to Java runtime (easy to spawn java-interop)
-- LS expects java-interop already running (no startup code in LS)
-- Consistent with VS Code approach (extension starts both)
-- Simplifies error handling (one place to manage lifecycle)
-
-**Alternative Considered:** LS spawns java-interop
-- Rejected: LS would need child process management code
-- Rejected: Different behavior between VS Code and IntelliJ
-
-### 2. Transport Mechanisms
-
-**Decision:** stdio for LS, TCP socket for java-interop
-
-**Rationale:**
-- stdio is LSP standard (works with all LSP clients)
-- Socket allows LS and java-interop in different processes
-- Socket survives LS restarts (could keep java-interop alive)
-
-**Alternative Considered:** stdio for both
-- Rejected: Would require process chaining or shared parent
-
-### 3. Node.js Detection Strategy
-
-**Decision:** Bundled Node.js (if feasible), fallback to system PATH
-
-**Rationale:**
-- Zero-install experience for end users
-- Consistent Node version across installations
-- Avoids "Node.js not found" support tickets
-
-**Trade-offs:**
-- Increases plugin size (~50-80MB per platform)
-- Requires platform-specific builds
-- More complex build process
-
-**Alternative:** Require system Node.js
-- Simpler plugin, but worse UX
-- Consider for alpha, bundle for beta/GA
-
-### 4. Settings Scope
-
-**Decision:** Application-level settings (global BBj home path)
-
-**Rationale:**
-- Most users have single BBj installation
-- Simpler UX (set once, works everywhere)
-- Matches VS Code approach
-
-**Alternative Considered:** Project-level settings
-- Would allow per-project BBj versions
-- Adds complexity for uncommon use case
-
-### 5. TextMate vs LSP Semantic Tokens
-
-**Decision:** TextMate for initial highlighting, LSP semantic tokens as overlay
-
-**Rationale:**
-- TextMate provides instant highlighting (no LS startup delay)
-- LSP semantic tokens add precision (context-aware colors)
-- Graceful degradation if LS unavailable
-
-**Trade-off:** Dual highlighting systems add complexity
-
-## Dependencies Between Components
+## Component Interaction Map
 
 ```
-BbjFileType ──┐
-              ├──> BbjLanguage
-BbjTextMateBundleProvider ──┘
-
-BbjSettings ──> BbjSettingsConfigurable ──> BbjLanguageServerDefinition
-
-BbjLanguageServerFactory ──> BbjLanguageServerDefinition
-
-BbjLanguageServerDefinition ──┬──> Node.js runtime (external)
-                               ├──> Language server bundle (../bbj-vscode/out)
-                               └──> java-interop JAR (../java-interop/build/libs)
-
-Language Server ──> java-interop (runtime socket dependency)
+┌─────────────────────────────────────────────────────────────┐
+│                    User Action Layer                        │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │ BbjRunGui    │  │ BbjRunBui    │  │ BbjRunDwc    │      │
+│  │   Action     │  │   Action     │  │   Action     │      │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
+│         └──────────────────┴──────────────────┘             │
+└────────────────────────────┬────────────────────────────────┘
+                             │ extends
+                             ↓
+┌─────────────────────────────────────────────────────────────┐
+│                 BbjRunActionBase                            │
+│  ┌────────────────────────────────────────────────┐         │
+│  │ getBbjExecutablePath() [MODIFIED]              │         │
+│  │ - Enhanced diagnostics                         │         │
+│  │ - Files.exists() + Files.isReadable()          │         │
+│  │                                                 │         │
+│  │ executeWithConsole() [NEW]                     │         │
+│  │ - Creates console tab                          │         │
+│  │ - Launches in pooled thread                    │         │
+│  │ - Attaches OSProcessHandler to ConsoleView     │         │
+│  └───────────────────┬────────────────────────────┘         │
+└────────────────────────┼────────────────────────────────────┘
+                         │ uses
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│              BbjRunConsoleService [NEW]                     │
+│  ┌────────────────────────────────────────────────┐         │
+│  │ Project-level service                          │         │
+│  │                                                 │         │
+│  │ createConsoleTab(title) → ConsoleView          │         │
+│  │ - Gets ToolWindow from ToolWindowManager       │         │
+│  │ - Creates ConsoleView via                      │         │
+│  │   TextConsoleBuilderFactory                    │         │
+│  │ - Adds Content to ContentManager               │         │
+│  │                                                 │         │
+│  │ removeConsoleTab(title)                        │         │
+│  │ - Cleanup on process termination (optional)    │         │
+│  └───────────────────┬────────────────────────────┘         │
+└────────────────────────┼────────────────────────────────────┘
+                         │ manages
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│          BbjRunConsoleToolWindowFactory [NEW]               │
+│  ┌────────────────────────────────────────────────┐         │
+│  │ Creates "BBj Run Output" ToolWindow            │         │
+│  │                                                 │         │
+│  │ createToolWindowContent()                      │         │
+│  │ - Initial placeholder console                  │         │
+│  │ - Registers with BbjRunConsoleService          │         │
+│  └────────────────────────────────────────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ registered in
+                         ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      plugin.xml                             │
+│  <projectService ... BbjRunConsoleService />                │
+│  <toolWindow id="BBj Run Output" ... />                     │
+│  <action id="bbj.runGui" ... />  (existing)                 │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Build-time Dependencies:**
-- IntelliJ plugin build depends on `bbj-vscode` build completing
-- IntelliJ plugin build depends on `java-interop` build completing
-- Both artifacts must exist before `buildPlugin` task runs
+## Build Order Recommendations
 
-**Runtime Dependencies:**
-- Language server requires java-interop running on port 5008
-- java-interop requires BBj home path with valid classpath JARs
-- Plugin requires Node.js runtime (bundled or system)
+### Phase 7: Run Command Fixes (Foundation)
+**Goal:** Make executable path resolution robust + add diagnostics
 
-## Open Questions & Risks
+**Build order:**
+1. **Modify `BbjRunActionBase.getBbjExecutablePath()`**
+   - Replace `File` with `Files` (NIO2)
+   - Add `Files.isReadable()` check
+   - Add diagnostic logging when returning null
+   - **Why first:** All run actions depend on this, must be stable before console integration
 
-### 1. Node.js Bundling Feasibility
+2. **Add environment type to `buildCommandLine()`**
+   - Set `ParentEnvironmentType.CONSOLE`
+   - **Why second:** Simple addition, no dependencies on other changes
 
-**Question:** Should we bundle Node.js in the plugin, or require system install?
+3. **Test manually with missing/broken BBj home**
+   - Verify error messages are clear
+   - Verify no crashes
+   - **Why third:** Validates foundation before moving forward
 
-**Trade-offs:**
-- **Bundle:** Better UX, larger plugin size (~50-80MB), platform-specific builds
-- **System:** Smaller plugin, worse UX, potential version conflicts
+### Phase 8: Console Integration (Feature)
+**Goal:** Capture process output in tool window
 
-**Recommendation:** Start with system Node.js for alpha, evaluate bundling for beta based on user feedback.
+**Build order:**
+1. **Create `BbjRunConsoleToolWindowFactory`**
+   - Copy pattern from `BbjServerLogToolWindowFactory`
+   - Register in plugin.xml
+   - **Why first:** Tool window must exist before service can use it
 
-### 2. java-interop Port Conflicts
+2. **Register tool window in plugin.xml**
+   - Add `<toolWindow id="BBj Run Output" .../>`
+   - Test that window appears (even if empty)
+   - **Why second:** Validates registration before wiring logic
 
-**Question:** What if port 5008 is already in use?
+3. **Create `BbjRunConsoleService`**
+   - Implement `getInstance()`, `createConsoleTab()`, `Disposable`
+   - Register as projectService in plugin.xml
+   - **Why third:** Service depends on tool window existing
 
-**Options:**
-1. Fail with error message (simplest)
-2. Dynamic port allocation (requires LS config changes)
-3. Kill existing process (risky)
+4. **Wire service to tool window factory**
+   - Factory calls `service.initialize(toolWindow)`
+   - Service stores ContentManager reference
+   - **Why fourth:** Establishes communication channel
 
-**Recommendation:** Fail with error for alpha. Consider dynamic ports in future if this becomes a common issue.
+5. **Add `executeWithConsole()` to `BbjRunActionBase`**
+   - Call `BbjRunConsoleService.createConsoleTab()`
+   - Create `OSProcessHandler` in pooled thread
+   - Attach console with `console.attachToProcess(handler)`
+   - Add `ProcessTerminatedListener`
+   - **Why fifth:** Integrates all components
 
-### 3. Multi-Platform Testing
+6. **Modify subclass `actionPerformed()`**
+   - Replace direct `new OSProcessHandler()` with `executeWithConsole()`
+   - Keep error handling for `buildCommandLine() == null`
+   - **Why sixth:** Activates new behavior
 
-**Question:** How to test on Windows/Mac/Linux before release?
+7. **Test end-to-end**
+   - Run GUI program, verify output appears
+   - Run multiple programs, verify separate tabs
+   - Close tab, verify cleanup
+   - **Why last:** Full integration validation
 
-**Challenge:** Different path separators, executable permissions, process management
+### Phase 9: Marketplace Preparation (Publication)
+**Goal:** Sign, verify, and publish plugin
 
-**Recommendation:**
-- Develop on Mac (primary platform)
-- Test on Windows via VM or CI
-- Linux testing via Docker or CI
+**Build order:**
+1. **Generate signing certificate**
+   - Follow [Plugin Signing docs](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+   - Store in 1Password or secure location
+   - **Why first:** One-time setup, blocks signing tasks
 
-### 4. Performance - Startup Time
+2. **Add GitHub Secrets**
+   - `CERTIFICATE_CHAIN`, `PRIVATE_KEY`, `PRIVATE_KEY_PASSWORD`
+   - `PUBLISH_TOKEN` (from JetBrains Account)
+   - **Why second:** CI will fail without these
 
-**Question:** How long does it take for both processes to start?
+3. **Update build.gradle.kts**
+   - Bump version to 1.0.0
+   - Add `signing {}` block
+   - Add `publishing {}` block
+   - **Why third:** Configuration before attempting build
 
-**Components:**
-- java-interop startup: ~1-2s (JVM init + classpath loading)
-- Language server startup: ~2-3s (Node.js init + AST build)
-- Total: ~3-5s before first completion
+4. **Create/update description.html**
+   - Clear value proposition
+   - Feature list
+   - **Why fourth:** Required for Marketplace listing
+
+5. **Create changeNotes.html**
+   - v1.0.0 changes
+   - Bug fixes and new features
+   - **Why fifth:** Required for release
+
+6. **Run `./gradlew verifyPlugin` locally**
+   - Fix any compatibility issues
+   - **Why sixth:** Catch problems before CI
+
+7. **Create GitHub Actions workflow**
+   - Trigger on tag push
+   - Run: verifyPlugin → buildPlugin → signPlugin → publishPlugin
+   - **Why seventh:** Automates release process
+
+8. **Tag release and push**
+   - CI builds and publishes
+   - Monitor for errors
+   - **Why eighth:** Final publication
+
+9. **Verify on Marketplace**
+   - Check plugin page displays correctly
+   - Test installation in clean IDE
+   - **Why last:** Validates public release
+
+## Common Pitfalls and Mitigations
+
+### Pitfall 1: EDT Blocking with Process Wait
+
+**Problem:** Calling `handler.waitFor()` on Event Dispatch Thread freezes UI
+
+**Detection:** IntelliJ 2024.1+ logs "There is no ProgressIndicator or Job in this thread"
 
 **Mitigation:**
-- Start processes on project open (not on first .bbj file open)
-- Show progress indicator during startup
-- Keep processes alive across file opens
+- Always launch process in `ApplicationManager.getApplication().executeOnPooledThread()`
+- Never call synchronous process operations in `actionPerformed()` directly
+- Use process listeners for completion detection instead of blocking waits
 
-### 5. Classpath Configuration UX
+**Phase affected:** Phase 8 (Console Integration)
 
-**Question:** How should users specify classpath entries beyond BBj home?
+### Pitfall 2: Plugin Verifier Fails on Missing Dependencies
 
-**Current:** BBj.properties file parsing (like VS Code)
+**Problem:** Plugin references classes not available in target IDE version
 
-**Alternative:** Settings UI with list of paths
+**Detection:** `./gradlew verifyPlugin` reports "Plugin references a class which is not available in the IDE"
 
-**Recommendation:** Use same BBj.properties parsing as VS Code for consistency. Add UI in future if needed.
+**Common causes:**
+- Using API added in newer IDE version
+- Missing dependency plugin declaration
+- Incorrect `sinceBuild` in plugin.xml
 
-## References & Resources
+**Mitigation:**
+- Run verifyPlugin against minimum supported IDE version (2024.2)
+- Check [IntelliJ Platform API Changes](https://plugins.jetbrains.com/docs/intellij/api-changes-list.html)
+- Test in IDE matching `sinceBuild` version
 
-### LSP4IJ Documentation
-- **GitHub:** https://github.com/redhat-developer/lsp4ij
-- **Extension Points:** `com.redhat.devtools.lsp4ij.languageServer`
-- **Examples:** Quarkus plugin, Liberty Tools plugin
+**Phase affected:** Phase 9 (Marketplace Preparation)
 
-### IntelliJ Platform SDK
-- **Plugin Development:** https://plugins.jetbrains.com/docs/intellij/welcome.html
-- **Extension Points:** https://plugins.jetbrains.com/docs/intellij/plugin-extensions.html
-- **Language Support:** https://plugins.jetbrains.com/docs/intellij/custom-language-support.html
+### Pitfall 3: Process Output Encoding Issues
 
-### Existing Codebase
-- **Language Server:** `bbj-vscode/src/language/main.ts`
-- **VS Code Extension:** `bbj-vscode/src/extension.ts` (reference for process management)
-- **java-interop:** `java-interop/src/main/java/bbj/interop/SocketServiceApp.java`
+**Problem:** BBj output contains non-ASCII characters (errors in Spanish locale), displays as garbage in console
 
-### LSP Specification
-- **Protocol:** https://microsoft.github.io/language-server-protocol/
-- **Capabilities:** textDocument/completion, hover, diagnostics, etc.
+**Detection:** Console shows `??????` or box characters
 
-## Conclusion
+**Mitigation:**
+- Set charset on `GeneralCommandLine`: `cmd.withCharset(StandardCharsets.UTF_8)`
+- BBj typically outputs in platform default encoding
+- On Windows, may need `Charset.forName("windows-1252")`
+- Test with non-ASCII file paths and error messages
 
-The IntelliJ LSP plugin architecture follows a clear three-layer pattern:
-1. **Plugin Layer** - IntelliJ-specific UI and lifecycle management
-2. **LSP4IJ Adapter** - Protocol translation and connection management
-3. **External Processes** - Reusable language server and Java interop service
+**Phase affected:** Phase 8 (Console Integration)
 
-**Critical Path:** Process lifecycle management is the most complex component, requiring careful sequencing (java-interop before LS), health monitoring, and graceful shutdown.
+### Pitfall 4: Tool Window Content Leak
 
-**Build Strategy:** Incremental phases from static file type registration → settings UI → language server integration → java-interop → robust error handling.
+**Problem:** Creating ConsoleView tabs without disposal causes memory leak
 
-**Reuse:** 100% of language server logic reused; only thin IntelliJ adapter layer needed.
+**Detection:** Multiple runs → OutOfMemoryError or IDE slowdown
+
+**Mitigation:**
+- Register each ConsoleView with `Disposer.register(toolWindow.getDisposable(), console)`
+- Remove Content from ContentManager when tab closed
+- Listen for Content removal events: `ContentManager.addContentManagerListener()`
+
+**Phase affected:** Phase 8 (Console Integration)
+
+### Pitfall 5: Marketplace Rejection for Missing Organization
+
+**Problem:** First-time publication fails with "Plugin must be published by an organization"
+
+**Detection:** JetBrains Marketplace returns error during upload
+
+**Mitigation:**
+- Create organization on [JetBrains Marketplace](https://plugins.jetbrains.com/author/me)
+- Add `organizationId` to plugin.xml (not currently in build.gradle.kts config)
+- Re-upload plugin
+
+**Phase affected:** Phase 9 (Marketplace Preparation)
+
+### Pitfall 6: BBj Executable Path with Spaces
+
+**Problem:** BBj installed in `C:\Program Files\BBx\` fails to launch
+
+**Detection:** `ExecutionException: Cannot run program "C:\Program": CreateProcess error=2, The system cannot find the file specified`
+
+**Root cause:** GeneralCommandLine splits on spaces if not properly quoted
+
+**Mitigation:**
+- `GeneralCommandLine` constructor handles quoting automatically
+- Verify with: `cmd.getCommandLineString()` (should show quoted path)
+- Do NOT manually quote executable path
+- Working: `new GeneralCommandLine("C:\\Program Files\\BBx\\bin\\bbj.exe")`
+- Broken: `new GeneralCommandLine("\"C:\\Program Files\\BBx\\bin\\bbj.exe\"")`
+
+**Phase affected:** Phase 7 (Run Command Fixes)
+
+## Testing Strategy
+
+### Unit Testing Approach
+
+**Current state:** No unit tests exist
+
+**Recommendation:** Unit tests for Phase 9 only (v1.2 is bug fix + small feature)
+
+**Testable components:**
+1. **BbjRunActionBase.getBbjExecutablePath()**
+   - Mock file system with jimfs
+   - Test: null when bbjHome unset
+   - Test: null when bin/bbj missing
+   - Test: null when bin/bbj is directory
+   - Test: valid path when all conditions met
+
+2. **BbjRunConsoleService tab management**
+   - Test: createConsoleTab() adds Content
+   - Test: duplicate title handling
+   - Test: removeConsoleTab() cleanup
+
+**Phase affected:** Optional for v1.2, recommended for v1.3+
+
+### Manual Testing Checklist
+
+**Phase 7: Run Command Fixes**
+- [ ] Run GUI program with valid BBj home → Success
+- [ ] Run GUI program with unset BBj home → Clear error
+- [ ] Run GUI program with wrong BBj home → Clear error
+- [ ] Run GUI program with bbj.exe renamed → Clear error (Windows)
+- [ ] Run BUI program → Same validations
+- [ ] Run DWC program → Same validations
+
+**Phase 8: Console Integration**
+- [ ] Run GUI program → Output appears in "BBj Run Output" window
+- [ ] Run GUI program twice → Two separate tabs
+- [ ] Close console tab → Tab removed, no errors
+- [ ] Run program that prints to stdout → Text appears in real-time
+- [ ] Run program that prints to stderr → Text appears (colored red)
+- [ ] Run program that exits with error → Exit code displayed
+- [ ] Run program with non-ASCII characters → No encoding issues
+
+**Phase 9: Marketplace Preparation**
+- [ ] `./gradlew verifyPlugin` → No errors
+- [ ] `./gradlew buildPlugin` → ZIP created in build/distributions/
+- [ ] `./gradlew signPlugin` → ZIP signature valid
+- [ ] Install signed plugin in clean IDE → Plugin loads
+- [ ] Upload to Marketplace → Accepted
+- [ ] View plugin page on Marketplace → Description displays correctly
+- [ ] Install from Marketplace → Works in fresh IDE
+
+## Performance Considerations
+
+### OSProcessHandler Thread Pool
+
+**Current:** Each run action creates new `OSProcessHandler`, runs on pooled thread
+
+**Impact:** Multiple concurrent runs use separate threads (OK, thread pool managed by platform)
+
+**Recommendation:** No change needed. Platform handles thread lifecycle.
+
+### Console Buffer Size
+
+**Default:** IntelliJ ConsoleView has configurable buffer limit
+
+**Concern:** BBj program with massive output (e.g., debug logging loop) could cause:
+- Memory pressure
+- UI lag scrolling console
+
+**Mitigation:**
+- Accept default buffer size (typically 1 MB)
+- Document: Users should avoid `PRINT` loops for large datasets
+- Future: Add "Clear Console" action to toolbar
+
+### Tool Window Activation
+
+**Current:** Tool window activation on every run could be disruptive
+
+**Recommendation:**
+- Do NOT auto-show tool window on every run
+- User must manually open "BBj Run Output" window first time
+- Subsequent runs add tabs without stealing focus
+- Use `toolWindow.show()` only on explicit user action
+
+## Version Compatibility Matrix
+
+| Component | Minimum Version | Maximum Version | Notes |
+|-----------|----------------|-----------------|-------|
+| IntelliJ IDEA | 2024.2 (242) | 2024.3+ (open) | `sinceBuild="242"`, `untilBuild=""` |
+| Java (plugin) | 17 | 21 | Plugin compiled with Java 17 target |
+| Java (runtime) | 17 | 21+ | IntelliJ 2024.2 requires Java 17+ |
+| Gradle | 8.5+ | 8.x | Kotlin DSL, IntelliJ Platform Plugin 2.x |
+| LSP4IJ | 0.19.0 | 0.19.x | Language Server Protocol support |
+| BBj (target) | 23.00+ | 24.x | User's BBj installation |
+
+**Implications for Marketplace:**
+- Plugin compatible with IntelliJ 2024.2, 2024.3, and future versions
+- Marketplace verifier checks API usage against 2024.2
+- Users on 2024.1 or earlier cannot install (enforced by platform)
+
+## Success Criteria
+
+### Phase 7: Run Command Fixes
+- [x] Executable path validation uses NIO2 `Files` API
+- [x] Clear error message when BBj home not configured
+- [x] Clear error message when bbj executable missing
+- [x] No crashes with broken symlinks or special file types
+- [x] Diagnostic logging for troubleshooting
+
+### Phase 8: Console Integration
+- [x] "BBj Run Output" tool window appears in bottom panel
+- [x] Each run creates separate console tab with title format: `{filename} ({mode})`
+- [x] Process stdout/stderr captured in real-time
+- [x] Process exit code displayed on termination
+- [x] Multiple concurrent runs supported (separate tabs)
+- [x] Console tabs closeable by user
+- [x] No memory leaks from unclosed consoles
+- [x] Process launched on pooled thread (no EDT blocking)
+
+### Phase 9: Marketplace Preparation
+- [x] Plugin signed with valid certificate
+- [x] `verifyPlugin` task passes with no errors
+- [x] Plugin uploaded to JetBrains Marketplace
+- [x] Plugin page displays correctly (description, version, compatibility)
+- [x] Plugin installable from Marketplace in fresh IDE
+- [x] CI pipeline automates: build → sign → publish
+- [x] Change notes document v1.0.0 features
+
+## Sources
+
+**IntelliJ Platform SDK (Official):**
+- [Execution | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/execution.html)
+- [Tool Windows | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tool-windows.html)
+- [Plugin Signing | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+- [Publishing a Plugin | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
+- [Preparing your plugin for publication | JetBrains Marketplace Documentation](https://plugins.jetbrains.com/docs/marketplace/prepare-your-plugin-for-publication.html)
+- [Tasks | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
+
+**IntelliJ Platform API Documentation:**
+- [OSProcessHandler (JetBrains intellij-community)](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-util-io/src/com/intellij/execution/process/OSProcessHandler.java)
+- [GeneralCommandLine (JetBrains intellij-community)](https://github.com/17712484466/intellij-community/blob/master/platform/platform-api/src/com/intellij/execution/configurations/GeneralCommandLine.java)
+- [ToolWindowManager.kt (JetBrains intellij-community)](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-api/src/com/intellij/openapi/wm/ToolWindowManager.kt)
+
+**Community Support:**
+- [How to make a simple console output – IDEs Support](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206756385-How-to-make-a-simple-console-output)
+- [Running commands in console from IntelliJ plugin actions – Create & Learn](https://javaworklife.wordpress.com/2020/11/02/running-console-commands-from-intellij-plugin-actions/)
+- [How to automatically open a 'Tool Window' used as a custom console view – IDEs Support](https://intellij-support.jetbrains.com/hc/en-us/community/posts/4407224795794-How-to-automatically-open-a-Tool-Window-used-as-a-custom-console-view-when-launching-a-action)
+
+**IntelliJ Plugin Verifier:**
+- [intellij-plugin-verifier (GitHub)](https://github.com/JetBrains/intellij-plugin-verifier)
+- [Verifying Plugin Compatibility | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
+
+**Code Examples:**
+- [ConsoleView.attachToProcess examples (Tabnine)](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
+- [GeneralCommandLine examples (Tabnine)](https://www.tabnine.com/code/java/classes/com.intellij.execution.configurations.GeneralCommandLine)
+
+**Platform Updates:**
+- [Busy Plugin Developers Newsletter – Q4 2025 | JetBrains Platform Blog](https://blog.jetbrains.com/platform/2026/01/busy-plugin-developers-newsletter-q4-2025/)

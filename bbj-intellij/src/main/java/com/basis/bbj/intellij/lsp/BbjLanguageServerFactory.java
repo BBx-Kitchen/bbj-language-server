@@ -8,7 +8,6 @@ import com.redhat.devtools.lsp4ij.LanguageServerFactory;
 import com.redhat.devtools.lsp4ij.client.LanguageClientImpl;
 import com.redhat.devtools.lsp4ij.client.features.LSPClientFeatures;
 import com.redhat.devtools.lsp4ij.client.features.LSPDocumentLinkFeature;
-import com.redhat.devtools.lsp4ij.client.features.LSPHoverFeature;
 import com.redhat.devtools.lsp4ij.server.StreamConnectionProvider;
 import org.eclipse.lsp4j.InitializeParams;
 import org.jetbrains.annotations.NotNull;
@@ -47,13 +46,6 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
         .setDocumentLinkFeature(new LSPDocumentLinkFeature() {
             @Override
             public boolean isSupported(@NotNull PsiFile file) {
-                return false;
-            }
-        })
-        .setHoverFeature(new LSPHoverFeature() {
-            @Override
-            public boolean isSupported(@NotNull PsiFile file) {
-                // Suppress "LSP Symbol ..." hover placeholder
                 return false;
             }
         })

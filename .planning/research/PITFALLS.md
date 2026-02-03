@@ -1,651 +1,476 @@
-# IntelliJ LSP Plugin Pitfalls
+# Domain Pitfalls: IntelliJ Plugin Run Commands, Console Integration, and Marketplace Publication
 
-**Research Type:** Project Research — Pitfalls
-**Dimension:** IntelliJ LSP plugins via LSP4IJ
-**Context:** Adding IntelliJ support to BBj Language Server
-**Date:** 2026-02-01
+**Domain:** IntelliJ Platform Plugin Development (2024.2+)
+**Researched:** 2026-02-02
+**Context:** v1.2 milestone - fixing run commands, adding console output capture, preparing for JetBrains Marketplace
 
----
+## Critical Pitfalls
 
-## Critical Mistakes & Common Pitfalls
+Mistakes that cause rewrites or major issues.
 
-### 1. Process Lifecycle Management
+### Pitfall 1: MainToolBar Action Registration Broken in New UI (2024.2+)
 
-#### 1.1 Language Server Process Crashes Not Handled
+**What goes wrong:** Actions registered to `group-id="MainToolBar"` in plugin.xml appear in Classic UI but are invisible in the New UI (enabled by default in IntelliJ 2024.2+). Toolbar appears empty despite correct XML registration.
 
-**What goes wrong:**
-- Language server crashes silently, leaving IntelliJ UI in broken state
-- No automatic restart mechanism — users see no diagnostics, no completions
-- Error states accumulate (e.g., "connection refused" floods logs)
-- IntelliJ doesn't detect LS death until next LSP request fails
+**Why it happens:** IntelliJ 2024.2 introduced a redesigned "New UI" with different toolbar architecture. The `MainToolBar` group ID still exists for backward compatibility but is not automatically surfaced in the New UI. Actions need explicit registration to New UI-specific toolbar groups.
 
-**Warning signs:**
-- Users report "features stopped working mid-session"
-- Logs show socket/connection errors without recovery attempts
-- Manual IDE restart required to restore functionality
-- No error notifications when LS process terminates
+**Consequences:**
+- Users on default New UI see no toolbar buttons
+- Plugin appears broken on fresh IntelliJ installations
+- Manual "Customize Toolbar" required to surface actions
+- Affects both Community and Ultimate editions
 
 **Prevention:**
-- Implement process health monitoring (heartbeat/watchdog)
-- Add automatic restart with exponential backoff (max 3 attempts)
-- Surface LS crash notifications to user via IntelliJ balloon notifications
-- Log process exit codes and stderr for debugging
-- Add "Restart Language Server" action in Tools menu
+1. Register actions to **both** Classic and New UI toolbar groups:
+   - Classic UI: `group-id="MainToolBar"`
+   - New UI: `group-id="MainToolBarSettings"` or alternative New UI groups (`NavBarVcsGroup`, `VcsToobarActions`)
+2. Test plugin with **New UI enabled** (Settings > Appearance & Behavior > New UI)
+3. Test on both IntelliJ Community Edition and Ultimate Edition
+4. Check toolbar visibility immediately after plugin installation (not just after customization)
 
-**Phase:** P1 (LS Process Management) — Must have before alpha
+**Detection:**
+- Install plugin in fresh IntelliJ 2024.2+ instance with New UI enabled
+- Check if toolbar actions visible without manual customization
+- Switch between Classic UI and New UI to verify both work
 
-**Related code patterns:**
-```java
-// Anti-pattern: fire and forget
-ProcessBuilder pb = new ProcessBuilder("node", lsPath);
-process = pb.start();
-
-// Better: monitor and restart
-process.onExit().thenAccept(this::handleProcessExit);
-```
+**References:**
+- [New UI toolbar registration discussion](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
+- [Action group icons not showing in New UI](https://intellij-support.jetbrains.com/hc/en-us/community/posts/15268937638290-Action-group-Icon-doesn-t-show-up-for-newUI)
+- [Action System documentation](https://plugins.jetbrains.com/docs/intellij/action-system.html)
 
 ---
 
-#### 1.2 Zombie Processes on IntelliJ Shutdown
+### Pitfall 2: ProcessHandler Lifecycle Violation - startNotify() Not Called
 
-**What goes wrong:**
-- LS and java-interop processes outlive IntelliJ
-- Ports 5008 remain occupied, preventing next IntelliJ session from starting
-- Multiple orphaned Node.js processes accumulate over days
-- Users resort to `killall java` or `killall node`
+**What goes wrong:** Creating `OSProcessHandler` or `GeneralCommandLine.createProcess()` but forgetting to call `processHandler.startNotify()`. Process starts but output is never captured. Console remains blank even though process executes.
 
-**Warning signs:**
-- Port binding errors on IntelliJ restart
-- Activity Monitor shows multiple `node` processes with same arguments
-- java-interop fails to start with "address already in use"
-- macOS "force quit" dialogs for background processes
+**Why it happens:** The ProcessHandler API requires explicit `startNotify()` call to begin capturing stdout/stderr. Many developers assume `new OSProcessHandler(commandLine)` or executing the command line automatically starts monitoring, but it doesn't.
+
+**Consequences:**
+- Process runs but console shows no output
+- `ProcessListener` events never fire
+- `processTerminated()` event never fires
+- Cannot detect when process completes
+- Silent failures - process errors invisible to users
 
 **Prevention:**
-- Register shutdown hooks in plugin's `dispose()` method
-- Destroy process trees (parent + children) using `Process.descendants()`
-- Set timeout for graceful shutdown (2s), then force kill
-- Use process groups to ensure child processes (java-interop spawned by LS) also terminate
-- Consider using `--parent-pid` flag pattern for child processes
+1. **Always call `startNotify()` after creating ProcessHandler:**
+   ```java
+   OSProcessHandler handler = new OSProcessHandler(cmd);
+   handler.addProcessListener(listener); // Optional
+   handler.startNotify(); // REQUIRED - do not forget
+   ```
+2. Attach `ProcessTerminatedListener.attach(handler)` for proper exit status display
+3. Create ConsoleView and call `consoleView.attachToProcess(handler)` **before** `startNotify()`
+4. Follow strict lifecycle order:
+   - Create ProcessHandler
+   - Attach listeners
+   - Attach ConsoleView
+   - Call `startNotify()`
 
-**Phase:** P1 (LS Process Management) — Blocks alpha deployment
+**Detection:**
+- Process launches but console tool window shows nothing
+- No process output despite verbose program execution
+- Process termination events never fire
+- IDE shows "Running..." status indefinitely
 
-**Related issues:**
-- Java's `Process.destroy()` may not kill child processes
-- Node.js child processes inherit stdio, preventing parent termination
-- IntelliJ's `Disposer` runs shutdown hooks asynchronously
+**References:**
+- [Execution documentation](https://plugins.jetbrains.com/docs/intellij/execution.html)
+- [ProcessHandler lifecycle order](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
 
 ---
 
-#### 1.3 Race Conditions on IDE Startup
+### Pitfall 3: File.separator Path Construction Fails Cross-Platform
 
-**What goes wrong:**
-- IntelliJ opens BBj files before LS finishes initializing
-- Requests sent to LS before `initialize` handshake completes
-- LS rejects requests with "server not initialized" errors
-- Users see "syntax highlighting works but no completions"
+**What goes wrong:** Building file paths using `new File(bbjHome, "bin/" + exeName)` with hardcoded forward slash. On Windows, this constructs paths like `C:\BBj\bin/bbj.exe` (mixed separators), which may exist but fail `File.exists()` checks in certain contexts. On macOS with special characters in paths, mixed separators cause path resolution failures.
 
-**Warning signs:**
-- First file opened shows errors, second file works fine
-- Logs show LSP requests before `initialized` notification
-- Diagnostics appear 5-10 seconds after file opens
-- Random failures during cold start, but not after LS restart
+**Why it happens:**
+- Java `File` constructor accepts both separators on most platforms but mixing them is fragile
+- IntelliJ VirtualFileSystem normalizes to forward slashes, creating inconsistency
+- Windows tolerates mixed separators but some File API methods fail unpredictably
+- Developers test on one platform (macOS uses `/`) and miss Windows-specific issues
+
+**Consequences:**
+- `getBbjExecutablePath()` returns null even when BBj Home is correctly configured
+- Run actions disabled despite valid configuration
+- Different behavior on Windows vs macOS/Linux
+- Hard to debug - path "looks correct" when printed
 
 **Prevention:**
-- Queue LSP requests until LS sends `initialized` notification
-- Show "Starting BBj Language Server..." progress indicator
-- Block file analysis until LS reports ready state
-- Add timeout (30s) for initialization with user-facing error
+1. **Use File constructor chaining** instead of string concatenation:
+   ```java
+   File binDir = new File(bbjHome, "bin");
+   File executable = new File(binDir, exeName);
+   ```
+2. **Or use Path API** (Java 7+) with platform-agnostic separators:
+   ```java
+   Path executable = Paths.get(bbjHome, "bin", exeName);
+   ```
+3. **Never hardcode `/` or `\\`** in path construction
+4. Use `File.separator` only if absolutely necessary (avoid string concatenation)
+5. Test on **both** Windows and macOS/Linux before release
 
-**Phase:** P1 (LS Process Management)
+**Detection:**
+- Run action returns "BBj executable not found" despite valid BBj Home
+- Print `executable.getAbsolutePath()` and observe mixed separators
+- `File.exists()` returns false but manual navigation finds the file
+- Works on macOS, fails on Windows (or vice versa)
+
+**References:**
+- [VirtualFile path format (always forward slashes)](https://plugins.jetbrains.com/docs/intellij/virtual-file.html)
+- [Cross-platform file path discussion](https://dev.to/kailashnirmal/understanding-file-path-formats-in-windows-and-java-for-cross-platform-compatibility-2im3)
+- [Hardcoded file separator issues](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206131989--IG-Hardcoded-file-separator-should-be-more-selective)
 
 ---
 
-### 2. Transport and Communication
+### Pitfall 4: JetBrains Marketplace Plugin Verifier Fails on Internal API Usage
 
-#### 2.1 IPC vs Stdio Transport Mismatch
+**What goes wrong:** Plugin uses `@ApiStatus.Internal` annotated classes or methods (e.g., `PlatformUtils.isRider()`, `PlatformUtils.isCLion()`) that appear in IDE autocomplete. Plugin builds successfully locally but fails Plugin Verifier during Marketplace upload, causing automatic rejection.
 
-**What goes wrong:**
-- VS Code extension uses IPC (`TransportKind.ipc`)
-- IntelliJ/LSP4IJ expects stdio communication
-- LS starts but never receives requests (wrong pipe/socket)
-- No error messages because LS is waiting on wrong transport
+**Why it happens:**
+- IntelliJ IDEA autocomplete suggests internal APIs without clear warnings
+- APIs marked `@Internal` are private and subject to breaking changes without notice
+- Plugin Verifier enforces this constraint but local builds do not
+- Kotlin `internal` visibility modifier also triggers violations
 
-**Warning signs:**
-- LS process runs (visible in Activity Monitor) but IntelliJ shows "disconnected"
-- No logs from LS, suggesting it's not receiving data
-- Works in VS Code but completely broken in IntelliJ
-- `main.cjs` unchanged from VS Code bundle
+**Consequences:**
+- Plugin rejected by Marketplace automated checks
+- Upload fails with cryptic "internal API usage" errors
+- Must refactor and re-upload, delaying release
+- Breaking changes in future IntelliJ versions silently break plugin
 
 **Prevention:**
-- Verify `createConnection(ProposedFeatures.all)` defaults to stdio
-- Test standalone: `node main.cjs` should accept stdin/stdout
-- LSP4IJ uses `ProcessBuilder` redirecting stdin/stdout — ensure LS expects this
-- Add integration test: send JSON-RPC message via stdin, verify stdout response
+1. **Enable IDE inspections before submission:**
+   - Settings > Editor > Inspections > JVM languages > "Unstable API Usage"
+   - Plugin DevKit > Code > "Usages of ApiStatus.@Obsolete"
+   - Plugin DevKit > Code > "Usage of IntelliJ API not available in older IDEs"
+2. **Run Plugin Verifier locally** before upload:
+   ```bash
+   ./gradlew runPluginVerifier
+   ```
+3. **Integrate into CI pipeline** to catch violations automatically
+4. **Consult [Internal API Migration guide](https://plugins.jetbrains.com/docs/intellij/api-internal.html)** when flagged
+5. **Review [Incompatible Changes](https://plugins.jetbrains.com/docs/intellij/api-changes-list-2025.html)** for your target platform version
 
-**Phase:** P0 (Project Setup) — Must validate during initial spike
+**Detection:**
+- IDE inspection highlights usage in yellow/red
+- Plugin Verifier output shows "Internal API must not be used"
+- Marketplace upload fails with compatibility errors
+- Scheduled CI builds fail after IntelliJ platform update
 
-**Critical check:**
-```bash
-# Test LS stdio transport manually
-echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | node main.cjs
-# Should see JSON response on stdout
-```
+**References:**
+- [Plugin Verifier documentation](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
+- [Internal API migration](https://plugins.jetbrains.com/docs/intellij/api-internal.html)
+- [Plugin Verifier livestream](https://blog.jetbrains.com/platform/2025/05/plugin-verifier-and-api-compatibility-maintenance-livestream-recording-amp-key-takeaways/)
 
 ---
 
-#### 2.2 JSON-RPC Message Framing Issues
+## Moderate Pitfalls
 
-**What goes wrong:**
-- LS expects Content-Length headers, IntelliJ sends raw JSON
-- Or vice versa: IntelliJ sends headers, LS doesn't parse them
-- Messages split across multiple reads/writes
-- Binary data (UTF-16 characters) corrupts JSON parsing
+Mistakes that cause delays or technical debt.
 
-**Warning signs:**
-- "Unexpected token" JSON parse errors in logs
-- Messages work for ASCII content but fail with emojis/unicode
-- First request succeeds, subsequent requests hang
-- LS logs show partial JSON messages
+### Pitfall 5: Console Output Lost Due to Execution Context Mismatch
+
+**What goes wrong:** Creating `OSProcessHandler` and calling `startNotify()` but not displaying output in a tool window. Output is captured but never shown to the user. Process succeeds/fails silently.
+
+**Why it happens:** ProcessHandler captures output but requires explicit connection to `ConsoleView` to display it. Developers focus on launching the process and forget the UI presentation layer.
 
 **Prevention:**
-- Use Langium's built-in `createConnection()` — handles framing automatically
-- Verify LSP4IJ uses standard LSP message format (Content-Length headers)
-- Test with multi-byte Unicode characters in BBj source files
-- Log raw bytes during development to debug framing issues
+1. Create `ConsoleView` using `TextConsoleBuilderFactory`:
+   ```java
+   ConsoleView console = TextConsoleBuilderFactory.getInstance()
+       .createBuilder(project)
+       .getConsole();
+   ```
+2. Attach to process **before** `startNotify()`:
+   ```java
+   console.attachToProcess(processHandler);
+   ```
+3. Display in tool window using `ToolWindowManager` or `ExecutionManager`
+4. Study reference implementations like `MavenRunConfiguration` or `BuildView`
 
-**Phase:** P0 (Project Setup) — Validate before building features
+**Detection:**
+- Process runs but no output visible anywhere
+- Users cannot see compilation errors or runtime output
+- Success/failure unclear without checking exit code manually
+
+**References:**
+- [Running console command from plugin](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360007850040-Running-console-command-from-plugin-and-displaying-the-output)
+- [ConsoleView integration examples](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
 
 ---
 
-#### 2.3 java-interop Connection Failures
+### Pitfall 6: Marketplace Rejection - Plugin Name Too Long or Contains Restricted Terms
 
-**What goes wrong:**
-- LS expects java-interop on localhost:5008 but it's not running
-- java-interop starts after LS, but LS already failed connection attempts
-- Firewall/security software blocks localhost:5008
-- Port 5008 occupied by previous crashed instance
+**What goes wrong:** Plugin submitted with name like "BBj Language Support Plugin for IntelliJ IDEA" (47 chars). Marketplace rejects due to:
+- Name exceeds 30 character limit
+- Contains restricted word "Plugin"
+- Contains restricted word "IntelliJ"
 
-**Warning signs:**
-- Java completions never work, BBj completions work fine
-- Logs show "ECONNREFUSED 127.0.0.1:5008"
-- Works after manual java-interop start, but not on plugin activation
-- macOS prompts "Do you want the application to accept incoming connections?"
+**Why it happens:** Developers create descriptive names without reading approval guidelines. Common pattern: "{Language} {Feature} Plugin for IntelliJ IDEA".
 
 **Prevention:**
-- Start java-interop BEFORE starting LS
-- Add readiness check: poll port 5008 until accepting connections
-- LS should retry java-interop connection with exponential backoff
-- Surface java-interop status in IntelliJ UI (status bar widget)
-- Allow users to manually restart java-interop via action
+1. **Keep name ≤30 characters**
+2. **Avoid restricted terms:** "Plugin", "IntelliJ", "JetBrains", "IDEA"
+3. **Use description field for detail**, not the name
+4. **Examples of compliant names:**
+   - "BBj Language Support" ✓ (21 chars)
+   - "BBj Tools" ✓ (9 chars)
+   - "BBj Language Plugin" ✗ (contains "Plugin")
+   - "IntelliJ BBj Support" ✗ (contains "IntelliJ")
 
-**Phase:** P2 (java-interop Integration) — Critical for Java completions
+**Detection:**
+- Marketplace upload form shows character count
+- Automated approval check flags restricted terms
+- Review feedback from JetBrains within 3-4 days
 
-**Implementation order:**
-1. Start java-interop process
-2. Wait for port 5008 to accept connections (max 10s)
-3. Start LS with confidence java-interop is ready
-4. Monitor both processes independently
+**References:**
+- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
+- [Best practices for listing](https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html)
 
 ---
 
-### 3. Configuration and Settings
+### Pitfall 7: Marketplace Rejection - Missing or Invalid Custom Logo
 
-#### 3.1 BBj Home Path Not Reaching Language Server
+**What goes wrong:** Plugin submitted with:
+- Default IntelliJ plugin icon (template)
+- Logo not 40x40px SVG format
+- Logo too similar to JetBrains branding
 
-**What goes wrong:**
-- User configures BBj home in IntelliJ settings UI
-- LS never receives the setting update
-- java-interop needs classpath but gets empty array
-- Completions fail because BBj JARs not on classpath
+Marketplace rejects for "missing unique plugin logo."
 
-**Warning signs:**
-- Settings UI shows correct path, but LS logs show "BBj home: undefined"
-- Java completions missing BBj-specific classes
-- Works when BBj home hardcoded in LS, fails with dynamic config
-- No workspace/didChangeConfiguration notifications in LSP trace
+**Why it happens:** Developers focus on functionality and treat branding as optional polish. Guidelines require **unique, distinct** logo before approval.
 
 **Prevention:**
-- Send `workspace/didChangeConfiguration` notification on settings change
-- Include BBj settings in LS initialization params
-- Add "Reload Language Server" action that restarts with fresh config
-- Log received configuration in LS for debugging
-- Validate BBj home path exists before sending to LS
+1. Create **custom 40x40px SVG icon** (not PNG, not template)
+2. Ensure icon is **visually distinct** from JetBrains logos
+3. Test in both light and dark themes (provide `_dark.svg` variant if needed)
+4. Upload via Plugin Upload page > Plugin Icon field
+5. Reference in `plugin.xml` if bundled
 
-**Phase:** P2 (Settings & Configuration)
+**Detection:**
+- Marketplace review feedback: "unique plugin icon required"
+- Upload form shows default icon preview
+- Compare with approved plugins in Marketplace
 
-**LSP flow:**
-```
-User changes setting → IntelliJ settings persist
-→ LSP client sends workspace/didChangeConfiguration
-→ LS receives, validates, applies config
-→ LS notifies java-interop of classpath update
-```
+**References:**
+- [Marketplace Approval Guidelines - Logo requirements](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
+- [Uploading a new plugin](https://plugins.jetbrains.com/docs/marketplace/uploading-a-new-plugin.html)
 
 ---
 
-#### 3.2 Configuration Schema Mismatch
+### Pitfall 8: Execution Fails Silently - No Exception Shown to User
 
-**What goes wrong:**
-- VS Code extension expects `bbj.bbjHome`, IntelliJ sends `bbjHome`
-- LS can't parse settings because structure differs
-- Nested settings (e.g., `bbj.compiler.options`) flattened incorrectly
-- Environment-specific defaults (paths) break cross-platform
+**What goes wrong:** `OSProcessHandler` construction throws `ExecutionException` but it's caught and logged without user-visible error. User clicks "Run" and nothing happens - no notification, no console, no error dialog.
 
-**Warning signs:**
-- Settings appear in IntelliJ but LS uses defaults
-- Logs show "Unknown configuration key: bbjHome"
-- Works on macOS dev machine, broken on Windows CI
-- LS expects object, receives array (or vice versa)
+**Why it happens:**
+- Catch block logs exception via `LOG.error()` but doesn't show notification
+- Gradle integration may suppress exception details showing only "non-zero exit code"
+- Process fails before ConsoleView attachment, so errors never reach UI
 
 **Prevention:**
-- Document exact JSON schema LS expects for configuration
-- Use consistent naming: if LS expects `bbj.bbjHome`, IntelliJ must send that
-- Add configuration validation/schema checking in plugin
-- Test on Windows/macOS/Linux with different path styles
+1. **Always show user-visible error** when execution fails:
+   ```java
+   try {
+       OSProcessHandler handler = new OSProcessHandler(cmd);
+       handler.startNotify();
+   } catch (ExecutionException ex) {
+       showError(project, "Failed to launch: " + ex.getMessage());
+   }
+   ```
+2. Include **actionable error details** (missing executable, permission denied, etc.)
+3. Consider adding console output even for setup failures
+4. Test with **invalid configurations** to verify error handling
 
-**Phase:** P2 (Settings & Configuration)
+**Detection:**
+- Click "Run" and nothing happens
+- No console window opens
+- No error notification appears
+- Check IDE logs to find hidden exception
+
+**References:**
+- [Process.exec different results within IntelliJ](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360003376100-Process-exec-different-results-within-IntelliJ)
+- [Gradle console output cleared after error](https://intellij-support.jetbrains.com/hc/en-us/community/posts/7582027179282-Gradle-console-output-cleared-after-error)
 
 ---
 
-#### 3.3 Runtime Bundling Assumptions
+### Pitfall 9: Marketplace Rejection - Broken or Inaccessible Repository Link
 
-**What goes wrong:**
-- Plugin assumes Node.js installed globally
-- Users without Node.js see cryptic "command not found" errors
-- Different Node.js versions (14 vs 16 vs 18) have incompatible APIs
-- Bundled Node.js binary not executable (permissions, code signing)
+**What goes wrong:** Plugin submitted with repository link pointing to:
+- Private GitHub repository (not publicly accessible)
+- Incorrect URL (404 error)
+- Repository with no content or README
 
-**Warning signs:**
-- Works for developers (who have Node.js) but fails for QA/users
-- macOS Gatekeeper blocks bundled Node.js: "unidentified developer"
-- Linux AppArmor/SELinux prevents execution
-- Plugin size bloated (100MB+) from bundled runtimes
+Marketplace rejects because reviewers cannot verify source code or validate open-source claims.
+
+**Why it happens:** Plugin developed in private repo, developer forgets to make public before submission. Or link copy-pasted incorrectly from browser.
 
 **Prevention:**
-- EITHER bundle Node.js runtime (increases plugin size, avoid code signing issues)
-- OR require Node.js as dependency with clear setup instructions
-- Detect Node.js version before starting LS: `node --version`
-- Show actionable error: "BBj plugin requires Node.js 16+. Install from nodejs.org"
-- Document minimum Node.js version in plugin description
+1. **Make repository public** before Marketplace submission
+2. **Test link in private browser** to verify accessibility
+3. Include **working README** with build instructions
+4. For open-source plugins, link is **mandatory** per guidelines
+5. Add repository URL in `plugin.xml`:
+   ```xml
+   <vendor url="https://github.com/your-org/your-plugin">...</vendor>
+   ```
 
-**Phase:** P3 (Distribution & Packaging) — Decide early, implement for beta
+**Detection:**
+- Marketplace review feedback: "repository inaccessible"
+- Open link in incognito/private browser - does it work?
+- Check GitHub repo settings - is it public?
 
-**Decision needed:**
-- Bundled runtime: easier for users, harder to maintain, larger download
-- System Node.js: smaller plugin, but dependency management burden
+**References:**
+- [Webinar: Uploading a Plugin to Marketplace](https://blog.jetbrains.com/platform/2023/11/webinar-recording-uploading-a-plugin-to-jetbrains-marketplace/)
+- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
 
 ---
 
-### 4. Feature Coverage and Compatibility
+## Minor Pitfalls
 
-#### 4.1 LSP4IJ Feature Coverage Gaps
+Mistakes that cause annoyance but are fixable.
 
-**What goes wrong:**
-- LS implements LSP 3.17 features (e.g., semantic tokens, inline hints)
-- LSP4IJ only supports LSP 3.16 subset
-- Features silently ignored, users wonder why IntelliJ missing features VS Code has
-- No documentation of LSP4IJ's supported feature set
+### Pitfall 10: Action Update Performance - Slow Toolbar State Checks
 
-**Warning signs:**
-- Semantic tokens work in VS Code, not in IntelliJ
-- Inlay hints/code lenses missing despite LS sending them
-- LSP trace shows LS sending data, IntelliJ not rendering
-- Features work in other LSP4IJ plugins (proving support exists)
+**What goes wrong:** `AnAction.update()` method performs heavy computation (file system access, network calls, parsing) to determine if action should be enabled. Toolbar freezes or lags on every focus change or user activity.
+
+**Why it happens:** Developers don't realize `update()` is called **frequently** - on every user activity, focus transfer, or keystroke. Treating it like `actionPerformed()` causes performance issues.
 
 **Prevention:**
-- Audit LSP4IJ source to list supported capabilities
-- Compare against LS's reported capabilities in `initialize` response
-- Document feature parity gaps between VS Code and IntelliJ
-- Consider contributing missing features to LSP4IJ upstream
-- Set user expectations: README lists IntelliJ limitations
+1. **Keep `update()` fast** - official docs: "no real work must be performed"
+2. **Cache state** and invalidate on meaningful events
+3. Use `ActionUpdateThread.BGT` (background thread) to avoid EDT blocking
+4. If state changes outside user activity, call `ActivityTracker.getInstance().inc()` to refresh
+5. For file checks, use `VirtualFile` API (cached) not `java.io.File` (disk access)
 
-**Phase:** P0 (Research) — Before committing to LSP4IJ approach
+**Detection:**
+- Toolbar or menu feels sluggish
+- IDE freezes briefly on file switching
+- Profiler shows high CPU in `update()` method
+- Users report "unresponsive UI"
 
-**Research tasks:**
-- Check LSP4IJ GitHub for open issues about missing features
-- Test reference implementations (e.g., Quarkus plugin)
-- Contact LSP4IJ maintainers about roadmap
+**References:**
+- [Action System - Target Component](https://plugins.jetbrains.com/docs/intellij/action-system.html)
+- [Creating Actions tutorial](https://plugins.jetbrains.com/docs/intellij/working-with-custom-actions.html)
 
 ---
 
-#### 4.2 TextMate Grammar Compatibility
+### Pitfall 11: ConsoleView ProcessListener Events Not Firing
 
-**What goes wrong:**
-- VS Code uses `bbj.tmLanguage.json` for syntax highlighting
-- IntelliJ's TextMate bundle implementation differs subtly
-- Regex patterns work in VS Code, fail in IntelliJ
-- Scopes mapped differently (e.g., `keyword.control.bbj` → unknown)
+**What goes wrong:** Added `ProcessListener` to capture `processTerminated()` or `onTextAvailable()` events, but callbacks never fire. Process completes but listener remains silent.
 
-**Warning signs:**
-- Syntax highlighting broken or inconsistent
-- Some keywords highlighted, others plain text
-- Comments not colored correctly
-- String literals containing code not escaped properly
+**Why it happens:** Listener added **after** `startNotify()` was called. ProcessHandler fires events only to listeners registered **before** `startNotify()`.
 
 **Prevention:**
-- Test TextMate grammar in IntelliJ early (P0 spike)
-- Compare IntelliJ's TextMate vs VS Code's TextMate
-- Fall back to LSP semantic tokens if TextMate incompatible
-- Document which approach provides syntax highlighting
-- Consider generating IntelliJ lexer if TextMate fails
+1. **Add listeners BEFORE `startNotify()`:**
+   ```java
+   OSProcessHandler handler = new OSProcessHandler(cmd);
+   handler.addProcessListener(new ProcessAdapter() {
+       @Override
+       public void processTerminated(@NotNull ProcessEvent event) {
+           // Handle termination
+       }
+   });
+   handler.startNotify(); // Now listener will receive events
+   ```
+2. Verify listener attachment order in code review
+3. Use `ProcessTerminatedListener.attach(handler)` for standard exit status handling
 
-**Phase:** P1 (Syntax Highlighting) — Critical for usability
+**Detection:**
+- `processTerminated()` never called
+- Console doesn't show "Process finished with exit code X"
+- Cannot detect when process completes
+- Callbacks work in unit tests but not production
 
-**Fallback plan:**
-- If TextMate broken: use LSP semantic tokens (slower but universal)
-- If semantic tokens inadequate: write IntelliJ custom lexer (weeks of work)
+**References:**
+- [ProcessHandler lifecycle](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
+- [ProcessListener examples](https://www.javatips.net/api/com.intellij.execution.process.processhandler)
 
 ---
 
-#### 4.3 File Type Registration Conflicts
+### Pitfall 12: Windows Path Length Limit (260 chars) Not Handled
 
-**What goes wrong:**
-- Multiple plugins claim `.bbj` extension
-- IntelliJ uses wrong plugin/parser for BBj files
-- File icons wrong (shows generic text file icon)
-- "Open in Editor" uses plaintext instead of BBj plugin
+**What goes wrong:** Plugin works on macOS/Linux but fails on Windows when project path exceeds 260 characters. File operations fail with cryptic errors like "The filename or extension is too long."
 
-**Warning signs:**
-- BBj files open without syntax highlighting
-- Logs show "No file type registered for .bbj"
-- Other plugins (e.g., custom syntax highlighter) interfere
-- Works on clean IntelliJ install, breaks with user's existing plugins
+**Why it happens:** Windows has legacy MAX_PATH limitation (260 chars) unless long path support is explicitly enabled. Deep project structures with long artifact names hit this limit.
 
 **Prevention:**
-- Register file types early in plugin initialization
-- Claim all BBj extensions: `.bbj`, `.bbl`, `.bbjt`, `.src`
-- Set file icon to distinguish from plaintext
-- Test in IntelliJ instance with other language plugins installed
+1. **Warn users** if project path approaching limit
+2. Use relative paths where possible
+3. Document Windows long path workaround in plugin description
+4. Consider shorter artifact names in plugin distribution
+5. Test on Windows with nested project structure (e.g., `C:\Users\VeryLongUserName\Projects\...`)
 
-**Phase:** P1 (File Type Registration)
+**Detection:**
+- Plugin works on macOS, fails on Windows
+- Error: "The filename or extension is too long"
+- File operations return unexpected null/errors
+- Works in shallow directories, fails in deep ones
 
----
-
-### 5. Performance and Resource Management
-
-#### 5.1 Language Server Startup Latency
-
-**What goes wrong:**
-- Node.js LS takes 5-10 seconds to start
-- IntelliJ freezes waiting for LS during project open
-- Users perceive IntelliJ as "hanging" or "slow"
-- Timeout errors if LS startup exceeds IntelliJ's expectations
-
-**Warning signs:**
-- "Unresponsive plugin" warnings from IntelliJ
-- Progress bar stuck at "Initializing BBj Language Server..."
-- LS works eventually but UX feels sluggish
-- Multiple LS instances spawned because IntelliJ retries
-
-**Prevention:**
-- Start LS asynchronously without blocking UI thread
-- Show progress notification with "Starting BBj Language Server..."
-- Pre-warm LS during IntelliJ startup (background task)
-- Optimize LS bundle size (tree-shake unused dependencies)
-- Consider lazy initialization: start LS only when BBj file opened
-
-**Phase:** P3 (Performance Optimization) — Polish for beta
+**References:**
+- [Windows path length limitation](https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation)
 
 ---
 
-#### 5.2 Memory Leaks from Unreleased Resources
+## Phase-Specific Warnings
 
-**What goes wrong:**
-- Process handles not closed on LS restart
-- Socket connections accumulate
-- File watchers never disposed
-- IntelliJ heap grows unbounded over days
-
-**Warning signs:**
-- IntelliJ memory usage grows from 500MB → 4GB over time
-- "Out of memory" errors after extended use
-- Leak detector warnings in IntelliJ logs
-- Performance degrades after multiple LS restarts
-
-**Prevention:**
-- Call `process.destroy()` in plugin's `dispose()` method
-- Close all streams (stdin/stdout/stderr readers)
-- Dispose LSP client connection explicitly
-- Use IntelliJ's `Disposer.register()` for automatic cleanup
-- Test: repeatedly restart LS, check heap dumps for retained objects
-
-**Phase:** P2 (Stability) — Before beta
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Fix run command path resolution | Pitfall 3: Mixed separators in File paths | Use `File(parent, child)` constructor, test on Windows |
+| Add toolbar button visibility | Pitfall 1: MainToolBar not visible in New UI | Register to both MainToolBar and MainToolBarSettings groups |
+| Integrate console output | Pitfall 2: startNotify() not called | Follow strict lifecycle: create → attach → startNotify() |
+| Integrate console output | Pitfall 5: ConsoleView not displayed | Create ConsoleView and show in tool window via ToolWindowManager |
+| Prepare Marketplace submission | Pitfall 4: Internal API usage | Run `./gradlew runPluginVerifier` before upload |
+| Prepare Marketplace submission | Pitfall 6: Plugin name too long | Rename to ≤30 chars, remove "Plugin"/"IntelliJ" words |
+| Prepare Marketplace submission | Pitfall 7: Missing custom logo | Create 40x40px SVG logo, test in both themes |
+| Prepare Marketplace submission | Pitfall 9: Private repository link | Make repo public, test link in private browser |
+| Cross-platform testing | Pitfall 3: Path separator issues | Test on both Windows and macOS before release |
+| Cross-platform testing | Pitfall 12: Windows path length | Test with deep project path on Windows |
 
 ---
 
-#### 5.3 File Watcher Overload
+## Research Confidence
 
-**What goes wrong:**
-- LS watches entire BBj project directory recursively
-- Large projects (1000s of files) trigger watch limit
-- Each file change triggers full re-analysis
-- IntelliJ + LS + java-interop all watching same files (redundant)
-
-**Warning signs:**
-- "Too many open files" errors on macOS/Linux
-- High CPU usage when saving files
-- Slowdowns in large BBj projects
-- Logs show file change events flooding LS
-
-**Prevention:**
-- Use IntelliJ's built-in file watcher, forward to LS
-- Don't let LS watch filesystem directly (IntelliJ handles this)
-- Configure watch exclusions: `node_modules`, `.git`, `out/`, etc.
-- Debounce file change notifications (batch rapid changes)
-
-**Phase:** P2 (Performance) — Important for large projects
+| Area | Confidence | Source Quality |
+|------|------------|----------------|
+| New UI toolbar issues | HIGH | Official JetBrains forums + SDK docs + recent 2025 discussions |
+| ProcessHandler lifecycle | HIGH | Official execution.html docs + IntelliJ source code |
+| File path cross-platform | HIGH | VirtualFile docs + community discussions + Java best practices |
+| Marketplace approval | HIGH | Official approval guidelines + submission docs |
+| Plugin Verifier | HIGH | Official verifier docs + livestream recording |
+| Console integration | MEDIUM | Community forums + code examples (no single authoritative source) |
+| Windows path limits | MEDIUM | General Windows API knowledge + IntelliJ support forums |
 
 ---
 
-### 6. Error Handling and Diagnostics
+## Sources
 
-#### 6.1 Silent Failures with No User Feedback
+**New UI and Toolbar Actions:**
+- [New UI toolbar registration](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
+- [New UI lost toolbars](https://intellij-support.jetbrains.com/hc/en-us/community/posts/20802107307154--New-UI-lost-toolbars-and-settings)
+- [Action group icons not showing in New UI](https://intellij-support.jetbrains.com/hc/en-us/community/posts/15268937638290-Action-group-Icon-doesn-t-show-up-for-newUI)
+- [Action System documentation](https://plugins.jetbrains.com/docs/intellij/action-system.html)
 
-**What goes wrong:**
-- LS crashes, user sees nothing
-- java-interop connection fails, completions silently broken
-- Configuration errors logged but user unaware
-- Users report "doesn't work" with no actionable details
+**ProcessHandler and Execution:**
+- [Execution documentation](https://plugins.jetbrains.com/docs/intellij/execution.html)
+- [ProcessHandler source code](https://github.com/JetBrains/intellij-community/blob/master/platform/util/src/com/intellij/execution/process/ProcessHandler.java)
+- [Running console command from plugin](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360007850040-Running-console-command-from-plugin-and-displaying-the-output)
+- [Process exec different results](https://intellij-support.jetbrains.com/hc/en-us/community/posts/360003376100-Process-exec-different-results-within-IntelliJ)
 
-**Warning signs:**
-- Bug reports: "Java completions missing" with no logs attached
-- Users unaware LS crashed, just see missing features
-- No visible error notifications
-- Support burden: asking users to check logs
+**Cross-Platform File Paths:**
+- [VirtualFile documentation](https://plugins.jetbrains.com/docs/intellij/virtual-file.html)
+- [File path formats for cross-platform compatibility](https://dev.to/kailashnirmal/understanding-file-path-formats-in-windows-and-java-for-cross-platform-compatibility-2im3)
+- [Hardcoded file separator issues](https://intellij-support.jetbrains.com/hc/en-us/community/posts/206131989--IG-Hardcoded-file-separator-should-be-more-selective)
 
-**Prevention:**
-- Show balloon notifications for critical errors
-- Add status bar widget: "BBj LS: Running" (green) vs "Disconnected" (red)
-- Log errors with actionable messages: "Start failed: Node.js not found. Install Node.js 16+"
-- Provide "Report Issue" action that collects logs automatically
+**JetBrains Marketplace:**
+- [Marketplace Approval Guidelines](https://plugins.jetbrains.com/docs/marketplace/jetbrains-marketplace-approval-guidelines.html)
+- [Publishing and listing your plugin](https://plugins.jetbrains.com/docs/marketplace/publishing-and-listing-your-plugin.html)
+- [Uploading a new plugin](https://plugins.jetbrains.com/docs/marketplace/uploading-a-new-plugin.html)
+- [Webinar: Uploading a Plugin to Marketplace](https://blog.jetbrains.com/platform/2023/11/webinar-recording-uploading-a-plugin-to-jetbrains-marketplace/)
 
-**Phase:** P1 (Error Handling) — Essential for alpha
-
----
-
-#### 6.2 Cascading Failures from java-interop
-
-**What goes wrong:**
-- java-interop crashes, LS keeps running
-- LS repeatedly tries to reconnect to dead java-interop
-- LS logs flooded with connection errors
-- User sees Java completions stop working mid-session
-
-**Warning signs:**
-- Logs show hundreds of "ECONNREFUSED" errors
-- LS still provides BBj completions, but no Java completions
-- CPU usage spikes from connection retry loop
-- java-interop port unbound (lsof shows nothing on 5008)
-
-**Prevention:**
-- Circuit breaker pattern: stop retrying after N failures
-- Surface java-interop status separately from LS status
-- Allow manual java-interop restart without restarting LS
-- Degrade gracefully: BBj completions still work, Java completions disabled
-
-**Phase:** P2 (java-interop Integration)
-
----
-
-### 7. Testing and Validation
-
-#### 7.1 No Integration Tests for Multi-Process Startup
-
-**What goes wrong:**
-- Plugin starts LS and java-interop in specific order
-- Race conditions only appear in integration, not unit tests
-- Manual testing misses edge cases (LS crash during init, etc.)
-- Refactors break startup sequence, caught in production
-
-**Warning signs:**
-- Works in dev testing, fails for QA
-- Intermittent failures: "works 80% of the time"
-- No automated test for process lifecycle
-- Releases regress previously working behavior
-
-**Prevention:**
-- Write integration test: start IntelliJ, open BBj file, verify completions
-- Test failure scenarios: LS crashes, java-interop missing, Node.js not found
-- Automate in CI: spin up IntelliJ headless, run plugin, assert behavior
-- Use IntelliJ's plugin testing framework
-
-**Phase:** P2 (Testing) — Before beta
-
----
-
-#### 7.2 Platform-Specific Assumptions
-
-**What goes wrong:**
-- Plugin works on macOS dev machines, broken on Windows
-- Path separators hardcoded: `/` vs `\`
-- Process spawning differs: Windows needs `.cmd` wrappers
-- File permissions issues on Linux (bundled binaries not +x)
-
-**Warning signs:**
-- GitHub issues: "doesn't work on Windows"
-- Paths with spaces fail on Windows: `C:\Program Files\BBj`
-- Tests pass on macOS CI, fail on Windows CI
-- Demo works on developer laptop, fails on customer machines
-
-**Prevention:**
-- Test on all platforms: macOS, Windows, Linux
-- Use Java's `Path` API for platform-agnostic paths
-- Test with paths containing spaces and special characters
-- CI matrix: run tests on Windows/macOS/Linux
-
-**Phase:** P2 (Cross-Platform) — Before beta
-
----
-
-### 8. IntelliJ-Specific Pitfalls
-
-#### 8.1 Community vs Ultimate Edition Differences
-
-**What goes wrong:**
-- Plugin accidentally uses Ultimate-only APIs
-- Works in dev (Ultimate) but crashes in Community Edition
-- Users see "Plugin incompatible" errors
-- LSP features work differently between editions
-
-**Warning signs:**
-- `NoClassDefFoundError` for Ultimate-only classes
-- Plugin descriptor declares Ultimate dependency
-- Feature works for some users, not others
-- LSP4IJ behaves differently in Community vs Ultimate
-
-**Prevention:**
-- Develop and test in IntelliJ Community Edition
-- Declare `<idea-version since-build="..." until-build="..."/>` carefully
-- Avoid imports from `com.intellij.ultimate.*`
-- CI testing in both Community and Ultimate
-
-**Phase:** P0 (Project Setup) — Verify LSP4IJ Community compatibility
-
----
-
-#### 8.2 IntelliJ Version Compatibility Range
-
-**What goes wrong:**
-- Plugin targets IntelliJ 2024.1, users run 2023.3
-- APIs changed between versions, runtime errors
-- "until-build" too restrictive, blocks updates
-- Breaking changes in IntelliJ 2024.2 break plugin
-
-**Warning signs:**
-- Users report "Plugin incompatible with IDE build"
-- Works in IntelliJ 2024.1, crashes in 2024.2
-- Can't update IntelliJ without losing BBj support
-- Method signatures changed, compilation fails
-
-**Prevention:**
-- Target widest version range possible (e.g., 2023.3+)
-- Test plugin on oldest and newest supported versions
-- Monitor IntelliJ API changes, adapt proactively
-- Conservative "until-build": leave open unless known incompatibility
-
-**Phase:** P3 (Distribution) — Define before publishing
-
----
-
-#### 8.3 Plugin Conflicts and Load Order
-
-**What goes wrong:**
-- Another plugin also provides BBj support (conflicting)
-- Plugins load in undefined order, race conditions
-- Extension points overwritten by last-loaded plugin
-- LSP4IJ loaded after BBj plugin, services unavailable
-
-**Warning signs:**
-- Works in isolation, broken with other plugins installed
-- File type associated with wrong plugin
-- "Duplicate service registration" errors
-- Depends on plugin load order (non-deterministic)
-
-**Prevention:**
-- Declare dependencies in plugin.xml: `<depends>com.redhat.devtools.lsp4ij</depends>`
-- Use unique IDs for file types, services, actions
-- Test with common plugins installed (Lombok, Gradle, etc.)
-- Document known incompatibilities in README
-
-**Phase:** P2 (Integration) — Before beta
-
----
-
-## Summary: Most Critical Pitfalls by Phase
-
-### P0 (Project Setup & Validation)
-1. **IPC vs stdio transport mismatch** — test immediately
-2. **LSP4IJ feature coverage gaps** — research before committing
-3. **Community Edition compatibility** — verify LSP4IJ works
-
-### P1 (Core Functionality)
-1. **LS process crash handling** — must restart automatically
-2. **Zombie processes on shutdown** — must clean up reliably
-3. **Silent failures** — must surface errors to users
-4. **Startup race conditions** — queue requests until LS ready
-
-### P2 (Integration & Stability)
-1. **BBj home path not reaching LS** — settings synchronization
-2. **java-interop connection failures** — start before LS, monitor health
-3. **Cascading failures** — degrade gracefully when java-interop dies
-4. **Cross-platform testing** — Windows/macOS/Linux
-
-### P3 (Distribution & Polish)
-1. **Node.js bundling decision** — bundle vs require system Node.js
-2. **IntelliJ version compatibility** — define supported range
-3. **Performance optimization** — async startup, lazy initialization
-
----
-
-## Decision Points Requiring Early Resolution
-
-1. **Transport mechanism:** Confirm LS supports stdio (not just IPC)
-2. **Process management:** Who starts java-interop? Plugin or LS?
-3. **Node.js bundling:** Bundle runtime or require system install?
-4. **Syntax highlighting:** TextMate vs LSP semantic tokens vs custom lexer?
-5. **Settings schema:** Align IntelliJ settings format with LS expectations
-
----
-
-**Research completed:** 2026-02-01
-**Next steps:** Prioritize pitfalls by phase, integrate into roadmap tasks
+**Plugin Verifier:**
+- [Verifying Plugin Compatibility](https://plugins.jetbrains.com/docs/intellij/verifying-plugin-compatibility.html)
+- [Plugin Verifier GitHub](https://github.com/JetBrains/intellij-plugin-verifier)
+- [Plugin Verifier and API Compatibility Maintenance](https://blog.jetbrains.com/platform/2025/05/plugin-verifier-and-api-compatibility-maintenance-livestream-recording-amp-key-takeaways/)
+- [Internal API Migration](https://plugins.jetbrains.com/docs/intellij/api-internal.html)
+- [Incompatible Changes in 2025](https://plugins.jetbrains.com/docs/intellij/api-changes-list-2025.html)
