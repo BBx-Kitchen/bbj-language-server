@@ -77,10 +77,11 @@ Plans:
   3. All existing tests pass (vitest suite green, no regressions)
   4. VS Code extension packages successfully (`vsce package` or equivalent)
   5. IntelliJ plugin builds with the updated bundled main.cjs
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 17-01: TBD
+- [ ] 17-01-PLAN.md -- Fix all 21 TypeScript compilation errors across 7 source files (LocalSymbols API, CstNode API, method signatures, type constants)
+- [ ] 17-02-PLAN.md -- Fix test failures, build esbuild bundle, smoke-test main.cjs, verify IntelliJ Gradle build
 
 #### Phase 18: Functional Verification & Release
 **Goal**: Every existing language server feature works identically in both VS Code and IntelliJ after the upgrade, and updated extensions are published
@@ -133,5 +134,5 @@ Phases with standard patterns (no deep research needed):
 | 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 16. API Signatures | v2.0 | 1/1 | Complete | 2026-02-03 |
-| 17. Build & Test | v2.0 | 0/TBD | Not started | - |
+| 17. Build & Test | v2.0 | 0/2 | Not started | - |
 | 18. Verify & Release | v2.0 | 0/TBD | Not started | - |
