@@ -84,7 +84,7 @@ Plans:
 - [x] 17-02-PLAN.md -- Fix test failures, build esbuild bundle, smoke-test main.cjs, verify IntelliJ Gradle build
 
 #### Phase 18: Functional Verification & Release
-**Goal**: Every existing language server feature works identically in both VS Code and IntelliJ after the upgrade, and updated extensions are published
+**Goal**: Every existing language server feature works identically in both VS Code and IntelliJ after the upgrade, and release artifacts are built for user to publish
 **Depends on**: Phase 17
 **Requirements**: FUNC-01, FUNC-02, FUNC-03, FUNC-04, FUNC-05, FUNC-06, FUNC-07, FUNC-08, FUNC-09, FUNC-10, RELS-01, RELS-02, RELS-03
 **Success Criteria** (what must be TRUE):
@@ -93,10 +93,11 @@ Plans:
   3. VS Code extension published with updated language server
   4. IntelliJ plugin published with updated bundled main.cjs
   5. Version numbers bumped appropriately across all packages
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 18-01: TBD
+- [ ] 18-01-PLAN.md -- Chevrotain token runtime verification and LSP feature functional tests
+- [ ] 18-02-PLAN.md -- Build release artifacts (.vsix + .zip) and produce verification report
 
 ### Coverage
 
@@ -135,4 +136,4 @@ Phases with standard patterns (no deep research needed):
 | 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 16. API Signatures | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 17. Build & Test | v2.0 | 2/2 | Complete | 2026-02-03 |
-| 18. Verify & Release | v2.0 | 0/TBD | Not started | - |
+| 18. Verify & Release | v2.0 | 0/2 | Not started | - |
