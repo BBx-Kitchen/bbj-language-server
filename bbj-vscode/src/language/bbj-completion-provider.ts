@@ -1,4 +1,4 @@
-import { AstNodeDescription, GrammarAST, MaybePromise } from "langium";
+import { AstNodeDescription, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices } from "langium/lsp";
 import { CompletionItemKind } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
@@ -12,8 +12,8 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         super(services);
     }
 
-    override  createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription): CompletionValueItem {
-        const superImpl = super.createReferenceCompletionItem(nodeDescription)
+    override createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription, _refInfo: ReferenceInfo, _context: CompletionContext): CompletionValueItem {
+        const superImpl = super.createReferenceCompletionItem(nodeDescription, _refInfo, _context)
         superImpl.kind = this.nodeKindProvider.getCompletionItemKind(nodeDescription)
         superImpl.sortText = undefined
         if (isFunctionNodeDescription(nodeDescription)) {
