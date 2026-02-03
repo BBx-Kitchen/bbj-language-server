@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 15 - Core API Renames & Type Constants
+**Current focus:** Phase 16 - API Signature & Deprecated API Migration
 
 ## Current Position
 
 Milestone: v2.0 Langium 4 Upgrade
-Phase: 15 of 18 (Core API Renames & Type Constants)
-Plan: 02 of 05
-Status: In progress
-Last activity: 2026-02-03 -- Completed 15-02-PLAN.md (Scope API renames & type constants)
+Phase: 16 of 18 (API Signature & Deprecated API Migration)
+Plan: --
+Status: Ready to plan
+Last activity: 2026-02-03 -- Phase 15 complete and verified (5/5 must-haves passed)
 
-Progress: [██........] 20% (1/5 v2.0 phases)
+Progress: [████......] 40% (2/5 v2.0 phases)
 
 ## Milestone History
 
@@ -50,6 +50,7 @@ Recent decisions affecting current work:
 - [15-01]: All type constant usages migrated to .$type pattern for Langium 4 compatibility
 - [15-02]: PrecomputedScopes → LocalSymbols, computeExports/computeLocalScopes → collectExportedSymbols/collectLocalSymbols
 - [15-02]: document.precomputedScopes → document.localSymbols property access pattern
+- [15-gap]: Verifier caught 5 missed usages in linker/java-interop; orchestrator fixed directly (13 total across 2 files)
 
 ### Known Issues
 
@@ -67,6 +68,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-03
-Stopped at: Completed 15-02-PLAN.md (Scope API renames & type constants)
+Stopped at: Phase 15 complete and verified -- ready for Phase 16
 Resume file: None
-Next: Continue Phase 15 - remaining plans (validator, utils, formatter migrations)
+Next: `/gsd:discuss-phase 16` or `/gsd:plan-phase 16`

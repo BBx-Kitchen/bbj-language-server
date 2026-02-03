@@ -16,7 +16,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 ### Phases
 
 - [x] **Phase 14: Dependency Update & Grammar Regeneration** - New packages installed, grammar regenerated, generated code compiles
-- [ ] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
+- [x] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
 - [ ] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
 - [ ] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
 - [ ] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, extensions published
@@ -50,8 +50,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 15-01-PLAN.md -- Migrate type constants to .$type in provider files (node-kind, description, semantic-token, completion)
-- [ ] 15-02-PLAN.md -- Rename PrecomputedScopes to LocalSymbols, scope methods, and type constants in scope files
+- [x] 15-01-PLAN.md -- Migrate type constants to .$type in provider files (node-kind, description, semantic-token, completion)
+- [x] 15-02-PLAN.md -- Rename PrecomputedScopes to LocalSymbols, scope methods, and type constants in scope files
 
 #### Phase 16: API Signature & Deprecated API Migration
 **Goal**: All complex API shape changes resolved -- linker handles new Reference union type, completion provider uses new signature, parser creation updated, and no deprecated API usages remain
@@ -131,7 +131,7 @@ Phases with standard patterns (no deep research needed):
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
-| 15. Core Renames | v2.0 | 0/2 | Not started | - |
+| 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 16. API Signatures | v2.0 | 0/TBD | Not started | - |
 | 17. Build & Test | v2.0 | 0/TBD | Not started | - |
 | 18. Verify & Release | v2.0 | 0/TBD | Not started | - |
