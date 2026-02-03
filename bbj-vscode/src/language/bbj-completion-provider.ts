@@ -40,10 +40,10 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     superImpl.documentation = { kind: 'markdown', value: content }
                 }
             }
-        } else if (nodeDescription.type === LibSymbolicLabelDecl) {
+        } else if (nodeDescription.type === LibSymbolicLabelDecl.$type) {
             superImpl.label = nodeDescription.name
             superImpl.sortText = superImpl.label.slice(1) // remove * so that symbolic labels appear in the alphabetical order
-        } else if (nodeDescription.type === LibEventType && 'docu' in nodeDescription && typeof nodeDescription.docu === "string") {
+        } else if (nodeDescription.type === LibEventType.$type && 'docu' in nodeDescription && typeof nodeDescription.docu === "string") {
             superImpl.detail = nodeDescription.docu;
         }
         return superImpl;

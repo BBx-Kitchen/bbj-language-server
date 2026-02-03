@@ -7,10 +7,10 @@ export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProv
     override createDescription(node: AstNode, name: string | undefined, document: LangiumDocument = AstUtils.getDocument(node)): AstNodeDescription {
         const descr = super.createDescription(node, name, document);
         switch (node.$type) {
-            case MethodDecl: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))
-            case LibFunction: return enhanceFunctionDescription(descr, node as LibFunction);
-            case JavaMethod: return enhanceFunctionDescription(descr, node as JavaMethod);
-            case LibEventType: return { ...descr, docu: documentationHeader(node)! } as AstNodeDescription;
+            case MethodDecl.$type: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))
+            case LibFunction.$type: return enhanceFunctionDescription(descr, node as LibFunction);
+            case JavaMethod.$type: return enhanceFunctionDescription(descr, node as JavaMethod);
+            case LibEventType.$type: return { ...descr, docu: documentationHeader(node)! } as AstNodeDescription;
             default: return descr;
         }
     }
