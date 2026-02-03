@@ -62,10 +62,10 @@ Plans:
   2. Completion provider's `createReferenceCompletionItem` calls use the new parameter signature
   3. `prepareLangiumParser` usage replaced with Langium 4 equivalent (or confirmed still available)
   4. Zero remaining usages of APIs removed in Langium 4 PR #1991
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 16-01: TBD
+- [ ] 16-01-PLAN.md -- Update completion provider signature and linker type guards for Langium 4 API compatibility
 
 #### Phase 17: Build Verification & Test Suite
 **Goal**: The entire project compiles, bundles, and passes all tests -- both VS Code extension and IntelliJ plugin produce valid build artifacts
@@ -132,6 +132,6 @@ Phases with standard patterns (no deep research needed):
 |-------|-----------|----------------|--------|-----------|
 | 14. Deps & Grammar | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
-| 16. API Signatures | v2.0 | 0/TBD | Not started | - |
+| 16. API Signatures | v2.0 | 0/1 | Not started | - |
 | 17. Build & Test | v2.0 | 0/TBD | Not started | - |
 | 18. Verify & Release | v2.0 | 0/TBD | Not started | - |
