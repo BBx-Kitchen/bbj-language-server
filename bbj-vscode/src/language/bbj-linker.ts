@@ -3,6 +3,7 @@ import {
     AstNodeDescription,
     AstUtils,
     DefaultLinker, DocumentState, interruptAndCheck,
+    isReference,
     LangiumDocument, LinkingError,
     ReferenceInfo,
     WorkspaceManager
@@ -78,6 +79,11 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
+        // Langium 4: ReferenceInfo.reference can be Reference | MultiReference
+        // BBj only uses single references; skip multi-reference cases
+        if (!isReference(refInfo.reference)) {
+            return super.getCandidate(refInfo);
+        }
         if (isSymbolRef(refInfo.container)) {
             const symbolRef = refInfo.container;
             if (!(isMethodCall(symbolRef.$container) && symbolRef.$containerProperty === 'method')) {
