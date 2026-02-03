@@ -19,7 +19,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 - [x] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
 - [x] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
 - [x] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
-- [ ] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, extensions published
+- [ ] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, release artifacts built (publishing and versioning handled by user separately)
 
 ### Phase Details
 
@@ -86,13 +86,13 @@ Plans:
 #### Phase 18: Functional Verification & Release
 **Goal**: Every existing language server feature works identically in both VS Code and IntelliJ after the upgrade, and release artifacts are built for user to publish
 **Depends on**: Phase 17
-**Requirements**: FUNC-01, FUNC-02, FUNC-03, FUNC-04, FUNC-05, FUNC-06, FUNC-07, FUNC-08, FUNC-09, FUNC-10, RELS-01, RELS-02, RELS-03
+**Requirements**: FUNC-01, FUNC-02, FUNC-03, FUNC-04, FUNC-05, FUNC-06, FUNC-07, FUNC-08, FUNC-09, FUNC-10
+**Note**: RELS-01 (VS Code publishing), RELS-02 (IntelliJ publishing), and RELS-03 (version bumps) are user responsibilities per Phase 18 CONTEXT.md decisions -- not in Claude's scope for this phase
 **Success Criteria** (what must be TRUE):
   1. All 9 language features work in VS Code: syntax highlighting, diagnostics, completion (BBj + Java), hover, signature help, go-to-definition, document symbols, semantic tokens
   2. IntelliJ plugin provides the same feature set as before the upgrade (no regressions)
-  3. VS Code extension published with updated language server
-  4. IntelliJ plugin published with updated bundled main.cjs
-  5. Version numbers bumped appropriately across all packages
+  3. VS Code .vsix artifact builds successfully (packaging verification)
+  4. IntelliJ .zip artifact builds successfully (packaging verification)
 **Plans**: 2 plans
 
 Plans:
@@ -111,7 +111,7 @@ Plans:
 | Source Migration (signatures) | 4 | 16 | MIGR-04, MIGR-05, MIGR-06, MIGR-08 |
 | Build & Test | 5 | 17 | BLDT-01, BLDT-02, BLDT-03, BLDT-04, BLDT-05 |
 | Functional Verification | 10 | 18 | FUNC-01 through FUNC-10 |
-| Release | 3 | 18 | RELS-01, RELS-02, RELS-03 |
+| Release | 3 | N/A (user) | RELS-01, RELS-02, RELS-03 (user handles publishing and versioning) |
 
 No orphaned requirements. No duplicates.
 
