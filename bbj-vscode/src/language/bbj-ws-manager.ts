@@ -190,7 +190,10 @@ export function resolveTilde(input: string): string {
 
 async function tryInitializeJavaDoc(wsJavadocFolders: URI[], fileSystemProvider: FileSystemProvider, cancelToken: CancellationToken = CancellationToken.None) {
     try {
-        return await JavadocProvider.getInstance().initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
+        const javadocProvider = JavadocProvider.getInstance();
+        if (!javadocProvider.isInitialized()) {
+            return await javadocProvider.initialize(wsJavadocFolders, fileSystemProvider, cancelToken);
+        }
     } catch (e) {
         console.error(e);
     }
