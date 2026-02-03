@@ -1,24 +1,194 @@
 <idea-plugin>
-    <id>com.basis.bbj.intellij</id>
+    <id>com.basis.bbj</id>
     <name>BBj Language Support</name>
-    <version>0.1.0</version>
-    <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International</vendor>
-
-    <description><![CDATA[
-        BBj language support for IntelliJ IDEA. Provides file type recognition,
-        syntax highlighting, and language server integration for BBj development.
-    ]]></description>
-
-    <idea-version since-build="242"/>
+    <vendor email="support@basis.cloud" url="https://basis.cloud">BASIS International Ltd.</vendor>
 
     <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.plugins.textmate</depends>
+    <depends>com.redhat.devtools.lsp4ij</depends>
+
+
+    <actions>
+        <action id="bbj.restartLanguageServer"
+                class="com.basis.bbj.intellij.ui.BbjRestartServerAction"
+                text="Restart BBj Language Server"
+                description="Restart the BBj language server">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
+        <!-- BBj Run Actions (GUI, BUI, DWC) -->
+        <action id="bbj.runGui"
+                class="com.basis.bbj.intellij.actions.BbjRunGuiAction"
+                text="Run As BBj Program"
+                description="Run current BBj file as GUI program"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt G"/>
+        </action>
+
+        <action id="bbj.runBui"
+                class="com.basis.bbj.intellij.actions.BbjRunBuiAction"
+                text="Run As BUI Program"
+                description="Run current BBj file as BUI program in browser"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_BUI">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runGui"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt B"/>
+        </action>
+
+        <action id="bbj.runDwc"
+                class="com.basis.bbj.intellij.actions.BbjRunDwcAction"
+                text="Run As DWC Program"
+                description="Run current BBj file as DWC program in browser"
+                icon="com.basis.bbj.intellij.BbjIcons.RUN_DWC">
+            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="bbj.runBui"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt D"/>
+        </action>
+
+        <!-- BBj Run submenu for Project View context menu -->
+        <group id="bbj.runGroup"
+               text="BBj Run"
+               description="Run BBj program"
+               icon="com.basis.bbj.intellij.BbjIcons.RUN_GUI"
+               popup="true">
+            <reference ref="bbj.runGui"/>
+            <reference ref="bbj.runBui"/>
+            <reference ref="bbj.runDwc"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="before" relative-to-action="$Cut"/>
+        </group>
+    </actions>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- Welcome notification on first launch -->
+        <postStartupActivity implementation="com.basis.bbj.intellij.BbjWelcomeNotification"/>
+
         <fileType
             name="BBj"
             implementationClass="com.basis.bbj.intellij.BbjFileType"
             fieldName="INSTANCE"
             language="BBj"
             extensions="bbj;bbl;bbjt;src"/>
+
+        <fileType
+            name="BBx Config"
+            implementationClass="com.basis.bbj.intellij.BbxConfigFileType"
+            fieldName="INSTANCE"
+            language="BBj"
+            extensions="bbx"/>
+
+        <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
+        <lang.parserDefinition
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjParserDefinition"/>
+
+        <!-- Bridge custom FileType to TextMate highlighting engine -->
+        <editorHighlighterProvider
+            filetype="BBj"
+            implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
+        <lang.syntaxHighlighterFactory
+            language="BBj"
+            implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
+
+        <!-- Register TextMate grammar bundle -->
+        <textmate.bundleProvider
+            implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
+
+        <!-- Comment toggling (Cmd+/ on macOS, Ctrl+/ on Linux/Windows) -->
+        <lang.commenter
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjCommenter"/>
+
+        <!-- Code style settings - forces REM at column 0 -->
+        <langCodeStyleSettingsProvider
+            implementation="com.basis.bbj.intellij.BbjLanguageCodeStyleSettingsProvider"/>
+
+        <!-- Bracket matching for (), [], {} -->
+        <lang.braceMatcher
+            language="BBj"
+            implementationClass="com.basis.bbj.intellij.BbjPairedBraceMatcher"/>
+
+        <!-- LSP textDocument/documentSymbol -> Structure View -->
+        <lang.psiStructureViewFactory
+            language="BBj"
+            implementationClass="com.redhat.devtools.lsp4ij.features.documentSymbol.LSPDocumentSymbolStructureViewFactory"/>
+
+        <!-- Color Scheme settings page for BBj -->
+        <colorSettingsPage implementation="com.basis.bbj.intellij.BbjColorSettingsPage"/>
+
+        <!-- Application-level settings service -->
+        <applicationService
+            serviceImplementation="com.basis.bbj.intellij.BbjSettings"/>
+
+        <!-- Settings page under Languages & Frameworks > BBj -->
+        <applicationConfigurable
+            parentId="language"
+            instance="com.basis.bbj.intellij.BbjSettingsConfigurable"
+            id="com.basis.bbj.intellij.BbjSettingsConfigurable"
+            displayName="BBj"/>
+
+        <!-- Editor banners for missing configuration -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjMissingHomeNotificationProvider"/>
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjMissingNodeNotificationProvider"/>
+
+        <!-- Editor banner for server crash state -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.ui.BbjServerCrashNotificationProvider"/>
+
+        <!-- Editor banner for java-interop unavailable -->
+        <editorNotificationProvider
+            implementation="com.basis.bbj.intellij.BbjJavaInteropNotificationProvider"/>
+
+        <!-- Project-level server lifecycle service -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjServerService"/>
+
+        <!-- Project-level java-interop health check service -->
+        <projectService serviceImplementation="com.basis.bbj.intellij.ui.BbjJavaInteropService"/>
+
+        <!-- Status bar widget -->
+        <statusBarWidgetFactory
+            id="BbjLanguageServerStatus"
+            implementation="com.basis.bbj.intellij.ui.BbjStatusBarWidgetFactory"/>
+
+        <!-- Java-interop status bar widget -->
+        <statusBarWidgetFactory
+            id="BbjJavaInteropStatus"
+            implementation="com.basis.bbj.intellij.ui.BbjJavaInteropStatusBarWidgetFactory"/>
+
+        <!-- Server log tool window -->
+        <toolWindow id="BBj Language Server"
+                    factoryClass="com.basis.bbj.intellij.ui.BbjServerLogToolWindowFactory"
+                    anchor="bottom"
+                    icon="com.basis.bbj.intellij.BbjIcons.TOOL_WINDOW"
+                    canCloseContents="false"/>
+
+        <!-- Notification group for crash/error balloons -->
+        <notificationGroup id="BBj Language Server"
+                           displayType="STICKY_BALLOON"/>
+
+        <!-- BBj keyword dictionary so spell checker doesn't flag them as typos -->
+        <spellchecker.bundledDictionaryProvider
+            implementation="com.basis.bbj.intellij.BbjSpellcheckingStrategy"/>
+    </extensions>
+
+    <extensions defaultExtensionNs="com.redhat.devtools.lsp4ij">
+        <server id="bbjLanguageServer"
+                name="BBj Language Server"
+                factoryClass="com.basis.bbj.intellij.lsp.BbjLanguageServerFactory">
+            <description><![CDATA[
+                BBj Language Server powered by Langium. Provides diagnostics,
+                code completion, go-to-definition, hover, and signature help
+                for BBj source files.
+            ]]></description>
+        </server>
+
+        <languageMapping language="BBj"
+                         serverId="bbjLanguageServer"
+                         languageId="bbj"/>
+
+        <languageMapping language="BBj"
+                         serverId="bbjLanguageServer"
+                         languageId="bbx"
+                         fileType="BBx Config"/>
     </extensions>
 </idea-plugin>

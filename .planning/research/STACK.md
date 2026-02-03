@@ -1,460 +1,460 @@
-# IntelliJ LSP Plugin Stack - BBj Language Server Integration
+# Technology Stack for v1.2: Run Fixes, Console Integration, and Marketplace Readiness
 
-**Research Date:** 2026-02-01
-**Researcher:** Claude (Sonnet 4.5)
-**Scope:** Technology stack for IntelliJ plugin wrapping existing Langium-based BBj language server via LSP4IJ
-
----
+**Project:** BBj Language Server IntelliJ Plugin
+**Researched:** 2026-02-02
+**Milestone:** v1.2 - Run command fixes, console output capture, JetBrains Marketplace publication
 
 ## Executive Summary
 
-This document defines the prescriptive technology stack for building an IntelliJ plugin that connects to the existing BBj language server (TypeScript/Langium) via LSP4IJ. The plugin reuses the existing language server binary without modification, focusing purely on the IntelliJ integration layer.
+This milestone requires **no new framework dependencies** but leverages existing IntelliJ Platform SDK APIs that are already available. The focus is on three technical areas:
 
-**Key Constraint:** Must work with IntelliJ Community Edition (no Ultimate-only APIs).
+1. **Toolbar visibility fix** - Configuration changes in plugin.xml to support new UI (2024.2+ default)
+2. **Console output capture** - Existing execution APIs (ConsoleView, RunContentManager) already in classpath
+3. **Marketplace publication** - Build tooling already configured (gradle-intellij-plugin 2.x, zipSigner, pluginVerifier)
 
----
-
-## Core Stack Components
-
-### 1. Build System & Plugin Development Framework
-
-#### Gradle (8.5+)
-**Version:** 8.5 or later (latest stable: 8.11 as of early 2026)
-**Rationale:** Industry standard for IntelliJ plugin development. Required by `gradle-intellij-plugin`.
-**Confidence:** HIGH (verified standard)
-
-**Gradle Wrapper:** Include `gradlew` and `gradlew.bat` in repository for reproducible builds across environments without requiring global Gradle installation.
-
-#### Gradle IntelliJ Plugin (2.0.0+)
-**Artifact:** `org.jetbrains.intellij`
-**Version:** 2.0.0 or later (verify latest at [plugins.gradle.org](https://plugins.gradle.org/plugin/org.jetbrains.intellij))
-**Rationale:** Official JetBrains Gradle plugin for building, testing, and packaging IntelliJ plugins. Handles IntelliJ Platform SDK dependencies, sandboxing, and plugin verification.
-**Confidence:** HIGH (official tooling)
-
-**Key Configuration:**
-```kotlin
-plugins {
-    id("java")
-    id("org.jetbrains.intellij") version "2.0.0"
-}
-
-intellij {
-    version.set("2024.3") // or LATEST-EAP-SNAPSHOT for bleeding edge
-    type.set("IC") // IC = IntelliJ Community Edition
-    plugins.set(listOf(
-        "com.redhat.devtools.lsp4ij:0.8.0" // LSP4IJ dependency
-    ))
-}
-```
-
-**Why NOT Maven:** While Maven is supported, Gradle is the modern standard for IntelliJ plugin development with better Kotlin DSL support and superior IDE integration. All JetBrains examples use Gradle.
+**Confidence Level:** HIGH - All required APIs are stable, documented, and already available in the project's IntelliJ Platform SDK 2024.2 dependency.
 
 ---
 
-### 2. LSP Integration Layer
+## Current Stack (No Changes Required)
 
-#### LSP4IJ (0.8.0+)
-**Artifact:** `com.redhat.devtools.lsp4ij:lsp4ij`
-**Version:** 0.8.0 or later (verify latest at [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23257-lsp4ij))
-**GitHub:** [redhat-developer/lsp4ij](https://github.com/redhat-developer/lsp4ij)
-**Rationale:**
-- Community Edition compatible (unlike JetBrains' native LSP API which requires Ultimate)
-- Actively maintained by Red Hat
-- Production-proven (used by Quarkus Tools, Liberty Tools, COBOL Language Support)
-- Handles LSP protocol implementation, process management, and editor integration
-- Supports stdio, socket, and named pipe communication with language servers
+| Component | Version | Status |
+|-----------|---------|--------|
+| IntelliJ Platform SDK | 2024.2 | Already configured |
+| Gradle IntelliJ Platform Plugin | 2.x (org.jetbrains.intellij.platform) | Already configured |
+| Java | 17 | Already configured |
+| LSP4IJ | 0.19.0 | Already configured |
+| Plugin Verifier | Latest (via `pluginVerifier()` dependency) | Already configured |
+| Marketplace ZIP Signer | Latest (via `zipSigner()` dependency) | Already configured |
 
-**Confidence:** HIGH (verified as standard for Community Edition LSP plugins)
-
-**Key Features Used:**
-- `LanguageServerFactory` - Define how to spawn/connect to the BBj language server process
-- `LanguageServerDefinition` - Declarative LSP server configuration in `plugin.xml`
-- `LanguageServerProcessSupport` - Process lifecycle management (start/stop/restart)
-- LSP client implementation for all LSP methods (textDocument/*, workspace/*, etc.)
-- Semantic token support for advanced syntax highlighting (if LS provides it)
-
-**Alternative Considered:** JetBrains Platform LSP API
-**Why NOT:** Requires IntelliJ Ultimate. Project requirement is Community Edition support.
+**No new dependencies needed.** The build.gradle.kts already includes `pluginVerifier()` and `zipSigner()` in the `intellijPlatform` dependencies block.
 
 ---
 
-### 3. Language & Runtime
+## Stack Additions for New Features
 
-#### Java (17+)
-**Version:** Java 17 LTS minimum, Java 21 LTS recommended
-**Rationale:**
-- IntelliJ Platform 2024.x targets Java 17 as minimum
-- Java 21 LTS (released Sept 2023) is recommended for new projects
-- Matches existing java-interop service requirement (Java 17)
+### 1. Toolbar Visibility in New UI (Configuration Only)
 
-**Confidence:** HIGH (verified IntelliJ Platform requirement)
+**Problem:** Actions registered to `MainToolBar` group may not appear in IntelliJ's new UI (default since 2024.2).
 
-**Why NOT Java 11:** IntelliJ 2024.x dropped Java 11 support. While older IDE versions support it, future-proofing requires Java 17+.
+**Solution:** Update plugin.xml action group registration.
 
-#### Kotlin (1.9.0+) [OPTIONAL but RECOMMENDED]
-**Version:** 1.9.0+ (Kotlin 1.9.x is stable as of 2024)
-**Rationale:**
-- Modern IntelliJ plugin development uses Kotlin for plugin code
-- Better null safety, concise syntax, DSL support
-- JetBrains' own plugins use Kotlin
-- Gradle build scripts in Kotlin DSL (`.gradle.kts`) are now standard
+#### Required APIs (Already Available)
 
-**Confidence:** MEDIUM-HIGH (recommended, not required)
+| API | Package | Purpose | Source |
+|-----|---------|---------|--------|
+| `RightToolbarSideGroup` | Action group ID | Right-aligned toolbar placement in new UI | [ActionsBundle.properties](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-resources-en/src/messages/ActionsBundle.properties) |
+| `EditorPopupMenu` | Action group ID | Context menu for editor (keep existing) | Standard platform group |
 
-**Tradeoff:** Pure Java is acceptable if team lacks Kotlin experience. LSP4IJ works with both. However, all modern examples and JetBrains docs favor Kotlin.
+#### Implementation Approach
 
-**Decision Point:** Use Kotlin for plugin logic, Java for any shared code with java-interop service.
-
----
-
-### 4. Syntax Highlighting
-
-#### TextMate Grammar Support (via LSP4IJ)
-**Artifact:** Built into LSP4IJ
-**Version:** N/A (uses IntelliJ Platform's TextMate support)
-**Rationale:**
-- IntelliJ Platform has built-in TextMate grammar support since 2020.3
-- Existing `bbj.tmLanguage.json` and `bbx.tmLanguage.json` grammars from VS Code can be reused directly
-- LSP4IJ can map TextMate scopes to IntelliJ color schemes
-
-**Confidence:** HIGH (standard approach for LSP-based plugins)
-
-**Integration:**
-1. Include `.tmLanguage.json` files in plugin resources
-2. Register in `plugin.xml` via `<textMateBundleProvider>` extension point
-3. LSP4IJ automatically applies TextMate highlighting to registered file types
-
-**Alternative:** Semantic Tokens (LSP 3.16+)
-**Why NOT primary:** TextMate is simpler for initial implementation. Semantic tokens can be added later for enhanced highlighting if LS supports `textDocument/semanticTokens`.
-
----
-
-### 5. Node.js Runtime Management
-
-**Challenge:** IntelliJ plugin needs to run a Node.js-based language server. Users may not have Node.js installed.
-
-#### Strategy A: Bundle Node.js Runtime (RECOMMENDED)
-**Tool:** [jlink](https://docs.oracle.com/en/java/javase/17/docs/specs/man/jlink.html) or [node-gradle](https://github.com/node-gradle/gradle-node-plugin)
-**Approach:** Include platform-specific Node.js binaries in plugin distribution
-**Rationale:**
-- Zero user configuration required
-- Guaranteed compatible Node.js version
-- Works in air-gapped environments
-- Increased plugin size (50-100MB per platform)
-
-**Implementation:**
-- Use [gradle-node-plugin](https://github.com/node-gradle/gradle-node-plugin) to download Node.js during build
-- Package platform-specific binaries (macOS, Windows, Linux) in plugin JAR
-- Detect OS at runtime and extract appropriate binary to plugin cache directory
-- Use extracted Node.js to spawn language server process
-
-**Confidence:** MEDIUM-HIGH (proven pattern, but complex packaging)
-
-#### Strategy B: Detect System Node.js (FALLBACK)
-**Approach:** Check system PATH for `node` executable
-**Rationale:**
-- Lightweight plugin distribution
-- Users must install Node.js 16+ separately
-- Risk: version mismatches, missing Node.js installations
-
-**Implementation:**
-- Check `node --version` in PATH
-- Validate version >= 16
-- Display error message with installation instructions if missing/incompatible
-- Allow manual path configuration in plugin settings
-
-**Confidence:** HIGH (simpler, but worse UX)
-
-**Recommendation:** Start with Strategy B for alpha, migrate to Strategy A for beta/production.
-
----
-
-### 6. File Type Registration
-
-#### IntelliJ Platform File Type API
-**Extension Point:** `com.intellij.fileType`
-**Rationale:** Standard mechanism for registering custom file types in IntelliJ
-**Confidence:** HIGH (core platform API)
-
-**Configuration in `plugin.xml`:**
+**Current registration** (plugin.xml lines 26, 36, 46):
 ```xml
-<extensions defaultExtensionNs="com.intellij">
-    <fileType
-        name="BBj File"
-        implementationClass="com.example.bbj.BbjFileType"
-        fieldName="INSTANCE"
-        language="BBj"
-        extensions="bbj;bbl;bbjt;src"/>
-</extensions>
+<add-to-group group-id="MainToolBar" anchor="last"/>
 ```
 
-**File Types to Register:**
-- `.bbj` - BBj source files
-- `.bbl` - BBj library files
-- `.bbjt` - BBj template files
-- `.src` - BBj source files (legacy extension)
+**Recommended change:**
+```xml
+<!-- Keep EditorPopupMenu registration -->
+<add-to-group group-id="EditorPopupMenu" anchor="first"/>
+<!-- Add to RightToolbarSideGroup for new UI visibility -->
+<add-to-group group-id="RightToolbarSideGroup" anchor="last"/>
+```
+
+**Why RightToolbarSideGroup:**
+- Part of new UI's toolbar architecture (2024.2+)
+- Right-aligned placement appropriate for run actions
+- Matches IntelliJ's standard run action placement
+
+**Alternative considered:** `MainToolBar` - Still works in classic UI but hidden by default in new UI. New UI is now the default, so MainToolBar alone is insufficient.
+
+**Sources:**
+- [The New UI Becomes the Default in 2024.2](https://blog.jetbrains.com/blog/2024/07/08/the-new-ui-becomes-the-default-in-2024-2/)
+- [Registering action in new ui main toolbar](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
+- [Action System | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/action-system.html)
 
 ---
 
-### 7. Configuration & Settings
+### 2. Console Output Capture (Use Existing APIs)
 
-#### IntelliJ Settings API
-**Extension Point:** `com.intellij.applicationConfigurable` or `com.intellij.projectConfigurable`
-**Rationale:** Standard settings UI integration
-**Confidence:** HIGH (core platform API)
+**Problem:** `BbjRunActionBase` creates `OSProcessHandler` but doesn't attach it to a console view. Output is lost.
 
-**Settings to Expose:**
-- BBj Home Path (required for java-interop service to find BBj runtime classpath)
-- Additional Classpath Entries (optional)
-- Node.js Path (if using detection strategy)
-- Language Server Debug Options (for troubleshooting)
-- java-interop Service Port (default 5008)
+**Solution:** Create `ConsoleView`, attach to process, display in Run tool window.
 
-**Implementation:**
-- Use `PersistentStateComponent` for settings storage
-- Settings stored in `.idea/` workspace or IDE-level config
-- Integrate with IntelliJ Settings dialog via `Configurable` interface
+#### Required APIs (Already Available in IntelliJ Platform 2024.2)
+
+| API | Package | Purpose | When to Use |
+|-----|---------|---------|-------------|
+| `TextConsoleBuilderFactory` | `com.intellij.execution.filters` | Creates console builder instances | Every run action invocation |
+| `TextConsoleBuilder` | `com.intellij.execution.filters` | Configures and builds ConsoleView | Created by factory |
+| `ConsoleView` | `com.intellij.execution.ui` | Display component for process output | Attach to OSProcessHandler |
+| `RunContentDescriptor` | `com.intellij.execution.ui` | Describes content shown in Run tool window | Wrap console + process + UI |
+| `ExecutionManager` | `com.intellij.execution` | Manages execution lifecycles | Access via `getInstance(project)` |
+| `RunContentManager` | `com.intellij.execution.ui` | Manages Run/Debug tool window tabs | Access via `ExecutionManager.getContentManager()` |
+| `DefaultRunExecutor` | `com.intellij.execution.executors` | Executor for "Run" (not "Debug") | Use `getRunExecutorInstance()` |
+| `ProcessTerminatedListener` | `com.intellij.execution.process` | Displays exit code when process ends | Attach to ProcessHandler |
+| `ColoredProcessHandler` | `com.intellij.execution.process` | OSProcessHandler with ANSI color support | Use if BBj outputs ANSI codes |
+
+#### Integration Pattern
+
+**Current code** (BbjRunActionBase.java:54-56):
+```java
+OSProcessHandler handler = new OSProcessHandler(cmd);
+handler.startNotify();
+showSuccess(project, file.getName(), getRunMode());
+```
+
+**Enhanced implementation:**
+```java
+// 1. Create console
+ConsoleView console = TextConsoleBuilderFactory
+    .createBuilder(project)
+    .getConsole();
+
+// 2. Create process handler
+OSProcessHandler handler = new OSProcessHandler(cmd);
+
+// 3. Attach console to process
+console.attachToProcess(handler);
+
+// 4. Add exit code listener
+ProcessTerminatedListener.attach(handler);
+
+// 5. Create content descriptor
+RunContentDescriptor descriptor = new RunContentDescriptor(
+    console,                          // console
+    handler,                          // processHandler
+    console.getComponent(),           // component
+    file.getName() + " (" + getRunMode() + ")",  // displayName
+    getIcon()                         // icon
+);
+
+// 6. Show in Run tool window
+DefaultRunExecutor executor = DefaultRunExecutor.getRunExecutorInstance();
+ExecutionManager.getInstance(project)
+    .getContentManager()
+    .showRunContent(executor, descriptor);
+
+// 7. Start process
+handler.startNotify();
+```
+
+**Why this pattern:**
+- Matches standard IntelliJ execution flow
+- Console automatically captures stdout/stderr
+- Run tool window provides built-in UI (stop button, rerun, etc.)
+- ProcessTerminatedListener shows "Process finished with exit code X"
+- No manual output parsing required
+
+**Alternative considered:** Custom tool window - Unnecessary complexity. RunContentManager already provides all needed UI.
+
+**Sources:**
+- [Execution | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/execution.html)
+- [ConsoleView examples | Tabnine](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
+- [RunContentDescriptor examples | Tabnine](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.RunContentDescriptor)
+
+#### Optional Enhancement: ANSI Color Support
+
+If BBj programs output ANSI color codes, use `ColoredProcessHandler` instead of `OSProcessHandler`:
+
+```java
+ColoredProcessHandler handler = new ColoredProcessHandler(cmd);
+```
+
+This automatically renders colors in the console. No other changes needed.
 
 ---
 
-### 8. Testing Framework
+### 3. JetBrains Marketplace Publication (Use Existing Build Tasks)
 
-#### IntelliJ Platform Test Framework
-**Artifact:** Provided by `gradle-intellij-plugin`
-**Version:** Matches target IntelliJ version
-**Rationale:** Official testing framework for plugin development, integrates with IntelliJ Platform
-**Confidence:** HIGH (official testing approach)
+**Problem:** Plugin must meet Marketplace requirements before publication.
 
-**Test Types:**
-1. **Light Tests** - Fast unit tests without full IDE instance
-2. **Heavy Tests** - Integration tests with full IDE sandbox
-3. **UI Tests** - For settings pages and dialogs
+**Solution:** Configure signing, add metadata, use existing Gradle tasks.
 
-**Test Dependencies:**
-- JUnit 5 (Jupiter) - Modern JUnit API
-- AssertJ or Hamcrest - Fluent assertions
-- Mockito - Mocking framework (if needed for java-interop interaction)
+#### Required Build Tasks (Already Available)
 
-#### LSP4IJ Testing Support
-**Availability:** LSP4IJ provides test utilities for LSP client/server interaction
-**Use Case:** Verify language server communication, LSP method handling
-**Confidence:** MEDIUM (less documented, but available)
-
----
-
-### 9. Packaging & Distribution
-
-#### Plugin Artifact Format
-**Format:** `.zip` containing plugin JAR and dependencies
-**Tool:** `gradle-intellij-plugin` `buildPlugin` task
-**Rationale:** Standard IntelliJ plugin distribution format
-**Confidence:** HIGH (official packaging)
-
-**Artifact Contents:**
-- Plugin JAR (`bbj-intellij.jar`)
-- LSP4IJ dependency (if not using marketplace installation)
-- Bundled language server files (`out/language/main.cjs`, etc.)
-- TextMate grammar files (`.tmLanguage.json`)
-- Node.js runtime (if bundling strategy)
-- `plugin.xml` descriptor
-
-#### JetBrains Marketplace (FUTURE)
-**Not in scope for alpha**, but standard distribution channel for public release.
-
----
-
-## Dependencies Summary
-
-### Gradle Build Dependencies
-
+The project's build.gradle.kts (lines 28-30) already includes:
 ```kotlin
-plugins {
-    id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.20" // if using Kotlin
-    id("org.jetbrains.intellij") version "2.0.0"
-}
+pluginVerifier()
+zipSigner()
+instrumentationTools()
+```
 
-dependencies {
-    // LSP4IJ provided via intellij.plugins configuration, not direct dependency
+These provide the following Gradle tasks:
 
-    // Testing
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.0")
-    testImplementation("org.assertj:assertj-core:3.24.2")
-}
+| Task | Purpose | When to Run | Configuration Required |
+|------|---------|-------------|------------------------|
+| `buildPlugin` | Creates distributable ZIP in build/distributions/ | Before publishing | None - already works |
+| `verifyPlugin` | Validates plugin compatibility with target IDEs | Before publishing | Optional: configure `intellijPlatform.pluginVerification.ides` |
+| `signPlugin` | Cryptographically signs the plugin ZIP | Before publishing | Required: certificate chain + private key |
+| `publishPlugin` | Uploads to JetBrains Marketplace | On release | Required: Personal Access Token |
 
-intellij {
-    version.set("2024.3")
-    type.set("IC") // Community Edition
-    plugins.set(listOf(
-        "com.redhat.devtools.lsp4ij:0.8.0"
-    ))
+#### Signing Configuration (New Requirement)
+
+**Status:** Currently NOT configured. Signing is mandatory for Marketplace (warning dialog shown to users if unsigned).
+
+**Add to build.gradle.kts:**
+```kotlin
+intellijPlatform {
+    signing {
+        certificateChain.set(providers.environmentVariable("CERTIFICATE_CHAIN"))
+        privateKey.set(providers.environmentVariable("PRIVATE_KEY"))
+        password.set(providers.environmentVariable("PRIVATE_KEY_PASSWORD"))
+    }
+
+    publishing {
+        token.set(providers.environmentVariable("PUBLISH_TOKEN"))
+        // Optional: channels.set(listOf("beta", "alpha"))
+    }
 }
 ```
 
-### Runtime Dependencies (Bundled in Plugin)
+**Environment variables required:**
+- `CERTIFICATE_CHAIN` - Self-signed certificate (PEM format)
+- `PRIVATE_KEY` - RSA private key (PEM format)
+- `PRIVATE_KEY_PASSWORD` - Password for private key
+- `PUBLISH_TOKEN` - JetBrains Marketplace Personal Access Token
 
-- **Language Server:** `bbj-vscode/out/language/main.cjs` (existing compiled LS)
-- **Node.js Runtime:** Platform-specific binaries (if bundling)
-- **TextMate Grammars:** `bbj.tmLanguage.json`, `bbx.tmLanguage.json`
+**Generate certificate chain (one-time setup):**
+```bash
+# Generate RSA private key (4096-bit)
+openssl genpkey -aes-256-cbc -algorithm RSA -out private_encrypted.pem -pkeyopt rsa_keygen_bits:4096
 
-### External Process Dependencies
+# Extract unencrypted private key
+openssl rsa -in private_encrypted.pem -out private.pem
 
-- **java-interop Service:** Separate Java process on port 5008 (managed by plugin or LS)
-- **BBj Runtime:** External installation (not bundled), configured via plugin settings
+# Create self-signed certificate (365-day validity)
+openssl req -key private.pem -new -x509 -days 365 -out chain.crt
+```
 
----
+**Why environment variables:**
+- Never commit credentials to version control
+- Works in CI/CD (GitHub Actions, etc.)
+- Same config works for local and automated builds
 
-## Platform Compatibility Matrix
+**Alternative considered:** Hardcoding credentials in build.gradle.kts - Security vulnerability. Never do this.
 
-| IntelliJ Version | Java Version | LSP4IJ Version | Status |
-|------------------|--------------|----------------|--------|
-| 2024.3 (2024.3.x) | Java 17+ | 0.8.0+ | Primary Target |
-| 2024.2 (2024.2.x) | Java 17+ | 0.7.0+ | Secondary Target |
-| 2024.1 (2024.1.x) | Java 17+ | 0.6.0+ | Legacy Support |
-| 2023.3 or earlier | Java 11+ | 0.5.0 or earlier | Not Supported |
+**Sources:**
+- [Plugin Signing | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+- [Publishing a Plugin | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
+- [Tasks | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
 
-**Recommendation:** Target IntelliJ 2024.2+ (released ~July 2024) for widest compatibility with modern LSP4IJ features.
+#### plugin.xml Metadata Requirements
 
----
+**Current status:** Basic metadata exists (build.gradle.kts lines 35-50), but some fields are missing for optimal Marketplace listing.
 
-## What NOT to Use
+**Required metadata** (already configured):
+- `<id>` - Plugin ID (✓ com.basis.bbj.intellij)
+- `<name>` - Plugin name (✓ BBj Language Support)
+- `<vendor>` - Vendor info (✓ BASIS International Ltd.)
+- `<description>` - HTML description (✓ loaded from description.html)
+- `ideaVersion.sinceBuild` - Min version (✓ 242 = 2024.2)
+- `ideaVersion.untilBuild` - Max version (✓ "" = unlimited)
 
-### ❌ JetBrains Platform LSP API
-**Why:** Requires IntelliJ Ultimate Edition. Project constraint is Community Edition support.
+**Recommended additions:**
+- `<change-notes>` - What's new in this version (shown in Marketplace)
 
-### ❌ Custom Parser/Lexer Implementation
-**Why:** Defeats the purpose of reusing existing Langium-based language server. LSP4IJ + TextMate handles syntax highlighting without custom lexers.
+**Add to plugin.xml** (or configure via Gradle `patchPluginXml` task):
+```xml
+<change-notes><![CDATA[
+  <h3>v1.2 - Console Integration and Run Fixes</h3>
+  <ul>
+    <li>Fixed: Run actions now visible in new UI toolbar</li>
+    <li>Added: Console output capture for BBj programs</li>
+    <li>Added: Process exit code display</li>
+  </ul>
+]]></change-notes>
+```
 
-### ❌ Grammar-Kit
-**Why:** Grammar-Kit generates PSI (Program Structure Interface) parsers for IntelliJ. Not needed when using LSP — the language server provides all parsing and semantic analysis.
+**First publication requirement:** The first plugin upload MUST be manual. Go to [JetBrains Marketplace](https://plugins.jetbrains.com/), click "Add new plugin", fill out form, upload ZIP. After that, `publishPlugin` task can be used for updates.
 
-### ❌ Apache Maven
-**Why:** While supported, Gradle is the modern standard with better Kotlin DSL support and tighter JetBrains integration.
+**Sources:**
+- [Plugin Configuration File | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html)
+- [Best practices for listing your plugin | JetBrains Marketplace](https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html)
 
-### ❌ Langium in IntelliJ Plugin
-**Why:** Langium is Node.js/TypeScript framework. Cannot run directly in JVM-based IntelliJ plugin. Language server runs as separate Node.js process.
+#### Publishing Workflow
 
-### ❌ VS Code Extension API in Plugin
-**Why:** IntelliJ and VS Code use completely different extension APIs. Only the language server is shared, not extension code.
+**Manual first upload:**
+1. Run `./gradlew buildPlugin` - Creates unsigned ZIP
+2. Run `./gradlew signPlugin` - Signs the ZIP (requires env vars)
+3. Upload signed ZIP manually to Marketplace
+4. Fill out plugin details (license, screenshots, etc.)
 
----
+**Subsequent releases (automated):**
+1. Update version in build.gradle.kts (`version = "X.Y.Z"`)
+2. Update change-notes in plugin.xml
+3. Run `./gradlew publishPlugin` - Builds, signs, uploads automatically
+4. Marketplace shows new version after approval
 
-## Development Workflow
-
-### Initial Setup
-1. Initialize Gradle project with `gradle-intellij-plugin`
-2. Configure IntelliJ Platform SDK (Community Edition)
-3. Add LSP4IJ plugin dependency
-4. Create `plugin.xml` descriptor with file type and LSP server definitions
-5. Implement `LanguageServerFactory` to spawn Node.js language server process
-6. Bundle existing language server artifacts in plugin resources
-
-### Build Process
-1. Compile language server (if not pre-built) - **NOTE:** This happens in `bbj-vscode/` directory, not plugin
-2. Compile plugin code (Java/Kotlin) via Gradle
-3. Package plugin JAR with bundled resources (LS, TextMate grammars)
-4. Generate plugin distribution ZIP
-
-### Testing Workflow
-1. Run IDE sandbox with `runIde` Gradle task
-2. Load test BBj project in sandbox IDE
-3. Verify language server launches and LSP communication works
-4. Test syntax highlighting, diagnostics, code completion
-5. Verify java-interop integration (Java class completions)
-
-### Distribution
-1. Build plugin ZIP with `buildPlugin` task
-2. Manually install in target IntelliJ instances (alpha)
-3. Future: Publish to JetBrains Marketplace (beta/production)
-
----
-
-## Open Questions & Decisions Required
-
-### 1. Node.js Bundling Strategy
-**Question:** Bundle Node.js runtime or require user installation?
-**Recommendation:** Start with user installation (simpler), migrate to bundling for production
-**Impact:** Plugin size (50-100MB vs <1MB), user configuration burden
-**Confidence:** MEDIUM (both approaches viable)
-
-### 2. java-interop Process Management
-**Question:** Should IntelliJ plugin manage java-interop process lifecycle, or let language server handle it?
-**Options:**
-- **A:** Plugin spawns both Node.js LS and java-interop service
-- **B:** Plugin spawns LS, LS spawns java-interop (current VS Code approach)
-
-**Recommendation:** Option B (less change to existing architecture)
-**Confidence:** MEDIUM (requires validation that LS can spawn java-interop from IntelliJ context)
-
-### 3. Minimum IntelliJ Version
-**Question:** Target 2024.1, 2024.2, or 2024.3 as minimum?
-**Recommendation:** 2024.2 (released mid-2024, balances modernity and adoption)
-**Impact:** Access to newer LSP4IJ features vs. wider user base
-**Confidence:** MEDIUM (depends on target user base IntelliJ version distribution)
-
-### 4. Kotlin vs. Java for Plugin Code
-**Question:** Use Kotlin or pure Java for plugin implementation?
-**Recommendation:** Kotlin (modern standard for IntelliJ plugins)
-**Caveat:** Use Java if team lacks Kotlin experience
-**Confidence:** MEDIUM (preference, not technical requirement)
-
-### 5. Settings Storage Level
-**Question:** Store BBj settings at project level or application level?
-**Recommendation:** Project level (different projects may have different BBj runtimes)
-**Confidence:** HIGH (aligns with VS Code extension approach)
+**Important:** Marketplace rejects uploads with duplicate versions. Always increment version number.
 
 ---
 
-## Confidence Levels Explained
+## What NOT to Add
 
-- **HIGH:** Verified against official documentation or proven in production LSP4IJ plugins
-- **MEDIUM-HIGH:** Strong evidence from community or recent examples, pending verification
-- **MEDIUM:** Logical inference based on platform patterns, requires validation
-- **LOW:** Speculative or requires research beyond knowledge cutoff (Jan 2025)
-
----
-
-## Verification Sources
-
-As of January 2025 knowledge cutoff:
-- **LSP4IJ:** GitHub repository and JetBrains Marketplace listing
-- **Gradle IntelliJ Plugin:** Official JetBrains documentation
-- **IntelliJ Platform SDK:** JetBrains Platform SDK documentation
-- **Gradle:** gradle.org documentation
-- **Java/Kotlin Versions:** JetBrains platform version compatibility matrix
-
-**Recommended Next Steps:**
-1. Verify LSP4IJ latest version at [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/23257-lsp4ij)
-2. Check Gradle IntelliJ Plugin latest at [plugins.gradle.org](https://plugins.gradle.org/plugin/org.jetbrains.intellij)
-3. Review LSP4IJ examples: [Quarkus Tools](https://github.com/redhat-developer/intellij-quarkus), [COBOL LS](https://github.com/eclipse-che4z/che-che4z-lsp-for-cobol)
+| Technology | Why NOT Needed | Alternative |
+|------------|----------------|-------------|
+| Custom Run Configuration API | Too complex for simple "run this file" actions | Direct OSProcessHandler + ConsoleView |
+| Apache Commons Exec | IntelliJ Platform already has execution APIs | Use built-in OSProcessHandler |
+| Log4j/SLF4J for console output | ConsoleView handles all output automatically | Use ConsoleView |
+| Separate console tool window | RunContentManager already provides Run tool window | Use ExecutionManager |
+| Action toolbar APIs | Actions declared in plugin.xml, not programmatically | Use declarative registration |
+| New dependencies for ANSI colors | ColoredProcessHandler already available | Use ColoredProcessHandler if needed |
 
 ---
 
-## Stack Evolution Path
+## Integration with Existing Code
 
-### Alpha (Current Milestone)
-- ✅ Gradle 8.5+ with IntelliJ Plugin 2.0.0
-- ✅ LSP4IJ 0.8.0
-- ✅ Java 17 minimum
-- ✅ Manual Node.js installation required
-- ✅ TextMate grammar for syntax highlighting
-- ✅ Basic file type registration
+### Modified Files
 
-### Beta (Future)
-- Bundle Node.js runtime for zero-config UX
-- Semantic token support if LS implements it
-- Enhanced settings UI with validation
-- Automated plugin updates
+| File | Current State | Required Changes |
+|------|---------------|------------------|
+| `plugin.xml` | Actions registered to MainToolBar | Add `<add-to-group group-id="RightToolbarSideGroup" anchor="last"/>` to each run action |
+| `BbjRunActionBase.java` | Creates OSProcessHandler, doesn't show console | Wrap handler in ConsoleView + RunContentDescriptor, show via ExecutionManager |
+| `build.gradle.kts` | Has pluginVerifier + zipSigner | Add `intellijPlatform.signing` and `intellijPlatform.publishing` blocks |
 
-### Production (Future)
-- JetBrains Marketplace publication
-- Telemetry/error reporting integration
-- Multi-platform testing automation
-- Support for IntelliJ 2025.x versions
+### Unchanged Files
+
+- LSP4IJ integration - No changes
+- Settings UI - No changes
+- Language server lifecycle - No changes
+- File type registration - No changes
+- Icons, TextMate bundle - No changes
 
 ---
 
-*Research completed: 2026-02-01*
-*Researcher: Claude (Sonnet 4.5)*
-*Next Review: Before beta milestone*
+## Version Compatibility
+
+| API/Feature | Min Version | Our Version | Status |
+|-------------|-------------|-------------|--------|
+| ConsoleView | 2020.1+ | 2024.2 | ✓ Supported |
+| TextConsoleBuilderFactory | 2020.1+ | 2024.2 | ✓ Supported |
+| RunContentManager | 2020.1+ | 2024.2 | ✓ Supported |
+| RightToolbarSideGroup | 2023.1+ (new UI) | 2024.2 | ✓ Supported |
+| DefaultRunExecutor | 2020.1+ | 2024.2 | ✓ Supported |
+| Plugin signing | 2020.3+ | 2024.2 | ✓ Supported |
+| IntelliJ Platform Gradle Plugin 2.x | 2022.3+ | 2024.2 | ✓ Supported |
+
+**Compatibility range:** Plugin targets 2024.2+ (sinceBuild=242, untilBuild=""). All required APIs are stable and available.
+
+---
+
+## Known Limitations and Workarounds
+
+### 1. MainToolBar vs RightToolbarSideGroup
+
+**Issue:** Plugin currently registers to `MainToolBar`, which is hidden by default in new UI (2024.2+).
+
+**Workaround:** Register to BOTH groups:
+```xml
+<add-to-group group-id="MainToolBar" anchor="last"/>         <!-- Classic UI -->
+<add-to-group group-id="RightToolbarSideGroup" anchor="last"/> <!-- New UI -->
+```
+
+This ensures visibility in both old UI (if user switches) and new UI.
+
+**Source:** [Registering action in new ui main toolbar](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
+
+### 2. Plugin Signing on CI/CD
+
+**Issue:** Certificate generation requires interactive OpenSSL prompts.
+
+**Workaround:** Pre-generate certificate locally, store in CI/CD secrets as base64:
+```bash
+# Encode for CI secrets
+cat chain.crt | base64 > chain.crt.b64
+cat private.pem | base64 > private.pem.b64
+
+# Decode in CI (example: GitHub Actions)
+echo "${{ secrets.CERTIFICATE_CHAIN_B64 }}" | base64 -d > chain.crt
+export CERTIFICATE_CHAIN=$(cat chain.crt)
+```
+
+### 3. Process Output Buffering
+
+**Issue:** BBj programs may buffer output, console appears empty until program exits.
+
+**Workaround:** Enable flush-on-newline in BBj program (application-specific), or use ColoredProcessHandler which may have better buffering behavior.
+
+**Detection:** If console shows no output until process terminates, this is the issue.
+
+---
+
+## Confidence Assessment
+
+| Area | Confidence | Evidence |
+|------|------------|----------|
+| Toolbar visibility fix | HIGH | RightToolbarSideGroup documented in official source code |
+| Console output capture | HIGH | Standard pattern documented in SDK, multiple code examples |
+| Plugin signing | HIGH | Official docs with exact openssl commands |
+| Plugin publishing | MEDIUM | Docs are clear, but first upload must be manual (one-time friction) |
+| ANSI color support | MEDIUM | ColoredProcessHandler exists, but untested if BBj outputs ANSI |
+
+**Overall confidence:** HIGH - All APIs are stable, documented, and already in our dependency tree. No version conflicts, no experimental features.
+
+---
+
+## Installation & Configuration
+
+### For Development (No Changes)
+
+```bash
+# All dependencies already configured
+./gradlew buildPlugin
+./gradlew runIde
+```
+
+### For Publishing (New Setup Required)
+
+```bash
+# 1. Generate signing certificate (one-time)
+openssl genpkey -aes-256-cbc -algorithm RSA -out private_encrypted.pem -pkeyopt rsa_keygen_bits:4096
+openssl rsa -in private_encrypted.pem -out private.pem
+openssl req -key private.pem -new -x509 -days 365 -out chain.crt
+
+# 2. Set environment variables (add to ~/.bashrc or CI secrets)
+export CERTIFICATE_CHAIN="$(cat chain.crt)"
+export PRIVATE_KEY="$(cat private.pem)"
+export PRIVATE_KEY_PASSWORD="your-password"
+export PUBLISH_TOKEN="perm:YOUR_TOKEN_HERE"
+
+# 3. Build and sign
+./gradlew signPlugin
+
+# 4. Publish (after manual first upload)
+./gradlew publishPlugin
+```
+
+---
+
+## Sources
+
+### Official Documentation
+- [Execution | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/execution.html)
+- [Action System | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/action-system.html)
+- [Publishing a Plugin | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
+- [Plugin Signing | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+- [Tasks | IntelliJ Platform Plugin SDK](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
+- [IntelliJ Platform Gradle Plugin (2.x)](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html)
+
+### Community Resources
+- [The New UI Becomes the Default in 2024.2](https://blog.jetbrains.com/blog/2024/07/08/the-new-ui-becomes-the-default-in-2024-2/)
+- [Registering action in new ui main toolbar](https://platform.jetbrains.com/t/registering-action-in-new-ui-main-toolbar/1310)
+- [RunContentDescriptor examples | Tabnine](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.RunContentDescriptor)
+- [ConsoleView examples | Tabnine](https://www.tabnine.com/code/java/classes/com.intellij.execution.ui.ConsoleView)
+
+### Source Code References
+- [ActionsBundle.properties (IntelliJ Community)](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-resources-en/src/messages/ActionsBundle.properties)
+- [ProgramRunnerUtil.java (IntelliJ Community)](https://github.com/JetBrains/intellij-community/blob/master/platform/execution-impl/src/com/intellij/execution/ProgramRunnerUtil.java)
+
+---
+
+## Summary
+
+**No new dependencies required.** All necessary APIs are already available in IntelliJ Platform SDK 2024.2. This milestone is about:
+
+1. **Configuration changes** (plugin.xml action groups)
+2. **API usage** (ConsoleView + RunContentManager)
+3. **Build configuration** (signing + publishing)
+
+The stack is stable, well-documented, and production-ready. Proceed with implementation.

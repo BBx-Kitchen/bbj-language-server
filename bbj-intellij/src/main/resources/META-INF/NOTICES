@@ -1,0 +1,23 @@
+BBj Language Support for IntelliJ IDEA
+Copyright 2023 BASIS International Ltd.
+
+This product includes software developed by third parties:
+
+================================================================================
+LSP4IJ - Language Server Protocol Client for IntelliJ
+Copyright Red Hat, Inc.
+License: Eclipse Public License 2.0 (EPL-2.0)
+Source: https://github.com/redhat-developer/lsp4ij
+================================================================================
+
+TextMate Bundles (bbj.tmLanguage.json, bbx.tmLanguage.json)
+Copyright 2023 BASIS International Ltd.
+License: MIT License
+Source: https://github.com/BBx-Kitchen/bbj-language-server
+================================================================================
+
+Langium Language Server (main.cjs bundle)
+Copyright TypeFox GmbH
+License: MIT License
+Source: https://github.com/eclipse-langium/langium
+================================================================================

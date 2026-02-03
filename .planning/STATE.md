@@ -2,77 +2,49 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-01)
+See: .planning/PROJECT.md (updated 2026-02-02)
 
-**Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, and Java class/method completions — through a single shared language server.
-**Current focus:** Phase 1 - Plugin Scaffolding
+**Core value:** BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 1 of 6 (Plugin Scaffolding)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 — Completed 01-02-PLAN.md (File type registration)
+Milestone: v1.2 Run Fixes & Marketplace — COMPLETE
+Phase: All phases complete (13/13)
+Plan: All plans complete (26/26 cumulative)
+Status: Ready for Marketplace submission and next milestone planning
+Last activity: 2026-02-02 — v1.2 milestone archived
 
-Progress: [██░░░░░░░░] 20%
+Progress: █████████████████████████ 100% (26/26 plans complete)
 
-## Performance Metrics
+## Milestone History
 
-**Velocity:**
-- Total plans completed: 2
-- Average duration: 3 minutes
-- Total execution time: 0.11 hours
+| Milestone | Phases | Plans | Shipped |
+|-----------|--------|-------|---------|
+| v1.0 Internal Alpha | 1-6 | 19 | 2026-02-01 |
+| v1.1 Polish & Run Commands | 7-10 | 6 | 2026-02-02 |
+| v1.2 Run Fixes & Marketplace | 11-13 | 5 | 2026-02-02 |
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1 - Plugin Scaffolding | 2 | 6 min | 3 min |
-
-**Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 01-02 (2 min)
-- Trend: Improving efficiency
-
-*Updated after each plan completion*
+See: .planning/MILESTONES.md
 
 ## Accumulated Context
 
-### Decisions
+### Known Issues
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+1. Structure View symbol kind differentiation — labels, variables, and fields all show same icon (SymbolKind.Field) due to BBjNodeKindProvider default case. Language server issue. (Deferred from v1.1)
 
-- All work happens in feature branch of existing bbj-language-server repo
-- New bbj-intellij/ subdirectory alongside bbj-vscode/
-- LSP4IJ approach (Community Edition compatible) over native JetBrains LSP
-- Language server is fully decoupled, runs standalone over stdio
-- java-interop hosted by BBjServices (not managed by plugin, just connects)
+### Tech Debt
 
-**From Plan 01-01:**
-- Gradle 8.13+ required for IntelliJ Platform Gradle Plugin 2.11.0
-- Kotlin DSL (build.gradle.kts) for type-safe build configuration
-- IntelliJ IDEA Community 2024.2 as target platform
-- Java 17 target compatibility
-- Version-less plugin declaration in build.gradle.kts (version in settings.gradle.kts only)
-
-**From Plan 01-02:**
-- Private constructors for singleton Language and FileType classes
-- Leading slash in icon path (/icons/bbj.svg) for absolute resource loading
-- BbjFileType must be final class per IntelliJ Platform convention
-- getName() returns "BBj" matching plugin.xml name attribute exactly
-- Single SVG icon in neutral blue visible on both light/dark themes
-
-### Pending Todos
-
-None yet.
+- EM credentials stored as plaintext in settings
+- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 
 ### Blockers/Concerns
 
-None yet.
+None.
 
 ## Session Continuity
 
-Last session: 2026-02-01 08:52 UTC
-Stopped at: Completed 01-02-PLAN.md (File type registration) - Phase 1 complete
+Last session: 2026-02-02
+Stopped at: v1.2 milestone archived
 Resume file: None
-Next: Phase 2 (Syntax Highlighting)
+Next: `/gsd:new-milestone` to plan next version, or upload bbj-intellij-0.1.0.zip to JetBrains Marketplace.

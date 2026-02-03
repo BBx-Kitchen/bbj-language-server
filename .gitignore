@@ -8,6 +8,12 @@ bbj-vscode/java-interop/lib/
 /bbj-vscode/.claude
 /.idea
 
+# IntelliJ build artifacts
+META-INF/
+bbj-intellij/.gradle/
+bbj-intellij/.intellijPlatform/
+bbj-intellij/build/
+
 # Auto Claude data directory
 .auto-claude/
 
