@@ -1,4 +1,4 @@
-# Requirements: BBj Language Server — Langium 4 Upgrade
+# Requirements: BBj Language Server -- Langium 4 Upgrade
 
 **Defined:** 2026-02-03
 **Core Value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
@@ -34,7 +34,7 @@ Requirements for the v2.0 milestone. Each maps to roadmap phases.
 
 ### Build & Test
 
-- [ ] **BLDТ-01**: TypeScript compilation passes with zero errors
+- [ ] **BLDT-01**: TypeScript compilation passes with zero errors
 - [ ] **BLDT-02**: esbuild bundle produces valid main.cjs
 - [ ] **BLDT-03**: Existing test suite passes (all tests green)
 - [ ] **BLDT-04**: VS Code extension builds successfully
@@ -80,50 +80,48 @@ Deferred to future milestones. Tracked but not in current roadmap.
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPS-01 | TBD | Pending |
-| DEPS-02 | TBD | Pending |
-| DEPS-03 | TBD | Pending |
-| DEPS-04 | TBD | Pending |
-| GRAM-01 | TBD | Pending |
-| GRAM-02 | TBD | Pending |
-| GRAM-03 | TBD | Pending |
-| MIGR-01 | TBD | Pending |
-| MIGR-02 | TBD | Pending |
-| MIGR-03 | TBD | Pending |
-| MIGR-04 | TBD | Pending |
-| MIGR-05 | TBD | Pending |
-| MIGR-06 | TBD | Pending |
-| MIGR-07 | TBD | Pending |
-| MIGR-08 | TBD | Pending |
-| MIGR-09 | TBD | Pending |
-| BLDT-01 | TBD | Pending |
-| BLDT-02 | TBD | Pending |
-| BLDT-03 | TBD | Pending |
-| BLDT-04 | TBD | Pending |
-| BLDT-05 | TBD | Pending |
-| FUNC-01 | TBD | Pending |
-| FUNC-02 | TBD | Pending |
-| FUNC-03 | TBD | Pending |
-| FUNC-04 | TBD | Pending |
-| FUNC-05 | TBD | Pending |
-| FUNC-06 | TBD | Pending |
-| FUNC-07 | TBD | Pending |
-| FUNC-08 | TBD | Pending |
-| FUNC-09 | TBD | Pending |
-| FUNC-10 | TBD | Pending |
-| RELS-01 | TBD | Pending |
-| RELS-02 | TBD | Pending |
-| RELS-03 | TBD | Pending |
+| DEPS-01 | Phase 14 | Pending |
+| DEPS-02 | Phase 14 | Pending |
+| DEPS-03 | Phase 14 | Pending |
+| DEPS-04 | Phase 14 | Pending |
+| GRAM-01 | Phase 14 | Pending |
+| GRAM-02 | Phase 14 | Pending |
+| GRAM-03 | Phase 14 | Pending |
+| MIGR-01 | Phase 15 | Pending |
+| MIGR-02 | Phase 15 | Pending |
+| MIGR-03 | Phase 15 | Pending |
+| MIGR-04 | Phase 16 | Pending |
+| MIGR-05 | Phase 16 | Pending |
+| MIGR-06 | Phase 16 | Pending |
+| MIGR-07 | Phase 15 | Pending |
+| MIGR-08 | Phase 16 | Pending |
+| MIGR-09 | Phase 15 | Pending |
+| BLDT-01 | Phase 17 | Pending |
+| BLDT-02 | Phase 17 | Pending |
+| BLDT-03 | Phase 17 | Pending |
+| BLDT-04 | Phase 17 | Pending |
+| BLDT-05 | Phase 17 | Pending |
+| FUNC-01 | Phase 18 | Pending |
+| FUNC-02 | Phase 18 | Pending |
+| FUNC-03 | Phase 18 | Pending |
+| FUNC-04 | Phase 18 | Pending |
+| FUNC-05 | Phase 18 | Pending |
+| FUNC-06 | Phase 18 | Pending |
+| FUNC-07 | Phase 18 | Pending |
+| FUNC-08 | Phase 18 | Pending |
+| FUNC-09 | Phase 18 | Pending |
+| FUNC-10 | Phase 18 | Pending |
+| RELS-01 | Phase 18 | Pending |
+| RELS-02 | Phase 18 | Pending |
+| RELS-03 | Phase 18 | Pending |
 
 **Coverage:**
 - v1 requirements: 34 total
-- Mapped to phases: 0
-- Unmapped: 34 (pending roadmap creation)
+- Mapped to phases: 34
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after initial definition*
+*Last updated: 2026-02-03 after roadmap creation*
