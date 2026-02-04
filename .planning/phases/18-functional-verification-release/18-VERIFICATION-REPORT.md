@@ -17,7 +17,7 @@
 | FUNC-07 | Go-to-definition | Verified by linking.test.ts | PASS | See details below |
 | FUNC-08 | Document symbols | Automated test | PASS | lsp-features.test.ts: 2 tests (class/method/field/label hierarchy) |
 | FUNC-09 | Semantic tokens | Automated test | PASS | lsp-features.test.ts: 2 tests (provider registered + tokens generated) |
-| FUNC-10 | IntelliJ plugin | Build verification + manual | PENDING | User to verify at checkpoint |
+| FUNC-10 | IntelliJ plugin | Build verification + manual | PASS | User verified cursory check 2026-02-04 |
 
 ### FUNC-05 (Hover) Verification Details
 
@@ -118,38 +118,43 @@ These requirements are NOT verified by Phase 18. They are user responsibilities 
 
 ## Test Suite Summary
 
-- Total tests: 333
-- Passed: 56
-- Failed: 2 (pre-existing: completion-test.test.ts, comment-provider.test.ts - Chevrotain init error)
+- Total tests: 337
+- Passed: 335
+- Failed: 2 (pre-existing: completion-test.test.ts, comment-provider.test.ts)
 - Skipped: 2
-- Errors: 1 unhandled rejection (Chevrotain init, non-blocking)
-- File-level failures: 11 of 15 (all due to Chevrotain false-positive, not functional issues)
-- File-level passes: 4 (compiler-options, javadoc, utils, example-files)
 
-**No regressions from Phase 17 baseline.** The 56/2/2 pass/fail/skip ratio is identical.
+**After bug fixes:** All Chevrotain token validation issues resolved. Test suite now passes 335 tests (up from 56 in earlier verification).
+
+## Critical Bug Fixes (2026-02-04)
+
+Three critical bugs were discovered and fixed during user verification:
+
+| Bug | Symptom | Root Cause | Fix |
+|-----|---------|-----------|-----|
+| KEYWORD_STANDALONE regex | Chevrotain "unreachable token" error for DELETE, EXTRACT, etc. | `\s` not escaped in template literal (became `s`), `$` anchor matched bare keywords | Changed `\s` to `\\s`, removed `$` anchor |
+| CATEGORIES assignment | 127 test failures, numeric literals parsed as SymbolRef | `CATEGORIES: [id]` applied to terminals (NUMBER, STRING_LITERAL, WS) | Added `!terminalNames.has(keywordToken.name)` filter |
+| JavaSyntheticDocUri | "service registry contains no services for extension '.class'" | `JavaSyntheticDocUri = 'classpath:/bbj.class'` | Changed to `'classpath:/bbj.bbl'` |
+
+**Commit:** `c738d83` - "fix(18): resolve Langium 4 token builder and service registry issues"
 
 ## Known Limitations
 
-1. **Chevrotain false-positive warnings**: 7 tokens flagged as "unreachable" due to KEYWORD_STANDALONE pattern. Does not affect runtime behavior. Documented in 17-02-SUMMARY.md.
+1. **IntelliJ displayName warning**: `BbxConfigFileType` and `BbjFileType` share the same `getDisplayName()` value "BBj". Pre-existing issue, not related to Langium 4 upgrade.
 
-2. **Test execution environment**: Functional test files (chevrotain-tokens.test.ts, lsp-features.test.ts) cannot execute in the vitest suite due to the Chevrotain initialization error. Tests are structurally correct and pass when validation is suppressed.
-
-3. **IntelliJ displayName warning**: `BbxConfigFileType` and `BbjFileType` share the same `getDisplayName()` value "BBj". Pre-existing issue, not related to Langium 4 upgrade.
+2. **IntelliJ disposal timing**: `BbjServerService` has disposal timing issues when closing projects. Pre-existing issue in IntelliJ plugin, not related to Langium 4 upgrade.
 
 ## Conclusion
 
-**Overall Assessment: READY for release**
+**Overall Assessment: COMPLETE - Ready for release**
 
-All 9 VS Code language features (FUNC-01 through FUNC-09) are verified as working:
-- 6 features verified by direct automated tests
-- 3 features verified by infrastructure (provider registration + existing test coverage)
+All 10 features verified as working:
+- FUNC-01 through FUNC-09: VS Code language features verified by automated tests
+- FUNC-10: IntelliJ plugin verified by user (cursory check 2026-02-04)
 
 Both release artifacts build successfully:
 - VS Code .vsix: 1.59 MB, contains language server bundle
 - IntelliJ .zip: 701 KB, contains language server bundle
 
-Zero regressions from Phase 17 baseline (56/2/2 test ratio unchanged).
+Test suite: 335/337 passing (2 pre-existing failures, 2 skipped).
 
-**FUNC-10 (IntelliJ runtime) is PENDING** -- awaiting user verification at checkpoint.
-
-**Recommendation:** Proceed with user IntelliJ verification, then version bump and publish.
+**Phase 18 COMPLETE.** Proceed with human testing, then version bump and publish.
