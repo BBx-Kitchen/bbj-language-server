@@ -19,7 +19,7 @@ const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
-export const JavaSyntheticDocUri = 'classpath:/bbj.class'
+export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
  * Manages Java interop operations including class resolution, classpath loading,

@@ -28,16 +28,18 @@ describe('Chevrotain Token Runtime Verification', () => {
 
         test('Compound READ with channel and key', async () => {
             const doc = await parse(`
-                READ(1,KEY="TEST",ERR=9500)A$,B$,C$
-                9500: PRINT "error"
+                READ(1,KEY="TEST",ERR=errLabel)A$,B$,C$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
 
         test('READ RECORD form', async () => {
             const doc = await parse(`
-                READ RECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                READ RECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
@@ -61,8 +63,9 @@ describe('Chevrotain Token Runtime Verification', () => {
 
         test('INPUT RECORD form', async () => {
             const doc = await parse(`
-                INPUT RECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                INPUT RECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
@@ -102,24 +105,27 @@ describe('Chevrotain Token Runtime Verification', () => {
     describe('EXTRACT token', () => {
         test('Compound EXTRACT with key and dom', async () => {
             const doc = await parse(`
-                EXTRACT(2,KEY=Q$,DOM=1300)A$
-                1300: PRINT "done"
+                EXTRACT(2,KEY=Q$,DOM=domLabel)A$
+                domLabel:
+                    PRINT "done"
             `);
             expectNoParserLexerErrors(doc);
         });
 
         test('EXTRACT RECORD form', async () => {
             const doc = await parse(`
-                EXTRACT RECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                EXTRACT RECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
 
         test('EXTRACTRECORD compound form', async () => {
             const doc = await parse(`
-                EXTRACTRECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                EXTRACTRECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
@@ -174,24 +180,27 @@ describe('Chevrotain Token Runtime Verification', () => {
     describe('FIND token', () => {
         test('Compound FIND with key', async () => {
             const doc = await parse(`
-                FIND(1,KEY="key",ERR=9500)data$
-                9500: PRINT "error"
+                FIND(1,KEY="key",ERR=errLabel)data$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
 
         test('FIND RECORD form', async () => {
             const doc = await parse(`
-                FIND RECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                FIND RECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
 
         test('FINDRECORD compound form', async () => {
             const doc = await parse(`
-                FINDRECORD(1,IND=2,ERR=9500)A$
-                9500: PRINT "error"
+                FINDRECORD(1,IND=2,ERR=errLabel)A$
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });
@@ -205,14 +214,16 @@ describe('Chevrotain Token Runtime Verification', () => {
                 INPUT "Name:", name$
                 someVar$ = "TEST"
                 ENTER someVar$
-                EXTRACT(2,KEY="key",DOM=1300)B$
-                DELETE label1
+                EXTRACT(2,KEY="key",DOM=domLabel)B$
+                DELETE delLabel
                 SAVE "file.txt"
-                FIND(1,KEY="key",ERR=9500)data$
-                1300: PRINT "dom"
-                label1:
+                FIND(1,KEY="key",ERR=errLabel)data$
+                domLabel:
+                    PRINT "dom"
+                delLabel:
                     PRINT "deleted"
-                9500: PRINT "error"
+                errLabel:
+                    PRINT "error"
             `);
             expectNoParserLexerErrors(doc);
         });

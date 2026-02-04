@@ -116,6 +116,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override shouldIncludeEntry(entry: { isFile: boolean; isDirectory: boolean; uri: URI }): boolean {
+        // Filter files to only include BBj-related extensions (.bbj, .bbl, .bbjt)
+        // This prevents Langium from trying to index .class files or other non-language files
+        if (entry.isFile) {
+            const path = entry.uri.path.toLowerCase();
+            if (!path.endsWith('.bbj') && !path.endsWith('.bbl') && !path.endsWith('.bbjt')) {
+                return false;
+            }
+        }
         // Note: Binary file filtering (files starting with '<<bbj>>') is now handled
         // during document building phase via document validators, not during traversal
         return super.shouldIncludeEntry(entry);
