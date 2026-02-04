@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v2.0 Langium 4 Upgrade complete — ready for milestone audit
+**Current focus:** Phase 20 - Human QA Testing
 
 ## Current Position
 
 Milestone: v2.0 Langium 4 Upgrade
-Phase: 19 of 19 (Test Plan)
-Plan: 02 of 02
+Phase: 20 of 20 (Human QA Testing)
+Plan: 1 of 1
 Status: Phase complete
-Last activity: 2026-02-04 -- Completed 19-02-PLAN.md (Coverage Reporting)
+Last activity: 2026-02-04 -- Completed 20-01-PLAN.md (QA Testing Documentation)
 
-Progress: [██████████] 100% (6/6 v2.0 phases)
+Progress: [██████████] 100% (7/7 v2.0 phases)
 
 ## Milestone History
 
@@ -30,9 +30,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8 (v2.0)
-- Average duration: 3.5 min
-- Total execution time: 27.9 min
+- Total plans completed: 9 (v2.0)
+- Average duration: 3.3 min
+- Total execution time: 30.3 min
 
 *Updated after each plan completion*
 
@@ -65,6 +65,9 @@ Recent decisions affecting current work:
 - [19-02]: V8 coverage over Istanbul (native Node.js profiler, faster)
 - [19-02]: Version-matched @vitest/coverage-v8@1.6.1 to vitest@1.6.1
 - [19-02]: Conservative coverage thresholds: 50% lines, 45% functions, 40% branches
+- [20-01]: No exceptions release gate policy (any failure blocks release)
+- [20-01]: Smoke test: 5-10 minutes for rapid verification; full test: 30-45 minutes
+- [20-01]: Evidence required for failures only (screenshots/logs), not for passing tests
 
 ### Known Issues
 
@@ -80,6 +83,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 19 added: Test Plan (2026-02-04)
+- Phase 20 added: Human QA Testing (2026-02-04)
 
 ### Blockers/Concerns
 
@@ -88,6 +92,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Phase 19 complete, milestone verified
+Stopped at: Completed 20-01-PLAN.md (QA Testing Documentation)
 Resume file: None
-Next: `/gsd:audit-milestone` or `/gsd:complete-milestone`
+Next: Phase 20 complete -- v2.0 Langium 4 Upgrade milestone ready for human QA testing
