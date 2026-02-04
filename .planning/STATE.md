@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 19 - Test Plan (Complete)
+**Current focus:** v2.0 Langium 4 Upgrade complete — ready for milestone audit
 
 ## Current Position
 
@@ -88,6 +88,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 19-02-PLAN.md (Coverage Reporting)
+Stopped at: Phase 19 complete, milestone verified
 Resume file: None
-Next: v2.0 milestone complete - ready for merge to main
+Next: `/gsd:audit-milestone` or `/gsd:complete-milestone`

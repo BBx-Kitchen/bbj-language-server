@@ -5,7 +5,7 @@
 - v1.0 Internal Alpha - Phases 1-6 (shipped 2026-02-01)
 - v1.1 Polish & Run Commands - Phases 7-10 (shipped 2026-02-02)
 - v1.2 Run Fixes & Marketplace - Phases 11-13 (shipped 2026-02-02)
-- **v2.0 Langium 4 Upgrade** - Phases 14-19 (in progress)
+- **v2.0 Langium 4 Upgrade** - Phases 14-19 (complete)
 
 ## v2.0 Langium 4 Upgrade
 
@@ -20,7 +20,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 - [x] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
 - [x] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
 - [x] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, release artifacts built (publishing and versioning handled by user separately)
-- [ ] **Phase 19: Test Plan** - Fix failing tests, add coverage infrastructure, establish quality gates
+- [x] **Phase 19: Test Plan** - Fix failing tests, add coverage infrastructure, establish quality gates
 
 ### Phase Details
 
@@ -112,8 +112,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 19-01-PLAN.md -- Fix 2 failing tests (parser.test.ts type constant, linking.test.ts BBjAPI case)
-- [ ] 19-02-PLAN.md -- Add coverage infrastructure (@vitest/coverage-v8) with thresholds
+- [x] 19-01-PLAN.md -- Fix 2 failing tests (parser.test.ts type constant, linking.test.ts BBjAPI case)
+- [x] 19-02-PLAN.md -- Add coverage infrastructure (@vitest/coverage-v8) with thresholds
 
 ### Coverage
 
@@ -154,4 +154,4 @@ Phases with standard patterns (no deep research needed):
 | 16. API Signatures | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 17. Build & Test | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 18. Verify & Release | v2.0 | 2/2 | Complete | 2026-02-04 |
-| 19. Test Plan | v2.0 | 0/2 | Not started | - |
+| 19. Test Plan | v2.0 | 2/2 | Complete | 2026-02-04 |

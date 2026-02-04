@@ -42,22 +42,28 @@ Requirements for the v2.0 milestone. Each maps to roadmap phases.
 
 ### Functional Verification
 
-- [ ] **FUNC-01**: Syntax highlighting works in VS Code
-- [ ] **FUNC-02**: Diagnostics/error squiggles display correctly
-- [ ] **FUNC-03**: Code completion works for BBj keywords, functions, variables
-- [ ] **FUNC-04**: Java class/method completion works via java-interop
-- [ ] **FUNC-05**: Hover information displays
-- [ ] **FUNC-06**: Signature help works
-- [ ] **FUNC-07**: Go-to-definition navigates correctly
-- [ ] **FUNC-08**: Document symbols/Structure view works
-- [ ] **FUNC-09**: Semantic token highlighting works
-- [ ] **FUNC-10**: IntelliJ plugin provides same feature set as before upgrade
+- [x] **FUNC-01**: Syntax highlighting works in VS Code
+- [x] **FUNC-02**: Diagnostics/error squiggles display correctly
+- [x] **FUNC-03**: Code completion works for BBj keywords, functions, variables
+- [x] **FUNC-04**: Java class/method completion works via java-interop
+- [x] **FUNC-05**: Hover information displays
+- [x] **FUNC-06**: Signature help works
+- [x] **FUNC-07**: Go-to-definition navigates correctly
+- [x] **FUNC-08**: Document symbols/Structure view works
+- [x] **FUNC-09**: Semantic token highlighting works
+- [x] **FUNC-10**: IntelliJ plugin provides same feature set as before upgrade
 
 ### Release
 
-- [ ] **RELS-01**: VS Code extension published with updated language server
-- [ ] **RELS-02**: IntelliJ plugin published with updated bundled main.cjs
-- [ ] **RELS-03**: Version numbers bumped appropriately
+- [ ] **RELS-01**: VS Code extension published with updated language server (user responsibility)
+- [ ] **RELS-02**: IntelliJ plugin published with updated bundled main.cjs (user responsibility)
+- [ ] **RELS-03**: Version numbers bumped appropriately (user responsibility)
+
+### Test Infrastructure (Phase 19)
+
+- [x] **TEST-01**: All tests pass (0 failures)
+- [x] **TEST-02**: Coverage reporting configured with @vitest/coverage-v8
+- [x] **TEST-03**: Coverage thresholds established to prevent regressions
 
 ## v2 Requirements
 
@@ -103,25 +109,28 @@ Deferred to future milestones. Tracked but not in current roadmap.
 | BLDT-03 | Phase 17 | Complete |
 | BLDT-04 | Phase 17 | Complete |
 | BLDT-05 | Phase 17 | Complete |
-| FUNC-01 | Phase 18 | Pending |
-| FUNC-02 | Phase 18 | Pending |
-| FUNC-03 | Phase 18 | Pending |
-| FUNC-04 | Phase 18 | Pending |
-| FUNC-05 | Phase 18 | Pending |
-| FUNC-06 | Phase 18 | Pending |
-| FUNC-07 | Phase 18 | Pending |
-| FUNC-08 | Phase 18 | Pending |
-| FUNC-09 | Phase 18 | Pending |
-| FUNC-10 | Phase 18 | Pending |
-| RELS-01 | Phase 18 | Pending |
-| RELS-02 | Phase 18 | Pending |
-| RELS-03 | Phase 18 | Pending |
+| FUNC-01 | Phase 18 | Complete |
+| FUNC-02 | Phase 18 | Complete |
+| FUNC-03 | Phase 18 | Complete |
+| FUNC-04 | Phase 18 | Complete |
+| FUNC-05 | Phase 18 | Complete |
+| FUNC-06 | Phase 18 | Complete |
+| FUNC-07 | Phase 18 | Complete |
+| FUNC-08 | Phase 18 | Complete |
+| FUNC-09 | Phase 18 | Complete |
+| FUNC-10 | Phase 18 | Complete |
+| RELS-01 | N/A (user) | Pending |
+| RELS-02 | N/A (user) | Pending |
+| RELS-03 | N/A (user) | Pending |
+| TEST-01 | Phase 19 | Complete |
+| TEST-02 | Phase 19 | Complete |
+| TEST-03 | Phase 19 | Complete |
 
 **Coverage:**
-- v1 requirements: 34 total
-- Mapped to phases: 34
+- v1 requirements: 37 total (34 original + 3 test infrastructure)
+- Mapped to phases: 34 (3 release requirements are user responsibility)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-03*
-*Last updated: 2026-02-03 after Phase 17 completion*
+*Last updated: 2026-02-04 after Phase 19 completion*
