@@ -55,6 +55,8 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Test suite passing with 88% V8 coverage — v2.0
 - ✓ Human QA testing procedures documented (27-item full test, 8-item smoke test) — v2.0
 
+- ✓ Feature gap analysis comparing BBj LS vs Dynamo Tools extension — v2.1 (research milestone)
+
 ### Active
 
 (None — milestone complete, next milestone to be defined)
@@ -68,7 +70,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v2.0 shipped 2026-02-04. Language server upgraded to Langium 4.1.3 with zero feature regressions. IntelliJ plugin and VS Code extension both work with the upgraded language server. Test coverage at 88% with V8 provider and threshold-based regression prevention. Human QA testing procedures documented. Release artifacts built and ready for user to publish (version bump and publishing are user responsibilities).
+**Current state:** v2.1 shipped 2026-02-04. Feature gap analysis complete comparing BBj LS against Dynamo Tools extension (v0.7.3). 12 feature gaps identified and prioritized by user impact. Analysis document in `.planning/research/DYNAMO-ANALYSIS.md`. Language server at Langium 4.1.3. Test coverage at 88%. Release artifacts ready for publishing.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -127,6 +129,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | LocalSymbols over PrecomputedScopes | Langium 4 API rename | ✓ Good — clean migration |
 | V8 coverage over Istanbul | Native Node.js profiler, faster, better TypeScript source maps | ✓ Good — 88% baseline |
 | Conservative coverage thresholds | 50% lines (actual 88%) allows flexibility while preventing regression | ✓ Good — CI quality gates |
+| Research-only milestone precedent | v2.1 established that analysis milestones (no code) can ship as proper versions | ✓ Good — clean history |
 
 ---
-*Last updated: 2026-02-04 after v2.0 milestone complete*
+*Last updated: 2026-02-04 after v2.1 milestone complete*

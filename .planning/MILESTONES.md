@@ -1,5 +1,39 @@
 # Project Milestones: BBj Language Server
 
+## v2.1 Feature Gap Analysis (Shipped: 2026-02-04)
+
+**Delivered:** Comprehensive competitive analysis comparing BBj Language Server against Dynamo Tools VS Code extension, with prioritized feature gap backlog and implementation recommendations.
+
+**Phases completed:** Research-only milestone (no code phases)
+
+**Key findings:**
+
+- Extensions are **fundamentally complementary**: BBj LS provides code intelligence (parsing, diagnostics, navigation); Dynamo Tools provides metadata-driven completion (Company Libraries, Data Dictionary)
+- **12 feature gaps identified** and prioritized by user impact:
+  - HIGH: Called program completion, Data Dictionary fields, Global field `#` trigger, BBjTemplatedString getters/setters
+  - MEDIUM: Chained method resolution, Static method completion, Constructor completion, External doc links
+  - LOW: Reopen as BBj, Company Library concept, Deprecated indicators, Legacy file detection
+- **Integration opportunity:** Dynamo Tools Company Library JSON format could be consumed directly for metadata-driven completions
+- **Quick wins identified:** Global field completion (uses existing AST), Deprecated method indicator, Reopen as BBj command
+
+**Deliverable:**
+
+- `.planning/research/DYNAMO-ANALYSIS.md` — Full gap analysis document with:
+  - Side-by-side feature comparison table
+  - 12 prioritized gaps with user impact assessment
+  - Implementation notes for each gap
+  - Phased implementation recommendation
+
+**Stats:**
+
+- 1 analysis document (400+ lines)
+- VSIX reverse-engineered: 2,339 lines of JavaScript analyzed
+- 1 day (2026-02-04)
+
+**What's next:** Implement gap features (start with `/gsd:new-milestone`) or keep as reference backlog
+
+---
+
 ## v2.0 Langium 4 Upgrade (Shipped: 2026-02-04)
 
 **Delivered:** Upgraded language server from Langium 3.2 to Langium 4.1.3 with zero feature regressions across VS Code and IntelliJ, plus test coverage infrastructure and human QA procedures.

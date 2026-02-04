@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-04)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v2.0 complete — ready for next milestone
+**Current focus:** v2.1 Feature Gap Analysis — competitive analysis, no code
 
 ## Current Position
 
-Milestone: v2.0 Langium 4 Upgrade SHIPPED
-Phase: N/A (milestone complete)
-Plan: N/A
-Status: Ready for next milestone
-Last activity: 2026-02-04 — v2.0 milestone complete
+Milestone: v2.1 Feature Gap Analysis
+Phase: Complete
+Plan: —
+Status: **MILESTONE COMPLETE**
+Last activity: 2026-02-04 — Gap analysis document completed
 
-Progress: [██████████] 100% (v2.0 complete)
+Progress: [██████████] 100%
 
 ## Milestone History
 
@@ -25,6 +25,7 @@ Progress: [██████████] 100% (v2.0 complete)
 | v1.1 Polish & Run Commands | 7-10 | 6 | 2026-02-02 |
 | v1.2 Run Fixes & Marketplace | 11-13 | 5 | 2026-02-02 |
 | v2.0 Langium 4 Upgrade | 14-20 | 11 | 2026-02-04 |
+| v2.1 Feature Gap Analysis | N/A | N/A | 2026-02-04 |
 
 See: .planning/MILESTONES.md
 
@@ -66,6 +67,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: v2.0 milestone complete
+Stopped at: v2.1 milestone archived
 Resume file: None
-Next: `/gsd:new-milestone` (define next milestone) or user-handled publishing
+Next: `/gsd:new-milestone` to implement gap features or start new work
