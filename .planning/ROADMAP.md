@@ -5,7 +5,7 @@
 - v1.0 Internal Alpha - Phases 1-6 (shipped 2026-02-01)
 - v1.1 Polish & Run Commands - Phases 7-10 (shipped 2026-02-02)
 - v1.2 Run Fixes & Marketplace - Phases 11-13 (shipped 2026-02-02)
-- **v2.0 Langium 4 Upgrade** - Phases 14-19 (complete)
+- **v2.0 Langium 4 Upgrade** - Phases 14-20 (in progress)
 
 ## v2.0 Langium 4 Upgrade
 
@@ -21,6 +21,7 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 - [x] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
 - [x] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, release artifacts built (publishing and versioning handled by user separately)
 - [x] **Phase 19: Test Plan** - Fix failing tests, add coverage infrastructure, establish quality gates
+- [ ] **Phase 20: Human QA Testing** - Add instructions for human QA testing, recurring testing checklists
 
 ### Phase Details
 
@@ -115,6 +116,19 @@ Plans:
 - [x] 19-01-PLAN.md -- Fix 2 failing tests (parser.test.ts type constant, linking.test.ts BBjAPI case)
 - [x] 19-02-PLAN.md -- Add coverage infrastructure (@vitest/coverage-v8) with thresholds
 
+#### Phase 20: Human QA Testing
+**Goal:** Create documentation for human QA testing with recurring testing checklists
+**Depends on:** Phase 19
+**Requirements:** QA-01 (testing instructions), QA-02 (recurring checklists)
+**Success Criteria** (what must be TRUE):
+  1. Human QA testing instructions documented
+  2. Recurring testing checklists defined for pre-release verification
+  3. Checklists cover all major features (syntax, diagnostics, completion, hover, etc.)
+**Plans:** 1 plan
+
+Plans:
+- [ ] 20-01-PLAN.md -- Create QA directory with testing guide, full test checklist, and smoke test checklist
+
 ### Coverage
 
 **Requirements mapped: 34/34**
@@ -142,10 +156,11 @@ Phases with standard patterns (no deep research needed):
 - **Phase 17**: Standard build verification
 - **Phase 18**: Standard smoke testing + publish workflow
 - **Phase 19**: Standard testing infrastructure (vitest coverage)
+- **Phase 20**: Documentation-only (QA checklists)
 
 ## Progress
 
-**Execution Order:** 14 -> 15 -> 16 -> 17 -> 18 -> 19 (strictly sequential)
+**Execution Order:** 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20 (strictly sequential)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -155,3 +170,4 @@ Phases with standard patterns (no deep research needed):
 | 17. Build & Test | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 18. Verify & Release | v2.0 | 2/2 | Complete | 2026-02-04 |
 | 19. Test Plan | v2.0 | 2/2 | Complete | 2026-02-04 |
+| 20. Human QA Testing | v2.0 | 0/1 | Ready | - |
