@@ -347,9 +347,9 @@ describe('Parser Tests', () => {
         const program = result.parseResult.value as Program;
         const printStmt = program.statements.slice(-1).pop() as PrintStatement;
         const refContainer = (ref: OutputItem) => (ref as SymbolRef).symbol.ref?.$container
-        expect(refContainer(printStmt.items[0])?.$type).toBe(ReadStatement); // a$ links to READ input item
-        expect(refContainer(printStmt.items[1])?.$type).toBe(LetStatement); // b$ links to LET assignment
-        expect(refContainer(printStmt.items[2])?.$type).toBe(LetStatement);// c$ links to LET assignment
+        expect(refContainer(printStmt.items[0])?.$type).toBe(ReadStatement.$type); // a$ links to READ input item
+        expect(refContainer(printStmt.items[1])?.$type).toBe(LetStatement.$type); // b$ links to LET assignment
+        expect(refContainer(printStmt.items[2])?.$type).toBe(LetStatement.$type);// c$ links to LET assignment
     });
 
     test('Mnemonic tests', async () => {
