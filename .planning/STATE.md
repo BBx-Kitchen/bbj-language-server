@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-03)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 19 - Test Plan
+**Current focus:** Phase 19 - Test Plan (Complete)
 
 ## Current Position
 
 Milestone: v2.0 Langium 4 Upgrade
 Phase: 19 of 19 (Test Plan)
-Plan: 01 of 02
-Status: In progress
-Last activity: 2026-02-04 -- Completed 19-01-PLAN.md (Fix Failing Tests)
+Plan: 02 of 02
+Status: Phase complete
+Last activity: 2026-02-04 -- Completed 19-02-PLAN.md (Coverage Reporting)
 
-Progress: [█████████.] 90% (5.5/6 v2.0 phases)
+Progress: [██████████] 100% (6/6 v2.0 phases)
 
 ## Milestone History
 
@@ -30,9 +30,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7 (v2.0)
-- Average duration: 3.4 min
-- Total execution time: 23.9 min
+- Total plans completed: 8 (v2.0)
+- Average duration: 3.5 min
+- Total execution time: 27.9 min
 
 *Updated after each plan completion*
 
@@ -62,6 +62,9 @@ Recent decisions affecting current work:
 - [17-02]: Synthetic test documents should not be indexed (causes service registry errors)
 - [19-01]: Type constant comparison in tests requires .$type property (node.$type === SomeType.$type)
 - [19-01]: BBjAPI case-insensitive test skipped due to test module indexing limitation (production code works)
+- [19-02]: V8 coverage over Istanbul (native Node.js profiler, faster)
+- [19-02]: Version-matched @vitest/coverage-v8@1.6.1 to vitest@1.6.1
+- [19-02]: Conservative coverage thresholds: 50% lines, 45% functions, 40% branches
 
 ### Known Issues
 
@@ -85,6 +88,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed 19-01-PLAN.md (Fix Failing Tests)
+Stopped at: Completed 19-02-PLAN.md (Coverage Reporting)
 Resume file: None
-Next: `/gsd:execute-plan 02` for Phase 19
+Next: v2.0 milestone complete - ready for merge to main
