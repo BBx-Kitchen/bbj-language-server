@@ -1,3 +1,4 @@
 /out/
 /src/language/generated/
 /syntaxes/gen-bbj.tmLanguage.json
+/coverage/
