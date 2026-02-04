@@ -538,6 +538,7 @@
     "@types/vscode": "^1.67.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "concurrently": "^8.2.2",
     "esbuild": "^0.25.12",
     "eslint": "^8.57.1",
