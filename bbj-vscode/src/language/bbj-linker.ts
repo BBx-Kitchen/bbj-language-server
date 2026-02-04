@@ -3,6 +3,7 @@ import {
     AstNodeDescription,
     AstUtils,
     DefaultLinker, DocumentState, interruptAndCheck,
+    isReference,
     LangiumDocument, LinkingError,
     ReferenceInfo,
     WorkspaceManager
@@ -18,7 +19,7 @@ import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMem
 export class BbjLinker extends DefaultLinker {
 
     static ERR_PARAM: AstNodeDescription = {
-        type: VariableDecl,
+        type: VariableDecl.$type,
         name: 'err',
         documentUri: URI.parse('bbjlib:///labels.bbl'),
         path: ''
@@ -78,20 +79,25 @@ export class BbjLinker extends DefaultLinker {
     }
 
     override getCandidate(refInfo: ReferenceInfo): AstNodeDescription | LinkingError {
+        // Langium 4: ReferenceInfo.reference can be Reference | MultiReference
+        // BBj only uses single references; skip multi-reference cases
+        if (!isReference(refInfo.reference)) {
+            return super.getCandidate(refInfo);
+        }
         if (isSymbolRef(refInfo.container)) {
             const symbolRef = refInfo.container;
             if (!(isMethodCall(symbolRef.$container) && symbolRef.$containerProperty === 'method')) {
                 if (refInfo.reference.$refText?.toLowerCase() === 'err'
-                    && symbolRef.$container.$type === BinaryExpression
+                    && symbolRef.$container.$type === BinaryExpression.$type
                     && symbolRef.$containerProperty === 'left'
-                    && (symbolRef.$container.$container.$type === ParameterCall || symbolRef.$container.$container.$type === ConstructorCall)) {
+                    && (symbolRef.$container.$container.$type === ParameterCall.$type || symbolRef.$container.$container.$type === ConstructorCall.$type)) {
                     // Error param case: addProperty("prop" , err=*next)
                     return BbjLinker.ERR_PARAM;
                 }
                 const scope = this.scopeProvider.getScope(refInfo);
                 const candidate = (scope instanceof StreamScopeWithPredicate) ?
                     // Don't link to methods or a constructor when not a method call is expected
-                    scope.getElement(refInfo.reference.$refText, descr => descr.type !== MethodDecl && descr.type !== LibFunction)
+                    scope.getElement(refInfo.reference.$refText, descr => descr.type !== MethodDecl.$type && descr.type !== LibFunction.$type)
                     : scope.getElement(refInfo.reference.$refText);
                 return candidate ?? this.createLinkingError(refInfo);
             }

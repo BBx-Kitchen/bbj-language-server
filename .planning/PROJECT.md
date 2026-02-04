@@ -1,12 +1,12 @@
-# BBj Language Server - IntelliJ Integration
+# BBj Language Server
 
 ## What This Is
 
-An IntelliJ plugin that brings BBj language support to JetBrains IDEs (Community and Ultimate) by connecting to the existing Langium-based language server via LSP4IJ. Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions — reusing 100% of the existing language server without reimplementing any language features. Published as `com.basis.bbj` on JetBrains Marketplace.
+A Langium-based language server for BBj that powers both the VS Code extension and the IntelliJ plugin (via LSP4IJ). Provides syntax highlighting, diagnostics, code completion, go-to-definition, signature help, Structure view, run commands (GUI/BUI/DWC), and Java class/method completions across both IDEs through a single shared language server. The IntelliJ plugin is published as `com.basis.bbj` on JetBrains Marketplace.
 
 ## Core Value
 
-BBj developers using IntelliJ get the same language intelligence they have in VS Code — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — through a single shared language server.
+BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
 ## Requirements
 
@@ -48,10 +48,16 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - ✓ Marketplace description, vendor info, and change notes — v1.2
 - ✓ MIT License and third-party NOTICES in distribution — v1.2
 - ✓ Plugin verifier passes with zero compatibility errors — v1.2
+- ✓ Langium upgraded from 3.2 to 4.1.3 with zero feature regressions — v2.0
+- ✓ All AST type constants migrated to .$type pattern — v2.0
+- ✓ PrecomputedScopes → LocalSymbols migration complete — v2.0
+- ✓ Completion provider and linker API signatures updated for Langium 4 — v2.0
+- ✓ Test suite passing with 88% V8 coverage — v2.0
+- ✓ Human QA testing procedures documented (27-item full test, 8-item smoke test) — v2.0
 
 ### Active
 
-(No active milestone — next milestone TBD)
+(None — milestone complete, next milestone to be defined)
 
 ### Out of Scope
 
@@ -62,9 +68,9 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 ## Context
 
-**Current state:** v1.2 shipped 2026-02-02. Plugin provides full BBj language support including run commands, Structure view, brand icons, and is ready for JetBrains Marketplace publication. 35 Java source classes (3,902 LOC), bundled language server (main.cjs, 1.8MB), TextMate grammars, and web.bbj runner. Distribution ZIP: bbj-intellij-0.1.0.zip (685KB). Plugin verifier passes across 6 IDE versions (IC-242 through IU-261). Tested on macOS ARM (Ultimate 2025.3.2) and Windows x64 (Community Edition). Linux code-complete but not runtime-tested.
+**Current state:** v2.0 shipped 2026-02-04. Language server upgraded to Langium 4.1.3 with zero feature regressions. IntelliJ plugin and VS Code extension both work with the upgraded language server. Test coverage at 88% with V8 provider and threshold-based regression prevention. Human QA testing procedures documented. Release artifacts built and ready for user to publish (version bump and publishing are user responsibilities).
 
-**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
+**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary.
 
@@ -72,7 +78,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 
 **Target users:** BBj developers using IntelliJ, primarily Community Edition.
 
-**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `feat_intellij` branch.
+**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `langium_upgrade` branch.
 
 **Known tech debt:**
 - Structure View symbol kind differentiation (language server issue in bbj-node-kind.ts)
@@ -84,6 +90,7 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 - **Community Edition**: Plugin must work with IntelliJ Community Edition (rules out JetBrains native LSP API)
 - **Node.js dependency**: Language server requires Node.js runtime — auto-downloaded if not available
 - **Existing LS unchanged**: No modifications to the language server for IntelliJ support — IntelliJ adapts to what the LS provides
+- **Langium 4 new features deferred**: BNF syntax, AI features, etc. deferred to future milestones (v2.0 was clean upgrade only)
 
 ## Key Decisions
 
@@ -115,5 +122,11 @@ BBj developers using IntelliJ get the same language intelligence they have in VS
 | `recommended()` for plugin verifier | Auto-aligns with sinceBuild/untilBuild range | ✓ Good — no version mismatches |
 | Only claim features with implementation evidence | Ensures honest marketplace listing | ✓ Good — all 9 features verified |
 
+| Langium 3 → 4 upgrade (no new features) | Stay current; enable future AI/BNF features; avoid falling behind | ✓ Good — v2.0 shipped |
+| Type constants .$type pattern | Langium 4 changed type constants from strings to objects | ✓ Good — all 77 errors migrated |
+| LocalSymbols over PrecomputedScopes | Langium 4 API rename | ✓ Good — clean migration |
+| V8 coverage over Istanbul | Native Node.js profiler, faster, better TypeScript source maps | ✓ Good — 88% baseline |
+| Conservative coverage thresholds | 50% lines (actual 88%) allows flexibility while preventing regression | ✓ Good — CI quality gates |
+
 ---
-*Last updated: 2026-02-02 after v1.2 milestone completion*
+*Last updated: 2026-02-04 after v2.0 milestone complete*

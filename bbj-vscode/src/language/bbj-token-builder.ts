@@ -33,9 +33,11 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RELEASE_NO_NL');
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
+        const terminalNames = new Set(terminalTokens.map(t => t.name));
 
         for (const keywordToken of tokens) {
             if (/[A-Z]+(?!_)/.test(keywordToken.name)
+                    && !terminalNames.has(keywordToken.name)
                     && !('LINE_BREAKS' in keywordToken)
                     && !BBjTokenBuilder.EXCLUDED.has(keywordToken.name)) {
                 // add all matching keywords to ID category
@@ -143,7 +145,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         } else if (terminal.name === 'KEYWORD_STANDALONE') {
             const token: TokenType = {
                 name: terminal.name,
-                PATTERN: this.regexPatternFunction(new RegExp(`(${KEYWORD_STANDALONE})\s*(\r?\n|;|$)`, 'i')),
+                PATTERN: this.regexPatternFunction(new RegExp(`(${KEYWORD_STANDALONE})\\s*(\\r?\\n|;)`, 'i')),
                 LINE_BREAKS: true
             };
             return token;

@@ -8,16 +8,16 @@ export class BBjNodeKindProvider implements NodeKindProvider {
 
    getSymbolKind(node: AstNode | AstNodeDescription): SymbolKind {
         switch (isAstNode(node) ? node.$type : node.type) {
-            case MethodDecl:
-            case LibFunction:
+            case MethodDecl.$type:
+            case LibFunction.$type:
                 return SymbolKind.Function
-            case BbjClass:
+            case BbjClass.$type:
                 return SymbolKind.Class
-            case ArrayDecl:
+            case ArrayDecl.$type:
                 return SymbolKind.Array
-            case LibEventType:
+            case LibEventType.$type:
                 return SymbolKind.Event
-            case JavaPackage:
+            case JavaPackage.$type:
                 return SymbolKind.Package
             default:
                 return SymbolKind.Field
@@ -26,16 +26,16 @@ export class BBjNodeKindProvider implements NodeKindProvider {
 
     getCompletionItemKind(node: AstNode | AstNodeDescription): CompletionItemKind {
         switch (isAstNode(node) ? node.$type : node.type) {
-            case LibEventType:
+            case LibEventType.$type:
                 return CompletionItemKind.Event
-            case MethodDecl:
-            case JavaMethod:
-            case LibFunction:
+            case MethodDecl.$type:
+            case JavaMethod.$type:
+            case LibFunction.$type:
                 return CompletionItemKind.Function
-            case JavaClass:
-            case BbjClass:
+            case JavaClass.$type:
+            case BbjClass.$type:
                 return CompletionItemKind.Class
-            case JavaPackage:
+            case JavaPackage.$type:
                 return CompletionItemKind.Folder
             default:
                 return CompletionItemKind.Field

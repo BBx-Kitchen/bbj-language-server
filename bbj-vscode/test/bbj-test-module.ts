@@ -44,14 +44,8 @@ export class TestableBBjLexer extends BbjLexer {
 }
 
 class JavaInteropTestService extends JavaInteropService {
-    protected readonly index: () => IndexManager;
-    private indexed: boolean = false;
-
     constructor(services: BBjServices) {
         super(services)
-
-
-        this.index = () => services.shared.workspace.IndexManager
 
         // Init JavadocProvider otherwise adding Classes will throw an error
         if (!JavadocProvider.getInstance().isInitialized()) {
@@ -71,14 +65,6 @@ class JavaInteropTestService extends JavaInteropService {
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
-    }
-
-    override getResolvedClass(className: string): JavaClass | undefined {
-        if (!this.indexed) {
-            this.index().updateContent(this.classpathDocument)
-            this.indexed = true
-        }
-        return super.getResolvedClass(className)
     }
 }
 

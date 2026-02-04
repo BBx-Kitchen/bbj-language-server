@@ -19,7 +19,7 @@ const DEFAULT_PORT = 5008;
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
-export const JavaSyntheticDocUri = 'classpath:/bbj.class'
+export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
  * Manages Java interop operations including class resolution, classpath loading,
@@ -43,7 +43,7 @@ export class JavaInteropService {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.classpathDocument = services.shared.workspace.LangiumDocumentFactory.fromModel(<Classpath>{
             $container: undefined!,
-            $type: Classpath,
+            $type: Classpath.$type,
             packages: [],
             classes: []
         }, URI.parse(JavaSyntheticDocUri));
@@ -195,7 +195,7 @@ export class JavaInteropService {
                             }
                             const javaPackage: JavaPackage = {
                                 $container: parent,
-                                $type: JavaPackage,
+                                $type: JavaPackage.$type,
                                 classes: [],
                                 packages: [],
                                 name: part,
@@ -256,7 +256,7 @@ export class JavaInteropService {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
 
-        javaClass.$type = JavaClass; // make isJavaClass work
+        javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
 
         if (!javaClass.packageName) {
@@ -275,14 +275,14 @@ export class JavaInteropService {
         try {
             const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
-                (field as Mutable<JavaField>).$type = JavaField;
+                (field as Mutable<JavaField>).$type = JavaField.$type;
                 field.resolvedType = {
                     ref: await this.resolveClassByName(field.type, token),
                     $refText: field.type
                 };
             }
             for (const method of javaClass.methods) {
-                (method as Mutable<JavaMethod>).$type = JavaMethod;
+                (method as Mutable<JavaMethod>).$type = JavaMethod.$type;
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
@@ -292,7 +292,7 @@ export class JavaInteropService {
                     $refText: method.returnType
                 };
                 for (const [index, parameter] of method.parameters.entries()) {
-                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter;
+                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
                     parameter.resolvedType = {
                         ref: await this.resolveClassByName(parameter.type, token),
                         $refText: parameter.type
@@ -348,7 +348,7 @@ export class JavaInteropService {
             console.error('Invalid javaClass.name:', javaClass.name);
             return;
         }
-        javaClass.$type = JavaClass;
+        javaClass.$type = JavaClass.$type;
 
         const simpleName = (packageName.length > 0) ? javaClass.name.replace(packageName + '.', '') : javaClass.name;
         if (javaClass.packageName !== packageName) {
@@ -385,7 +385,7 @@ export class JavaInteropService {
                     }
                     const javaPackage: JavaPackage = {
                         $container: parent,
-                        $type: JavaPackage,
+                        $type: JavaPackage.$type,
                         classes: [],
                         packages: [],
                         name: part,

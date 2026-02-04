@@ -1,195 +1,210 @@
 # Project Research Summary
 
-**Project:** BBj Language Server - IntelliJ Integration
-**Domain:** Language tooling - IntelliJ LSP plugin development
-**Researched:** 2026-02-01
-**Confidence:** HIGH
+**Project:** BBj Language Server -- Langium 3.2.1 to 4.1.3 Migration
+**Domain:** Language server framework major version upgrade
+**Researched:** 2026-02-03
+**Confidence:** MEDIUM-HIGH
 
 ## Executive Summary
 
-This project adds IntelliJ IDEA support to the existing BBj Language Server by building a thin integration layer using LSP4IJ, an IntelliJ Community Edition-compatible LSP client library. The approach reuses 100% of the existing Langium-based language server (TypeScript/Node.js) and java-interop service (Java) without modification, focusing purely on IntelliJ integration.
+The Langium 3.2.1 to 4.1.3 upgrade is a **non-trivial but well-scoped migration** affecting roughly 12 of the project's ~38 TypeScript source files, with the bulk of effort concentrated in mechanical find-and-replace changes rather than logic rewrites. Langium 4 introduces 13 documented breaking changes, of which 6 directly impact this codebase: the `PrecomputedScopes` to `LocalSymbols` rename (scope computation), the AST type constant restructuring from `TypeName` to `TypeName.$type` (pervasive across 10+ files), the `Reference | MultiReference` union type in linker/scope APIs, the `createReferenceCompletionItem` signature expansion, the removal of deprecated APIs (most critically `prepareLangiumParser`), and the `DefaultServiceRegistry` singleton removal. The remaining 7 breaking changes either do not affect this project (grammar naming rules, EBNF terminal refinements, TypeScript version requirement) or are handled automatically by regeneration.
 
-The recommended architecture is straightforward: a Gradle-based IntelliJ plugin that manages two external processes (language server + java-interop), bundles the compiled language server artifacts, and leverages LSP4IJ for all LSP protocol translation. The plugin uses TextMate grammars for syntax highlighting and relies on LSP4IJ to map LSP capabilities (diagnostics, completion, hover, etc.) to native IntelliJ UI components. The critical technical challenge is robust process lifecycle management—ensuring java-interop starts before the language server, handling crashes gracefully, and cleaning up zombie processes on shutdown.
+The recommended approach is a **strict sequential migration** starting with dependency updates and grammar regeneration to establish the new baseline, followed by systematic compilation error resolution in dependency order. The single highest-volume change is the AST type constant pattern (BC-3), which touches every file that uses generated type names in comparisons, switch statements, or object literals -- an estimated 25+ code sites across 10 files. This change carries runtime risk: if any site is missed, comparisons will silently fail because the old constant (now an object) will never equal a string. The second highest-risk item is the `prepareLangiumParser` function potentially being removed, which would require rewriting the custom parser creation logic in `bbj-module.ts`.
 
-Key risks center on process management complexity and LSP4IJ compatibility. The most likely failure modes are: silent process crashes leaving users with broken features, zombie processes consuming ports and preventing restarts, and race conditions during initialization. These are entirely preventable with proper health monitoring, shutdown hooks, and startup sequencing. The technology stack is proven (LSP4IJ is production-ready, used by Red Hat's Quarkus and Liberty plugins), and the feature scope is well-defined—alpha needs only syntax highlighting, diagnostics, completion, and Java interop. This is achievable within 2-3 weeks for a competent IntelliJ plugin developer.
+The DI/module system, bundling pipeline (esbuild to CJS), VS Code extension client, IntelliJ plugin consumption, and import path patterns are all **unchanged** in Langium 4 -- limiting the blast radius to the language server internals. No new Langium 4 features need to be adopted for this migration. The project's existing TypeScript 5.8.3 and chevrotain 11.0.3 dependencies are compatible with Langium 4.x and need no changes. Total estimated effort is **2-3 days** for a developer familiar with the codebase.
 
 ## Key Findings
 
 ### Recommended Stack
 
-The IntelliJ plugin uses modern IntelliJ development tooling with LSP4IJ as the integration layer, completely sidestepping the need for custom parsers or lexers by delegating language understanding to the existing language server.
+Only two dependency changes are required. Everything else stays the same.
 
-**Core technologies:**
-- **Gradle 8.5+ with gradle-intellij-plugin 2.0.0**: Industry-standard build system for IntelliJ plugins, handles IDE sandbox, packaging, and plugin verification automatically
-- **LSP4IJ 0.8.0+**: Red Hat's Community Edition-compatible LSP client library that maps LSP protocol to IntelliJ APIs, production-proven in multiple JetBrains Marketplace plugins
-- **Java 17+ (Java 21 LTS recommended)**: IntelliJ Platform 2024.x runtime requirement, also needed for spawning java-interop service
-- **TextMate grammar support**: Reuse existing `bbj.tmLanguage.json` from VS Code extension via IntelliJ Platform's built-in TextMate bundle support for fast syntax highlighting
-- **Node.js 18+ runtime management**: Required for language server, either bundled with plugin (zero-config UX, larger download) or detected from system PATH (lighter plugin, user dependency)
+**Dependencies to change:**
+- `langium`: ~3.2.1 to ~4.1.3 -- latest stable with bug fixes
+- `langium-cli`: ~3.2.0 to ~4.1.0 -- latest CLI, must match runtime
 
-**Critical dependency note**: Plugin must bundle language server artifacts (`out/language/main.cjs`) and java-interop JAR, making this a multi-project build with orchestration requirements.
+**Dependencies to keep unchanged:**
+- `chevrotain`: ~11.0.3 -- directly imported by `bbj-token-builder.ts` for `TokenType`/`TokenVocabulary`; compatible with Langium 4's internal chevrotain 11.0.x
+- `typescript`: ^5.8.3 -- already satisfies Langium 4's >= 5.8.0 requirement
+- All other dependencies (vscode-languageclient, esbuild, vitest, properties-file, etc.) -- unrelated to Langium version
 
-### Expected Features
+**Note on chevrotain version discrepancy:** PITFALLS.md references Langium 4.2.0 requiring chevrotain ~11.1.1, but the actual target is 4.1.3 (not 4.2.0). STACK.md confirms chevrotain ~11.0.3 is compatible with Langium 4.1.x. Keep the existing pin.
 
-IntelliJ users expect feature parity with VS Code while the plugin maintains a clear minimum viable feature set for alpha focused on core editing capabilities.
+### Breaking Changes (Expected Features)
 
-**Must have (table stakes):**
-- **Syntax highlighting** (TextMate grammar) — uncolored code feels broken, users abandon immediately
-- **Error diagnostics** (red squiggles) — real-time feedback is fundamental to IDE experience
-- **Code completion** (keywords, functions, variables) — productivity baseline, must work or adoption fails
-- **Go to definition** (Ctrl+Click navigation) — core navigation, expected in any modern IDE
-- **File type registration** (.bbj, .bbl, .bbjt, .src) — without this IntelliJ treats files as plaintext
+**Must address (compilation blockers):**
+- BC-1: `PrecomputedScopes` renamed to `LocalSymbols` -- 4 type annotation sites in `bbj-scope-local.ts`, 3 property access sites in `bbj-scope.ts`
+- BC-2: Scope computation method renames -- `computeExports()` may become `collectExportedSymbols()`, `computeLocalScopes()` may become `collectLocalSymbols()` (MEDIUM confidence, needs verification)
+- BC-3: AST type constants `TypeName` to `TypeName.$type` -- 25+ sites across 10+ files (highest volume change)
+- BC-4: `Reference | MultiReference` in linker/scope -- type narrowing needed in `bbj-linker.ts` and `bbj-scope.ts`
+- BC-5: `createReferenceCompletionItem` new signature -- 1 file, 2 sites
+- BC-9: Removed deprecated APIs -- `prepareLangiumParser` is critical risk
 
-**Should have (competitive differentiators):**
-- **Java interop completion** — the killer feature unique to BBj, autocomplete for Java classes/methods via java-interop service
-- **Signature help** (parameter hints) — not essential but significantly improves UX for complex function calls
-- **Hover information** (quick documentation) — inline docs improve learning curve for BBj APIs and Java classes
-- **Semantic tokens** (accurate highlighting) — more precise than TextMate regex patterns, differentiates symbols by semantic role
-- **Document symbols** (structure view) — helpful for navigating large files, low effort to enable
+**Verify only (likely no action needed):**
+- BC-6: TypeScript >= 5.8.0 -- already satisfied
+- BC-7: Regeneration required -- automated via `langium generate`
+- BC-8: Grammar rule naming -- already compliant
+- BC-10: ServiceRegistry singleton removed -- verify `.all` still works
+- BC-11: FileSystemProvider extended -- `NodeFileSystem` handles it
+- BC-12: EBNF terminal refinements -- uses regex terminals, not EBNF
+- BC-13: Xtext features removed -- standard grammar syntax only
 
-**Defer (v2+):**
-- **Workspace symbols** (project-wide search) — requires indexing, performance concerns for large projects
-- **Rename refactoring** — works via LSP but IntelliJ UX not as polished as native refactorings
-- **Code formatting** — valuable for teams but individuals can work without it
-- **Code actions/quick fixes** — requires server-side implementation work, not critical for alpha
-- **Debugging** and **run configurations** — explicitly marked as future milestones, out of scope for alpha
+### Architecture Impact
 
-### Architecture Approach
+The migration is contained within the language server layer. No changes needed to:
+- Entry point (`main.ts`) and DI wiring pattern (`inject`, `createDefaultModule`, `createDefaultSharedModule`)
+- Import path patterns (`langium`, `langium/lsp`, `langium/node`)
+- Bundling pipeline (`esbuild.mjs` -- CJS output)
+- VS Code extension client (`extension.ts`)
+- IntelliJ plugin consumption (runs `main.cjs` via stdio)
 
-The architecture follows a clean three-layer design: IntelliJ plugin layer (file types, settings, process management), LSP4IJ adapter layer (protocol translation), and external processes (language server + java-interop). This separation of concerns allows complete reuse of existing language server logic.
+**Components requiring modification (ranked by effort):**
 
-**Major components:**
-1. **Plugin Layer (Java/Kotlin)** — IntelliJ-specific integration including file type registration, TextMate grammar provider, settings UI for BBj home path/classpath, and most critically the `LanguageServerDefinition` that spawns and monitors both external processes
-2. **LSP4IJ Adapter (framework dependency)** — Handles all LSP protocol concerns: JSON-RPC over stdio, document synchronization, capability negotiation, request/response routing, and mapping LSP primitives (completion items, diagnostics, hovers) to IntelliJ UI components
-3. **Language Server Process (Node.js)** — Existing `bbj-vscode/out/language/main.cjs` bundled with plugin, spawned via stdio transport, provides all LSP capabilities (diagnostics, completion, hover, semantic tokens) unchanged from VS Code
-4. **java-interop Process (Java)** — Existing service listening on localhost:5008, provides Java reflection metadata for BBj's Java interop feature, must start before language server to avoid connection failures
+| Component | File | Primary Change | Effort |
+|-----------|------|----------------|--------|
+| DI Module | `bbj-module.ts` | `prepareLangiumParser` potentially removed | HIGH |
+| Scope computation | `bbj-scope-local.ts` | `PrecomputedScopes` rename + type constants | MODERATE |
+| Scope provider | `bbj-scope.ts` | `document.precomputedScopes` rename + type constants | MODERATE |
+| Linker | `bbj-linker.ts` | `Reference \| MultiReference` + type constants | MODERATE |
+| Completion provider | `bbj-completion-provider.ts` | Signature change + type constants | MODERATE |
+| Validator | `bbj-validator.ts` | Type constants in `ValidationChecks` keys | LOW-MODERATE |
+| 5 other files | Various | Type constant updates only | LOW each |
 
-**Critical architectural constraint**: Startup sequencing is mandatory—java-interop must be running and accepting connections before the language server launches, or Java completions fail silently. The plugin owns both process lifecycles and must implement graceful shutdown to prevent zombie processes.
+**Components unchanged:** `bbj-lexer.ts`, `bbj-token-builder.ts`, `bbj-value-converter.ts`, `bbj-hover.ts`, `bbj-comment-provider.ts`, `extension.ts`, `main.ts`, `java-interop.ts`, `java-javadoc.ts`
 
 ### Critical Pitfalls
 
-Process management dominates the risk profile. Most issues stem from inadequate lifecycle handling, not LSP protocol concerns.
+1. **Silent runtime bugs from type constant changes** -- If any `case TypeName:` or `descr.type === TypeName` site is missed, comparisons silently fail (object !== string). Prevention: systematic grep sweep after regeneration, TypeScript strict checks.
 
-1. **Language server crashes silently** — Users see features stop working mid-session with no error messages. **Prevention**: Implement process health monitoring with auto-restart (max 3 attempts with exponential backoff), surface crash notifications via IntelliJ balloon UI, add "Restart Language Server" action to Tools menu.
+2. **`prepareLangiumParser` removal** -- Used in `bbj-module.ts` to create custom parser with modified ambiguity logging. If removed, parser initialization fails entirely. Prevention: check Langium 4 exports first; prepare fallback using standard parser creation.
 
-2. **Zombie processes on shutdown** — Language server and java-interop outlive IntelliJ, leaving port 5008 occupied and preventing subsequent starts. **Prevention**: Register shutdown hooks in plugin's `dispose()` method, destroy process trees including descendants, enforce 5-second graceful shutdown timeout then force kill, test extensively.
+3. **Regeneration order mistake** -- Regenerating with old CLI against new runtime (or vice versa) produces incompatible generated code. Prevention: update both `langium` and `langium-cli` atomically, then regenerate immediately.
 
-3. **java-interop connection failures** — Language server expects java-interop on localhost:5008 but it's not ready yet or failed to start. **Prevention**: Start java-interop FIRST, poll port 5008 until accepting connections (max 10s), then start language server with confidence dependency is satisfied, monitor both processes independently.
+4. **`LocalSymbols` interface shape** -- The old `PrecomputedScopes` was `MultiMap<AstNode, AstNodeDescription>`. If `LocalSymbols` has a different interface, the `new MultiMap()` construction and `.add()`/`.get()` patterns in scope computation need adaptation.
 
-4. **Race conditions on startup** — IntelliJ opens BBj files before language server finishes LSP initialization handshake, causing "server not initialized" errors. **Prevention**: Queue LSP requests until language server sends `initialized` notification, show progress indicator during startup, add 30-second timeout with user-facing error.
-
-5. **Configuration not reaching language server** — User sets BBj home path in IntelliJ settings but language server never receives it, breaking java-interop classpath. **Prevention**: Send `workspace/didChangeConfiguration` notification on settings change, include settings in initialization params, trigger language server restart on configuration changes.
+5. **ServiceRegistry `.all` pattern** -- `bbj-ws-manager.ts` uses `services.ServiceRegistry.all.find(...)` to look up BBj services. If `.all` was removed with the singleton, this silently fails and Java interop never initializes.
 
 ## Implications for Roadmap
 
-Based on research, the roadmap should follow an incremental path from static file support to full dynamic language server integration, with java-interop as the final integration challenge.
+Based on combined research, the migration should follow a **5-phase sequential structure** driven by compilation dependencies. Each phase builds on the previous one's output.
 
-### Phase 0: Project Setup & Validation
-**Rationale:** Must validate critical assumptions before building features—especially LSP4IJ compatibility and stdio transport
-**Delivers:** Gradle project skeleton, LSP4IJ dependency configured, stdio transport validated
-**Addresses:** Validates against pitfall #1 (IPC vs stdio mismatch), confirms Community Edition compatibility
-**Research needed:** NO — straightforward setup, LSP4IJ documentation sufficient
+### Phase 1: Dependency Update and Grammar Regeneration
+**Rationale:** Establishes the new baseline. Generated code must exist before hand-written code can compile against it. This is a hard prerequisite for everything else.
+**Delivers:** Updated `package.json`, regenerated `ast.ts`/`grammar.ts`/`module.ts`, understanding of the new type constant pattern
+**Addresses:** BC-7 (regeneration), BC-8 (grammar validation), BC-12 (EBNF terminals), BC-13 (Xtext features)
+**Avoids:** Pitfall 14 (regeneration order), Pitfall 15 (grammar validation)
+**Effort:** ~1 hour
 
-### Phase 1: File Type & Syntax Highlighting
-**Rationale:** Establish IntelliJ's recognition of BBj files with basic visual feedback before introducing process complexity
-**Delivers:** `.bbj`/`.bbl`/`.bbjt`/`.src` files recognized, TextMate grammar syntax highlighting works, file icons appear
-**Addresses:** Table stakes features (file registration, syntax highlighting), lowest-risk starting point
-**Avoids:** Jumping straight to process management, allows testing IntelliJ infrastructure first
-**Research needed:** NO — standard IntelliJ file type API, TextMate support well-documented
+### Phase 2: Core API Renames and Type Constant Migration
+**Rationale:** These are mechanical renames and type adjustments that must happen before the more complex signature changes. They unblock compilation of the scope and linker layers. BC-3 (type constants) is the single highest-volume task but is systematic -- grep-driven find-and-replace.
+**Delivers:** Compiling scope computation (`bbj-scope-local.ts`), scope provider (`bbj-scope.ts`), and all files using type constants
+**Addresses:** BC-1 (PrecomputedScopes to LocalSymbols), BC-2 (method renames), BC-3 (type constants -- 25+ sites)
+**Avoids:** Pitfall 1 (silent runtime bugs from type constants), Pitfall 2 (PrecomputedScopes rename)
+**Effort:** ~4-6 hours (BC-3 alone is 25+ sites across 10 files)
 
-### Phase 2: Settings UI
-**Rationale:** Users need to configure BBj home path before java-interop can function; settings infrastructure needed for later phases
-**Delivers:** IntelliJ Settings panel with BBj home path field, classpath entries, settings persistence
-**Addresses:** Prerequisite for java-interop, prevents configuration pitfalls
-**Uses:** IntelliJ `PersistentStateComponent` and `Configurable` APIs
-**Research needed:** NO — standard settings pattern, examples abundant
+### Phase 3: Linker, Completion, and API Signature Updates
+**Rationale:** These require understanding new API shapes, not just renaming. Depends on Phase 2's type constant fixes being complete. Contains the highest-uncertainty item (`prepareLangiumParser`).
+**Delivers:** Compiling linker, completion provider, DI module, and all remaining service overrides
+**Addresses:** BC-4 (Reference | MultiReference), BC-5 (completion provider signature), BC-9 (removed deprecated APIs), BC-10 (ServiceRegistry)
+**Avoids:** Pitfall 3 (Reference union), Pitfall 4 (prepareLangiumParser), Pitfall 5 (completion signature), Pitfall 7 (ServiceRegistry)
+**Effort:** ~2-4 hours (higher if `prepareLangiumParser` was removed and needs replacement)
 
-### Phase 3: Language Server Integration (No java-interop)
-**Rationale:** Prove LSP communication works before adding java-interop complexity; delivers immediate value with diagnostics and completion
-**Delivers:** Language server process management, LSP features work (diagnostics, hover, completion for BBj symbols), Node.js detection
-**Addresses:** Most table stakes features except Java interop
-**Avoids:** Pitfalls #1, #2, #4 (process crashes, zombie processes, startup races)
-**Implements:** Plugin layer `LanguageServerDefinition`, process lifecycle, health monitoring
-**Research needed:** MAYBE — Process management on Windows may need platform-specific research if issues arise
+### Phase 4: Build Verification and Test Suite
+**Rationale:** Full compilation and test pass must succeed before manual testing. Test infrastructure (`bbj-test-module.ts`, `test-helper.ts`) may need its own fixes for synthetic AST nodes using `$type: JavaClass` and test utility imports.
+**Delivers:** Green build (`tsc`), successful bundle (`esbuild`), passing test suite (`vitest`)
+**Addresses:** Remaining compilation errors, test utility compatibility
+**Avoids:** Pitfall 16 (test suite breakage), Pitfall 17 (esbuild bundle compatibility)
+**Effort:** ~2-3 hours
 
-### Phase 4: java-interop Integration
-**Rationale:** Unlocks the killer feature (Java completions); builds on stable LS foundation from Phase 3
-**Delivers:** java-interop process startup, full Java class/method completions, type checking with Java interop
-**Addresses:** Competitive differentiator (Java interop completion)
-**Avoids:** Pitfall #3 (java-interop connection failures), Pitfall #5 (configuration not propagating)
-**Implements:** Two-process startup sequencing, port readiness checks, BBj classpath configuration
-**Research needed:** NO — Architecture well-defined, existing java-interop service unchanged
-
-### Phase 5: Robustness & Error Handling
-**Rationale:** Alpha release quality requires graceful degradation and actionable error messages
-**Delivers:** Process restart mechanisms, user-facing error notifications, settings validation, diagnostic logging
-**Addresses:** All critical pitfalls with production-ready recovery strategies
-**Avoids:** Silent failures (pitfall #6), cascading failures from java-interop crashes
-**Research needed:** NO — Standard error handling patterns
-
-### Phase 6: Enhanced Features (Optional for Alpha)
-**Rationale:** Nice-to-have features that improve UX but aren't blockers; consider based on schedule
-**Delivers:** Semantic tokens (enhanced highlighting), signature help, document symbols, find references
-**Addresses:** Competitive features from FEATURES.md P2 priority
-**Uses:** Existing LSP server capabilities, LSP4IJ mapping
-**Research needed:** NO — LSP4IJ handles these, just enabling server capabilities
+### Phase 5: Integration Testing and Validation
+**Rationale:** Runtime behavior must be verified in both VS Code and IntelliJ after all code changes. This catches silent regressions that TypeScript cannot detect -- especially missed type constant sites in switch statements.
+**Delivers:** Confirmed zero-regression migration, release-ready build
+**Tests:** Parsing, completion, go-to-definition, hover, validation, Java interop, semantic tokens, signature help
+**Avoids:** Pitfall 1 (silent switch statement failures), Pitfall 10 (DocumentBuilder behavioral changes)
+**Effort:** ~2 hours
 
 ### Phase Ordering Rationale
 
-- **Incremental risk**: Start with static file types (zero risk), add process management (moderate risk), then multi-process coordination (highest risk)
-- **Dependency-driven**: Settings must exist before java-interop, java-interop must work before Java completions
-- **Fast feedback**: TextMate syntax highlighting in Phase 1 provides immediate visible progress
-- **Value delivery**: Phase 3 delivers 80% of user value (all LSP features except Java interop), making java-interop integration (Phase 4) additive rather than blocking
-- **Pitfall mitigation**: Phases 0-2 are low-complexity foundations that derisk Phases 3-5 where most pitfalls lurk
+- Phases are strictly sequential because each depends on the previous phase's output
+- Phase 1 (regeneration) must come first -- all subsequent phases depend on the new generated code
+- BC-3 (type constants) is in Phase 2 despite being high-volume because it is mechanical and can be done systematically with grep
+- BC-9 (deprecated API removal) is in Phase 3 because it may require creative solutions (especially `prepareLangiumParser`) and benefits from having the rest of the codebase closer to compiling
+- Test fixes are deferred to Phase 4 because they depend on all source changes being complete
+- Manual testing is last because it requires a working build
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 3 (Language Server Integration):** Process management on Windows may differ from macOS/Linux (path separators, executable permissions, process lifecycle APIs)—test early or research if Windows-specific issues surface
+- **Phase 3:** The `prepareLangiumParser` status is LOW confidence. Need to check Langium 4 exports immediately when starting this phase. If removed, need to find the replacement pattern -- check PR #1991 diff or Langium 4 source.
+- **Phase 3:** The exact new signature for `createReferenceCompletionItem` is unknown -- check `DefaultCompletionProvider` in Langium 4.
+- **Phase 2:** Whether `computeExports`/`computeLocalScopes` methods were renamed to `collectExportedSymbols`/`collectLocalSymbols` (MEDIUM confidence) -- verify against `DefaultScopeComputation` in Langium 4.
+- **Phase 2:** Whether `LocalSymbols` interface supports `MultiMap` construction pattern -- verify interface definition.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 0:** Gradle IntelliJ plugin setup is well-documented
-- **Phase 1:** File type registration and TextMate grammars are standard IntelliJ Platform APIs
-- **Phase 2:** Settings UI follows established IntelliJ patterns
-- **Phase 4:** java-interop architecture already proven in VS Code extension
-- **Phase 5:** Error handling patterns apply universally
-- **Phase 6:** LSP4IJ documentation covers enhanced features
+- **Phase 1:** Dependency update and regeneration -- well-documented, standard npm workflow
+- **Phase 4:** Build and test -- standard verification, no research needed
+- **Phase 5:** Manual testing -- standard smoke testing
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | LSP4IJ is production-proven (Quarkus, Liberty), Gradle+IntelliJ plugin is industry standard, all technologies verified against official docs |
-| Features | HIGH | Feature set derived from LSP protocol spec + existing language server capabilities, alpha scope clearly defined with table stakes vs nice-to-have distinction |
-| Architecture | HIGH | Three-layer pattern is established practice for LSP plugins, reuses 100% of existing language server with zero changes, critical dependency (java-interop before LS) understood |
-| Pitfalls | HIGH | Process lifecycle pitfalls are well-known in Java/IntelliJ plugin development, prevention strategies validated against LSP4IJ examples and IntelliJ Platform docs |
+| Stack | HIGH | Version numbers verified via npm registry; dependency compatibility confirmed |
+| Features (Breaking Changes) | HIGH | 11 of 13 BCs verified via official CHANGELOG; 2 need implementation-time verification |
+| Architecture | MEDIUM-HIGH | Component impact analysis thorough; some internal API details (protected fields, utility types) unverified |
+| Pitfalls | MEDIUM-HIGH | Critical pitfalls well-documented; some moderate pitfalls based on inference rather than direct verification |
 
-**Overall confidence:** HIGH
+**Overall confidence:** MEDIUM-HIGH
 
 ### Gaps to Address
 
-While research confidence is high, these areas need validation during implementation:
+These could not be resolved from research alone and need verification during implementation:
 
-- **TextMate grammar compatibility**: IntelliJ's TextMate support differs subtly from VS Code's—test `bbj.tmLanguage.json` in IntelliJ early (Phase 1 spike) to confirm compatibility or plan fallback to LSP semantic tokens
-- **Node.js bundling decision**: Deferred to implementation—start with system Node.js detection for alpha simplicity, evaluate bundling for beta based on user feedback and plugin size constraints
-- **Cross-platform process management**: While Java's `ProcessBuilder` is platform-agnostic, test on Windows early to catch path separator or executable permission issues before they block progress
-- **LSP4IJ version compatibility**: LSP4IJ 0.8.0 is latest as of research date, but verify no breaking changes if newer versions release during development—monitor LSP4IJ GitHub releases
+- **`prepareLangiumParser` status:** Cannot confirm whether it was removed in Langium 4. Check `require('langium').prepareLangiumParser` or Langium 4 source immediately in Phase 3. If removed, check PR #1991 for the replacement pattern.
+- **`createReferenceCompletionItem` exact new parameters:** CHANGELOG confirms signature change but does not enumerate new params. Check `DefaultCompletionProvider` class definition in `node_modules/langium` after install.
+- **`LocalSymbols` interface shape:** Whether it remains compatible with `MultiMap<AstNode, AstNodeDescription>` construction. Check import and interface definition after install.
+- **Scope computation method renames:** Whether `computeExports`/`computeLocalScopes` became `collectExportedSymbols`/`collectLocalSymbols`. Check `DefaultScopeComputation` after install.
+- **`ValidationChecks<BBjAstType>` key format:** Whether the property name keys in validation check registration are affected by the `BBjAstType` restructuring. Check generated `ast.ts` after regeneration.
+- **`StreamScope` protected fields:** Whether `this.elements`, `this.outerScope`, `this.caseInsensitive` still exist on `StreamScope` in Langium 4. Compilation will reveal.
+- **`ServiceRegistry.all` pattern:** Whether the `.all` property and `.find()` pattern still work after singleton removal.
+- **Node.js engine requirement for 4.1.3:** PITFALLS.md mentions Node >= 20.10.0 for Langium 4.2.0. Verify whether 4.1.3 has the same requirement (current project uses Node 20.18.1 LTS, which satisfies either way).
+
+## Consolidated Breaking Changes Reference
+
+| ID | Breaking Change | Files | Sites | Effort | Confidence |
+|----|----------------|-------|-------|--------|------------|
+| BC-1 | PrecomputedScopes to LocalSymbols | 2 | 7 | MODERATE | HIGH |
+| BC-2 | Scope method renames | 1 | 2 | LOW | MEDIUM |
+| BC-3 | Type constants `.$type` | 10+ | 25+ | HIGH | HIGH |
+| BC-4 | Reference \| MultiReference | 2 | 4 | MODERATE | HIGH |
+| BC-5 | Completion provider signature | 1 | 2 | LOW | HIGH |
+| BC-6 | TypeScript >= 5.8.0 | 0 | 0 | NONE | HIGH |
+| BC-7 | Regeneration required | 3 | auto | LOW | HIGH |
+| BC-8 | Rule naming restrictions | 0 | 0 | NONE | HIGH |
+| BC-9 | Removed deprecated APIs | 2+ | 3+ | UNKNOWN | LOW-MEDIUM |
+| BC-10 | ServiceRegistry changes | 1 | 2 | LOW | MEDIUM |
+| BC-11 | FileSystem provider extended | 0 | 0 | NONE | HIGH |
+| BC-12 | EBNF terminal refinements | 0 | 0 | NONE | HIGH |
+| BC-13 | Xtext features removed | 0 | 0 | NONE | HIGH |
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- **LSP4IJ GitHub repository** (https://github.com/redhat-developer/lsp4ij) — API documentation, extension points, process management examples
-- **IntelliJ Platform SDK** (https://plugins.jetbrains.com/docs/intellij/) — File type registration, settings API, plugin lifecycle, TextMate support
-- **Gradle IntelliJ Plugin documentation** (https://plugins.gradle.org/plugin/org.jetbrains.intellij) — Build configuration, plugin packaging, sandbox testing
-- **Language Server Protocol Specification** (https://microsoft.github.io/language-server-protocol/) — LSP capabilities, protocol semantics
-- **Existing BBj codebase** (`bbj-vscode/src/language/main.ts`, `java-interop` source) — Verified capabilities, transport mechanisms, process contracts
+- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/) -- feature overview, breaking changes summary
+- [Langium CHANGELOG](https://github.com/langium/langium/blob/main/packages/langium/CHANGELOG.md) -- definitive breaking changes list
+- [langium npm](https://www.npmjs.com/package/langium) -- version 4.1.3 confirmed
+- [langium-cli npm](https://www.npmjs.com/package/langium-cli) -- version 4.1.0 confirmed
 
 ### Secondary (MEDIUM confidence)
-- **LSP4IJ example plugins** (Quarkus Tools, Liberty Tools, COBOL Language Support on JetBrains Marketplace) — Production patterns for process management, settings UI, LSP feature mapping
-- **IntelliJ plugin development forums** (JetBrains Platform Slack, Stack Overflow) — Community practices for process lifecycle, zombie process prevention, cross-platform compatibility
+- [Langium GitHub Releases](https://github.com/langium/langium/releases) -- release-specific notes
+- [Langium Documentation](https://langium.org/docs/) -- recipes and references (may lag behind 4.x)
+- [Langium File-based Scoping Recipe](https://langium.org/docs/recipes/scoping/file-based/) -- uses `collectExportedSymbols` naming
 
-### Tertiary (LOW confidence)
-- **Node.js bundling approaches** — Gradle Node plugin exists but bundling strategy needs validation against plugin size constraints and code signing requirements (macOS Gatekeeper, Windows SmartScreen)
+### Tertiary (LOW confidence, needs validation)
+- PR #1991 (removed deprecated APIs) -- not fully enumerated in CHANGELOG; `prepareLangiumParser` status unknown
+- PR #1976 (completion provider) -- exact new parameter list unknown
+- PR #1945 (Xtext feature removal) -- exact removed features unknown
 
 ---
-*Research completed: 2026-02-01*
+*Research completed: 2026-02-03*
 *Ready for roadmap: yes*

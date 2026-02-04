@@ -1,4 +1,33 @@
-# Project Milestones: BBj Language Server - IntelliJ Integration
+# Project Milestones: BBj Language Server
+
+## v2.0 Langium 4 Upgrade (Shipped: 2026-02-04)
+
+**Delivered:** Upgraded language server from Langium 3.2 to Langium 4.1.3 with zero feature regressions across VS Code and IntelliJ, plus test coverage infrastructure and human QA procedures.
+
+**Phases completed:** 14-20 (11 plans total)
+
+**Key accomplishments:**
+
+- Upgraded Langium 3.2 → 4.1.3 with clean dependency tree and regenerated grammar
+- Migrated 77 TypeScript errors: type constants to `.$type` pattern, `PrecomputedScopes` → `LocalSymbols`, scope method renames
+- Updated API signatures: completion provider 3-param signature, `Reference | MultiReference` union type guards in linker
+- Test suite passing with 88% V8 coverage and threshold-based regression prevention
+- Release artifacts ready: VS Code .vsix (1.67 MB) and IntelliJ .zip (701 KB)
+- Human QA procedures: 27-item full test and 8-item smoke test checklists
+
+**Stats:**
+
+- 70 files created/modified
+- +9,562 / -287 lines (code + planning docs)
+- ~23,000 LOC TypeScript (codebase total)
+- 7 phases, 11 plans
+- 2 days (2026-02-03 → 2026-02-04)
+
+**Git range:** `c9efe7a` → `11acf7d`
+
+**What's next:** User-handled version bump and publishing (RELS-01, RELS-02, RELS-03)
+
+---
 
 ## v1.2 Run Fixes & Marketplace (Shipped: 2026-02-02)
 

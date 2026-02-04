@@ -1,6 +1,5 @@
 import { AstNode, DocumentationProvider, isJSDoc, parseJSDoc } from "langium";
 import { AstNodeHoverProvider, LangiumServices } from "langium/lsp";
-import { Hover } from "vscode-languageclient";
 import { getFQNFullname, MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
 import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast.js";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
@@ -17,12 +16,12 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         this.commentProvider = services.documentation.CommentProvider;
     }
 
-    protected override async getAstNodeHoverContent(node: AstNode): Promise<Hover | undefined> {
+    protected override async getAstNodeHoverContent(node: AstNode): Promise<string | undefined> {
         const header = documentationHeader(node)
         if (isBbjClass(node) || isBBjClassMember(node)) {
             const comments = this.getAstNodeComments(node);
             if (comments) {
-                return this.createMarkdownHover(header, comments);
+                return this.createMarkdownContent(header, comments);
             }
         } else if (isDocumented(node) && isNamedElement(node)) {
             let javaDoc: { signature?: string, javadoc: string } | undefined = node.docu
@@ -43,9 +42,9 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
                     }
                 }
             }
-            return this.createMarkdownHover(javaDoc?.signature, javaDoc?.javadoc);
+            return this.createMarkdownContent(javaDoc?.signature, javaDoc?.javadoc);
         }
-        return header ? this.createMarkdownHover(header) : undefined;
+        return header ? this.createMarkdownContent(header) : undefined;
     }
 
     /**
@@ -70,14 +69,9 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         }
     }
 
-    protected createMarkdownHover(header: string | undefined, content: string | undefined = ''): Hover {
+    protected createMarkdownContent(header: string | undefined, content: string | undefined = ''): string {
         const headerText = header ? `__${header}__\n\n` : ''
-        return {
-            contents: {
-                kind: 'markdown',
-                value: `${headerText}${content}`
-            }
-        };
+        return `${headerText}${content}`;
     }
 
     protected tryParseJavaDoc(comment: string) {

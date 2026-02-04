@@ -10,7 +10,7 @@ import { resolve } from "path";
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     wsManager: () => WorkspaceManager;
-    fileSystemProvider: FileSystemProvider;
+    override fileSystemProvider: FileSystemProvider;
 
     constructor(services: LangiumSharedCoreServices) {
         super(services);
