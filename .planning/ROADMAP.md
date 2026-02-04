@@ -5,7 +5,7 @@
 - v1.0 Internal Alpha - Phases 1-6 (shipped 2026-02-01)
 - v1.1 Polish & Run Commands - Phases 7-10 (shipped 2026-02-02)
 - v1.2 Run Fixes & Marketplace - Phases 11-13 (shipped 2026-02-02)
-- **v2.0 Langium 4 Upgrade** - Phases 14-18 (in progress)
+- **v2.0 Langium 4 Upgrade** - Phases 14-19 (in progress)
 
 ## v2.0 Langium 4 Upgrade
 
@@ -19,7 +19,8 @@ Upgrade the language server from Langium 3.2 to Langium 4.1.3 with zero feature 
 - [x] **Phase 15: Core API Renames & Type Constants** - Mechanical renames and type constant migration across all source files
 - [x] **Phase 16: API Signature & Deprecated API Migration** - Complex API shape changes in linker, completion, parser, and remaining deprecated usages
 - [x] **Phase 17: Build Verification & Test Suite** - Full TypeScript compilation, esbuild bundle, and test suite green
-- [ ] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, release artifacts built (publishing and versioning handled by user separately)
+- [x] **Phase 18: Functional Verification & Release** - Runtime behavior verified in both IDEs, release artifacts built (publishing and versioning handled by user separately)
+- [ ] **Phase 19: Test Plan** - Fix failing tests, add coverage infrastructure, establish quality gates
 
 ### Phase Details
 
@@ -96,8 +97,23 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 18-01-PLAN.md -- Chevrotain token runtime verification and LSP feature functional tests
-- [ ] 18-02-PLAN.md -- Build release artifacts (.vsix + .zip) and produce verification report
+- [x] 18-01-PLAN.md -- Chevrotain token runtime verification and LSP feature functional tests
+- [x] 18-02-PLAN.md -- Build release artifacts (.vsix + .zip) and produce verification report
+
+#### Phase 19: Test Plan
+**Goal:** Fix failing tests, add coverage infrastructure, and establish quality gates for the test suite
+**Depends on:** Phase 18
+**Requirements:** TEST-01 (all tests pass), TEST-02 (coverage reporting), TEST-03 (quality gates)
+**Success Criteria** (what must be TRUE):
+  1. All tests pass (0 failures)
+  2. Coverage reporting configured with @vitest/coverage-v8
+  3. Coverage excludes generated files (src/language/generated/**)
+  4. Coverage thresholds established to prevent regressions
+**Plans:** 2 plans
+
+Plans:
+- [ ] 19-01-PLAN.md -- Fix 2 failing tests (parser.test.ts type constant, linking.test.ts BBjAPI case)
+- [ ] 19-02-PLAN.md -- Add coverage infrastructure (@vitest/coverage-v8) with thresholds
 
 ### Coverage
 
@@ -125,10 +141,11 @@ Phases with standard patterns (no deep research needed):
 - **Phase 14**: Standard npm + langium-cli workflow
 - **Phase 17**: Standard build verification
 - **Phase 18**: Standard smoke testing + publish workflow
+- **Phase 19**: Standard testing infrastructure (vitest coverage)
 
 ## Progress
 
-**Execution Order:** 14 -> 15 -> 16 -> 17 -> 18 (strictly sequential)
+**Execution Order:** 14 -> 15 -> 16 -> 17 -> 18 -> 19 (strictly sequential)
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -136,4 +153,5 @@ Phases with standard patterns (no deep research needed):
 | 15. Core Renames | v2.0 | 2/2 | Complete | 2026-02-03 |
 | 16. API Signatures | v2.0 | 1/1 | Complete | 2026-02-03 |
 | 17. Build & Test | v2.0 | 2/2 | Complete | 2026-02-03 |
-| 18. Verify & Release | v2.0 | 0/2 | Not started | - |
+| 18. Verify & Release | v2.0 | 2/2 | Complete | 2026-02-04 |
+| 19. Test Plan | v2.0 | 0/2 | Not started | - |
