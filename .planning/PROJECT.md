@@ -48,19 +48,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Marketplace description, vendor info, and change notes — v1.2
 - ✓ MIT License and third-party NOTICES in distribution — v1.2
 - ✓ Plugin verifier passes with zero compatibility errors — v1.2
+- ✓ Langium upgraded from 3.2 to 4.1.3 with zero feature regressions — v2.0
+- ✓ All AST type constants migrated to .$type pattern — v2.0
+- ✓ PrecomputedScopes → LocalSymbols migration complete — v2.0
+- ✓ Completion provider and linker API signatures updated for Langium 4 — v2.0
+- ✓ Test suite passing with 88% V8 coverage — v2.0
+- ✓ Human QA testing procedures documented (27-item full test, 8-item smoke test) — v2.0
 
 ### Active
 
-## Current Milestone: v2.0 Langium 3 Upgrade
-
-**Goal:** Upgrade the language server from Langium 2 to Langium 3 (latest stable) with zero feature regressions, then publish updated VS Code extension and IntelliJ plugin.
-
-**Target features:**
-- Langium 2 → 3 migration (grammar, services, API changes)
-- All existing LS features preserved (diagnostics, completion, hover, signatures, symbols)
-- VS Code extension builds and works with upgraded LS
-- IntelliJ plugin builds and works with upgraded LS (bundled main.cjs)
-- Published updates for both VS Code extension and IntelliJ plugin
+(None — milestone complete, next milestone to be defined)
 
 ### Out of Scope
 
@@ -71,9 +68,9 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v1.2 shipped 2026-02-02. IntelliJ plugin provides full BBj language support including run commands, Structure view, brand icons, and is ready for JetBrains Marketplace publication. VS Code extension is the primary development environment. Language server built on Langium 2.x — upgrading to Langium 3 for long-term maintainability and future AI/BNF features.
+**Current state:** v2.0 shipped 2026-02-04. Language server upgraded to Langium 4.1.3 with zero feature regressions. IntelliJ plugin and VS Code extension both work with the upgraded language server. Test coverage at 88% with V8 provider and threshold-based regression prevention. Human QA testing procedures documented. Release artifacts built and ready for user to publish (version bump and publishing are user responsibilities).
 
-**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded).
+**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary.
 
@@ -93,7 +90,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - **Community Edition**: Plugin must work with IntelliJ Community Edition (rules out JetBrains native LSP API)
 - **Node.js dependency**: Language server requires Node.js runtime — auto-downloaded if not available
 - **Existing LS unchanged**: No modifications to the language server for IntelliJ support — IntelliJ adapts to what the LS provides
-- **No new Langium 3 features**: v2.0 is a clean upgrade only — BNF syntax, AI features, etc. deferred to future milestones
+- **Langium 4 new features deferred**: BNF syntax, AI features, etc. deferred to future milestones (v2.0 was clean upgrade only)
 
 ## Key Decisions
 
@@ -125,7 +122,11 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | `recommended()` for plugin verifier | Auto-aligns with sinceBuild/untilBuild range | ✓ Good — no version mismatches |
 | Only claim features with implementation evidence | Ensures honest marketplace listing | ✓ Good — all 9 features verified |
 
-| Langium 2 → 3 upgrade (no new features) | Stay current; enable future AI/BNF features; avoid falling behind | — Pending |
+| Langium 3 → 4 upgrade (no new features) | Stay current; enable future AI/BNF features; avoid falling behind | ✓ Good — v2.0 shipped |
+| Type constants .$type pattern | Langium 4 changed type constants from strings to objects | ✓ Good — all 77 errors migrated |
+| LocalSymbols over PrecomputedScopes | Langium 4 API rename | ✓ Good — clean migration |
+| V8 coverage over Istanbul | Native Node.js profiler, faster, better TypeScript source maps | ✓ Good — 88% baseline |
+| Conservative coverage thresholds | 50% lines (actual 88%) allows flexibility while preventing regression | ✓ Good — CI quality gates |
 
 ---
-*Last updated: 2026-02-03 after v2.0 milestone start*
+*Last updated: 2026-02-04 after v2.0 milestone complete*
