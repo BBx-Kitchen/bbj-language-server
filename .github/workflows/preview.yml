@@ -96,9 +96,12 @@ jobs:
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin -Pversion=${{ needs.publish-preview.outputs.version }}
 
+      - name: Extract plugin for upload
+        run: unzip -o bbj-intellij/build/distributions/bbj-intellij-*.zip -d bbj-intellij/build/distributions/extracted
+
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
           name: bbj-intellij-${{ needs.publish-preview.outputs.version }}
-          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
+          path: bbj-intellij/build/distributions/extracted/*
           retention-days: 7
