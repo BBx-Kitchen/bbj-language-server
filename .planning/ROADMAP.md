@@ -44,10 +44,10 @@ Plans:
   2. Input version (x.y.0) applied to both extensions identically
   3. GitHub Release created with .vsix and .zip attached
   4. Release notes include IntelliJ installation instructions
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 22-01: TBD
+- [ ] 22-01-PLAN.md - Extend manual-release workflow with IntelliJ build and GitHub Release
 
 ### Phase 23: PR Validation
 **Goal**: Pull requests that affect IntelliJ plugin are validated before merge
@@ -68,7 +68,7 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 21. Preview Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
-| 22. Release Workflow | v2.2 | 0/? | Not started | - |
+| 22. Release Workflow | v2.2 | 0/1 | Not started | - |
 | 23. PR Validation | v2.2 | 0/? | Not started | - |
 
 ---
