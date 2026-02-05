@@ -1,0 +1,61 @@
+# .github/workflows/pr-validation.yml
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'bbj-intellij/**'
+      - 'bbj-vscode/out/language/**'
+      - 'bbj-vscode/tools/**'
+      - 'bbj-vscode/syntaxes/**'
+      - '.github/workflows/pr-validation.yml'
+
+jobs:
+  build-vscode:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies and build
+        working-directory: bbj-vscode
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload language server
+        uses: actions/upload-artifact@v4
+        with:
+          name: language-server
+          path: bbj-vscode/out/language/main.cjs
+          retention-days: 1
+
+  validate-intellij:
+    runs-on: ubuntu-latest
+    needs: build-vscode
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download language server
+        uses: actions/download-artifact@v4
+        with:
+          name: language-server
+          path: bbj-vscode/out/language/
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build IntelliJ plugin
+        working-directory: bbj-intellij
+        run: ./gradlew buildPlugin
