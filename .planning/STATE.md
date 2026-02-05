@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v2.2 IntelliJ Build & Release Automation — unified CI/CD for both extensions
+**Current focus:** v2.2 IntelliJ Build & Release Automation - Phase 21 Preview Workflow
 
 ## Current Position
 
 Milestone: v2.2 IntelliJ Build & Release Automation
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-05 — Milestone v2.2 started
+Phase: 21 of 23 (Preview Workflow)
+Plan: -
+Status: Ready to plan
+Last activity: 2026-02-05 - Roadmap created for v2.2
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [..........] 0%
 
 ## Milestone History
 
@@ -58,7 +58,7 @@ See archived decisions in .planning/milestones/v2.0-ROADMAP.md
 
 ### Roadmap Evolution
 
-v2.2 milestone started. Unified build/release automation for IntelliJ and VS Code.
+v2.2 milestone roadmap created. Three phases: Preview Workflow (21), Release Workflow (22), PR Validation (23).
 
 ### Blockers/Concerns
 
@@ -67,6 +67,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Milestone v2.2 started, entering research phase
+Stopped at: Roadmap created for v2.2 milestone
 Resume file: None
-Next: Research JetBrains Marketplace versioning, then define requirements
+Next: /gsd:plan-phase 21
