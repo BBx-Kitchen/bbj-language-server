@@ -1,5 +1,33 @@
 # Project Milestones: BBj Language Server
 
+## v2.2 IntelliJ Build & Release Automation (Shipped: 2026-02-05)
+
+**Delivered:** Unified CI/CD automation for both VS Code and IntelliJ extensions — preview builds on every push to main, manual production releases with GitHub Release artifacts containing both .vsix and .zip.
+
+**Phases completed:** 21-23 (3 plans total)
+
+**Key accomplishments:**
+
+- Gradle property injection for dynamic version sync between VS Code and IntelliJ extensions
+- Two-job preview workflow with artifact sharing (main.cjs between builds)
+- Three-job manual release workflow with GitHub Release creation
+- IntelliJ installation instructions embedded in release notes
+- PR validation workflow with path filtering for IntelliJ and shared dependencies
+- Plugin verifier integration in release builds (catches IDE compatibility issues before users)
+
+**Stats:**
+
+- 16 files created/modified
+- +1,950 / -40 lines (workflows + Gradle config)
+- 3 phases, 3 plans
+- 1 day (2026-02-05)
+
+**Git range:** `90c42ff` → `f561d9f`
+
+**What's next:** Create first unified release via `manual-release.yml` workflow dispatch, or start next milestone for feature gap implementation.
+
+---
+
 ## v2.1 Feature Gap Analysis (Shipped: 2026-02-04)
 
 **Delivered:** Comprehensive competitive analysis comparing BBj Language Server against Dynamo Tools VS Code extension, with prioritized feature gap backlog and implementation recommendations.

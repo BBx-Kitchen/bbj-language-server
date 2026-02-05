@@ -56,16 +56,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Human QA testing procedures documented (27-item full test, 8-item smoke test) — v2.0
 
 - ✓ Feature gap analysis comparing BBj LS vs Dynamo Tools extension — v2.1 (research milestone)
+- ✓ IntelliJ plugin version sourced from bbj-vscode/package.json — v2.2
+- ✓ GitHub Actions workflow for preview releases (both extensions) — v2.2
+- ✓ GitHub Actions workflow for manual production releases (both extensions) — v2.2
+- ✓ IntelliJ .zip artifact attached to GitHub Releases — v2.2
+- ✓ Gradle build integrated into CI pipeline — v2.2
+- ✓ PR validation for IntelliJ plugin changes — v2.2
+- ✓ Plugin verifier integration for release builds — v2.2
 
 ### Active
 
-**v2.2 IntelliJ Build & Release Automation:**
-- [ ] Research JetBrains Marketplace versioning scheme compatibility
-- [ ] IntelliJ plugin version sourced from bbj-vscode/package.json
-- [ ] GitHub Actions workflow for preview releases (both extensions)
-- [ ] GitHub Actions workflow for manual production releases (both extensions)
-- [ ] IntelliJ .zip artifact attached to GitHub Releases
-- [ ] Gradle build integrated into CI pipeline
+(No active requirements — ready for next milestone)
 
 ### Out of Scope
 
@@ -76,7 +77,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v2.2 milestone started 2026-02-05. Building CI/CD automation for unified IntelliJ + VS Code releases. Both extensions will share version from `bbj-vscode/package.json`. IntelliJ plugin distributed via GitHub Releases until JetBrains Marketplace access obtained.
+**Current state:** v2.2 milestone shipped 2026-02-05. Unified CI/CD automation complete — preview builds on every push to main, manual releases create GitHub Releases with both .vsix and .zip. Both extensions share version from `bbj-vscode/package.json`. IntelliJ plugin distributed via GitHub Releases until JetBrains Marketplace access obtained.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -136,6 +137,10 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | V8 coverage over Istanbul | Native Node.js profiler, faster, better TypeScript source maps | ✓ Good — 88% baseline |
 | Conservative coverage thresholds | 50% lines (actual 88%) allows flexibility while preventing regression | ✓ Good — CI quality gates |
 | Research-only milestone precedent | v2.1 established that analysis milestones (no code) can ship as proper versions | ✓ Good — clean history |
+| Gradle property injection for version | `providers.gradleProperty("version")` simpler than systemProperty for CI | ✓ Good — v2.2 shipped |
+| verifyPlugin only in release builds | Too slow for PR validation (downloads multiple IDE versions) | ✓ Good — correct tradeoff |
+| GITHUB_TOKEN for plugin verifier | Avoids API rate limiting when resolving IDE versions | ✓ Good — reliable builds |
+| Path-filtered PR validation | Triggers only when IntelliJ or shared dependencies change | ✓ Good — fast PRs |
 
 ---
-*Last updated: 2026-02-05 after v2.2 milestone started*
+*Last updated: 2026-02-05 after v2.2 milestone complete*
