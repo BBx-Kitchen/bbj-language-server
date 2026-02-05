@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.basis.bbj"
-version = "0.1.0"
+version = providers.gradleProperty("version").getOrElse("0.1.0")
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
