@@ -9,8 +9,10 @@ on:
         required: true
 
 jobs:
-  manual-release:
+  build-vscode:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ github.event.inputs.version }}
 
     steps:
       - uses: actions/checkout@v4
@@ -85,3 +87,53 @@ jobs:
         run: |
           npx vsce package
           npx vsce publish -p $VSCE_PAT
+
+      - name: Upload language server
+        uses: actions/upload-artifact@v4
+        with:
+          name: language-server
+          path: bbj-vscode/out/language/main.cjs
+          retention-days: 1
+
+      - name: Upload VS Code extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-extension
+          path: bbj-vscode/*.vsix
+          retention-days: 1
+
+  build-intellij:
+    runs-on: ubuntu-latest
+    needs: build-vscode
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download language server
+        uses: actions/download-artifact@v4
+        with:
+          name: language-server
+          path: bbj-vscode/out/language/
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build IntelliJ plugin
+        working-directory: bbj-intellij
+        run: ./gradlew buildPlugin -Pversion=${{ needs.build-vscode.outputs.version }}
+
+      - name: Rename plugin with version
+        working-directory: bbj-intellij/build/distributions
+        run: |
+          VERSION="${{ needs.build-vscode.outputs.version }}"
+          mv bbj-lang-*.zip "bbj-intellij-${VERSION}.zip"
+
+      - name: Upload IntelliJ plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: intellij-plugin
+          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
+          retention-days: 1
