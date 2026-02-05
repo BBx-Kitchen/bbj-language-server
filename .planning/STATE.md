@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-05)
 
 Milestone: v2.2 IntelliJ Build & Release Automation
 Phase: 21 of 23 (Preview Workflow)
-Plan: -
-Status: Ready to plan
-Last activity: 2026-02-05 - Roadmap created for v2.2
+Plan: 1 of 1
+Status: Phase complete
+Last activity: 2026-02-05 - Completed 21-01-PLAN.md
 
-Progress: [..........] 0%
+Progress: [###.......] 33%
 
 ## Milestone History
 
@@ -32,9 +32,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11 (v2.0)
-- Average duration: 3.3 min
-- Total execution time: ~37 min
+- Total plans completed: 12 (v2.0: 11, v2.2: 1)
+- Average duration: 3.2 min
+- Total execution time: ~40 min
 
 *Updated after each plan completion*
 
@@ -44,6 +44,11 @@ See: .planning/MILESTONES.md
 
 Decisions are logged in PROJECT.md Key Decisions table.
 See archived decisions in .planning/milestones/v2.0-ROADMAP.md
+
+| Date | Phase | Decision | Rationale |
+|------|-------|----------|-----------|
+| 2026-02-05 | 21-01 | Use providers.gradleProperty over systemProperty | Simpler Gradle API sufficient for CI |
+| 2026-02-05 | 21-01 | Keep publish-preview job name | Avoids breaking external references |
 
 ### Known Issues
 
@@ -59,6 +64,7 @@ See archived decisions in .planning/milestones/v2.0-ROADMAP.md
 ### Roadmap Evolution
 
 v2.2 milestone roadmap created. Three phases: Preview Workflow (21), Release Workflow (22), PR Validation (23).
+Phase 21 complete - preview workflow now builds both VS Code and IntelliJ plugins.
 
 ### Blockers/Concerns
 
@@ -67,6 +73,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Roadmap created for v2.2 milestone
+Stopped at: Completed 21-01-PLAN.md (Phase 21 complete)
 Resume file: None
-Next: /gsd:plan-phase 21
+Next: /gsd:plan-phase 22
