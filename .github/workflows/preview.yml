@@ -99,6 +99,6 @@ jobs:
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
-          name: intellij-plugin
+          name: bbj-intellij-${{ needs.publish-preview.outputs.version }}
           path: bbj-intellij/build/distributions/bbj-intellij-*.zip
           retention-days: 7
