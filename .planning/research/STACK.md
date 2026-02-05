@@ -1,389 +1,278 @@
-# Technology Stack: Langium 3.x to 4.x Upgrade
+# Stack Research: IntelliJ CI/CD
 
-**Project:** BBj Language Server (bbj-vscode)
-**Researched:** 2026-02-03
-**Milestone:** Langium 3.2.1 -> 4.1.3 upgrade
-**Overall Confidence:** MEDIUM-HIGH
-
----
+**Project:** BBj Language Server - IntelliJ Plugin CI/CD
+**Researched:** 2026-02-05
+**Confidence:** HIGH (verified with official documentation)
 
 ## Executive Summary
 
-Langium 4.x is a **breaking major release** with significant API changes across the scope/linker/reference system, generated AST structure, and grammar semantics. The BBj language server uses many of these APIs in custom overrides, making this a non-trivial upgrade. The core npm package structure (`langium` + `langium-cli`) is unchanged, but internal APIs have been renamed, re-typed, and restructured.
-
-**Correction from milestone context:** The latest stable Langium version is **4.1.3** (not 4.2.0 as stated). The `langium-cli` latest is **4.1.0**. There is no 4.2.0 release as of 2026-02-03.
-
----
-
-## Version Targets
-
-### Upgrade To
-
-| Package | Current | Target | Why This Version |
-|---------|---------|--------|------------------|
-| `langium` | ~3.2.1 | ~4.1.3 | Latest stable; patch releases (4.1.1-4.1.3) contain bug fixes over 4.1.0 |
-| `langium-cli` | ~3.2.0 | ~4.1.0 | Latest CLI release; matches langium 4.1.x line |
-| `typescript` | ^5.8.3 | ^5.8.3 | **No change needed.** Langium 4.x requires >=5.8.0; current 5.8.3 satisfies this. |
-
-**Confidence:** HIGH -- version numbers verified via npm registry search results from 2026-02-03.
-
-### Do NOT Change
-
-| Package | Version | Why Keep |
-|---------|---------|----------|
-| `chevrotain` | ~11.0.3 | **KEEP.** `bbj-token-builder.ts` imports `TokenType` and `TokenVocabulary` directly from `chevrotain`. Langium does NOT re-export these types. Version ~11.0.3 is compatible with Langium 4.x (which uses chevrotain 11.0.x internally). |
-| `typescript` | ^5.8.3 | Already satisfies Langium 4.x requirement of >=5.8.0 |
-| `esbuild` | ^0.25.12 | Bundler; unrelated to Langium version |
-| `vitest` | ^1.6.1 | Test runner; unrelated to Langium version |
-| `vscode-languageclient` | ^9.0.1 | VS Code client; unrelated to Langium internals |
-| `vscode-jsonrpc` | ^8.2.1 | JSON-RPC transport; unrelated |
-| `vscode-uri` | ^3.1.0 | URI utilities; Langium uses this internally too |
-| `properties-file` | ^3.6.3 | BBj-specific; unrelated |
-| `properties-reader` | ^2.3.0 | BBj-specific; unrelated |
-| Node.js | 20.18.1 LTS | Runtime; Langium 4 has no new Node version requirement |
-
----
-
-## Breaking Changes Requiring Code Modifications
-
-### 1. `PrecomputedScopes` -> `LocalSymbols` (CRITICAL)
-
-**What changed:** The `PrecomputedScopes` type was renamed to `LocalSymbols` with a dedicated interface (PR #1788).
-
-**Impact on this project:** **HIGH** -- `BbjScopeComputation` in `src/language/bbj-scope-local.ts` directly imports and uses `PrecomputedScopes` in 4 locations:
-- Import statement (line 12)
-- `computeLocalScopes()` return type (line 59)
-- `processNode()` parameter type (line 81)
-- `addToScope()` parameter type (line 260)
-
-**Migration:** Find-and-replace `PrecomputedScopes` with `LocalSymbols` in imports and type annotations. The method name `computeLocalScopes` aligns with the new naming.
-
-**Confidence:** HIGH -- verified in official CHANGELOG.
-
-### 2. `Reference | MultiReference` Type Union (CRITICAL)
-
-**What changed:** The type of references throughout the linker service and scope provider is now `Reference | MultiReference` (PR #1509). This enables multi-reference support (one reference node resolving to multiple declarations).
-
-**Impact on this project:** **HIGH** -- The following files work directly with references:
-- `src/language/bbj-linker.ts` -- `doLink()`, `getCandidate()` use `ReferenceInfo`
-- `src/language/bbj-scope.ts` -- `getScope()` uses `ReferenceInfo`
-- `src/language/bbj-scope-local.ts` -- scope computation
-- `src/language/bbj-validator.ts` -- `Reference<Class>` usage
-- `src/language/bbj-signature-help-provider.ts` -- `Reference<NamedElement>`
-- `src/language/bbj-nodedescription-provider.ts` -- `Reference<Class>`, `Reference<JavaClass>`
-
-**Migration:** Review each reference usage site. Existing `Reference` usages may need to handle `MultiReference` cases, or narrow the type with type guards. Since this project does not use multi-references, most sites can use the `Reference` type directly, but override signatures must match the new parent class signatures that accept `Reference | MultiReference`.
-
-**Confidence:** HIGH -- verified in official CHANGELOG.
-
-### 3. `findDeclaration` -> `findDeclarations` (CHECK NEEDED)
-
-**What changed:** `References#findDeclaration` was renamed to `findDeclarations` and now returns an array of objects (PR #1509).
-
-**Impact on this project:** **LOW** -- grep found no direct usage of `findDeclaration` in the codebase. However, the linker override (`BbjLinker`) extends `DefaultLinker` which may internally use this. Verify at compile time.
-
-**Confidence:** HIGH -- verified in official CHANGELOG. Low impact confirmed by grep.
-
-### 4. Generated AST Type Constants: `TypeName` -> `TypeName.$type` (CRITICAL)
-
-**What changed:** The generated type name constants in `ast.ts` moved from `export const TypeName = 'TypeName'` to a structure where the string is accessed via `TypeName.$type` (PR #1942).
-
-**Impact on this project:** **HIGH** -- The project uses generated type constants extensively:
-- `bbj-linker.ts`: `BinaryExpression`, `ParameterCall`, `ConstructorCall`, `VariableDecl`, `MethodDecl`, `LibFunction` used in comparisons like `$type === BinaryExpression`
-- `bbj-completion-provider.ts`: `LibSymbolicLabelDecl`, `LibEventType` used in `.type === LibSymbolicLabelDecl`
-- `bbj-scope.ts`: `MethodDecl` used in `member.type === MethodDecl`
-- `bbj-scope-local.ts`: `CompoundStatement` used in `$type === CompoundStatement`
-- `bbj-nodedescription-provider.ts`: String literals `"JavaClass"` used in `$type === "JavaClass"`
-
-**Migration:** Two approaches:
-1. **Update all references:** Change `BinaryExpression` to `BinaryExpression.$type` everywhere. This is the intended approach.
-2. **String literals stay the same:** The 2 occurrences using string `"JavaClass"` directly won't break since they compare to a string.
-
-The `is*` type guard functions (e.g., `isBBjClassMember`, `isMethodDecl`) are generated and should continue to work after regeneration. **Prefer using `is*` guards over direct `$type` comparisons** where possible.
-
-**Confidence:** HIGH -- verified via CHANGELOG and web search.
-
-### 5. `createReferenceCompletionItem` Signature Change (MODERATE)
-
-**What changed:** `DefaultCompletionProvider#createReferenceCompletionItem` now requires more arguments (PR #1976).
-
-**Impact on this project:** **MODERATE** -- `BBjCompletionProvider` in `src/language/bbj-completion-provider.ts` overrides this method (line 15). The override signature must be updated to match the new parent class signature.
-
-**Migration:** Check the new method signature in Langium 4.x source/docs and update the override. The current override takes `(nodeDescription: AstNodeDescription | FunctionNodeDescription)` -- additional parameters may be required.
-
-**Confidence:** HIGH that the signature changed; LOW on what the new parameters are (would need to check Langium 4.x source).
-
-### 6. `filterCrossReference` -> `getReferenceCandidates` (NO IMPACT)
-
-**What changed:** `DefaultCompletionProvider#filterCrossReference` was replaced by `getReferenceCandidates`.
-
-**Impact on this project:** **NONE** -- grep found no usage of `filterCrossReference` in the codebase.
-
-**Confidence:** HIGH.
-
-### 7. `prepareLangiumParser` Potentially Deprecated/Removed (CRITICAL)
-
-**What changed:** Several deprecated fields and functions were removed in PR #1991. The CHANGELOG does not enumerate each one.
-
-**Impact on this project:** **HIGH** -- `bbj-module.ts` imports `prepareLangiumParser` from `langium` (line 12) and uses it to create a custom parser with modified ambiguity logging (lines 103-117). If this function was removed, the parser creation approach needs rewriting.
-
-**Migration:** If removed, likely replaced with a different parser factory function. Check Langium 4.x exports. Alternatively, use the default parser creation and configure logging via the service injection system.
-
-**Confidence:** LOW -- could not verify whether `prepareLangiumParser` specifically was removed. This is the highest-risk item that may require investigation at compile time.
-
-### 8. Grammar Name Uniqueness and Rule Naming (LOW RISK)
-
-**What changed:**
-- Rules can no longer use the same name as the grammar (PR #1979)
-- Grammar names must be unique (PR #1979)
-
-**Impact on this project:** **NONE** -- The grammar is named `BBj` and no rule is named `BBj`. The `java-types.langium` file has no grammar declaration (interfaces only). No conflict exists.
-
-**Confidence:** HIGH -- verified by reading the grammar files.
-
-### 9. Removed Xtext Features from Grammar Language (LOW-MEDIUM RISK)
-
-**What changed:** Unused Xtext features were removed from the Langium grammar language (PR #1945).
-
-**Impact on this project:** **UNKNOWN** -- Could not determine which specific Xtext features were removed. The BBj grammar uses `{infer ...}` actions and EBNF-style terminal rules which were originally Xtext features.
-
-**Migration:** Run `langium generate` after upgrade and check for grammar validation errors. Fix any deprecated syntax.
-
-**Confidence:** LOW -- could not enumerate removed features.
-
-### 10. EBNF Terminal Refinements (LOW RISK)
-
-**What changed:** Refined EBNF-based terminals to avoid synthetic capturing groups (PR #1966).
-
-**Impact on this project:** **LOW** -- The BBj grammar uses regex-based terminals (visible in generated `ast.ts`), not EBNF-based terminals. Should have no impact.
-
-**Confidence:** MEDIUM -- based on reading generated terminal patterns.
-
-### 11. `LangiumDocuments#getOrCreateDocument` Now Async (CHECK NEEDED)
-
-**What changed:** `getOrCreateDocument` now returns `Promise<LangiumDocument>` instead of `LangiumDocument`. Sync alternative: use `getDocument` + `createDocument`.
-
-**Impact on this project:** **NONE based on grep** -- no direct usage of `getOrCreateDocument` found. However, custom services (`BBjWorkspaceManager`, `BBjIndexManager`, `BBjDocumentBuilder`) may be affected indirectly through parent class methods.
-
-**Confidence:** MEDIUM -- direct usage confirmed absent; indirect impact needs compile-time verification.
-
----
-
-## Generated Code Changes
-
-### Regeneration Required
-
-After upgrading `langium-cli` to 4.1.0, you **must** run `langium generate` to regenerate:
-
-1. `src/language/generated/ast.ts` -- AST types, type guards, type constants (will change format)
-2. `src/language/generated/grammar.ts` -- Grammar serialization
-3. `src/language/generated/module.ts` -- Generated service module
-
-**The generated files will have different content.** Specifically:
-- Type constants will use `.$type` pattern instead of bare string constants
-- `ast.ts` will include property constants for types (new in 4.x)
-- The `BBjAstReflection` class structure may change
-- Module header will say `langium-cli 4.1.0` instead of `langium-cli 3.2.0`
-
-### Grammar Files: No Syntax Changes Expected
-
-Based on analysis of `bbj.langium` and `java-types.langium`:
-- No rule shares a name with the grammar (`BBj`)
-- No Xtext-specific syntax was identified (uses standard Langium grammar features)
-- The `{infer ...}` actions are core Langium syntax, not removed Xtext features
-- Interface-only `.langium` files (like `java-types.langium`) should work unchanged
-
-**Confidence:** MEDIUM -- grammar changes cannot be fully verified without running the CLI.
-
----
-
-## langium-config.json Changes
-
-The current `langium-config.json` uses:
-```json
-{
-    "projectName": "BBj",
-    "languages": [...],
-    "out": "src/language/generated",
-    "chevrotainParserConfig": {
-        "recoveryEnabled": true,
-        "nodeLocationTracking": "full"
+The IntelliJ plugin CI/CD stack builds on the existing Gradle IntelliJ Platform Plugin (already configured in `bbj-intellij/build.gradle.kts`). The key additions needed are:
+
+1. **GitHub Actions workflow** using `actions/setup-java@v5` and `gradle/actions/setup-gradle@v5`
+2. **Version synchronization** reading from `bbj-vscode/package.json` using Groovy's built-in JsonSlurper
+3. **GitHub Releases** for artifact distribution (until Marketplace access obtained)
+4. **Optional signing** for future Marketplace publishing
+
+## Tools Required
+
+### Gradle IntelliJ Platform Plugin
+
+**Current Version:** 2.11.0 (released January 26, 2026)
+**Already Configured:** Yes, project uses `org.jetbrains.intellij.platform`
+
+| Task | Purpose | When to Use |
+|------|---------|-------------|
+| `buildPlugin` | Creates distributable ZIP in `build/distributions/` | Every CI build |
+| `verifyPlugin` | Runs Plugin Verifier against target IDEs | PR validation, release builds |
+| `verifyPluginStructure` | Validates plugin.xml and archive integrity | Every build |
+| `signPlugin` | Signs ZIP with certificate (optional) | Marketplace publishing |
+| `publishPlugin` | Uploads to JetBrains Marketplace | Future Marketplace releases |
+
+**Task Execution Order:**
+```
+buildPlugin -> signPlugin (if configured) -> publishPlugin
+```
+
+**Key Configuration (already in build.gradle.kts):**
+```kotlin
+intellijPlatform {
+    pluginConfiguration {
+        name = "BBj Language Support"
+        version = project.version.toString()
+        // ... vendor info, description, etc.
+    }
+    pluginVerification {
+        ides {
+            recommended()  // Verifies against recommended IDE versions
+        }
     }
 }
 ```
 
-**Potential changes:**
-- The `chevrotainParserConfig` key name may need updating if the config schema changed. Langium 4.x may use a different key or structure.
-- New optional keys available: `strict` mode for disallowing inferred types (optional, not required for migration).
-- New optional key: `fileNames` for file association control (added in 4.1.0).
+### GitHub Actions
 
-**Confidence:** LOW -- config schema changes not fully documented in search results. Test with `langium generate` after upgrade.
+**Recommended Versions:**
 
----
+| Action | Version | Purpose |
+|--------|---------|---------|
+| `actions/checkout` | v4 | Repository checkout |
+| `actions/setup-java` | v5 | JDK setup with caching |
+| `gradle/actions/setup-gradle` | v5 | Gradle setup with caching |
+| `actions/upload-artifact` | v4 | Upload build artifacts |
+| `softprops/action-gh-release` | v2 | Create GitHub releases with assets |
 
-## Package.json Changes
+**Java Configuration:**
+```yaml
+- uses: actions/setup-java@v5
+  with:
+    distribution: 'temurin'
+    java-version: '17'
+    cache: 'gradle'
+```
 
-### Before (current)
-```json
-{
-  "dependencies": {
-    "chevrotain": "~11.0.3",
-    "langium": "~3.2.1",
-    "properties-file": "^3.6.3",
-    "properties-reader": "^2.3.0",
-    "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageclient": "^9.0.1",
-    "vscode-uri": "^3.1.0"
-  },
-  "devDependencies": {
-    "langium-cli": "~3.2.0",
-    "typescript": "^5.8.3"
-  }
+**Gradle Configuration:**
+```yaml
+- uses: gradle/actions/setup-gradle@v5
+  # Automatic caching, wrapper validation
+```
+
+**Note:** The project already uses Java 17 (`sourceCompatibility = JavaVersion.VERSION_17`), which matches IntelliJ Platform 2024.2 requirements.
+
+### GitHub Releases (Artifact Distribution)
+
+**Action:** `softprops/action-gh-release@v2`
+
+```yaml
+- uses: softprops/action-gh-release@v2
+  with:
+    files: bbj-intellij/build/distributions/*.zip
+    tag_name: intellij-v${{ env.VERSION }}
+    name: IntelliJ Plugin v${{ env.VERSION }}
+    prerelease: true  # For preview releases
+```
+
+**Key Features:**
+- Creates release from tag automatically
+- Uploads multiple assets with glob patterns
+- Outputs `browser_download_url` for asset links
+- Handles both new releases and updates to existing releases
+
+### JetBrains Marketplace Publishing
+
+**Requirements (for future use):**
+1. **First upload must be manual** - cannot automate initial publication
+2. **Personal Access Token** from JetBrains Marketplace profile ("My Tokens" section)
+3. **Plugin signing** recommended but not required for first upload
+
+**Token Configuration:**
+```bash
+# Environment variable (recommended for CI)
+export ORG_GRADLE_PROJECT_intellijPlatformPublishingToken='YOUR_TOKEN'
+
+# Or Gradle property
+-PintellijPlatformPublishingToken=YOUR_TOKEN
+```
+
+**Gradle Configuration (for future Marketplace publishing):**
+```kotlin
+intellijPlatform {
+    publishing {
+        token = providers.gradleProperty("intellijPlatformPublishingToken")
+        channels = listOf("eap")  // or "default" for stable
+    }
 }
 ```
 
-### After (target)
-```json
-{
-  "dependencies": {
-    "chevrotain": "~11.0.3",
-    "langium": "~4.1.3",
-    "properties-file": "^3.6.3",
-    "properties-reader": "^2.3.0",
-    "vscode-jsonrpc": "^8.2.1",
-    "vscode-languageclient": "^9.0.1",
-    "vscode-uri": "^3.1.0"
-  },
-  "devDependencies": {
-    "langium-cli": "~4.1.0",
-    "typescript": "^5.8.3"
-  }
+**Release Channels:**
+- `default` - Stable releases (visible to all users)
+- `eap` / `beta` / `alpha` - Preview channels (requires custom repository setup)
+
+### Version Extraction from package.json
+
+**Approach:** Use Groovy's built-in `JsonSlurper` (no additional dependencies needed)
+
+```kotlin
+// In build.gradle.kts
+import groovy.json.JsonSlurper
+
+// Read version from bbj-vscode/package.json
+val vscodePackageJson = file("${projectDir}/../bbj-vscode/package.json")
+val packageJson = JsonSlurper().parseText(vscodePackageJson.readText()) as Map<*, *>
+val vscodeVersion = packageJson["version"] as String
+
+version = vscodeVersion
+```
+
+**For CI Preview Builds (patch bump):**
+```kotlin
+// Parse and bump patch version for previews
+val parts = vscodeVersion.split(".")
+val major = parts[0]
+val minor = parts[1]
+val patch = parts.getOrElse(2) { "0" }.toInt() + 1
+version = "$major.$minor.$patch"
+```
+
+**Alternative: Command-line override:**
+```bash
+./gradlew buildPlugin -Pversion=0.7.3
+```
+
+## Integration Points
+
+### Relationship to Existing VS Code Workflows
+
+| VS Code Workflow | IntelliJ Equivalent | Shared Elements |
+|------------------|---------------------|-----------------|
+| `preview.yml` | `intellij-preview.yml` | Version from package.json, push to main trigger |
+| `manual-release.yml` | `intellij-release.yml` | Manual trigger, version validation |
+| `build.yml` | `build.yml` (extended) | PR validation |
+
+**Shared Pattern:**
+1. Both read version from `bbj-vscode/package.json`
+2. Both bump patch version for previews
+3. Both use GitHub Actions secrets for publishing tokens
+4. Both create GitHub releases for artifacts
+
+### Build Dependencies
+
+The IntelliJ plugin depends on VS Code build outputs:
+```kotlin
+// From existing build.gradle.kts
+val copyLanguageServer by tasks.registering(Copy::class) {
+    from("${projectDir}/../bbj-vscode/out/language/") {
+        include("main.cjs")
+    }
+    // ...
 }
 ```
 
-**Key changes:**
-1. `langium`: `~3.2.1` -> `~4.1.3`
-2. `langium-cli`: `~3.2.0` -> `~4.1.0`
+**CI Implication:** IntelliJ build must run AFTER VS Code build completes (npm ci && npm run build).
 
-**Kept unchanged:**
-3. `chevrotain`: `~11.0.3` -- **KEEP.** See Chevrotain analysis below.
-
-**Confidence:** HIGH for langium/langium-cli versions.
-
----
-
-## Chevrotain Direct Dependency Analysis
-
-**Verdict: KEEP the direct `chevrotain` dependency.**
-
-The project has `chevrotain: "~11.0.3"` as a direct dependency. Investigation found a direct import:
+### Recommended Workflow Sequence
 
 ```
-src/language/bbj-token-builder.ts:1: import { TokenType, TokenVocabulary } from "chevrotain";
+1. Checkout
+2. Setup Node.js (for VS Code build)
+3. Build VS Code extension (npm ci, npm run build)
+4. Setup Java 17
+5. Setup Gradle
+6. Extract version from package.json
+7. Build IntelliJ plugin (./gradlew buildPlugin)
+8. Verify plugin (./gradlew verifyPlugin) - optional for previews
+9. Upload artifact / Create release
 ```
 
-`BBjTokenBuilder` (58 lines of custom token ordering, regex-based terminal overrides, and keyword categorization) relies on `TokenType` and `TokenVocabulary` types from chevrotain. These types are NOT re-exported by the `langium` package -- they must be imported from `chevrotain` directly.
+## Recommendations
 
-**Version compatibility:** Langium 4.x depends on chevrotain in the 11.0.x range internally. The current `~11.0.3` pin is compatible. No version change needed.
+### Immediate Implementation
 
-**Potential improvement (optional, post-migration):** If Langium 4.x starts re-exporting these types (needs verification), the direct dependency could be moved to `devDependencies` or removed. But for now, keep it.
+| Component | Recommendation | Rationale |
+|-----------|----------------|-----------|
+| Java Version | 17 (Temurin) | Already configured, matches IntelliJ 2024.2 |
+| Gradle Plugin | 2.11.0 | Latest stable, update from current |
+| GitHub Actions | setup-java@v5, setup-gradle@v5 | Current stable with caching |
+| Artifact Distribution | GitHub Releases | No Marketplace access yet |
+| Version Source | package.json via JsonSlurper | Single source of truth |
 
----
+### Plugin Signing (Deferred)
 
-## Affected Source Files Summary
+Plugin signing is optional for GitHub Releases distribution. Defer until Marketplace access is obtained:
 
-Ranked by migration effort (highest first):
+```kotlin
+// Future addition to build.gradle.kts
+intellijPlatform {
+    signing {
+        certificateChainFile = file("certificate-chain.crt")
+        privateKeyFile = file("private.pem")
+        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
+    }
+}
+```
 
-| File | Changes Required | Effort |
-|------|-----------------|--------|
-| `src/language/bbj-module.ts` | `prepareLangiumParser` may be removed; parser creation needs rewriting | HIGH |
-| `src/language/bbj-scope-local.ts` | `PrecomputedScopes` -> `LocalSymbols` (4 sites) | MODERATE |
-| `src/language/bbj-linker.ts` | `Reference | MultiReference` in override signatures; `$type` constant format | MODERATE |
-| `src/language/bbj-completion-provider.ts` | `createReferenceCompletionItem` new signature; `$type` constant format | MODERATE |
-| `src/language/bbj-scope.ts` | `Reference | MultiReference` in override signatures; `$type` constant format | MODERATE |
-| `src/language/bbj-validator.ts` | `Reference` type may need MultiReference handling; `$type` constants | LOW-MODERATE |
-| `src/language/bbj-nodedescription-provider.ts` | `$type` string comparisons (uses string literals, less affected) | LOW |
-| `src/language/bbj-signature-help-provider.ts` | `Reference` type in method signatures | LOW |
-| `src/language/bbj-semantic-token-provider.ts` | May need minor type adjustments | LOW |
-| `src/language/generated/ast.ts` | **Regenerated** -- not manually edited | AUTO |
-| `src/language/generated/grammar.ts` | **Regenerated** -- not manually edited | AUTO |
-| `src/language/generated/module.ts` | **Regenerated** -- not manually edited | AUTO |
+**Certificate Generation (when needed):**
+```bash
+# Generate RSA key
+openssl genpkey -aes-256-cbc -algorithm RSA \
+  -out private_encrypted.pem -pkeyopt rsa_keygen_bits:4096
 
-**Files likely unaffected:**
-- `src/language/bbj-hover.ts` -- uses stable APIs (DocumentationProvider, parseJSDoc)
-- `src/language/bbj-value-converter.ts` -- uses stable APIs (DefaultValueConverter)
-- `src/language/bbj-token-builder.ts` -- uses stable APIs (DefaultTokenBuilder, chevrotain types); token builder API unchanged
-- `src/language/bbj-lexer.ts` -- uses stable APIs (DefaultLexer)
-- `src/language/bbj-comment-provider.ts` -- uses stable APIs
-- `src/language/bbj-document-validator.ts` -- uses stable APIs
-- `src/language/java-interop.ts` -- uses stable APIs (AstUtils, LangiumDocuments)
-- `src/language/java-javadoc.ts` -- uses FileSystemProvider (note: `readFileSync` was removed from FileSystemProvider in an earlier release, but this file uses `EmptyFileSystemProvider`; verify)
-- `src/extension.ts` -- VS Code extension client; no Langium API usage
+# Generate certificate (365 days)
+openssl req -x509 -key private.pem -out certificate.crt -days 365
+```
 
----
+### Gradle IntelliJ Platform Plugin Update
 
-## New Features Available (Optional Adoption)
+Update `bbj-intellij/build.gradle.kts` to use latest version:
 
-These are available in Langium 4.x but NOT required for the migration:
+```kotlin
+plugins {
+    id("java")
+    id("org.jetbrains.intellij.platform") version "2.11.0"
+}
+```
 
-| Feature | Version | Description | Adopt? |
-|---------|---------|-------------|--------|
-| Strict mode | 4.0.0 | Disallow inferred types in grammar | NO -- would require grammar rewrite |
-| Infix operators | 4.0.0 | Simplified operator precedence grammar | MAYBE -- could simplify BBj expression grammar later |
-| GBNF grammar export | 4.1.0 | Export grammar in GBNF format for LLMs | NO -- not relevant |
-| `fileNames` config | 4.1.0 | Control file association per language | MAYBE -- useful for `.src` files |
-| Skip eager linking | 4.1.0 | `DocumentBuilder` option | MAYBE -- useful for performance |
-| `DeepPartialAstNode` type | 4.0.0 | Better typing for partial AST construction | LOW PRIORITY |
+## CI Secrets Required
 
-**Recommendation:** Focus the upgrade on API compatibility first. Adopt new features in a subsequent milestone.
-
----
-
-## Migration Order (Recommended)
-
-1. **Update `package.json`** -- bump langium + langium-cli versions (keep chevrotain as-is)
-2. **Run `npm install`** -- resolve dependencies
-3. **Run `langium generate`** -- regenerate AST/grammar/module files. Fix any grammar validation errors.
-4. **Fix compilation errors** -- work through TypeScript errors in this order:
-   a. `PrecomputedScopes` -> `LocalSymbols` (simple rename)
-   b. `prepareLangiumParser` replacement (if removed)
-   c. `$type` constant format changes
-   d. `Reference | MultiReference` type adjustments
-   e. `createReferenceCompletionItem` signature update
-5. **Run tests** -- `vitest run` to verify behavior
-6. **Manual smoke test** -- launch VS Code extension and test language features
-
----
-
-## Risk Assessment
-
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| `prepareLangiumParser` removed | MEDIUM | HIGH | Check Langium 4.x exports; may need parser creation rewrite |
-| Grammar validation errors on regeneration | LOW | HIGH | BBj grammar uses standard features; unlikely to hit removed syntax |
-| `Reference | MultiReference` type incompatibility in overrides | HIGH | MEDIUM | Most overrides can narrow to `Reference`; signature must match parent |
-| Chevrotain version conflict | LOW | LOW | Keep ~11.0.3; matches Langium 4.x internal chevrotain range |
-| Test breakage from AST structure changes | MEDIUM | MEDIUM | Regenerated `is*` guards should work; test assertions on `$type` strings need updating |
-| Unknown breaking changes not in CHANGELOG | LOW | UNKNOWN | Langium team documents breaking changes well; compile errors will reveal |
-
----
+| Secret Name | Purpose | Where to Configure |
+|-------------|---------|-------------------|
+| `GITHUB_TOKEN` | GitHub Releases (automatic) | Built-in |
+| `INTELLIJ_MARKETPLACE_TOKEN` | Future Marketplace publishing | Repository secrets |
+| `PRIVATE_KEY_PASSWORD` | Future plugin signing | Repository secrets |
 
 ## Sources
 
-### Official / HIGH Confidence
-- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/) -- TypeFox official
-- [Langium CHANGELOG (packages/langium)](https://github.com/langium/langium/blob/main/packages/langium/CHANGELOG.md) -- Official changelog
-- [Langium GitHub Releases](https://github.com/langium/langium/releases) -- Release history
-- [langium npm page](https://www.npmjs.com/package/langium) -- Version 4.1.3 confirmed
-- [langium-cli npm page](https://www.npmjs.com/package/langium-cli) -- Version 4.1.0 confirmed
+### Official Documentation (HIGH confidence)
+- [IntelliJ Platform Gradle Plugin 2.x](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html)
+- [IntelliJ Plugin Tasks Reference](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
+- [Publishing a Plugin](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
+- [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
+- [Gradle Plugin Portal - org.jetbrains.intellij.platform](https://plugins.gradle.org/plugin/org.jetbrains.intellij.platform)
 
-### MEDIUM Confidence
-- [Langium Documentation](https://langium.org/docs/) -- Official docs (may not be fully updated for 4.x)
-- [langium npm dependencies tab](https://www.npmjs.com/package/langium?activeTab=dependencies) -- Dependency list
+### GitHub Actions (HIGH confidence)
+- [actions/setup-java](https://github.com/actions/setup-java)
+- [gradle/actions](https://github.com/gradle/actions)
+- [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
 
-### Research Gaps (LOW Confidence)
-- Exact `prepareLangiumParser` status -- could not verify removal; needs compile-time check
-- Exact `createReferenceCompletionItem` new parameters -- needs Langium 4.x source inspection
-- Exact Xtext features removed in PR #1945 -- needs PR review
-- `chevrotainParserConfig` key compatibility in `langium-config.json` -- needs testing
-- `AstNodeTypesWithCrossReferences` / `CrossReferencesOfAstNodeType` status -- used in `bbj-scope.ts`, changes unclear
+### Gradle Documentation (HIGH confidence)
+- [Executing Gradle builds on GitHub Actions](https://docs.gradle.org/current/userguide/github-actions.html)
+- [GitHub Actions - Gradle Cookbook](https://cookbook.gradle.org/ci/github-actions/)
