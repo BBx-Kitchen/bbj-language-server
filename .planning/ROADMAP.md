@@ -7,7 +7,7 @@
 - v1.2 Run Fixes & Marketplace - Phases 11-13 (shipped 2026-02-02)
 - v2.0 Langium 4 Upgrade - Phases 14-20 (shipped 2026-02-04)
 - v2.1 Feature Gap Analysis - N/A (research milestone, shipped 2026-02-04)
-- **v2.2 IntelliJ Build & Release Automation** - Phases 21-23 (in progress)
+- **v2.2 IntelliJ Build & Release Automation** - Phases 21-23 (shipped 2026-02-05)
 
 ## v2.2 IntelliJ Build & Release Automation
 
@@ -17,7 +17,7 @@
 
 - [x] **Phase 21: Preview Workflow** - IntelliJ builds automatically on push to main with version parity ✓
 - [x] **Phase 22: Release Workflow** - Manual release builds both extensions and creates GitHub Release ✓
-- [ ] **Phase 23: PR Validation** - IntelliJ builds validated on pull requests
+- [x] **Phase 23: PR Validation** - IntelliJ builds validated on pull requests ✓
 
 ## Phase Details
 
@@ -59,7 +59,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 23-01-PLAN.md — PR validation workflow with path filtering and plugin verification on releases
+- [x] 23-01-PLAN.md — PR validation workflow with path filtering and plugin verification on releases ✓
 
 ## Progress
 
@@ -69,7 +69,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 21. Preview Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
 | 22. Release Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
-| 23. PR Validation | v2.2 | 0/1 | Not started | - |
+| 23. PR Validation | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
 
 ---
 *Roadmap created: 2026-02-05*

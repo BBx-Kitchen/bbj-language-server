@@ -23,8 +23,8 @@ Requirements for IntelliJ Build & Release Automation milestone.
 
 ### PR Validation
 
-- [ ] **PRVAL-01**: IntelliJ builds validated on PRs affecting bbj-intellij/
-- [ ] **PRVAL-02**: Plugin verifier runs on release builds
+- [x] **PRVAL-01**: IntelliJ builds validated on PRs affecting bbj-intellij/ ✓
+- [x] **PRVAL-02**: Plugin verifier runs on release builds ✓
 
 ## Future Requirements
 
@@ -57,8 +57,8 @@ Deferred to later milestones.
 | RELS-02 | Phase 22 | Complete |
 | RELS-03 | Phase 22 | Complete |
 | RELS-04 | Phase 22 | Complete |
-| PRVAL-01 | Phase 23 | Pending |
-| PRVAL-02 | Phase 23 | Pending |
+| PRVAL-01 | Phase 23 | Complete |
+| PRVAL-02 | Phase 23 | Complete |
 
 **Coverage:**
 - v2.2 requirements: 10 total
@@ -67,4 +67,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 - Phase 22 requirements complete*
+*Last updated: 2026-02-05 - Phase 23 requirements complete (v2.2 milestone complete)*
