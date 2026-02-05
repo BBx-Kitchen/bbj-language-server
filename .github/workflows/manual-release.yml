@@ -137,3 +137,48 @@ jobs:
           name: intellij-plugin
           path: bbj-intellij/build/distributions/bbj-intellij-*.zip
           retention-days: 1
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-vscode, build-intellij]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download VS Code extension
+        uses: actions/download-artifact@v4
+        with:
+          name: vscode-extension
+          path: ./artifacts
+
+      - name: Download IntelliJ plugin
+        uses: actions/download-artifact@v4
+        with:
+          name: intellij-plugin
+          path: ./artifacts
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.build-vscode.outputs.version }}
+        run: |
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes \
+            --notes "## Installation
+
+          ### VS Code
+          Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang) or download the \`.vsix\` file below and install via **Extensions > ... > Install from VSIX...**
+
+          ### IntelliJ IDEA
+          1. Download \`bbj-intellij-$VERSION.zip\` from the Assets below
+          2. Open IntelliJ IDEA
+          3. Go to **Settings** > **Plugins**
+          4. Click the gear icon and select **Install Plugin from Disk...**
+          5. Select the downloaded ZIP file
+          6. Restart IntelliJ when prompted
+
+          ---
+          " \
+            ./artifacts/*.vsix \
+            ./artifacts/*.zip
