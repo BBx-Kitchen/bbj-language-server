@@ -30,10 +30,10 @@
   2. IntelliJ plugin version matches VS Code version from package.json
   3. IntelliJ build waits for VS Code build to complete (consumes main.cjs artifact)
   4. IntelliJ .zip artifact is downloadable from workflow run
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 21-01: TBD
+- [ ] 21-01-PLAN.md - Add IntelliJ build to preview workflow with version sync
 
 ### Phase 22: Release Workflow
 **Goal**: Manual release trigger produces both extensions with matching versions and creates GitHub Release
@@ -67,7 +67,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Preview Workflow | v2.2 | 0/? | Not started | - |
+| 21. Preview Workflow | v2.2 | 0/1 | Planned | - |
 | 22. Release Workflow | v2.2 | 0/? | Not started | - |
 | 23. PR Validation | v2.2 | 0/? | Not started | - |
 
