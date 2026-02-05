@@ -9,10 +9,10 @@ Requirements for IntelliJ Build & Release Automation milestone.
 
 ### Preview Automation
 
-- [ ] **PREV-01**: On push to main, IntelliJ plugin builds automatically
-- [ ] **PREV-02**: IntelliJ version matches VS Code version from package.json
-- [ ] **PREV-03**: IntelliJ build depends on VS Code build (uses main.cjs)
-- [ ] **PREV-04**: IntelliJ .zip available as workflow artifact
+- [x] **PREV-01**: On push to main, IntelliJ plugin builds automatically ✓
+- [x] **PREV-02**: IntelliJ version matches VS Code version from package.json ✓
+- [x] **PREV-03**: IntelliJ build depends on VS Code build (uses main.cjs) ✓
+- [x] **PREV-04**: IntelliJ .zip available as workflow artifact ✓
 
 ### Release Automation
 
@@ -49,10 +49,10 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PREV-01 | Phase 21 | Pending |
-| PREV-02 | Phase 21 | Pending |
-| PREV-03 | Phase 21 | Pending |
-| PREV-04 | Phase 21 | Pending |
+| PREV-01 | Phase 21 | Complete |
+| PREV-02 | Phase 21 | Complete |
+| PREV-03 | Phase 21 | Complete |
+| PREV-04 | Phase 21 | Complete |
 | RELS-01 | Phase 22 | Pending |
 | RELS-02 | Phase 22 | Pending |
 | RELS-03 | Phase 22 | Pending |
@@ -67,4 +67,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 after initial definition*
+*Last updated: 2026-02-05 - Phase 21 requirements complete*

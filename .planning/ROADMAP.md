@@ -15,7 +15,7 @@
 
 ## Phases
 
-- [ ] **Phase 21: Preview Workflow** - IntelliJ builds automatically on push to main with version parity
+- [x] **Phase 21: Preview Workflow** - IntelliJ builds automatically on push to main with version parity ✓
 - [ ] **Phase 22: Release Workflow** - Manual release builds both extensions and creates GitHub Release
 - [ ] **Phase 23: PR Validation** - IntelliJ builds validated on pull requests
 
@@ -33,7 +33,7 @@
 **Plans**: 1 plan
 
 Plans:
-- [ ] 21-01-PLAN.md - Add IntelliJ build to preview workflow with version sync
+- [x] 21-01-PLAN.md - Add IntelliJ build to preview workflow with version sync ✓
 
 ### Phase 22: Release Workflow
 **Goal**: Manual release trigger produces both extensions with matching versions and creates GitHub Release
@@ -67,7 +67,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 21. Preview Workflow | v2.2 | 0/1 | Planned | - |
+| 21. Preview Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
 | 22. Release Workflow | v2.2 | 0/? | Not started | - |
 | 23. PR Validation | v2.2 | 0/? | Not started | - |
 
