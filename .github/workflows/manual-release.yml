@@ -125,6 +125,12 @@ jobs:
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin -Pversion=${{ needs.build-vscode.outputs.version }}
 
+      - name: Verify plugin compatibility
+        working-directory: bbj-intellij
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew verifyPlugin
+
       - name: Rename plugin with version
         working-directory: bbj-intellij/build/distributions
         run: |
