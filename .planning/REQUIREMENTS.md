@@ -16,10 +16,10 @@ Requirements for IntelliJ Build & Release Automation milestone.
 
 ### Release Automation
 
-- [ ] **RELS-01**: Manual release trigger builds both extensions
-- [ ] **RELS-02**: Both extensions use input version (x.y.0 format)
-- [ ] **RELS-03**: GitHub Release created with both .vsix and .zip
-- [ ] **RELS-04**: Release includes installation instructions for IntelliJ
+- [x] **RELS-01**: Manual release trigger builds both extensions ✓
+- [x] **RELS-02**: Both extensions use input version (x.y.0 format) ✓
+- [x] **RELS-03**: GitHub Release created with both .vsix and .zip ✓
+- [x] **RELS-04**: Release includes installation instructions for IntelliJ ✓
 
 ### PR Validation
 
@@ -53,10 +53,10 @@ Deferred to later milestones.
 | PREV-02 | Phase 21 | Complete |
 | PREV-03 | Phase 21 | Complete |
 | PREV-04 | Phase 21 | Complete |
-| RELS-01 | Phase 22 | Pending |
-| RELS-02 | Phase 22 | Pending |
-| RELS-03 | Phase 22 | Pending |
-| RELS-04 | Phase 22 | Pending |
+| RELS-01 | Phase 22 | Complete |
+| RELS-02 | Phase 22 | Complete |
+| RELS-03 | Phase 22 | Complete |
+| RELS-04 | Phase 22 | Complete |
 | PRVAL-01 | Phase 23 | Pending |
 | PRVAL-02 | Phase 23 | Pending |
 
@@ -67,4 +67,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-02-05*
-*Last updated: 2026-02-05 - Phase 21 requirements complete*
+*Last updated: 2026-02-05 - Phase 22 requirements complete*
