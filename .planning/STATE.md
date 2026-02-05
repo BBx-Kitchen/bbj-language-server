@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v2.2 IntelliJ Build & Release Automation - Phase 22 Release Workflow
+**Current focus:** v2.2 IntelliJ Build & Release Automation - Phase 23 PR Validation (COMPLETE)
 
 ## Current Position
 
 Milestone: v2.2 IntelliJ Build & Release Automation
-Phase: 22 of 23 (Release Workflow)
+Phase: 23 of 23 (PR Validation)
 Plan: 1 of 1
-Status: Phase complete
-Last activity: 2026-02-05 - Completed 22-01-PLAN.md
+Status: Milestone complete
+Last activity: 2026-02-05 - Completed 23-01-PLAN.md
 
-Progress: [######....] 67%
+Progress: [##########] 100%
 
 ## Milestone History
 
@@ -32,9 +32,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13 (v2.0: 11, v2.2: 2)
+- Total plans completed: 14 (v2.0: 11, v2.2: 3)
 - Average duration: 3.2 min
-- Total execution time: ~42 min
+- Total execution time: ~45 min
 
 *Updated after each plan completion*
 
@@ -47,6 +47,8 @@ See archived decisions in .planning/milestones/v2.0-ROADMAP.md
 
 | Date | Phase | Decision | Rationale |
 |------|-------|----------|-----------|
+| 2026-02-05 | 23-01 | verifyPlugin only in release builds | Too slow for PR validation (downloads multiple IDE versions) |
+| 2026-02-05 | 23-01 | GITHUB_TOKEN for verifyPlugin | Avoid API rate limiting when resolving IDE versions |
 | 2026-02-05 | 22-01 | Rename IntelliJ plugin to bbj-intellij-{version}.zip | Clarity for users browsing GitHub Release assets |
 | 2026-02-05 | 22-01 | Use 1-day artifact retention for release workflow | Short-lived intermediates, permanent release assets |
 | 2026-02-05 | 22-01 | Include IntelliJ installation instructions in release body | Primary distribution channel (no JetBrains Marketplace) |
@@ -69,6 +71,7 @@ See archived decisions in .planning/milestones/v2.0-ROADMAP.md
 v2.2 milestone roadmap created. Three phases: Preview Workflow (21), Release Workflow (22), PR Validation (23).
 Phase 21 complete - preview workflow now builds both VS Code and IntelliJ plugins.
 Phase 22 complete - manual release workflow creates unified GitHub Release with both extension artifacts.
+Phase 23 complete - PR validation workflow with path filtering, plugin verifier in release builds. v2.2 milestone complete.
 
 ### Blockers/Concerns
 
@@ -77,6 +80,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Completed 22-01-PLAN.md (Phase 22 complete)
+Stopped at: Completed 23-01-PLAN.md (v2.2 Milestone complete)
 Resume file: None
-Next: /gsd:plan-phase 23
+Next: New milestone planning
