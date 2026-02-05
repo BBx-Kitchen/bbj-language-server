@@ -56,10 +56,10 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. PRs touching bbj-intellij/ trigger IntelliJ build validation
   2. Plugin verifier runs on release workflow builds (catches compatibility issues)
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 23-01: TBD
+- [ ] 23-01-PLAN.md — PR validation workflow with path filtering and plugin verification on releases
 
 ## Progress
 
@@ -69,7 +69,7 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 21. Preview Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
 | 22. Release Workflow | v2.2 | 1/1 | ✓ Complete | 2026-02-05 |
-| 23. PR Validation | v2.2 | 0/? | Not started | - |
+| 23. PR Validation | v2.2 | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-02-05*
