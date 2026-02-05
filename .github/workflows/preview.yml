@@ -96,12 +96,6 @@ jobs:
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin -Pversion=${{ needs.publish-preview.outputs.version }}
 
-      - name: Rename plugin with version
-        working-directory: bbj-intellij/build/distributions
-        run: |
-          VERSION="${{ needs.publish-preview.outputs.version }}"
-          mv bbj-lang-*.zip "bbj-intellij-${VERSION}.zip"
-
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
