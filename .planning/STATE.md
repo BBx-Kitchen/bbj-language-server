@@ -2,20 +2,20 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-04)
+See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v2.1 Feature Gap Analysis — competitive analysis, no code
+**Current focus:** v2.2 IntelliJ Build & Release Automation — unified CI/CD for both extensions
 
 ## Current Position
 
-Milestone: v2.1 Feature Gap Analysis
-Phase: Complete
+Milestone: v2.2 IntelliJ Build & Release Automation
+Phase: Not started (defining requirements)
 Plan: —
-Status: **MILESTONE COMPLETE**
-Last activity: 2026-02-04 — Gap analysis document completed
+Status: Defining requirements
+Last activity: 2026-02-05 — Milestone v2.2 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone History
 
@@ -58,7 +58,7 @@ See archived decisions in .planning/milestones/v2.0-ROADMAP.md
 
 ### Roadmap Evolution
 
-v2.0 milestone complete. Next milestone to be defined via `/gsd:new-milestone`.
+v2.2 milestone started. Unified build/release automation for IntelliJ and VS Code.
 
 ### Blockers/Concerns
 
@@ -66,7 +66,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: v2.1 milestone archived
+Last session: 2026-02-05
+Stopped at: Milestone v2.2 started, entering research phase
 Resume file: None
-Next: `/gsd:new-milestone` to implement gap features or start new work
+Next: Research JetBrains Marketplace versioning, then define requirements

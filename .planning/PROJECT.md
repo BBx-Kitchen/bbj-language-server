@@ -59,7 +59,13 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(None — milestone complete, next milestone to be defined)
+**v2.2 IntelliJ Build & Release Automation:**
+- [ ] Research JetBrains Marketplace versioning scheme compatibility
+- [ ] IntelliJ plugin version sourced from bbj-vscode/package.json
+- [ ] GitHub Actions workflow for preview releases (both extensions)
+- [ ] GitHub Actions workflow for manual production releases (both extensions)
+- [ ] IntelliJ .zip artifact attached to GitHub Releases
+- [ ] Gradle build integrated into CI pipeline
 
 ### Out of Scope
 
@@ -70,7 +76,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v2.1 shipped 2026-02-04. Feature gap analysis complete comparing BBj LS against Dynamo Tools extension (v0.7.3). 12 feature gaps identified and prioritized by user impact. Analysis document in `.planning/research/DYNAMO-ANALYSIS.md`. Language server at Langium 4.1.3. Test coverage at 88%. Release artifacts ready for publishing.
+**Current state:** v2.2 milestone started 2026-02-05. Building CI/CD automation for unified IntelliJ + VS Code releases. Both extensions will share version from `bbj-vscode/package.json`. IntelliJ plugin distributed via GitHub Releases until JetBrains Marketplace access obtained.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -132,4 +138,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Research-only milestone precedent | v2.1 established that analysis milestones (no code) can ship as proper versions | ✓ Good — clean history |
 
 ---
-*Last updated: 2026-02-04 after v2.1 milestone complete*
+*Last updated: 2026-02-05 after v2.2 milestone started*
