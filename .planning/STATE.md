@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Milestone: v3.0 Improving BBj Language Support
-Phase: 26 of 27 (CPU Stability)
-Plan: 1 of 1
-Status: Phase complete (verified)
-Last activity: 2026-02-06 — Phase 26 verified, 5/5 must-haves passed
+Phase: 27 of 27 (IDE Polish)
+Plan: 2 of 3
+Status: In progress
+Last activity: 2026-02-06 — Completed 27-02-PLAN.md (field completion trigger)
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 83%
 
 ## Milestone History
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 23 (v2.0: 11, v2.2: 3, v3.0: 9)
-- Average duration: 7.6 min
-- Total execution time: ~180 min
+- Total plans completed: 24 (v2.0: 11, v2.2: 3, v3.0: 10)
+- Average duration: 7.7 min
+- Total execution time: ~195 min
 
 *Updated after each plan completion*
 
@@ -68,6 +68,11 @@ See: .planning/MILESTONES.md
 | Confirmed infinite rebuild loop as root cause via static analysis | 26-01 | CPU stability investigation |
 | Prioritized Mitigation 1 (processing guard) and 4 (skip external USE) as primary fixes | 26-01 | Document builder optimization |
 | Ranked IndexManager over-invalidation as secondary contributor (not root cause) | 26-01 | Performance analysis |
+| Used readonly completionOptions property (not getter) following Langium pattern | 27-02 | Completion trigger registration |
+| Cursor is AFTER # so find leaf node at offset-1 | 27-02 | Field completion positioning |
+| Field names include type suffix (name$, count) per BBj convention | 27-02 | Completion item format |
+| Empty class returns empty list gracefully | 27-02 | Edge case handling |
+| Unresolved superclass references skipped silently | 27-02 | Field collection resilience |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -91,6 +96,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Phase 26 complete and verified
+Stopped at: Completed 27-02-PLAN.md (field completion trigger)
 Resume file: None
-Next: Phase 27 (IDE Polish)
+Next: 27-03-PLAN.md (error message enhancement with source filenames)
