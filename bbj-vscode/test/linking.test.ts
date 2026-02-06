@@ -134,6 +134,57 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
     
+    test('CAST() conveys type for method completion', async () => {
+        const document = await validate(`
+            class public TargetClass
+                method public TargetClass doWork()
+                    methodret #this!
+                methodend
+            classend
+
+            class public BaseClass
+            classend
+
+            obj! = new BaseClass()
+            result! = CAST(TargetClass, obj!)
+            result!.doWork()  REM <== no linking error, type is correctly inferred
+        `)
+        expectNoErrors(document)
+    })
+
+    test('Implicit getter conveys backing field type', async () => {
+        const document = await validate(`
+            class public MyString
+                method public MyString doWork()
+                    methodret #this!
+                methodend
+            classend
+
+            class public Person
+                field public MyString Name$
+            classend
+
+            p! = new Person()
+            result! = p!.Name$
+            result!.doWork()  REM <== no linking error, Name$ returns MyString
+        `)
+        expectNoErrors(document)
+    })
+
+    test('CAST with unresolvable type shows warning', async () => {
+        const document = await validate(`
+            class public BaseClass
+            classend
+
+            obj! = new BaseClass()
+            result! = CAST(NonExistentClass, obj!)
+        `)
+        const warnings = document.diagnostics?.filter(d => d.severity === DiagnosticSeverity.Warning) ?? []
+        expect(warnings.length).toBeGreaterThan(0)
+        const castWarning = warnings.find(w => w.message.includes('CAST'))
+        expect(castWarning).toBeDefined()
+    })
+
     describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`

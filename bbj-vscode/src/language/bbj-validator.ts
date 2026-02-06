@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNo
 import { dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
@@ -32,6 +32,7 @@ export function registerValidationChecks(services: BBjServices) {
         DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
+        MethodCall: validator.checkCastTypeResolvable,
         SymbolicLabelRef: validator.checkSymbolicLabelRef,
 
         BeginStatement: validator.checkExceptClause,
@@ -60,6 +61,34 @@ export class BBjValidator {
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
         this.typeInferer = services.types.Inferer;
+    }
+
+    checkCastTypeResolvable(methodCall: MethodCall, accept: ValidationAcceptor): void {
+        // Check if this is a CAST() call
+        if (!isSymbolRef(methodCall.method)) {
+            return;
+        }
+        const methodRef = methodCall.method.symbol.ref;
+        if (!isLibFunction(methodRef) || methodRef.name.toLowerCase() !== 'cast') {
+            return;
+        }
+        // CAST(type, object) - first argument is the type
+        if (methodCall.args.length === 0) {
+            return;
+        }
+        const typeArg = methodCall.args[0].expression;
+        let typeResolved = false;
+        if (isBBjTypeRef(typeArg)) {
+            typeResolved = typeArg.klass.ref !== undefined;
+        } else if (isSymbolRef(typeArg)) {
+            const typeRef = typeArg.symbol.ref;
+            typeResolved = isClass(typeRef);
+        }
+        if (!typeResolved) {
+            accept('warning', 'CAST references an unresolvable type', {
+                node: methodCall
+            });
+        }
     }
 
     checkMemberCallUsingAccessLevels(memberCall: MemberCall, accept: ValidationAcceptor): void {
