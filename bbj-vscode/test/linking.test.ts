@@ -185,6 +185,59 @@ describe('Linking Tests', async () => {
         expect(castWarning).toBeDefined()
     })
 
+    test('Super class field access - single level inheritance', async () => {
+        const document = await validate(`
+            class public BaseClass
+                field public BaseClass name!
+            classend
+
+            class public DerivedClass extends BaseClass
+            classend
+
+            obj! = new DerivedClass()
+            obj!.name! = new BaseClass()  REM <== no linking error, field inherited from BaseClass
+        `)
+        expectNoErrors(document)
+    })
+
+    test('Super class field access - multi-level inheritance', async () => {
+        const document = await validate(`
+            class public GrandParent
+                field public GrandParent grandField!
+            classend
+
+            class public Parent extends GrandParent
+                field public Parent parentField!
+            classend
+
+            class public Child extends Parent
+                field public Child childField!
+            classend
+
+            obj! = new Child()
+            obj!.grandField! = new GrandParent()  REM <== inherited from GrandParent
+            obj!.parentField! = new Parent()  REM <== inherited from Parent
+            obj!.childField! = new Child()  REM <== own field
+        `)
+        expectNoErrors(document)
+    })
+
+    test('Super class method access', async () => {
+        const document = await validate(`
+            class public BaseClass
+                method public doWork()
+                methodend
+            classend
+
+            class public DerivedClass extends BaseClass
+            classend
+
+            obj! = new DerivedClass()
+            obj!.doWork()  REM <== no linking error, method inherited
+        `)
+        expectNoErrors(document)
+    })
+
     describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`

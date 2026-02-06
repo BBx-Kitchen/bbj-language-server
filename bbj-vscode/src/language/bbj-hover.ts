@@ -1,27 +1,79 @@
-import { AstNode, DocumentationProvider, isJSDoc, parseJSDoc } from "langium";
+import { AstNode, AstUtils, CstNode, DocumentationProvider, findDeclarationNodeAtOffset, isJSDoc, LangiumDocument, parseJSDoc } from "langium";
 import { AstNodeHoverProvider, LangiumServices } from "langium/lsp";
+import { Hover, HoverParams } from "vscode-languageserver";
 import { getFQNFullname, MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
-import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMethodDecl, isNamedElement } from "./generated/ast.js";
+import { BbjClass, ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMemberCall, isMethodDecl, isNamedElement } from "./generated/ast.js";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
+import { getClass } from "./bbj-nodedescription-provider.js";
+import { TypeInferer } from "./bbj-type-inferer.js";
+import { BBjServices } from "./bbj-module.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
     protected javadocProvider = JavadocProvider.getInstance();
     protected readonly commentProvider: CommentProvider;
+    protected readonly typeInferer: TypeInferer;
 
-    constructor(services: LangiumServices) {
+    // Track reference context for inherited field detection
+    private referenceCstNode?: CstNode;
+
+    constructor(services: BBjServices) {
         super(services);
         this.documentationProvider = services.documentation.DocumentationProvider;
         this.commentProvider = services.documentation.CommentProvider;
+        this.typeInferer = services.types.Inferer;
+    }
+
+    override async getHoverContent(document: LangiumDocument, params: HoverParams): Promise<Hover | undefined> {
+        const rootNode = document.parseResult?.value?.$cstNode;
+        if (!rootNode) {
+            return undefined;
+        }
+        const offset = document.textDocument.offsetAt(params.position);
+        const cstNode = findDeclarationNodeAtOffset(rootNode, offset, this.grammarConfig.nameRegexp);
+
+        if (cstNode && cstNode.offset + cstNode.length > offset) {
+            // Store reference context for inherited field detection
+            this.referenceCstNode = cstNode;
+            const result = await super.getHoverContent(document, params);
+            this.referenceCstNode = undefined;
+            return result;
+        }
+        return undefined;
     }
 
     protected override async getAstNodeHoverContent(node: AstNode): Promise<string | undefined> {
         const header = documentationHeader(node)
+
+        // Check if this is an inherited field or method
+        let inheritedFrom: string | undefined;
+        if ((isFieldDecl(node) || isMethodDecl(node)) && this.referenceCstNode) {
+            const referenceNode = this.referenceCstNode.astNode;
+            if (referenceNode && isMemberCall(referenceNode.$container)) {
+                const memberCall = referenceNode.$container;
+                // Get the type of the receiver to determine the accessing class
+                const receiverType = this.typeInferer.getType(memberCall.receiver);
+                const declaringClass = node.$container;
+
+                // Check if field is inherited (accessed from subclass, defined in superclass)
+                if (receiverType && isBbjClass(receiverType) && isClass(declaringClass) && receiverType !== declaringClass) {
+                    inheritedFrom = declaringClass.name;
+                }
+            }
+        }
+
         if (isBbjClass(node) || isBBjClassMember(node)) {
             const comments = this.getAstNodeComments(node);
-            if (comments) {
-                return this.createMarkdownContent(header, comments);
+            let content = comments;
+            if (inheritedFrom) {
+                const inheritedText = `\n\n_inherited from ${inheritedFrom}_`;
+                content = content ? content + inheritedText : inheritedText;
+            }
+            if (content) {
+                return this.createMarkdownContent(header, content);
+            } else if (inheritedFrom) {
+                return this.createMarkdownContent(header, `_inherited from ${inheritedFrom}_`);
             }
         } else if (isDocumented(node) && isNamedElement(node)) {
             let javaDoc: { signature?: string, javadoc: string } | undefined = node.docu
