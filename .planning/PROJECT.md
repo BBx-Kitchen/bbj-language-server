@@ -66,7 +66,31 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — ready for next milestone)
+#### v3.0 — Improving BBj Language Support
+
+**Grammar & Parsing Fixes:**
+- [ ] `endif`/`swend` followed by comment on same line falsely flagged (#318)
+- [ ] Camel-case methods with embedded keywords parsed as two statements (#316)
+- [ ] DREAD verb and DATA not supported (#247)
+- [ ] DEF FN inside method flagged as error (#226)
+- [ ] Comment after colon line-continuation flagged as error (#118)
+
+**Type Resolution & Scoping:**
+- [ ] CAST() doesn't convey type for downstream completion (#352)
+- [ ] Super class field access via `#field!` flagged as warning (#240)
+- [ ] Implicit getter doesn't convey type for completion (#241)
+- [ ] DECLARE anywhere in scope not recognized (#265)
+
+**Crash & Stability:**
+- [ ] LS crashes on certain USE statements (jSoup inner classes) (#314)
+- [ ] 100% CPU on multi-project workspaces (#232)
+
+**IDE Features & Convenience:**
+- [ ] Labels/variables/fields all same SymbolKind in Structure View (#353)
+- [ ] Run icons showing on all file types (#354)
+- [ ] Missing file extensions for run icons — .bbx, .src, .arc (#340)
+- [ ] Global field `#` completion trigger (gap analysis)
+- [ ] Cyclic reference error messages missing filename (#245)
 
 ### Out of Scope
 
@@ -77,7 +101,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v2.2 milestone shipped 2026-02-05. Unified CI/CD automation complete — preview builds on every push to main, manual releases create GitHub Releases with both .vsix and .zip. Both extensions share version from `bbj-vscode/package.json`. IntelliJ plugin distributed via GitHub Releases until JetBrains Marketplace access obtained.
+**Current state:** v3.0 milestone started 2026-02-06. Focus: improving BBj language support — fixing false errors on common patterns, crashes, type resolution gaps, and Structure View. Previous v2.2 shipped unified CI/CD automation. Both extensions share version from `bbj-vscode/package.json`.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -143,4 +167,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Path-filtered PR validation | Triggers only when IntelliJ or shared dependencies change | ✓ Good — fast PRs |
 
 ---
-*Last updated: 2026-02-05 after v2.2 milestone complete*
+*Last updated: 2026-02-06 after v3.0 milestone started*

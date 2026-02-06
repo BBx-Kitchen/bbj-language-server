@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-05)
+See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Planning next milestone
+**Current focus:** v3.0 Improving BBj Language Support
 
 ## Current Position
 
-Milestone: v2.2 IntelliJ Build & Release Automation (SHIPPED)
-Phase: All complete
-Status: Ready for next milestone
-Last activity: 2026-02-05 - Completed v2.2 milestone
+Milestone: v3.0 Improving BBj Language Support
+Phase: Not started (defining requirements)
+Status: Defining requirements
+Last activity: 2026-02-06 — Milestone v3.0 started
 
-Progress: [##########] 100% ✓
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone History
 
@@ -49,7 +49,7 @@ See archived decisions in:
 
 ### Known Issues
 
-1. Structure View symbol kind differentiation — SymbolKind.Field default case (deferred from v1.1)
+1. Structure View symbol kind differentiation — SymbolKind.Field default case (deferred from v1.1, now in v3.0 scope)
 2. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
 
 ### Tech Debt
@@ -64,7 +64,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-05
-Stopped at: v2.2 milestone archived
+Last session: 2026-02-06
+Stopped at: Defining v3.0 requirements
 Resume file: None
-Next: /gsd:new-milestone
+Next: Define requirements → create roadmap
