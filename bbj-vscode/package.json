@@ -45,7 +45,7 @@
           "BBx"
         ],
         "extensions": [
-          "bbx"
+          ".bbx"
         ],
         "icon": {
           "light": "./images/bbj-config-light.svg",
@@ -183,17 +183,17 @@
     "menus": {
       "editor/context": [
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.run",
           "group": "BBj@1"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runBUI",
           "group": "BBj@2"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runDWC",
           "group": "BBj@3"
         },
@@ -212,17 +212,17 @@
       ],
       "editor/title": [
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.run",
           "group": "navigation"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runBUI",
           "group": "navigation"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runDWC",
           "group": "navigation"
         },
@@ -241,17 +241,17 @@
       ],
       "explorer/context": [
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.run",
           "group": "BBj@1"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runBUI",
           "group": "BBj@2"
         },
         {
-          "when": "resourceLangId == bbj || resourceLangId == bbx",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.runDWC",
           "group": "BBj@3"
         },
