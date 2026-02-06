@@ -1,5 +1,42 @@
 # Project Milestones: BBj Language Server
 
+## v3.0 Improving BBj Language Support (Shipped: 2026-02-06)
+
+**Delivered:** Fixed false errors on common BBj syntax patterns, resolved crashes, improved type resolution for code completion, investigated CPU stability, and polished IDE features — eliminating the most-reported pain points in the language server.
+
+**Phases completed:** 24-27 (10 plans total)
+
+**Key accomplishments:**
+
+- LONGER_ALT keyword/identifier disambiguation — camel-case methods like `getResult`, `isNew` no longer split into keyword + identifier
+- Inline REM comments after `endif`/`swend` and colon line-continuation parse without error
+- DREAD verb and DATA statement fully supported by grammar
+- DEF FN / FNEND blocks inside class methods parse without error
+- CAST() correctly conveys type for downstream method resolution and completion
+- Super class field access via `#field!` resolved through cycle-safe inheritance traversal
+- Implicit getter calls convey return type for method chaining and completion
+- DECLARE recognized anywhere in method scope (not just before first use)
+- USE statements with inner/nested Java classes no longer crash (try/catch wrapping + dollar-sign fallback)
+- Configurable type resolution warnings setting (`bbj.typeResolution.warnings`)
+- Root cause analysis of 100% CPU in multi-project workspaces (infinite rebuild loop identified, mitigations ranked)
+- Structure View: labels (Key), variables (Variable), methods (Method), DEF FN (Function) show distinct icons
+- Run icons scoped to BBj file types only (.bbj, .bbl, .bbx, .src), excluded from .bbjt
+- Global field `#` triggers completion of class fields with inheritance-aware collection
+- Cyclic reference and linker error messages include source filename and line number
+
+**Stats:**
+
+- 92 files modified
+- 39 TypeScript files, ~23,562 LOC
+- 4 phases, 10 plans
+- 1 day (2026-02-06)
+
+**Git range:** `8ec5fec` → `9bb8a38`
+
+**What's next:** Manual acceptance testing of UI/UX behaviors (icon rendering, completion popups, run icon scoping), then start next milestone for additional feature gap implementation.
+
+---
+
 ## v2.2 IntelliJ Build & Release Automation (Shipped: 2026-02-05)
 
 **Delivered:** Unified CI/CD automation for both VS Code and IntelliJ extensions — preview builds on every push to main, manual production releases with GitHub Release artifacts containing both .vsix and .zip.
