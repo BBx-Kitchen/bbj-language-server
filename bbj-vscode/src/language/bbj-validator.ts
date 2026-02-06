@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNode, Properties, Reference, RootCstNode, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { dirname, isAbsolute, relative } from 'path';
+import { basename, dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSymbolRef } from './generated/ast.js';
@@ -154,7 +154,14 @@ export class BBjValidator {
         if (member && isBBjClassMember(member)) {
             const actualAccessLevel = (member.visibility ?? "PUBLIC").toUpperCase();
             if (!expectedAccessLevels.includes(actualAccessLevel)) {
-                accept('error', `The member '${member.name}' from the type '${classOfDeclaration.name}' is not visible`, {
+                // Get source location info for the member declaration
+                const memberDoc = AstUtils.getDocument(member);
+                const filename = basename(memberDoc.uri.fsPath);
+                const lineNumber = member.$cstNode?.range.start.line;
+                const lineInfo = lineNumber !== undefined ? `:${lineNumber + 1}` : '';
+                const sourceInfo = `${filename}${lineInfo}`;
+
+                accept('error', `The member '${member.name}' from the type '${classOfDeclaration.name}' (in ${sourceInfo}) is not visible`, {
                     node: memberCall,
                     property: 'member'
                 });
@@ -174,6 +181,13 @@ export class BBjValidator {
         if (isBbjClass(klass) && klass.visibility) {
             const typeName = klass.interface ? 'interface' : 'class';
             const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
+
+            // Get source location info for the declaration
+            const filename = basename(uriOfDeclaration);
+            const lineNumber = klass.$cstNode?.range.start.line;
+            const lineInfo = lineNumber !== undefined ? `:${lineNumber + 1}` : '';
+            const sourceInfo = `${filename}${lineInfo}`;
+
             switch (klass.visibility.toUpperCase()) {
                 case "PUBLIC":
                     //everything is allowed
@@ -182,12 +196,12 @@ export class BBjValidator {
                     const dirOfDeclaration = dirname(uriOfDeclaration);
                     const dirOfUsage = dirname(uriOfUsage);
                     if (!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                        accept("error", `Protected ${typeName} '${klass.name}' can be only referenced within the same directory!`, info);
+                        accept("error", `Protected ${typeName} '${klass.name}' (declared in ${sourceInfo}) can be only referenced within the same directory!`, info);
                     }
                     break;
                 case "PRIVATE":
                     if (uriOfUsage !== uriOfDeclaration) {
-                        accept("error", `Private ${typeName} '${klass.name}' can be only referenced within the same file!`, info);
+                        accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) can be only referenced within the same file!`, info);
                     }
                     break;
             }

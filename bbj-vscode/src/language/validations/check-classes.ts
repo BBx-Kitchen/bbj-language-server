@@ -1,5 +1,5 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
-import { dirname, isAbsolute, relative } from 'path';
+import { basename, dirname, isAbsolute, relative } from 'path';
 import { getClassRef } from '../bbj-nodedescription-provider.js';
 import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
 
@@ -91,11 +91,17 @@ class ClassValidator {
 
     public checkBBjClass<N extends AstNode>(klass: BbjClass, uriOfDeclaration: string, uriOfUsage: string, accept: ValidationAcceptor, info: DiagnosticInfo<N>) {
         const typeName = klass.interface ? 'interface' : 'class';
-        
+
         if(!klass.visibility) {
             accept("warning", `Visibility of ${typeName} '${klass.name}' is not declared and might not be accessible here.`, info);
             return;
         }
+
+        // Get source location info for the declaration
+        const filename = basename(uriOfDeclaration);
+        const lineNumber = klass.$cstNode?.range.start.line;
+        const lineInfo = lineNumber !== undefined ? `:${lineNumber + 1}` : '';
+        const sourceInfo = `${filename}${lineInfo}`;
 
         switch (klass.visibility.toUpperCase()) {
             case "PUBLIC":
@@ -105,12 +111,12 @@ class ClassValidator {
                 const dirOfDeclaration = dirname(uriOfDeclaration);
                 const dirOfUsage = dirname(uriOfUsage);
                 if (!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                    accept("error", `Protected ${typeName} '${klass.name}' is not visible from this directory.`, info);
+                    accept("error", `Protected ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this directory.`, info);
                 }
                 break;
             case "PRIVATE":
                 if (uriOfUsage !== uriOfDeclaration) {
-                    accept("error", `Private ${typeName} '${klass.name}' is not visible from this file.`, info);
+                    accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this file.`, info);
                 }
                 break;
         }
