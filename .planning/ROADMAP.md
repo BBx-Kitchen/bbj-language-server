@@ -83,14 +83,15 @@ Plans:
 **Requirements**: IDE-01, IDE-02, IDE-03, IDE-04, IDE-05
 **Success Criteria** (what must be TRUE):
   1. Labels, variables, and fields show distinct icons/kinds in Structure View and completion popups (not all SymbolKind.Field)
-  2. Run icons (GUI/BUI/DWC) appear only on BBj file types (.bbj, .bbl, .bbjt, .bbx, .src, .arc), not on all files
+  2. Run icons (GUI/BUI/DWC) appear only on BBj file types (.bbj, .bbl, .bbx, .src), not on all files
   3. Typing `#` inside a class triggers completion of the class's fields (global field completion)
   4. Cyclic reference and linker error messages include the source filename where the error originates
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 27-01: TBD
-- [ ] 27-02: TBD
+- [ ] 27-01-PLAN.md -- Symbol kind differentiation and run icon scoping (IDE-01, IDE-02, IDE-03)
+- [ ] 27-02-PLAN.md -- Field completion on # trigger character (IDE-04)
+- [ ] 27-03-PLAN.md -- Error message enhancement with source filenames (IDE-05)
 
 ## Progress
 
@@ -101,4 +102,4 @@ Plans:
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
 | 25. Type Resolution & Crash Fixes | v3.0 | 4/4 | Complete | 2026-02-06 |
 | 26. CPU Stability | v3.0 | 1/1 | Complete | 2026-02-06 |
-| 27. IDE Polish | v3.0 | 0/TBD | Not started | - |
+| 27. IDE Polish | v3.0 | 0/3 | Not started | - |
