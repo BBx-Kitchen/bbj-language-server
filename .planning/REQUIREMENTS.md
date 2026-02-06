@@ -93,28 +93,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GRAM-01 | — | Pending |
-| GRAM-02 | — | Pending |
-| GRAM-03 | — | Pending |
-| GRAM-04 | — | Pending |
-| GRAM-05 | — | Pending |
-| TYPE-01 | — | Pending |
-| TYPE-02 | — | Pending |
-| TYPE-03 | — | Pending |
-| TYPE-04 | — | Pending |
-| STAB-01 | — | Pending |
-| STAB-02 | — | Pending |
-| IDE-01 | — | Pending |
-| IDE-02 | — | Pending |
-| IDE-03 | — | Pending |
-| IDE-04 | — | Pending |
-| IDE-05 | — | Pending |
+| GRAM-01 | Phase 24 | Pending |
+| GRAM-02 | Phase 24 | Pending |
+| GRAM-03 | Phase 24 | Pending |
+| GRAM-04 | Phase 24 | Pending |
+| GRAM-05 | Phase 24 | Pending |
+| TYPE-01 | Phase 25 | Pending |
+| TYPE-02 | Phase 25 | Pending |
+| TYPE-03 | Phase 25 | Pending |
+| TYPE-04 | Phase 25 | Pending |
+| STAB-01 | Phase 25 | Pending |
+| STAB-02 | Phase 26 | Pending |
+| IDE-01 | Phase 27 | Pending |
+| IDE-02 | Phase 27 | Pending |
+| IDE-03 | Phase 27 | Pending |
+| IDE-04 | Phase 27 | Pending |
+| IDE-05 | Phase 27 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16 (pending roadmap creation)
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after initial definition*
+*Last updated: 2026-02-06 after roadmap creation*

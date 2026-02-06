@@ -10,9 +10,10 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Milestone: v3.0 Improving BBj Language Support
-Phase: Not started (defining requirements)
-Status: Defining requirements
-Last activity: 2026-02-06 — Milestone v3.0 started
+Phase: 24 of 27 (Grammar & Parsing Fixes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-06 — Roadmap created (4 phases, 16 requirements mapped)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -49,7 +50,7 @@ See archived decisions in:
 
 ### Known Issues
 
-1. Structure View symbol kind differentiation — SymbolKind.Field default case (deferred from v1.1, now in v3.0 scope)
+1. Structure View symbol kind differentiation — SymbolKind.Field default case (now IDE-01 in v3.0)
 2. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
 
 ### Tech Debt
@@ -65,6 +66,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Defining v3.0 requirements
+Stopped at: Roadmap created for v3.0, ready to plan Phase 24
 Resume file: None
-Next: Define requirements → create roadmap
+Next: `/gsd:plan-phase 24`
