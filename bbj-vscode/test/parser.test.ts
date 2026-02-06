@@ -2282,4 +2282,17 @@ PRINT getResult$, isNew%, readData
         `);
         expectNoParserLexerErrors(result);
     });
+
+    test('DECLARE statement parses correctly anywhere in method', async () => {
+        const document = await parse(`
+            class public Test
+                method public void m()
+                    x = 1
+                    declare java.lang.String name!
+                    y = 2
+                methodend
+            classend
+        `)
+        expect(document.parseResult.parserErrors.length).toBe(0)
+    })
 });

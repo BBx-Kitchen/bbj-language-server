@@ -360,4 +360,35 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
     });
+
+    test('DECLARE anywhere in method body is recognized for type resolution', async () => {
+        const document = await validate(`
+            class public MyClass
+                method public java.lang.String test()
+                    x$ = myVar!.charAt(1)
+                    declare java.lang.String myVar!
+                    methodret myVar!
+                methodend
+            classend
+        `)
+        expectNoErrors(document)
+    })
+
+    test('DECLARE at top level scope works', async () => {
+        const document = await validate(`
+            declare java.lang.String name!
+            x = name!.charAt(1)
+        `)
+        expectNoErrors(document)
+    })
+
+    test('USE with unresolvable class does not crash document processing', async () => {
+        const document = await validate(`
+            use com.nonexistent.FakeClass
+            x$ = "hello"
+        `)
+        // Should parse fine, may have linking/warning for the USE, but should not crash
+        expect(document.parseResult.parserErrors.length).toBe(0)
+        // The x$ assignment should still work despite the bad USE
+    })
 });
