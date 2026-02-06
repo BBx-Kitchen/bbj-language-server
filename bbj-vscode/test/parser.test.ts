@@ -2051,6 +2051,57 @@ describe('Parser Tests', () => {
         expectNoParserLexerErrors(result);
     });
 
+    test('Labels with keyword-prefixed names parse correctly (GRAM-02)', async () => {
+        const result = await parse(`
+getResult:
+    PRINT "at getResult"
+isNew:
+    PRINT "at isNew"
+readData:
+    PRINT "at readData"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GOTO/GOSUB with keyword-prefixed labels (GRAM-02)', async () => {
+        const result = await parse(`
+GOTO getResult
+GOTO isNew
+GOSUB readData
+STOP
+getResult: PRINT "get"
+isNew: PRINT "is"
+readData: PRINT "read"; RETURN
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('Field names with keyword-prefixed identifiers in classes (GRAM-02)', async () => {
+        const result = await parse(`
+class public TestClass
+    field private BBjString getString$
+    field private BBjNumber isReady%
+    method public void getResult()
+    methodend
+    method public BBjNumber isNew()
+        methodret 0
+    methodend
+classend
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
+    test('Variable names with keyword-prefixed identifiers (GRAM-02)', async () => {
+        const result = await parse(`
+getResult$ = "test"
+isNew% = 1
+readData = 0
+PRINT getResult$, isNew%, readData
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
     test('Issue #224 ALL array access as expression', async () => {
         const result = await parse(`
         attr_def_tbl$ = ""
