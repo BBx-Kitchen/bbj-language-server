@@ -10,10 +10,10 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Milestone: v3.0 Improving BBj Language Support (SHIPPED)
-Status: Gap closure complete
-Last activity: 2026-02-06 — Completed plan 25-05 (gap closure for accessor completion and USE crash)
+Status: Gap closure complete, verified ✓
+Last activity: 2026-02-06 — Phase 25 gap closure verified (3/3 must-haves passed)
 
-Progress: [██████████] 100% (milestone + 1 gap closure)
+Progress: [██████████] 100% (milestone + gap closure verified)
 
 ## Milestone History
 
@@ -64,6 +64,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 25-05-PLAN.md (gap closure)
+Stopped at: Phase 25 gap closure verified — all UAT gaps closed
 Resume file: None
-Next: Ready for new work
+Next: /gsd:new-milestone
