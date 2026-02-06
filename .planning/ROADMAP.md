@@ -24,7 +24,7 @@ See .planning/MILESTONES.md for full history.
 **Milestone Goal:** Fix false errors on common BBj patterns, resolve crashes, improve type resolution for completion, and polish IDE features -- eliminating the most-reported pain points in the language server.
 
 - [x] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns (completed 2026-02-06)
-- [ ] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash
+- [x] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash (completed 2026-02-06)
 - [ ] **Phase 26: CPU Stability** - Diagnose and fix 100% CPU in multi-project workspaces
 - [ ] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages
 
@@ -60,10 +60,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 25-01-PLAN.md -- CAST() and implicit getter type conveyance + CAST warning diagnostic (TYPE-01, TYPE-03)
-- [ ] 25-02-PLAN.md -- Super class field resolution with cycle-safe inheritance traversal + unresolvable super warning (TYPE-02)
-- [ ] 25-03-PLAN.md -- DECLARE method-scoped visibility, USE crash resistance + USE warning diagnostic (TYPE-04, STAB-01)
-- [ ] 25-04-PLAN.md -- Workspace setting to disable type resolution warnings
+- [x] 25-01-PLAN.md -- CAST() and implicit getter type conveyance + CAST warning diagnostic (TYPE-01, TYPE-03)
+- [x] 25-02-PLAN.md -- Super class field resolution with cycle-safe inheritance traversal + unresolvable super warning (TYPE-02)
+- [x] 25-03-PLAN.md -- DECLARE method-scoped visibility, USE crash resistance + USE warning diagnostic (TYPE-04, STAB-01)
+- [x] 25-04-PLAN.md -- Workspace setting to disable type resolution warnings
 
 ### Phase 26: CPU Stability
 **Goal**: Multi-project workspaces no longer cause the language server to consume 100% CPU
@@ -99,6 +99,6 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
-| 25. Type Resolution & Crash Fixes | v3.0 | 0/4 | Not started | - |
+| 25. Type Resolution & Crash Fixes | v3.0 | 4/4 | Complete | 2026-02-06 |
 | 26. CPU Stability | v3.0 | 0/TBD | Not started | - |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |

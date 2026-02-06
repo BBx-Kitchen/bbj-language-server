@@ -17,14 +17,14 @@ Requirements for v3.0 — Improving BBj Language Support. Each maps to roadmap p
 
 ### Type Resolution & Scoping
 
-- [ ] **TYPE-01**: CAST() correctly conveys type for downstream method resolution and completion (#352)
-- [ ] **TYPE-02**: Super class field access via `#field!` shorthand not flagged as warning (#240)
-- [ ] **TYPE-03**: Implicit getter correctly conveys return type for method chaining and completion (#241)
-- [ ] **TYPE-04**: DECLARE recognized anywhere in scope, not just before first use (#265)
+- [x] **TYPE-01**: CAST() correctly conveys type for downstream method resolution and completion (#352)
+- [x] **TYPE-02**: Super class field access via `#field!` shorthand not flagged as warning (#240)
+- [x] **TYPE-03**: Implicit getter correctly conveys return type for method chaining and completion (#241)
+- [x] **TYPE-04**: DECLARE recognized anywhere in scope, not just before first use (#265)
 
 ### Crash & Stability
 
-- [ ] **STAB-01**: LS handles inner/nested Java classes in USE statements without crashing (#314)
+- [x] **STAB-01**: LS handles inner/nested Java classes in USE statements without crashing (#314)
 - [ ] **STAB-02**: Multi-project workspaces no longer cause 100% CPU (#232)
 
 ### IDE Features & Convenience
@@ -98,11 +98,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GRAM-03 | Phase 24 | Complete |
 | GRAM-04 | Phase 24 | Complete |
 | GRAM-05 | Phase 24 | Complete |
-| TYPE-01 | Phase 25 | Pending |
-| TYPE-02 | Phase 25 | Pending |
-| TYPE-03 | Phase 25 | Pending |
-| TYPE-04 | Phase 25 | Pending |
-| STAB-01 | Phase 25 | Pending |
+| TYPE-01 | Phase 25 | Complete |
+| TYPE-02 | Phase 25 | Complete |
+| TYPE-03 | Phase 25 | Complete |
+| TYPE-04 | Phase 25 | Complete |
+| STAB-01 | Phase 25 | Complete |
 | STAB-02 | Phase 26 | Pending |
 | IDE-01 | Phase 27 | Pending |
 | IDE-02 | Phase 27 | Pending |
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after roadmap creation*
+*Last updated: 2026-02-06 after Phase 25 completion*
