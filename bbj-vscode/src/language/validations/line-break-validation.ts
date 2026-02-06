@@ -282,7 +282,7 @@ function getCstNodes(node: CstNode, features: string[] | boolean): CstNode[] {
 }
 
 const lineStartRegex = /^\s*$/;
-const lineEndRegex = /^\s*(rem[ \t][^\n\r]*)?(\r?\n)?$/;
+const lineEndRegex = /^\s*(;[ \t]*)?(rem[ \t][^\n\r]*)?(\r?\n)?$/i;
 
 function hasLinebreakBefore(node: CstNode, textDocument: TextDocument): boolean {
     const nodeStart = node.range.start;

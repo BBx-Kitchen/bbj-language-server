@@ -2159,4 +2159,127 @@ PRINT getResult$, isNew%, readData
         `, { validation: true });
         expectNoParserLexerErrors(result);
     });
+
+    test('GRAM-01: endif followed by ;rem comment (#318)', async () => {
+        const result = await parse(`
+            if 1 > 0 then
+                PRINT "yes"
+            endif;rem this is a comment
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('GRAM-01: swend followed by ;rem comment (#318)', async () => {
+        const result = await parse(`
+            LVL = 3
+            SWITCH LVL
+                CASE 1; PRINT "one"; BREAK
+                CASE DEFAULT; PRINT "other"; BREAK
+            SWEND;rem end of switch
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('GRAM-01: endif with space before ;rem', async () => {
+        const result = await parse(`
+            if 1 > 0 then
+                PRINT "yes"
+            endif ; rem spaced comment
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
+    test('GRAM-03: DREAD statement (#247)', async () => {
+        const result = await parse(`
+            DREAD A$, B$, C
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-03: DREAD with ERR option (#247)', async () => {
+        const result = await parse(`
+            DREAD A$, B$, ERR=errLabel
+            errLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-03: DATA statement (#247)', async () => {
+        const result = await parse(`
+            DATA "hello", "world", 42
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-03: DATA with expressions (#247)', async () => {
+        const result = await parse(`
+            DATA 1, 2, 3
+            DATA "Alice", "Bob", "Charlie"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-03: DREAD and DATA together (#247)', async () => {
+        const result = await parse(`
+            DATA "John", 25, "Engineer"
+            RESTORE dataLabel
+            DREAD name$, age, job$
+            PRINT name$, age, job$
+            dataLabel:
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-04: DEF FN inside class method (#226)', async () => {
+        const result = await parse(`
+            class public MathHelper
+                method public void doMath()
+                    DEF FNSquare(X)=X*X
+                    LET Y=FNSquare(5)
+                    PRINT Y
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-04: Multi-line DEF FN inside class method (#226)', async () => {
+        const result = await parse(`
+            class public MathHelper
+                method public void calculate()
+                    DEF FNGCF(X,Y)
+                        IF FPT(X)<>0 OR FPT(Y)<>0 THEN FNERR 41
+                        WHILE X<>0
+                            LET TEMP=X, X=MOD(Y,X), Y=TEMP
+                        WEND
+                        RETURN Y
+                    FNEND
+                    PRINT FNGCF(12,8)
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-05: REM after colon line-continuation (#118)', async () => {
+        const result = await parse(`
+            if 1 > 0 then
+: REM this is a continuation comment
+                PRINT "yes"
+            endif
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('GRAM-05: Multiple colon continuations with REM (#118)', async () => {
+        const result = await parse(`
+            PRINT "hello"
+: REM continued comment
+: PRINT "world"
+        `);
+        expectNoParserLexerErrors(result);
+    });
 });
