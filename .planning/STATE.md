@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Between milestones
+**Current focus:** v3.1 PRIO 1+2 Issue Burndown
 
 ## Current Position
 
-Milestone: v3.0 Improving BBj Language Support (SHIPPED & ARCHIVED)
-Status: Milestone complete, audited, and archived
-Last activity: 2026-02-06 — v3.0 milestone archived
+Milestone: v3.1 PRIO 1+2 Issue Burndown
+Status: Defining requirements
+Last activity: 2026-02-06 — Milestone v3.1 started
 
-Progress: [██████████] 100% (all milestones through v3.0 shipped)
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone History
 
@@ -53,7 +53,7 @@ See archived decisions in:
 
 ### Tech Debt
 
-- EM credentials stored as plaintext in settings
+- EM credentials stored as plaintext in settings (targeted in v3.1 #256)
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
@@ -65,6 +65,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: v3.0 milestone archived
+Stopped at: Defining v3.1 requirements
 Resume file: None
-Next: /gsd:new-milestone
+Next: Define REQUIREMENTS.md → create ROADMAP.md

@@ -82,6 +82,22 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Cyclic reference and linker error messages include source filename (#245) — v3.0
 - ✓ Configurable type resolution warnings setting — v3.0
 
+### Active
+
+<!-- v3.1 PRIO 1+2 Issue Burndown -->
+
+- [ ] Program variable scope — vars only visible after declaration (#4)
+- [ ] setSlot() not found by Java reflection (#180)
+- [ ] .bbx files treated as BBj programs (not config) with proper icons and run support (#340)
+- [ ] Linking error invoking method from Java super class (#85)
+- [ ] DEF FN in methods — fix line-break validation + parameter scoping (#226)
+- [ ] Super class #field! access resolved via inheritance (#240)
+- [ ] config.bbx and other BBj options configurable (#244)
+- [ ] Cyclic reference error includes filename and line number (#245)
+- [ ] DREAD with DIM'd array variables resolves correctly (#247)
+- [ ] EM token-based auth instead of plaintext password (#256)
+- [ ] Interop hostname and port configurable in settings (#257)
+
 ### Out of Scope
 
 - Native IntelliJ parser/lexer rewrite — LSP4IJ approach reuses existing LS
@@ -91,7 +107,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.0 shipped and audited 2026-02-06. 7 milestones shipped (v1.0-v3.0), 27 phases, 54+ plans executed. Fixed false errors on common BBj patterns, resolved crashes, improved type resolution for completion, investigated CPU stability, and polished IDE features. Both extensions share version from `bbj-vscode/package.json`. Next milestone TBD.
+**Current state:** v3.1 milestone started 2026-02-06. Burning down 11 PRIO 1+2 GitHub issues. Previous milestone v3.0 fixed 16 requirements across parser, scoping, completion, and IDE features. 7 issues closed during triage verification.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -164,4 +180,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Path-filtered PR validation | Triggers only when IntelliJ or shared dependencies change | ✓ Good — fast PRs |
 
 ---
-*Last updated: 2026-02-06 after v3.0 milestone archived*
+*Last updated: 2026-02-06 after v3.1 milestone started*
