@@ -219,11 +219,11 @@ export class BBjValidator {
         if (use.javaClass) {
             const className = getFQNFullname(use.javaClass);
             if(use.javaClass.pathParts.some(pp => pp.symbol.ref === undefined)) {
-                accept('error', `Class ${className} is not in the class path.`, { node: use });
+                accept('warning', `Class '${className}' could not be resolved. Check your classpath configuration.`, { node: use });
             }
             const errorPart = use.javaClass.pathParts.find(pp => pp.symbol.error !== undefined)
             if (errorPart) {
-                accept('error', `Error when loading ${className}: ${errorPart.symbol.error}`, { node: use, property: 'javaClass' });
+                accept('warning', `Error when loading ${className}: ${errorPart.symbol.error}`, { node: use, property: 'javaClass' });
             }
         }
     }

@@ -30,9 +30,11 @@ import {
     isLibEventType,
     isLibMember,
     isMemberCall,
+    isMethodDecl,
     isProgram,
     isReadStatement,
     isSymbolRef, isUse,
+    isVariableDecl,
     MemberCall,
     MethodDecl,
     Use
@@ -80,18 +82,40 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     protected async processNode(node: AstNode, document: LangiumDocument, scopes: LocalSymbols): Promise<void> {
         if (isUse(node) && node.javaClass) {
-            const javaClassName = getFQNFullname(node.javaClass);
-            const javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
-            if (!javaClass) {
+            try {
+                const javaClassName = getFQNFullname(node.javaClass);
+                let javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
+
+                // If resolution failed, try inner class notation (replace last . with $)
+                if (!javaClass && javaClassName.includes('.')) {
+                    const lastDot = javaClassName.lastIndexOf('.');
+                    const innerClassName = javaClassName.substring(0, lastDot) + '$' + javaClassName.substring(lastDot + 1);
+                    javaClass = await this.tryResolveJavaReference(innerClassName, this.javaInterop);
+                }
+
+                if (!javaClass) {
+                    return;
+                }
+                if (javaClass.error) {
+                    console.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
+                    return;
+                }
+                const program = node.$container;
+                const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
+                this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
+            } catch (e) {
+                console.warn(`Error processing USE statement for ${getFQNFullname(node.javaClass)}: ${e}`);
                 return;
             }
-            if (javaClass.error) {
-                console.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
-                return;
+        } else if (isVariableDecl(node) && node.$containerProperty !== 'params') {
+            // DECLARE statements should be scoped to the entire method body
+            // not just the block they appear in
+            const methodScope = AstUtils.getContainerOfType(node, isMethodDecl);
+            const scopeHolder = methodScope ?? node.$container;
+            if (scopeHolder) {
+                const description = this.descriptions.createDescription(node, node.name);
+                this.addToScope(scopes, scopeHolder, description);
             }
-            const program = node.$container;
-            const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
-            this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
         } else if (isJavaTypeRef(node) && node.pathParts.length > 1) { // resolve only qualified names
             const javaClassName = getFQNFullname(node);
             // just trigger resolution so the class reference is loaded into the synthetic document.
