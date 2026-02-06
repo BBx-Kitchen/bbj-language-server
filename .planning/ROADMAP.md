@@ -56,12 +56,14 @@ Plans:
   3. Implicit getter calls (e.g., `obj!.Name$`) correctly convey return type for downstream method chaining and completion
   4. A `DECLARE` statement placed anywhere in a method body (not just before first use) is recognized for type resolution
   5. A `USE` statement referencing a Java inner class (e.g., jSoup `Element`) does not crash the language server
-**Plans**: 3 plans
+  6. Type resolution warnings can be disabled via workspace setting for heavily dynamic codebases
+**Plans**: 4 plans
 
 Plans:
-- [ ] 25-01-PLAN.md -- CAST() and implicit getter type conveyance in type inferer (TYPE-01, TYPE-03)
-- [ ] 25-02-PLAN.md -- Super class field resolution with cycle-safe inheritance traversal (TYPE-02)
-- [ ] 25-03-PLAN.md -- DECLARE method-scoped visibility and USE crash resistance (TYPE-04, STAB-01)
+- [ ] 25-01-PLAN.md -- CAST() and implicit getter type conveyance + CAST warning diagnostic (TYPE-01, TYPE-03)
+- [ ] 25-02-PLAN.md -- Super class field resolution with cycle-safe inheritance traversal + unresolvable super warning (TYPE-02)
+- [ ] 25-03-PLAN.md -- DECLARE method-scoped visibility, USE crash resistance + USE warning diagnostic (TYPE-04, STAB-01)
+- [ ] 25-04-PLAN.md -- Workspace setting to disable type resolution warnings
 
 ### Phase 26: CPU Stability
 **Goal**: Multi-project workspaces no longer cause the language server to consume 100% CPU
@@ -97,6 +99,6 @@ Plans:
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
-| 25. Type Resolution & Crash Fixes | v3.0 | 0/3 | Not started | - |
+| 25. Type Resolution & Crash Fixes | v3.0 | 0/4 | Not started | - |
 | 26. CPU Stability | v3.0 | 0/TBD | Not started | - |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |
