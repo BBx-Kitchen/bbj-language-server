@@ -91,7 +91,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.0 shipped 2026-02-06. Fixed false errors on common BBj patterns, resolved crashes, improved type resolution for completion, investigated CPU stability, and polished IDE features. Both extensions share version from `bbj-vscode/package.json`. Next milestone TBD.
+**Current state:** v3.0 shipped and audited 2026-02-06. 7 milestones shipped (v1.0-v3.0), 27 phases, 54+ plans executed. Fixed false errors on common BBj patterns, resolved crashes, improved type resolution for completion, investigated CPU stability, and polished IDE features. Both extensions share version from `bbj-vscode/package.json`. Next milestone TBD.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -164,4 +164,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Path-filtered PR validation | Triggers only when IntelliJ or shared dependencies change | ✓ Good — fast PRs |
 
 ---
-*Last updated: 2026-02-06 after v3.0 milestone completed*
+*Last updated: 2026-02-06 after v3.0 milestone archived*

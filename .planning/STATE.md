@@ -9,11 +9,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 ## Current Position
 
-Milestone: v3.0 Improving BBj Language Support (SHIPPED)
-Status: Gap closure complete, verified ✓
-Last activity: 2026-02-06 — Phase 25 gap closure verified (3/3 must-haves passed)
+Milestone: v3.0 Improving BBj Language Support (SHIPPED & ARCHIVED)
+Status: Milestone complete, audited, and archived
+Last activity: 2026-02-06 — v3.0 milestone archived
 
-Progress: [██████████] 100% (milestone + gap closure verified)
+Progress: [██████████] 100% (all milestones through v3.0 shipped)
 
 ## Milestone History
 
@@ -25,15 +25,15 @@ Progress: [██████████] 100% (milestone + gap closure verifie
 | v2.0 Langium 4 Upgrade | 14-20 | 11 | 2026-02-04 |
 | v2.1 Feature Gap Analysis | N/A | N/A | 2026-02-04 |
 | v2.2 IntelliJ Build & Release Automation | 21-23 | 3 | 2026-02-05 |
-| v3.0 Improving BBj Language Support | 24-27 | 10 | 2026-02-06 |
+| v3.0 Improving BBj Language Support | 24-27 | 11 | 2026-02-06 |
 
 See: .planning/MILESTONES.md
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27 (v2.0: 11, v2.2: 3, v3.0: 13)
-- Average duration: 7.5 min
+- Total plans completed: 55+ across all milestones
+- Average duration: ~7.5 min per plan
 - Total execution time: ~208 min
 
 *Updated after each plan completion*
@@ -56,6 +56,7 @@ See archived decisions in:
 - EM credentials stored as plaintext in settings
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
+- CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
 
 ### Blockers/Concerns
 
@@ -64,6 +65,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Phase 25 gap closure verified — all UAT gaps closed
+Stopped at: v3.0 milestone archived
 Resume file: None
 Next: /gsd:new-milestone
