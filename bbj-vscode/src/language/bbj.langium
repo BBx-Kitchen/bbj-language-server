@@ -26,6 +26,8 @@ Statement:
 SingleStatement:
     KeywordStatement | //must be the first alternative (otherwise BREAK etc will be handled as NamedElement)
     ReadStatement |
+    DreadStatement |
+    DataStatement |
     ExtendedInputStatement |
     SqlCloseStatement |
     SqlCommitStatement |
@@ -207,6 +209,14 @@ RestoreStatement:
     'RESTORE' lineref=LabelRef
     ;
 
+DreadStatement:
+    'DREAD' items+=InputItem (',' items+=InputItem)* Err?
+;
+
+DataStatement:
+    'DATA' values+=Expression (',' values+=Expression)*
+;
+
 SaveStatement:
      'SAVE' fileid=Expression (',' int=Expression)?
     ;
@@ -334,7 +344,7 @@ MethodDecl returns MethodDecl:
     MethodDeclStart
     Comments?
     (
-        (body+=Statement)*
+        (body+=(Statement | DefFunction))*
         endTag='METHODEND'
     )?
 ;
@@ -886,7 +896,7 @@ LibEventType returns LibEventType:
 SymbolicLabelName returns string: ASTERISK_EXPRESSION ValidName;
 
 hidden terminal WS: /\s+/;
-terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?[\n\r]+/; // (rEm)(space or tab)(all but linebreak)(linebreak)
+terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?([\n\r]+)?/; // (rEm)(space or tab)(all but linebreak)(optional linebreak)
 
 terminal KEYWORD_STANDALONE: /_KEYWORD_STANDALONE/;
 terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
@@ -945,7 +955,7 @@ interface MethodDecl extends NamedElement {
     array?: boolean
     comments: CommentStatement[]
     params: VariableDecl[]
-    body: Statement[];
+    body: (Statement | DefFunction)[];
     endTag?: string;
 }
 
