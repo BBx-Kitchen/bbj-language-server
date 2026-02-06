@@ -66,16 +66,16 @@ Plans:
 - [x] 25-04-PLAN.md -- Workspace setting to disable type resolution warnings
 
 ### Phase 26: CPU Stability
-**Goal**: Multi-project workspaces no longer cause the language server to consume 100% CPU
+**Goal**: Investigate root causes of 100% CPU usage in multi-project workspaces and document findings with ranked mitigations
 **Depends on**: Nothing (independent investigation, can run in parallel with other phases)
 **Requirements**: STAB-02
 **Success Criteria** (what must be TRUE):
   1. Opening a workspace with multiple BBj projects does not cause sustained 100% CPU usage
   2. The language server remains responsive (completion, diagnostics) in multi-project workspaces
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 26-01: TBD
+- [ ] 26-01-PLAN.md -- Investigate CPU hot paths: analyze rebuild pipeline, index invalidation, and 3 secondary hypotheses; produce FINDINGS.md
 
 ### Phase 27: IDE Polish
 **Goal**: Structure View differentiates symbol kinds, run icons are scoped to BBj files, field completion triggers on `#`, and error messages include source filenames
@@ -100,5 +100,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
 | 25. Type Resolution & Crash Fixes | v3.0 | 4/4 | Complete | 2026-02-06 |
-| 26. CPU Stability | v3.0 | 0/TBD | Not started | - |
+| 26. CPU Stability | v3.0 | 0/1 | Not started | - |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |
