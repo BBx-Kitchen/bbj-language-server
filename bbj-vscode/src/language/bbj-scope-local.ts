@@ -13,7 +13,7 @@ import {
 } from 'langium';
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
-import { getClassRefNode, getFQNFullname } from './bbj-nodedescription-provider.js';
+import { FunctionNodeDescription, getClassRefNode, getFQNFullname, ParameterData } from './bbj-nodedescription-provider.js';
 import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
@@ -307,13 +307,19 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 }
 
 
-function createAccessorDescription(astNodeLocator: AstNodeLocator, member: FieldDecl, nameSegment: DocumentSegment | undefined, setter: boolean = false): AstNodeDescription {
+function createAccessorDescription(astNodeLocator: AstNodeLocator, member: FieldDecl, nameSegment: DocumentSegment | undefined, setter: boolean = false): FunctionNodeDescription {
+    const fieldType = getFQNFullname(member.type);
+    const parameters: ParameterData[] = setter ? [{ name: 'value', type: fieldType }] : [];
+    const returnType = setter ? '' : fieldType;
+
     return {
         name: toAccessorName(member.name, setter),
         nameSegment,
         type: MethodDecl.$type,
         documentUri: AstUtils.getDocument(member).uri,
-        path: astNodeLocator.getAstNodePath(member)
+        path: astNodeLocator.getAstNodePath(member),
+        parameters,
+        returnType
     }
 }
 
