@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 25 of 27 (Type Resolution & Crash Fixes)
-Plan: 2 of TBD
+Plan: 3 of TBD
 Status: In progress
-Last activity: 2026-02-06 — Completed 25-02-PLAN.md
+Last activity: 2026-02-06 — Completed 25-03-PLAN.md
 
 Progress: [██░░░░░░░░] 25%
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18 (v2.0: 11, v2.2: 3, v3.0: 4)
-- Average duration: 6.9 min
-- Total execution time: ~127 min
+- Total plans completed: 19 (v2.0: 11, v2.2: 3, v3.0: 5)
+- Average duration: 6.6 min
+- Total execution time: ~130 min
 
 *Updated after each plan completion*
 
@@ -58,6 +58,10 @@ See: .planning/MILESTONES.md
 | createJavaClassMemberScope recursively walks Java superclass chain | 25-02 | Inheritance traversal |
 | Hover inheritance detection compares receiver type vs declaring class | 25-02 | Hover provider |
 | Warning on unresolvable super appears on MemberCall, not class definition | 25-02 | Validation |
+| DECLARE anywhere in method applies to entire method scope (not block-scoped) | 25-03 | Variable scope |
+| USE statements wrapped in try/catch for independent processing | 25-03 | Crash resistance |
+| Unresolvable USE shows warning (not error) with actionable message | 25-03 | Diagnostics |
+| Inner class fallback attempts dollar-sign notation on resolution failure | 25-03 | Java interop |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -80,7 +84,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T09:12:45Z
-Stopped at: Completed 25-02-PLAN.md
+Last session: 2026-02-06T09:20:39Z
+Stopped at: Completed 25-03-PLAN.md
 Resume file: None
 Next: Continue with phase 25 plans
