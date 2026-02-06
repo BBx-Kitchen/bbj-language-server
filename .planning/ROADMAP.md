@@ -25,7 +25,7 @@ See .planning/MILESTONES.md for full history.
 
 - [x] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns (completed 2026-02-06)
 - [x] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash (completed 2026-02-06)
-- [ ] **Phase 26: CPU Stability** - Diagnose and fix 100% CPU in multi-project workspaces
+- [ ] **Phase 26: CPU Stability** - Investigate root causes of 100% CPU in multi-project workspaces
 - [ ] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages
 
 ## Phase Details
@@ -70,8 +70,8 @@ Plans:
 **Depends on**: Nothing (independent investigation, can run in parallel with other phases)
 **Requirements**: STAB-02
 **Success Criteria** (what must be TRUE):
-  1. Opening a workspace with multiple BBj projects does not cause sustained 100% CPU usage
-  2. The language server remains responsive (completion, diagnostics) in multi-project workspaces
+  1. FINDINGS.md documents root cause analysis with evidence from code path tracing for all 5 hypothesized causes
+  2. Mitigations are ranked by likelihood and effort, with enough specificity for a follow-up implementation phase
 **Plans**: 1 plan
 
 Plans:
