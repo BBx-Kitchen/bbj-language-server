@@ -96,6 +96,21 @@ export class BBjValidator {
             //for broken syntax like "obj!.   "
             return;
         }
+
+        // Check if the member access is on a class with unresolvable super
+        const receiverType = this.typeInferer.getType(memberCall.receiver);
+        if (receiverType && isBbjClass(receiverType)) {
+            if (receiverType.extends.length > 0) {
+                const superType = getClass(receiverType.extends[0]);
+                if (!superType) {
+                    // Super class is unresolvable
+                    accept('warning', `Cannot resolve super class for '${receiverType.name}'. Field resolution may be incomplete.`, {
+                        node: memberCall
+                    });
+                }
+            }
+        }
+
         const type = memberCall.member.$nodeDescription?.type ?? memberCall.member.ref?.$type;
         const validTypes = [JavaField.$type, JavaMethod.$type, MethodDecl.$type, FieldDecl.$type] as const;
         if (!type || !(validTypes as readonly string[]).includes(type)) {

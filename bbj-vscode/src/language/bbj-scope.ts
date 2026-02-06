@@ -173,7 +173,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
             if (bbjType) {
                 if (context.container.instanceAccess) {
-                    membersStream = this.createBBjClassMemberScope(bbjType, false).getAllElements()
+                    membersStream = this.createBBjClassMemberScope(bbjType, false, new Set()).getAllElements()
                 }
             }
             const program = AstUtils.getContainerOfType(context.container, isProgram);
@@ -332,7 +332,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         return []
     }
 
-    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false): StreamScope {
+    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false, visited: Set<BbjClass> = new Set()): StreamScope {
+        // Cycle protection: stop if we've already visited this class
+        if (visited.has(bbjType)) {
+            return this.createCaseSensitiveScope([]);
+        }
+        visited.add(bbjType);
+
         const document = AstUtils.getDocument(bbjType)
         const typeScope = document?.localSymbols?.getStream(bbjType).toArray()
         let descriptions: AstNodeDescription[] = []
@@ -342,19 +348,38 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         if (bbjType.extends.length == 1) {
             const superType = getClass(bbjType.extends[0]);
             if (isBbjClass(superType)) {
-                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly))
+                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly, visited))
             } else if (isJavaClass(superType)) {
-                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(stream(superType.fields).concat(superType.methods)))
-            }
-        } else {
-            // handle implicit extends java.lang.Object
-            const javaObject = this.javaInterop.getResolvedClass('java.lang.Object');
-            if (javaObject) {
-                const members = stream(javaObject.fields).concat(javaObject.methods);
-                return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(members))
+                // Recursively traverse Java class inheritance chain
+                return this.createCaseSensitiveScope(descriptions, this.createJavaClassMemberScope(superType))
+            } else if (bbjType.extends[0]) {
+                // Super class is unresolvable - fall through to Object fallback
+                // (Warning diagnostic will be added in validator)
             }
         }
+        // handle implicit extends java.lang.Object (or unresolvable extends)
+        const javaObject = this.javaInterop.getResolvedClass('java.lang.Object');
+        if (javaObject) {
+            const members = stream(javaObject.fields).concat(javaObject.methods);
+            return this.createCaseSensitiveScope(descriptions, this.createScopeForNodes(members))
+        }
         return this.createCaseSensitiveScope(descriptions)
+    }
+
+    createJavaClassMemberScope(javaClass: JavaClass): Scope {
+        // Get members from current Java class
+        const members = stream(javaClass.fields).concat(javaClass.methods);
+
+        // Recursively get superclass members if exists
+        if (javaClass.superclass && javaClass.superclass.ref) {
+            const superType = javaClass.superclass.ref;
+            if (isJavaClass(superType)) {
+                return this.createScopeForNodes(members, this.createJavaClassMemberScope(superType));
+            }
+        }
+
+        // No superclass, just return members
+        return this.createScopeForNodes(members);
     }
 
     createCaseSensitiveScope(elements: (AstNode | AstNodeDescription)[], outerScope?: Scope): StreamScope {
