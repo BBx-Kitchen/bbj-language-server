@@ -71,31 +71,31 @@ Deferred to later milestones. From remaining open issues.
 | Debugging support | Future milestone |
 | BBj project wizard | Future milestone |
 | Rename refactoring across files | Future milestone (#77) |
-| CPU stability fix (#232) | Documented but deferred — root cause known |
+| CPU stability fix (#232) | Documented but deferred -- root cause known |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCOPE-01 | TBD | Pending |
-| SCOPE-02 | TBD | Pending |
-| SCOPE-03 | TBD | Pending |
-| SCOPE-04 | TBD | Pending |
-| SCOPE-05 | TBD | Pending |
-| JAVA-01 | TBD | Pending |
-| JAVA-02 | TBD | Pending |
-| PARSE-01 | TBD | Pending |
-| PARSE-02 | TBD | Pending |
-| IDE-01 | TBD | Pending |
-| CONF-01 | TBD | Pending |
-| CONF-02 | TBD | Pending |
-| CONF-03 | TBD | Pending |
+| SCOPE-01 | Phase 28 | Pending |
+| SCOPE-02 | Phase 29 | Pending |
+| SCOPE-03 | Phase 29 | Pending |
+| SCOPE-04 | Phase 28 | Pending |
+| SCOPE-05 | Phase 28 | Pending |
+| JAVA-01 | Phase 29 | Pending |
+| JAVA-02 | Phase 30 | Pending |
+| PARSE-01 | Phase 29 | Pending |
+| PARSE-02 | Phase 30 | Pending |
+| IDE-01 | Phase 31 | Pending |
+| CONF-01 | Phase 31 | Pending |
+| CONF-02 | Phase 31 | Pending |
+| CONF-03 | Phase 31 | Pending |
 
 **Coverage:**
 - v1 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 (pending roadmap creation)
+- Mapped to phases: 13
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after initial definition*
+*Last updated: 2026-02-06 after roadmap creation*

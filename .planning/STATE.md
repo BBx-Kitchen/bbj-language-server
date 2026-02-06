@@ -5,13 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 PRIO 1+2 Issue Burndown
+**Current focus:** v3.1 Phase 28 - Variable Scoping & Declaration Order
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Status: Defining requirements
-Last activity: 2026-02-06 — Milestone v3.1 started
+Phase: 28 of 31 (Variable Scoping & Declaration Order)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-06 -- Roadmap created for v3.1 (4 phases, 13 requirements)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -53,7 +55,7 @@ See archived decisions in:
 
 ### Tech Debt
 
-- EM credentials stored as plaintext in settings (targeted in v3.1 #256)
+- EM credentials stored as plaintext in settings (targeted in Phase 31, CONF-03)
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
@@ -65,6 +67,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Defining v3.1 requirements
+Stopped at: Roadmap created for v3.1
 Resume file: None
-Next: Define REQUIREMENTS.md → create ROADMAP.md
+Next: `/gsd:plan-phase 28`
