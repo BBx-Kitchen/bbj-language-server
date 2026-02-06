@@ -42,12 +42,16 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                     && !BBjTokenBuilder.EXCLUDED.has(keywordToken.name)) {
                 // add all matching keywords to ID category
                 keywordToken.CATEGORIES = [id];
+                // prefer longer ID token when keyword is prefix of identifier (e.g., getResult -> ID, not GET + Result)
+                keywordToken.LONGER_ALT = id;
             }
         }
         const releaseNl = terminalTokens.find(e => e.name === 'RELEASE_NL')!;
         const releaseNoNl = terminalTokens.find(e => e.name === 'RELEASE_NO_NL')!;
         releaseNl.CATEGORIES = [id];
         releaseNoNl.CATEGORIES = [id];
+        releaseNl.LONGER_ALT = id;
+        releaseNoNl.LONGER_ALT = id;
 
         return tokens;
     }
