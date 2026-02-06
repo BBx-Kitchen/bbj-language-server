@@ -25,15 +25,15 @@ Requirements for v3.0 — Improving BBj Language Support. Each maps to roadmap p
 ### Crash & Stability
 
 - [x] **STAB-01**: LS handles inner/nested Java classes in USE statements without crashing (#314)
-- [ ] **STAB-02**: Multi-project workspaces no longer cause 100% CPU (#232)
+- [x] **STAB-02**: Multi-project workspaces no longer cause 100% CPU (#232)
 
 ### IDE Features & Convenience
 
-- [ ] **IDE-01**: Labels, variables, and fields have distinct SymbolKind in Structure View and completion (#353)
-- [ ] **IDE-02**: Run icons only appear on BBj file types, not all files (#354)
-- [ ] **IDE-03**: Run icons support .bbx, .src, .arc file extensions (#340)
-- [ ] **IDE-04**: Global field `#` triggers completion of class fields (gap analysis)
-- [ ] **IDE-05**: Cyclic reference and linker error messages include source filename (#245)
+- [x] **IDE-01**: Labels, variables, and fields have distinct SymbolKind in Structure View and completion (#353)
+- [x] **IDE-02**: Run icons only appear on BBj file types, not all files (#354)
+- [x] **IDE-03**: Run icons support .bbx, .src, .arc file extensions (#340)
+- [x] **IDE-04**: Global field `#` triggers completion of class fields (gap analysis)
+- [x] **IDE-05**: Cyclic reference and linker error messages include source filename (#245)
 
 ## Future Requirements
 
@@ -104,11 +104,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-04 | Phase 25 | Complete |
 | STAB-01 | Phase 25 | Complete |
 | STAB-02 | Phase 26 | Complete |
-| IDE-01 | Phase 27 | Pending |
-| IDE-02 | Phase 27 | Pending |
-| IDE-03 | Phase 27 | Pending |
-| IDE-04 | Phase 27 | Pending |
-| IDE-05 | Phase 27 | Pending |
+| IDE-01 | Phase 27 | Complete |
+| IDE-02 | Phase 27 | Complete |
+| IDE-03 | Phase 27 | Complete |
+| IDE-04 | Phase 27 | Complete |
+| IDE-05 | Phase 27 | Complete |
 
 **Coverage:**
 - v3.0 requirements: 16 total
@@ -117,4 +117,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after Phase 25 completion*
+*Last updated: 2026-02-06 after Phase 27 completion*

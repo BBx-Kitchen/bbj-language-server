@@ -8,7 +8,7 @@
 - v2.0 Langium 4 Upgrade - Phases 14-20 (shipped 2026-02-04)
 - v2.1 Feature Gap Analysis - N/A (shipped 2026-02-04)
 - v2.2 IntelliJ Build & Release Automation - Phases 21-23 (shipped 2026-02-05)
-- **v3.0 Improving BBj Language Support** - Phases 24-27 (in progress)
+- **v3.0 Improving BBj Language Support** - Phases 24-27 (shipped 2026-02-06)
 
 ## Phases
 
@@ -19,14 +19,14 @@ See .planning/MILESTONES.md for full history.
 
 </details>
 
-### v3.0 Improving BBj Language Support (In Progress)
+### v3.0 Improving BBj Language Support (Shipped 2026-02-06)
 
 **Milestone Goal:** Fix false errors on common BBj patterns, resolve crashes, improve type resolution for completion, and polish IDE features -- eliminating the most-reported pain points in the language server.
 
 - [x] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns (completed 2026-02-06)
 - [x] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash (completed 2026-02-06)
 - [x] **Phase 26: CPU Stability** - Investigate root causes of 100% CPU in multi-project workspaces (completed 2026-02-06)
-- [ ] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages
+- [x] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages (completed 2026-02-06)
 
 ## Phase Details
 
@@ -89,9 +89,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 27-01-PLAN.md -- Symbol kind differentiation and run icon scoping (IDE-01, IDE-02, IDE-03)
-- [ ] 27-02-PLAN.md -- Field completion on # trigger character (IDE-04)
-- [ ] 27-03-PLAN.md -- Error message enhancement with source filenames (IDE-05)
+- [x] 27-01-PLAN.md -- Symbol kind differentiation and run icon scoping (IDE-01, IDE-02, IDE-03)
+- [x] 27-02-PLAN.md -- Field completion on # trigger character (IDE-04)
+- [x] 27-03-PLAN.md -- Error message enhancement with source filenames (IDE-05)
 
 ## Progress
 
@@ -102,4 +102,4 @@ Plans:
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
 | 25. Type Resolution & Crash Fixes | v3.0 | 4/4 | Complete | 2026-02-06 |
 | 26. CPU Stability | v3.0 | 1/1 | Complete | 2026-02-06 |
-| 27. IDE Polish | v3.0 | 0/3 | Not started | - |
+| 27. IDE Polish | v3.0 | 3/3 | Complete | 2026-02-06 |
