@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 25-type-resolution-crash-fixes
 source: [25-01-SUMMARY.md, 25-02-SUMMARY.md, 25-03-SUMMARY.md, 25-04-SUMMARY.md]
 started: 2026-02-06T22:00:00Z
-updated: 2026-02-06T22:15:00Z
+updated: 2026-02-06T22:30:00Z
 ---
 
 ## Current Test
@@ -68,9 +68,14 @@ skipped: 1
   reason: "User reported: It's just saying getName but no Type and no () like for a regular method"
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "createAccessorDescription in bbj-scope-local.ts creates a plain AstNodeDescription with type=MethodDecl but WITHOUT parameters or returnType fields. The completion provider checks isFunctionNodeDescription() which requires both parameters and returnType — since accessor descriptions lack these, they fall through to default completion (just name, no parens or type)."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-scope-local.ts"
+      issue: "createAccessorDescription (line 310) returns AstNodeDescription without parameters/returnType"
+    - path: "bbj-vscode/src/language/bbj-completion-provider.ts"
+      issue: "createReferenceCompletionItem (line 126) only formats with parens/type when isFunctionNodeDescription is true"
+  missing:
+    - "createAccessorDescription should return FunctionNodeDescription with parameters (empty for getter, one param for setter) and returnType (field type for getter, void for setter)"
   debug_session: ""
 
 - truth: "USE statement with unresolvable class should show warning without crashing the server"
@@ -78,7 +83,16 @@ skipped: 1
   reason: "User reported: Server crashes in loop with 'Error: Node at path /statements@12 has no name' in BbjScopeComputation.processNode / BBjAstNodeDescriptionProvider.createDescription. Server crashed 5 times in 3 minutes and stopped restarting. Also: TypeError in buildInlineTokens reading 'length' of undefined in hover provider."
   severity: blocker
   test: 8
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "TWO separate issues: (A) Scope crash: Langium's DefaultAstNodeDescriptionProvider.createDescription throws 'has no name' when called with name=undefined for a statement node at /statements@12 that lacks a name property. A workspace BBj file has a statement at index 12 that gets processed by processNode, and somewhere createDescription is called with undefined name — either from processNode line 123 (VariableDecl with undefined name) or from a node type that falls through without proper name guard. The BBjAstNodeDescriptionProvider override should catch this and return gracefully instead of letting the throw crash the server. (B) Hover crash: Langium's parseJSDoc/buildInlineTokens throws TypeError when parsing certain JavaDoc content (e.g., HashMap). The existing try-catch in tryParseJavaDoc catches this and logs it via console.warn — it's non-fatal but noisy."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-nodedescription-provider.ts"
+      issue: "createDescription calls super.createDescription which throws on undefined name — no defensive guard"
+    - path: "bbj-vscode/src/language/bbj-scope-local.ts"
+      issue: "processNode line 123 passes node.name to createDescription without null check for VariableDecl"
+    - path: "bbj-vscode/src/language/bbj-hover.ts"
+      issue: "tryParseJavaDoc catches parseJSDoc errors but logs them as console.warn (non-fatal, just noisy)"
+  missing:
+    - "BBjAstNodeDescriptionProvider.createDescription should guard against undefined name — return a safe description or skip instead of letting Langium throw"
+    - "processNode should guard node.name before calling createDescription for VariableDecl"
+    - "tryParseJavaDoc should silently catch errors instead of console.warn to reduce noise"
   debug_session: ""
