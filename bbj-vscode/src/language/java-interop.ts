@@ -81,8 +81,18 @@ export class JavaInteropService {
     protected createSocket(): Promise<Socket> {
         return new Promise((resolve, reject) => {
             const socket = new Socket();
-            socket.on('error', reject);
-            socket.on('ready', () => resolve(socket));
+            const timeout = setTimeout(() => {
+                socket.destroy();
+                reject(new Error('Socket connection to Java service timed out after 10s'));
+            }, 10000);
+            socket.on('error', (err) => {
+                clearTimeout(timeout);
+                reject(err);
+            });
+            socket.on('ready', () => {
+                clearTimeout(timeout);
+                resolve(socket);
+            });
             socket.connect(DEFAULT_PORT, '127.0.0.1');
         });
     }
@@ -120,7 +130,10 @@ export class JavaInteropService {
      */
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         const connection = await this.connect();
-        return connection.sendRequest(getClassInfoRequest, { className }, token);
+        return Promise.race([
+            connection.sendRequest(getClassInfoRequest, { className }, token),
+            new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Java class resolution timeout for ${className}`)), 10000))
+        ]);
     }
 
     /**

@@ -161,6 +161,7 @@ function ifStatementLineBreaks(): LineBreakConfig<IfStatement> {
                     lineBreaks.before = false;
                     break;
                 }
+                prev = previousStatement(prev);
             }
         }
         return lineBreaks

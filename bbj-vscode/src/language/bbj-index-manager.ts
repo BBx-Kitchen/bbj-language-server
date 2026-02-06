@@ -19,12 +19,8 @@ export class BBjIndexManager extends DefaultIndexManager {
         if (this.wsManager() instanceof BBjWorkspaceManager) {
             const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
             const isExternal = bbjWsManager.isExternalDocument(document.uri)
-            if (document.references.some(e => e.error !== undefined)) {
-                // don't rebuild external documents that has errors
-                return !isExternal
-            }
+            // Don't rebuild external documents if workspace documents changed
             if(![...changedUris].every(changed => bbjWsManager.isExternalDocument(URI.parse(changed))) && isExternal) {
-                // don't rebuild external documents if ws document changed
                 return false;
             }
         }

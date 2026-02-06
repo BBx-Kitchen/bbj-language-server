@@ -62,11 +62,17 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     override async collectLocalSymbols(document: LangiumDocument, cancelToken: CancellationToken): Promise<LocalSymbols> {
         const rootNode = document.parseResult.value;
         const scopes = new MultiMap<AstNode, AstNodeDescription>();
+        const docName = document.uri.toString().split('/').pop();
+        const t0 = Date.now();
         // Override to process node in an async way
         // to trigger backend resolution of Java class references.
         for (const node of AstUtils.streamAllContents(rootNode)) {
             await interruptAndCheck(cancelToken);
             await this.processNode(node, document, scopes);
+        }
+        const elapsed = Date.now() - t0;
+        if (elapsed > 200) {
+            console.warn(`[SCOPE] collectLocalSymbols for ${docName} took ${elapsed}ms`);
         }
 
         if (isProgram(rootNode)) {
