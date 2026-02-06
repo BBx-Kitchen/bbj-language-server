@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 25 of 27 (Type Resolution & Crash Fixes)
-Plan: 1 of TBD
+Plan: 2 of TBD
 Status: In progress
-Last activity: 2026-02-06 — Completed 25-01-PLAN.md
+Last activity: 2026-02-06 — Completed 25-02-PLAN.md
 
 Progress: [██░░░░░░░░] 25%
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 17 (v2.0: 11, v2.2: 3, v3.0: 3)
-- Average duration: 7.1 min
-- Total execution time: ~122 min
+- Total plans completed: 18 (v2.0: 11, v2.2: 3, v3.0: 4)
+- Average duration: 6.9 min
+- Total execution time: ~127 min
 
 *Updated after each plan completion*
 
@@ -54,6 +54,10 @@ See: .planning/MILESTONES.md
 | CAST with unresolvable type returns undefined (treats as untyped) | 25-01 | Type inference |
 | Warning severity (not error) for CAST with unresolvable type | 25-01 | Diagnostics |
 | Implicit getter type resolution via FieldDecl check in isMemberCall | 25-01 | Type inference |
+| Visited Set parameter defaults to new Set() at call sites for ergonomic API | 25-02 | Scope creation |
+| createJavaClassMemberScope recursively walks Java superclass chain | 25-02 | Inheritance traversal |
+| Hover inheritance detection compares receiver type vs declaring class | 25-02 | Hover provider |
+| Warning on unresolvable super appears on MemberCall, not class definition | 25-02 | Validation |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -76,7 +80,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T09:04:43Z
-Stopped at: Completed 25-01-PLAN.md
+Last session: 2026-02-06T09:12:45Z
+Stopped at: Completed 25-02-PLAN.md
 Resume file: None
 Next: Continue with phase 25 plans
