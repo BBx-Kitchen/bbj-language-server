@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Milestone: v3.0 Improving BBj Language Support
-Phase: 24 of 27 (Grammar & Parsing Fixes)
-Plan: 2 of 2 in phase
-Status: Phase complete
-Last activity: 2026-02-06 — Completed 24-02-PLAN.md (GRAM-01, GRAM-03, GRAM-04, GRAM-05 fixed)
+Phase: 25 of 27 (Type Resolution & Crash Fixes)
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-02-06 — Phase 24 complete (5/5 requirements verified)
 
-Progress: [██░░░░░░░░] 13%
+Progress: [██░░░░░░░░] 25%
 
 ## Milestone History
 
@@ -73,7 +73,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T07:30:27Z
-Stopped at: Completed 24-02-PLAN.md (Phase 24 complete)
+Last session: 2026-02-06
+Stopped at: Phase 24 complete, verified 5/5
 Resume file: None
-Next: Phase 25 (Type Resolution & Crash Fixes)
+Next: `/gsd:discuss-phase 25` or `/gsd:plan-phase 25`

@@ -9,11 +9,11 @@ Requirements for v3.0 — Improving BBj Language Support. Each maps to roadmap p
 
 ### Grammar & Parsing
 
-- [ ] **GRAM-01**: `endif`/`swend` followed by `;rem` comment on same line no longer flagged as error (#318)
-- [ ] **GRAM-02**: Camel-case method names containing BBj keywords parsed correctly as single identifiers (#316)
-- [ ] **GRAM-03**: DREAD verb and DATA statement supported by grammar (#247)
-- [ ] **GRAM-04**: DEF FN / FNEND inside class methods parsed without error (#226)
-- [ ] **GRAM-05**: Comment after colon line-continuation (`: REM`) parsed without error (#118)
+- [x] **GRAM-01**: `endif`/`swend` followed by `;rem` comment on same line no longer flagged as error (#318)
+- [x] **GRAM-02**: Camel-case method names containing BBj keywords parsed correctly as single identifiers (#316)
+- [x] **GRAM-03**: DREAD verb and DATA statement supported by grammar (#247)
+- [x] **GRAM-04**: DEF FN / FNEND inside class methods parsed without error (#226)
+- [x] **GRAM-05**: Comment after colon line-continuation (`: REM`) parsed without error (#118)
 
 ### Type Resolution & Scoping
 
@@ -93,11 +93,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GRAM-01 | Phase 24 | Pending |
-| GRAM-02 | Phase 24 | Pending |
-| GRAM-03 | Phase 24 | Pending |
-| GRAM-04 | Phase 24 | Pending |
-| GRAM-05 | Phase 24 | Pending |
+| GRAM-01 | Phase 24 | Complete |
+| GRAM-02 | Phase 24 | Complete |
+| GRAM-03 | Phase 24 | Complete |
+| GRAM-04 | Phase 24 | Complete |
+| GRAM-05 | Phase 24 | Complete |
 | TYPE-01 | Phase 25 | Pending |
 | TYPE-02 | Phase 25 | Pending |
 | TYPE-03 | Phase 25 | Pending |

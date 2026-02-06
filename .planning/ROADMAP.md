@@ -23,7 +23,7 @@ See .planning/MILESTONES.md for full history.
 
 **Milestone Goal:** Fix false errors on common BBj patterns, resolve crashes, improve type resolution for completion, and polish IDE features -- eliminating the most-reported pain points in the language server.
 
-- [ ] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns
+- [x] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns (completed 2026-02-06)
 - [ ] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash
 - [ ] **Phase 26: CPU Stability** - Diagnose and fix 100% CPU in multi-project workspaces
 - [ ] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages
@@ -43,8 +43,8 @@ See .planning/MILESTONES.md for full history.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 24-01-PLAN.md -- Lexer fix: keyword/identifier disambiguation via longer_alt (GRAM-02)
-- [ ] 24-02-PLAN.md -- Grammar fixes: inline REM, DREAD/DATA, DEF FN in methods (GRAM-01, GRAM-03, GRAM-04, GRAM-05)
+- [x] 24-01-PLAN.md -- Lexer fix: keyword/identifier disambiguation via longer_alt (GRAM-02)
+- [x] 24-02-PLAN.md -- Grammar fixes: inline REM, DREAD/DATA, DEF FN in methods (GRAM-01, GRAM-03, GRAM-04, GRAM-05)
 
 ### Phase 25: Type Resolution & Crash Fixes
 **Goal**: CAST(), super class fields, implicit getters, and DECLARE all correctly contribute type information for downstream completion, and USE statements with inner classes no longer crash the server
@@ -95,7 +95,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 24. Grammar & Parsing Fixes | v3.0 | 0/2 | Planning complete | - |
+| 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
 | 25. Type Resolution & Crash Fixes | v3.0 | 0/TBD | Not started | - |
 | 26. CPU Stability | v3.0 | 0/TBD | Not started | - |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |
