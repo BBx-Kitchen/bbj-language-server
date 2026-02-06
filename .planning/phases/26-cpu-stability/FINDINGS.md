@@ -205,6 +205,271 @@ Boolean logic breakdown:
 
 ---
 
+### [RANK 3] File System Watcher Notification Storm -- LIKELIHOOD: LOW
+
+**Status:** UNLIKELY (good filtering in place)
+
+**Evidence:**
+
+`BBjWorkspaceManager.shouldIncludeEntry()` (lines 129-141 in `bbj-ws-manager.ts`):
+
+```typescript
+override shouldIncludeEntry(entry: { isFile: boolean; isDirectory: boolean; uri: URI }): boolean {
+    // Filter files to only include BBj-related extensions (.bbj, .bbl, .bbjt)
+    if (entry.isFile) {
+        const path = entry.uri.path.toLowerCase();
+        if (!path.endsWith('.bbj') && !path.endsWith('.bbl') && !path.endsWith('.bbjt')) {
+            return false;
+        }
+    }
+    return super.shouldIncludeEntry(entry);
+}
+```
+
+`BBjWorkspaceManager.initializeWorkspace()` (lines 59-127):
+
+```typescript
+override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
+    // ... configuration loading (lines 61-83) ...
+    // ... javadoc initialization (lines 85-95) ...
+    // ... classpath loading (lines 97-118) ...
+    // ... implicit imports loading (lines 119-120) ...
+
+    return await super.initializeWorkspace(folders, cancelToken);  // Line 126
+}
+```
+
+**Analysis:**
+
+File watching in Langium is handled by `DefaultWorkspaceManager.initializeWorkspace()` which:
+1. Traverses workspace folders using `FileSystemProvider`
+2. Calls `shouldIncludeEntry()` for each file/directory to filter what gets indexed
+3. Creates `LangiumDocument` instances for included files
+4. Registers file system watchers for change notifications
+
+**Critical Finding: Filtering is adequate**
+
+The `shouldIncludeEntry()` override correctly filters out non-BBj files:
+- Only `.bbj`, `.bbl`, `.bbjt` files are included
+- This prevents Langium from watching thousands of `.class`, `.js`, `.json`, etc. files
+- Multi-root workspace handling is done by Langium's base implementation (passes `folders` array)
+
+**Potential issue (but low likelihood):**
+
+Line 126 calls `super.initializeWorkspace(folders, cancelToken)` AFTER loading Java classpath and implicit imports. If Java interop is slow (hypothesis 4), this could delay workspace initialization, but it wouldn't cause a notification storm.
+
+Multi-root workspaces process all folders in the `folders` array, but:
+- Langium handles this with proper batching
+- File changes are debounced by the language server protocol
+- The `shouldIncludeEntry` filter is applied consistently across all folders
+
+**Mechanism: Why this is UNLIKELY to cause CPU spike**
+
+For a file watcher notification storm to occur:
+1. Thousands of file change events would need to fire rapidly
+2. Each event would trigger document rebuilds
+3. Rebuilds would complete slower than events arrive, creating backlog
+
+Reality:
+- Good file filtering (only 3 file extensions)
+- Langium's `update()` method batches changes (lines 93-106 in Langium document-builder.js collect all changed URIs before processing)
+- VS Code's file watcher has built-in debouncing
+- User reports indicate CPU spike happens on workspace OPEN, not on file saves
+
+**Verdict:** UNLIKELY — File filtering is correct, Langium handles multi-root properly, and the symptom (CPU spike on open, not on save) doesn't match a file watcher issue.
+
+---
+
+### [RANK 4] Java Interop Service Blocking -- LIKELIHOOD: LOW
+
+**Status:** UNLIKELY (async implementation verified)
+
+**Evidence:**
+
+`JavaInteropService.connect()` (lines 59-76 in `java-interop.ts`):
+
+```typescript
+protected async connect(): Promise<MessageConnection> {
+    if (this.connection) {
+        return this.connection;  // Cached connection
+    }
+    let socket: Socket;
+    try {
+        socket = await this.createSocket();
+    } catch (e) {
+        console.error('Failed to connect to the Java service.', e)
+        return Promise.reject(e);
+    }
+    const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+    connection.listen();
+    this.connection = connection;
+    return connection;
+}
+
+protected createSocket(): Promise<Socket> {
+    return new Promise((resolve, reject) => {
+        const socket = new Socket();
+        socket.on('error', reject);
+        socket.on('ready', () => resolve(socket));
+        socket.connect(DEFAULT_PORT, '127.0.0.1');
+    });
+}
+```
+
+`JavaInteropService.loadClasspath()` (lines 132-149):
+
+```typescript
+public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
+    console.warn("Load classpath from: " + classPath.join(', '))
+    try {
+        const entries = classPath.filter(entry => entry.length > 0).map(entry => {
+            if (entry.startsWith('[') && entry.endsWith(']')) {
+                return entry;
+            }
+            return 'file:' + entry;
+        });
+        const connection = await this.connect();
+        return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
+    } catch (e) {
+        console.error(e)
+        return false;
+    }
+}
+```
+
+`BBjWorkspaceManager.initializeWorkspace()` calls `loadClasspath()` (lines 112-118):
+
+```typescript
+if (classpathToUse.length > 0) {
+    console.log(`Loading classpath with entries: ${JSON.stringify(classpathToUse)}`);
+    const loaded = await this.javaInterop.loadClasspath(classpathToUse, cancelToken)
+    console.log(`Java Classes ${loaded ? '' : 'not '}loaded`)
+} else {
+    console.warn("No classpath set. No Java classes loaded.")
+}
+```
+
+**Analysis:**
+
+All Java interop operations are properly async:
+- `createSocket()` returns a Promise, uses Node.js event-driven socket API
+- `connect()` awaits socket creation, doesn't block event loop
+- `loadClasspath()` uses `connection.sendRequest()` which is async (vscode-jsonrpc library)
+- Workspace initialization awaits these operations but doesn't block
+
+**Critical Finding: Truly async, but serial**
+
+The code is correctly async (no blocking), BUT:
+- Classpath loading happens BEFORE `super.initializeWorkspace()` on line 126
+- If Java service is slow or hung, workspace initialization waits for it
+- However, this would cause a DELAY, not sustained CPU usage
+
+**Mechanism: Why this is UNLIKELY to cause CPU spike**
+
+For Java interop to cause 100% CPU:
+1. Socket connection would need to busy-wait (it doesn't — uses event-driven callbacks)
+2. Requests would need to timeout and retry in a tight loop (no retry logic found)
+3. Multiple concurrent requests would need to block each other (single connection is cached)
+
+Reality:
+- Socket connection is non-blocking (event-driven)
+- `sendRequest()` uses JsonRPC with proper async handling
+- No retry loops found in the code
+- If Java service is unavailable, connection simply fails and logs error
+
+**User symptoms don't match:**
+- CPU spike happens even when Java service IS working (classpath loads successfully)
+- Sustained 100% CPU suggests tight loop, not blocked I/O
+- If Java service was the issue, disabling it would fix the problem (unlikely to be reported as tried)
+
+**Verdict:** UNLIKELY — Java interop is properly async, no busy-wait patterns, and symptom profile doesn't match I/O blocking.
+
+---
+
+### [RANK 5] Excessive AST Traversal Without Caching -- LIKELIHOOD: LOW
+
+**Status:** POSSIBLE contributor (but not root cause)
+
+**Evidence:**
+
+`BBjDocumentBuilder.addImportedBBjDocuments()` uses AST traversal (line 55):
+
+```typescript
+for (const document of documents) {
+    await interruptAndCheck(cancelToken);
+    AstUtils.streamAllContents(document.parseResult.value).filter(isUse).forEach((use: Use) => {
+        if (use.bbjFilePath) {
+            const cleanPath = use.bbjFilePath.match(BBjPathPattern)![1];
+            bbjImports.add(cleanPath);
+        }
+    })
+}
+```
+
+`BbjLinker.link()` uses AST traversal (lines 41-56 in `bbj-linker.ts`):
+
+```typescript
+const treeIter = AstUtils.streamAst(document.parseResult.value).iterator()
+for (const node of treeIter) {
+    await interruptAndCheck(cancelToken);
+    if (externalDoc && isBBjClassMember(node)) {
+        if (node.visibility?.toLowerCase() !== 'private') {
+            AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
+            if (isMethodDecl(node)) {
+                node.params.forEach(p => AstUtils.streamReferences(p).forEach(ref => this.doLink(ref, document)))
+            }
+        }
+        treeIter.prune()
+    } else {
+        AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
+    }
+}
+```
+
+**Analysis:**
+
+Both methods traverse the full AST for each document:
+- `streamAllContents()` visits every AST node to find USE statements
+- `streamAst()` visits every node for linking
+- `streamReferences()` visits all reference nodes
+
+**Critical Finding: No obvious caching**
+
+Searching the codebase for cache usage:
+
+```bash
+grep -r "DocumentCache\|WorkspaceCache" bbj-vscode/src/language/
+# No results found
+```
+
+Langium provides caching mechanisms (from research), but BBj language server doesn't appear to use them explicitly. However:
+- Langium's base implementation MAY cache at the framework level
+- Document states (Parsed, Linked, Validated) prevent re-parsing unnecessarily
+- References are cached in `document.references` array
+
+**Mechanism: How this COULD contribute**
+
+In the rebuild loop scenario (Rank 1):
+1. Document A is built → AST traversed to find USE statements → finds Document B
+2. Document B is built → AST traversed to find USE statements → finds Document C
+3. Document C is built → AST traversed → finds Document A (cycle)
+4. Document A is rebuilt → **AST traversed AGAIN**
+
+AST traversal cost:
+- O(n) where n = number of nodes in the document
+- For a typical BBj file: 100-1000 nodes
+- In a workspace with 100 files: 10,000-100,000 nodes total
+- If rebuild loop causes 10x redundant traversals: 100,000-1,000,000 node visits
+
+**However:**
+- AST traversal is fast (simple tree walk, no complex operations)
+- Modern V8 engine handles iterator patterns efficiently
+- `interruptAndCheck(cancelToken)` provides cancellation points
+
+**Verdict:** POSSIBLE — AST traversal without caching could be a performance multiplier on top of the rebuild loop (Rank 1), but it's NOT the root cause. The CPU spike is caused by INFINITE traversals (due to rebuild loop), not by slow single traversals. Fixing Rank 1 will eliminate the repeated traversals, making caching unnecessary for this issue.
+
+---
+
 ## Proposed Mitigations
 
 ### Mitigation 1: Add Processing Guard to Prevent Transitive Rebuild Loops (addresses Rank 1)
