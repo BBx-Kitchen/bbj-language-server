@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 24-grammar-parsing-fixes
 source: [24-01-SUMMARY.md, 24-02-SUMMARY.md]
 started: 2026-02-06T20:00:00Z
-updated: 2026-02-06T20:10:00Z
+updated: 2026-02-06T20:15:00Z
 ---
 
 ## Current Test
@@ -45,11 +45,15 @@ skipped: 0
 ## Gaps
 
 - truth: "DREAD statement should not require variables to be pre-declared — it initializes them"
-  status: failed
+  status: fixed
   reason: "User reported: DREAD X$ reports 'Could not resolve reference to NamedElement named X$' even though DREAD is initializing/reading that variable — it shouldn't require X$ to already exist"
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "isDreadStatement missing from InputVariable scope computation condition in bbj-scope-local.ts"
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-scope-local.ts"
+      issue: "Missing isDreadStatement in InputVariable container check"
+  missing:
+    - "Add isDreadStatement to scope computation alongside isReadStatement and isEnterStatement"
+  debug_session: ".planning/debug/resolved/dread-variable-unresolved-refs.md"
+  fix_commit: "bd3c501"
