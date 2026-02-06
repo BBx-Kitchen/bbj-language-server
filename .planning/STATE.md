@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 24 of 27 (Grammar & Parsing Fixes)
-Plan: 1 of 4 in phase
-Status: In progress
-Last activity: 2026-02-06 — Completed 24-01-PLAN.md (GRAM-02: keyword-prefixed identifiers)
+Plan: 2 of 2 in phase
+Status: Phase complete
+Last activity: 2026-02-06 — Completed 24-02-PLAN.md (GRAM-01, GRAM-03, GRAM-04, GRAM-05 fixed)
 
-Progress: [█░░░░░░░░░] 6%
+Progress: [██░░░░░░░░] 13%
 
 ## Milestone History
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15 (v2.0: 11, v2.2: 3, v3.0: 1)
-- Average duration: 5.9 min
-- Total execution time: ~79 min
+- Total plans completed: 16 (v2.0: 11, v2.2: 3, v3.0: 2)
+- Average duration: 7.3 min
+- Total execution time: ~118 min
 
 *Updated after each plan completion*
 
@@ -47,6 +47,10 @@ See: .planning/MILESTONES.md
 |----------|-------|---------|
 | Apply LONGER_ALT to ALL keyword tokens (future-proof) | 24-01 | Chevrotain tokenization |
 | Use readData instead of forEach in tests (FOR is context-sensitive) | 24-01 | Test clarity |
+| Made COMMENT terminal newline optional for inline REM support | 24-02 | Grammar terminals |
+| DREAD reuses InputItem/Err fragments (consistent with READ pattern) | 24-02 | Grammar design |
+| MethodDecl body type (Statement \| DefFunction)[] for type safety | 24-02 | Langium AST types |
+| Validation regexes must account for semicolon separators | 24-02 | Line break validation |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -69,7 +73,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T07:24:20Z
-Stopped at: Completed 24-01-PLAN.md
+Last session: 2026-02-06T07:30:27Z
+Stopped at: Completed 24-02-PLAN.md (Phase 24 complete)
 Resume file: None
-Next: Plan 24-02 (next grammar fix)
+Next: Phase 25 (Type Resolution & Crash Fixes)
