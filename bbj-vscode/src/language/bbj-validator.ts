@@ -15,6 +15,13 @@ import { checkLineBreaks, getPreviousNode } from './validations/line-break-valid
 import { NegativeLabelIdList } from './constants.js';
 import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
 
+// Configuration for type resolution warnings
+let typeResolutionWarningsEnabled = true;
+
+export function setTypeResolutionWarnings(enabled: boolean): void {
+    typeResolutionWarningsEnabled = enabled;
+}
+
 /**
  * Register custom validation checks.
  */
@@ -64,6 +71,8 @@ export class BBjValidator {
     }
 
     checkCastTypeResolvable(methodCall: MethodCall, accept: ValidationAcceptor): void {
+        if (!typeResolutionWarningsEnabled) return;
+
         // Check if this is a CAST() call
         if (!isSymbolRef(methodCall.method)) {
             return;
@@ -98,15 +107,17 @@ export class BBjValidator {
         }
 
         // Check if the member access is on a class with unresolvable super
-        const receiverType = this.typeInferer.getType(memberCall.receiver);
-        if (receiverType && isBbjClass(receiverType)) {
-            if (receiverType.extends.length > 0) {
-                const superType = getClass(receiverType.extends[0]);
-                if (!superType) {
-                    // Super class is unresolvable
-                    accept('warning', `Cannot resolve super class for '${receiverType.name}'. Field resolution may be incomplete.`, {
-                        node: memberCall
-                    });
+        if (typeResolutionWarningsEnabled) {
+            const receiverType = this.typeInferer.getType(memberCall.receiver);
+            if (receiverType && isBbjClass(receiverType)) {
+                if (receiverType.extends.length > 0) {
+                    const superType = getClass(receiverType.extends[0]);
+                    if (!superType) {
+                        // Super class is unresolvable
+                        accept('warning', `Cannot resolve super class for '${receiverType.name}'. Field resolution may be incomplete.`, {
+                            node: memberCall
+                        });
+                    }
                 }
             }
         }
@@ -216,6 +227,8 @@ export class BBjValidator {
 
 
     checkUsedClassExists(use: Use, accept: ValidationAcceptor): void {
+        if (!typeResolutionWarningsEnabled) return;
+
         if (use.javaClass) {
             const className = getFQNFullname(use.javaClass);
             if(use.javaClass.pathParts.some(pp => pp.symbol.ref === undefined)) {

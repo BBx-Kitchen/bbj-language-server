@@ -16,6 +16,7 @@ import { builtinVariables } from "./lib/variables.js";
 import * as os from 'os';
 import * as path from 'path';
 import { builtinEvents } from "./lib/events.js";
+import { setTypeResolutionWarnings } from "./bbj-validator.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -38,6 +39,16 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 this.classpathFromSettings = params.initializationOptions.classpath || "";
                 console.log(`BBj home: ${this.bbjdir}`);
                 console.log(`Classpath from settings: ${this.classpathFromSettings}`);
+
+                // Set type resolution warnings based on settings
+                const typeResWarnings = params.initializationOptions.typeResolutionWarnings;
+                if (typeResWarnings === false) {
+                    setTypeResolutionWarnings(false);
+                    console.log('Type resolution warnings disabled');
+                } else {
+                    setTypeResolutionWarnings(true);
+                    console.log('Type resolution warnings enabled');
+                }
             }
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;

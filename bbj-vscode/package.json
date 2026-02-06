@@ -490,6 +490,12 @@
           "default": false,
           "description": "Print debugging information (--verbose)",
           "scope": "window"
+        },
+        "bbj.typeResolution.warnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable type resolution warnings (CAST, USE, inheritance). Disable for heavily dynamic codebases where these warnings are noisy.",
+          "scope": "window"
         }
       }
     }
