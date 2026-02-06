@@ -131,8 +131,9 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
             try {
                 const doc = parseJSDoc(comment)
                 return doc.toMarkdown()
-            } catch (error) {
-                console.warn(error)
+            } catch {
+                // JSDoc parsing can fail on complex Java documentation (e.g., HashMap).
+                // Fall through to return raw comment text.
             }
         }
         return comment;

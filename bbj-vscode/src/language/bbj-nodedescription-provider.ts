@@ -5,6 +5,15 @@ import { documentationHeader } from "./bbj-hover.js";
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
 
     override createDescription(node: AstNode, name: string | undefined, document: LangiumDocument = AstUtils.getDocument(node)): AstNodeDescription {
+        if (!name) {
+            return {
+                name: '',
+                nameSegment: undefined,
+                type: node.$type,
+                documentUri: document.uri,
+                path: this.astNodeLocator.getAstNodePath(node)
+            };
+        }
         const descr = super.createDescription(node, name, document);
         switch (node.$type) {
             case MethodDecl.$type: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))

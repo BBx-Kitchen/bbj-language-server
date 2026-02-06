@@ -119,7 +119,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             // not just the block they appear in
             const methodScope = AstUtils.getContainerOfType(node, isMethodDecl);
             const scopeHolder = methodScope ?? node.$container;
-            if (scopeHolder) {
+            if (scopeHolder && node.name) {
                 const description = this.descriptions.createDescription(node, node.name);
                 this.addToScope(scopes, scopeHolder, description);
             }
