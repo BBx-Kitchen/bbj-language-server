@@ -2233,6 +2233,19 @@ PRINT getResult$, isNew%, readData
         expectNoParserLexerErrors(result);
     });
 
+    test('GRAM-03: DREAD variables should not show unresolved reference errors', async () => {
+        const result = await parse(`
+            DATA "Alice", 25, "Engineer"
+            DREAD name$, age, job$
+            PRINT name$, age, job$
+            name$ = "Updated"
+            age = 99
+            PRINT name$, age
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
     test('GRAM-04: DEF FN inside class method (#226)', async () => {
         const result = await parse(`
             class public MathHelper

@@ -22,6 +22,7 @@ import {
     FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass,
     isClasspath,
+    isDreadStatement,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
     isJavaPackage,
@@ -169,11 +170,12 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     this.addToScope(scopes, node, createAccessorDescription(this.astNodeLocator, field as FieldDecl, nameSegment, true));
                 }
             });
-        } else if (isInputVariable(node) && (isReadStatement(node.$container) || isEnterStatement(node.$container))) {
+        } else if (isInputVariable(node) && (isReadStatement(node.$container) || isDreadStatement(node.$container) || isEnterStatement(node.$container))) {
             /*
             Create input variables.
             Cases:
                READ(1,KEY="TEST")A$,B$,C$
+               DREAD A$,B$,C$
                ENTER A$,B$,C$
             */
             if (isSymbolRef(node)) {
