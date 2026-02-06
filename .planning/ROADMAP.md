@@ -25,7 +25,7 @@ See .planning/MILESTONES.md for full history.
 
 - [x] **Phase 24: Grammar & Parsing Fixes** - Eliminate false errors from valid BBj syntax patterns (completed 2026-02-06)
 - [x] **Phase 25: Type Resolution & Crash Fixes** - Fix type conveyance for completion and USE statement crash (completed 2026-02-06)
-- [ ] **Phase 26: CPU Stability** - Investigate root causes of 100% CPU in multi-project workspaces
+- [x] **Phase 26: CPU Stability** - Investigate root causes of 100% CPU in multi-project workspaces (completed 2026-02-06)
 - [ ] **Phase 27: IDE Polish** - Improve Structure View, run icons, completion triggers, and error messages
 
 ## Phase Details
@@ -75,7 +75,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 26-01-PLAN.md -- Investigate CPU hot paths: analyze rebuild pipeline, index invalidation, and 3 secondary hypotheses; produce FINDINGS.md
+- [x] 26-01-PLAN.md -- Investigate CPU hot paths: analyze rebuild pipeline, index invalidation, and 3 secondary hypotheses; produce FINDINGS.md
 
 ### Phase 27: IDE Polish
 **Goal**: Structure View differentiates symbol kinds, run icons are scoped to BBj files, field completion triggers on `#`, and error messages include source filenames
@@ -100,5 +100,5 @@ Plans:
 |-------|-----------|----------------|--------|-----------|
 | 24. Grammar & Parsing Fixes | v3.0 | 2/2 | Complete | 2026-02-06 |
 | 25. Type Resolution & Crash Fixes | v3.0 | 4/4 | Complete | 2026-02-06 |
-| 26. CPU Stability | v3.0 | 0/1 | Not started | - |
+| 26. CPU Stability | v3.0 | 1/1 | Complete | 2026-02-06 |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |

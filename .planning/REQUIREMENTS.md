@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TYPE-03 | Phase 25 | Complete |
 | TYPE-04 | Phase 25 | Complete |
 | STAB-01 | Phase 25 | Complete |
-| STAB-02 | Phase 26 | Pending |
+| STAB-02 | Phase 26 | Complete |
 | IDE-01 | Phase 27 | Pending |
 | IDE-02 | Phase 27 | Pending |
 | IDE-03 | Phase 27 | Pending |
