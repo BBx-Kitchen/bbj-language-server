@@ -40,11 +40,11 @@ See .planning/MILESTONES.md for full history.
   3. `DREAD` verb and `DATA` statement are recognized by the grammar and do not produce diagnostics
   4. `DEF FN` / `FNEND` blocks inside class methods parse without error
   5. A comment after colon line-continuation (`: REM ...`) parses without error
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 24-01: TBD
-- [ ] 24-02: TBD
+- [ ] 24-01-PLAN.md -- Lexer fix: keyword/identifier disambiguation via longer_alt (GRAM-02)
+- [ ] 24-02-PLAN.md -- Grammar fixes: inline REM, DREAD/DATA, DEF FN in methods (GRAM-01, GRAM-03, GRAM-04, GRAM-05)
 
 ### Phase 25: Type Resolution & Crash Fixes
 **Goal**: CAST(), super class fields, implicit getters, and DECLARE all correctly contribute type information for downstream completion, and USE statements with inner classes no longer crash the server
@@ -95,7 +95,7 @@ Plans:
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 24. Grammar & Parsing Fixes | v3.0 | 0/TBD | Not started | - |
+| 24. Grammar & Parsing Fixes | v3.0 | 0/2 | Planning complete | - |
 | 25. Type Resolution & Crash Fixes | v3.0 | 0/TBD | Not started | - |
 | 26. CPU Stability | v3.0 | 0/TBD | Not started | - |
 | 27. IDE Polish | v3.0 | 0/TBD | Not started | - |
