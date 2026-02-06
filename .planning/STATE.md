@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 27 of 27 (IDE Polish)
-Plan: 2 of 3
-Status: In progress
-Last activity: 2026-02-06 — Completed 27-02-PLAN.md (field completion trigger)
+Plan: 3 of 3
+Status: Phase complete
+Last activity: 2026-02-06 — Completed 27-01-PLAN.md (symbol differentiation and run icon scoping)
 
-Progress: [████████░░] 83%
+Progress: [██████████] 100%
 
 ## Milestone History
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 24 (v2.0: 11, v2.2: 3, v3.0: 10)
-- Average duration: 7.7 min
-- Total execution time: ~195 min
+- Total plans completed: 26 (v2.0: 11, v2.2: 3, v3.0: 12)
+- Average duration: 7.6 min
+- Total execution time: ~206 min
 
 *Updated after each plan completion*
 
@@ -68,11 +68,18 @@ See: .planning/MILESTONES.md
 | Confirmed infinite rebuild loop as root cause via static analysis | 26-01 | CPU stability investigation |
 | Prioritized Mitigation 1 (processing guard) and 4 (skip external USE) as primary fixes | 26-01 | Document builder optimization |
 | Ranked IndexManager over-invalidation as secondary contributor (not root cause) | 26-01 | Performance analysis |
+| Labels use SymbolKind.Key / CompletionItemKind.Keyword (Claude's discretion) | 27-01 | Symbol differentiation |
+| Variables and fields share SymbolKind.Variable per user decision | 27-01 | Symbol differentiation |
+| Methods use SymbolKind.Method, DEF FN use SymbolKind.Function (visually distinct) | 27-01 | Symbol differentiation |
+| .bbjt files excluded from run icons via resourceExtname != .bbjt | 27-01 | Menu scoping |
 | Used readonly completionOptions property (not getter) following Langium pattern | 27-02 | Completion trigger registration |
 | Cursor is AFTER # so find leaf node at offset-1 | 27-02 | Field completion positioning |
 | Field names include type suffix (name$, count) per BBj convention | 27-02 | Completion item format |
 | Empty class returns empty list gracefully | 27-02 | Edge case handling |
 | Unresolved superclass references skipped silently | 27-02 | Field collection resilience |
+| Use basename() for file paths (not full workspace-relative paths) for cleaner messages | 27-03 | Error message formatting |
+| 1-based line numbers for human readability (LSP uses 0-based) | 27-03 | Error message formatting |
+| Graceful fallback in linker if source location extraction fails | 27-03 | Error handling |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -80,8 +87,7 @@ See archived decisions in:
 
 ### Known Issues
 
-1. Structure View symbol kind differentiation — SymbolKind.Field default case (now IDE-01 in v3.0)
-2. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
+1. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
 
 ### Tech Debt
 
@@ -96,6 +102,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed 27-02-PLAN.md (field completion trigger)
+Stopped at: Completed 27-01-PLAN.md
 Resume file: None
-Next: 27-03-PLAN.md (error message enhancement with source filenames)
+Next: 27-02-PLAN.md
