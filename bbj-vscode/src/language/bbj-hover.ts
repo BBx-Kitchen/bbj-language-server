@@ -1,11 +1,11 @@
-import { AstNode, AstUtils, CstNode, DocumentationProvider, findDeclarationNodeAtOffset, isJSDoc, LangiumDocument, parseJSDoc } from "langium";
-import { AstNodeHoverProvider, LangiumServices } from "langium/lsp";
+import { AstNode, CstNode, DocumentationProvider, isJSDoc, LangiumDocument, parseJSDoc } from "langium";
+import { findLeafNodeAtOffset } from "./bbj-validator.js";
+import { AstNodeHoverProvider } from "langium/lsp";
 import { Hover, HoverParams } from "vscode-languageserver";
 import { getFQNFullname, MethodData, toMethodData } from "./bbj-nodedescription-provider.js";
-import { BbjClass, ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMemberCall, isMethodDecl, isNamedElement } from "./generated/ast.js";
+import { ClassMember, JavaMethod, isBBjClassMember, isBbjClass, isClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isLibEventType, isLibMember, isMemberCall, isMethodDecl, isNamedElement } from "./generated/ast.js";
 import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
-import { getClass } from "./bbj-nodedescription-provider.js";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
 
@@ -31,7 +31,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
             return undefined;
         }
         const offset = document.textDocument.offsetAt(params.position);
-        const cstNode = findDeclarationNodeAtOffset(rootNode, offset, this.grammarConfig.nameRegexp);
+        const cstNode = findLeafNodeAtOffset(rootNode, offset);
 
         if (cstNode && cstNode.offset + cstNode.length > offset) {
             // Store reference context for inherited field detection

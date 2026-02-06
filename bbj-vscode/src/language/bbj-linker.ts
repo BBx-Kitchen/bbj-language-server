@@ -11,6 +11,7 @@ import {
 import { LangiumServices } from 'langium/lsp';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
+import { dirname, relative } from 'node:path';
 import { isTemplateStringArray } from './bbj-scope-local.js';
 import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -109,5 +110,54 @@ export class BbjLinker extends DefaultLinker {
             }
         }
         return super.getCandidate(refInfo);
+    }
+
+    override createLinkingError(refInfo: ReferenceInfo): LinkingError {
+        const error = super.createLinkingError(refInfo);
+        // Enhance the message with source file context
+        const sourceInfo = this.getSourceLocation(refInfo);
+        if (sourceInfo) {
+            error.message = `${error.message} [in ${sourceInfo}]`;
+        }
+        return error;
+    }
+
+    protected getSourceLocation(refInfo: ReferenceInfo): string | undefined {
+        try {
+            // Get the document from the reference
+            const doc = AstUtils.getDocument(refInfo.container);
+            if (!doc) return undefined;
+
+            // Get workspace root
+            const wsManager = this.wsManager();
+            let workspaceRoot: string | undefined;
+
+            const folders = wsManager.workspaceFolders;
+            if (folders && folders.length > 0) {
+                // WorkspaceFolder has uri property which is a string (URI)
+                const wsUri = URI.parse(folders[0].uri);
+                workspaceRoot = wsUri.fsPath;
+            }
+
+            // Fallback: use document directory
+            if (!workspaceRoot) {
+                workspaceRoot = dirname(doc.uri.fsPath);
+            }
+
+            // Compute relative path
+            const relativePath = relative(workspaceRoot, doc.uri.fsPath);
+
+            // Get line number from CST node
+            let lineInfo = '';
+            if (isReference(refInfo.reference) && refInfo.reference.$refNode) {
+                const lineNumber = refInfo.reference.$refNode.range.start.line + 1; // 1-based
+                lineInfo = `:${lineNumber}`;
+            }
+
+            return `${relativePath}${lineInfo}`;
+        } catch (error) {
+            // Graceful fallback if source location extraction fails
+            return undefined;
+        }
     }
 }

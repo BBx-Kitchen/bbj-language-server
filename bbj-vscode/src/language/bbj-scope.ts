@@ -370,15 +370,8 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         // Get members from current Java class
         const members = stream(javaClass.fields).concat(javaClass.methods);
 
-        // Recursively get superclass members if exists
-        if (javaClass.superclass && javaClass.superclass.ref) {
-            const superType = javaClass.superclass.ref;
-            if (isJavaClass(superType)) {
-                return this.createScopeForNodes(members, this.createJavaClassMemberScope(superType));
-            }
-        }
-
-        // No superclass, just return members
+        // Note: JavaClass does not include superclass information from java-interop
+        // Superclass traversal is not currently supported for Java classes
         return this.createScopeForNodes(members);
     }
 
