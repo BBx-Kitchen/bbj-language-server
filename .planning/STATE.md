@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 25 of 27 (Type Resolution & Crash Fixes)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-02-06 — Phase 24 complete (5/5 requirements verified)
+Plan: 1 of TBD
+Status: In progress
+Last activity: 2026-02-06 — Completed 25-01-PLAN.md
 
 Progress: [██░░░░░░░░] 25%
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 16 (v2.0: 11, v2.2: 3, v3.0: 2)
-- Average duration: 7.3 min
-- Total execution time: ~118 min
+- Total plans completed: 17 (v2.0: 11, v2.2: 3, v3.0: 3)
+- Average duration: 7.1 min
+- Total execution time: ~122 min
 
 *Updated after each plan completion*
 
@@ -51,6 +51,9 @@ See: .planning/MILESTONES.md
 | DREAD reuses InputItem/Err fragments (consistent with READ pattern) | 24-02 | Grammar design |
 | MethodDecl body type (Statement \| DefFunction)[] for type safety | 24-02 | Langium AST types |
 | Validation regexes must account for semicolon separators | 24-02 | Line break validation |
+| CAST with unresolvable type returns undefined (treats as untyped) | 25-01 | Type inference |
+| Warning severity (not error) for CAST with unresolvable type | 25-01 | Diagnostics |
+| Implicit getter type resolution via FieldDecl check in isMemberCall | 25-01 | Type inference |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -73,7 +76,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Phase 24 complete, verified 5/5
+Last session: 2026-02-06T09:04:43Z
+Stopped at: Completed 25-01-PLAN.md
 Resume file: None
-Next: `/gsd:discuss-phase 25` or `/gsd:plan-phase 25`
+Next: Continue with phase 25 plans
