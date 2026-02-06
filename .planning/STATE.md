@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.0 Improving BBj Language Support
 Phase: 25 of 27 (Type Resolution & Crash Fixes)
-Plan: 3 of TBD
+Plan: 4 of TBD
 Status: In progress
-Last activity: 2026-02-06 — Completed 25-03-PLAN.md
+Last activity: 2026-02-06 — Completed 25-04-PLAN.md
 
 Progress: [██░░░░░░░░] 25%
 
@@ -33,9 +33,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19 (v2.0: 11, v2.2: 3, v3.0: 5)
-- Average duration: 6.6 min
-- Total execution time: ~130 min
+- Total plans completed: 20 (v2.0: 11, v2.2: 3, v3.0: 6)
+- Average duration: 8.5 min
+- Total execution time: ~160 min
 
 *Updated after each plan completion*
 
@@ -62,6 +62,9 @@ See: .planning/MILESTONES.md
 | USE statements wrapped in try/catch for independent processing | 25-03 | Crash resistance |
 | Unresolvable USE shows warning (not error) with actionable message | 25-03 | Diagnostics |
 | Inner class fallback attempts dollar-sign notation on resolution failure | 25-03 | Java interop |
+| bbj.typeResolution.warnings defaults to true (warnings enabled) | 25-04 | Configuration |
+| Module-level config function pattern for runtime feature toggles | 25-04 | Validator architecture |
+| Setting applies to all three warning types: CAST, USE, super class resolution | 25-04 | User experience |
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -84,7 +87,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06T09:20:39Z
-Stopped at: Completed 25-03-PLAN.md
+Last session: 2026-02-06T09:54:11Z
+Stopped at: Completed 25-04-PLAN.md
 Resume file: None
 Next: Continue with phase 25 plans
