@@ -40,7 +40,10 @@ See .planning/MILESTONES.md for full history.
   2. A DREAD statement referencing a variable previously DIM'd as an array (subscript form) resolves without error
   3. A DECLARE statement anywhere in a method causes the declared type to apply to the variable throughout the entire method scope (not just after the DECLARE)
   4. Existing tests pass -- no regressions in class-scope or method-scope variable resolution
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 28-01-PLAN.md -- Grammar auto property + use-before-assignment validation + conflicting DECLARE detection
+- [ ] 28-02-PLAN.md -- Comprehensive test suite + edge case fixes
 
 ### Phase 29: DEF FN & Inheritance Resolution
 **Goal**: DEF FN definitions inside class methods work without false errors and with correct parameter scoping; super class fields and inherited Java methods resolve through the inheritance chain
@@ -82,7 +85,7 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 28. Variable Scoping & Declaration Order | 0/TBD | Not started | - |
+| 28. Variable Scoping & Declaration Order | 0/2 | Planned | - |
 | 29. DEF FN & Inheritance Resolution | 0/TBD | Not started | - |
 | 30. Java Reflection & Error Reporting | 0/TBD | Not started | - |
 | 31. Extension Settings & File Types | 0/TBD | Not started | - |
