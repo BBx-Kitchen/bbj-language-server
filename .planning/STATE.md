@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 31 of 31 (Extension Settings & File Types)
-Plan: 1 of 4 in Phase 31 complete
+Plan: 2 of 4 in Phase 31 complete
 Status: In progress
-Last activity: 2026-02-07 -- Completed 31-01-PLAN.md
+Last activity: 2026-02-07 -- Completed 31-02-PLAN.md
 
-Progress: [████████░░] 76%
+Progress: [████████░░] 77%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 70 across all milestones
+- Total plans completed: 71 across all milestones
 - Average duration: ~6.9 min per plan
-- Total execution time: ~486 min
+- Total execution time: ~489 min
 
 *Updated after each plan completion*
 
@@ -77,6 +77,9 @@ See archived decisions in:
 | Default interop connection remains localhost:5008 | 31-01 | Backward compatibility; settings provide override for remote deployments |
 | configPath setting overrides default {bbj.home}/cfg/config.bbx | 31-01 | Enables custom config.bbx for non-standard installations or multi-environment setups |
 | Hot reload via clearCache() + reconnect for interop settings | 31-01 | Settings changes take effect immediately without extension restart |
+| Config path field in BBj Environment section (not Java Interop) | 31-02 | config.bbx is BBj configuration, conceptually related to BBj home |
+| Host field as editable text (not dropdown/restricted) | 31-02 | Maximum flexibility for IPs, hostnames, docker service names |
+| Empty config path uses default {bbjHome}/cfg/config.bbx | 31-02 | Language server handles default resolution; matches VS Code pattern |
 
 ### Known Issues
 
@@ -97,6 +100,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 31-01-PLAN.md
+Stopped at: Completed 31-02-PLAN.md
 Resume file: None
-Next: Execute 31-02 (/gsd:execute-plan 31-02)
+Next: Execute 31-03 (/gsd:execute-plan 31-03)
