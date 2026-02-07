@@ -6,7 +6,7 @@
 
 import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
-import { createConnection, ProposedFeatures, RequestType } from 'vscode-languageserver/node.js';
+import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
 import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -17,10 +17,7 @@ const connection = createConnection(ProposedFeatures.all);
 // Inject the shared services and language-specific services
 const { shared, BBj } = createBBjServices({ connection, ...NodeFileSystem });
 
-// Custom request type for refreshing Java classes
-const RefreshJavaClassesRequest = new RequestType<void, boolean, void>('bbj/refreshJavaClasses');
-
-connection.onRequest(RefreshJavaClassesRequest, async () => {
+connection.onRequest('bbj/refreshJavaClasses', async () => {
     try {
         const javaInterop = BBj.java.JavaInteropService;
 
@@ -67,39 +64,19 @@ connection.onDidChangeConfiguration(async (_change) => {
         const javaInterop = BBj.java.JavaInteropService;
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
-        // Fetch the latest BBj config section from the client
-        const bbjConfig = await connection.workspace.getConfiguration({ section: 'bbj' });
-        const newClasspath = bbjConfig?.classpath || '';
-        const newHome = bbjConfig?.home || '';
-
-        // Compare with current settings to detect relevant changes
-        const currentSettings = wsManager.getSettings();
-        const currentHome = wsManager.getBBjDir();
-
-        const classpathChanged = newClasspath !== (currentSettings?.classpath?.join(':') || '');
-        const homeChanged = newHome !== currentHome;
-
-        if (!classpathChanged && !homeChanged) {
-            return;
-        }
-
         console.log('BBj settings changed, refreshing Java classes...');
 
+        // Clear all cached Java class data
         javaInterop.clearCache();
 
-        let classpathToUse: string[] = [];
-        if (currentSettings && currentSettings.classpath.length > 0 &&
-            !(currentSettings.classpath.length === 1 && currentSettings.classpath[0] === '')) {
-            classpathToUse = currentSettings.classpath;
-        } else if (newClasspath) {
-            classpathToUse = [`[${newClasspath}]`];
-        }
-
-        if (classpathToUse.length > 0) {
-            await javaInterop.loadClasspath(classpathToUse);
+        // Reload classpath from current workspace settings
+        const settings = wsManager.getSettings();
+        if (settings && settings.classpath.length > 0) {
+            await javaInterop.loadClasspath(settings.classpath);
         }
         await javaInterop.loadImplicitImports();
 
+        // Re-validate all open documents
         const documents = shared.workspace.LangiumDocuments.all.toArray();
         for (const doc of documents) {
             if (doc.uri.scheme === 'file') {
