@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 30 of 31 (Java Reflection & Error Reporting)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-02-07 -- Completed 30-01-PLAN.md
+Last activity: 2026-02-07 -- Completed 30-02-PLAN.md
 
-Progress: [█████░░░░░] 51%
+Progress: [█████░░░░░] 52%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 63 across all milestones
-- Average duration: ~7.2 min per plan
-- Total execution time: ~453 min
+- Total plans completed: 64 across all milestones
+- Average duration: ~7.1 min per plan
+- Total execution time: ~456 min
 
 *Updated after each plan completion*
 
@@ -67,6 +67,9 @@ See archived decisions in:
 | Dummy class types in tests to avoid external dependencies | 29-03 | EmptyFileSystem workaround - define test-local types instead of BBjString |
 | System.out.println for Java interop diagnostics | 30-01 | Simple and effective for debugging; proper logging framework not needed |
 | getName() fallback for null canonical names | 30-01 | Handles anonymous/local classes where getCanonicalName() returns null |
+| Enhance error messages at throw-time for cyclic references | 30-02 | throwCyclicReferenceError has return type never; enhance message before it flows through pipeline |
+| Extract relatedInformation from enhanced messages | 30-02 | Can't set at throw-time; parse [in path:line] pattern in processLinkingErrors override |
+| Severity discrimination via message content | 30-02 | LinkingErrorData lacks error type; use message.includes('Cyclic reference') check |
 
 ### Known Issues
 
@@ -86,7 +89,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T08:20:52Z
-Stopped at: Completed 30-01-PLAN.md
+Last session: 2026-02-07T08:24:32Z
+Stopped at: Completed 30-02-PLAN.md
 Resume file: None
 Next: Continue Phase 30 execution or plan next plan
