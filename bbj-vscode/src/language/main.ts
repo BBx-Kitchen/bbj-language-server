@@ -59,10 +59,16 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
     }
 });
 
-connection.onDidChangeConfiguration(async (_change) => {
+// Start the language server with the shared services
+startLanguageServer(shared);
+
+// Register AFTER startLanguageServer to override Langium's default handler
+connection.onDidChangeConfiguration(async (change) => {
+    // Forward to Langium's ConfigurationProvider so its internals stay in sync
+    shared.workspace.ConfigurationProvider.updateConfiguration(change);
+
     try {
         const javaInterop = BBj.java.JavaInteropService;
-        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
         console.log('BBj settings changed, refreshing Java classes...');
 
@@ -70,6 +76,7 @@ connection.onDidChangeConfiguration(async (_change) => {
         javaInterop.clearCache();
 
         // Reload classpath from current workspace settings
+        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         const settings = wsManager.getSettings();
         if (settings && settings.classpath.length > 0) {
             await javaInterop.loadClasspath(settings.classpath);
@@ -95,6 +102,3 @@ connection.onDidChangeConfiguration(async (_change) => {
         console.error('Failed to refresh Java classes after settings change:', error);
     }
 });
-
-// Start the language server with the shared services
-startLanguageServer(shared);
