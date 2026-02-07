@@ -81,22 +81,23 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Global field `#` triggers completion of class fields (gap analysis) — v3.0
 - ✓ Cyclic reference and linker error messages include source filename (#245) — v3.0
 - ✓ Configurable type resolution warnings setting — v3.0
+- ✓ Program variable scope — vars only visible after declaration (#4) — v3.1
+- ✓ setSlot() not found by Java reflection (#180) — v3.1
+- ✓ .bbx files treated as BBj programs with proper icons and run support (#340) — v3.1
+- ✓ Linking error invoking method from Java super class (#85) — v3.1
+- ✓ DEF FN in methods — line-break validation + parameter scoping (#226) — v3.1
+- ✓ Super class #field! access resolved via inheritance (#240) — v3.1
+- ✓ config.bbx and other BBj options configurable (#244) — v3.1
+- ✓ Cyclic reference error includes filename and line number (#245) — v3.1
+- ✓ DREAD with DIM'd array variables resolves correctly (#247) — v3.1
+- ✓ EM token-based auth instead of plaintext password (#256) — v3.1
+- ✓ Interop hostname and port configurable in settings (#257) — v3.1
+- ✓ Cyclic inheritance detection (A extends B, B extends A) — v3.1
+- ✓ False positive cyclic detection on self-referencing variables eliminated — v3.1
 
 ### Active
 
-<!-- v3.1 PRIO 1+2 Issue Burndown -->
-
-- [ ] Program variable scope — vars only visible after declaration (#4)
-- [ ] setSlot() not found by Java reflection (#180)
-- [ ] .bbx files treated as BBj programs (not config) with proper icons and run support (#340)
-- [ ] Linking error invoking method from Java super class (#85)
-- [ ] DEF FN in methods — fix line-break validation + parameter scoping (#226)
-- [ ] Super class #field! access resolved via inheritance (#240)
-- [ ] config.bbx and other BBj options configurable (#244)
-- [ ] Cyclic reference error includes filename and line number (#245)
-- [ ] DREAD with DIM'd array variables resolves correctly (#247)
-- [ ] EM token-based auth instead of plaintext password (#256)
-- [ ] Interop hostname and port configurable in settings (#257)
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -107,22 +108,23 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.1 milestone started 2026-02-06. Burning down 11 PRIO 1+2 GitHub issues. Previous milestone v3.0 fixed 16 requirements across parser, scoping, completion, and IDE features. 7 issues closed during triage verification.
+**Current state:** v3.1 shipped 2026-02-07. All PRIO 1+2 GitHub issues closed (13 requirements across scoping, inheritance, Java reflection, settings, and EM auth). 95 files modified, +12,720/-273 lines. 398 tests passing, 16 pre-existing failures, 47 new tests added.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary.
 
-**java-interop:** Runs as a separate Java process on localhost:5008 via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. The IntelliJ plugin monitors connection health via independent TCP probes and shows status in the status bar.
+**java-interop:** Runs as a configurable Java process (default localhost:5008, now user-configurable) via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. Both IDEs support Refresh Java Classes command. The IntelliJ plugin monitors connection health via independent TCP probes.
 
-**Target users:** BBj developers using IntelliJ, primarily Community Edition.
+**Target users:** BBj developers using VS Code or IntelliJ (Community Edition supported).
 
-**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`. Development on `langium_upgrade` branch.
+**Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`.
 
 **Known tech debt:**
-- EM credentials stored as plaintext in settings
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
+- CPU stability mitigations documented but not yet implemented (#232)
+- Single-line DEF FN inside class methods not parsed correctly by validate test helper (parser/lexer issue)
 
 ## Constraints
 
@@ -179,5 +181,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | GITHUB_TOKEN for plugin verifier | Avoids API rate limiting when resolving IDE versions | ✓ Good — reliable builds |
 | Path-filtered PR validation | Triggers only when IntelliJ or shared dependencies change | ✓ Good — fast PRs |
 
+| Hint severity for use-before-assignment | Gentle guidance without false positive noise | ✓ Good — v3.1 shipped |
+| Two-pass offset-based variable scoping | Handles compound statements on same line correctly | ✓ Good — v3.1 shipped |
+| DEF FN parameters scoped to DefFunction node | Visible in FN body, don't leak to enclosing scope | ✓ Good — v3.1 shipped |
+| MAX_INHERITANCE_DEPTH = 20 | Safety net for infinite loops in both scope traversal and cyclic detection | ✓ Good — v3.1 shipped |
+| Re-entrancy guard in BBjTypeInferer | Prevents false cyclic detection on `a! = a!.toString()` patterns | ✓ Good — v3.1 shipped |
+| Dedicated cyclic inheritance validator | Langium's built-in can't detect semantic class hierarchy cycles | ✓ Good — v3.1 shipped |
+| Merged .bbx into BBj language | Full BBj treatment (icon, completion, diagnostics, run commands) | ✓ Good — v3.1 shipped |
+| JWT token-based EM auth via BBjAdminFactory | More secure than storing encrypted credentials; enables token expiry | ✓ Good — v3.1 shipped |
+| Token as 8th param to web.bbj | Backward compatibility with existing username/password interface | ✓ Good — v3.1 shipped |
+| Configurable interop host/port with hot-reload | Settings changes take effect without extension restart | ✓ Good — v3.1 shipped |
+
 ---
-*Last updated: 2026-02-06 after v3.1 milestone started*
+*Last updated: 2026-02-07 after v3.1 milestone shipped*

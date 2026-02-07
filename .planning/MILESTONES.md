@@ -1,5 +1,36 @@
 # Project Milestones: BBj Language Server
 
+## v3.1 PRIO 1+2 Issue Burndown (Shipped: 2026-02-07)
+
+**Delivered:** Closed all PRIO 1+2 GitHub issues — fixed variable scoping bugs, DEF FN parameter isolation, inheritance resolution, Java reflection staleness, cyclic reference detection, and made extension settings (interop host/port, config.bbx path, EM auth) fully configurable with token-based security.
+
+**Phases completed:** 28-31 (13 plans total, including 2 gap closures)
+
+**Key accomplishments:**
+
+- Use-before-assignment hint diagnostics with two-pass offset-based detection across LET, DIM, DREAD, FOR, READ, ENTER
+- DEF FN definitions inside class methods work without false line-break errors; parameters properly scoped to function body
+- Super class field access via `#field!` resolves through BBj inheritance chain (parent, grandparent, multi-level)
+- Java reflection uses `Class.getMethods()` for inherited methods; Refresh Java Classes command in both IDEs
+- Cyclic reference errors upgraded to Error severity with file:line info and clickable navigation; false positive on `a! = a!.toString()` eliminated
+- Dedicated cyclic inheritance validator detects A extends B, B extends A patterns
+- .bbx files treated identically to .bbj (icon, language features, run commands) in both VS Code and IntelliJ
+- Configurable java-interop host/port and config.bbx path with hot-reload support
+- Token-based EM authentication via BBjAdminFactory — VS Code SecretStorage, IntelliJ PasswordSafe; no plaintext passwords
+
+**Stats:**
+
+- 95 files modified (+12,720 / -273 lines)
+- 4 phases, 13 plans (including 2 gap closures)
+- 2 days (2026-02-06 → 2026-02-07)
+- Milestone audit: 13/13 requirements, 4/4 phases, 12/12 integrations, 8/8 E2E flows
+
+**Git range:** `v3.0` → `00f1ec5`
+
+**What's next:** Start next milestone for remaining feature gaps, CPU stability mitigations, or PRIO 3 issue burndown.
+
+---
+
 ## v3.0 Improving BBj Language Support (Shipped: 2026-02-06)
 
 **Delivered:** Fixed false errors on common BBj syntax patterns, resolved crashes, improved type resolution for code completion, investigated CPU stability, and polished IDE features — eliminating the most-reported pain points in the language server.
