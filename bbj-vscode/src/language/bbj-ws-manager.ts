@@ -9,6 +9,7 @@ import { JavadocProvider } from "./java-javadoc.js";
 import { builtinFunctions } from "./lib/functions.js";
 import { builtinSymbolicLabels } from "./lib/labels.js";
 import { builtinVariables } from "./lib/variables.js";
+import { builtinBBjAPI } from "./lib/bbj-api.js";
 
 // TODO extend the FileSystemAccess or add an additional service
 // to not use 'fs' and 'os' here 
@@ -169,6 +170,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         collector(this.documentFactory.fromString(builtinVariables, URI.parse('bbjlib:///variables.bbl')));
         collector(this.documentFactory.fromString(builtinSymbolicLabels, URI.parse('bbjlib:///labels.bbl')));
         collector(this.documentFactory.fromString(builtinEvents, URI.parse('bbjlib:///events.bbl')));
+        collector(this.documentFactory.fromString(builtinBBjAPI, URI.parse('bbjlib:///bbj-api.bbl')));
     }
 
     public getSettings() {

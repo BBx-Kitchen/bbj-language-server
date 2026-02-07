@@ -4,6 +4,7 @@ import {
     AstNodeDescription,
     AstUtils,
     DefaultLinker, DocumentState, interruptAndCheck,
+    IndexManager,
     isReference,
     LangiumDocument, LinkingError,
     ReferenceInfo,
@@ -16,7 +17,7 @@ import { dirname, relative } from 'node:path';
 import { isTemplateStringArray } from './bbj-scope-local.js';
 import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
+import { BbjClass, BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -28,10 +29,12 @@ export class BbjLinker extends DefaultLinker {
     };
 
     wsManager: () => WorkspaceManager;
+    indexManager: () => IndexManager;
 
     constructor(services: LangiumServices) {
         super(services)
         this.wsManager = () => services.shared.workspace.WorkspaceManager;
+        this.indexManager = () => services.shared.workspace.IndexManager;
     }
 
     override async link(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<void> {
@@ -107,7 +110,17 @@ export class BbjLinker extends DefaultLinker {
                 // Special case for BBjAPI implicit import, it can be accessed case insensitively
                 const scope = this.scopeProvider.getScope(refInfo);
                 const description = scope.getElement('BBjAPI');
-                return description ?? this.createLinkingError(refInfo);
+                if (description) {
+                    return description;
+                }
+                // Fallback: find built-in BBjAPI class (always available, independent of Java interop)
+                const builtinBBjAPI = this.indexManager()
+                    .allElements(BbjClass.$type)
+                    .find(e => e.name === 'BBjAPI');
+                if (builtinBBjAPI) {
+                    return builtinBBjAPI;
+                }
+                return this.createLinkingError(refInfo);
             }
         }
         return super.getCandidate(refInfo);
