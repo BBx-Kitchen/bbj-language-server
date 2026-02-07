@@ -189,7 +189,7 @@ const Commands = {
       sscp = '';
     }
 
-    const cmd = `"${bbj}" -q "${sscp}" -WD"${workingDir}" "${fileName}"`;
+    const cmd = `"${bbj}" -q ${sscp} -WD"${workingDir}" "${fileName}"`;
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
