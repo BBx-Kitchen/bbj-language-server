@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 Milestone: v3.2 Bug Fix Release
 Phase: 32 of 34 (Regression Fixes)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-07 -- Roadmap created for v3.2
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-07 -- Completed 32-01-PLAN.md (BBjAPI regression fix)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 10%
 
 ## Milestone History
 
@@ -59,16 +59,15 @@ See archived decisions in:
 ### Tech Debt
 
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
-- BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
 
 ### Blockers/Concerns
 
-- BBjAPI() regression -- critical, must investigate root cause in Phase 32
+None - BBjAPI() regression fixed in 32-01
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Roadmap created for v3.2, ready to plan Phase 32
+Last session: 2026-02-07 17:37:13 UTC
+Stopped at: Completed 32-01-PLAN.md (BBjAPI regression fix)
 Resume file: None
-Next: `/gsd:plan-phase 32`
+Next: Plan 32-02 (USE statement navigation regression)
