@@ -26,7 +26,7 @@ See .planning/MILESTONES.md for full history.
 **Milestone Goal:** Fix regressions and parser bugs that produce false errors on valid BBj code, restoring broken functionality and eliminating noise in the diagnostics output.
 
 - [x] **Phase 32: Regression Fixes** - Restore BBjAPI() resolution and USE statement navigation
-- [ ] **Phase 33: Parser and Lexer Fixes** - Eliminate false errors on valid BBj syntax patterns
+- [x] **Phase 33: Parser and Lexer Fixes** - Eliminate false errors on valid BBj syntax patterns
 - [ ] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
 
 ## Phase Details
@@ -58,8 +58,8 @@ Plans:
   5. Existing parser tests continue to pass (no regressions)
 **Plans:** 2 plans
 Plans:
-- [ ] 33-01-PLAN.md -- Fix void return type (PARSE-01) and cast array notation (PARSE-04)
-- [ ] 33-02-PLAN.md -- Fix DEF FN suffixed variables (PARSE-02) and add SELECT verb (PARSE-03)
+- [x] 33-01-PLAN.md -- Fix void return type (PARSE-01) and cast array notation (PARSE-04)
+- [x] 33-02-PLAN.md -- Fix DEF FN suffixed variables (PARSE-02) and add SELECT verb (PARSE-03)
 
 ### Phase 34: Diagnostic Polish
 **Goal**: Settings display the correct product name and USE statements with bad file paths get actionable error messages
@@ -79,5 +79,5 @@ Phases execute in numeric order: 32 -> 33 -> 34
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
-| 33. Parser and Lexer Fixes | v3.2 | 0/2 | Not started | - |
+| 33. Parser and Lexer Fixes | v3.2 | 2/2 | Complete | 2026-02-07 |
 | 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
