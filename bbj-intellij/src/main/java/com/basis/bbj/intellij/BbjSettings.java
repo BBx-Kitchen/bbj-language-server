@@ -30,8 +30,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
         public String configPath = "";  // Default: empty (uses {bbjHome}/cfg/config.bbx)
         public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
-        public String emUsername = "admin";  // EM username for web.bbj, defaults to "admin" matching VSCode
-        public String emPassword = "admin123";  // EM password for web.bbj, defaults to "admin123" matching VSCode
+        public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
     }
 
     private State myState = new State();

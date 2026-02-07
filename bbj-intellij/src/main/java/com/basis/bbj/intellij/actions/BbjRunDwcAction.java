@@ -4,6 +4,7 @@ import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.BbjSettings;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -49,13 +50,32 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         // Working directory is the file's parent directory
         String workingDir = file.getParent().getPath();
 
-        // Get EM credentials and classpath from settings
+        // Get token from PasswordSafe, auto-prompt login if not stored
+        String token = BbjEMTokenStore.getToken();
+        if (token == null || token.isEmpty()) {
+            int result = Messages.showYesNoDialog(
+                project,
+                "EM login required for DWC. Login now?",
+                "Enterprise Manager Login Required",
+                Messages.getQuestionIcon()
+            );
+            if (result == Messages.YES) {
+                boolean loginOk = BbjEMLoginAction.performLogin(project);
+                if (loginOk) {
+                    token = BbjEMTokenStore.getToken();
+                }
+            }
+            if (token == null || token.isEmpty()) {
+                logError(project, "EM login required for DWC run. Use Tools > Login to Enterprise Manager.");
+                return null;
+            }
+        }
+
+        // Get classpath from settings
         BbjSettings.State state = BbjSettings.getInstance().getState();
-        String username = state.emUsername != null ? state.emUsername : "admin";
-        String password = state.emPassword != null ? state.emPassword : "admin123";
         String classpath = state.classpathEntry != null ? state.classpathEntry : "";
 
-        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme> <workingDir> <username> <password> <classpath>
+        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme> <workingDir> "" "" <classpath> <token>
         GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
         cmd.addParameter("-q");
         cmd.addParameter("-WD" + webRunnerDir);
@@ -65,9 +85,10 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         cmd.addParameter(name);
         cmd.addParameter(programme);
         cmd.addParameter(workingDir);
-        cmd.addParameter(username);
-        cmd.addParameter(password);
+        cmd.addParameter("");  // username placeholder
+        cmd.addParameter("");  // password placeholder
         cmd.addParameter(classpath);
+        cmd.addParameter(token);
 
         cmd.setWorkDirectory(webRunnerDir);
 
