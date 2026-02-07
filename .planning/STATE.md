@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 Phase 30 - Java Reflection & Error Reporting
+**Current focus:** v3.1 Phase 31 - Extension Settings & File Types
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 30 of 31 (Java Reflection & Error Reporting)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed 30-03-PLAN.md
+Phase: 30 of 31 complete (Java Reflection & Error Reporting)
+Plan: 0 of TBD in next phase
+Status: Phase 30 complete, Phase 31 not started
+Last activity: 2026-02-07 -- Completed Phase 30
 
-Progress: [██████░░░░] 55%
+Progress: [███████░░░] 75%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 67 across all milestones
+- Total plans completed: 69 across all milestones
 - Average duration: ~7.0 min per plan
-- Total execution time: ~469 min
+- Total execution time: ~483 min
 
 *Updated after each plan completion*
 
@@ -92,7 +92,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07T09:35:00Z
-Stopped at: Completed 30-03-PLAN.md (Phase 30 complete)
+Last session: 2026-02-07
+Stopped at: Phase 30 complete
 Resume file: None
-Next: Begin Phase 31 or plan next milestone
+Next: Plan Phase 31 (Extension Settings & File Types)

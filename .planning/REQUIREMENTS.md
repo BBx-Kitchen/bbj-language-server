@@ -18,12 +18,12 @@ Requirements for v3.1 PRIO 1+2 Issue Burndown. Each maps to a GitHub issue.
 ### Java Interop & Linking
 
 - [x] **JAVA-01**: Methods inherited from Java super classes resolve correctly when invoked via `#method()` or `#super!.method()` (#85)
-- [ ] **JAVA-02**: Recently-added Java methods (e.g. setSlot()) found by reflection (#180)
+- [x] **JAVA-02**: Recently-added Java methods (e.g. setSlot()) found by reflection (#180)
 
 ### Parser & Validation
 
 - [x] **PARSE-01**: DEF FN inside class methods doesn't trigger line-break validation error (#226)
-- [ ] **PARSE-02**: Cyclic reference error messages include source filename and line number (#245)
+- [x] **PARSE-02**: Cyclic reference error messages include source filename and line number (#245)
 
 ### File Type & IDE
 
@@ -83,9 +83,9 @@ Deferred to later milestones. From remaining open issues.
 | SCOPE-04 | Phase 28 | Complete |
 | SCOPE-05 | Phase 28 | Complete |
 | JAVA-01 | Phase 29 | Complete |
-| JAVA-02 | Phase 30 | Pending |
+| JAVA-02 | Phase 30 | Complete |
 | PARSE-01 | Phase 29 | Complete |
-| PARSE-02 | Phase 30 | Pending |
+| PARSE-02 | Phase 30 | Complete |
 | IDE-01 | Phase 31 | Pending |
 | CONF-01 | Phase 31 | Pending |
 | CONF-02 | Phase 31 | Pending |
@@ -98,4 +98,4 @@ Deferred to later milestones. From remaining open issues.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-06 after roadmap creation*
+*Last updated: 2026-02-07 after Phase 30 completion*
