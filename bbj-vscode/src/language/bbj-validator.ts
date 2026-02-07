@@ -11,6 +11,7 @@ import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
+import { registerVariableScopingChecks } from './validations/check-variable-scoping.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
 import { NegativeLabelIdList } from './constants.js';
 import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
@@ -46,6 +47,7 @@ export function registerValidationChecks(services: BBjServices) {
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
+    registerVariableScopingChecks(registry);
 }
 
 
