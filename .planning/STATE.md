@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 30 of 31 complete (Java Reflection & Error Reporting)
-Plan: 0 of 4 in Phase 31
-Status: Phase 31 planned, ready for execution
-Last activity: 2026-02-07 -- Completed Phase 30
+Phase: 31 of 31 (Extension Settings & File Types)
+Plan: 1 of 4 in Phase 31 complete
+Status: In progress
+Last activity: 2026-02-07 -- Completed 31-01-PLAN.md
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 76%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 69 across all milestones
-- Average duration: ~7.0 min per plan
-- Total execution time: ~483 min
+- Total plans completed: 70 across all milestones
+- Average duration: ~6.9 min per plan
+- Total execution time: ~486 min
 
 *Updated after each plan completion*
 
@@ -73,6 +73,10 @@ See archived decisions in:
 | Use custom LSP request instead of workspace/executeCommand | 30-03 | Simpler implementation, avoids command registration boilerplate |
 | Synchronize 'bbj' configuration section in VS Code | 30-03 | Enables automatic cache invalidation when user changes classpath/home settings |
 | Clear all caches including connection in clearCache() | 30-03 | Ensures complete refresh by forcing new socket connection to java-interop service |
+| Merged .bbx into BBj language instead of separate language | 31-01 | .bbx files should get full BBj treatment (icon, completion, diagnostics, run commands) |
+| Default interop connection remains localhost:5008 | 31-01 | Backward compatibility; settings provide override for remote deployments |
+| configPath setting overrides default {bbj.home}/cfg/config.bbx | 31-01 | Enables custom config.bbx for non-standard installations or multi-environment setups |
+| Hot reload via clearCache() + reconnect for interop settings | 31-01 | Settings changes take effect immediately without extension restart |
 
 ### Known Issues
 
@@ -93,6 +97,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Phase 30 complete
+Stopped at: Completed 31-01-PLAN.md
 Resume file: None
-Next: Execute Phase 31 (/gsd:execute-phase 31)
+Next: Execute 31-02 (/gsd:execute-plan 31-02)
