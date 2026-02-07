@@ -295,7 +295,7 @@ Use:
 ;
 
 VariableDecl returns VariableDecl:
-    'declare' 'auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
+    'declare' auto?='auto'? type=QualifiedClass (array?='[' ']')? name=FeatureName;
 
 Assignment:
     instanceAccess?='#'? variable=MemberCall '=' value=Expression;
@@ -939,6 +939,7 @@ interface DefFunction extends NamedElement {
 interface VariableDecl extends NamedElement {
     type?: QualifiedClass
     array?: boolean
+    auto?: boolean
 }
 
 interface FieldDecl extends VariableDecl {
