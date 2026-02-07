@@ -126,6 +126,7 @@ function isStandaloneStatement(node: AstNode): node is Statement {
             || isLetStatement(node.$container)
             || isForStatement(node.$container)
             || isArrayDeclarationStatement(node.$container)
+            || isDefFunction(node.$container)
             || AstUtils.getContainerOfType(previous, isSwitchStatement)
             || AstUtils.getContainerOfType(previous, isIfStatement)
             || isInsideSingleLineIf(node)) {
