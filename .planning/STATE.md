@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 Milestone: v3.2 Bug Fix Release
 Phase: 32 of 34 (Regression Fixes)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-07 -- Completed 32-01-PLAN.md (BBjAPI regression fix)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 32-02-PLAN.md (USE statement navigation)
 
-Progress: [█░░░░░░░░░] 10%
+Progress: [██░░░░░░░░] 20%
 
 ## Milestone History
 
@@ -35,8 +35,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 87 across all milestones
-- Total execution time: ~501 min (through v3.0) + v3.1
+- Total plans completed: 89 across all milestones (32-01, 32-02 completed)
+- Total execution time: ~501 min (through v3.0) + v3.1 + 6 min (32-01, 32-02)
 - 8 milestones shipped in 7 days
 
 *Updated after each plan completion*
@@ -44,6 +44,11 @@ See: .planning/MILESTONES.md
 ## Accumulated Context
 
 ### Decisions
+
+**Phase 32 (Regression Fixes):**
+- Override collectLocationLinks (not getDefinition) to preserve Langium's reference resolution pipeline
+- Use nameProvider.getNameNode() to find exact class name CST node for precise navigation
+- Test with inline class references rather than cross-file USE statements (simpler test environment)
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -63,11 +68,14 @@ See archived decisions in:
 
 ### Blockers/Concerns
 
-None - BBjAPI() regression fixed in 32-01
+**Phase 32 automated fixes complete, manual verification required:**
+- Cross-file USE statement navigation needs testing with PREFIX path resolution (not covered by automated tests)
+- IntelliJ plugin LSP compatibility for LocationLink.targetSelectionRange needs verification
+- Both BBjAPI() and USE navigation regressions need sign-off in VS Code AND IntelliJ
 
 ## Session Continuity
 
-Last session: 2026-02-07 17:37:13 UTC
-Stopped at: Completed 32-01-PLAN.md (BBjAPI regression fix)
+Last session: 2026-02-07 17:37:36 UTC
+Stopped at: Completed 32-02-PLAN.md (USE statement navigation)
 Resume file: None
-Next: Plan 32-02 (USE statement navigation regression)
+Next: Phase 33 (Manual verification of regressions)
