@@ -2360,6 +2360,65 @@ PRINT getResult$, isNew%, readData
         expectNoParserLexerErrors(result);
     });
 
+    test('PARSE-03: SELECT verb basic syntax (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch)rec$ FROM "customers.dat"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with MODE and ERR (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch,MODE="BLOCK=200",ERR=errLabel)rec$ FROM "customers.dat"
+            errLabel: STOP
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with field list (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch)rec$:rec.name$,rec.phone$ FROM "customers.dat"
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with WHERE and SORTBY (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch)rec$:rec.name$,rec.balance FROM "customers.dat" WHERE (rec.balance>rec.limit) SORTBY rec.name$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with LIMIT (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch)rec$ FROM "customers.dat" LIMIT 0, 100
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with all clauses (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch,MODE="BLOCK=200")rec$:rec.name$,rec.balance FROM "customers.dat" WHERE (rec.balance>1000) SORTBY rec.name$ LIMIT 0, 50
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-03: SELECT verb with line continuation (#295)', async () => {
+        const result = await parse(`
+            ch = 1
+            SELECT (ch,MODE="BLOCK=200")rec$:rec.cust_num$,rec.name$,
+: rec.phone$,rec.limit,rec.balance FROM "customers.dat"
+: WHERE (rec.balance>rec.limit) SORTBY rec.name$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
     test('GRAM-05: REM after colon line-continuation (#118)', async () => {
         const result = await parse(`
             if 1 > 0 then

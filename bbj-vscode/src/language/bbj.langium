@@ -90,6 +90,7 @@ SingleStatement:
     RunStatement |
     SaveStatement |
     SavePStatement |
+    SelectStatement |
     SetDayStatement |
     SetErrorStatement |
     SetOptsStatement |
@@ -224,6 +225,16 @@ SaveStatement:
 SavePStatement:
     'SAVEP' (filename=Expression (',' passwordOrCreate=Expression (',' create=Expression)?)?)?
     ;
+
+SelectStatement:
+    'SELECT' '(' channelno=Expression Mode? Err? RPAREN_NO_NL
+    template=BinaryExpression
+    (':' fields+=BinaryExpression (',' fields+=BinaryExpression)*)?
+    'FROM' fileid=Expression
+    ('WHERE' where=Expression)?
+    ('SORTBY' sortby=Expression)?
+    ('LIMIT' limitFirst=Expression ',' limitCount=Expression)?
+;
 
 SetDayStatement:
     'SETDAY' string=Expression
