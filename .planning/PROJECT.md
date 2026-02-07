@@ -97,7 +97,18 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+#### Current Milestone: v3.2 Bug Fix Release
+
+**Goal:** Fix regressions and parser bugs that produce false errors on valid BBj code.
+
+- [ ] BBjAPI() not recognized — linker regression, kills completion
+- [ ] Can't follow class from USE statement — navigation regression (#357)
+- [ ] `void` falsely flagged in method signature (#356)
+- [ ] `mode$` variable flagged as error in DEF FN inside class methods (#355)
+- [ ] `select` statement produces false line-break errors (#295)
+- [ ] `cast(BBjString[],...)` — array type in CAST not parsed (#296)
+- [ ] "Bbj" → "BBj" case fix in VS Code settings labels (#315)
+- [ ] Flag unresolvable file path in USE statement (#172)
 
 ### Out of Scope
 
@@ -108,7 +119,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.1 shipped 2026-02-07. All PRIO 1+2 GitHub issues closed (13 requirements across scoping, inheritance, Java reflection, settings, and EM auth). 95 files modified, +12,720/-273 lines. 398 tests passing, 16 pre-existing failures, 47 new tests added.
+**Current state:** v3.2 in progress. Fixing BBjAPI() regression, parser bugs on valid BBj patterns, and navigation regression. v3.1 shipped 2026-02-07 with all PRIO 1+2 issues closed.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -193,4 +204,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Configurable interop host/port with hot-reload | Settings changes take effect without extension restart | ✓ Good — v3.1 shipped |
 
 ---
-*Last updated: 2026-02-07 after v3.1 milestone shipped*
+*Last updated: 2026-02-07 after v3.2 milestone started*

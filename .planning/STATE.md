@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Planning next milestone
+**Current focus:** v3.2 Bug Fix Release
 
 ## Current Position
 
-Milestone: v3.1 PRIO 1+2 Issue Burndown — SHIPPED
-Phase: All 31 phases complete across 8 milestones
-Plan: N/A
-Status: Ready for next milestone
-Last activity: 2026-02-07 -- v3.1 milestone archived
+Milestone: v3.2 Bug Fix Release
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-07 — Milestone v3.2 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone History
 
@@ -64,11 +64,11 @@ See archived decisions in:
 
 ### Blockers/Concerns
 
-None.
+- BBjAPI() regression — critical, must investigate root cause first
 
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: v3.1 milestone archived
+Stopped at: Defining v3.2 requirements
 Resume file: None
-Next: /gsd:new-milestone — start next milestone
+Next: Define REQUIREMENTS.md, then create roadmap
