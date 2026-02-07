@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.2 Bug Fix Release
+**Current focus:** Phase 32 - Regression Fixes (v3.2 Bug Fix Release)
 
 ## Current Position
 
 Milestone: v3.2 Bug Fix Release
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-07 — Milestone v3.2 started
+Phase: 32 of 34 (Regression Fixes)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-07 -- Roadmap created for v3.2
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -64,11 +64,11 @@ See archived decisions in:
 
 ### Blockers/Concerns
 
-- BBjAPI() regression — critical, must investigate root cause first
+- BBjAPI() regression -- critical, must investigate root cause in Phase 32
 
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Defining v3.2 requirements
+Stopped at: Roadmap created for v3.2, ready to plan Phase 32
 Resume file: None
-Next: Define REQUIREMENTS.md, then create roadmap
+Next: `/gsd:plan-phase 32`

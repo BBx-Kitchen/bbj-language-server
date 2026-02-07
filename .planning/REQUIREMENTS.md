@@ -58,20 +58,20 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | TBD | Pending |
-| REG-02 | TBD | Pending |
-| PARSE-01 | TBD | Pending |
-| PARSE-02 | TBD | Pending |
-| PARSE-03 | TBD | Pending |
-| PARSE-04 | TBD | Pending |
-| POL-01 | TBD | Pending |
-| POL-02 | TBD | Pending |
+| REG-01 | Phase 32 | Pending |
+| REG-02 | Phase 32 | Pending |
+| PARSE-01 | Phase 33 | Pending |
+| PARSE-02 | Phase 33 | Pending |
+| PARSE-03 | Phase 33 | Pending |
+| PARSE-04 | Phase 33 | Pending |
+| POL-01 | Phase 34 | Pending |
+| POL-02 | Phase 34 | Pending |
 
 **Coverage:**
 - v3.2 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-07*
-*Last updated: 2026-02-07 after initial definition*
+*Last updated: 2026-02-07 after roadmap creation*
