@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 Phase 28 - Variable Scoping & Declaration Order
+**Current focus:** v3.1 Phase 29 - DEF FN & Inheritance Resolution
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 28 of 31 (Variable Scoping & Declaration Order)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed 28-02-PLAN.md
+Phase: 29 of 31 (DEF FN & Inheritance Resolution)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-02-07 -- Phase 28 complete (2 plans, verified)
 
-Progress: [███░░░░░░░] ~25%
+Progress: [███░░░░░░░] 25%
 
 ## Milestone History
 
@@ -76,6 +76,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 28-02-PLAN.md (Phase 28 complete)
+Stopped at: Phase 28 complete, verified
 Resume file: None
-Next: Phase 29
+Next: `/gsd:discuss-phase 29`

@@ -9,11 +9,11 @@ Requirements for v3.1 PRIO 1+2 Issue Burndown. Each maps to a GitHub issue.
 
 ### Scoping & Variable Resolution
 
-- [ ] **SCOPE-01**: Variables only visible after declaration/initialization in program scope (#4)
+- [x] **SCOPE-01**: Variables only visible after declaration/initialization in program scope (#4)
 - [ ] **SCOPE-02**: DEF FN parameters scoped correctly inside function expression/body (#226)
 - [ ] **SCOPE-03**: Super class field access via `#field!` resolves through inheritance chain (#240)
-- [ ] **SCOPE-04**: DREAD recognizes variables already declared by DIM (array subscript form) (#247)
-- [ ] **SCOPE-05**: DECLARE type information applies to variable usage before the DECLARE statement (#265)
+- [x] **SCOPE-04**: DREAD recognizes variables already declared by DIM (array subscript form) (#247)
+- [x] **SCOPE-05**: DECLARE type information applies to variable usage before the DECLARE statement (#265)
 
 ### Java Interop & Linking
 
@@ -77,11 +77,11 @@ Deferred to later milestones. From remaining open issues.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SCOPE-01 | Phase 28 | Pending |
+| SCOPE-01 | Phase 28 | Complete |
 | SCOPE-02 | Phase 29 | Pending |
 | SCOPE-03 | Phase 29 | Pending |
-| SCOPE-04 | Phase 28 | Pending |
-| SCOPE-05 | Phase 28 | Pending |
+| SCOPE-04 | Phase 28 | Complete |
+| SCOPE-05 | Phase 28 | Complete |
 | JAVA-01 | Phase 29 | Pending |
 | JAVA-02 | Phase 30 | Pending |
 | PARSE-01 | Phase 29 | Pending |

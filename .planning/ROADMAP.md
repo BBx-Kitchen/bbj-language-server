@@ -24,7 +24,7 @@ See .planning/MILESTONES.md for full history.
 
 **Milestone Goal:** Close all PRIO 1+2 GitHub issues -- fix variable scoping bugs, inheritance resolution, Java reflection staleness, and make extension settings configurable.
 
-- [ ] **Phase 28: Variable Scoping & Declaration Order** - Variables respect declaration position and type annotations in program scope
+- [x] **Phase 28: Variable Scoping & Declaration Order** - Variables respect declaration position and type annotations in program scope
 - [ ] **Phase 29: DEF FN & Inheritance Resolution** - DEF FN works correctly in class methods; field/method access resolves through inheritance chains
 - [ ] **Phase 30: Java Reflection & Error Reporting** - Java interop finds new methods; error messages include file and line info
 - [ ] **Phase 31: Extension Settings & File Types** - .bbx file support; configurable paths, ports, and auth
@@ -42,8 +42,8 @@ See .planning/MILESTONES.md for full history.
   4. Existing tests pass -- no regressions in class-scope or method-scope variable resolution
 **Plans:** 2 plans
 Plans:
-- [ ] 28-01-PLAN.md -- Grammar auto property + use-before-assignment validation + conflicting DECLARE detection
-- [ ] 28-02-PLAN.md -- Comprehensive test suite + edge case fixes
+- [x] 28-01-PLAN.md -- Grammar auto property + use-before-assignment validation + conflicting DECLARE detection
+- [x] 28-02-PLAN.md -- Comprehensive test suite + edge case fixes
 
 ### Phase 29: DEF FN & Inheritance Resolution
 **Goal**: DEF FN definitions inside class methods work without false errors and with correct parameter scoping; super class fields and inherited Java methods resolve through the inheritance chain
@@ -85,7 +85,7 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 28. Variable Scoping & Declaration Order | 0/2 | Planned | - |
+| 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
 | 29. DEF FN & Inheritance Resolution | 0/TBD | Not started | - |
 | 30. Java Reflection & Error Reporting | 0/TBD | Not started | - |
 | 31. Extension Settings & File Types | 0/TBD | Not started | - |
