@@ -54,6 +54,7 @@ import { assertTrue } from './assertions.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
+const MAX_INHERITANCE_DEPTH = 20;
 
 export class BbjScopeProvider extends DefaultScopeProvider {
 
@@ -332,9 +333,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         return []
     }
 
-    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false, visited: Set<BbjClass> = new Set()): StreamScope {
-        // Cycle protection: stop if we've already visited this class
-        if (visited.has(bbjType)) {
+    createBBjClassMemberScope(bbjType: BbjClass, methodsOnly: boolean = false, visited: Set<BbjClass> = new Set(), depth: number = 0): StreamScope {
+        // Cycle protection: stop if we've already visited this class or depth exceeded
+        if (visited.has(bbjType) || depth >= MAX_INHERITANCE_DEPTH) {
             return this.createCaseSensitiveScope([]);
         }
         visited.add(bbjType);
@@ -348,7 +349,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         if (bbjType.extends.length == 1) {
             const superType = getClass(bbjType.extends[0]);
             if (isBbjClass(superType)) {
-                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly, visited))
+                return this.createCaseSensitiveScope(descriptions, this.createBBjClassMemberScope(superType, methodsOnly, visited, depth + 1))
             } else if (isJavaClass(superType)) {
                 // Recursively traverse Java class inheritance chain
                 return this.createCaseSensitiveScope(descriptions, this.createJavaClassMemberScope(superType))
