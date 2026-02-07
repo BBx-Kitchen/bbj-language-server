@@ -1,3 +1,4 @@
+import { AstNode } from "langium";
 import { BBjServices } from "./bbj-module.js";
 import { getClass } from "./bbj-nodedescription-provider.js";
 import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isLibFunction, isMemberCall, isMethodCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
@@ -9,12 +10,25 @@ export interface TypeInferer {
 
 export class BBjTypeInferer implements TypeInferer {
     protected readonly javaInterop: JavaInteropService;
+    private resolving = new Set<AstNode>();
 
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
     }
 
     public getType(expression: Expression): JavaPackage | Class | undefined {
+        if (this.resolving.has(expression)) {
+            return undefined;
+        }
+        this.resolving.add(expression);
+        try {
+            return this.getTypeInternal(expression);
+        } finally {
+            this.resolving.delete(expression);
+        }
+    }
+
+    private getTypeInternal(expression: Expression): JavaPackage | Class | undefined {
         if (isSymbolRef(expression)) {
             const reference = expression.symbol.ref
             if (isAssignment(reference)) {
