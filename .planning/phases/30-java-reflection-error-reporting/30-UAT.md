@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 30-java-reflection-error-reporting
 source: [30-01-SUMMARY.md, 30-02-SUMMARY.md, 30-03-SUMMARY.md]
 started: 2026-02-07T12:30:00Z
-updated: 2026-02-07T12:35:00Z
+updated: 2026-02-07T12:40:00Z
 ---
 
 ## Current Test
@@ -45,7 +45,15 @@ skipped: 0
   reason: "User reported: a! = a!.toString() is flagged as cyclic, but class public A extends B / class public B extends A is not"
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Two distinct bugs: (1) False positive: BBjTypeInferer.getType() creates re-entrant reference access chain (MemberCall.member -> scope -> getType(receiver) -> Assignment -> getType(value) -> same MemberCall.member) triggering Langium's per-Reference re-entrancy guard. (2) Missing detection: extends clause resolves via flat index lookup so two separate Reference objects never interact; no dedicated cyclic inheritance validator exists."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-type-inferer.ts"
+      issue: "Lines 20-21 and 34-35: Assignment -> getType(value) -> MemberCall -> member.ref creates re-entrant chain"
+    - path: "bbj-vscode/src/language/bbj-scope.ts"
+      issue: "Lines 79-85: extends uses flat index lookup; Lines 336-338: visited Set silently prevents infinite loops but reports no error"
+    - path: "bbj-vscode/src/language/validations/check-classes.ts"
+      issue: "Missing cyclic inheritance check"
+  missing:
+    - "Add re-entrancy guard in BBjTypeInferer.getType() to prevent false positive cyclic detection"
+    - "Add dedicated cyclic inheritance validator in check-classes.ts that walks extends chain with visited Set"
+  debug_session: ".planning/debug/cyclic-reference-detection.md"
