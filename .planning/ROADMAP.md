@@ -84,7 +84,12 @@ Plans:
   2. The extension settings include a field for config.bbx path and other BBj-specific options; changing these settings takes effect without restarting the extension
   3. The interop hostname and port are configurable in extension settings (not hardcoded to localhost:5008); connecting to a remote java-interop service works
   4. EM access uses token-based authentication; no plaintext passwords are stored in settings
-**Plans**: TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 31-01-PLAN.md -- .bbx merged into BBj language + configurable interop host/port (VS Code + Language Server)
+- [ ] 31-02-PLAN.md -- .bbx merged into BBj file type + configurable interop host (IntelliJ)
+- [ ] 31-03-PLAN.md -- EM token-based auth: BBj login stub + VS Code SecretStorage + run command updates
+- [ ] 31-04-PLAN.md -- EM token-based auth: IntelliJ CredentialStore + login action + run command updates
 
 ## Progress
 
@@ -96,4 +101,4 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 | 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
 | 29. DEF FN & Inheritance Resolution | 3/3 | ✓ Complete | 2026-02-07 |
 | 30. Java Reflection & Error Reporting | 3/3 | ✓ Complete | 2026-02-07 |
-| 31. Extension Settings & File Types | 0/TBD | Not started | - |
+| 31. Extension Settings & File Types | 0/4 | Not started | - |

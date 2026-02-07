@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 30 of 31 complete (Java Reflection & Error Reporting)
-Plan: 0 of TBD in next phase
-Status: Phase 30 complete, Phase 31 not started
+Plan: 0 of 4 in Phase 31
+Status: Phase 31 planned, ready for execution
 Last activity: 2026-02-07 -- Completed Phase 30
 
 Progress: [███████░░░] 75%
@@ -95,4 +95,4 @@ None.
 Last session: 2026-02-07
 Stopped at: Phase 30 complete
 Resume file: None
-Next: Plan Phase 31 (Extension Settings & File Types)
+Next: Execute Phase 31 (/gsd:execute-phase 31)
