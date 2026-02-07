@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 31 of 31 (Extension Settings & File Types)
-Plan: 3 of 4 in Phase 31 complete
-Status: In progress
-Last activity: 2026-02-07 -- Completed 31-03-PLAN.md
+Plan: 4 of 4 in Phase 31 complete
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 31-04-PLAN.md
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 79%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 72 across all milestones
+- Total plans completed: 73 across all milestones
 - Average duration: ~6.8 min per plan
-- Total execution time: ~494 min
+- Total execution time: ~498 min
 
 *Updated after each plan completion*
 
@@ -83,6 +83,8 @@ See archived decisions in:
 | JWT token-based EM authentication via BBjAdminFactory.getAuthToken() | 31-03 | More secure than storing encrypted credentials; enables token expiration/renewal |
 | Token as 8th parameter to web.bbj (optional) | 31-03 | Backward compatibility with existing username/password interface |
 | Auto-prompt login flow for BUI/DWC | 31-03 | User-friendly: prompt to login if no credentials stored instead of showing auth error |
+| IntelliJ uses PasswordSafe for EM token storage | 31-04 | Secure OS-native keychain storage, no plaintext passwords in settings |
+| IntelliJ settings replaced emUsername/emPassword with emUrl | 31-04 | Credentials stored in PasswordSafe, only EM URL configured in settings |
 
 ### Known Issues
 
