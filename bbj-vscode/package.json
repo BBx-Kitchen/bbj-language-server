@@ -31,27 +31,14 @@
           ".bbj",
           ".bbl",
           ".bbjt",
-          ".src"
+          ".src",
+          ".bbx"
         ],
         "icon": {
           "light": "./images/bbj-file-light.svg",
           "dark": "./images/bbj-file-dark.svg"
         },
         "configuration": "./bbj-language-configuration.json"
-      },
-      {
-        "id": "bbx",
-        "aliases": [
-          "BBx"
-        ],
-        "extensions": [
-          ".bbx"
-        ],
-        "icon": {
-          "light": "./images/bbj-config-light.svg",
-          "dark": "./images/bbj-config-dark.svg"
-        },
-        "configuration": "./bbx-language-configuration.json"
       }
     ],
     "grammars": [
@@ -59,11 +46,6 @@
         "language": "bbj",
         "scopeName": "source.bbj",
         "path": "./syntaxes/bbj.tmLanguage.json"
-      },
-      {
-        "language": "bbx",
-        "scopeName": "source.bbx",
-        "path": "./syntaxes/bbx.tmLanguage.json"
       }
     ],
     "snippets": [
@@ -500,6 +482,27 @@
           "type": "boolean",
           "default": true,
           "description": "Enable/disable type resolution warnings (CAST, USE, inheritance). Disable for heavily dynamic codebases where these warnings are noisy.",
+          "scope": "window"
+        },
+        "bbj.configPath": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null,
+          "description": "Path to config.bbx file. When not set, defaults to {bbj.home}/cfg/config.bbx. Set this to use a custom config.bbx location for PREFIX resolution.",
+          "scope": "window"
+        },
+        "bbj.interop.host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Java interop service hostname. Change this to connect to a remote java-interop instance.",
+          "scope": "window"
+        },
+        "bbj.interop.port": {
+          "type": "number",
+          "default": 5008,
+          "description": "Java interop service port number.",
           "scope": "window"
         }
       }
