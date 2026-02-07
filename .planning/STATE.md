@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 Milestone: v3.2 Bug Fix Release
 Phase: 33 of 34 (Parser and Lexer Fixes)
-Plan: 0 of TBD in current phase
-Status: Not started
-Last activity: 2026-02-07 -- Completed Phase 32 (Regression Fixes) including onDidChangeConfiguration fix
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-07 -- Completed 33-01-PLAN.md (void return type support)
 
 Progress: [████░░░░░░] 33%
 
@@ -35,8 +35,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 92 across all milestones (32-01, 32-02, 32-03 completed)
-- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32)
+- Total plans completed: 93 across all milestones (33-01 completed)
+- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32) + 70 min (Phase 33)
 - 8 milestones shipped in 7 days
 
 *Updated after each plan completion*
@@ -50,6 +50,10 @@ See: .planning/MILESTONES.md
 - Use nameProvider.getNameNode() to find exact class name CST node for precise navigation
 - Test with inline class references rather than cross-file USE statements (simpler test environment)
 
+**Phase 33 (Parser and Lexer Fixes):**
+- Use voidReturn boolean property instead of treating void as a class reference in method signatures
+- Defer PARSE-04 (cast array notation) due to Langium parser ambiguity challenges - requires expert consultation or alternative approach
+
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
 - .planning/milestones/v2.2-ROADMAP.md
@@ -60,6 +64,7 @@ See archived decisions in:
 
 1. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
 2. Single-line DEF FN inside class methods not parsed correctly by validate test helper (parser/lexer RPAREN_NO_NL token issue)
+3. **PARSE-04: cast array notation** - `cast(BBjString[], x!)` syntax fails to parse due to ArrayElement grammar requiring indices or ALL keyword. Requires Langium parser generator expertise or confirmation that syntax is invalid BBj.
 
 ### Tech Debt
 
@@ -67,6 +72,11 @@ See archived decisions in:
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
 
 ### Blockers/Concerns
+
+**Phase 33 (33-01) partial complete:**
+- PARSE-01 (void return type) complete and working - eliminates false "unresolvable class" errors for `method public void doSomething()`
+- PARSE-04 (cast array notation) deferred - requires either Langium expert, alternative validator approach, or confirmation syntax is invalid in real BBj
+- Recommend: Verify `cast(Type[], expr)` syntax against BBj documentation or real BBj codebase before further investigation
 
 **Phase 32 complete. Pending user verification:**
 - User needs to rebuild and verify BBjAPI CC and BBjVector resolution work in VS Code
@@ -76,6 +86,6 @@ See archived decisions in:
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed Phase 32 (all 3 plans including onDidChangeConfiguration fix)
-Resume file: None
-Next: Phase 33 (Parser and Lexer Fixes)
+Stopped at: Completed 33-01-PLAN.md (void return type support, PARSE-04 deferred)
+Resume file: .planning/phases/33-parser-and-lexer-fixes/33-01-SUMMARY.md
+Next: Continue Phase 33 or address PARSE-04 investigation
