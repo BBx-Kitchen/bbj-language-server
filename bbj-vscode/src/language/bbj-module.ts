@@ -14,6 +14,7 @@ import {
 import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext } from 'langium/lsp';
 import { BBjCommentProvider } from './bbj-comment-provider.js';
 import { BBjCompletionProvider } from './bbj-completion-provider.js';
+import { BBjDefinitionProvider } from './bbj-definition-provider.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 import { BBjDocumentValidator } from './bbj-document-validator.js';
 import { BBjHoverProvider } from './bbj-hover.js';
@@ -82,6 +83,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CommentProvider: () => new BBjCommentProvider()
     },
     lsp: {
+        DefinitionProvider: (services) => new BBjDefinitionProvider(services),
         HoverProvider: (services) => new BBjHoverProvider(services),
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
