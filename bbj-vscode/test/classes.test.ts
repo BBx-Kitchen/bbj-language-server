@@ -391,3 +391,87 @@ describe("Inheritance chain resolution", () => {
         expect(fieldErrors).toHaveLength(0);
     });
 });
+
+describe("Cyclic inheritance detection", () => {
+    let disposables: (() => Promise<void>)[] = [];
+    const services = createBBjServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+        const validateInternal = validationHelper<Program>(services.BBj);
+        validate = async (input: string, options?: ParseHelperOptions) => {
+            const result = await (validateInternal(input, options));
+            disposables.push(result.dispose);
+            return result;
+        }
+    });
+
+    afterEach(async () => {
+        for (const dispose of disposables) {
+            await dispose();
+        }
+        disposables = [];
+    });
+
+    test("Direct cyclic inheritance (A extends B, B extends A) reports error", async () => {
+        const { diagnostics } = await validate(`
+            class public A extends B
+            classend
+
+            class public B extends A
+            classend
+        `);
+        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        expect(cyclicErrors.length).toBeGreaterThan(0);
+    });
+
+    test("Self-extending class (A extends A) reports error", async () => {
+        const { diagnostics } = await validate(`
+            class public A extends A
+            classend
+        `);
+        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        expect(cyclicErrors.length).toBeGreaterThan(0);
+    });
+
+    test("Three-class cycle (A extends B, B extends C, C extends A) reports error", async () => {
+        const { diagnostics } = await validate(`
+            class public A extends B
+            classend
+
+            class public B extends C
+            classend
+
+            class public C extends A
+            classend
+        `);
+        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic inheritance'));
+        expect(cyclicErrors.length).toBeGreaterThan(0);
+    });
+
+    test("No false positive on valid linear inheritance", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+            classend
+
+            class public Child extends Base
+            classend
+        `);
+        expect(diagnostics).toHaveLength(0);
+    });
+
+    test("No false positive on self-referencing variable assignment", async () => {
+        const { diagnostics } = await validate(`
+            class public Foo
+                method public doWork()
+                    declare auto Foo a!
+                    a! = new Foo()
+                    a! = a!
+                methodend
+            classend
+        `);
+        const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic'));
+        expect(cyclicErrors).toHaveLength(0);
+    });
+});

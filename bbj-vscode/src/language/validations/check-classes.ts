@@ -1,6 +1,6 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
-import { getClassRef } from '../bbj-nodedescription-provider.js';
+import { getClass, getClassRef } from '../bbj-nodedescription-provider.js';
 import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
@@ -43,6 +43,10 @@ export function registerClassChecks(registry: ValidationRegistry) {
                     index
                 });
             });
+            // Check for cyclic inheritance
+            if (decl.extends.length > 0) {
+                validator.checkCyclicInheritance(decl, accept);
+            }
         },
         ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.klass, {
             node: call,
@@ -119,6 +123,32 @@ class ClassValidator {
                     accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this file.`, info);
                 }
                 break;
+        }
+    }
+
+    public checkCyclicInheritance(klass: BbjClass, accept: ValidationAcceptor): void {
+        const visited = new Set<BbjClass>();
+        visited.add(klass);
+        let current: BbjClass | undefined = klass;
+        const MAX_INHERITANCE_DEPTH = 20;
+        let depth = 0;
+
+        while (current && current.extends.length > 0 && depth < MAX_INHERITANCE_DEPTH) {
+            const superType = getClass(current.extends[0]);
+            if (!isBbjClass(superType)) {
+                break; // Java class or unresolvable -- stop walking
+            }
+            if (visited.has(superType)) {
+                accept("error", `Cyclic inheritance detected: class '${klass.name}' is involved in an inheritance cycle.`, {
+                    node: klass,
+                    property: 'extends',
+                    index: 0
+                });
+                return;
+            }
+            visited.add(superType);
+            current = superType;
+            depth++;
         }
     }
 }
