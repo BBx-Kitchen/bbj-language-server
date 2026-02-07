@@ -382,5 +382,23 @@ LET result = FNDouble(5)
             `);
             expectNoHints(result, /used before assignment/i);
         });
+
+        test('DEF FN parameters do NOT leak into enclosing scope', async () => {
+            const result = await validate(`
+DEF FNSquare(x)
+    RETURN x*x
+FNEND
+PRINT x
+            `);
+            // If parameter 'x' leaked from DEF FN into program scope,
+            // PRINT x would resolve to the parameter (no diagnostic).
+            // Since it does NOT leak, 'x' outside the FN is unresolved.
+            // Check for warning (severity 2) about unresolved reference.
+            const unresolvedErrors = result.diagnostics.filter(d =>
+                d.severity === DiagnosticSeverity.Warning &&
+                /Could not resolve.*x/i.test(d.message)
+            );
+            expect(unresolvedErrors.length).toBeGreaterThan(0);
+        });
     });
 });
