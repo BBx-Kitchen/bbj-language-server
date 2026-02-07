@@ -341,4 +341,46 @@ DECLARE java.lang.Integer z!
             });
         });
     });
+
+    // ========================================================================
+    // DEF FN Parameter Scoping
+    // ========================================================================
+    describe('DEF FN Parameter Scoping', () => {
+
+        test('DEF FN parameters are visible inside multi-line FN body', async () => {
+            const result = await validate(`
+DEF FNCalc(x,y)
+    LET z = x + y
+    RETURN z
+FNEND
+LET result = FNCalc(1,2)
+            `);
+            expectNoHints(result, /used before assignment/i);
+        });
+
+        test('Enclosing method variables visible inside DEF FN body', async () => {
+            const result = await validate(`
+class public Test
+    method public doWork()
+        LET multiplier = 2
+        DEF FNScale(x)
+            RETURN x*multiplier
+        FNEND
+        LET result = FNScale(5)
+    methodend
+classend
+            `);
+            expectNoHints(result, /used before assignment/i);
+        });
+
+        test('Program-scope DEF FN parameters scoped correctly', async () => {
+            const result = await validate(`
+DEF FNDouble(n)
+    RETURN n*2
+FNEND
+LET result = FNDouble(5)
+            `);
+            expectNoHints(result, /used before assignment/i);
+        });
+    });
 });

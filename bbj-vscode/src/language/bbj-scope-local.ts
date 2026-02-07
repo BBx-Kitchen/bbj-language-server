@@ -22,6 +22,7 @@ import {
     FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass,
     isClasspath,
+    isDefFunction,
     isDreadStatement,
     isEnterStatement, isFieldDecl, isForStatement,
     isInputVariable,
@@ -88,7 +89,21 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     }
 
     protected async processNode(node: AstNode, document: LangiumDocument, scopes: LocalSymbols): Promise<void> {
-        if (isUse(node) && node.javaClass) {
+        if (isDefFunction(node)) {
+            // Add DEF FN itself to container scope so it can be called
+            if (node.name && node.$container) {
+                const fnDescription = this.descriptions.createDescription(node, node.name);
+                this.addToScope(scopes, node.$container, fnDescription);
+            }
+            // Add DEF FN parameters to the function's own scope, NOT the container.
+            // This ensures parameters are visible inside the FN body but don't leak.
+            for (const param of node.parameters) {
+                if (param.name) {
+                    const description = this.descriptions.createDescription(param, param.name);
+                    this.addToScope(scopes, node, description);
+                }
+            }
+        } else if (isUse(node) && node.javaClass) {
             try {
                 const javaClassName = getFQNFullname(node.javaClass);
                 let javaClass = await this.tryResolveJavaReference(javaClassName, this.javaInterop);
