@@ -1,0 +1,34 @@
+rem BBj EM Login Stub - Authenticates and returns JWT token
+rem Parameters:
+rem   1) username
+rem   2) password
+
+? 'HIDE'
+
+username! = ARGV(1,err=*next)
+password! = ARGV(2,err=*next)
+
+if (username! = null()) then
+    print "ERROR:Username required"
+    release
+fi
+if (password! = null()) then
+    print "ERROR:Password required"
+    release
+fi
+
+rem Authenticate and get JWT token
+use java.net.InetAddress
+use java.util.HashMap
+use com.basis.api.admin.BBjAdminFactory
+
+host! = InetAddress.getLoopbackAddress()
+payload! = new HashMap()
+rem Get auth token with default duration (0 = server default)
+token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)
+print token!
+release
+
+authFailed:
+print "ERROR:Authentication failed - invalid credentials or EM not available"
+release

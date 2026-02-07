@@ -6,6 +6,8 @@ rem   3) program file
 rem   4) working directory
 rem   5) username
 rem   6) password
+rem   7) session-specific classpath
+rem   8) auth token (optional, if present uses token-based auth)
 
 ? 'HIDE'
 
@@ -16,11 +18,17 @@ wd!         = ARGV(4)
 username!   = ARGV(5,err=*next)
 password!   = ARGV(6,err=*next)
 sscp!       = ARGV(7,err=*next)
+token!      = ARGV(8,err=*next)
 
-if (username! = null()) username! = "admin"
-if (password!= null()) password! = "admin123"
-
-admin! = BBjAdminFactory.getBBjAdmin(username!, password!)
+rem Token-based authentication if token is provided
+if (token! <> null() and token! > "") then
+    admin! = BBjAdminFactory.getBBjAdmin(token!)
+else
+    rem Legacy username/password authentication (backward compatible)
+    if (username! = null()) username! = "admin"
+    if (password! = null()) password! = "admin123"
+    admin! = BBjAdminFactory.getBBjAdmin(username!, password!)
+fi
 configuration! = admin!.getRemoteConfiguration()
 
 rem clean up name!
