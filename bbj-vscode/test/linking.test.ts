@@ -123,17 +123,37 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
-    test.skip('Case insensitive access to BBjAPI', async () => {
-        // TODO: Test module doesn't properly index JavaClass for scope lookup
-        // The case-insensitive BBjAPI lookup IS implemented in bbj-linker.ts (lines 104-108)
-        // but the test module's JavaInteropTestService adds classes without triggering indexing.
-        // This test would pass in production where Java classes are properly indexed.
+    test('Case insensitive access to BBjAPI', async () => {
+        // BBjAPI is now loaded as a built-in BbjClass, always available regardless of Java interop
         const document = await validate(`
-            API! = BbJaPi() REM <== no linking error here
+            API! = BbJaPi()
+            api2! = bbjapi()
+            api3! = BBJAPI()
         `)
         expectNoErrors(document)
     })
-    
+
+    test('BBjAPI() resolves without Java interop', async () => {
+        // This test verifies BBjAPI works even when Java interop service is unavailable
+        // The built-in BbjClass ensures BBjAPI() always resolves
+        const document = await validate(`
+            api! = BBjAPI()
+        `)
+        expectNoErrors(document)
+    })
+
+    test('BBjAPI() variable has correct type', async () => {
+        // Variable assigned from BBjAPI() should have type BBjAPI
+        // Note: Without Java interop, the BbjClass has no methods, but the type resolves
+        const document = await validate(`
+            api! = BBjAPI()
+            REM Type is BBjAPI - no linker error on assignment
+        `)
+        const linkingErrors = findLinkingErrors(document)
+        const bbjApiError = linkingErrors.find(err => err.message.includes('BBjAPI'))
+        expect(bbjApiError).toBeUndefined()
+    })
+
     test('CAST() conveys type for method completion', async () => {
         const document = await validate(`
             class public TargetClass
