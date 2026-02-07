@@ -30,7 +30,14 @@ export class BBjTypeInferer implements TypeInferer {
 
     private getTypeInternal(expression: Expression): JavaPackage | Class | undefined {
         if (isSymbolRef(expression)) {
-            const reference = expression.symbol.ref
+            let reference;
+            try {
+                reference = expression.symbol.ref;
+            } catch {
+                // Langium throws on cyclic reference resolution (e.g., b!=b!.toString()
+                // where b! has no prior assignment). Return undefined instead of propagating.
+                return undefined;
+            }
             if (isAssignment(reference)) {
                 return this.getType((reference as Assignment).value);
             } else if (isClass(reference)) {
@@ -46,7 +53,12 @@ export class BBjTypeInferer implements TypeInferer {
         } else if (isConstructorCall(expression)) {
             return getClass(expression.klass);
         } else if (isMemberCall(expression)) {
-            const member = expression.member.ref;
+            let member;
+            try {
+                member = expression.member.ref;
+            } catch {
+                return undefined;
+            }
             if (member) {
                 if (isJavaField(member)) {
                     return member.resolvedType?.ref;

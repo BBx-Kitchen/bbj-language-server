@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "Cyclic class inheritance not detected; self-reference falsely flagged as cyclic"
 created: 2026-02-07T00:00:00Z
 updated: 2026-02-07T00:00:00Z
@@ -7,10 +7,10 @@ updated: 2026-02-07T00:00:00Z
 
 ## Current Focus
 
-hypothesis: CONFIRMED - Two separate root causes identified
-test: Code trace through Langium linker, BBj scope provider, and type inferer
-expecting: N/A - diagnosis complete
-next_action: Return findings
+hypothesis: CONFIRMED - v3.1 fixes are working correctly
+test: Verified implementation details and test suite
+expecting: All cyclic inheritance tests pass (they do!)
+next_action: Determine why user reported issue - fixes are working
 
 ## Symptoms
 
@@ -27,6 +27,16 @@ started: After Phase 30-02 override of throwCyclicReferenceError
   timestamp: 2026-02-07
 
 ## Evidence
+
+- timestamp: 2026-02-07T00:30:00Z
+  checked: Ran cyclic inheritance test suite (bbj-vscode/test/classes.test.ts)
+  found: ALL cyclic inheritance tests PASS - ✓ Direct cyclic inheritance (A extends B, B extends A) reports error; ✓ Self-extending class (A extends A) reports error; ✓ Three-class cycle (A extends B, B extends C, C extends A) reports error; ✓ No false positive on valid linear inheritance; ✓ No false positive on self-referencing variable assignment (a! = a!)
+  implication: Both v3.1 fixes ARE working correctly - re-entrancy guard prevents false positive on self-reference, CyclicInheritanceValidator correctly detects actual cycles
+
+- timestamp: 2026-02-07T00:35:00Z
+  checked: Verified implementation in bbj-type-inferer.ts (lines 13, 20-27) and check-classes.ts (lines 48, 129-153)
+  found: Fix A - Re-entrancy guard in BBjTypeInferer.getType() using Set<AstNode> resolving field (lines 13, 20-27). Returns undefined if expression is already being resolved, preventing infinite loop on self-referencing assignments. Fix B - CyclicInheritanceValidator.checkCyclicInheritance() (lines 129-153) walks inheritance chain with visited Set, detects cycles, reports error.
+  implication: Both fixes are correctly implemented and working as designed
 
 - timestamp: 2026-02-07
   checked: Langium DefaultLinker.buildReference() (node_modules/langium/src/references/linker.ts lines 215-258)
@@ -80,6 +90,16 @@ root_cause: |
   **Issue 2 - Missing detection of actual cyclic inheritance (A extends B, B extends A):**
   Langium's cyclic detection is purely mechanical (re-entrant access to a single Reference object). It CANNOT detect semantic class hierarchy cycles because resolving A's extends→B and B's extends→A use DIFFERENT Reference objects on different AST nodes. The resolution of SimpleTypeRef.simpleClass just does an index name lookup -- it never needs to resolve the target class's own extends clause. No dedicated validation for cyclic inheritance exists. The visited Set in createBBjClassMemberScope silently prevents infinite loops during member scope building but reports no diagnostic.
 
-fix:
-verification:
-files_changed: []
+fix: |
+  Wrapped `.ref` accesses in BBjTypeInferer.getTypeInternal() with try/catch blocks for both
+  SymbolRef (expression.symbol.ref) and MemberCall (expression.member.ref). Langium's cyclic
+  reference Error is caught and returns undefined (untyped) instead of propagating as a false
+  diagnostic. The v3.1 re-entrancy guard (Set<AstNode>) handles the Expression-level cycle,
+  but the Langium-level cycle (Reference._ref === RefResolving) fires INSIDE getTypeInternal
+  before the guard can catch it — hence the try/catch is needed at the .ref access sites.
+verification: |
+  - 63 linking tests pass (including new test for b!=b!.toString() without prior assignment)
+  - Build succeeds
+files_changed:
+  - bbj-vscode/src/language/bbj-type-inferer.ts
+  - bbj-vscode/test/linking.test.ts

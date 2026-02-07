@@ -154,6 +154,17 @@ describe('Linking Tests', async () => {
         expect(bbjApiError).toBeUndefined()
     })
 
+    test('Self-referencing variable without prior assignment does not produce cyclic error', async () => {
+        // b!=b!.toString() without a prior b!="" should NOT produce a cyclic reference error.
+        // The type inferer catches the re-entrant ref access gracefully.
+        const document = await validate(`
+            b!=b!.toString()
+        `)
+        const linkingErrors = findLinkingErrors(document)
+        const cyclicError = linkingErrors.find(err => err.message.toLowerCase().includes('cyclic'))
+        expect(cyclicError).toBeUndefined()
+    })
+
     test('CAST() conveys type for method completion', async () => {
         const document = await validate(`
             class public TargetClass

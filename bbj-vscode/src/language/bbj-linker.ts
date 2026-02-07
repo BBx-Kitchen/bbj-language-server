@@ -17,7 +17,7 @@ import { dirname, relative } from 'node:path';
 import { isTemplateStringArray } from './bbj-scope-local.js';
 import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { BbjClass, BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
+import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, JavaClass, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -107,18 +107,22 @@ export class BbjLinker extends DefaultLinker {
                 return candidate ?? this.createLinkingError(refInfo);
             }
             if (refInfo.reference.$refText.toLowerCase() === 'bbjapi' && isMethodCall(symbolRef.$container)) {
-                // Special case for BBjAPI implicit import, it can be accessed case insensitively
+                // BBjAPI() is always available as an implicit import (case-insensitive).
+                // Priority: JavaClass from Java interop (has full method signatures for CC)
+                //       →   synthetic BbjClass from bbjlib:///bbj-api.bbl (no methods, link-only fallback)
+                // The fallback exists so BBjAPI() doesn't produce a linker error when
+                // Java interop is unavailable. Do NOT remove the JavaClass priority —
+                // the synthetic class has no methods and would break code completion.
+                const javaClassBBjAPI = this.indexManager()
+                    .allElements(JavaClass.$type)
+                    .find(e => e.name === 'BBjAPI');
+                if (javaClassBBjAPI) {
+                    return javaClassBBjAPI;
+                }
                 const scope = this.scopeProvider.getScope(refInfo);
                 const description = scope.getElement('BBjAPI');
                 if (description) {
                     return description;
-                }
-                // Fallback: find built-in BBjAPI class (always available, independent of Java interop)
-                const builtinBBjAPI = this.indexManager()
-                    .allElements(BbjClass.$type)
-                    .find(e => e.name === 'BBjAPI');
-                if (builtinBBjAPI) {
-                    return builtinBBjAPI;
                 }
                 return this.createLinkingError(refInfo);
             }
