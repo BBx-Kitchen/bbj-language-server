@@ -62,10 +62,11 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // Start the language server with the shared services
 startLanguageServer(shared);
 
-// Track current BBj settings to detect actual changes
-let currentBbjConfig: { interopHost: string; interopPort: number; classpath: string; configPath: string } = {
-    interopHost: 'localhost', interopPort: 5008, classpath: '', configPath: ''
-};
+// Guard: skip Java class reload until initial workspace build is complete
+let workspaceInitialized = false;
+shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
+    workspaceInitialized = true;
+});
 
 // Register AFTER startLanguageServer to override Langium's default handler
 connection.onDidChangeConfiguration(async (change) => {
@@ -78,34 +79,23 @@ connection.onDidChangeConfiguration(async (change) => {
         return;
     }
 
+    // Skip Java class reload during initial startup — initializeWorkspace handles it
+    if (!workspaceInitialized) {
+        // Still apply non-reload settings
+        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        wsManager.setConfigPath(config.configPath || '');
+        return;
+    }
+
     try {
         const javaInterop = BBj.java.JavaInteropService;
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
         const newInteropHost = config.interop?.host || 'localhost';
         const newInteropPort = config.interop?.port || 5008;
-        const newClasspath = config.classpath || '';
-        const newConfigPath = config.configPath || '';
 
         // Update configPath in wsManager for PREFIX resolution
-        wsManager.setConfigPath(newConfigPath);
-
-        // Check if Java-relevant settings actually changed
-        const javaSettingsChanged =
-            newInteropHost !== currentBbjConfig.interopHost ||
-            newInteropPort !== currentBbjConfig.interopPort ||
-            newClasspath !== currentBbjConfig.classpath;
-
-        currentBbjConfig = {
-            interopHost: newInteropHost,
-            interopPort: newInteropPort,
-            classpath: newClasspath,
-            configPath: newConfigPath
-        };
-
-        if (!javaSettingsChanged) {
-            return;
-        }
+        wsManager.setConfigPath(config.configPath || '');
 
         console.log('BBj settings changed, refreshing Java classes...');
         javaInterop.setConnectionConfig(newInteropHost, newInteropPort);

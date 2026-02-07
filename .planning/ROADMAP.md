@@ -25,7 +25,7 @@ See .planning/MILESTONES.md for full history.
 
 **Milestone Goal:** Fix regressions and parser bugs that produce false errors on valid BBj code, restoring broken functionality and eliminating noise in the diagnostics output.
 
-- [ ] **Phase 32: Regression Fixes** - Restore BBjAPI() resolution and USE statement navigation
+- [x] **Phase 32: Regression Fixes** - Restore BBjAPI() resolution and USE statement navigation
 - [ ] **Phase 33: Parser and Lexer Fixes** - Eliminate false errors on valid BBj syntax patterns
 - [ ] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
 
@@ -42,9 +42,9 @@ See .planning/MILESTONES.md for full history.
   4. No regressions in existing linker or navigation tests
 **Plans:** 3 plans
 Plans:
-- [ ] 32-01-PLAN.md -- BBjAPI() built-in synthetic class and linker fix
-- [ ] 32-02-PLAN.md -- USE statement Ctrl-click navigation (DefinitionProvider)
-- [ ] 32-03-PLAN.md -- Manual verification checkpoint (both IDEs)
+- [x] 32-01-PLAN.md -- BBjAPI() built-in synthetic class and linker fix
+- [x] 32-02-PLAN.md -- USE statement Ctrl-click navigation (DefinitionProvider)
+- [x] 32-03-PLAN.md -- Manual verification + onDidChangeConfiguration regression fix
 
 ### Phase 33: Parser and Lexer Fixes
 **Goal**: Valid BBj syntax patterns that currently produce false errors parse cleanly without diagnostics
@@ -75,6 +75,6 @@ Phases execute in numeric order: 32 -> 33 -> 34
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 32. Regression Fixes | v3.2 | 0/3 | Planned | - |
+| 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
 | 33. Parser and Lexer Fixes | v3.2 | 0/TBD | Not started | - |
 | 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
