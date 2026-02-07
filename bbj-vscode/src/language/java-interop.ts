@@ -271,6 +271,7 @@ export class JavaInteropService {
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
+        console.debug(`Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
 
         if (!javaClass.packageName) {
             // can happen if the class was not found by Java backend

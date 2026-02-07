@@ -199,6 +199,7 @@ public class InteropService {
 				}).collect(Collectors.toList());
 				return mi;
 			}).collect(Collectors.toList());
+			System.out.println("ClassInfo: " + className + " has " + classInfo.methods.size() + " methods, " + classInfo.fields.size() + " fields");
 		} catch (ClassNotFoundException exc) {
 			classInfo.fields = Collections.emptyList();
 			classInfo.methods = Collections.emptyList();
@@ -247,9 +248,11 @@ public class InteropService {
 
 	private String getProperTypeName(Class<?> clazz) {
 		if (clazz.isArray()) {
-			return clazz.getComponentType().getCanonicalName();
+			String name = clazz.getComponentType().getCanonicalName();
+			return name != null ? name : clazz.getComponentType().getName();
 		}
-		return clazz.getCanonicalName();
+		String name = clazz.getCanonicalName();
+		return name != null ? name : clazz.getName();
 	}
 
 	static class BbjClassLoader extends URLClassLoader {
