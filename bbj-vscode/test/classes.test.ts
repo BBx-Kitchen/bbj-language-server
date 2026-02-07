@@ -181,4 +181,75 @@ describe("Inheritance chain resolution", () => {
         `);
         expect(diagnostics).toHaveLength(0);
     });
+
+    test("Field declared in BBj super class resolves in subclass via #field", async () => {
+        const { diagnostics } = await validate(`
+            class public MyType
+            classend
+
+            class public Base
+                field public MyType Name$
+            classend
+
+            class public Child extends Base
+                method public doWork()
+                    #Name$
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /Name\$/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field declared in grandparent BBj class resolves", async () => {
+        const { diagnostics } = await validate(`
+            class public MyType
+            classend
+
+            class public GrandParent
+                field public MyType Title$
+            classend
+
+            class public Parent extends GrandParent
+            classend
+
+            class public Child extends Parent
+                method public doWork()
+                    #Title$
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /Title\$/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Multiple levels of field inheritance resolve correctly", async () => {
+        const { diagnostics } = await validate(`
+            class public MyType
+            classend
+
+            class public Level1
+                field public MyType Alpha$
+            classend
+
+            class public Level2 extends Level1
+                field public MyType Beta$
+            classend
+
+            class public Level3 extends Level2
+                method public doWork()
+                    #Alpha$
+                    #Beta$
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && (/Alpha\$/i.test(d.message) || /Beta\$/i.test(d.message))
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
 });
