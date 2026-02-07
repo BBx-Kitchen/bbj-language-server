@@ -55,10 +55,11 @@ Plans:
   3. Accessing `#field!` where the field is defined in a super class (not the current class) resolves without a "field not found" warning
   4. Calling `#method()` or `#super!.method()` where the method is inherited from a Java super class resolves without a linking error
   5. Existing completion and go-to-definition features continue working for directly-declared fields and methods
-**Plans:** 2 plans
+**Plans:** 3 plans
 Plans:
-- [ ] 29-01-PLAN.md -- DEF FN line-break validation fix + parameter scoping
-- [ ] 29-02-PLAN.md -- Inheritance chain depth cap + BBj super class resolution tests
+- [x] 29-01-PLAN.md -- DEF FN line-break validation fix + parameter scoping
+- [x] 29-02-PLAN.md -- Inheritance chain depth cap + BBj super class resolution tests
+- [ ] 29-03-PLAN.md -- Gap closure: field inheritance tests + DEF FN parameter non-leakage test
 
 ### Phase 30: Java Reflection & Error Reporting
 **Goal**: Java interop reflection finds recently-added methods; cyclic reference errors report the specific file and line number
@@ -89,6 +90,6 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
-| 29. DEF FN & Inheritance Resolution | 0/2 | Not started | - |
+| 29. DEF FN & Inheritance Resolution | 2/3 | In progress | - |
 | 30. Java Reflection & Error Reporting | 0/TBD | Not started | - |
 | 31. Extension Settings & File Types | 0/TBD | Not started | - |
