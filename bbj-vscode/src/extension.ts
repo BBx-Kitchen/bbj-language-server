@@ -22,6 +22,7 @@ import {
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
+let secretStorage: vscode.SecretStorage;
 
 // Function to read BBj.properties and extract classpath entry names
 function getBBjClasspathEntries(bbjHome: string | undefined): string[] {
@@ -324,13 +325,89 @@ export async function configureCompileOptions(): Promise<void> {
     });
 }
 
+/**
+ * Get EM credentials from SecretStorage
+ * Returns {username, password} object or undefined if not stored
+ */
+export async function getEMCredentials(): Promise<{username: string, password: string} | undefined> {
+    // Try token first
+    const token = await secretStorage?.get('bbj.em.token');
+    if (token) return { username: '__token__', password: token };
+    // Try stored credentials (fallback if BBj doesn't support tokens)
+    const creds = await secretStorage?.get('bbj.em.credentials');
+    if (creds) return JSON.parse(creds);
+    return undefined;
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
+    secretStorage = context.secrets;
     client = startLanguageClient(context);
     vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
     vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
     vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager);
+
+    // Register EM login command
+    vscode.commands.registerCommand("bbj.loginEM", async () => {
+        const config = vscode.workspace.getConfiguration("bbj");
+        const bbjHome = config.get<string>("home");
+
+        if (!bbjHome) {
+            vscode.window.showErrorMessage("Please set bbj.home first", "Open Settings").then(sel => {
+                if (sel === "Open Settings") {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'bbj.home');
+                }
+            });
+            return;
+        }
+
+        // Prompt for credentials
+        const username = await vscode.window.showInputBox({
+            prompt: "EM Username",
+            value: "admin",
+            ignoreFocusOut: true
+        });
+        if (!username) return;
+
+        const password = await vscode.window.showInputBox({
+            prompt: "EM Password",
+            password: true,
+            ignoreFocusOut: true
+        });
+        if (password === undefined) return;
+
+        // Launch em-login.bbj to validate credentials and get token
+        const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
+        const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
+
+        try {
+            const result = await new Promise<string>((resolve, reject) => {
+                const { exec } = require('child_process');
+                exec(`"${bbj}" -q "${emLoginPath}" - "${username}" "${password}"`,
+                    { timeout: 15000 },
+                    (err: any, stdout: string, stderr: string) => {
+                        if (err) {
+                            reject(new Error(stderr || err.message));
+                            return;
+                        }
+                        const output = stdout.trim();
+                        if (output.startsWith('ERROR:')) {
+                            reject(new Error(output.substring(6)));
+                            return;
+                        }
+                        resolve(output);
+                    }
+                );
+            });
+
+            // Store token in SecretStorage
+            await context.secrets.store('bbj.em.token', result);
+            vscode.window.showInformationMessage('Successfully logged in to Enterprise Manager');
+        } catch (error) {
+            vscode.window.showErrorMessage(`EM login failed: ${error}`);
+        }
+    });
     vscode.commands.registerCommand("bbj.run", Commands.run);
     vscode.commands.registerCommand("bbj.runBUI", Commands.runBUI);
     vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);

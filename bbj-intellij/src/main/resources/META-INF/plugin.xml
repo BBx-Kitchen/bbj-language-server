@@ -23,6 +23,13 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
+        <action id="bbj.loginEM"
+                class="com.basis.bbj.intellij.actions.BbjEMLoginAction"
+                text="Login to Enterprise Manager"
+                description="Authenticate with BBj Enterprise Manager and store JWT token">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
         <!-- BBj Run Actions (GUI, BUI, DWC) -->
         <action id="bbj.runGui"
                 class="com.basis.bbj.intellij.actions.BbjRunGuiAction"

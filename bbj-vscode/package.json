@@ -72,6 +72,11 @@
       },
       {
         "category": "BBj",
+        "command": "bbj.loginEM",
+        "title": "Login to Enterprise Manager"
+      },
+      {
+        "category": "BBj",
         "command": "bbj.run",
         "title": "Run As BBj Program",
         "icon": {
@@ -277,22 +282,13 @@
           "description": "BBj Classpath entry name to use for starting applications (e.g., 'bbj_default', 'addon', 'barista'). Run 'BBj: Show Available Classpath Entries' to see all available options.",
           "scope": "window"
         },
-        "bbj.web.username": {
+        "bbj.em.url": {
           "type": [
             "string",
             "null"
           ],
-          "default": "admin",
-          "description": "EM username",
-          "scope": "window"
-        },
-        "bbj.web.password": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "default": "admin123",
-          "description": "EM password",
+          "default": null,
+          "description": "Enterprise Manager URL (e.g., http://localhost:8888). Used for EM login and web-based run commands.",
           "scope": "window"
         },
         "bbj.web.apps": {
@@ -513,6 +509,7 @@
     "onCommand:bbj.config",
     "onCommand:bbj.properties",
     "onCommand:bbj.em",
+    "onCommand:bbj.loginEM",
     "onCommand:bbj.run",
     "onCommand:bbj.runBUI",
     "onCommand:bbj.runDWC",
