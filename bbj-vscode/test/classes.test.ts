@@ -227,6 +227,144 @@ describe("Inheritance chain resolution", () => {
         expect(fieldErrors).toHaveLength(0);
     });
 
+    test("Field with ! suffix declared in BBj super class resolves in subclass", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+                field public Base A!
+            classend
+
+            class public Child extends Base
+                method public doWork()
+                    #A!
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field with ! suffix in cross-file super class resolves", async () => {
+        const { document: baseDoc } = await validate(`
+            class public Base
+                field public Base A!
+            classend
+        `);
+        const { diagnostics } = await validate(`
+            use ::${basename(baseDoc.uri.fsPath)}::Base
+
+            class public Child extends Base
+                method public doWork()
+                    #A!
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field with ! suffix resolves even when field type is unresolvable", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+                field public SomeUnknownType A!
+            classend
+
+            class public Child extends Base
+                method public doWork()
+                    #A!
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field in super class resolves when parent is defined AFTER child in same file", async () => {
+        const { diagnostics } = await validate(`
+            class public Child extends Base
+                method public doWork()
+                    #A!
+                methodend
+            classend
+
+            class public Base
+                field public Base A!
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field with ! suffix resolves when parent has no explicit field type class", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+                field public BBjString Name$
+                field public BBjNumber Count%
+                field public Base A!
+            classend
+
+            class public Child extends Base
+                method public doWork()
+                    #A!
+                    #Name$
+                    #Count%
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /(A!|Name\$|Count%)/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
+    test("Field with ! suffix in cross-file super class (child loaded first) resolves", async () => {
+        const { document: baseDoc } = await validate(`
+            class public Base2
+                field public Base2 A!
+            classend
+        `);
+        const { diagnostics } = await validate(`
+            use ::${basename(baseDoc.uri.fsPath)}::Base2
+
+            class public Child2 extends Base2
+                method public doWork()
+                    #A!
+                methodend
+            classend
+        `);
+        const allErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve')
+        );
+        expect(allErrors.map(d => d.message)).toEqual([]);
+    });
+
+    test("Field resolves when extends uses qualified BBj class name", async () => {
+        const { document: baseDoc } = await validate(`
+            class public Base3
+                field public Base3 A!
+            classend
+        `);
+        const basePath = basename(baseDoc.uri.fsPath);
+        const { diagnostics } = await validate(`
+            class public Child3 extends ::${basePath}::Base3
+                method public doWork()
+                    #A!
+                methodend
+            classend
+        `);
+        const fieldErrors = diagnostics.filter(d =>
+            d.message.includes('Could not resolve') && /A!/i.test(d.message)
+        );
+        expect(fieldErrors).toHaveLength(0);
+    });
+
     test("Multiple levels of field inheritance resolve correctly", async () => {
         const { diagnostics } = await validate(`
             class public MyType

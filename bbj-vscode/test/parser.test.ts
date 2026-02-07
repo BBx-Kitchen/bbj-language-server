@@ -2308,4 +2308,5 @@ PRINT getResult$, isNew%, readData
         `)
         expect(document.parseResult.parserErrors.length).toBe(0)
     })
+
 });

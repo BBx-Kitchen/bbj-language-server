@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 29-def-fn-inheritance-resolution
 source: [29-01-SUMMARY.md, 29-02-SUMMARY.md, 29-03-SUMMARY.md]
 started: 2026-02-07T12:10:00Z
-updated: 2026-02-07T12:18:00Z
+updated: 2026-02-07T12:25:00Z
 ---
 
 ## Current Test
@@ -48,21 +48,29 @@ skipped: 0
 ## Gaps
 
 - truth: "DEF FN parameters show with correct suffix ($) in completion and don't appear in completion outside FN body"
-  status: failed
+  status: cannot-reproduce
   reason: "User reported: In def fnIsText(_f$,_t$) I see '_f' and '_t' in code completion, not _f$ or _t$."
   severity: major
   test: 2
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Cannot reproduce in unit tests. Code correctly preserves $ suffix through grammar -> AST -> scope -> completion pipeline. Likely VS Code word-based suggestions showing _f alongside LSP-provided _f$."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-scope-local.ts"
+      issue: "No bug found — param.name correctly includes $ suffix"
+    - path: "bbj-vscode/src/language/bbj-completion.ts"
+      issue: "No bug found — NamedElement params pass through unchanged"
+  missing:
+    - "6 regression tests added to completion-test.test.ts (all pass)"
+  debug_session: ".planning/debug/def-fn-param-completion.md"
 
 - truth: "Super class field access resolves without errors in subclass"
-  status: failed
+  status: fixed
   reason: "User reported: Not okay. Get 'Could not resolve reference to NamedElement named A!'. [in test123.bbj:31]"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "shouldRelink override in BBjDocumentBuilder was too aggressive — only checked isAffected() but not whether document had unresolved references. When parent class loaded via addImportedBBjDocuments, child doc with unresolved extends/field refs was never relinked."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-document-builder.ts"
+      issue: "shouldRelink override removed Langium's default error-based relinking behavior"
+  missing:
+    - "Restore error-based relinking during import flow (isImportingBBjDocuments flag)"
+  debug_session: ".planning/debug/resolved/super-class-field-access.md"

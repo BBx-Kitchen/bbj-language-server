@@ -43,8 +43,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         await super.buildDocuments(documents, options, cancelToken);
         // Collect and add referenced BBj documents after the initial build.
         // Skip if we're already inside an import cycle to prevent infinite loops:
-        // buildDocuments → addImportedBBjDocuments → update → shouldRelink (marks
-        // docs with ref errors) → buildDocuments → addImportedBBjDocuments → ...
+        // buildDocuments -> addImportedBBjDocuments -> update -> shouldRelink (marks
+        // docs with ref errors) -> buildDocuments -> addImportedBBjDocuments -> ...
         if (!this.isImportingBBjDocuments) {
             await this.addImportedBBjDocuments(documents, options, cancelToken);
         }
@@ -56,12 +56,27 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
      * Langium behavior relinks any document with reference errors on every
      * change, which causes a cascading rebuild loop when combined with
      * transitive USE import resolution.
+     *
+     * However, during the import flow (isImportingBBjDocuments), we restore
+     * the default behavior of relinking documents with unresolved references.
+     * This is necessary because when new external documents are loaded via
+     * addImportedBBjDocuments, existing documents may have unresolved
+     * references (e.g., extends clauses, field accesses) that can now be
+     * resolved with the newly available documents. The isImportingBBjDocuments
+     * flag already prevents infinite loops by blocking recursive imports.
      */
     protected override shouldRelink(document: LangiumDocument, changedUris: Set<string>): boolean {
-        // Don't relink just because of existing reference errors — those errors
-        // won't resolve by relinking the same document. Only relink if the
-        // document is actually affected by a changed URI (i.e., one of its
-        // dependencies changed).
+        // During import resolution, also relink documents that have unresolved
+        // references -- the newly imported documents may resolve them.
+        if (this.isImportingBBjDocuments) {
+            if (document.references.some(ref => ref.error !== undefined)) {
+                return true;
+            }
+        }
+        // For normal incremental updates, only relink if the document is
+        // actually affected by a changed URI (i.e., one of its resolved
+        // dependencies changed). This avoids relinking 25+ documents on
+        // every keystroke just because they have some unresolvable references.
         return this.indexManager.isAffected(document, changedUris);
     }
 
