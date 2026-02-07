@@ -32,7 +32,9 @@ public class BbjSettingsComponent {
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
     private final ComboBox<String> logLevelCombo;
+    private final JBTextField javaInteropHostField;
     private final JTextField javaInteropPortField;
+    private final JBTextField configPathField;
     private final JTextField emUsernameField;
     private final JTextField emPasswordField;
     private final JCheckBox autoSaveCheckbox;
@@ -107,6 +109,14 @@ public class BbjSettingsComponent {
         ));
         logLevelCombo.setSelectedItem("Info");
 
+        // --- Config Path field ---
+        configPathField = new JBTextField();
+        configPathField.getEmptyText().setText("{BBj Home}/cfg/config.bbx (default)");
+
+        // --- Java Interop Host field ---
+        javaInteropHostField = new JBTextField();
+        javaInteropHostField.setText("localhost");
+
         // --- Java Interop Port field ---
         javaInteropPortField = new JBTextField();
         javaInteropPortField.setText("5008");
@@ -162,6 +172,7 @@ public class BbjSettingsComponent {
         mainPanel = FormBuilder.createFormBuilder()
             .addComponent(new TitledSeparator("BBj Environment"))
             .addLabeledComponent(new JBLabel("BBj home:"), bbjHomeField, 1, false)
+            .addLabeledComponent(new JBLabel("config.bbx Path:"), configPathField, 1, false)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -174,7 +185,7 @@ public class BbjSettingsComponent {
             .addLabeledComponent(new JBLabel("Log level:"), logLevelCombo, 1, false)
 
             .addComponent(new TitledSeparator("Java Interop"))
-            .addLabeledComponent(new JBLabel("Host:"), new JBLabel("localhost"), 1, false)
+            .addLabeledComponent(new JBLabel("Host:"), javaInteropHostField, 1, false)
             .addLabeledComponent(new JBLabel("Port:"), javaInteropPortField, 1, false)
 
             .addComponent(new TitledSeparator("Run Commands"))
@@ -276,6 +287,14 @@ public class BbjSettingsComponent {
         logLevelCombo.setSelectedItem(level);
     }
 
+    public @NotNull String getJavaInteropHost() {
+        return javaInteropHostField.getText().trim();
+    }
+
+    public void setJavaInteropHost(@NotNull String host) {
+        javaInteropHostField.setText(host);
+    }
+
     public int getJavaInteropPort() {
         String text = javaInteropPortField.getText().trim();
         if (text.isEmpty()) {
@@ -290,6 +309,14 @@ public class BbjSettingsComponent {
 
     public void setJavaInteropPort(int port) {
         javaInteropPortField.setText(String.valueOf(port));
+    }
+
+    public @NotNull String getConfigPath() {
+        return configPathField.getText().trim();
+    }
+
+    public void setConfigPath(@NotNull String path) {
+        configPathField.setText(path);
     }
 
     public @NotNull String getEmUsername() {

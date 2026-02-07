@@ -50,7 +50,9 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getNodeJsPath(), state.nodeJsPath)
             || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry)
             || !Objects.equals(myComponent.getLogLevel(), state.logLevel)
+            || !Objects.equals(myComponent.getJavaInteropHost(), state.javaInteropHost)
             || state.javaInteropPort != myComponent.getJavaInteropPort()
+            || !Objects.equals(myComponent.getConfigPath(), state.configPath)
             || !Objects.equals(myComponent.getEmUsername(), state.emUsername)
             || !Objects.equals(myComponent.getEmPassword(), state.emPassword)
             || state.autoSaveBeforeRun != myComponent.isAutoSaveBeforeRun();
@@ -66,7 +68,9 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.nodeJsPath = myComponent.getNodeJsPath();
         state.classpathEntry = myComponent.getClasspathEntry();
         state.logLevel = myComponent.getLogLevel();
+        state.javaInteropHost = myComponent.getJavaInteropHost();
         state.javaInteropPort = myComponent.getJavaInteropPort();
+        state.configPath = myComponent.getConfigPath();
         state.emUsername = myComponent.getEmUsername();
         state.emPassword = myComponent.getEmPassword();
         state.autoSaveBeforeRun = myComponent.isAutoSaveBeforeRun();
@@ -117,6 +121,13 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         }
         myComponent.setLogLevel(logLevel);
 
+        // Load java-interop host
+        String javaInteropHost = state.javaInteropHost;
+        if (javaInteropHost == null || javaInteropHost.isEmpty()) {
+            javaInteropHost = "localhost";
+        }
+        myComponent.setJavaInteropHost(javaInteropHost);
+
         // Load java-interop port with auto-detection
         int javaInteropPort = state.javaInteropPort;
         if (javaInteropPort == 5008) {
@@ -130,6 +141,9 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             }
         }
         myComponent.setJavaInteropPort(javaInteropPort);
+
+        // Load config.bbx path
+        myComponent.setConfigPath(state.configPath != null ? state.configPath : "");
 
         // Load EM credentials and auto-save setting
         myComponent.setEmUsername(state.emUsername != null ? state.emUsername : "admin");

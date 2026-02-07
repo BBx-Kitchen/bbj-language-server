@@ -111,18 +111,23 @@ public final class BbjJavaInteropService implements Disposable {
     }
 
     /**
-     * Check TCP connection to java-interop on localhost:port.
+     * Check TCP connection to java-interop on host:port.
      * Implements grace period to avoid flashing UI on transient disconnects.
      */
     private void checkConnection() {
-        // Read port from settings at check time (not cached - user may change it)
-        int port = BbjSettings.getInstance().getState().javaInteropPort;
+        // Read host and port from settings at check time (not cached - user may change them)
+        BbjSettings.State state = BbjSettings.getInstance().getState();
+        int port = state.javaInteropPort;
+        String host = state.javaInteropHost;
+        if (host == null || host.isEmpty()) {
+            host = "localhost";
+        }
 
         InteropStatus newStatus;
         try {
             // Attempt TCP connection with timeout
             try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress("127.0.0.1", port), TCP_TIMEOUT_MS);
+                socket.connect(new InetSocketAddress(host, port), TCP_TIMEOUT_MS);
                 // Connection successful
                 newStatus = InteropStatus.CONNECTED;
                 disconnectedSince = 0;  // Clear grace period
