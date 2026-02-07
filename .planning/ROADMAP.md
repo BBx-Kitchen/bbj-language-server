@@ -86,10 +86,10 @@ Plans:
   4. EM access uses token-based authentication; no plaintext passwords are stored in settings
 **Plans:** 4 plans
 Plans:
-- [ ] 31-01-PLAN.md -- .bbx merged into BBj language + configurable interop host/port (VS Code + Language Server)
-- [ ] 31-02-PLAN.md -- .bbx merged into BBj file type + configurable interop host (IntelliJ)
-- [ ] 31-03-PLAN.md -- EM token-based auth: BBj login stub + VS Code SecretStorage + run command updates
-- [ ] 31-04-PLAN.md -- EM token-based auth: IntelliJ CredentialStore + login action + run command updates
+- [ ] 31-01-PLAN.md -- .bbx merged into BBj + configurable interop host/port + config.bbx path (VS Code + LS)
+- [ ] 31-02-PLAN.md -- .bbx merged into BBj + configurable interop host + config.bbx path (IntelliJ)
+- [ ] 31-03-PLAN.md -- EM token-based auth: BBj login stub + VS Code SecretStorage + auto-prompt run commands
+- [ ] 31-04-PLAN.md -- EM token-based auth: IntelliJ CredentialStore + auto-prompt login + run command updates
 
 ## Progress
 
