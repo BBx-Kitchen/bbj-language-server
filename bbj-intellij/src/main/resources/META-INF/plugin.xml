@@ -16,6 +16,13 @@
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
 
+        <action id="bbj.refreshJavaClasses"
+                class="com.basis.bbj.intellij.actions.BbjRefreshJavaClassesAction"
+                text="Refresh Java Classes"
+                description="Reload Java classpath and clear cached class information">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+
         <!-- BBj Run Actions (GUI, BUI, DWC) -->
         <action id="bbj.runGui"
                 class="com.basis.bbj.intellij.actions.BbjRunGuiAction"
