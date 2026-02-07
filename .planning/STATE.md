@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 29 of 31 (DEF FN & Inheritance Resolution)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-07 -- Phase 28 complete (2 plans, verified)
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-07 -- Completed 29-02-PLAN.md
 
-Progress: [███░░░░░░░] 25%
+Progress: [███░░░░░░░] 26%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 58+ across all milestones
-- Average duration: ~7.5 min per plan
-- Total execution time: ~229 min
+- Total plans completed: 59+ across all milestones
+- Average duration: ~7.4 min per plan
+- Total execution time: ~236 min
 
 *Updated after each plan completion*
 
@@ -57,6 +57,8 @@ See archived decisions in:
 | Offset-based position tracking for use-before-assignment | 28-02 | Handles compound statements on same line correctly |
 | ArrayDecl excluded from isVariableDecl DECLARE branch in scope computation | 28-02 | ArrayDecl extends VariableDecl but needs different scope holder |
 | Exact $type check for DECLARE skip instead of isVariableDecl() | 28-02 | isVariableDecl matches subtypes (ArrayDecl, FieldDecl, ParameterDecl) |
+| MAX_INHERITANCE_DEPTH set to 20 | 29-02 | Prevents infinite loops from cyclic or pathologically deep inheritance chains |
+| Skip enhanced error messages for unresolved class members | 29-02 | Langium linker errors adequate; adding chain info would duplicate diagnostics |
 
 ### Known Issues
 
@@ -76,6 +78,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Phase 28 complete, verified
+Stopped at: Completed 29-02-PLAN.md
 Resume file: None
-Next: `/gsd:discuss-phase 29`
+Next: Continue Phase 29 planning
