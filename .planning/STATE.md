@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 30 of 31 (Java Reflection & Error Reporting)
-Plan: 0 of TBD in current phase
-Status: Not started
-Last activity: 2026-02-07 -- Completed Phase 29
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-07 -- Completed 30-01-PLAN.md
 
-Progress: [█████░░░░░] 50%
+Progress: [█████░░░░░] 51%
 
 ## Milestone History
 
@@ -65,6 +65,8 @@ See archived decisions in:
 | Field accessor test changed to multiple-level field inheritance | 29-03 | Auto-generated field accessors are BBj runtime feature, not language server feature |
 | DEF FN parameter non-leakage verified via unresolved reference | 29-03 | Parameters outside FN body produce "Could not resolve" warning, proving isolation |
 | Dummy class types in tests to avoid external dependencies | 29-03 | EmptyFileSystem workaround - define test-local types instead of BBjString |
+| System.out.println for Java interop diagnostics | 30-01 | Simple and effective for debugging; proper logging framework not needed |
+| getName() fallback for null canonical names | 30-01 | Handles anonymous/local classes where getCanonicalName() returns null |
 
 ### Known Issues
 
@@ -84,7 +86,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Phase 29 complete, Phase 30 not started
+Last session: 2026-02-07T08:20:52Z
+Stopped at: Completed 30-01-PLAN.md
 Resume file: None
-Next: Plan Phase 30 (Java Reflection & Error Reporting)
+Next: Continue Phase 30 execution or plan next plan
