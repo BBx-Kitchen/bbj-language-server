@@ -56,7 +56,10 @@ Plans:
   3. `select` statements with `from`/`where` clauses produce no false line-break validation errors
   4. `cast(BBjString[], someVar!)` with array type notation `[]` parses correctly
   5. Existing parser tests continue to pass (no regressions)
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 33-01-PLAN.md -- Fix void return type (PARSE-01) and cast array notation (PARSE-04)
+- [ ] 33-02-PLAN.md -- Fix DEF FN suffixed variables (PARSE-02) and add SELECT verb (PARSE-03)
 
 ### Phase 34: Diagnostic Polish
 **Goal**: Settings display the correct product name and USE statements with bad file paths get actionable error messages
@@ -76,5 +79,5 @@ Phases execute in numeric order: 32 -> 33 -> 34
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
-| 33. Parser and Lexer Fixes | v3.2 | 0/TBD | Not started | - |
+| 33. Parser and Lexer Fixes | v3.2 | 0/2 | Not started | - |
 | 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
