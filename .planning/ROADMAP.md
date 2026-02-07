@@ -40,7 +40,11 @@ See .planning/MILESTONES.md for full history.
   2. Code completion works on variables assigned from `BBjAPI()` (e.g., `api!.` shows methods)
   3. Ctrl-click on a class name in a `USE` statement navigates to the class definition file resolved via PREFIX path
   4. No regressions in existing linker or navigation tests
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 32-01-PLAN.md -- BBjAPI() built-in synthetic class and linker fix
+- [ ] 32-02-PLAN.md -- USE statement Ctrl-click navigation (DefinitionProvider)
+- [ ] 32-03-PLAN.md -- Manual verification checkpoint (both IDEs)
 
 ### Phase 33: Parser and Lexer Fixes
 **Goal**: Valid BBj syntax patterns that currently produce false errors parse cleanly without diagnostics
@@ -71,6 +75,6 @@ Phases execute in numeric order: 32 -> 33 -> 34
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 32. Regression Fixes | v3.2 | 0/TBD | Not started | - |
+| 32. Regression Fixes | v3.2 | 0/3 | Planned | - |
 | 33. Parser and Lexer Fixes | v3.2 | 0/TBD | Not started | - |
 | 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
