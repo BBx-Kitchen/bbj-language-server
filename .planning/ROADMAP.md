@@ -69,7 +69,11 @@ Plans:
   1. Methods added in recent BBj versions (e.g., `setSlot()` on BBjControl) are found by the Java interop reflection and appear in completion results
   2. Cyclic reference error messages in the Problems panel include the source filename and line number where the cycle was detected
   3. No regression in existing Java class/method completion for standard BBj API classes
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 30-01-PLAN.md -- Java reflection investigation & fix for missing methods (e.g., setSlot)
+- [ ] 30-02-PLAN.md -- Cyclic reference error reporting with file/line info and Error severity
+- [ ] 30-03-PLAN.md -- Refresh Java Classes command for VS Code and IntelliJ
 
 ### Phase 31: Extension Settings & File Types
 **Goal**: .bbx files get full BBj treatment; BBj paths, interop connection, and EM auth are configurable in extension settings
@@ -91,5 +95,5 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 |-------|----------------|--------|-----------|
 | 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
 | 29. DEF FN & Inheritance Resolution | 3/3 | ✓ Complete | 2026-02-07 |
-| 30. Java Reflection & Error Reporting | 0/TBD | Not started | - |
+| 30. Java Reflection & Error Reporting | 0/3 | Not started | - |
 | 31. Extension Settings & File Types | 0/TBD | Not started | - |
