@@ -25,7 +25,7 @@ See .planning/MILESTONES.md for full history.
 **Milestone Goal:** Close all PRIO 1+2 GitHub issues -- fix variable scoping bugs, inheritance resolution, Java reflection staleness, and make extension settings configurable.
 
 - [x] **Phase 28: Variable Scoping & Declaration Order** - Variables respect declaration position and type annotations in program scope
-- [ ] **Phase 29: DEF FN & Inheritance Resolution** - DEF FN works correctly in class methods; field/method access resolves through inheritance chains
+- [x] **Phase 29: DEF FN & Inheritance Resolution** - DEF FN works correctly in class methods; field/method access resolves through inheritance chains
 - [ ] **Phase 30: Java Reflection & Error Reporting** - Java interop finds new methods; error messages include file and line info
 - [ ] **Phase 31: Extension Settings & File Types** - .bbx file support; configurable paths, ports, and auth
 
@@ -59,7 +59,7 @@ Plans:
 Plans:
 - [x] 29-01-PLAN.md -- DEF FN line-break validation fix + parameter scoping
 - [x] 29-02-PLAN.md -- Inheritance chain depth cap + BBj super class resolution tests
-- [ ] 29-03-PLAN.md -- Gap closure: field inheritance tests + DEF FN parameter non-leakage test
+- [x] 29-03-PLAN.md -- Gap closure: field inheritance tests + DEF FN parameter non-leakage test
 
 ### Phase 30: Java Reflection & Error Reporting
 **Goal**: Java interop reflection finds recently-added methods; cyclic reference errors report the specific file and line number
@@ -90,6 +90,6 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
-| 29. DEF FN & Inheritance Resolution | 2/3 | In progress | - |
+| 29. DEF FN & Inheritance Resolution | 3/3 | ✓ Complete | 2026-02-07 |
 | 30. Java Reflection & Error Reporting | 0/TBD | Not started | - |
 | 31. Extension Settings & File Types | 0/TBD | Not started | - |

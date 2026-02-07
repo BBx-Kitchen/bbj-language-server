@@ -10,19 +10,19 @@ Requirements for v3.1 PRIO 1+2 Issue Burndown. Each maps to a GitHub issue.
 ### Scoping & Variable Resolution
 
 - [x] **SCOPE-01**: Variables only visible after declaration/initialization in program scope (#4)
-- [ ] **SCOPE-02**: DEF FN parameters scoped correctly inside function expression/body (#226)
-- [ ] **SCOPE-03**: Super class field access via `#field!` resolves through inheritance chain (#240)
+- [x] **SCOPE-02**: DEF FN parameters scoped correctly inside function expression/body (#226)
+- [x] **SCOPE-03**: Super class field access via `#field!` resolves through inheritance chain (#240)
 - [x] **SCOPE-04**: DREAD recognizes variables already declared by DIM (array subscript form) (#247)
 - [x] **SCOPE-05**: DECLARE type information applies to variable usage before the DECLARE statement (#265)
 
 ### Java Interop & Linking
 
-- [ ] **JAVA-01**: Methods inherited from Java super classes resolve correctly when invoked via `#method()` or `#super!.method()` (#85)
+- [x] **JAVA-01**: Methods inherited from Java super classes resolve correctly when invoked via `#method()` or `#super!.method()` (#85)
 - [ ] **JAVA-02**: Recently-added Java methods (e.g. setSlot()) found by reflection (#180)
 
 ### Parser & Validation
 
-- [ ] **PARSE-01**: DEF FN inside class methods doesn't trigger line-break validation error (#226)
+- [x] **PARSE-01**: DEF FN inside class methods doesn't trigger line-break validation error (#226)
 - [ ] **PARSE-02**: Cyclic reference error messages include source filename and line number (#245)
 
 ### File Type & IDE
@@ -78,13 +78,13 @@ Deferred to later milestones. From remaining open issues.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SCOPE-01 | Phase 28 | Complete |
-| SCOPE-02 | Phase 29 | Pending |
-| SCOPE-03 | Phase 29 | Pending |
+| SCOPE-02 | Phase 29 | Complete |
+| SCOPE-03 | Phase 29 | Complete |
 | SCOPE-04 | Phase 28 | Complete |
 | SCOPE-05 | Phase 28 | Complete |
-| JAVA-01 | Phase 29 | Pending |
+| JAVA-01 | Phase 29 | Complete |
 | JAVA-02 | Phase 30 | Pending |
-| PARSE-01 | Phase 29 | Pending |
+| PARSE-01 | Phase 29 | Complete |
 | PARSE-02 | Phase 30 | Pending |
 | IDE-01 | Phase 31 | Pending |
 | CONF-01 | Phase 31 | Pending |

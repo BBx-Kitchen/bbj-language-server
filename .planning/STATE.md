@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 Phase 29 - DEF FN & Inheritance Resolution
+**Current focus:** v3.1 Phase 30 - Java Reflection & Error Reporting
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 29 of 31 (DEF FN & Inheritance Resolution)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed 29-03-PLAN.md
+Phase: 30 of 31 (Java Reflection & Error Reporting)
+Plan: 0 of TBD in current phase
+Status: Not started
+Last activity: 2026-02-07 -- Completed Phase 29
 
-Progress: [███░░░░░░░] 28%
+Progress: [█████░░░░░] 50%
 
 ## Milestone History
 
@@ -85,6 +85,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 29-03-PLAN.md (Phase 29 complete)
+Stopped at: Phase 29 complete, Phase 30 not started
 Resume file: None
-Next: Begin Phase 30 or verify v3.1 milestone completion
+Next: Plan Phase 30 (Java Reflection & Error Reporting)
