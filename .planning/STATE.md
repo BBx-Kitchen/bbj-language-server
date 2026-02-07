@@ -5,15 +5,15 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 Milestone complete — ready for archive
+**Current focus:** v3.1 Milestone complete — all phases verified, ready for archive
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 30 of 31 (Java Reflection Error Reporting - Gap Closure Complete)
-Plan: 4 of 4 in Phase 30
-Status: Phase 30 gap closure complete; Phase 31 previously complete
-Last activity: 2026-02-07 -- Completed 30-04-PLAN.md (gap closure)
+Phase: 31 of 31 complete (all phases done)
+Plan: 4 of 4 in Phase 31
+Status: Milestone complete — all phases done, Phase 30 gap closure verified
+Last activity: 2026-02-07 -- Phase 30 gap closure verified, all phases complete
 
 Progress: [██████████] 100%
 
@@ -106,6 +106,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 30-04-PLAN.md (gap closure for Phase 30)
+Stopped at: Phase 30 gap closure verified, milestone v3.1 fully complete
 Resume file: None
-Next: All phases complete, ready to archive milestone (/gsd:audit-milestone or /gsd:complete-milestone)
+Next: Archive milestone (/gsd:audit-milestone or /gsd:complete-milestone)

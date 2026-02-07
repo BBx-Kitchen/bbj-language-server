@@ -26,7 +26,7 @@ See .planning/MILESTONES.md for full history.
 
 - [x] **Phase 28: Variable Scoping & Declaration Order** - Variables respect declaration position and type annotations in program scope
 - [x] **Phase 29: DEF FN & Inheritance Resolution** - DEF FN works correctly in class methods; field/method access resolves through inheritance chains
-- [ ] **Phase 30: Java Reflection & Error Reporting** - Java interop finds new methods; error messages include file and line info
+- [x] **Phase 30: Java Reflection & Error Reporting** - Java interop finds new methods; error messages include file and line info
 - [x] **Phase 31: Extension Settings & File Types** - .bbx file support; configurable paths, ports, and auth
 
 ## Phase Details
@@ -74,7 +74,7 @@ Plans:
 - [x] 30-01-PLAN.md -- Java reflection investigation & fix for missing methods (e.g., setSlot)
 - [x] 30-02-PLAN.md -- Cyclic reference error reporting with file/line info and Error severity
 - [x] 30-03-PLAN.md -- Refresh Java Classes command for VS Code and IntelliJ
-- [ ] 30-04-PLAN.md -- Gap closure: fix false positive cyclic detection + add cyclic inheritance validator
+- [x] 30-04-PLAN.md -- Gap closure: fix false positive cyclic detection + add cyclic inheritance validator
 
 ### Phase 31: Extension Settings & File Types
 **Goal**: .bbx files get full BBj treatment; BBj paths, interop connection, and EM auth are configurable in extension settings
@@ -101,5 +101,5 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 |-------|----------------|--------|-----------|
 | 28. Variable Scoping & Declaration Order | 2/2 | Complete | 2026-02-07 |
 | 29. DEF FN & Inheritance Resolution | 3/3 | Complete | 2026-02-07 |
-| 30. Java Reflection & Error Reporting | 3/4 | Gap closure | - |
+| 30. Java Reflection & Error Reporting | 4/4 | Complete | 2026-02-07 |
 | 31. Extension Settings & File Types | 4/4 | Complete | 2026-02-07 |
