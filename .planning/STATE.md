@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 28 of 31 (Variable Scoping & Declaration Order)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-07 -- Completed 28-01-PLAN.md
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 28-02-PLAN.md
 
-Progress: [██░░░░░░░░] ~12%
+Progress: [███░░░░░░░] ~25%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 56+ across all milestones
+- Total plans completed: 58+ across all milestones
 - Average duration: ~7.5 min per plan
-- Total execution time: ~213 min
+- Total execution time: ~229 min
 
 *Updated after each plan completion*
 
@@ -54,6 +54,9 @@ See archived decisions in:
 | Plain assignments are LetStatements, no ExpressionStatement handling needed | 28-01 | Grammar parses `x = 5` as LetStatement with optional LET keyword |
 | Hint severity for use-before-assignment | 28-01 | Gentle guidance, avoids false positive noise |
 | Case-insensitive DECLARE type comparison | 28-01 | BBj is case-insensitive for identifiers |
+| Offset-based position tracking for use-before-assignment | 28-02 | Handles compound statements on same line correctly |
+| ArrayDecl excluded from isVariableDecl DECLARE branch in scope computation | 28-02 | ArrayDecl extends VariableDecl but needs different scope holder |
+| Exact $type check for DECLARE skip instead of isVariableDecl() | 28-02 | isVariableDecl matches subtypes (ArrayDecl, FieldDecl, ParameterDecl) |
 
 ### Known Issues
 
@@ -73,6 +76,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 28-01-PLAN.md
+Stopped at: Completed 28-02-PLAN.md (Phase 28 complete)
 Resume file: None
-Next: `/gsd:execute-plan 28-02`
+Next: Phase 29
