@@ -88,6 +88,14 @@ export class BBjValidator {
             return;
         }
         const typeArg = methodCall.args[0].expression;
+
+        // Check if typeArg is an ArrayElement with empty indices (e.g., Type[])
+        // This represents array type notation like cast(BBjString[], x!)
+        // Per user decision: just stop the false error, don't add type resolution for array casts
+        if (isArrayElement(typeArg) && typeArg.indices.length === 0 && !typeArg.all) {
+            return;
+        }
+
         let typeResolved = false;
         if (isBBjTypeRef(typeArg)) {
             typeResolved = typeArg.klass.ref !== undefined;

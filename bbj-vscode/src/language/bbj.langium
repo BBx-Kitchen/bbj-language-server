@@ -350,7 +350,7 @@ MethodDecl returns MethodDecl:
 ;
 
 fragment MethodDeclStart returns MethodDecl:
-    'METHOD' Visibility Static (returnType=QualifiedClass (array?='[' ']')? )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
+    'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (array?='[' ']')?) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
 InterfaceMethodDecl returns MethodDecl:
@@ -952,6 +952,7 @@ interface FieldDecl extends VariableDecl {
 interface MethodDecl extends NamedElement {
     visibility?: string
     static?: boolean
+    voidReturn?: boolean
     returnType?: QualifiedClass
     array?: boolean
     comments: CommentStatement[]
