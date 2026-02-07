@@ -414,6 +414,33 @@ export class JavaInteropService {
         });
     }
 
+    /**
+     * Clears all cached Java class data, disconnects the current connection,
+     * and resets the classpath document. Call this before reloading classpath.
+     */
+    public clearCache(): void {
+        // Clear resolved classes cache
+        this._resolvedClasses.clear();
+
+        // Clear children-of-by-name map
+        this.childrenOfByName.clear();
+
+        // Clear java.lang.Object cache
+        this.JAVA_LANG_OBJECT = undefined;
+
+        // Reset classpath document arrays
+        this.classpath.packages = [];
+        this.classpath.classes = [];
+
+        // Disconnect existing connection so a fresh one is created
+        if (this.connection) {
+            this.connection.dispose();
+            this.connection = undefined;
+        }
+
+        console.log('Java interop cache cleared');
+    }
+
     private async acquireLock(): Promise<void> {
         let release: () => void;
         const lock = new Promise<void>((resolve) => (release = resolve));

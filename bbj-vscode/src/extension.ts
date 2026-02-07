@@ -339,6 +339,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
     vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions);
 
+    vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
+        if (!client) {
+            vscode.window.showErrorMessage('BBj language server not running');
+            return;
+        }
+        try {
+            await client.sendRequest('bbj/refreshJavaClasses');
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
+        }
+    });
+
     // Register command to show available classpath entries
     vscode.commands.registerCommand("bbj.showClasspathEntries", async () => {
         const config = vscode.workspace.getConfiguration("bbj");
@@ -421,7 +433,8 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
         documentSelector: [{ scheme: 'file', language: 'bbj' }],
         synchronize: {
             // Notify the server about file changes to files contained in the workspace
-            fileEvents: fileSystemWatcher
+            fileEvents: fileSystemWatcher,
+            configurationSection: 'bbj'
         },
         initializationOptions: {
             home: vscode.workspace.getConfiguration("bbj").home,

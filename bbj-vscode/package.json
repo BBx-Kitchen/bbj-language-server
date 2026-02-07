@@ -149,6 +149,11 @@
         "title": "Configure Compile Options"
       },
       {
+        "category": "BBj",
+        "command": "bbj.refreshJavaClasses",
+        "title": "Refresh Java Classes"
+      },
+      {
         "command": "bbj.denumber",
         "title": "Denumber BBj Program",
         "icon": {
