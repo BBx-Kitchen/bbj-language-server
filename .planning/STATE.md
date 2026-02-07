@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 28 of 31 (Variable Scoping & Declaration Order)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-06 -- Roadmap created for v3.1 (4 phases, 13 requirements)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-07 -- Completed 28-01-PLAN.md
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] ~12%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 55+ across all milestones
+- Total plans completed: 56+ across all milestones
 - Average duration: ~7.5 min per plan
-- Total execution time: ~208 min
+- Total execution time: ~213 min
 
 *Updated after each plan completion*
 
@@ -48,6 +48,12 @@ See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
 - .planning/milestones/v2.2-ROADMAP.md
 - .planning/milestones/v3.0-ROADMAP.md
+
+| Decision | Phase | Rationale |
+|----------|-------|-----------|
+| Plain assignments are LetStatements, no ExpressionStatement handling needed | 28-01 | Grammar parses `x = 5` as LetStatement with optional LET keyword |
+| Hint severity for use-before-assignment | 28-01 | Gentle guidance, avoids false positive noise |
+| Case-insensitive DECLARE type comparison | 28-01 | BBj is case-insensitive for identifiers |
 
 ### Known Issues
 
@@ -66,7 +72,7 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Roadmap created for v3.1
+Last session: 2026-02-07
+Stopped at: Completed 28-01-PLAN.md
 Resume file: None
-Next: `/gsd:plan-phase 28`
+Next: `/gsd:execute-plan 28-02`
