@@ -114,9 +114,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 console.warn(`Error processing USE statement for ${getFQNFullname(node.javaClass)}: ${e}`);
                 return;
             }
-        } else if (isVariableDecl(node) && node.$containerProperty !== 'params') {
+        } else if (isVariableDecl(node) && !isArrayDecl(node) && node.$containerProperty !== 'params') {
             // DECLARE statements should be scoped to the entire method body
-            // not just the block they appear in
+            // not just the block they appear in (ArrayDecl is handled separately below)
             const methodScope = AstUtils.getContainerOfType(node, isMethodDecl);
             const scopeHolder = methodScope ?? node.$container;
             if (scopeHolder && node.name) {

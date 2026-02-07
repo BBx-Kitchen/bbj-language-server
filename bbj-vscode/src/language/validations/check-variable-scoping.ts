@@ -13,7 +13,6 @@ import {
     isInputVariable,
     isReadStatement,
     isEnterStatement,
-    isFieldDecl,
     isBbjClass,
     isArrayElement,
     isParameterDecl,
@@ -67,16 +66,16 @@ function getSymbolRefName(expr: AstNode): string | undefined {
 }
 
 /**
- * Record the first assignment position for a variable name.
+ * Record the first assignment position (offset) for a variable name.
  * Only records if no previous assignment has been recorded (first wins).
  */
 function recordFirst(
     map: Map<string, number>,
     name: string | undefined,
-    line: number | undefined
+    offset: number | undefined
 ): void {
-    if (name !== undefined && line !== undefined && !map.has(name)) {
-        map.set(name, line);
+    if (name !== undefined && offset !== undefined && !map.has(name)) {
+        map.set(name, offset);
     }
 }
 
@@ -84,17 +83,21 @@ function recordFirst(
  * Check for variables used before their first assignment in the given scope.
  *
  * Algorithm (two-pass):
- *   Pass 1: Walk statements to build a map of first-assignment line for each variable.
+ *   Pass 1: Walk statements to build a map of first-assignment offset for each variable.
  *   Pass 2: Walk all SymbolRef usages and flag those before their first assignment.
  *
- * DECLARE (VariableDecl) variables are exempt -- they have whole-scope visibility.
+ * Uses character offset (not line number) for ordering, so compound statements
+ * on the same line are correctly ordered (e.g., `x = 1 ; PRINT y ; y = 2`).
+ *
+ * DECLARE (VariableDecl with $type === 'VariableDecl') variables are exempt --
+ * they have whole-scope visibility.
  * Class fields and method parameters are also exempt.
  */
 function checkUseBeforeAssignment(
     node: Program | MethodDecl,
     accept: ValidationAcceptor
 ): void {
-    const declPositions = new Map<string, number>(); // varName (lowercase) -> first assignment line (0-based)
+    const declPositions = new Map<string, number>(); // varName (lowercase) -> first assignment offset
     const statements = getStatements(node);
 
     // For MethodDecl: params are always visible, record at position -1
@@ -106,15 +109,15 @@ function checkUseBeforeAssignment(
         }
     }
 
-    // Pass 1: Walk statements in source order, record first assignment position
+    // Pass 1: Walk statements in source order, record first assignment position (offset)
     walkStatements(statements, (stmt) => {
         // LetStatement: LET x = ..., or x = ... (LET is optional)
         if (isLetStatement(stmt)) {
             for (const assignment of stmt.assignments) {
                 if (assignment.variable) {
                     const name = getSymbolRefName(assignment.variable);
-                    const line = stmt.$cstNode?.range.start.line;
-                    recordFirst(declPositions, name, line);
+                    const offset = stmt.$cstNode?.offset;
+                    recordFirst(declPositions, name, offset);
                 }
             }
         }
@@ -123,8 +126,8 @@ function checkUseBeforeAssignment(
         if (isArrayDeclarationStatement(stmt)) {
             for (const item of stmt.items) {
                 if (item.name) {
-                    const line = item.$cstNode?.range.start.line ?? stmt.$cstNode?.range.start.line;
-                    recordFirst(declPositions, item.name.toLowerCase(), line);
+                    const offset = item.$cstNode?.offset ?? stmt.$cstNode?.offset;
+                    recordFirst(declPositions, item.name.toLowerCase(), offset);
                 }
             }
         }
@@ -135,14 +138,14 @@ function checkUseBeforeAssignment(
                 if (isInputVariable(item)) {
                     if (isSymbolRef(item)) {
                         const name = item.symbol.$refText?.toLowerCase();
-                        const line = stmt.$cstNode?.range.start.line;
-                        recordFirst(declPositions, name, line);
+                        const offset = stmt.$cstNode?.offset;
+                        recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(item)) {
                         // DREAD COLOR$[ALL] -- extract receiver variable name
                         if (isSymbolRef(item.receiver)) {
                             const name = item.receiver.symbol.$refText?.toLowerCase();
-                            const line = stmt.$cstNode?.range.start.line;
-                            recordFirst(declPositions, name, line);
+                            const offset = stmt.$cstNode?.offset;
+                            recordFirst(declPositions, name, offset);
                         }
                     }
                 }
@@ -155,13 +158,13 @@ function checkUseBeforeAssignment(
                 if (isInputVariable(item)) {
                     if (isSymbolRef(item)) {
                         const name = item.symbol.$refText?.toLowerCase();
-                        const line = stmt.$cstNode?.range.start.line;
-                        recordFirst(declPositions, name, line);
+                        const offset = stmt.$cstNode?.offset;
+                        recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(item)) {
                         if (isSymbolRef(item.receiver)) {
                             const name = item.receiver.symbol.$refText?.toLowerCase();
-                            const line = stmt.$cstNode?.range.start.line;
-                            recordFirst(declPositions, name, line);
+                            const offset = stmt.$cstNode?.offset;
+                            recordFirst(declPositions, name, offset);
                         }
                     }
                 }
@@ -174,13 +177,13 @@ function checkUseBeforeAssignment(
                 if (isInputVariable(variable)) {
                     if (isSymbolRef(variable)) {
                         const name = variable.symbol.$refText?.toLowerCase();
-                        const line = stmt.$cstNode?.range.start.line;
-                        recordFirst(declPositions, name, line);
+                        const offset = stmt.$cstNode?.offset;
+                        recordFirst(declPositions, name, offset);
                     } else if (isArrayElement(variable)) {
                         if (isSymbolRef(variable.receiver)) {
                             const name = variable.receiver.symbol.$refText?.toLowerCase();
-                            const line = stmt.$cstNode?.range.start.line;
-                            recordFirst(declPositions, name, line);
+                            const offset = stmt.$cstNode?.offset;
+                            recordFirst(declPositions, name, offset);
                         }
                     }
                 }
@@ -191,8 +194,8 @@ function checkUseBeforeAssignment(
         if (isForStatement(stmt)) {
             if (stmt.init?.variable) {
                 const name = getSymbolRefName(stmt.init.variable);
-                const line = stmt.$cstNode?.range.start.line;
-                recordFirst(declPositions, name, line);
+                const offset = stmt.$cstNode?.offset;
+                recordFirst(declPositions, name, offset);
             }
         }
 
@@ -216,10 +219,10 @@ function checkUseBeforeAssignment(
             continue;
         }
 
-        const usageLine = child.$cstNode?.range.start.line;
+        const usageOffset = child.$cstNode?.offset;
         const varName = child.symbol.$refText?.toLowerCase();
 
-        if (usageLine === undefined || varName === undefined) {
+        if (usageOffset === undefined || varName === undefined) {
             continue;
         }
 
@@ -229,12 +232,13 @@ function checkUseBeforeAssignment(
         }
 
         // Skip DECLARE variables -- they have whole-scope visibility
-        if (isVariableDecl(child.symbol.ref) && !isParameterDecl(child.symbol.ref) && !isFieldDecl(child.symbol.ref)) {
+        // Only skip actual DECLARE ($type === 'VariableDecl'), NOT ArrayDecl/FieldDecl/ParameterDecl
+        if (child.symbol.ref.$type === 'VariableDecl') {
             continue;
         }
 
         // Skip class fields (FieldDecl inside a BbjClass)
-        if (isFieldDecl(child.symbol.ref) && child.symbol.ref.$container && isBbjClass(child.symbol.ref.$container)) {
+        if (child.symbol.ref.$type === 'FieldDecl' && child.symbol.ref.$container && isBbjClass(child.symbol.ref.$container)) {
             continue;
         }
 
@@ -253,15 +257,35 @@ function checkUseBeforeAssignment(
             continue;
         }
 
-        const declLine = declPositions.get(varName)!;
-        if (usageLine < declLine) {
+        const declOffset = declPositions.get(varName)!;
+        if (usageOffset < declOffset) {
             // Find the original-case name from the ref text
             const originalName = child.symbol.$refText ?? varName;
+            // Compute line number from the declaration offset for the user-facing message
+            const declLine = getDeclLine(child, declOffset);
             accept('hint', `'${originalName}' used before assignment (first assigned at line ${declLine + 1})`, {
                 node: child,
             });
         }
     }
+}
+
+/**
+ * Convert an offset to a 0-based line number using the document's CST root.
+ */
+function getDeclLine(anyNode: AstNode, offset: number): number {
+    const root = anyNode.$cstNode?.root;
+    if (root) {
+        const text = root.fullText;
+        let line = 0;
+        for (let i = 0; i < offset && i < text.length; i++) {
+            if (text[i] === '\n') {
+                line++;
+            }
+        }
+        return line;
+    }
+    return 0;
 }
 
 /**
