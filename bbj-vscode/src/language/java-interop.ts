@@ -15,8 +15,6 @@ import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaP
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 import { assertType } from './utils.js';
 
-const DEFAULT_PORT = 5008;
-
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
 export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
@@ -31,6 +29,8 @@ export class JavaInteropService {
     private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
     private resolvedClassesLock: Promise<void> = Promise.resolve();
+    private interopHost: string = '127.0.0.1';
+    private interopPort: number = 5008;
 
     protected readonly langiumDocuments: LangiumDocuments;
     protected readonly classpathDocument: LangiumDocument<Classpath>;
@@ -76,7 +76,19 @@ export class JavaInteropService {
     }
 
     /**
-     * Creates a socket connection to the Java service on localhost
+     * Sets the connection configuration for the Java interop service.
+     * Call clearCache() separately to reconnect with new settings.
+     * @param host hostname or IP address of the Java interop service
+     * @param port port number of the Java interop service
+     */
+    public setConnectionConfig(host: string, port: number): void {
+        this.interopHost = host || '127.0.0.1';
+        this.interopPort = port || 5008;
+        console.log(`Java interop connection config: ${this.interopHost}:${this.interopPort}`);
+    }
+
+    /**
+     * Creates a socket connection to the Java service
      */
     protected createSocket(): Promise<Socket> {
         return new Promise((resolve, reject) => {
@@ -93,7 +105,7 @@ export class JavaInteropService {
                 clearTimeout(timeout);
                 resolve(socket);
             });
-            socket.connect(DEFAULT_PORT, '127.0.0.1');
+            socket.connect(this.interopPort, this.interopHost);
         });
     }
 

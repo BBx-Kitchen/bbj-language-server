@@ -25,6 +25,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
+    private configPath = "";
 
     constructor(services: LangiumSharedServices) {
         super(services);
@@ -39,6 +40,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 this.classpathFromSettings = params.initializationOptions.classpath || "";
                 console.log(`BBj home: ${this.bbjdir}`);
                 console.log(`Classpath from settings: ${this.classpathFromSettings}`);
+
+                // Extract interop settings and apply to JavaInteropService
+                const interopHost = params.initializationOptions.interopHost || 'localhost';
+                const interopPort = params.initializationOptions.interopPort || 5008;
+                this.javaInterop.setConnectionConfig(interopHost, interopPort);
+
+                // Extract configPath setting
+                this.configPath = params.initializationOptions.configPath || "";
 
                 // Set type resolution warnings based on settings
                 const typeResWarnings = params.initializationOptions.typeResolutionWarnings;
@@ -66,7 +75,18 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 if (confFile) {
                     propcontents = await this.fileSystemProvider.readFile(confFile.uri);
                 }
-                if (this.bbjdir) {
+
+                // Resolve config.bbx location: use configPath setting if set, otherwise default to bbjdir/cfg/config.bbx
+                if (this.configPath) {
+                    try {
+                        const configUri = safeUri(this.configPath);
+                        const configContents = await this.fileSystemProvider.readFile(configUri);
+                        prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                        console.log(`Loaded config.bbx from custom path: ${this.configPath}`);
+                    } catch (e) {
+                        console.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
+                    }
+                } else if (this.bbjdir) {
                     try {
                         const bbjcfgdir = await this.fileSystemProvider.readDirectory(joinPath(safeUri(this.bbjdir), 'cfg'));
                         const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
@@ -169,6 +189,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             }
         }
         return false;
+    }
+
+    public setConfigPath(path: string): void {
+        this.configPath = path;
     }
 }
 

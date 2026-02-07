@@ -21,7 +21,7 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
     try {
         const javaInterop = BBj.java.JavaInteropService;
 
-        // Step 1: Clear all cached Java class data
+        // Step 1: Clear all cached Java class data (includes disconnecting)
         javaInterop.clearCache();
 
         // Step 2: Reload classpath from workspace settings
@@ -69,14 +69,26 @@ connection.onDidChangeConfiguration(async (change) => {
 
     try {
         const javaInterop = BBj.java.JavaInteropService;
+        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
         console.log('BBj settings changed, refreshing Java classes...');
 
-        // Clear all cached Java class data
+        // Extract interop settings from configuration change
+        const config = change.settings?.bbj;
+        if (config) {
+            const interopHost = config.interop?.host || 'localhost';
+            const interopPort = config.interop?.port || 5008;
+            javaInterop.setConnectionConfig(interopHost, interopPort);
+
+            // Update configPath in wsManager for PREFIX resolution
+            const configPath = config.configPath || "";
+            wsManager.setConfigPath(configPath);
+        }
+
+        // Clear all cached Java class data (includes disconnecting)
         javaInterop.clearCache();
 
         // Reload classpath from current workspace settings
-        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         const settings = wsManager.getSettings();
         if (settings && settings.classpath.length > 0) {
             await javaInterop.loadClasspath(settings.classpath);
