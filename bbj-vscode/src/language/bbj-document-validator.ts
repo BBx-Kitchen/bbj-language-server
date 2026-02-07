@@ -1,9 +1,20 @@
 // This class extends DefaultDocumentValidator
 
-import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, isReference, LangiumDocument, toDiagnosticSeverity } from "langium";
+import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
 import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
-import type { LinkingErrorData } from "langium/lib/validation/document-validator.js";
-import type { ValidationOptions } from "langium/lib/validation/document-validator.js";
+
+interface LinkingErrorData extends DiagnosticData {
+    containerType: string;
+    property: string;
+    refText: string;
+}
+
+interface ValidationOptions {
+    categories?: string[];
+    stopAfterLexingErrors?: boolean;
+    stopAfterParsingErrors?: boolean;
+    stopAfterLinkingErrors?: boolean;
+}
 
 export class BBjDocumentValidator extends DefaultDocumentValidator {
 
@@ -49,14 +60,12 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         if (sourceMatch) {
             const sourceRef = sourceMatch[1]; // e.g., "relative/path.bbj:42"
             const colonIdx = sourceRef.lastIndexOf(':');
-            let filePath = sourceRef;
             let line = 0;
 
             if (colonIdx > 0) {
                 const lineStr = sourceRef.substring(colonIdx + 1);
                 const parsedLine = parseInt(lineStr, 10);
                 if (!isNaN(parsedLine)) {
-                    filePath = sourceRef.substring(0, colonIdx);
                     line = parsedLine - 1; // Convert to 0-based
                 }
             }
