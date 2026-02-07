@@ -11,8 +11,10 @@ const parse = parseHelper<Model>(services.BBj);
 describe('Parser Tests', () => {
 
     function expectNoParserLexerErrors(document: LangiumDocument) {
-        expect(document.parseResult.lexerErrors.join('\n')).toBe('')
-        expect(document.parseResult.parserErrors.join('\n')).toBe('')
+        const lexerErrors = document.parseResult.lexerErrors.map(e => `${e.message} at offset ${e.offset}`).join('\n');
+        const parserErrors = document.parseResult.parserErrors.map(e => e.message).join('\n');
+        expect(lexerErrors).toBe('')
+        expect(parserErrors).toBe('')
     }
 
     function expectNoValidationErrors(document: LangiumDocument) {
@@ -2271,6 +2273,87 @@ PRINT getResult$, isNew%, readData
                         RETURN Y
                     FNEND
                     PRINT FNGCF(12,8)
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: $ suffix with keyword name', async () => {
+        const result = await parse(`mode$ = "test"`);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: $ suffix with non-keyword name', async () => {
+        const result = await parse(`myvar$ = "test"`);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: DEF statement with simple $ suffix name', async () => {
+        const result = await parse(`
+            DEF GetMode$(X$)=X$+"_mode"
+            mode$ = GetMode$("test")
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: DEF FN with $ suffix in main program (baseline)', async () => {
+        const result = await parse(`
+            DEF FNGetMode$(X$)=X$+"_mode"
+            mode$ = FNGetMode$("test")
+            PRINT mode$
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: DEF FN with $ suffix variable in class method (#355)', async () => {
+        const result = await parse(`
+            class public TestClass
+                method public void doWork()
+                    DEF FNGetMode$(X$)=X$+"_mode"
+                    mode$ = FNGetMode$("test")
+                    PRINT mode$
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: DEF FN with % suffix variable in class method (#355)', async () => {
+        const result = await parse(`
+            class public TestClass
+                method public void calc()
+                    DEF FNDouble%(X%)=X%*2
+                    result% = FNDouble%(5)
+                    PRINT result%
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: DEF FN with ! suffix variable in class method (#355)', async () => {
+        const result = await parse(`
+            class public TestClass
+                method public void process()
+                    DEF FNGetObj!(X!)=X!
+                    obj! = FNGetObj!(NULL())
+                methodend
+            classend
+        `);
+        expectNoParserLexerErrors(result);
+    });
+
+    test('PARSE-02: Multi-line DEF FN with suffixed vars in class method (#355)', async () => {
+        const result = await parse(`
+            class public TestClass
+                method public void process()
+                    DEF FNFormat$(value$, prefix$)
+                        result$ = prefix$ + ": " + value$
+                        RETURN result$
+                    FNEND
+                    output$ = FNFormat$("hello", "msg")
+                    PRINT output$
                 methodend
             classend
         `);

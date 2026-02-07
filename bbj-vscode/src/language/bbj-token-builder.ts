@@ -33,6 +33,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'RELEASE_NO_NL');
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
+        const idWithSuffix = terminalTokens.find(e => e.name === 'ID_WITH_SUFFIX')!;
         const terminalNames = new Set(terminalTokens.map(t => t.name));
 
         for (const keywordToken of tokens) {
@@ -43,7 +44,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 // add all matching keywords to ID category
                 keywordToken.CATEGORIES = [id];
                 // prefer longer ID token when keyword is prefix of identifier (e.g., getResult -> ID, not GET + Result)
-                keywordToken.LONGER_ALT = id;
+                // Also prefer ID_WITH_SUFFIX (e.g., mode$ -> ID_WITH_SUFFIX, not MODE + $)
+                keywordToken.LONGER_ALT = [id, idWithSuffix];
             }
         }
         const releaseNl = terminalTokens.find(e => e.name === 'RELEASE_NL')!;
