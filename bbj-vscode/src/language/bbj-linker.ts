@@ -1,5 +1,6 @@
 
 import {
+    AstNode,
     AstNodeDescription,
     AstUtils,
     DefaultLinker, DocumentState, interruptAndCheck,
@@ -159,5 +160,41 @@ export class BbjLinker extends DefaultLinker {
             // Graceful fallback if source location extraction fails
             return undefined;
         }
+    }
+
+    protected getSourceLocationForNode(document: LangiumDocument | undefined, line: number): string | undefined {
+        if (!document) return undefined;
+        try {
+            const wsManager = this.wsManager();
+            let workspaceRoot: string | undefined;
+            const folders = wsManager.workspaceFolders;
+            if (folders && folders.length > 0) {
+                const wsUri = URI.parse(folders[0].uri);
+                workspaceRoot = wsUri.fsPath;
+            }
+            if (!workspaceRoot) {
+                workspaceRoot = dirname(document.uri.fsPath);
+            }
+            const relativePath = relative(workspaceRoot, document.uri.fsPath);
+            return line > 0 ? `${relativePath}:${line}` : relativePath;
+        } catch {
+            return undefined;
+        }
+    }
+
+    protected override throwCyclicReferenceError(node: AstNode, property: string, refText: string): never {
+        // Get source location information
+        const document = AstUtils.getDocument(node);
+        const cstNode = node.$cstNode;
+        const line = cstNode ? cstNode.range.start.line + 1 : 0;
+        const sourceInfo = this.getSourceLocationForNode(document, line);
+
+        const message = sourceInfo
+            ? `Cyclic reference resolution detected for '${refText}' [in ${sourceInfo}]`
+            : `Cyclic reference resolution detected for '${refText}'`;
+
+        // Throw with enhanced message — Langium's getLinkedNode catches this
+        // and stores it as a LinkingError on the reference
+        throw new Error(message);
     }
 }
