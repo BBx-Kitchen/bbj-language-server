@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 31 of 31 (Extension Settings & File Types)
-Plan: 2 of 4 in Phase 31 complete
+Plan: 3 of 4 in Phase 31 complete
 Status: In progress
-Last activity: 2026-02-07 -- Completed 31-02-PLAN.md
+Last activity: 2026-02-07 -- Completed 31-03-PLAN.md
 
-Progress: [████████░░] 77%
+Progress: [████████░░] 78%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 71 across all milestones
-- Average duration: ~6.9 min per plan
-- Total execution time: ~489 min
+- Total plans completed: 72 across all milestones
+- Average duration: ~6.8 min per plan
+- Total execution time: ~494 min
 
 *Updated after each plan completion*
 
@@ -80,6 +80,9 @@ See archived decisions in:
 | Config path field in BBj Environment section (not Java Interop) | 31-02 | config.bbx is BBj configuration, conceptually related to BBj home |
 | Host field as editable text (not dropdown/restricted) | 31-02 | Maximum flexibility for IPs, hostnames, docker service names |
 | Empty config path uses default {bbjHome}/cfg/config.bbx | 31-02 | Language server handles default resolution; matches VS Code pattern |
+| JWT token-based EM authentication via BBjAdminFactory.getAuthToken() | 31-03 | More secure than storing encrypted credentials; enables token expiration/renewal |
+| Token as 8th parameter to web.bbj (optional) | 31-03 | Backward compatibility with existing username/password interface |
+| Auto-prompt login flow for BUI/DWC | 31-03 | User-friendly: prompt to login if no credentials stored instead of showing auth error |
 
 ### Known Issues
 
@@ -88,7 +91,6 @@ See archived decisions in:
 
 ### Tech Debt
 
-- EM credentials stored as plaintext in settings (targeted in Phase 31, CONF-03)
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
@@ -100,6 +102,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 31-02-PLAN.md
+Stopped at: Completed 31-03-PLAN.md
 Resume file: None
-Next: Execute 31-03 (/gsd:execute-plan 31-03)
+Next: Execute 31-04 (/gsd:execute-plan 31-04)
