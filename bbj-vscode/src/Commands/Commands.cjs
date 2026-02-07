@@ -43,15 +43,35 @@ const getBBjHome = () => {
   return home;
 }
 
-const runWeb = (params, client) => {
+const runWeb = (params, client, credentials) => {
   const home = getBBjHome();
   if (!home) return;
 
   const webConfig = vscode.workspace.getConfiguration("bbj.web");
   const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
-  const username = vscode.workspace.getConfiguration("bbj").web.username;
-  const password = vscode.workspace.getConfiguration("bbj").web.password;
+
+  // Use provided credentials (from SecretStorage) or fall back to config
+  let username, password, token;
+  if (credentials) {
+    if (credentials.username === '__token__') {
+      // Token-based authentication
+      token = credentials.password;
+      username = "";
+      password = "";
+    } else {
+      // Username/password from SecretStorage
+      username = credentials.username;
+      password = credentials.password;
+      token = "";
+    }
+  } else {
+    // Legacy fallback to config (backward compatibility)
+    username = vscode.workspace.getConfiguration("bbj").web?.username || "";
+    password = vscode.workspace.getConfiguration("bbj").web?.password || "";
+    token = "";
+  }
+
   const sscp = vscode.workspace.getConfiguration("bbj").classpath;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
@@ -64,7 +84,7 @@ const runWeb = (params, client) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}"`;
+  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}"`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
@@ -207,12 +227,12 @@ const Commands = {
     }
   },
 
-  runBUI: function (params) {
-    runWeb(params, 'BUI');
+  runBUI: function (params, credentials) {
+    runWeb(params, 'BUI', credentials);
   },
 
-  runDWC: function (params) {
-    runWeb(params, 'DWC');
+  runDWC: function (params, credentials) {
+    runWeb(params, 'DWC', credentials);
   },
 
   compile: function (params) {

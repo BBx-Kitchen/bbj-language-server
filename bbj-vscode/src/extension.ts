@@ -409,8 +409,38 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     });
     vscode.commands.registerCommand("bbj.run", Commands.run);
-    vscode.commands.registerCommand("bbj.runBUI", Commands.runBUI);
-    vscode.commands.registerCommand("bbj.runDWC", Commands.runDWC);
+
+    // BUI command with auto-prompt login
+    vscode.commands.registerCommand("bbj.runBUI", async (params) => {
+        let creds = await getEMCredentials();
+        if (!creds) {
+            const login = await vscode.window.showInformationMessage(
+                'EM login required for BUI. Login now?', 'Login', 'Cancel'
+            );
+            if (login === 'Login') {
+                await vscode.commands.executeCommand('bbj.loginEM');
+                creds = await getEMCredentials();
+            }
+            if (!creds) return; // User cancelled login
+        }
+        Commands.runBUI(params, creds);
+    });
+
+    // DWC command with auto-prompt login
+    vscode.commands.registerCommand("bbj.runDWC", async (params) => {
+        let creds = await getEMCredentials();
+        if (!creds) {
+            const login = await vscode.window.showInformationMessage(
+                'EM login required for DWC. Login now?', 'Login', 'Cancel'
+            );
+            if (login === 'Login') {
+                await vscode.commands.executeCommand('bbj.loginEM');
+                creds = await getEMCredentials();
+            }
+            if (!creds) return; // User cancelled login
+        }
+        Commands.runDWC(params, creds);
+    });
     vscode.commands.registerCommand("bbj.decompile", Commands.decompile);
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
