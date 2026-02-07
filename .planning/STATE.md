@@ -11,11 +11,11 @@ See: .planning/PROJECT.md (updated 2026-02-06)
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
 Phase: 29 of 31 (DEF FN & Inheritance Resolution)
-Plan: 1 of TBD in current phase
-Status: In progress
-Last activity: 2026-02-07 -- Completed 29-01-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-07 -- Completed 29-03-PLAN.md
 
-Progress: [███░░░░░░░] 27%
+Progress: [███░░░░░░░] 28%
 
 ## Milestone History
 
@@ -34,9 +34,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 60+ across all milestones
-- Average duration: ~7.4 min per plan
-- Total execution time: ~246 min
+- Total plans completed: 63 across all milestones
+- Average duration: ~7.2 min per plan
+- Total execution time: ~453 min
 
 *Updated after each plan completion*
 
@@ -62,6 +62,9 @@ See archived decisions in:
 | DEF FN name added to container scope | 29-01 | Enables function calls to resolve |
 | MAX_INHERITANCE_DEPTH set to 20 | 29-02 | Prevents infinite loops from cyclic or pathologically deep inheritance chains |
 | Skip enhanced error messages for unresolved class members | 29-02 | Langium linker errors adequate; adding chain info would duplicate diagnostics |
+| Field accessor test changed to multiple-level field inheritance | 29-03 | Auto-generated field accessors are BBj runtime feature, not language server feature |
+| DEF FN parameter non-leakage verified via unresolved reference | 29-03 | Parameters outside FN body produce "Could not resolve" warning, proving isolation |
+| Dummy class types in tests to avoid external dependencies | 29-03 | EmptyFileSystem workaround - define test-local types instead of BBjString |
 
 ### Known Issues
 
@@ -82,6 +85,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 29-01-PLAN.md
+Stopped at: Completed 29-03-PLAN.md (Phase 29 complete)
 Resume file: None
-Next: Continue Phase 29 planning or verify phase completion
+Next: Begin Phase 30 or verify v3.1 milestone completion
