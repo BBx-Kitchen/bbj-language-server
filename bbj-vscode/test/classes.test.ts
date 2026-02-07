@@ -95,3 +95,90 @@ describe("Classes access-levels", () => {
         expect(diagnostics).toHaveLength(0);
     });
 });
+
+describe("Inheritance chain resolution", () => {
+    let disposables: (() => Promise<void>)[] = [];
+    const services = createBBjServices(EmptyFileSystem);
+    let validate: ReturnType<typeof validationHelper<Program>>;
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+        const validateInternal = validationHelper<Program>(services.BBj);
+        validate = async (input: string, options?: ParseHelperOptions) => {
+            const result = await (validateInternal(input, options));
+            disposables.push(result.dispose);
+            return result;
+        }
+    });
+
+    afterEach(async () => {
+        for (const dispose of disposables) {
+            await dispose();
+        }
+        disposables = [];
+    });
+
+    test("Method declared in BBj super class resolves in subclass", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+                method public greet()
+                methodend
+            classend
+
+            class public Child extends Base
+                method public doWork()
+                    #greet()
+                methodend
+            classend
+        `);
+        expect(diagnostics).toHaveLength(0);
+    });
+
+    test("Method declared in grandparent BBj class resolves", async () => {
+        const { diagnostics } = await validate(`
+            class public GrandParent
+                method public hello()
+                methodend
+            classend
+
+            class public Parent extends GrandParent
+            classend
+
+            class public Child extends Parent
+                method public doWork()
+                    #hello()
+                methodend
+            classend
+        `);
+        expect(diagnostics).toHaveLength(0);
+    });
+
+    test("Directly declared methods still resolve", async () => {
+        const { diagnostics } = await validate(`
+            class public MyClass
+                method public greet()
+                methodend
+                method public doWork()
+                    #greet()
+                methodend
+            classend
+        `);
+        expect(diagnostics).toHaveLength(0);
+    });
+
+    test("#super!.method() resolves through BBj super class", async () => {
+        const { diagnostics } = await validate(`
+            class public Base
+                method public process()
+                methodend
+            classend
+
+            class public Child extends Base
+                method public process()
+                    #super!.process()
+                methodend
+            classend
+        `);
+        expect(diagnostics).toHaveLength(0);
+    });
+});
