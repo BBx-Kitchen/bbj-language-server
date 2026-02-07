@@ -9,7 +9,7 @@
 - v2.1 Feature Gap Analysis - N/A (shipped 2026-02-04)
 - v2.2 IntelliJ Build & Release Automation - Phases 21-23 (shipped 2026-02-05)
 - v3.0 Improving BBj Language Support - Phases 24-27 (shipped 2026-02-06)
-- v3.1 PRIO 1+2 Issue Burndown - Phases 28-31 (in progress)
+- v3.1 PRIO 1+2 Issue Burndown - Phases 28-31 (shipped 2026-02-07)
 
 ## Phases
 
@@ -20,14 +20,14 @@ See .planning/MILESTONES.md for full history.
 
 </details>
 
-### v3.1 PRIO 1+2 Issue Burndown (In Progress)
+### v3.1 PRIO 1+2 Issue Burndown (Shipped 2026-02-07)
 
 **Milestone Goal:** Close all PRIO 1+2 GitHub issues -- fix variable scoping bugs, inheritance resolution, Java reflection staleness, and make extension settings configurable.
 
 - [x] **Phase 28: Variable Scoping & Declaration Order** - Variables respect declaration position and type annotations in program scope
 - [x] **Phase 29: DEF FN & Inheritance Resolution** - DEF FN works correctly in class methods; field/method access resolves through inheritance chains
 - [x] **Phase 30: Java Reflection & Error Reporting** - Java interop finds new methods; error messages include file and line info
-- [ ] **Phase 31: Extension Settings & File Types** - .bbx file support; configurable paths, ports, and auth
+- [x] **Phase 31: Extension Settings & File Types** - .bbx file support; configurable paths, ports, and auth
 
 ## Phase Details
 
@@ -86,10 +86,10 @@ Plans:
   4. EM access uses token-based authentication; no plaintext passwords are stored in settings
 **Plans:** 4 plans
 Plans:
-- [ ] 31-01-PLAN.md -- .bbx merged into BBj + configurable interop host/port + config.bbx path (VS Code + LS)
-- [ ] 31-02-PLAN.md -- .bbx merged into BBj + configurable interop host + config.bbx path (IntelliJ)
-- [ ] 31-03-PLAN.md -- EM token-based auth: BBj login stub + VS Code SecretStorage + auto-prompt run commands
-- [ ] 31-04-PLAN.md -- EM token-based auth: IntelliJ CredentialStore + auto-prompt login + run command updates
+- [x] 31-01-PLAN.md -- .bbx merged into BBj + configurable interop host/port + config.bbx path (VS Code + LS)
+- [x] 31-02-PLAN.md -- .bbx merged into BBj + configurable interop host + config.bbx path (IntelliJ)
+- [x] 31-03-PLAN.md -- EM token-based auth: BBj login stub + VS Code SecretStorage + auto-prompt run commands
+- [x] 31-04-PLAN.md -- EM token-based auth: IntelliJ CredentialStore + auto-prompt login + run command updates
 
 ## Progress
 
@@ -101,4 +101,4 @@ Phases execute in numeric order: 28 -> 29 -> 30 -> 31
 | 28. Variable Scoping & Declaration Order | 2/2 | ✓ Complete | 2026-02-07 |
 | 29. DEF FN & Inheritance Resolution | 3/3 | ✓ Complete | 2026-02-07 |
 | 30. Java Reflection & Error Reporting | 3/3 | ✓ Complete | 2026-02-07 |
-| 31. Extension Settings & File Types | 0/4 | Not started | - |
+| 31. Extension Settings & File Types | 4/4 | ✓ Complete | 2026-02-07 |

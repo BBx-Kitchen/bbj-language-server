@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-06)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.1 Phase 31 - Extension Settings & File Types
+**Current focus:** v3.1 Milestone complete — ready for archive
 
 ## Current Position
 
 Milestone: v3.1 PRIO 1+2 Issue Burndown
-Phase: 31 of 31 (Extension Settings & File Types)
-Plan: 4 of 4 in Phase 31 complete
-Status: Phase complete
-Last activity: 2026-02-07 -- Completed 31-04-PLAN.md
+Phase: 31 of 31 complete (Extension Settings & File Types)
+Plan: 4 of 4 in Phase 31
+Status: Milestone complete — all phases done
+Last activity: 2026-02-07 -- Completed Phase 31
 
-Progress: [█████████░] 79%
+Progress: [██████████] 100%
 
 ## Milestone History
 
@@ -104,6 +104,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-07
-Stopped at: Completed 31-03-PLAN.md
+Stopped at: Phase 31 complete, milestone v3.1 complete
 Resume file: None
-Next: Execute 31-04 (/gsd:execute-plan 31-04)
+Next: Archive milestone (/gsd:audit-milestone or /gsd:complete-milestone)

@@ -27,13 +27,13 @@ Requirements for v3.1 PRIO 1+2 Issue Burndown. Each maps to a GitHub issue.
 
 ### File Type & IDE
 
-- [ ] **IDE-01**: .bbx files treated as BBj programs (same icon, language handling, and run support as .bbj) (#340)
+- [x] **IDE-01**: .bbx files treated as BBj programs (same icon, language handling, and run support as .bbj) (#340)
 
 ### Extension Settings
 
-- [ ] **CONF-01**: config.bbx path and other BBj options configurable in extension settings (#244)
-- [ ] **CONF-02**: Interop hostname and port configurable (not hardcoded to localhost:5008) (#257)
-- [ ] **CONF-03**: EM access uses token-based auth instead of storing plaintext password (#256)
+- [x] **CONF-01**: config.bbx path and other BBj options configurable in extension settings (#244)
+- [x] **CONF-02**: Interop hostname and port configurable (not hardcoded to localhost:5008) (#257)
+- [x] **CONF-03**: EM access uses token-based auth instead of storing plaintext password (#256)
 
 ## Future Requirements
 
@@ -86,10 +86,10 @@ Deferred to later milestones. From remaining open issues.
 | JAVA-02 | Phase 30 | Complete |
 | PARSE-01 | Phase 29 | Complete |
 | PARSE-02 | Phase 30 | Complete |
-| IDE-01 | Phase 31 | Pending |
-| CONF-01 | Phase 31 | Pending |
-| CONF-02 | Phase 31 | Pending |
-| CONF-03 | Phase 31 | Pending |
+| IDE-01 | Phase 31 | Complete |
+| CONF-01 | Phase 31 | Complete |
+| CONF-02 | Phase 31 | Complete |
+| CONF-03 | Phase 31 | Complete |
 
 **Coverage:**
 - v1 requirements: 13 total
@@ -98,4 +98,4 @@ Deferred to later milestones. From remaining open issues.
 
 ---
 *Requirements defined: 2026-02-06*
-*Last updated: 2026-02-07 after Phase 30 completion*
+*Last updated: 2026-02-07 after Phase 31 completion — all v3.1 requirements complete*
