@@ -344,9 +344,9 @@ export async function getEMCredentials(): Promise<{username: string, password: s
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     secretStorage = context.secrets;
-    outputChannel = vscode.window.createOutputChannel('BBj');
+    client = startLanguageClient(context);
+    outputChannel = client.outputChannel;
     (Commands as any).setOutputChannel(outputChannel);
-    client = startLanguageClient(context, outputChannel);
     vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
     vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
     vscode.commands.registerCommand("bbj.em", Commands.openEnterpriseManager);
@@ -526,7 +526,7 @@ export function deactivate(): Thenable<void> | undefined {
     return undefined;
 }
 
-function startLanguageClient(context: vscode.ExtensionContext, channel: vscode.OutputChannel): LanguageClient {
+function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
     const serverModule = context.asAbsolutePath(path.join('out', 'language', 'main.cjs'));
     // The debug options for the server
     // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging.
@@ -562,8 +562,7 @@ function startLanguageClient(context: vscode.ExtensionContext, channel: vscode.O
             configPath: vscode.workspace.getConfiguration("bbj").get("configPath", null),
             interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host", "localhost"),
             interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008)
-        },
-        outputChannel: channel
+        }
     };
 
     // Create the language client and start the client.
