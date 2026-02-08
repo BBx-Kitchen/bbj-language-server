@@ -40,6 +40,30 @@ The name of the classpath entry to use for Java class resolution.
 
 This should match a classpath entry defined in your BBj Enterprise Manager.
 
+#### `bbj.debug`
+
+Enable verbose debug logging in the language server. When enabled, the Output panel shows detailed information about:
+- Java class loading and resolution
+- Classpath scanning details
+- Parser ambiguity analysis
+- Document validation timing
+
+```json
+{
+  "bbj.debug": true
+}
+```
+
+**Default**: `false`
+
+To view debug output:
+1. Set `bbj.debug` to `true` in VS Code settings
+2. Open the Output panel (`View` > `Output`)
+3. Select "BBj Language Server" from the dropdown
+4. Debug messages appear with ISO 8601 timestamps
+
+This setting takes effect immediately without restarting the language server.
+
 ### Web/BUI Settings
 
 #### `bbj.web.username`
@@ -145,6 +169,7 @@ Here's a complete `settings.json` example with all BBj settings:
 
 ```json
 {
+  "bbj.debug": false,
   "bbj.home": "/opt/bbj",
   "bbj.classpath": "default",
   "bbj.web.username": "admin",
@@ -240,8 +265,11 @@ To see available classpath entries:
 
 ### Language Server Logs
 
-Enable verbose logging to diagnose issues:
+To diagnose issues with the language server:
 
-1. Open Output panel (`View` > `Output`)
-2. Select "BBj Language Server" from the dropdown
-3. Look for configuration-related messages
+1. Set `bbj.debug` to `true` in VS Code settings
+2. Open the Output panel (`View` > `Output`)
+3. Select "BBj Language Server" from the dropdown
+4. Look for timestamped debug messages showing detailed diagnostics
+
+Common debug output includes Java class resolution, parser warnings, and validation details. Set `bbj.debug` back to `false` when done to reduce output noise.
