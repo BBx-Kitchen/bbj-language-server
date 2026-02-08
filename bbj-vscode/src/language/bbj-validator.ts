@@ -25,6 +25,9 @@ export function setTypeResolutionWarnings(enabled: boolean): void {
     typeResolutionWarningsEnabled = enabled;
 }
 
+/** Prefix of the diagnostic message emitted for unresolvable USE file paths. Used by document builder to identify and reconcile these diagnostics after PREFIX docs are loaded. */
+export const USE_FILE_NOT_RESOLVED_PREFIX = "File '";
+
 /**
  * Register custom validation checks.
  */

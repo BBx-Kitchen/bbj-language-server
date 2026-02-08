@@ -1,11 +1,12 @@
-import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils } from "langium";
+import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
-import { Use, isUse } from "./generated/ast.js";
+import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
 import { resolve } from "path";
+import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
@@ -47,6 +48,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // docs with ref errors) -> buildDocuments -> addImportedBBjDocuments -> ...
         if (!this.isImportingBBjDocuments) {
             await this.addImportedBBjDocuments(documents, options, cancelToken);
+            // After external PREFIX-resolved documents are loaded and indexed,
+            // remove false-positive "could not be resolved" diagnostics for paths
+            // that are now in the index. This fixes the timing issue where validation
+            // runs before addImportedBBjDocuments loads external files.
+            await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
         }
     }
 
@@ -147,5 +153,62 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             this.importDepth--;
         }
     };
+
+    /**
+     * After addImportedBBjDocuments loads and indexes external PREFIX-resolved files,
+     * re-check USE file-path diagnostics that were emitted during the initial build.
+     * Diagnostics for paths that are NOW resolvable via the index are removed, and
+     * updated diagnostics are pushed to the editor.
+     */
+    private async revalidateUseFilePathDiagnostics(
+        documents: LangiumDocument<AstNode>[],
+        cancelToken: CancellationToken
+    ): Promise<void> {
+        const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
+        const prefixes = bbjWsManager.getSettings()?.prefixes ?? [];
+
+        for (const document of documents) {
+            if (bbjWsManager.isExternalDocument(document.uri)) continue;
+            if (!document.diagnostics?.length) continue;
+
+            const originalLength = document.diagnostics.length;
+            document.diagnostics = document.diagnostics.filter(diag => {
+                // Only re-check our specific USE file-path diagnostics
+                if (!diag.message.startsWith(USE_FILE_NOT_RESOLVED_PREFIX)) {
+                    return true; // keep all other diagnostics
+                }
+
+                // Extract the clean path from the diagnostic message
+                // Message format: "File 'some/path.bbj' could not be resolved..."
+                const pathMatch = diag.message.match(/^File '([^']+)'/);
+                if (!pathMatch) {
+                    return true; // keep if we can't parse
+                }
+                const cleanPath = pathMatch[1];
+
+                // Build candidate URIs (same logic as checkUsedClassExists)
+                const adjustedFileUris = [
+                    UriUtils.resolvePath(UriUtils.dirname(document.uri), cleanPath)
+                ].concat(
+                    prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
+                );
+
+                // Check if any BbjClass now exists at these URIs
+                const nowResolved = this.indexManager.allElements(BbjClass.$type).some(bbjClass => {
+                    return adjustedFileUris.some(adjustedFileUri =>
+                        bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase())
+                    );
+                });
+
+                // If now resolved, remove the diagnostic (return false to filter out)
+                return !nowResolved;
+            });
+
+            // If diagnostics changed, notify the editor
+            if (document.diagnostics.length !== originalLength) {
+                await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
+            }
+        }
+    }
 }
 
