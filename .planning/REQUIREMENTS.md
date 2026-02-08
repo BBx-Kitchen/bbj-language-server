@@ -45,20 +45,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PARSE-01 | — | Pending |
-| FTYP-01 | — | Pending |
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| TOOL-03 | — | Pending |
-| RUN-01 | — | Pending |
-| RUN-02 | — | Pending |
-| RUN-03 | — | Pending |
+| PARSE-01 | Phase 40 | Pending |
+| FTYP-01 | Phase 41 | Pending |
+| TOOL-01 | Phase 42 | Pending |
+| TOOL-02 | Phase 42 | Pending |
+| TOOL-03 | Phase 42 | Pending |
+| RUN-01 | Phase 43 | Pending |
+| RUN-02 | Phase 43 | Pending |
+| RUN-03 | Phase 43 | Pending |
 
 **Coverage:**
 - v3.4 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
+- Coverage: 100%
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after initial definition*
+*Last updated: 2026-02-08 after roadmap creation*

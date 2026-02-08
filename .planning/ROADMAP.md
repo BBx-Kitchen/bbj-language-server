@@ -12,6 +12,7 @@
 - ✅ **v3.1 PRIO 1+2 Issue Burndown** — Phases 28-31 (shipped 2026-02-07)
 - ✅ **v3.2 Bug Fix Release** — Phases 32-34 (shipped 2026-02-08)
 - ✅ **v3.3 Output & Diagnostic Cleanup** — Phases 35-39 (shipped 2026-02-08)
+- 🚧 **v3.4 0.8.0 Issue Closure** — Phases 40-43 (in progress)
 
 ## Phases
 
@@ -115,6 +116,69 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v3.4 0.8.0 Issue Closure (In Progress)
+
+**Milestone Goal:** Close all open GitHub issues tagged with the 0.8.0 milestone — low-risk fixes only.
+
+- [ ] **Phase 40: Parser Fix** - Fix `step` keyword breaking structure parsing
+- [ ] **Phase 41: File Type Fix** - Remove .bbl from BBj source file extensions
+- [ ] **Phase 42: Toolbar Button Polish** - Fix Compile/Decompile toolbar buttons
+- [ ] **Phase 43: Run Command Fixes** - Fix BUI/DWC login loop and config.bbx path
+
+### Phase 40: Parser Fix
+**Goal**: Field names starting with `step` parse correctly in class definitions
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: PARSE-01
+**Success Criteria** (what must be TRUE):
+  1. Class field declarations like `stepXYZ!` parse without error
+  2. Structure view shows fields starting with `step` at correct nesting level
+  3. No false parsing errors on valid BBj class definitions containing `step*` field names
+**Plans**: TBD
+
+Plans:
+- [ ] 40-01: TBD
+
+### Phase 41: File Type Fix
+**Goal**: `.bbl` files excluded from BBj source code language features
+**Depends on**: Phase 40
+**Requirements**: FTYP-01
+**Success Criteria** (what must be TRUE):
+  1. `.bbl` files do not trigger BBj language server features (diagnostics, completion)
+  2. `.bbl` files still recognized by IDE but treated as plain text
+  3. `.bbj`, `.bbx`, `.src` files continue working as BBj source files
+**Plans**: TBD
+
+Plans:
+- [ ] 41-01: TBD
+
+### Phase 42: Toolbar Button Polish
+**Goal**: Compile/Decompile toolbar buttons behave correctly in IntelliJ
+**Depends on**: Phase 41
+**Requirements**: TOOL-01, TOOL-02, TOOL-03
+**Success Criteria** (what must be TRUE):
+  1. Decompile toolbar button completely removed from IntelliJ UI
+  2. Compile button displays with a proper icon (not default placeholder)
+  3. Compile button only appears when a BBj file is open in the editor
+  4. Compile button hidden when non-BBj files are active
+**Plans**: TBD
+
+Plans:
+- [ ] 42-01: TBD
+
+### Phase 43: Run Command Fixes
+**Goal**: BUI/DWC run commands work reliably with proper authentication
+**Depends on**: Phase 42
+**Requirements**: RUN-01, RUN-02, RUN-03
+**Success Criteria** (what must be TRUE):
+  1. Token-based EM authentication works end-to-end for BUI/DWC launch
+  2. BUI/DWC launch completes without repeated login prompts
+  3. Run commands use configured config.bbx path from extension settings
+  4. Token authentication flow documented as closed in issue #256
+**Plans**: TBD
+
+Plans:
+- [ ] 43-01: TBD
+
 ## Progress
 
 | Phase Range | Milestone | Plans | Status | Shipped |
@@ -129,9 +193,10 @@ Research-only milestone — no phases.
 | 28-31 | v3.1 PRIO 1+2 Burndown | 13 | ✓ Complete | 2026-02-07 |
 | 32-34 | v3.2 Bug Fix Release | 10 | ✓ Complete | 2026-02-08 |
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
+| 40-43 | v3.4 0.8.0 Issue Closure | TBD | In progress | - |
 
-**Total:** 11 milestones, 39 phases, 105 plans shipped in 8 days
+**Total:** 11 milestones shipped (11), 43 phases (39 complete), 105 plans shipped in 8 days
 
 ---
 
-*Roadmap last updated: 2026-02-08 after v3.3 milestone archived*
+*Roadmap last updated: 2026-02-08 after v3.4 milestone added*
