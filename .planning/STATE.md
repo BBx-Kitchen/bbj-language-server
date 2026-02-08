@@ -15,17 +15,17 @@
 
 ## Current Position
 
-**Active Phase:** Phase 35 - Logger Infrastructure
+**Active Phase:** Phase 36 - Settings Plumbing
 **Active Plan:** 1 of 1 (Plan 01 complete)
 
 **Phase Status:** Complete
-**Phase Goal:** Foundation layer exists for level-based logging with zero overhead when disabled
-**Last Activity:** 2026-02-08 - Completed 35-01-PLAN.md
+**Phase Goal:** Debug flag flows from IDE settings to language server and controls logger behavior
+**Last Activity:** 2026-02-08 - Completed 36-01-PLAN.md
 
 **Progress Bar:**
 ```
-Milestone v3.3: [██░░░░░░░░░░░░░░░░░░] 1/10 requirements (10%)
-Phase 35:       [████████████████████] 4/4 success criteria (100%)
+Milestone v3.3: [████░░░░░░░░░░░░░░░░] 2/10 requirements (20%)
+Phase 36:       [████████████████████] 3/3 success criteria (100%)
 ```
 
 ---
@@ -35,11 +35,11 @@ Phase 35:       [████████████████████] 4
 ### Current Milestone (v3.3)
 
 **Started:** 2026-02-08
-**Phases completed:** 1/5
-**Requirements completed:** 1/10
+**Phases completed:** 2/5
+**Requirements completed:** 2/10
 **Days elapsed:** 0
 
-**Velocity:** 1 phase/day (Phase 35 completed 2026-02-08)
+**Velocity:** 2 phases/day (Phase 35-36 completed 2026-02-08)
 
 ### Recent History
 
@@ -114,9 +114,9 @@ Phase 35:       [████████████████████] 4
 ### Pending TODOs
 
 - [x] Phase 35 (Logger Infrastructure) — COMPLETE
-- [ ] Plan and execute Phase 36 (Settings Plumbing) — wire logger.setLevel() to onDidChangeConfiguration
+- [x] Phase 36 (Settings Plumbing) — COMPLETE
 - [ ] Determine exact console.* call sites for migration (Phase 37 scope)
-- [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 36
+- [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 37
 - [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
 - [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
 
@@ -136,22 +136,24 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 35 (Logger Infrastructure) completed in 1 minute
-- Created logger singleton (~67 lines) with LogLevel enum, lazy evaluation, scoped factory
-- Wrote 17 unit tests verifying level filtering, lazy evaluation, zero overhead, output format
+- Phase 36 (Settings Plumbing) completed in 2 minutes
+- Added bbj.debug boolean setting to package.json (default: false)
+- Wired onDidChangeConfiguration handler to logger.setLevel()
+- Implemented quiet startup (ERROR level until first validation)
+- Implemented hot-reload (debug=true→DEBUG, false→WARN without LS restart)
+- Added 8 integration tests (25/25 passing total)
 - All tests pass, TypeScript compilation succeeds with zero errors
-- Commits: 5882034 (feat: logger module), d3eb84f (test: logger tests)
+- Commits: b840f2e (feat: wire setting), f21b251 (test: integration tests)
 
 ### What's Next
 
-**Immediate:** Phase 36 - Settings Plumbing (wire logger to bbj.debug setting)
+**Immediate:** Phase 37 - Console Migration (systematic refactoring of 56 console.* call sites)
 
-**After Phase 36:**
-- Phase 37: Console Migration (systematic refactoring of 56 console.* call sites)
+**After Phase 37:**
 - Phase 38: Diagnostic Filtering (verification only)
 - Phase 39: Parser Diagnostics (investigation + docs)
 
-**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓)
+**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓, 36 ✓)
 **Parallel opportunity:** Phase 38 can run independently
 
 ### Context for Next Session
