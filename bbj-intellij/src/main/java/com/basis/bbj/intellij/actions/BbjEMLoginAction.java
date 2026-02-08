@@ -91,6 +91,7 @@ public final class BbjEMLoginAction extends AnAction {
         try {
             GeneralCommandLine cmd = new GeneralCommandLine(bbjPath.toString());
             cmd.addParameter("-q");
+            cmd.addParameter("-tIO");
             cmd.addParameter(emLoginPath);
             cmd.addParameter("-");
             cmd.addParameter(username);
@@ -99,7 +100,15 @@ public final class BbjEMLoginAction extends AnAction {
             CapturingProcessHandler handler = new CapturingProcessHandler(cmd);
             ProcessOutput output = handler.runProcess(15000); // 15s timeout
 
-            String stdout = output.getStdout().trim();
+            // Take last non-empty line — earlier lines may contain mnemonic output
+            String[] lines = output.getStdout().split("\n");
+            String stdout = "";
+            for (int i = lines.length - 1; i >= 0; i--) {
+                if (!lines[i].trim().isEmpty()) {
+                    stdout = lines[i].trim();
+                    break;
+                }
+            }
             if (stdout.startsWith("ERROR:")) {
                 Messages.showErrorDialog(stdout.substring(6), "EM Login Failed");
                 return false;

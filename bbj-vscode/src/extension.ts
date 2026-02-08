@@ -382,7 +382,7 @@ export function activate(context: vscode.ExtensionContext): void {
         // Launch em-login.bbj to validate credentials and get token
         const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
         const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
-        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}"`;
+        const emLoginCmd = `"${bbj}" -q -tIO "${emLoginPath}" - "${username}" "${password}"`;
 
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
