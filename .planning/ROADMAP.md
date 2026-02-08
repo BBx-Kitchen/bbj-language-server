@@ -68,6 +68,12 @@ Plans:
 4. Error output (`console.error()`) never suppressed regardless of debug flag state
 5. High-impact files migrated first (java-interop.ts, bbj-ws-manager.ts, bbj-scope-local.ts, main.ts)
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 37-01-PLAN.md -- Migrate high-volume files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
+- [ ] 37-02-PLAN.md -- Migrate remaining files (main.ts, scopes, linker, module, hover, builder, formatter)
+
 ---
 
 ### Phase 38: Diagnostic Filtering
@@ -109,7 +115,7 @@ Plans:
 |-------|--------|--------------|-------|-----------|
 | 35 - Logger Infrastructure | ✓ Complete | LOG-01 (partial) | 1/1 | 2026-02-08 |
 | 36 - Settings Plumbing | Planned | LOG-01, LOG-05 | 0/1 | — |
-| 37 - Console Migration | Pending | LOG-02, LOG-03, LOG-04 | 0/0 | — |
+| 37 - Console Migration | Planned | LOG-02, LOG-03, LOG-04 | 0/2 | — |
 | 38 - Diagnostic Filtering | Pending | DIAG-01, DIAG-02 | 0/0 | — |
 | 39 - Parser Diagnostics | Pending | PARSE-01, PARSE-02, DOCS-01 | 0/0 | — |
 
@@ -154,4 +160,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 36 planning*
+*Last updated: 2026-02-08 after Phase 37 planning*
