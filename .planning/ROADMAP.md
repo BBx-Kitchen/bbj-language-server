@@ -92,6 +92,11 @@ Plans:
 3. Javadoc loading shows single summary error if all sources fail (not per-path spam)
 4. Javadoc loading shows no error if any source succeeds (silent partial success)
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 38-01-PLAN.md -- Add bbjlib:/ scheme suppression, aggregate javadoc errors, migrate last console.error calls
+
 ---
 
 ### Phase 39: Parser Diagnostics
@@ -118,7 +123,7 @@ Plans:
 | 35 - Logger Infrastructure | ✓ Complete | LOG-01 (partial) | 1/1 | 2026-02-08 |
 | 36 - Settings Plumbing | ✓ Complete | LOG-01, LOG-05 | 1/1 | 2026-02-08 |
 | 37 - Console Migration | ✓ Complete | LOG-02, LOG-03, LOG-04 | 2/2 | 2026-02-08 |
-| 38 - Diagnostic Filtering | Pending | DIAG-01, DIAG-02 | 0/0 | — |
+| 38 - Diagnostic Filtering | Planned | DIAG-01, DIAG-02 | 0/1 | — |
 | 39 - Parser Diagnostics | Pending | PARSE-01, PARSE-02, DOCS-01 | 0/0 | — |
 
 **Milestone Progress:** 5/10 requirements (50%)
@@ -162,4 +167,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 37 execution complete*
+*Last updated: 2026-02-08 after Phase 38 planning complete*
