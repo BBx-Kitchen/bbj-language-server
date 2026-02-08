@@ -107,12 +107,17 @@ Plans:
 
 **Requirements:** PARSE-01 (investigation), PARSE-02 (fix or suppress), DOCS-01 (documentation)
 
+**Plans:** 1 plan
+
 **Success Criteria:**
 1. Root cause of Chevrotain "Ambiguous Alternatives Detected" message documented with specific grammar rules identified
 2. Grammar ambiguities either resolved via refactoring or explicitly suppressed via IGNORE_AMBIGUITIES with rationale
 3. Parser ambiguity details available on-demand via debug flag (not shown by default)
 4. Debug logging setting documented in Docusaurus docs with instructions for enabling verbose output
 5. If grammar changes required, all tests pass with zero regressions
+
+Plans:
+- [ ] 39-01-PLAN.md -- Enhance ambiguity logging hook with debug-gated verbosity and document bbj.debug setting
 
 ---
 
@@ -124,7 +129,7 @@ Plans:
 | 36 - Settings Plumbing | ✓ Complete | LOG-01, LOG-05 | 1/1 | 2026-02-08 |
 | 37 - Console Migration | ✓ Complete | LOG-02, LOG-03, LOG-04 | 2/2 | 2026-02-08 |
 | 38 - Diagnostic Filtering | ✓ Complete | DIAG-01, DIAG-02 | 1/1 | 2026-02-08 |
-| 39 - Parser Diagnostics | Pending | PARSE-01, PARSE-02, DOCS-01 | 0/0 | — |
+| 39 - Parser Diagnostics | Planned | PARSE-01, PARSE-02, DOCS-01 | 0/1 | — |
 
 **Milestone Progress:** 7/10 requirements (70%)
 
@@ -167,4 +172,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 38 execution complete*
+*Last updated: 2026-02-08 after Phase 39 planning complete*
