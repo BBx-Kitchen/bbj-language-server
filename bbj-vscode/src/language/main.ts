@@ -10,6 +10,7 @@ import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.j
 import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { logger, LogLevel } from './logger.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -62,10 +63,17 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // Start the language server with the shared services
 startLanguageServer(shared);
 
+// Track pending debug setting received before workspace init
+let pendingDebugLevel: LogLevel = LogLevel.WARN; // Default when debug=false
+
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
-    workspaceInitialized = true;
+    if (!workspaceInitialized) {
+        workspaceInitialized = true;
+        // Quiet startup complete: apply user's debug preference
+        logger.setLevel(pendingDebugLevel);
+    }
 });
 
 // Register AFTER startLanguageServer to override Langium's default handler
@@ -77,6 +85,18 @@ connection.onDidChangeConfiguration(async (change) => {
     const config = change.settings?.bbj;
     if (!config) {
         return;
+    }
+
+    // Apply debug setting to logger
+    if (config.debug !== undefined) {
+        const newLevel = config.debug === true ? LogLevel.DEBUG : LogLevel.WARN;
+        if (workspaceInitialized) {
+            // Post-startup: apply immediately
+            logger.setLevel(newLevel);
+        } else {
+            // Pre-startup: store for deferred application (quiet startup mode)
+            pendingDebugLevel = newLevel;
+        }
     }
 
     // Skip Java class reload during initial startup — initializeWorkspace handles it

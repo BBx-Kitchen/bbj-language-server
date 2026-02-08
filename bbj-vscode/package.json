@@ -267,6 +267,12 @@
       "type": "object",
       "title": "BBj configuration",
       "properties": {
+        "bbj.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging in the BBj language server. Shows detailed diagnostics, class loading, and validation messages.",
+          "scope": "window"
+        },
         "bbj.home": {
           "type": [
             "string",
