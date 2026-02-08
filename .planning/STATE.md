@@ -16,11 +16,11 @@
 ## Current Position
 
 **Active Phase:** Phase 37 - Console Migration
-**Active Plan:** 2 of 2 (Plan 02 complete)
+**Active Plan:** 1 of 2 (Plan 01 complete)
 
 **Phase Status:** In progress (1 of 2 plans complete)
 **Phase Goal:** Migrate all console.log/debug/warn calls to logger for quiet startup
-**Last Activity:** 2026-02-08 - Completed 37-02-PLAN.md
+**Last Activity:** 2026-02-08 - Completed 37-01-PLAN.md
 
 **Progress Bar:**
 ```
@@ -36,7 +36,7 @@ Phase 37:       [██████████░░░░░░░░░░] 1
 
 **Started:** 2026-02-08
 **Phases completed:** 2/5
-**Plans completed:** 3/7 (35-01, 36-01, 37-02)
+**Plans completed:** 3/7 (35-01, 36-01, 37-01)
 **Requirements completed:** 2/10
 **Days elapsed:** 0
 
@@ -106,6 +106,16 @@ Phase 37:       [██████████░░░░░░░░░░] 1
 **Date:** 2026-02-08
 **Impact:** Phase 38 expected to require zero code changes
 
+**Decision:** Lazy evaluation callbacks for expensive logger operations
+**Rationale:** Use `() => string` callbacks for JSON.stringify and array.join to prevent unnecessary computation when debug mode disabled
+**Date:** 2026-02-08 (Phase 37-01)
+**Impact:** Essential summaries use logger.info (BBj home, class count), verbose details use logger.debug with lazy callbacks
+
+**Decision:** Info vs debug classification for startup output
+**Rationale:** Essential summaries (BBj home, class count, Java Classes loaded, JavadocProvider packages) use logger.info for visibility even with debug=false; verbose details (classpath entries, class resolution) use logger.debug
+**Date:** 2026-02-08 (Phase 37-01)
+**Impact:** Startup with debug=false shows only essential summaries; debug=true shows verbose details
+
 ### Active Constraints
 
 **Never suppress console.error():** Error output must always be visible regardless of debug flag state to prevent hiding real failures
@@ -138,20 +148,20 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 37 Plan 02 (Console Migration) completed in 2 minutes
-- Migrated 11 console.log/debug/warn calls across 8 server files to logger
-- All remaining console.log/debug/warn eliminated from production server code
-- Full codebase now respects bbj.debug flag
-- All console.error calls preserved untouched
+- Phase 37 Plan 01 (High-Volume Console Migration) completed in 4 minutes 20 seconds
+- Migrated 31 console.log/debug/warn calls across 3 highest-volume server files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
+- Essential startup summaries use logger.info (BBj home, class count, JavadocProvider packages)
+- Verbose details use logger.debug with lazy callbacks for expensive operations
+- All console.error calls preserved untouched (10 calls across 3 files)
 - TypeScript compilation succeeds with zero errors
-- Commits: 11b4610 (Task 1: main.ts, bbj-scope-local.ts, bbj-scope.ts), f2ff04a (Task 2: 5 remaining files)
+- Commits: a0a5238 (Task 1: java-interop + bbj-ws-manager), 7b34eb3 (Task 2: java-javadoc)
 
 ### What's Next
 
-**Immediate:** Phase 37 Plan 01 - Console Migration high-volume files (java-interop.ts, bbj-ws-manager.ts)
+**Immediate:** Phase 37 Plan 02 - Console Migration remaining files (8 lower-volume files with 14 console calls)
 
-**After Phase 37 Plan 01:**
-- Complete Phase 37 (Plan 01 + Plan 02 together achieve LOG-04)
+**After Phase 37 Plan 02:**
+- Complete Phase 37 (Plan 01 + Plan 02 together achieve LOG-04: all console calls routed through logger)
 - Phase 38: Diagnostic Filtering (verification only)
 - Phase 39: Parser Diagnostics (investigation + docs)
 
@@ -167,15 +177,16 @@ None currently identified.
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
 
 **Key files for v3.3:**
-- `bbj-vscode/src/language/main.ts` — LS entry point, now uses logger.info for settings changes
-- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, needs migration in Plan 01
-- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic, now uses logger.warn
-- `bbj-vscode/src/language/java-interop.ts` — High console output volume, needs migration in Plan 01
+- `bbj-vscode/src/language/main.ts` — LS entry point, onDidChangeConfiguration handler
+- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, now uses logger (Plan 01 complete)
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files
+- `bbj-vscode/src/language/java-interop.ts` — Java class loading, now uses logger (Plan 01 complete)
+- `bbj-vscode/src/language/java-javadoc.ts` — Javadoc scanning, now uses logger (Plan 01 complete)
 - `bbj-vscode/package.json` — VS Code settings schema
 
 **Phase 37 progress:**
-- Plan 02 complete: 11 console calls migrated across 8 lower-volume files
-- Plan 01 remaining: High-volume files (java-interop.ts, bbj-ws-manager.ts)
+- Plan 01 complete: 31 console calls migrated across 3 high-volume files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
+- Plan 02 remaining: 14 console calls across 8 lower-volume files
 - Combined Plans 01+02 will achieve LOG-04 (all console calls routed through logger)
 
 ---
