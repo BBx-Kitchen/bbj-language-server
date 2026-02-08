@@ -148,8 +148,7 @@ public final class BbjEMLoginAction extends AnAction {
             if (pluginId == null) return null;
             var plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(pluginId);
             if (plugin == null) return null;
-            Path toolsDir = plugin.getPluginPath().resolve("tools");
-            Path emLogin = toolsDir.resolve("em-login.bbj");
+            Path emLogin = plugin.getPluginPath().resolve("lib/tools/em-login.bbj");
             return Files.exists(emLogin) ? emLogin.toString() : null;
         } catch (Exception e) {
             return null;
