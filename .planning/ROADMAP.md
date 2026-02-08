@@ -70,7 +70,9 @@ Plans:
   1. VS Code settings panel shows "BBj" (capital B, capital B, lowercase j) in all setting labels, not "Bbj"
   2. A USE statement referencing a non-existent file path shows an error diagnostic on the file name portion of the USE statement
   3. USE statements with valid file paths show no new diagnostics
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 34-01-PLAN.md -- Fix settings capitalization (POL-01) and USE file path validation (POL-02)
 
 ## Progress
 
@@ -81,4 +83,4 @@ Phases execute in numeric order: 32 -> 33 -> 34
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
 | 33. Parser and Lexer Fixes | v3.2 | 3/3 | Complete | 2026-02-08 |
-| 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
+| 34. Diagnostic Polish | v3.2 | 0/1 | Not started | - |
