@@ -11,9 +11,9 @@ See: .planning/PROJECT.md (updated 2026-02-07)
 
 Milestone: v3.2 Bug Fix Release
 Phase: 33 of 34 (Parser and Lexer Fixes)
-Plan: 2 of 2 in current phase
+Plan: 3 of 3 in current phase
 Status: Phase complete
-Last activity: 2026-02-07 -- Completed 33-02-PLAN.md (DEF FN suffixed variables, SELECT verb)
+Last activity: 2026-02-08 -- Completed 33-03-PLAN.md (CastExpression grammar rule for cast array notation)
 
 Progress: [████░░░░░░] 33%
 
@@ -35,9 +35,9 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 94 across all milestones (33-02 completed)
-- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32) + 82 min (Phase 33)
-- 8 milestones shipped in 7 days
+- Total plans completed: 95 across all milestones (33-03 completed)
+- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32) + 92 min (Phase 33)
+- 8 milestones shipped in 8 days
 
 *Updated after each plan completion*
 
@@ -52,9 +52,10 @@ See: .planning/MILESTONES.md
 
 **Phase 33 (Parser and Lexer Fixes):**
 - Use voidReturn boolean property instead of treating void as a class reference in method signatures
-- Defer PARSE-04 (cast array notation) due to Langium parser ambiguity challenges - requires expert consultation or alternative approach
 - Set keyword LONGER_ALT to array [id, idWithSuffix] to prevent keyword matching when identifier has suffix (fixes mode$ vs MODE conflict)
 - Use BinaryExpression instead of Expression for SELECT template to avoid StringMask operator ambiguity
+- CastExpression as dedicated PrimaryExpression alternative with QualifiedClass + arrayDims brackets - avoids ArrayElement ambiguity entirely
+- CAST keyword with caseInsensitive:true handles cast/CAST/Cast automatically via Langium keyword config
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -65,22 +66,23 @@ See archived decisions in:
 ### Known Issues
 
 1. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
-2. **PARSE-04: cast array notation** - `cast(BBjString[], x!)` syntax fails to parse due to ArrayElement grammar requiring indices or ALL keyword. Requires Langium parser generator expertise or confirmation that syntax is invalid BBj.
-3. Five pre-existing parser test failures: hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE (documented in 33-02 summary)
+2. Pre-existing parser test failures (10): hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, 2 classes access-level tests, 2 validation access-level tests, 1 completion test
+3. `declare auto x!` generates parser error because QualifiedClass requires ID but x! is ID_WITH_SUFFIX (pre-existing, cosmetic - parser recovers correctly)
 
 ### Tech Debt
 
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
+- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) - CAST now handled by CastExpression
 
 ### Blockers/Concerns
 
-**Phase 33 complete:**
+**Phase 33 fully complete (all gaps closed):**
 - PARSE-01 (void return type) complete - eliminates false "unresolvable class" errors for `method public void doSomething()`
 - PARSE-02 (DEF FN suffixed variables) complete - `mode$`, `count%`, `obj!` work in DEF FN inside class methods
 - PARSE-03 (SELECT verb) complete - full grammar support for SELECT with MODE, ERR, WHERE, SORTBY, LIMIT, field lists
-- PARSE-04 (cast array notation) deferred - requires either Langium expert, alternative validator approach, or confirmation syntax is invalid in real BBj
-- Test coverage: 195 passing (+15 new), 5 failing (pre-existing), 3 skipped
+- PARSE-04 (cast array notation) complete - CastExpression grammar rule with QualifiedClass + arrayDims brackets
+- Test coverage: 430 passing (+4 from 33-03), 10 failing (pre-existing), 4 skipped (1 pre-existing TABLE test + 3 other)
 
 **Phase 32 complete. Pending user verification:**
 - User needs to rebuild and verify BBjAPI CC and BBjVector resolution work in VS Code
@@ -89,7 +91,7 @@ See archived decisions in:
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Completed 33-02-PLAN.md (Phase 33 complete)
-Resume file: .planning/phases/33-parser-and-lexer-fixes/33-02-SUMMARY.md
+Last session: 2026-02-08
+Stopped at: Completed 33-03-PLAN.md (Phase 33 fully complete, all gaps closed)
+Resume file: .planning/phases/33-parser-and-lexer-fixes/33-03-SUMMARY.md
 Next: Phase 34 or v3.2 milestone planning
