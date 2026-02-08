@@ -112,19 +112,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Chevrotain ambiguity warnings investigated (47 patterns, all safe) and moved behind debug flag — v3.3
 - ✓ Debug logging setting documented in Docusaurus configuration guide — v3.3
 
+- ✓ Field names starting with `step` (e.g. `stepXYZ!`) parse correctly in class definitions (#368) — v3.4
+- ✓ `.bbl` files excluded from BBj source code file type registration (#369) — v3.4
+- ✓ Decompile toolbar button removed entirely from both IDEs (#370) — v3.4
+- ✓ Compile toolbar button has proper icon with file-scoped visibility (#370, #354) — v3.4
+- ✓ Token-based EM authentication works end-to-end for BUI/DWC launch (#256, #359) — v3.4
+- ✓ Run commands use configured config.bbx path from settings (#244) — v3.4
+
 ### Active
 
-## Current Milestone: v3.4 0.8.0 Issue Closure
-
-**Goal:** Close all open GitHub issues tagged with the 0.8.0 milestone — low-risk fixes only.
-
-**Target features:**
-- Fix `step` keyword breaking structure parsing (#368)
-- Remove .bbl from BBj source file extensions (#369)
-- Fix Compile/Decompile toolbar buttons — remove Decompile, add Compile icon, scope to BBj files (#370, #354)
-- Fix BUI/DWC launch login loop (#359)
-- Pass config.bbx path to run commands (#244)
-- Close already-fixed #256 (token auth)
+(No active requirements — all 0.8.0 issues closed)
 
 ### Out of Scope
 
@@ -135,7 +132,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.4 started 2026-02-08. Closing all 0.8.0-tagged GitHub issues. 11 milestones shipped in 8 days.
+**Current state:** v3.4 shipped 2026-02-08. All 0.8.0-tagged GitHub issues closed. 12 milestones shipped in 8 days.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -237,5 +234,9 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Lazy evaluation callbacks for logger.debug | `() => string` callbacks for JSON.stringify and array.join prevent computation when debug disabled | ✓ Good — v3.3 shipped |
 | Suppress all 47 parser ambiguities (no grammar refactoring) | BBj's non-reserved keywords create inherent ambiguity that ALL(*) resolves correctly; refactoring would require language redesign | ✓ Good — v3.3 shipped |
 
+| Generic LONGER_ALT order [idWithSuffix, id] | Ensures all keyword-prefixed identifiers with type suffixes tokenize correctly | ✓ Good — v3.4 shipped |
+| Remove ? 'HIDE' from BBj scripts | BBj print statement corrupts stdout capture of JWT tokens | ✓ Good — v3.4 shipped |
+| Config path as ARGV(9) to web.bbj | Backward-compatible parameter passing; empty = default config | ✓ Good — v3.4 shipped |
+
 ---
-*Last updated: 2026-02-08 after v3.4 milestone started*
+*Last updated: 2026-02-08 after v3.4 milestone shipped*

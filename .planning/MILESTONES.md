@@ -1,5 +1,58 @@
 # Project Milestones: BBj Language Server
 
+## v3.4 0.8.0 Issue Closure (Shipped: 2026-02-08)
+
+**Delivered:** Closed all 7 open GitHub issues tagged with the 0.8.0 milestone — fixed parser keyword conflicts, excluded .bbl library files from language features, cleaned up toolbar buttons, fixed token authentication corruption, and added config.bbx path support to all run commands across both VS Code and IntelliJ.
+
+**Phases completed:** 40-43 (4 plans total)
+
+**Key accomplishments:**
+
+- Generic LONGER_ALT order fix for all keyword-prefixed identifiers — `stepXYZ!`, `selectMode$` etc. parse correctly in class definitions (#368)
+- Excluded .bbl library files from BBj source file registration in VS Code, IntelliJ, and workspace manager (#369)
+- Removed non-functional Decompile command, added compile icons, and file-scoped visibility guards for toolbar actions in both IDEs (#370, #354)
+- Fixed token authentication corruption — `? 'HIDE'` in em-login.bbj was printing "HIDE" to stdout before the JWT token (#256, #359)
+- Config.bbx path support added to all run commands (GUI/BUI/DWC) in both VS Code and IntelliJ (#244)
+
+**Stats:**
+
+- 25 files modified (+1,052 / -52 lines)
+- 4 phases, 4 plans
+- 1 day (2026-02-08)
+- GitHub issues closed: #368, #369, #370, #354, #256, #359, #244
+
+**Git range:** `33d0d93` → `b785697`
+
+**What's next:** All 0.8.0 issues closed. Ready for 0.8.0 release or next milestone.
+
+---
+
+## v3.3 Output & Diagnostic Cleanup (Shipped: 2026-02-08)
+
+**Delivered:** Implemented level-based debug logging, migrated all console output to respect the debug flag, suppressed synthetic file diagnostics and javadoc spam, investigated Chevrotain ambiguity warnings, and documented the debug setting — giving users a quiet, professional language server by default with verbose output on demand.
+
+**Phases completed:** 35-39 (6 plans total)
+
+**Key accomplishments:**
+
+- Logger singleton with zero-overhead level filtering, lazy evaluation callbacks, and scoped component tags for debug output
+- `bbj.debug` setting wired to logger via hot-reload — quiet startup (ERROR level) until workspace init, then WARN (default) or DEBUG
+- 42 console.log/debug/warn calls migrated across 11 files; essential summaries via logger.info, verbose details via logger.debug
+- Synthetic file diagnostics suppressed (bbjlib:/ scheme check), javadoc errors aggregated to single summary warning
+- 47 Chevrotain ambiguity patterns investigated and documented — all safe (BBj's non-reserved keywords), moved behind debug flag
+- Debug logging setting documented in Docusaurus configuration guide with troubleshooting section
+
+**Stats:**
+
+- 45 files modified (+6,578 / -107 lines)
+- 5 phases, 6 plans
+- 1 day (2026-02-08)
+- Milestone audit: 10/10 requirements, 5/5 phases, 6/6 integrations, 3/3 E2E flows
+
+**Git range:** `9244881` → `0b485a1`
+
+---
+
 ## v3.2 Bug Fix Release (Shipped: 2026-02-08)
 
 **Delivered:** Fixed regressions and parser bugs that produced false errors on valid BBj code — restored BBjAPI() resolution, USE statement navigation, and eliminated diagnostics noise from void methods, suffixed variables, SELECT statements, and cast expressions.
@@ -296,6 +349,16 @@
 **Git range:** `9244881` → `0b485a1`
 
 **What's next:** Start next milestone for remaining feature gaps, CPU stability mitigations, or additional issue burndown.
+
+---
+
+
+## v3.4 0.8.0 Issue Closure (Shipped: 2026-02-08)
+
+**Phases completed:** 43 phases, 86 plans, 4 tasks
+
+**Key accomplishments:**
+- (none recorded)
 
 ---
 
