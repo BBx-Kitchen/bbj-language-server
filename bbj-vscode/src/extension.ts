@@ -380,18 +380,27 @@ export function activate(context: vscode.ExtensionContext): void {
         // Launch em-login.bbj to validate credentials and get token
         const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
         const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
+        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}"`;
+
+        const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
+        if (isDebug) {
+            console.log(`[BBj] EM login command: ${emLoginCmd.replace(`"${password}"`, '"***"')}`);
+        }
 
         try {
             const result = await new Promise<string>((resolve, reject) => {
                 const { exec } = require('child_process');
-                exec(`"${bbj}" -q "${emLoginPath}" - "${username}" "${password}"`,
+                exec(emLoginCmd,
                     { timeout: 15000 },
                     (err: any, stdout: string, stderr: string) => {
                         if (err) {
                             reject(new Error(stderr || err.message));
                             return;
                         }
-                        const output = stdout.trim();
+                        // Take only the last non-empty line — earlier lines may contain
+                        // BBj mnemonic output (e.g. ? 'HIDE') that is not the token
+                        const lines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                        const output = lines[lines.length - 1] || '';
                         if (output.startsWith('ERROR:')) {
                             reject(new Error(output.substring(6)));
                             return;

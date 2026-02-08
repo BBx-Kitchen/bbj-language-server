@@ -89,6 +89,13 @@ const runWeb = (params, client, credentials) => {
 
   const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}" "${configPath}"`;
 
+  const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
+  if (isDebug) {
+    // Mask token/password in debug output
+    const debugCmd = cmd.replace(`"${token}"`, '"***"').replace(`"${password}"`, '"***"');
+    console.log(`[BBj] ${client} command: ${debugCmd}`);
+  }
+
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
       const errorMsg = `Failed to run "${programme}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
@@ -217,6 +224,11 @@ const Commands = {
     const configArg = configPath ? `-c"${configPath}" ` : '';
 
     const cmd = `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"`;
+
+    const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
+    if (isDebug) {
+      console.log(`[BBj] Run command: ${cmd}`);
+    }
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {

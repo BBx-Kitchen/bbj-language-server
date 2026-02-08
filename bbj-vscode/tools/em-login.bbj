@@ -3,6 +3,8 @@ rem Parameters:
 rem   1) username
 rem   2) password
 
+? 'HIDE'
+
 username! = ARGV(1,err=*next)
 password! = ARGV(2,err=*next)
 
