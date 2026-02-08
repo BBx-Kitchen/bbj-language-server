@@ -10,6 +10,8 @@ rem   7) session-specific classpath
 rem   8) auth token (optional, if present uses token-based auth)
 rem   9) config file path (optional, if present uses custom config.bbx)
 
+? 'HIDE'
+
 isDWC!      = iff(ARGV(1) = "DWC", 1, 0)
 name!       = ARGV(2)
 programme!  = ARGV(3)
