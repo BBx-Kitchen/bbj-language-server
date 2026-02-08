@@ -84,7 +84,10 @@ const runWeb = (params, client, credentials) => {
       .slice(0, -1)
       .join(".");
 
-  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}"`;
+  // Get custom config.bbx path if configured
+  const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
+
+  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}" "${configPath}"`;
 
   exec(cmd, (err, stdout, stderr) => {
     if (err) {
@@ -209,7 +212,11 @@ const Commands = {
       sscp = '';
     }
 
-    const cmd = `"${bbj}" -q ${sscp} -WD"${workingDir}" "${fileName}"`;
+    // Add custom config.bbx path if configured
+    const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
+    const configArg = configPath ? `-c"${configPath}" ` : '';
+
+    const cmd = `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"`;
 
     const runCommand = () => {
       exec(cmd, (err, stdout, stderr) => {
@@ -285,10 +292,6 @@ const Commands = {
       }
     });
   },
-  decompile: function (params) {
-    decompile(params);
-  },
-
   denumber: function (params) {
     decompile(params, { denumber: true });
   },

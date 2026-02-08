@@ -35,6 +35,12 @@ public final class BbjRunGuiAction extends BbjRunActionBase {
             cmd.addParameter(classpath);
         }
 
+        // Add custom config.bbx path if configured
+        String configPath = getConfigPathArg();
+        if (configPath != null) {
+            cmd.addParameter(configPath);
+        }
+
         // Add working directory (project root)
         String projectRoot = project.getBasePath();
         if (projectRoot != null) {

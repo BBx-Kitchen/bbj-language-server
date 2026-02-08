@@ -8,8 +8,7 @@ rem   5) username
 rem   6) password
 rem   7) session-specific classpath
 rem   8) auth token (optional, if present uses token-based auth)
-
-? 'HIDE'
+rem   9) config file path (optional, if present uses custom config.bbx)
 
 isDWC!      = iff(ARGV(1) = "DWC", 1, 0)
 name!       = ARGV(2)
@@ -19,6 +18,7 @@ username!   = ARGV(5,err=*next)
 password!   = ARGV(6,err=*next)
 sscp!       = ARGV(7,err=*next)
 token!      = ARGV(8,err=*next)
+configFile! = ARGV(9,err=*next)
 
 rem Token-based authentication if token is provided
 if (token! <> null() and token! > "") then
@@ -56,7 +56,13 @@ rem set the properties for the application
 app!.setString(app!.NAME, name!)
 app!.setString(app!.PROGRAM, programme!)
 app!.setString(app!.WORKING_DIRECTORY , wd!)
-app!.setString(app!.CONFIG_FILE, BBjAPI().getConfig().getConfigFileName())
+
+rem Use custom config file if provided, otherwise use system default
+if (configFile! <> null() and configFile! > "") then
+    app!.setString(app!.CONFIG_FILE, configFile!)
+else
+    app!.setString(app!.CONFIG_FILE, BBjAPI().getConfig().getConfigFileName())
+fi
 
 if sscp! <> null() and sscp! > "" and sscp! <> "--" then
     app!.setString(app!.CLASSPATH, sscp!)

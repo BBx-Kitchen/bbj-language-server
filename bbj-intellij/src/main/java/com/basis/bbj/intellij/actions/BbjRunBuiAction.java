@@ -75,7 +75,10 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String classpath = state.classpathEntry != null ? state.classpathEntry : "";
 
-        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "BUI" <name> <programme> <workingDir> "" "" <classpath> <token>
+        // Get config path
+        String configPath = getConfigPath();
+
+        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "BUI" <name> <programme> <workingDir> "" "" <classpath> <token> <configPath>
         GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
         cmd.addParameter("-q");
         cmd.addParameter("-WD" + webRunnerDir);
@@ -89,6 +92,7 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
         cmd.addParameter("");  // password placeholder
         cmd.addParameter(classpath);
         cmd.addParameter(token);
+        cmd.addParameter(configPath);
 
         cmd.setWorkDirectory(webRunnerDir);
 

@@ -244,6 +244,35 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
+     * Returns the config.bbx path argument from settings, formatted for BBj command line.
+     *
+     * @return "-c<path>" if configPath is configured, or null if empty
+     */
+    @Nullable
+    protected String getConfigPathArg() {
+        BbjSettings.State state = BbjSettings.getInstance().getState();
+        String configPath = state.configPath;
+
+        if (configPath == null || configPath.isEmpty()) {
+            return null;
+        }
+
+        return "-c" + configPath;
+    }
+
+    /**
+     * Returns the config.bbx path from settings.
+     *
+     * @return config path string, or empty string if not configured
+     */
+    @NotNull
+    protected String getConfigPath() {
+        BbjSettings.State state = BbjSettings.getInstance().getState();
+        String configPath = state.configPath;
+        return (configPath != null) ? configPath : "";
+    }
+
+    /**
      * Auto-saves all open documents if the setting is enabled.
      */
     protected void autoSaveIfNeeded() {
