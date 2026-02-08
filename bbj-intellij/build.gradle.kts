@@ -92,6 +92,7 @@ val copyLanguageServer by tasks.registering(Copy::class) {
 val copyWebRunner by tasks.registering(Copy::class) {
     from("${projectDir}/../bbj-vscode/tools/") {
         include("web.bbj")
+        include("em-login.bbj")
     }
     into(layout.buildDirectory.dir("resources/main/tools"))
 }
@@ -112,6 +113,7 @@ tasks.named<PrepareSandboxTask>("prepareSandbox") {
     }
     from("${projectDir}/../bbj-vscode/tools/") {
         include("web.bbj")
+        include("em-login.bbj")
         into("${pluginName.get()}/lib/tools")
     }
 }
