@@ -46,6 +46,8 @@ export class JavadocProvider {
             throw new Error("JavadocProvider already initialized");
         }
         this.fsAccess = fsAccess;
+        const failedRoots: string[] = [];
+        let successCount = 0;
         for (const root of roots.filter(uri => uri.scheme === 'file')) {
             if (cancelToken.isCancellationRequested) {
                 logger.warn("Cancelation requested in JavadocProvider.");
@@ -55,6 +57,7 @@ export class JavadocProvider {
             try {
                 nodes = await this.fsAccess.readDirectory(root)
             } catch (e) {
+                failedRoots.push(root.toString());
                 logger.debug(`Failed to read javadoc directory ${root.toString()}: ${e}`);
                 continue;
             }
@@ -70,9 +73,13 @@ export class JavadocProvider {
                     }
                 }
             }
+            successCount++;
+        }
+        if (successCount === 0 && failedRoots.length > 0) {
+            logger.warn(`Javadoc: no sources accessible (tried ${failedRoots.length} path(s)). Javadoc tooltips will be unavailable.`);
         }
         this.initialized = true;
-        logger.info(`JavadocProvider initialized with ${this.packages.size} packages.`);
+        logger.info(`JavadocProvider initialized with ${this.packages.size} packages from ${successCount} source(s).`);
     }
 
     /**
@@ -151,13 +158,13 @@ export class JavadocProvider {
         try {
             const doc = JSON.parse(await this.readFile(packageDocURI)) as PackageDoc;
             if (doc.name !== packageName) {
-                console.error(`Failed to load javadoc file, package name '${doc.name}' does not match file name ${packageDocURI.toString()}`);
+                logger.error(`Failed to load javadoc file, package name '${doc.name}' does not match file name ${packageDocURI.toString()}`);
                 return null;
             }
             logger.debug(`Javadoc for package '${packageName}' loaded.`);
             return doc;
         } catch (e) {
-            console.error(`Failed to load javadoc file ${packageDocURI.toString()}: ${e}`);
+            logger.error(`Failed to load javadoc file ${packageDocURI.toString()}: ${e}`);
         }
         return null
     }
