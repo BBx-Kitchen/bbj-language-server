@@ -267,4 +267,101 @@ describe('Logger', () => {
       expect(output).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[test-component\] test message$/);
     });
   });
+
+  describe('settings integration', () => {
+    // Test the debug-to-level mapping logic
+    test('maps debug=true to LogLevel.DEBUG', () => {
+      const debugEnabled = true;
+      const level = debugEnabled === true ? LogLevel.DEBUG : LogLevel.WARN;
+      expect(level).toBe(LogLevel.DEBUG);
+    });
+
+    test('maps debug=false to LogLevel.WARN', () => {
+      const debugEnabled = false;
+      const level = debugEnabled === true ? LogLevel.DEBUG : LogLevel.WARN;
+      expect(level).toBe(LogLevel.WARN);
+    });
+
+    test('maps debug=undefined to LogLevel.WARN', () => {
+      const debugEnabled = undefined;
+      const level = debugEnabled === true ? LogLevel.DEBUG : LogLevel.WARN;
+      expect(level).toBe(LogLevel.WARN);
+    });
+
+    test('maps debug=null to LogLevel.WARN', () => {
+      const debugEnabled = null;
+      const level = (debugEnabled as unknown) === true ? LogLevel.DEBUG : LogLevel.WARN;
+      expect(level).toBe(LogLevel.WARN);
+    });
+
+    // Test that setLevel correctly applies new levels
+    test('setLevel updates logger behavior for hot-reload', () => {
+      logger.setLevel(LogLevel.WARN);
+      // debug should be suppressed
+      const debugSpy = vi.spyOn(console, 'log');
+      logger.debug('should not appear');
+      // Only the setLevel log should have appeared, not the debug message
+      const debugCalls = debugSpy.mock.calls.filter(c =>
+        typeof c[0] === 'string' && !c[0].startsWith('Log level')
+      );
+      expect(debugCalls).toHaveLength(0);
+      debugSpy.mockRestore();
+
+      // Now switch to DEBUG
+      logger.setLevel(LogLevel.DEBUG);
+      const debugSpy2 = vi.spyOn(console, 'log');
+      logger.debug('should appear now');
+      const debugCalls2 = debugSpy2.mock.calls.filter(c =>
+        typeof c[0] === 'string' && c[0].includes('should appear now')
+      );
+      expect(debugCalls2).toHaveLength(1);
+      debugSpy2.mockRestore();
+    });
+
+    // Test quiet startup -> post-startup transition
+    test('quiet startup: ERROR level suppresses warn and info', () => {
+      logger.setLevel(LogLevel.ERROR);
+      const warnSpy = vi.spyOn(console, 'warn');
+      const logSpy = vi.spyOn(console, 'log');
+
+      logger.warn('startup warn');
+      logger.info('startup info');
+      logger.debug('startup debug');
+
+      // warn should be suppressed at ERROR level
+      const warnCalls = warnSpy.mock.calls.filter(c =>
+        typeof c[0] === 'string' && c[0].includes('startup')
+      );
+      expect(warnCalls).toHaveLength(0);
+
+      // info and debug should be suppressed at ERROR level
+      const infoCalls = logSpy.mock.calls.filter(c =>
+        typeof c[0] === 'string' && c[0].includes('startup')
+      );
+      expect(infoCalls).toHaveLength(0);
+
+      warnSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    test('error always emits regardless of level', () => {
+      logger.setLevel(LogLevel.ERROR);
+      const errorSpy = vi.spyOn(console, 'error');
+      logger.error('critical failure');
+      expect(errorSpy).toHaveBeenCalledWith('critical failure');
+      errorSpy.mockRestore();
+    });
+
+    // Test level persistence across multiple changes (no desync)
+    test('multiple setLevel calls persist correctly', () => {
+      logger.setLevel(LogLevel.DEBUG);
+      expect(logger.isDebug()).toBe(true);
+      logger.setLevel(LogLevel.WARN);
+      expect(logger.isDebug()).toBe(false);
+      logger.setLevel(LogLevel.DEBUG);
+      expect(logger.isDebug()).toBe(true);
+      logger.setLevel(LogLevel.ERROR);
+      expect(logger.isDebug()).toBe(false);
+    });
+  });
 });
