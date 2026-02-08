@@ -160,10 +160,10 @@ Plans:
   2. Compile button displays with a proper icon (not default placeholder)
   3. Compile button only appears when a BBj file is open in the editor
   4. Compile button hidden when non-BBj files are active
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 42-01: TBD
+- [ ] 42-01-PLAN.md — Create Compile action with proper file scoping and icon; ensure no Decompile action
 
 ### Phase 43: Run Command Fixes
 **Goal**: BUI/DWC run commands work reliably with proper authentication
@@ -199,4 +199,4 @@ Plans:
 
 ---
 
-*Roadmap last updated: 2026-02-08 after Phase 41 planning*
+*Roadmap last updated: 2026-02-08 after Phase 42 planning*
