@@ -8,6 +8,7 @@ import { EmptyFileSystemProvider, FileSystemNode, FileSystemProvider } from "lan
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from "vscode-uri";
 import { Documented, JavaClass, NamedElement, isJavaClass, isJavaMember } from "./generated/ast.js";
+import { logger } from "./logger.js";
 
 /**
  * Provides Javadoc information for internal binary classes.
@@ -47,22 +48,22 @@ export class JavadocProvider {
         this.fsAccess = fsAccess;
         for (const root of roots.filter(uri => uri.scheme === 'file')) {
             if (cancelToken.isCancellationRequested) {
-                console.warn("Cancelation requested in JavadocProvider.");
+                logger.warn("Cancelation requested in JavadocProvider.");
                 // FIXME will not be re-triggered return;
             }
             let nodes: FileSystemNode[];
             try {
                 nodes = await this.fsAccess.readDirectory(root)
             } catch (e) {
-                console.debug(`Failed to read javadoc directory ${root.toString()}: ${e}`);
+                logger.debug(`Failed to read javadoc directory ${root.toString()}: ${e}`);
                 continue;
             }
-            console.debug(`Scanning directory for javadoc: ${root.toString()}`);
+            logger.debug(`Scanning directory for javadoc: ${root.toString()}`);
 
             for (const node of nodes) {
                 const fileName = this.filename(node.uri)
                 if (node.isFile && fileName && fileName.endsWith(".json")) {
-                    console.debug(`Found ${fileName.toString()}`)
+                    logger.debug(`Found ${fileName.toString()}`)
                     const packageName = fileName.slice(0, -5); // cut .json
                     if (packageName !== undefined) {
                         this.packages.set(packageName, this.lazyLoad ? node.uri : await this.loadJavadocFile(packageName, node.uri));
@@ -71,7 +72,7 @@ export class JavadocProvider {
             }
         }
         this.initialized = true;
-        console.debug(`JavadocProvider initialized with ${this.packages.size} package/-s.`);
+        logger.info(`JavadocProvider initialized with ${this.packages.size} packages.`);
     }
 
     /**
@@ -153,7 +154,7 @@ export class JavadocProvider {
                 console.error(`Failed to load javadoc file, package name '${doc.name}' does not match file name ${packageDocURI.toString()}`);
                 return null;
             }
-            console.debug(`Javadoc for package '${packageName}' loaded.`);
+            logger.debug(`Javadoc for package '${packageName}' loaded.`);
             return doc;
         } catch (e) {
             console.error(`Failed to load javadoc file ${packageDocURI.toString()}: ${e}`);
