@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 Phase: 43 of 43 (Run Command Fixes)
 Plan: 1 of 1 in current phase
 Status: Milestone complete
-Last activity: 2026-02-08 — Shipped v3.4 0.8.0 Issue Closure
+Last activity: 2026-02-08 - Completed quick task 1: Fix duplicate BBj output channels created on each launch
 
 Progress: [████████████████████] 100% (110 plans shipped)
 
@@ -77,6 +77,12 @@ Progress: [████████████████████] 100% (1
 ### Known Blockers
 
 None currently identified.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Fix duplicate BBj output channels created on each launch | 2026-02-08 | e0e3306 | [1-fix-duplicate-bbj-output-channels-create](./quick/1-fix-duplicate-bbj-output-channels-create/) |
 
 ---
 
