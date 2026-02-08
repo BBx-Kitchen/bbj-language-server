@@ -1,210 +1,236 @@
 # Project Research Summary
 
-**Project:** BBj Language Server -- Langium 3.2.1 to 4.1.3 Migration
-**Domain:** Language server framework major version upgrade
-**Researched:** 2026-02-03
-**Confidence:** MEDIUM-HIGH
+**Project:** BBj Language Server Output Cleanup and Debug Logging (v3.3)
+**Domain:** Language Server Development — Langium 4.1.3 LSP Enhancement
+**Researched:** 2026-02-08
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The Langium 3.2.1 to 4.1.3 upgrade is a **non-trivial but well-scoped migration** affecting roughly 12 of the project's ~38 TypeScript source files, with the bulk of effort concentrated in mechanical find-and-replace changes rather than logic rewrites. Langium 4 introduces 13 documented breaking changes, of which 6 directly impact this codebase: the `PrecomputedScopes` to `LocalSymbols` rename (scope computation), the AST type constant restructuring from `TypeName` to `TypeName.$type` (pervasive across 10+ files), the `Reference | MultiReference` union type in linker/scope APIs, the `createReferenceCompletionItem` signature expansion, the removal of deprecated APIs (most critically `prepareLangiumParser`), and the `DefaultServiceRegistry` singleton removal. The remaining 7 breaking changes either do not affect this project (grammar naming rules, EBNF terminal refinements, TypeScript version requirement) or are handled automatically by regeneration.
+The BBj Language Server v3.3 milestone adds debug logging controls and diagnostic filtering to an existing Langium 4.1.3 language server. Research reveals that **no new dependencies are required** — the existing `vscode-languageserver` 9.0.1 provides built-in logging via `connection.console` with standard log levels, and diagnostic filtering leverages Langium's existing `DocumentValidator` and `DocumentBuilder` extension points. The recommended approach uses a lightweight logger singleton (60 lines) wrapping `console.*` calls with level-based filtering, controlled via LSP `initializationOptions` settings, avoiding heavyweight frameworks (Pino, Winston) that add unnecessary bundle size and complexity for diagnostic output.
 
-The recommended approach is a **strict sequential migration** starting with dependency updates and grammar regeneration to establish the new baseline, followed by systematic compilation error resolution in dependency order. The single highest-volume change is the AST type constant pattern (BC-3), which touches every file that uses generated type names in comparisons, switch statements, or object literals -- an estimated 25+ code sites across 10 files. This change carries runtime risk: if any site is missed, comparisons will silently fail because the old constant (now an object) will never equal a string. The second highest-risk item is the `prepareLangiumParser` function potentially being removed, which would require rewriting the custom parser creation logic in `bbj-module.ts`.
+Key risks center on **suppression scope creep** — developers adding blanket filtering that hides real errors, particularly parser failures in synthetic files and Chevrotain grammar ambiguity warnings. The mitigation is strict separation: (1) never suppress `console.error()` or parser diagnostics regardless of debug flag state, (2) filter diagnostics by severity/code not file type, and (3) use existing `shouldValidate()` checks which already skip validation for synthetic documents. The existing codebase already prevents validation of `JavaSyntheticDocUri` and external documents, so the synthetic file filtering requirement is **already satisfied** — verification needed, not implementation.
 
-The DI/module system, bundling pipeline (esbuild to CJS), VS Code extension client, IntelliJ plugin consumption, and import path patterns are all **unchanged** in Langium 4 -- limiting the blast radius to the language server internals. No new Langium 4 features need to be adopted for this migration. The project's existing TypeScript 5.8.3 and chevrotain 11.0.3 dependencies are compatible with Langium 4.x and need no changes. Total estimated effort is **2-3 days** for a developer familiar with the codebase.
+The architecture leverages Langium's dependency injection for service configuration but uses a singleton logger to avoid threading log state through 10+ services before settings arrive asynchronously via `onInitialize`. This is an acceptable trade-off because logging is diagnostic infrastructure, not business logic, and the singleton allows immediate logging from `main.ts` and `bbj-module.ts` before the DI container is fully configured. Settings flow through existing `BBjWorkspaceManager.onInitialize()` patterns already used for classpath, PREFIX, and type resolution warnings.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Only two dependency changes are required. Everything else stays the same.
+**No new dependencies required.** The existing stack provides all necessary capabilities:
 
-**Dependencies to change:**
-- `langium`: ~3.2.1 to ~4.1.3 -- latest stable with bug fixes
-- `langium-cli`: ~3.2.0 to ~4.1.0 -- latest CLI, must match runtime
+**Core technologies:**
+- **vscode-languageserver 9.0.1** (existing) — Provides `connection.console.{log,info,warn,error}` for LSP logging via `window/logMessage` protocol notifications, with client-side log level filtering via `[langId].trace.server` setting
+- **Langium DocumentValidator 4.1.3** (existing) — Already extended in `bbj-document-validator.ts` with custom `processLinkingErrors` and `toDiagnostic` methods; validation filtering can be added via `validateDocument` override
+- **Node.js console methods** (built-in) — For development/fallback logging before LSP connection established
+- **Lightweight logger wrapper** (new, 60 lines) — Simple module-level singleton with `LogLevel` enum and level-based filtering, zero runtime overhead when disabled
 
-**Dependencies to keep unchanged:**
-- `chevrotain`: ~11.0.3 -- directly imported by `bbj-token-builder.ts` for `TokenType`/`TokenVocabulary`; compatible with Langium 4's internal chevrotain 11.0.x
-- `typescript`: ^5.8.3 -- already satisfies Langium 4's >= 5.8.0 requirement
-- All other dependencies (vscode-languageclient, esbuild, vitest, properties-file, etc.) -- unrelated to Langium version
+**What NOT to add:**
+- **Pino/Winston/Bunyan** — Adds 200KB-1MB+ bundle size for features LSP already provides; justified only for high-volume production services with structured log requirements
+- **Custom log level enums** — LSP already defines MessageType (Error=1, Warning=2, Info=3, Log=4)
+- **Environment variable log control** — Language servers receive settings via LSP protocol, not env vars
 
-**Note on chevrotain version discrepancy:** PITFALLS.md references Langium 4.2.0 requiring chevrotain ~11.1.1, but the actual target is 4.1.3 (not 4.2.0). STACK.md confirms chevrotain ~11.0.3 is compatible with Langium 4.1.x. Keep the existing pin.
+**Configuration mechanism:** Extend existing `workspace/configuration` pattern used for Java interop settings and compiler options with `bbj.diagnostics.showSyntheticFiles`, `bbj.debug.enabled`, `bbj.debug.verboseStartup` (all boolean).
 
-### Breaking Changes (Expected Features)
+### Expected Features
 
-**Must address (compilation blockers):**
-- BC-1: `PrecomputedScopes` renamed to `LocalSymbols` -- 4 type annotation sites in `bbj-scope-local.ts`, 3 property access sites in `bbj-scope.ts`
-- BC-2: Scope computation method renames -- `computeExports()` may become `collectExportedSymbols()`, `computeLocalScopes()` may become `collectLocalSymbols()` (MEDIUM confidence, needs verification)
-- BC-3: AST type constants `TypeName` to `TypeName.$type` -- 25+ sites across 10+ files (highest volume change)
-- BC-4: `Reference | MultiReference` in linker/scope -- type narrowing needed in `bbj-linker.ts` and `bbj-scope.ts`
-- BC-5: `createReferenceCompletionItem` new signature -- 1 file, 2 sites
-- BC-9: Removed deprecated APIs -- `prepareLangiumParser` is critical risk
+**Must have (table stakes) — P1 for v3.3:**
+- **Quiet startup by default** — Professional LSP implementations don't spam console with internal details; gate verbose logs behind debug flag (standard practice across rust-analyzer, typescript-server)
+- **User-facing diagnostics only** — Show errors/warnings users can act on, not internal synthetic file issues
+- **Log level control** — DEBUG/INFO/WARN/ERROR hierarchy with user override via settings
+- **Smart javadoc error reporting** — Aggregate errors (report "N javadoc paths failed" only if ALL fail), not per-item spam
 
-**Verify only (likely no action needed):**
-- BC-6: TypeScript >= 5.8.0 -- already satisfied
-- BC-7: Regeneration required -- automated via `langium generate`
-- BC-8: Grammar rule naming -- already compliant
-- BC-10: ServiceRegistry singleton removed -- verify `.all` still works
-- BC-11: FileSystemProvider extended -- `NodeFileSystem` handles it
-- BC-12: EBNF terminal refinements -- uses regex terminals, not EBNF
-- BC-13: Xtext features removed -- standard grammar syntax only
+**Should have (competitive) — P2 for v3.4+:**
+- **Conditional logging performance** — `if (debugEnabled)` guards prevent string formatting overhead when disabled
+- **Structured logging** — JSON output for machine parsing (Pino would enable this, but not critical for v3.3)
+- **LSP trace integration** — Use LSP's `$/logTrace` notification (respects client-controlled trace level)
 
-### Architecture Impact
+**Defer (v2+):**
+- **Per-module log levels** — Fine-grained control seems powerful but creates overwhelming config surface and maintenance burden; single debug flag with category prefixes sufficient
+- **Multiple output channels** — Separate channels for java-interop, parser, etc. splits user attention and makes event correlation harder
+- **Log rotation in LS** — Language server is short-lived process; client (VS Code/IntelliJ) handles persistence
 
-The migration is contained within the language server layer. No changes needed to:
-- Entry point (`main.ts`) and DI wiring pattern (`inject`, `createDefaultModule`, `createDefaultSharedModule`)
-- Import path patterns (`langium`, `langium/lsp`, `langium/node`)
-- Bundling pipeline (`esbuild.mjs` -- CJS output)
-- VS Code extension client (`extension.ts`)
-- IntelliJ plugin consumption (runs `main.cjs` via stdio)
+**Anti-features (avoid):**
+- **Log rotation in language server** — LSP servers are short-lived; client handles persistence
+- **Real-time log streaming UI** — IDEs already provide this in output channels
+- **Per-module granular log levels** — Config complexity outweighs benefit
 
-**Components requiring modification (ranked by effort):**
+### Architecture Approach
 
-| Component | File | Primary Change | Effort |
-|-----------|------|----------------|--------|
-| DI Module | `bbj-module.ts` | `prepareLangiumParser` potentially removed | HIGH |
-| Scope computation | `bbj-scope-local.ts` | `PrecomputedScopes` rename + type constants | MODERATE |
-| Scope provider | `bbj-scope.ts` | `document.precomputedScopes` rename + type constants | MODERATE |
-| Linker | `bbj-linker.ts` | `Reference \| MultiReference` + type constants | MODERATE |
-| Completion provider | `bbj-completion-provider.ts` | Signature change + type constants | MODERATE |
-| Validator | `bbj-validator.ts` | Type constants in `ValidationChecks` keys | LOW-MODERATE |
-| 5 other files | Various | Type constant updates only | LOW each |
+The architecture **extends existing Langium components** without new layers. Integration points:
 
-**Components unchanged:** `bbj-lexer.ts`, `bbj-token-builder.ts`, `bbj-value-converter.ts`, `bbj-hover.ts`, `bbj-comment-provider.ts`, `extension.ts`, `main.ts`, `java-interop.ts`, `java-javadoc.ts`
+**Major components:**
+
+1. **Logger Singleton** (`bbj-logging.ts`, new) — Module-level wrapper with `LogLevel` enum and `setLogLevel()` function; checks current log level before calling `console.*`; rationale for singleton vs DI: Langium services created before settings arrive, logging needs to work immediately in `main.ts` and `bbj-module.ts`
+
+2. **Settings Handler** (`bbj-ws-manager.ts`, extend) — Existing `onInitialize()` reads `initializationOptions` and configures services; add calls to `setLogLevel()` based on new settings fields; quiet startup implemented by temporarily overriding log level to ERROR until `DocumentBuilder.onBuildPhase(Validated)` fires
+
+3. **Diagnostic Pipeline** (`bbj-document-builder.ts`, verify) — **Existing** `shouldValidate()` method already skips `JavaSyntheticDocUri` (classpath:/bbj.bbl) and external documents via `isExternalDocument()` check; add `bbjlib:/` scheme check to cover synthetic library docs; **no changes needed to validator** — filtering happens before validation runs
+
+4. **Console Migration** (10 files, ~56 call sites) — Replace `console.log/warn/error/debug` with `logger.info/warn/error/debug`; systematic file-by-file migration starting with highest-impact files (`java-interop.ts`, `bbj-ws-manager.ts`)
+
+**Data flow changes:**
+- Settings: VS Code package.json → extension.ts initializationOptions → BBjWorkspaceManager.onInitialize → setLogLevel() → logger singleton
+- Quiet startup: Start with logLevel=ERROR, restore original level after workspace validation completes
+- Diagnostics: **Unchanged** — existing `shouldValidate()` already filters synthetic files
+
+**Key architectural insight:** Synthetic file diagnostic suppression is **already implemented** via `BBjDocumentBuilder.shouldValidate()`. The milestone requirement is verification that coverage includes all synthetic URI schemes (classpath:/, bbjlib:/), not new implementation.
 
 ### Critical Pitfalls
 
-1. **Silent runtime bugs from type constant changes** -- If any `case TypeName:` or `descr.type === TypeName` site is missed, comparisons silently fail (object !== string). Prevention: systematic grep sweep after regeneration, TypeScript strict checks.
+Research identified 5 critical pitfalls with HIGH confidence based on existing codebase patterns and LSP/Langium documentation:
 
-2. **`prepareLangiumParser` removal** -- Used in `bbj-module.ts` to create custom parser with modified ambiguity logging. If removed, parser initialization fails entirely. Prevention: check Langium 4 exports first; prepare fallback using standard parser creation.
+1. **Global Debug Flag Hiding Real Errors** — Adding debug flag to suppress `console.log` output works in production but hides real errors in development when developers "set and forget"; **avoid by**: never suppress `console.error()`, only `console.debug/log`; add environment detection (development mode ignores flag); document flag clearly
 
-3. **Regeneration order mistake** -- Regenerating with old CLI against new runtime (or vice versa) produces incompatible generated code. Prevention: update both `langium` and `langium-cli` atomically, then regenerate immediately.
+2. **Filtering Synthetic File Diagnostics Masks Parser Bugs** — Suppressing diagnostics from synthetic/library files to reduce noise hides parser crashes and grammar bugs; **avoid by**: filter by diagnostic severity/code not file type; never suppress parser/lexer errors (only semantic warnings); log suppressed diagnostics in debug mode; keep `shouldValidate()` logic (prevents validation) separate from diagnostic filtering (hides results)
 
-4. **`LocalSymbols` interface shape** -- The old `PrecomputedScopes` was `MultiMap<AstNode, AstNodeDescription>`. If `LocalSymbols` has a different interface, the `new MultiMap()` construction and `.add()`/`.get()` patterns in scope computation need adaptation.
+3. **Configuration Hot-Reload State Desynchronization** — User changes debug flag, `onDidChangeConfiguration` fires, but cached diagnostics/settings aren't cleared causing inconsistent behavior; **avoid by**: store settings in BBjWorkspaceManager (single source of truth), invalidate ALL cached state on change, apply settings in BOTH `onInitialize` and `onDidChangeConfiguration` paths; existing pattern in main.ts lines 72-131 shows document state reset and re-validation
 
-5. **ServiceRegistry `.all` pattern** -- `bbj-ws-manager.ts` uses `services.ServiceRegistry.all.find(...)` to look up BBj services. If `.all` was removed with the singleton, this silently fails and Java interop never initializes.
+4. **Debug Flag Doesn't Work in IntelliJ (LSP4IJ)** — Feature works in VS Code but IntelliJ LSP4IJ uses different configuration mechanism or console output routing; **avoid by**: use LSP-standard `workspace/configuration` requests (works across all clients), test with minimal IntelliJ integration early, document IDE-specific limitations
+
+5. **Chevrotain Ambiguity Warnings Suppressed by Blanket Filter** — Parser ambiguity warnings (emitted during grammar construction, not document validation) get suppressed by overly broad diagnostic filtering; **avoid by**: never suppress Chevrotain warnings (framework-level errors), distinguish initialization logs (before documents open) from runtime logs, preserve Chevrotain's `IGNORE_AMBIGUITIES` mechanism for intentional suppressions
+
+**Additional technical debt to avoid:**
+- Global mutable flags for debug mode (use configuration service)
+- Checking debug flag on every console call in hot paths (cache flag value)
+- Filtering ALL diagnostics for external files (filter by severity, not file type)
+- Hard-coding quiet startup during LSP `initialize` request (violates spec)
 
 ## Implications for Roadmap
 
-Based on combined research, the migration should follow a **5-phase sequential structure** driven by compilation dependencies. Each phase builds on the previous one's output.
+Based on research, the implementation naturally decomposes into 5 sequential phases with clear dependencies:
 
-### Phase 1: Dependency Update and Grammar Regeneration
-**Rationale:** Establishes the new baseline. Generated code must exist before hand-written code can compile against it. This is a hard prerequisite for everything else.
-**Delivers:** Updated `package.json`, regenerated `ast.ts`/`grammar.ts`/`module.ts`, understanding of the new type constant pattern
-**Addresses:** BC-7 (regeneration), BC-8 (grammar validation), BC-12 (EBNF terminals), BC-13 (Xtext features)
-**Avoids:** Pitfall 14 (regeneration order), Pitfall 15 (grammar validation)
-**Effort:** ~1 hour
+### Phase 1: Logger Infrastructure
+**Rationale:** Foundation must exist before migrating console calls or applying settings
+**Delivers:** `bbj-logging.ts` with `LogLevel` enum, `setLogLevel()`, `logger` singleton; unit tests
+**Validates:** `npm run build` succeeds, logger imports correctly
+**Standard pattern:** Simple wrapper (well-documented), skip research
 
-### Phase 2: Core API Renames and Type Constant Migration
-**Rationale:** These are mechanical renames and type adjustments that must happen before the more complex signature changes. They unblock compilation of the scope and linker layers. BC-3 (type constants) is the single highest-volume task but is systematic -- grep-driven find-and-replace.
-**Delivers:** Compiling scope computation (`bbj-scope-local.ts`), scope provider (`bbj-scope.ts`), and all files using type constants
-**Addresses:** BC-1 (PrecomputedScopes to LocalSymbols), BC-2 (method renames), BC-3 (type constants -- 25+ sites)
-**Avoids:** Pitfall 1 (silent runtime bugs from type constants), Pitfall 2 (PrecomputedScopes rename)
-**Effort:** ~4-6 hours (BC-3 alone is 25+ sites across 10 files)
+### Phase 2: Settings Plumbing
+**Rationale:** Settings must flow from VS Code to language server before logger can be configured
+**Delivers:** `package.json` configuration schema, `extension.ts` initializationOptions, `bbj-ws-manager.ts` settings application, quiet startup restore in `main.ts`
+**Addresses:** Table stakes feature "log level control"
+**Avoids:** Pitfall #3 (hot-reload desync) by implementing BOTH init and change handlers
+**Standard pattern:** LSP initializationOptions (established), skip research
 
-### Phase 3: Linker, Completion, and API Signature Updates
-**Rationale:** These require understanding new API shapes, not just renaming. Depends on Phase 2's type constant fixes being complete. Contains the highest-uncertainty item (`prepareLangiumParser`).
-**Delivers:** Compiling linker, completion provider, DI module, and all remaining service overrides
-**Addresses:** BC-4 (Reference | MultiReference), BC-5 (completion provider signature), BC-9 (removed deprecated APIs), BC-10 (ServiceRegistry)
-**Avoids:** Pitfall 3 (Reference union), Pitfall 4 (prepareLangiumParser), Pitfall 5 (completion signature), Pitfall 7 (ServiceRegistry)
-**Effort:** ~2-4 hours (higher if `prepareLangiumParser` was removed and needs replacement)
+### Phase 3: Console Migration
+**Rationale:** Logger and settings work; now systematically replace console.* calls
+**Delivers:** 56 call sites migrated across 10 files (java-interop.ts, bbj-ws-manager.ts, bbj-scope-local.ts, main.ts, etc.)
+**Addresses:** Table stakes feature "quiet startup"
+**Avoids:** Pitfall #1 (hiding errors) by never replacing `console.error()`, only log/debug/warn
+**Migration order:** High-impact files first (java-interop, bbj-ws-manager), verify each file compiles
+**Standard pattern:** Systematic refactoring, skip research
 
-### Phase 4: Build Verification and Test Suite
-**Rationale:** Full compilation and test pass must succeed before manual testing. Test infrastructure (`bbj-test-module.ts`, `test-helper.ts`) may need its own fixes for synthetic AST nodes using `$type: JavaClass` and test utility imports.
-**Delivers:** Green build (`tsc`), successful bundle (`esbuild`), passing test suite (`vitest`)
-**Addresses:** Remaining compilation errors, test utility compatibility
-**Avoids:** Pitfall 16 (test suite breakage), Pitfall 17 (esbuild bundle compatibility)
-**Effort:** ~2-3 hours
+### Phase 4: Synthetic File Verification
+**Rationale:** Diagnostic filtering already exists, just verify coverage
+**Delivers:** Confirmation that `shouldValidate()` checks cover all synthetic URI schemes (classpath:/, bbjlib:/), test case for synthetic file diagnostics
+**Addresses:** Table stakes feature "user-facing diagnostics only"
+**Avoids:** Pitfall #2 (masking parser bugs) by verifying only `shouldValidate()` is used (prevents validation), not diagnostic filtering (which would hide parser errors)
+**Expected outcome:** **No code changes needed** — existing filtering sufficient
+**Standard pattern:** Verification task, skip research
 
-### Phase 5: Integration Testing and Validation
-**Rationale:** Runtime behavior must be verified in both VS Code and IntelliJ after all code changes. This catches silent regressions that TypeScript cannot detect -- especially missed type constant sites in switch statements.
-**Delivers:** Confirmed zero-regression migration, release-ready build
-**Tests:** Parsing, completion, go-to-definition, hover, validation, Java interop, semantic tokens, signature help
-**Avoids:** Pitfall 1 (silent switch statement failures), Pitfall 10 (DocumentBuilder behavioral changes)
-**Effort:** ~2 hours
+### Phase 5: Ambiguous Alternatives Investigation
+**Rationale:** Separate from general debug logging; addresses parser-level warnings
+**Delivers:** Investigation of Chevrotain ambiguity warnings, decision to suppress via `IGNORE_AMBIGUITIES` or fix grammar, optional setting `bbj.parser.showAmbiguities`
+**Addresses:** Current console message "Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details."
+**Avoids:** Pitfall #5 (suppressing Chevrotain warnings) by collecting and summarizing ambiguities, showing details on demand
+**Needs research:** MAYBE — if grammar changes required, research Langium 4.x grammar patterns and Chevrotain lookahead strategies
+**Complexity:** MEDIUM — requires grammar analysis and potentially grammar refactoring
 
 ### Phase Ordering Rationale
 
-- Phases are strictly sequential because each depends on the previous phase's output
-- Phase 1 (regeneration) must come first -- all subsequent phases depend on the new generated code
-- BC-3 (type constants) is in Phase 2 despite being high-volume because it is mechanical and can be done systematically with grep
-- BC-9 (deprecated API removal) is in Phase 3 because it may require creative solutions (especially `prepareLangiumParser`) and benefits from having the rest of the codebase closer to compiling
-- Test fixes are deferred to Phase 4 because they depend on all source changes being complete
-- Manual testing is last because it requires a working build
+**Sequential dependencies:**
+- Phase 1 → Phase 2 → Phase 3: Logger must exist before settings can configure it, settings must work before migration starts
+- Phase 3 → Phase 4: Console migration should complete before verifying diagnostic behavior (cleaner test output)
+- Phase 5 independent but after Phase 1: Uses same logger infrastructure but addresses separate concern (parser ambiguities vs runtime logging)
+
+**Grouping rationale:**
+- Phases 1-3 form "debug logging feature" — tightly coupled, deliver quiet startup
+- Phase 4 is "diagnostic filtering verification" — already implemented, just needs confirmation
+- Phase 5 is "parser diagnostics enhancement" — separable, can defer if needed
+
+**Pitfall avoidance:**
+- Phasing prevents "looks done but isn't" — each phase has clear success criteria
+- Settings plumbing (Phase 2) explicitly addresses hot-reload desync (Pitfall #3)
+- Console migration (Phase 3) enforces "never suppress errors" rule (Pitfall #1)
+- Verification (Phase 4) prevents masking parser bugs (Pitfall #2)
+- Parser investigation (Phase 5) preserves Chevrotain warnings (Pitfall #5)
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 3:** The `prepareLangiumParser` status is LOW confidence. Need to check Langium 4 exports immediately when starting this phase. If removed, need to find the replacement pattern -- check PR #1991 diff or Langium 4 source.
-- **Phase 3:** The exact new signature for `createReferenceCompletionItem` is unknown -- check `DefaultCompletionProvider` in Langium 4.
-- **Phase 2:** Whether `computeExports`/`computeLocalScopes` methods were renamed to `collectExportedSymbols`/`collectLocalSymbols` (MEDIUM confidence) -- verify against `DefaultScopeComputation` in Langium 4.
-- **Phase 2:** Whether `LocalSymbols` interface supports `MultiMap` construction pattern -- verify interface definition.
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Logger):** Simple wrapper pattern, well-documented in existing LSP implementations
+- **Phase 2 (Settings):** LSP initializationOptions and workspace/configuration are established patterns
+- **Phase 3 (Migration):** Systematic refactoring, no new concepts
+- **Phase 4 (Verification):** Code inspection and testing, not research
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1:** Dependency update and regeneration -- well-documented, standard npm workflow
-- **Phase 4:** Build and test -- standard verification, no research needed
-- **Phase 5:** Manual testing -- standard smoke testing
+**Phases potentially needing deeper research:**
+- **Phase 5 (Ambiguous Alternatives):** MAYBE — if grammar changes required, research Langium 4.x infix operators (new in 4.0), Chevrotain ALL(*) algorithm improvements, and grammar refactoring patterns; if suppression sufficient, no research needed
+
+**IntelliJ integration note:** Research flagged Pitfall #4 (LSP4IJ compatibility) but this is **testing concern, not research concern**. IntelliJ uses same LSP protocol; verification happens during Phase 2 implementation, not separate research.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Version numbers verified via npm registry; dependency compatibility confirmed |
-| Features (Breaking Changes) | HIGH | 11 of 13 BCs verified via official CHANGELOG; 2 need implementation-time verification |
-| Architecture | MEDIUM-HIGH | Component impact analysis thorough; some internal API details (protected fields, utility types) unverified |
-| Pitfalls | MEDIUM-HIGH | Critical pitfalls well-documented; some moderate pitfalls based on inference rather than direct verification |
+| Stack | HIGH | Based on existing dependencies already in package.json, official vscode-languageserver-node documentation, and Langium 4.1.3 API inspection |
+| Features | HIGH | Table stakes features (quiet startup, log levels) verified across rust-analyzer, typescript-server, and LSP specification |
+| Architecture | HIGH | Integration points based on direct codebase analysis (main.ts, bbj-ws-manager.ts, bbj-document-builder.ts) and existing patterns |
+| Pitfalls | HIGH | Five critical pitfalls identified from existing anti-patterns in codebase (global flags in bbj-validator.ts, blanket filtering in bbj-document-builder.ts) and LSP/Langium best practices |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-These could not be resolved from research alone and need verification during implementation:
+**During Phase 2 (Settings):**
+- **IntelliJ LSP4IJ initializationOptions handling:** Research shows LSP4IJ uses same protocol, but exact configuration UI and settings persistence needs hands-on verification; likely in Kotlin LSP client configuration (file structure not visible in provided context)
+- **Resolution:** Test with minimal IntelliJ integration during Phase 2 implementation, document any platform-specific limitations
 
-- **`prepareLangiumParser` status:** Cannot confirm whether it was removed in Langium 4. Check `require('langium').prepareLangiumParser` or Langium 4 source immediately in Phase 3. If removed, check PR #1991 for the replacement pattern.
-- **`createReferenceCompletionItem` exact new parameters:** CHANGELOG confirms signature change but does not enumerate new params. Check `DefaultCompletionProvider` class definition in `node_modules/langium` after install.
-- **`LocalSymbols` interface shape:** Whether it remains compatible with `MultiMap<AstNode, AstNodeDescription>` construction. Check import and interface definition after install.
-- **Scope computation method renames:** Whether `computeExports`/`computeLocalScopes` became `collectExportedSymbols`/`collectLocalSymbols`. Check `DefaultScopeComputation` after install.
-- **`ValidationChecks<BBjAstType>` key format:** Whether the property name keys in validation check registration are affected by the `BBjAstType` restructuring. Check generated `ast.ts` after regeneration.
-- **`StreamScope` protected fields:** Whether `this.elements`, `this.outerScope`, `this.caseInsensitive` still exist on `StreamScope` in Langium 4. Compilation will reveal.
-- **`ServiceRegistry.all` pattern:** Whether the `.all` property and `.find()` pattern still work after singleton removal.
-- **Node.js engine requirement for 4.1.3:** PITFALLS.md mentions Node >= 20.10.0 for Langium 4.2.0. Verify whether 4.1.3 has the same requirement (current project uses Node 20.18.1 LTS, which satisfies either way).
+**During Phase 5 (Ambiguous Alternatives):**
+- **Chevrotain ambiguity root cause:** Current warning shows "Ambiguous Alternatives Detected" but suppresses details; need to enable full ambiguity logging, identify which grammar rules trigger it, and determine if it's solvable via grammar refactoring or requires `IGNORE_AMBIGUITIES` suppression
+- **Resolution:** Defer to Phase 5 planning; may require research if grammar changes needed
 
-## Consolidated Breaking Changes Reference
+**Performance profiling gap:**
+- Current recommendations for debug flag checking overhead ("cache flag value per-document") based on typical language server patterns, not measured profiling
+- **Resolution:** Not critical for v3.3 — logger overhead is negligible (one enum comparison); defer profiling to performance milestone if needed
 
-| ID | Breaking Change | Files | Sites | Effort | Confidence |
-|----|----------------|-------|-------|--------|------------|
-| BC-1 | PrecomputedScopes to LocalSymbols | 2 | 7 | MODERATE | HIGH |
-| BC-2 | Scope method renames | 1 | 2 | LOW | MEDIUM |
-| BC-3 | Type constants `.$type` | 10+ | 25+ | HIGH | HIGH |
-| BC-4 | Reference \| MultiReference | 2 | 4 | MODERATE | HIGH |
-| BC-5 | Completion provider signature | 1 | 2 | LOW | HIGH |
-| BC-6 | TypeScript >= 5.8.0 | 0 | 0 | NONE | HIGH |
-| BC-7 | Regeneration required | 3 | auto | LOW | HIGH |
-| BC-8 | Rule naming restrictions | 0 | 0 | NONE | HIGH |
-| BC-9 | Removed deprecated APIs | 2+ | 3+ | UNKNOWN | LOW-MEDIUM |
-| BC-10 | ServiceRegistry changes | 1 | 2 | LOW | MEDIUM |
-| BC-11 | FileSystem provider extended | 0 | 0 | NONE | HIGH |
-| BC-12 | EBNF terminal refinements | 0 | 0 | NONE | HIGH |
-| BC-13 | Xtext features removed | 0 | 0 | NONE | HIGH |
+**User preference validation:**
+- UX recommendations assume users prefer quiet startup by default (based on rust-analyzer, typescript-server precedent), not validated with BBj LS users
+- **Resolution:** Ship with quiet default, gather feedback, add setting to control if users prefer verbose startup
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/) -- feature overview, breaking changes summary
-- [Langium CHANGELOG](https://github.com/langium/langium/blob/main/packages/langium/CHANGELOG.md) -- definitive breaking changes list
-- [langium npm](https://www.npmjs.com/package/langium) -- version 4.1.3 confirmed
-- [langium-cli npm](https://www.npmjs.com/package/langium-cli) -- version 4.1.0 confirmed
+
+**Codebase analysis:**
+- `bbj-vscode/src/language/main.ts` (lines 72-131) — Existing onDidChangeConfiguration pattern with document re-validation
+- `bbj-vscode/src/language/bbj-ws-manager.ts` (lines 33-62) — Existing initializationOptions handling
+- `bbj-vscode/src/language/bbj-document-builder.ts` (lines 26-40) — Existing shouldValidate() logic for synthetic files
+- `bbj-vscode/src/language/bbj-validator.ts` (line 22-26) — Existing global flag anti-pattern
+- `bbj-vscode/src/extension.ts` (line 544) — VS Code configuration synchronization
+- `bbj-vscode/package.json` (lines 477-482) — Existing settings schema pattern
+
+**Official documentation:**
+- [LSP Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — window/logMessage, MessageType enum, workspace/configuration
+- [vscode-languageserver-node GitHub](https://github.com/microsoft/vscode-languageserver-node) — RemoteConsole API, connection.console methods
+- [Langium Validation Documentation](https://langium.org/docs/learn/workflow/create_validations/) — DocumentValidator extensibility
+- [Langium 4.0 Release Blog](https://www.typefox.io/blog/langium-release-4.0/) — New features, breaking changes
+- [Chevrotain Resolving Grammar Errors](https://chevrotain.io/docs/guide/resolving_grammar_errors.html) — Ambiguous alternatives, IGNORE_AMBIGUITIES
 
 ### Secondary (MEDIUM confidence)
-- [Langium GitHub Releases](https://github.com/langium/langium/releases) -- release-specific notes
-- [Langium Documentation](https://langium.org/docs/) -- recipes and references (may lag behind 4.x)
-- [Langium File-based Scoping Recipe](https://langium.org/docs/recipes/scoping/file-based/) -- uses `collectExportedSymbols` naming
 
-### Tertiary (LOW confidence, needs validation)
-- PR #1991 (removed deprecated APIs) -- not fully enumerated in CHANGELOG; `prepareLangiumParser` status unknown
-- PR #1976 (completion provider) -- exact new parameter list unknown
-- PR #1945 (Xtext feature removal) -- exact removed features unknown
+**Community sources:**
+- [Logging in Node.js: Top 8 Libraries](https://betterstack.com/community/guides/logging/best-nodejs-logging-libraries/) — Pino/Winston comparison, use case recommendations
+- [Pino Complete Guide](https://signoz.io/guides/pino-logger/) — Performance benchmarks (5-10x faster than Winston)
+- [LSP4IJ GitHub Documentation](https://github.com/redhat-developer/lsp4ij) — IntelliJ LSP integration, trace level settings
+- [Langium Discussion #781](https://github.com/eclipse-langium/langium/discussions/781) — Parser ambiguity resolution patterns
+
+### Tertiary (LOW confidence)
+
+**Inferred patterns (not explicitly documented):**
+- Langium 4.1.3 specific diagnostic filtering examples — Inferred from TypeScript definitions and DefaultDocumentValidator source code
+- IntelliJ plugin settings UI implementation — Kotlin files not visible in provided context, inferred from LSP4IJ documentation
 
 ---
-*Research completed: 2026-02-03*
+*Research completed: 2026-02-08*
 *Ready for roadmap: yes*

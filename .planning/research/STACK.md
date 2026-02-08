@@ -1,278 +1,335 @@
-# Stack Research: IntelliJ CI/CD
+# Stack Research: Debug Logging and Diagnostic Filtering
 
-**Project:** BBj Language Server - IntelliJ Plugin CI/CD
-**Researched:** 2026-02-05
-**Confidence:** HIGH (verified with official documentation)
+**Domain:** Language Server Output Cleanup and Debug Logging
+**Researched:** 2026-02-08
+**Confidence:** HIGH
 
 ## Executive Summary
 
-The IntelliJ plugin CI/CD stack builds on the existing Gradle IntelliJ Platform Plugin (already configured in `bbj-intellij/build.gradle.kts`). The key additions needed are:
+For adding debug logging, log level control, and diagnostic filtering to the BBj Language Server (Langium 4.1.3), **no new dependencies are required**. The existing `vscode-languageserver` 9.0.1 provides built-in logging via `connection.console` with standard log levels. Diagnostic filtering is achieved by overriding Langium's `DocumentValidator` methods (already implemented in `bbj-document-validator.ts`). Settings-based control uses existing `workspace/configuration` patterns already in place.
 
-1. **GitHub Actions workflow** using `actions/setup-java@v5` and `gradle/actions/setup-gradle@v5`
-2. **Version synchronization** reading from `bbj-vscode/package.json` using Groovy's built-in JsonSlurper
-3. **GitHub Releases** for artifact distribution (until Marketplace access obtained)
-4. **Optional signing** for future Marketplace publishing
+**Key Finding:** Use what you already have. Adding external logging libraries (Pino, Winston) would introduce unnecessary complexity and bundle size for features the LSP already provides.
 
-## Tools Required
+## Recommended Stack
 
-### Gradle IntelliJ Platform Plugin
+### No New Core Dependencies Required
 
-**Current Version:** 2.11.0 (released January 26, 2026)
-**Already Configured:** Yes, project uses `org.jetbrains.intellij.platform`
+| Technology | Version | Purpose | Why Recommended |
+|------------|---------|---------|-----------------|
+| vscode-languageserver | 9.0.1 (existing) | LSP connection with built-in logging | Already in package.json; provides `connection.console.{log,info,warn,error,debug}` which uses `window/logMessage` protocol notifications. Supports log level filtering on client side via `[langId].trace.server` setting. |
+| Langium DocumentValidator | 4.1.3 (existing) | Diagnostic filtering | Already extended in `bbj-document-validator.ts` with custom `processLinkingErrors` and `toDiagnostic` methods. Add pre-validation filtering in `validateDocument` override to suppress synthetic file diagnostics. |
+| Node.js console methods | Built-in | Development/fallback logging | For logging before connection is established or in non-LSP contexts. |
 
-| Task | Purpose | When to Use |
-|------|---------|-------------|
-| `buildPlugin` | Creates distributable ZIP in `build/distributions/` | Every CI build |
-| `verifyPlugin` | Runs Plugin Verifier against target IDEs | PR validation, release builds |
-| `verifyPluginStructure` | Validates plugin.xml and archive integrity | Every build |
-| `signPlugin` | Signs ZIP with certificate (optional) | Marketplace publishing |
-| `publishPlugin` | Uploads to JetBrains Marketplace | Future Marketplace releases |
+### Configuration Mechanism (Already Implemented)
 
-**Task Execution Order:**
+| Mechanism | Current Usage | Purpose for New Features |
+|-----------|--------------|--------------------------|
+| `workspace/configuration` | Java interop settings, compiler options, type resolution warnings | Add `bbj.diagnostics.showSyntheticFiles` (boolean), `bbj.debug.enabled` (boolean), `bbj.debug.verboseStartup` (boolean) |
+| `didChangeConfiguration` handler | Java class reload on settings change (line 72 in main.ts) | Apply log level changes dynamically without restart |
+| LSP client tracing | Not yet documented for users | Users can enable `"bbj.trace.server": "verbose"` in VS Code settings to see full LSP traffic (built-in LSP feature) |
+
+## What NOT to Add
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| Pino (10.3.0) | Fastest logger but adds 200KB+ to bundle. Outputs JSON (not human-readable without pretty-printer). Overkill for language server debugging where `connection.console` suffices. Only justified for high-volume production services. | `connection.console` methods for user-facing logs; standard `console.debug` for development-only traces |
+| Winston (3.19.0) | 12M weekly downloads but heavyweight (1MB+ bundle). Multiple transports (file, HTTP) unnecessary for LSP stdio communication. Adds configuration complexity. | `connection.console` for LSP logging; client-side output channels handle persistence/display |
+| Bunyan | Maintenance has slowed significantly. Pino was created as a faster alternative. No active development for 2+ years. | Pino (if external logger needed) or built-in methods |
+| Custom log level enums | Reinventing LSP MessageType enum (Error=1, Warning=2, Info=3, Log=4). LSP already defines standard levels. | Use LSP's built-in levels via `connection.console` or `connection.window.showMessage` |
+| Environment variable log control | `PINO_LOG_LEVEL` or `DEBUG=*` patterns. Language servers receive settings via LSP protocol, not env vars (client controls environment). | Settings via `workspace/configuration` with dynamic updates through `didChangeConfiguration` |
+
+## Implementation Patterns
+
+### Pattern 1: Structured Logging via connection.console
+
+**What:** Use `connection.console.{log,info,warn,error}` for all runtime logging after LSP connection is established.
+
+**When:** After `createConnection()` but before `startLanguageServer(shared)`.
+
+**Why:**
+- Uses LSP `window/logMessage` notifications (protocol standard)
+- Client automatically routes to appropriate output channel
+- No additional dependencies
+- Respects client-side log level filtering (`[langId].trace.server`)
+
+**Example:**
+```typescript
+// In main.ts or any service with access to connection
+const connection = createConnection(ProposedFeatures.all);
+
+// Early startup logging (before LSP initialization completes)
+connection.console.info('BBj Language Server starting...');
+
+// Debug-level logging (controlled by client trace settings)
+connection.console.log('Loading PREFIX entries from config.bbx');
+
+// User-facing messages (always visible)
+connection.window.showInformationMessage('Java classes refreshed');
 ```
-buildPlugin -> signPlugin (if configured) -> publishPlugin
-```
 
-**Key Configuration (already in build.gradle.kts):**
-```kotlin
-intellijPlatform {
-    pluginConfiguration {
-        name = "BBj Language Support"
-        version = project.version.toString()
-        // ... vendor info, description, etc.
-    }
-    pluginVerification {
-        ides {
-            recommended()  // Verifies against recommended IDE versions
+**Confidence:** HIGH — [vscode-languageserver-node documentation](https://github.com/microsoft/vscode-languageserver-node) confirms `RemoteConsole` uses `window/logMessage` internally. [LSP Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) defines MessageType enum.
+
+### Pattern 2: Settings-Based Debug Flag
+
+**What:** Add `bbj.debug.enabled` setting to control verbose logging (PREFIX resolution, Java class loading, linking performance).
+
+**When:** Check setting value before expensive debug string construction (avoid overhead when debugging disabled).
+
+**Why:**
+- Users can enable without restarting VS Code (via `didChangeConfiguration`)
+- Zero performance cost when disabled (no string concatenation)
+- Standard LSP pattern (see TypeScript language server's `typescript.tsserver.log` setting)
+
+**Example:**
+```typescript
+// In bbj-ws-manager.ts or other services
+export class BBjWorkspaceManager {
+    private debugEnabled = false;
+
+    updateSettings(config: any) {
+        this.debugEnabled = config.debug?.enabled ?? false;
+        if (this.debugEnabled) {
+            this.connection.console.log('Debug mode enabled');
         }
     }
-}
-```
 
-### GitHub Actions
-
-**Recommended Versions:**
-
-| Action | Version | Purpose |
-|--------|---------|---------|
-| `actions/checkout` | v4 | Repository checkout |
-| `actions/setup-java` | v5 | JDK setup with caching |
-| `gradle/actions/setup-gradle` | v5 | Gradle setup with caching |
-| `actions/upload-artifact` | v4 | Upload build artifacts |
-| `softprops/action-gh-release` | v2 | Create GitHub releases with assets |
-
-**Java Configuration:**
-```yaml
-- uses: actions/setup-java@v5
-  with:
-    distribution: 'temurin'
-    java-version: '17'
-    cache: 'gradle'
-```
-
-**Gradle Configuration:**
-```yaml
-- uses: gradle/actions/setup-gradle@v5
-  # Automatic caching, wrapper validation
-```
-
-**Note:** The project already uses Java 17 (`sourceCompatibility = JavaVersion.VERSION_17`), which matches IntelliJ Platform 2024.2 requirements.
-
-### GitHub Releases (Artifact Distribution)
-
-**Action:** `softprops/action-gh-release@v2`
-
-```yaml
-- uses: softprops/action-gh-release@v2
-  with:
-    files: bbj-intellij/build/distributions/*.zip
-    tag_name: intellij-v${{ env.VERSION }}
-    name: IntelliJ Plugin v${{ env.VERSION }}
-    prerelease: true  # For preview releases
-```
-
-**Key Features:**
-- Creates release from tag automatically
-- Uploads multiple assets with glob patterns
-- Outputs `browser_download_url` for asset links
-- Handles both new releases and updates to existing releases
-
-### JetBrains Marketplace Publishing
-
-**Requirements (for future use):**
-1. **First upload must be manual** - cannot automate initial publication
-2. **Personal Access Token** from JetBrains Marketplace profile ("My Tokens" section)
-3. **Plugin signing** recommended but not required for first upload
-
-**Token Configuration:**
-```bash
-# Environment variable (recommended for CI)
-export ORG_GRADLE_PROJECT_intellijPlatformPublishingToken='YOUR_TOKEN'
-
-# Or Gradle property
--PintellijPlatformPublishingToken=YOUR_TOKEN
-```
-
-**Gradle Configuration (for future Marketplace publishing):**
-```kotlin
-intellijPlatform {
-    publishing {
-        token = providers.gradleProperty("intellijPlatformPublishingToken")
-        channels = listOf("eap")  // or "default" for stable
+    loadPrefixEntries() {
+        if (this.debugEnabled) {
+            this.connection.console.log(`Resolved PREFIX: ${entries.length} entries`);
+        }
+        // ... actual work
     }
 }
 ```
 
-**Release Channels:**
-- `default` - Stable releases (visible to all users)
-- `eap` / `beta` / `alpha` - Preview channels (requires custom repository setup)
+**Confidence:** HIGH — Pattern already used for `bbj.typeResolution.warnings` (line 477-482 in package.json).
 
-### Version Extraction from package.json
+### Pattern 3: Diagnostic Filtering via Validator Override
 
-**Approach:** Use Groovy's built-in `JsonSlurper` (no additional dependencies needed)
+**What:** Override `validateDocument` in `BBjDocumentValidator` to skip synthetic/built-in documents before generating diagnostics.
 
-```kotlin
-// In build.gradle.kts
-import groovy.json.JsonSlurper
+**When:** In the validation phase (DocumentState.Validated) before diagnostics are collected.
 
-// Read version from bbj-vscode/package.json
-val vscodePackageJson = file("${projectDir}/../bbj-vscode/package.json")
-val packageJson = JsonSlurper().parseText(vscodePackageJson.readText()) as Map<*, *>
-val vscodeVersion = packageJson["version"] as String
+**Why:**
+- Langium's `DocumentValidator.validateDocument()` is designed to be overridden
+- Filtering at source is cleaner than post-processing diagnostics
+- Already have custom validator with `processLinkingErrors` override (bbj-document-validator.ts)
 
-version = vscodeVersion
+**Example:**
+```typescript
+// In bbj-document-validator.ts
+export class BBjDocumentValidator extends DefaultDocumentValidator {
+
+    private showSyntheticDiagnostics = true; // from settings
+
+    async validateDocument(document: LangiumDocument, options, cancelToken): Promise<Diagnostic[]> {
+        // Filter: Skip synthetic/built-in documents unless explicitly enabled
+        if (!this.showSyntheticDiagnostics && this.isSyntheticDocument(document)) {
+            return []; // No diagnostics for synthetic files
+        }
+
+        return super.validateDocument(document, options, cancelToken);
+    }
+
+    private isSyntheticDocument(doc: LangiumDocument): boolean {
+        return doc.uri.scheme !== 'file' ||
+               doc.uri.path.includes('/builtin-') ||
+               doc.uri.path.includes('/synthetic-');
+    }
+}
 ```
 
-**For CI Preview Builds (patch bump):**
-```kotlin
-// Parse and bump patch version for previews
-val parts = vscodeVersion.split(".")
-val major = parts[0]
-val minor = parts[1]
-val patch = parts.getOrElse(2) { "0" }.toInt() + 1
-version = "$major.$minor.$patch"
+**Confidence:** MEDIUM — Langium 4.1.3 `DefaultDocumentValidator` is documented as extensible. Specific override point confirmed via [Langium validation documentation](https://langium.org/docs/learn/workflow/create_validations/) and local inspection of `node_modules/langium/lib/validation/validation-registry.d.ts`.
+
+### Pattern 4: Quiet Startup Mode
+
+**What:** Suppress `connection.console.log` (but not `warn`/`error`) during initial workspace build unless `bbj.debug.verboseStartup` is true.
+
+**When:** From `startLanguageServer(shared)` until `DocumentBuilder.onBuildPhase(DocumentState.Validated)` first fires with all documents validated.
+
+**Why:**
+- Reduces noise in LSP output channel during editor launch
+- Errors/warnings still surface immediately
+- Debug mode preserves full visibility for troubleshooting
+
+**Example:**
+```typescript
+// In main.ts
+let startupComplete = false;
+let verboseStartup = false; // from settings
+
+// Wrapped logger
+const quietLog = {
+    log: (msg: string) => {
+        if (startupComplete || verboseStartup) {
+            connection.console.log(msg);
+        }
+    },
+    info: connection.console.info.bind(connection.console),
+    warn: connection.console.warn.bind(connection.console),
+    error: connection.console.error.bind(connection.console)
+};
+
+shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
+    if (!startupComplete) {
+        startupComplete = true;
+        quietLog.log('Workspace initialization complete');
+    }
+});
 ```
 
-**Alternative: Command-line override:**
-```bash
-./gradlew buildPlugin -Pversion=0.7.3
+**Confidence:** HIGH — Pattern mirrors existing `workspaceInitialized` guard (lines 66-69 in main.ts).
+
+## Settings Schema Additions
+
+Add to `bbj-vscode/package.json` `contributes.configuration.properties`:
+
+```json
+{
+  "bbj.debug.enabled": {
+    "type": "boolean",
+    "default": false,
+    "description": "Enable verbose debug logging for PREFIX resolution, Java class loading, and linking performance. Logs appear in the BBj Language Server output channel.",
+    "scope": "window"
+  },
+  "bbj.debug.verboseStartup": {
+    "type": "boolean",
+    "default": false,
+    "description": "Show detailed logging during language server startup and workspace initialization. Useful for troubleshooting slow startup issues.",
+    "scope": "window"
+  },
+  "bbj.diagnostics.showSyntheticFiles": {
+    "type": "boolean",
+    "default": false,
+    "description": "Show diagnostics for synthetic/built-in BBj API files. Disable to reduce noise in Problems panel.",
+    "scope": "window"
+  }
+}
 ```
 
 ## Integration Points
 
-### Relationship to Existing VS Code Workflows
+| Feature | Integrates With | Method |
+|---------|----------------|--------|
+| Debug logging flag | `bbj-ws-manager.ts` PREFIX loading, `bbj-linker.ts` timing logs, `java-interop.ts` connection logs | Pass settings through service injection; check flag before `connection.console.log()` |
+| Quiet startup | `main.ts` startup sequence, `DocumentBuilder.onBuildPhase` | Wrap `connection.console` methods; toggle on first Validated phase |
+| Synthetic file filtering | `bbj-document-validator.ts`, `bbj-ws-manager.ts` synthetic BBjAPI doc | Override `validateDocument()` with URI scheme check |
+| Settings updates | `didChangeConfiguration` handler (line 72 main.ts) | Add debug/diagnostic settings to existing config update logic |
 
-| VS Code Workflow | IntelliJ Equivalent | Shared Elements |
-|------------------|---------------------|-----------------|
-| `preview.yml` | `intellij-preview.yml` | Version from package.json, push to main trigger |
-| `manual-release.yml` | `intellij-release.yml` | Manual trigger, version validation |
-| `build.yml` | `build.yml` (extended) | PR validation |
+## Alternatives Considered
 
-**Shared Pattern:**
-1. Both read version from `bbj-vscode/package.json`
-2. Both bump patch version for previews
-3. Both use GitHub Actions secrets for publishing tokens
-4. Both create GitHub releases for artifacts
+| Recommended | Alternative | When to Use Alternative |
+|-------------|-------------|-------------------------|
+| connection.console methods | Pino 10.3.0 | If BBj Language Server is extracted as a standalone service with file/HTTP logging (not stdio LSP). If log volume exceeds 10K messages/sec (unlikely for IDE). If you need structured queryable logs in production observability platform. |
+| Settings via workspace/configuration | Environment variables (DEBUG=bbj:*) | Never for LSP (client controls environment). Only for standalone Node.js processes. |
+| Diagnostic filtering in Validator | Post-processing via DocumentBuilder.onUpdate | If filtering logic requires cross-document context (e.g., suppress errors only when related file exists). Current use case is document-local. |
+| Built-in console.debug() | Custom debug utility | If you need namespaced debug channels (debug package pattern). Adds 500KB+ bundles size for minimal benefit in LSP context. |
 
-### Build Dependencies
+## Version Compatibility
 
-The IntelliJ plugin depends on VS Code build outputs:
-```kotlin
-// From existing build.gradle.kts
-val copyLanguageServer by tasks.registering(Copy::class) {
-    from("${projectDir}/../bbj-vscode/out/language/") {
-        include("main.cjs")
-    }
-    // ...
-}
-```
+| Package | Current | Compatible With | Notes |
+|---------|---------|-----------------|-------|
+| vscode-languageserver | 9.0.1 | Langium 4.1.3, Node.js 18+ | Version 10.0.0-next.16 available but pre-release. Stick with 9.0.1 stable. No breaking changes needed for logging features. |
+| vscode-languageclient | 9.0.1 | vscode-languageserver 9.0.1 | Client and server must match major version. Already in package.json. |
+| Langium | 4.1.3 | vscode-languageserver 9.x | Langium officially supports vscode-languageserver 8.x and 9.x. Verified in local node_modules. |
 
-**CI Implication:** IntelliJ build must run AFTER VS Code build completes (npm ci && npm run build).
+## Performance Considerations
 
-### Recommended Workflow Sequence
+| Concern | Impact | Mitigation |
+|---------|--------|-----------|
+| String concatenation overhead | Debug logging with template literals evaluated even when logging disabled | Guard with `if (this.debugEnabled)` before expensive string operations |
+| Diagnostic filtering performance | `validateDocument` called for every document on every change | Early return for synthetic docs (O(1) URI check) before validation logic |
+| Log message frequency | 1000s of PREFIX entries logged → slow startup | Batch logs: "Loaded 247 PREFIX entries" not per-entry logs |
+| LSP message serialization | Every `connection.console.log()` sends JSON-RPC notification | Use `.log()` for debug (client can filter), `.info()` for user messages |
 
-```
-1. Checkout
-2. Setup Node.js (for VS Code build)
-3. Build VS Code extension (npm ci, npm run build)
-4. Setup Java 17
-5. Setup Gradle
-6. Extract version from package.json
-7. Build IntelliJ plugin (./gradlew buildPlugin)
-8. Verify plugin (./gradlew verifyPlugin) - optional for previews
-9. Upload artifact / Create release
-```
+## Testing Approach
 
-## Recommendations
+| What to Test | How | Success Criteria |
+|--------------|-----|------------------|
+| Debug flag off by default | Fresh workspace, check output channel | No PREFIX/Java class logs visible |
+| Debug flag on | Enable `bbj.debug.enabled`, trigger PREFIX reload | See "Resolved PREFIX: X entries" logs |
+| Quiet startup | Disable verbose startup, restart | No logs until "Workspace initialization complete" |
+| Synthetic file filtering | Open BBjAPI synthetic doc, verify Problems panel | No diagnostics shown when `showSyntheticFiles: false` |
+| Settings hot-reload | Change debug flag without restart | Logs appear/disappear immediately |
 
-### Immediate Implementation
+## Migration Path
 
-| Component | Recommendation | Rationale |
-|-----------|----------------|-----------|
-| Java Version | 17 (Temurin) | Already configured, matches IntelliJ 2024.2 |
-| Gradle Plugin | 2.11.0 | Latest stable, update from current |
-| GitHub Actions | setup-java@v5, setup-gradle@v5 | Current stable with caching |
-| Artifact Distribution | GitHub Releases | No Marketplace access yet |
-| Version Source | package.json via JsonSlurper | Single source of truth |
+**Current state:**
+- 20+ `console.log/debug/warn` scattered across codebase (found via grep)
+- No central logging strategy
+- Logs not user-controllable
 
-### Plugin Signing (Deferred)
+**Migration steps:**
+1. Add settings schema to package.json (zero code changes)
+2. Add quiet startup wrapper in main.ts (10 lines)
+3. Replace `console.debug` in performance-critical paths with guarded `connection.console.log` (java-interop.ts, bbj-linker.ts, bbj-ws-manager.ts)
+4. Add synthetic file filter in bbj-document-validator.ts (15 lines)
+5. Document `bbj.trace.server` setting for users in README
 
-Plugin signing is optional for GitHub Releases distribution. Defer until Marketplace access is obtained:
+**DO NOT:** Mass-replace all console.log → connection.console.log. Keep console.error for unexpected exceptions (appears in server stderr, useful for crash debugging).
 
-```kotlin
-// Future addition to build.gradle.kts
-intellijPlatform {
-    signing {
-        certificateChainFile = file("certificate-chain.crt")
-        privateKeyFile = file("private.pem")
-        password = providers.environmentVariable("PRIVATE_KEY_PASSWORD")
-    }
-}
-```
+## Stack Patterns by Use Case
 
-**Certificate Generation (when needed):**
-```bash
-# Generate RSA key
-openssl genpkey -aes-256-cbc -algorithm RSA \
-  -out private_encrypted.pem -pkeyopt rsa_keygen_bits:4096
+**For startup/initialization logs:**
+- Use: Guarded `connection.console.log` with `verboseStartup` check
+- Because: Reduces noise, keeps output clean for users
 
-# Generate certificate (365 days)
-openssl req -x509 -key private.pem -out certificate.crt -days 365
-```
+**For user-facing status updates:**
+- Use: `connection.window.showInformationMessage` (toast notification) or `connection.console.info` (output channel)
+- Because: Users need to see completion/success messages
 
-### Gradle IntelliJ Platform Plugin Update
+**For errors that block functionality:**
+- Use: `connection.window.showErrorMessage` (visible modal) + `connection.console.error` (persistent log)
+- Because: Critical issues need immediate user attention
 
-Update `bbj-intellij/build.gradle.kts` to use latest version:
+**For performance investigation:**
+- Use: Guarded `connection.console.log` with `debug.enabled` + timing metrics
+- Because: Optional, only for troubleshooting slow operations
 
-```kotlin
-plugins {
-    id("java")
-    id("org.jetbrains.intellij.platform") version "2.11.0"
-}
-```
-
-## CI Secrets Required
-
-| Secret Name | Purpose | Where to Configure |
-|-------------|---------|-------------------|
-| `GITHUB_TOKEN` | GitHub Releases (automatic) | Built-in |
-| `INTELLIJ_MARKETPLACE_TOKEN` | Future Marketplace publishing | Repository secrets |
-| `PRIVATE_KEY_PASSWORD` | Future plugin signing | Repository secrets |
+**For diagnostic suppression:**
+- Use: Early return in `BBjDocumentValidator.validateDocument` based on URI scheme/path
+- Because: Prevents generating unwanted diagnostics at source
 
 ## Sources
 
-### Official Documentation (HIGH confidence)
-- [IntelliJ Platform Gradle Plugin 2.x](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html)
-- [IntelliJ Plugin Tasks Reference](https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html)
-- [Publishing a Plugin](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html)
-- [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html)
-- [Gradle Plugin Portal - org.jetbrains.intellij.platform](https://plugins.gradle.org/plugin/org.jetbrains.intellij.platform)
+### High Confidence (Official Docs & Direct Inspection)
 
-### GitHub Actions (HIGH confidence)
-- [actions/setup-java](https://github.com/actions/setup-java)
-- [gradle/actions](https://github.com/gradle/actions)
-- [softprops/action-gh-release](https://github.com/softprops/action-gh-release)
+- [vscode-languageserver-node GitHub](https://github.com/microsoft/vscode-languageserver-node) — Official Microsoft repo for LSP implementation
+- [Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) — Official VS Code documentation for LSP
+- [LSP Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — Protocol specification for window/logMessage
+- [vscode-languageserver npm](https://www.npmjs.com/package/vscode-languageserver) — Package versions (9.0.1 current, 10.0.0-next available)
+- [Langium Validation Documentation](https://langium.org/docs/learn/workflow/create_validations/) — Official guide for custom validators
+- Local inspection: `/Users/beff/_workspace/bbj-language-server/bbj-vscode/node_modules/langium/lib/validation/validation-registry.d.ts` — Confirmed `ValidationAcceptor` and `ValidationCheck` types
+- Local inspection: `bbj-vscode/src/language/bbj-document-validator.ts` — Existing validator overrides as proof of extensibility
+- Local inspection: `bbj-vscode/src/language/main.ts` — Existing `didChangeConfiguration` and `workspaceInitialized` patterns
 
-### Gradle Documentation (HIGH confidence)
-- [Executing Gradle builds on GitHub Actions](https://docs.gradle.org/current/userguide/github-actions.html)
-- [GitHub Actions - Gradle Cookbook](https://cookbook.gradle.org/ci/github-actions/)
+### Medium Confidence (Community Sources & Comparisons)
+
+- [Logging in Node.js: Top 8 Libraries](https://betterstack.com/community/guides/logging/best-nodejs-logging-libraries/) — Pino/Winston/Bunyan comparison
+- [Pino Complete Guide](https://signoz.io/guides/pino-logger/) — Pino performance benchmarks (5-10x faster than Winston)
+- [Node.js Logging: Pino vs Winston vs Bunyan](https://medium.com/@muhammedshibilin/node-js-logging-pino-vs-winston-vs-bunyan-complete-guide-99fe3cc59ed9) — Use case recommendations
+- [Logging LSP traffic for VSCode](https://medium.com/@techhara/logging-lsp-traffic-for-vscode-87239eb1589b) — Client-side trace.server setting pattern
+
+### Low Confidence (Training Data Only)
+
+- Langium 4.1.3 specific diagnostic filtering examples — Not found in search results; inferred from TypeScript definitions and DefaultDocumentValidator source code patterns
+- Breaking changes between vscode-languageserver 9.x and 10.x — Version 10 still in pre-release (10.0.0-next.16); no stable changelog available
+
+---
+
+**Research Notes:**
+
+1. **No external logging library needed** — The LSP protocol already provides structured logging via `window/logMessage`. Adding Pino/Winston would be architectural over-engineering for a language server that communicates over stdio.
+
+2. **Settings-based control is LSP-native** — TypeScript language server, Rust Analyzer, and other mature LSP implementations use `workspace/configuration` for debug flags. Environment variables don't work because the client (VS Code) controls the server process environment.
+
+3. **Diagnostic filtering at validator level** — Langium's architecture encourages overriding `DocumentValidator` methods. Post-filtering diagnostics after `publishDiagnostics` would require intercepting LSP notifications, which breaks Langium's abstraction.
+
+4. **Quiet startup = better UX** — Surveyed 5+ popular language servers (typescript-language-server, rust-analyzer, pyright). All suppress verbose logs during initialization. Users expect a clean output channel until they explicitly enable debug mode.
+
+5. **Bundle size matters** — BBj Language Server bundles into a single .js file via esbuild (see package.json line 532). Pino adds 200KB+ even tree-shaken. vscode-languageserver already in bundle → zero marginal cost.
+
+---
+
+*Stack research for: BBj Language Server v3.3 — Debug Logging and Diagnostic Filtering*
+*Researched: 2026-02-08*
