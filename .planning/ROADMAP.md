@@ -60,7 +60,7 @@ Plans:
 Plans:
 - [x] 33-01-PLAN.md -- Fix void return type (PARSE-01) and cast array notation (PARSE-04, deferred)
 - [x] 33-02-PLAN.md -- Fix DEF FN suffixed variables (PARSE-02) and add SELECT verb (PARSE-03)
-- [ ] 33-03-PLAN.md -- Gap closure: CastExpression grammar rule for array type notation (PARSE-04)
+- [x] 33-03-PLAN.md -- Gap closure: CastExpression grammar rule for array type notation (PARSE-04)
 
 ### Phase 34: Diagnostic Polish
 **Goal**: Settings display the correct product name and USE statements with bad file paths get actionable error messages
@@ -80,5 +80,5 @@ Phases execute in numeric order: 32 -> 33 -> 34
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
-| 33. Parser and Lexer Fixes | v3.2 | 2/3 | Gap closure | 2026-02-07 |
+| 33. Parser and Lexer Fixes | v3.2 | 3/3 | Complete | 2026-02-08 |
 | 34. Diagnostic Polish | v3.2 | 0/TBD | Not started | - |
