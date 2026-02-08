@@ -2524,4 +2524,28 @@ PRINT getResult$, isNew%, readData
         expectNoParserLexerErrors(program)
     })
 
+    test('Program-level suffixed variables with keyword prefixes parse correctly', async () => {
+        const program = await parse(`
+let steptest$="TEST"
+
+indF$="J"
+
+indexFile$ = "docindex.search"
+
+fileTest$="jj"
+
+htat$="J"
+
+printTest$="JJ"
+
+class public Test
+
+    field private BBjString stepABC!
+    field private BBjString modeABC!
+
+classend
+    `)
+        expectNoParserLexerErrors(program)
+    })
+
 });
