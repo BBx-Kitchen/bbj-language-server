@@ -120,7 +120,7 @@ Research-only milestone — no phases.
 
 **Milestone Goal:** Close all open GitHub issues tagged with the 0.8.0 milestone — low-risk fixes only.
 
-- [ ] **Phase 40: Parser Fix** - Fix `step` keyword breaking structure parsing
+- [x] **Phase 40: Parser Fix** - Fix `step` keyword breaking structure parsing (2026-02-08)
 - [ ] **Phase 41: File Type Fix** - Remove .bbl from BBj source file extensions
 - [ ] **Phase 42: Toolbar Button Polish** - Fix Compile/Decompile toolbar buttons
 - [ ] **Phase 43: Run Command Fixes** - Fix BUI/DWC login loop and config.bbx path
