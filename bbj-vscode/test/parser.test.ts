@@ -2490,4 +2490,19 @@ PRINT getResult$, isNew%, readData
         expectNoParserLexerErrors(result);
     });
 
+    test('Field names starting with step keyword parse correctly (PARSE-01)', async () => {
+        const program = await parse(`
+        class public A
+            field protected BBjStaticText stepXYZ!
+
+            method public BBjString test()
+            methodend
+        classend
+
+        class public B extends A
+        classend
+    `)
+        expectNoParserLexerErrors(program)
+    })
+
 });

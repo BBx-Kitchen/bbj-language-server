@@ -48,6 +48,15 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                 keywordToken.LONGER_ALT = [id, idWithSuffix];
             }
         }
+
+        // Fix for issue #368: STEP keyword needs explicit LONGER_ALT configuration
+        // to allow identifiers like "stepXYZ!" in field declarations
+        const stepToken = tokens.find(t => t.name === 'STEP');
+        if (stepToken) {
+            stepToken.CATEGORIES = [id];
+            stepToken.LONGER_ALT = idWithSuffix;
+        }
+
         const releaseNl = terminalTokens.find(e => e.name === 'RELEASE_NL')!;
         const releaseNoNl = terminalTokens.find(e => e.name === 'RELEASE_NO_NL')!;
         releaseNl.CATEGORIES = [id];
