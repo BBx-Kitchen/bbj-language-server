@@ -27,7 +27,7 @@ See .planning/MILESTONES.md for full history.
 
 - [x] **Phase 32: Regression Fixes** - Restore BBjAPI() resolution and USE statement navigation
 - [x] **Phase 33: Parser and Lexer Fixes** - Eliminate false errors on valid BBj syntax patterns
-- [x] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
+- [ ] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
 
 ## Phase Details
 
@@ -70,10 +70,11 @@ Plans:
   1. VS Code settings panel shows "BBj" (capital B, capital B, lowercase j) in all setting labels, not "Bbj"
   2. A USE statement referencing a non-existent file path shows an error diagnostic on the file name portion of the USE statement
   3. USE statements with valid file paths show no new diagnostics
-**Plans:** 2 plans
+**Plans:** 3 plans
 Plans:
 - [x] 34-01-PLAN.md -- Fix settings capitalization (POL-01) and USE file path validation (POL-02)
 - [x] 34-02-PLAN.md -- Gap closure: reconcile USE file-path diagnostics after PREFIX docs indexed
+- [ ] 34-03-PLAN.md -- Gap closure: fix URI comparison, add logging, include searched paths in error
 
 ## Progress
 
@@ -84,4 +85,4 @@ Phases execute in numeric order: 32 -> 33 -> 34
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
 | 33. Parser and Lexer Fixes | v3.2 | 3/3 | Complete | 2026-02-08 |
-| 34. Diagnostic Polish | v3.2 | 2/2 | Complete | 2026-02-08 |
+| 34. Diagnostic Polish | v3.2 | 2/3 | In Progress | - |
