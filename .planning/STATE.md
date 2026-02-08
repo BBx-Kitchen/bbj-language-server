@@ -1,18 +1,164 @@
-# Project State
+# Project State: BBj Language Server
+
+**Last Updated:** 2026-02-08
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-08)
+**Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** v3.3 Output & Diagnostic Cleanup
+**Current Milestone:** v3.3 Output & Diagnostic Cleanup
+**Milestone Goal:** Reduce default LS output to a quiet, professional minimum — users see only what matters.
+
+**Current Focus:** Implement debug logging controls and diagnostic filtering for quiet startup experience.
+
+---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-08 — Milestone v3.3 started
+**Active Phase:** Phase 35 - Logger Infrastructure
+**Active Plan:** None (awaiting `/gsd:plan-phase 35`)
+
+**Phase Status:** Pending
+**Phase Goal:** Foundation layer exists for level-based logging with zero overhead when disabled
+
+**Progress Bar:**
+```
+Milestone v3.3: [░░░░░░░░░░░░░░░░░░░░] 0/10 requirements (0%)
+Phase 35:       [░░░░░░░░░░░░░░░░░░░░] 0/4 success criteria (0%)
+```
+
+---
+
+## Performance Metrics
+
+### Current Milestone (v3.3)
+
+**Started:** 2026-02-08
+**Phases completed:** 0/5
+**Requirements completed:** 0/10
+**Days elapsed:** 0
+
+**Velocity:** N/A (no phases completed)
+
+### Recent History
+
+**v3.2 (Shipped: 2026-02-08):**
+- Duration: 2 days (2026-02-07 → 2026-02-08)
+- Phases: 3 (32-34)
+- Plans: 10 (including 4 gap closures)
+- Files modified: 21 (+812 / -72 lines)
+- Key: BBjAPI resolution, USE navigation, parser fixes
+
+**v3.1 (Shipped: 2026-02-07):**
+- Duration: 2 days (2026-02-06 → 2026-02-07)
+- Phases: 4 (28-31)
+- Plans: 13 (including 2 gap closures)
+- Files modified: 95 (+12,720 / -273 lines)
+- Key: Variable scoping, DEF FN, inheritance, token auth
+
+**v3.0 (Shipped: 2026-02-06):**
+- Duration: 1 day
+- Phases: 4 (24-27)
+- Plans: 11 (including 1 gap closure)
+- Files modified: 21 (+918 / -113 lines)
+- Key: Parser fixes, type resolution, CPU investigation
+
+---
+
+## Accumulated Context
+
+### Recent Decisions
+
+**Decision:** Lightweight logger wrapper instead of external framework
+**Rationale:** Existing `vscode-languageserver` provides all needed logging features; Pino/Winston add 200KB-1MB+ bundle size for features LSP already provides
+**Date:** 2026-02-08
+**Impact:** Phase 35 implementation uses 60-line singleton pattern
+
+**Decision:** Singleton logger instead of Langium DI injection
+**Rationale:** Logger needs to work immediately in main.ts before DI container fully configured; logging is diagnostic infrastructure not business logic
+**Date:** 2026-02-08
+**Impact:** Acceptable trade-off for simpler initialization
+
+**Decision:** Quiet startup via temporary log level override
+**Rationale:** Gate verbose output until first document validation completes; restore original level after workspace ready
+**Date:** 2026-02-08
+**Impact:** Phase 36 implements transient ERROR level during startup
+
+**Decision:** Verification-only phase for synthetic file filtering
+**Rationale:** Existing `shouldValidate()` already skips JavaSyntheticDocUri and external documents; just verify coverage
+**Date:** 2026-02-08
+**Impact:** Phase 38 expected to require zero code changes
+
+### Active Constraints
+
+**Never suppress console.error():** Error output must always be visible regardless of debug flag state to prevent hiding real failures
+**Filter by severity not file type:** Diagnostic filtering must preserve parser/lexer errors even from synthetic files
+**Hot-reload all settings:** Settings changes via `onDidChangeConfiguration` must clear cached state to prevent desynchronization
+
+### Pending TODOs
+
+- [ ] Plan Phase 35 (Logger Infrastructure) — awaiting `/gsd:plan-phase 35`
+- [ ] Determine exact console.* call sites for migration (Phase 37 scope)
+- [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 36
+- [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
+- [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
+
+### Known Blockers
+
+None currently identified.
+
+### Tech Debt
+
+- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
+- CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
+- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression
+
+---
+
+## Session Continuity
+
+### What Just Happened
+
+- v3.3 milestone started after v3.2 shipped (2026-02-08)
+- Research phase completed with HIGH confidence (research/SUMMARY.md)
+- Roadmap created with 5 phases (35-39) covering all 10 requirements
+- 100% requirement coverage validated
+- STATE.md initialized for project memory
+
+### What's Next
+
+**Immediate:** Run `/gsd:plan-phase 35` to decompose Logger Infrastructure phase into executable plans
+
+**After Phase 35:**
+- Phase 36: Settings Plumbing (debug flag flow)
+- Phase 37: Console Migration (systematic refactoring)
+- Phase 38: Diagnostic Filtering (verification only)
+- Phase 39: Parser Diagnostics (investigation + docs)
+
+**Critical path:** Phases 35 → 36 → 37 must execute sequentially
+**Parallel opportunity:** Phase 38 can run independently
+
+### Context for Next Session
+
+**Project:** Langium 4.1.3 language server with 10+ milestones shipped over 8 days
+**Tech stack:** TypeScript, Node.js 20.18.1, Langium 4.1.3, vscode-languageserver 9.0.1
+**Codebase size:** ~23,000 LOC TypeScript
+**Test coverage:** 88% with V8 coverage
+**Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
+
+**Key files for v3.3:**
+- `bbj-vscode/src/language/main.ts` — LS entry point, onDidChangeConfiguration handler
+- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, onInitialize pattern
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files
+- `bbj-vscode/src/language/java-interop.ts` — High console output volume (javadoc scanning)
+- `bbj-vscode/package.json` — VS Code settings schema
+
+**Research insights:**
+- 56 console.* call sites across 10 files need migration
+- Existing shouldValidate() likely already filters synthetic files (verification needed)
+- Chevrotain ambiguity warnings emitted during grammar construction (before document processing)
+
+---
 
 ## Milestone History
 
@@ -28,46 +174,10 @@ Last activity: 2026-02-08 — Milestone v3.3 started
 | v3.1 PRIO 1+2 Issue Burndown | 28-31 | 13 | 2026-02-07 |
 | v3.2 Bug Fix Release | 32-34 | 10 | 2026-02-08 |
 
-See: .planning/MILESTONES.md
+**Total velocity:** 99 plans across 9 milestones in 8 days
 
-## Performance Metrics
+See: `.planning/MILESTONES.md`
 
-**Velocity:**
-- Total plans completed: 99 across 9 milestones
-- 9 milestones shipped in 8 days
-- 34 phases, 99 plans total
+---
 
-*Updated after each plan completion*
-
-## Accumulated Context
-
-### Decisions
-
-See archived decisions in:
-- .planning/milestones/v2.0-ROADMAP.md
-- .planning/milestones/v2.2-ROADMAP.md
-- .planning/milestones/v3.0-ROADMAP.md
-- .planning/milestones/v3.1-ROADMAP.md
-- .planning/milestones/v3.2-ROADMAP.md
-
-### Known Issues
-
-1. Chevrotain lexer false-positive warnings in test output (documented, non-blocking)
-2. Pre-existing parser test failures (10): hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, access-level tests, completion test
-3. `declare auto x!` generates parser error (pre-existing, cosmetic - parser recovers correctly)
-
-### Tech Debt
-
-- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
-- CPU stability mitigations documented in Phase 26 FINDINGS.md but not yet implemented
-- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) - CAST now handled by CastExpression
-
-### Blockers/Concerns
-
-None — all v3.2 blockers resolved.
-
-## Session Continuity
-
-Last session: 2026-02-08
-Stopped at: v3.2 milestone complete
-Next: `/gsd:new-milestone` to start next milestone
+*State initialized: 2026-02-08 for v3.3 milestone*

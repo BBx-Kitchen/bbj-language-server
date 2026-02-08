@@ -49,22 +49,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOG-01 | — | Pending |
-| LOG-02 | — | Pending |
-| LOG-03 | — | Pending |
-| LOG-04 | — | Pending |
-| LOG-05 | — | Pending |
-| DIAG-01 | — | Pending |
-| DIAG-02 | — | Pending |
-| PARSE-01 | — | Pending |
-| PARSE-02 | — | Pending |
-| DOCS-01 | — | Pending |
+| LOG-01 | Phase 35, 36 | Pending |
+| LOG-02 | Phase 37 | Pending |
+| LOG-03 | Phase 37 | Pending |
+| LOG-04 | Phase 37 | Pending |
+| LOG-05 | Phase 36 | Pending |
+| DIAG-01 | Phase 38 | Pending |
+| DIAG-02 | Phase 38 | Pending |
+| PARSE-01 | Phase 39 | Pending |
+| PARSE-02 | Phase 39 | Pending |
+| DOCS-01 | Phase 39 | Pending |
 
 **Coverage:**
 - v3.3 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10
+- Unmapped: 0 ✓
+
+**Phase mapping:**
+- Phase 35 (Logger Infrastructure): LOG-01 (partial - logger singleton)
+- Phase 36 (Settings Plumbing): LOG-01 (complete - settings integration), LOG-05
+- Phase 37 (Console Migration): LOG-02, LOG-03, LOG-04
+- Phase 38 (Diagnostic Filtering): DIAG-01, DIAG-02
+- Phase 39 (Parser Diagnostics): PARSE-01, PARSE-02, DOCS-01
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after initial definition*
+*Last updated: 2026-02-08 after roadmap creation*
