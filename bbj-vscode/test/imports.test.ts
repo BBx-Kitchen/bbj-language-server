@@ -181,6 +181,28 @@ describe('Import tests', () => {
             expect(document.cachedUseStatements![1].javaClass).toBeDefined();
         }
     });
+
+    test('USE with non-existent file path produces error diagnostic', async () => {
+        const document = await parse(`
+            use ::nonexistent/file.bbj::SomeClass
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        // Should have exactly one validation error about unresolvable file
+        const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+        expect(errors).toHaveLength(1);
+        expect(errors[0].message).toContain("could not be resolved");
+    });
+
+    test('USE with valid file path produces no file-path error', async () => {
+        const document = await parse(`
+            use ::importMe.bbj::ImportMe
+            let x = new ImportMe()
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        // No error diagnostics — file path resolves via pre-parsed importMe.bbj
+        const errors = document.diagnostics?.filter(d => d.severity === 1) ?? [];
+        expect(errors).toHaveLength(0);
+    });
 });
 
 describe.skip('Prefix tests', () => {
