@@ -7,20 +7,20 @@
 
 ### Regressions
 
-- [ ] **REG-01**: BBjAPI() resolves correctly — no "Could not resolve reference to NamedElement named 'BBjAPI'" error, completion works on variables assigned from BBjAPI()
-- [ ] **REG-02**: Ctrl-click on class name in USE statement navigates to class definition via PREFIX path (#357)
+- [x] **REG-01**: BBjAPI() resolves correctly — no "Could not resolve reference to NamedElement named 'BBjAPI'" error, completion works on variables assigned from BBjAPI()
+- [x] **REG-02**: Ctrl-click on class name in USE statement navigates to class definition via PREFIX path (#357)
 
 ### Parser/Lexer Bugs
 
-- [ ] **PARSE-01**: `void` keyword in method signature not flagged as unresolvable class (#356)
-- [ ] **PARSE-02**: `mode$` and other `$`-suffixed variables inside DEF FN within class methods don't produce lexer errors (#355)
-- [ ] **PARSE-03**: `select` statement with `from`/`where` clauses parses without false line-break errors (#295)
-- [ ] **PARSE-04**: `cast(BBjString[],...)` — array type notation `[]` in CAST expression parses correctly (#296)
+- [x] **PARSE-01**: `void` keyword in method signature not flagged as unresolvable class (#356)
+- [x] **PARSE-02**: `mode$` and other `$`-suffixed variables inside DEF FN within class methods don't produce lexer errors (#355)
+- [x] **PARSE-03**: `select` statement with `from`/`where` clauses parses without false line-break errors (#295)
+- [x] **PARSE-04**: `cast(BBjString[],...)` — array type notation `[]` in CAST expression parses correctly (#296)
 
 ### Polish
 
-- [ ] **POL-01**: VS Code settings labels show "BBj" (not "Bbj") for product name (#315)
-- [ ] **POL-02**: Unresolvable file path in USE statement flagged as error on the file name portion (#172)
+- [x] **POL-01**: VS Code settings labels show "BBj" (not "Bbj") for product name (#315)
+- [x] **POL-02**: Unresolvable file path in USE statement flagged as error on the file name portion (#172)
 
 ## Future Requirements
 
@@ -58,14 +58,14 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase 32 | Pending |
-| REG-02 | Phase 32 | Pending |
-| PARSE-01 | Phase 33 | Pending |
-| PARSE-02 | Phase 33 | Pending |
-| PARSE-03 | Phase 33 | Pending |
-| PARSE-04 | Phase 33 | Pending |
-| POL-01 | Phase 34 | Pending |
-| POL-02 | Phase 34 | Pending |
+| REG-01 | Phase 32 | Complete |
+| REG-02 | Phase 32 | Complete |
+| PARSE-01 | Phase 33 | Complete |
+| PARSE-02 | Phase 33 | Complete |
+| PARSE-03 | Phase 33 | Complete |
+| PARSE-04 | Phase 33 | Complete |
+| POL-01 | Phase 34 | Complete |
+| POL-02 | Phase 34 | Complete |
 
 **Coverage:**
 - v3.2 requirements: 8 total
