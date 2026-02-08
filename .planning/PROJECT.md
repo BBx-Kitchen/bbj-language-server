@@ -106,7 +106,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — planning next milestone)
+## Current Milestone: v3.3 Output & Diagnostic Cleanup
+
+**Goal:** Reduce default LS output to a quiet, professional minimum — users see only what matters.
+
+**Target features:**
+- Debug logging flag (off by default) gating verbose startup output
+- Quiet startup — class resolution, classpath, javadoc scanning behind debug flag
+- Smart javadoc error reporting — only report if no javadoc source succeeds
+- Suppress diagnostics from synthetic/internal files (bbj-api.bbl, functions.bbl)
+- Ambiguous Alternatives investigation — fix or suppress based on root cause
+- Document debug logging setting in Docusaurus docs
 
 ### Out of Scope
 
@@ -117,7 +127,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.2 shipped 2026-02-08. Fixed regressions (BBjAPI resolution, USE navigation), parser bugs (void, suffixed variables, SELECT, CAST array), and diagnostic polish (settings capitalization, USE file path validation with PREFIX reconciliation). 9 milestones shipped in 8 days.
+**Current state:** v3.3 in progress. v3.2 shipped 2026-02-08. Fixed regressions (BBjAPI resolution, USE navigation), parser bugs (void, suffixed variables, SELECT, CAST array), and diagnostic polish (settings capitalization, USE file path validation with PREFIX reconciliation). 10 milestones in 8 days.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -212,4 +222,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | USE_FILE_NOT_RESOLVED_PREFIX sentinel pattern | Enables targeted diagnostic filtering without diagnostic metadata | ✓ Good — v3.2 shipped |
 
 ---
-*Last updated: 2026-02-08 after v3.2 milestone complete*
+*Last updated: 2026-02-08 after v3.3 milestone started*

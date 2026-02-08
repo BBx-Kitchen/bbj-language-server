@@ -5,17 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Planning next milestone
+**Current focus:** v3.3 Output & Diagnostic Cleanup
 
 ## Current Position
 
-Milestone: v3.2 Bug Fix Release — COMPLETE
-Phase: 34 of 34 (all complete)
-Plan: All plans executed
-Status: Milestone archived, ready for next milestone
-Last activity: 2026-02-08 — v3.2 milestone complete
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-08 — Milestone v3.3 started
 
 ## Milestone History
 
