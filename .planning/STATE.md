@@ -15,17 +15,17 @@
 
 ## Current Position
 
-**Active Phase:** Phase 37 - Console Migration
-**Active Plan:** 1 of 2 (Plan 01 complete)
+**Active Phase:** Phase 37 - Console Migration (Complete)
+**Active Plan:** 2 of 2 complete
 
-**Phase Status:** In progress (1 of 2 plans complete)
-**Phase Goal:** Migrate all console.log/debug/warn calls to logger for quiet startup
-**Last Activity:** 2026-02-08 - Completed 37-01-PLAN.md
+**Phase Status:** Complete
+**Phase Goal:** All console output respects debug flag — quiet by default, verbose on-demand
+**Last Activity:** 2026-02-08 - Completed Phase 37 (both plans + verification passed)
 
 **Progress Bar:**
 ```
-Milestone v3.3: [████░░░░░░░░░░░░░░░░] 2/10 requirements (20%)
-Phase 37:       [██████████░░░░░░░░░░] 1/2 plans complete (50%)
+Milestone v3.3: [██████████░░░░░░░░░░] 5/10 requirements (50%)
+Phase 37:       [████████████████████] 2/2 plans complete (100%)
 ```
 
 ---
@@ -35,12 +35,12 @@ Phase 37:       [██████████░░░░░░░░░░] 1
 ### Current Milestone (v3.3)
 
 **Started:** 2026-02-08
-**Phases completed:** 2/5
-**Plans completed:** 3/7 (35-01, 36-01, 37-01)
-**Requirements completed:** 2/10
+**Phases completed:** 3/5
+**Plans completed:** 4/4 (35-01, 36-01, 37-01, 37-02)
+**Requirements completed:** 5/10
 **Days elapsed:** 0
 
-**Velocity:** 3 plans/day (Phase 35-36 complete, Phase 37 50% complete)
+**Velocity:** 4 plans/day (Phases 35-37 complete)
 
 ### Recent History
 
@@ -126,9 +126,7 @@ Phase 37:       [██████████░░░░░░░░░░] 1
 
 - [x] Phase 35 (Logger Infrastructure) — COMPLETE
 - [x] Phase 36 (Settings Plumbing) — COMPLETE
-- [x] Phase 37 Plan 02 (Console Migration - lower-volume files) — COMPLETE
-- [ ] Phase 37 Plan 01 (Console Migration - high-volume files)
-- [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 37
+- [x] Phase 37 (Console Migration) — COMPLETE (42 calls migrated, 0 remain)
 - [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
 - [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
 
@@ -148,25 +146,23 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 37 Plan 01 (High-Volume Console Migration) completed in 4 minutes 20 seconds
-- Migrated 31 console.log/debug/warn calls across 3 highest-volume server files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
-- Essential startup summaries use logger.info (BBj home, class count, JavadocProvider packages)
-- Verbose details use logger.debug with lazy callbacks for expensive operations
-- All console.error calls preserved untouched (10 calls across 3 files)
-- TypeScript compilation succeeds with zero errors
-- Commits: a0a5238 (Task 1: java-interop + bbj-ws-manager), 7b34eb3 (Task 2: java-javadoc)
+- Phase 37 (Console Migration) completed — both plans executed in parallel
+- Plan 01: 31 console calls migrated in java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts
+- Plan 02: 14 console calls migrated in main.ts, scopes, linker, module, hover, builder, formatter
+- Total: 42 console.log/debug/warn calls migrated, 0 remain in server code
+- 14 console.error calls preserved untouched across all files
+- Verification passed: 8/8 must-haves verified, LOG-02/LOG-03/LOG-04 satisfied
+- Commits: a0a5238, 7b34eb3, ecaa701 (Plan 01); 11b4610, f2ff04a, c39afe1 (Plan 02)
 
 ### What's Next
 
-**Immediate:** Phase 37 Plan 02 - Console Migration remaining files (8 lower-volume files with 14 console calls)
+**Immediate:** Phase 38 - Diagnostic Filtering (verification of existing behavior)
 
-**After Phase 37 Plan 02:**
-- Complete Phase 37 (Plan 01 + Plan 02 together achieve LOG-04: all console calls routed through logger)
-- Phase 38: Diagnostic Filtering (verification only)
+**After Phase 38:**
 - Phase 39: Parser Diagnostics (investigation + docs)
 
-**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓, 36 ✓, 37 50% ✓)
-**Parallel opportunity:** Phase 38 can run independently after Phase 37 complete
+**Critical path complete:** 35 ✓ → 36 ✓ → 37 ✓
+**Remaining:** Phase 38 (independent), Phase 39 (depends on Phase 36 ✓)
 
 ### Context for Next Session
 
@@ -176,18 +172,12 @@ None currently identified.
 **Test coverage:** 88% with V8 coverage
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
 
-**Key files for v3.3:**
-- `bbj-vscode/src/language/main.ts` — LS entry point, onDidChangeConfiguration handler
-- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, now uses logger (Plan 01 complete)
-- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files
-- `bbj-vscode/src/language/java-interop.ts` — Java class loading, now uses logger (Plan 01 complete)
-- `bbj-vscode/src/language/java-javadoc.ts` — Javadoc scanning, now uses logger (Plan 01 complete)
+**Key files for remaining phases:**
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files (Phase 38)
+- `bbj-vscode/src/language/bbj-module.ts` — Parser construction, ambiguity warnings (Phase 39)
+- `bbj-vscode/src/language/logger.ts` — Logger singleton (Phases 35-37 complete)
+- `bbj-vscode/src/language/main.ts` — LS entry point, debug flag handling
 - `bbj-vscode/package.json` — VS Code settings schema
-
-**Phase 37 progress:**
-- Plan 01 complete: 31 console calls migrated across 3 high-volume files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
-- Plan 02 remaining: 14 console calls across 8 lower-volume files
-- Combined Plans 01+02 will achieve LOG-04 (all console calls routed through logger)
 
 ---
 
