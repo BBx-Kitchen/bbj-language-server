@@ -141,10 +141,18 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     console.warn(`[PREFIX] Could not load '${importPath}' from any PREFIX directory. Searched: ${prefixes.join(', ')}`);
                 }
                 if (docFileData) {
+                    // Skip binary/tokenized BBj files that can't be parsed
+                    if (docFileData.text.startsWith('<<bbj>>')) {
+                        console.warn(`[PREFIX] Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
+                        continue;
+                    }
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
                     if (!langiumDocuments.hasDocument(document.uri)) {
                         langiumDocuments.addDocument(document);
                         addedDocuments.push(document.uri);
+                        console.debug(`[PREFIX] Loaded: ${importPath} -> ${document.uri.fsPath} (new document)`);
+                    } else {
+                        console.debug(`[PREFIX] Already loaded: ${importPath} -> ${document.uri.fsPath}`);
                     }
                 }
             }
@@ -203,12 +211,22 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     );
                 });
 
+                if (!nowResolved) {
+                    const indexEntries = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
+                        return adjustedFileUris.some(adjustedFileUri =>
+                            normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
+                        );
+                    }).toArray();
+                    console.warn(`[PREFIX] Reconciliation: '${cleanPath}' NOT resolved. ${indexEntries.length} BbjClass entries found at searched URIs. Searched: ${adjustedFileUris.map(u => u.fsPath).join(', ')}`);
+                }
+
                 // If now resolved, remove the diagnostic (return false to filter out)
                 return !nowResolved;
             });
 
             // If diagnostics changed, notify the editor
             if (document.diagnostics.length !== originalLength) {
+                console.debug(`[PREFIX] Reconciliation: cleared ${originalLength - document.diagnostics.length} USE file-path diagnostic(s) for ${document.uri.fsPath}`);
                 await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
             }
         }
