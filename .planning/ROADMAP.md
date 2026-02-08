@@ -10,7 +10,7 @@
 - v2.2 IntelliJ Build & Release Automation - Phases 21-23 (shipped 2026-02-05)
 - v3.0 Improving BBj Language Support - Phases 24-27 (shipped 2026-02-06)
 - v3.1 PRIO 1+2 Issue Burndown - Phases 28-31 (shipped 2026-02-07)
-- v3.2 Bug Fix Release - Phases 32-34 (in progress)
+- v3.2 Bug Fix Release - Phases 32-34 (shipped 2026-02-08)
 
 ## Phases
 
@@ -21,13 +21,13 @@ See .planning/MILESTONES.md for full history.
 
 </details>
 
-### v3.2 Bug Fix Release (In Progress)
+### v3.2 Bug Fix Release (Complete)
 
 **Milestone Goal:** Fix regressions and parser bugs that produce false errors on valid BBj code, restoring broken functionality and eliminating noise in the diagnostics output.
 
 - [x] **Phase 32: Regression Fixes** - Restore BBjAPI() resolution and USE statement navigation
 - [x] **Phase 33: Parser and Lexer Fixes** - Eliminate false errors on valid BBj syntax patterns
-- [ ] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
+- [x] **Phase 34: Diagnostic Polish** - Improve settings labels and USE path validation
 
 ## Phase Details
 
@@ -74,7 +74,7 @@ Plans:
 Plans:
 - [x] 34-01-PLAN.md -- Fix settings capitalization (POL-01) and USE file path validation (POL-02)
 - [x] 34-02-PLAN.md -- Gap closure: reconcile USE file-path diagnostics after PREFIX docs indexed
-- [ ] 34-03-PLAN.md -- Gap closure: fix URI comparison, add logging, include searched paths in error
+- [x] 34-03-PLAN.md -- Gap closure: fix URI comparison, add logging, include searched paths in error
 
 ## Progress
 
@@ -85,4 +85,4 @@ Phases execute in numeric order: 32 -> 33 -> 34
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
 | 33. Parser and Lexer Fixes | v3.2 | 3/3 | Complete | 2026-02-08 |
-| 34. Diagnostic Polish | v3.2 | 2/3 | In Progress | - |
+| 34. Diagnostic Polish | v3.2 | 3/3 | Complete | 2026-02-08 |
