@@ -46,6 +46,11 @@ Plans:
 3. Quiet startup mode gates verbose output until first document validation completes (temporary ERROR level override)
 4. Logger level persists correctly across setting changes (no state desync)
 
+**Plans:** 1 plan
+
+Plans:
+- [ ] 36-01-PLAN.md -- Wire bbj.debug setting to logger via onDidChangeConfiguration with quiet startup
+
 ---
 
 ### Phase 37: Console Migration
@@ -103,7 +108,7 @@ Plans:
 | Phase | Status | Requirements | Plans | Completed |
 |-------|--------|--------------|-------|-----------|
 | 35 - Logger Infrastructure | ✓ Complete | LOG-01 (partial) | 1/1 | 2026-02-08 |
-| 36 - Settings Plumbing | Pending | LOG-01, LOG-05 | 0/0 | — |
+| 36 - Settings Plumbing | Planned | LOG-01, LOG-05 | 0/1 | — |
 | 37 - Console Migration | Pending | LOG-02, LOG-03, LOG-04 | 0/0 | — |
 | 38 - Diagnostic Filtering | Pending | DIAG-01, DIAG-02 | 0/0 | — |
 | 39 - Parser Diagnostics | Pending | PARSE-01, PARSE-02, DOCS-01 | 0/0 | — |
@@ -149,4 +154,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 35 completion*
+*Last updated: 2026-02-08 after Phase 36 planning*
