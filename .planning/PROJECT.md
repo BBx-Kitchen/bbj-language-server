@@ -114,7 +114,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — start next milestone with `/gsd:new-milestone`)
+## Current Milestone: v3.4 0.8.0 Issue Closure
+
+**Goal:** Close all open GitHub issues tagged with the 0.8.0 milestone — low-risk fixes only.
+
+**Target features:**
+- Fix `step` keyword breaking structure parsing (#368)
+- Remove .bbl from BBj source file extensions (#369)
+- Fix Compile/Decompile toolbar buttons — remove Decompile, add Compile icon, scope to BBj files (#370, #354)
+- Fix BUI/DWC launch login loop (#359)
+- Pass config.bbx path to run commands (#244)
+- Close already-fixed #256 (token auth)
 
 ### Out of Scope
 
@@ -125,7 +135,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.3 shipped 2026-02-08. Implemented debug logging controls and diagnostic filtering — quiet startup by default, verbose on-demand via `bbj.debug` setting. 11 milestones in 8 days.
+**Current state:** v3.4 started 2026-02-08. Closing all 0.8.0-tagged GitHub issues. 11 milestones shipped in 8 days.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -228,4 +238,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Suppress all 47 parser ambiguities (no grammar refactoring) | BBj's non-reserved keywords create inherent ambiguity that ALL(*) resolves correctly; refactoring would require language redesign | ✓ Good — v3.3 shipped |
 
 ---
-*Last updated: 2026-02-08 after v3.3 milestone complete*
+*Last updated: 2026-02-08 after v3.4 milestone started*

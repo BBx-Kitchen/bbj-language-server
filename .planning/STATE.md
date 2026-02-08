@@ -8,14 +8,16 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone
+**Current Focus:** v3.4 0.8.0 Issue Closure
 
 ---
 
 ## Current Position
 
-**Last Milestone:** v3.3 Output & Diagnostic Cleanup (SHIPPED 2026-02-08)
-**Next Milestone:** TBD — run `/gsd:new-milestone` to start
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-08 — Milestone v3.4 started
 
 ---
 
@@ -80,20 +82,13 @@ None currently identified.
 
 ### What Just Happened
 
-- Milestone v3.3 completed and archived
-- All 10 requirements satisfied (LOG-01 through DOCS-01)
-- 5 phases, 6 plans, 39 phases total across 11 milestones
-- Archives: .planning/milestones/v3.3-ROADMAP.md, v3.3-REQUIREMENTS.md, v3.3-MILESTONE-AUDIT.md
+- Milestone v3.4 started — closing all 0.8.0-tagged GitHub issues
+- 7 open issues: #368, #369, #370, #359, #354, #256, #244
+- #256 already fixed in v3.1, needs closing
 
 ### What's Next
 
-**Immediate:** Plan next milestone
-
-Options:
-- CPU stability mitigations (#232) — implement ranked fixes from Phase 26 FINDINGS.md
-- Feature gap implementation — from v2.1 gap analysis (called programs, data dictionary, etc.)
-- PRIO 3 issue burndown — remaining lower-priority GitHub issues
-- Dead code cleanup — remove MethodCall CAST branches
+**Immediate:** Define requirements, create roadmap, then execute
 
 ### Context for Next Session
 
