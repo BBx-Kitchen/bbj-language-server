@@ -49,7 +49,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| LOG-01 | Phase 35, 36 | Pending |
+| LOG-01 | Phase 35, 36 | Phase 35 partial (logger singleton created) |
 | LOG-02 | Phase 37 | Pending |
 | LOG-03 | Phase 37 | Pending |
 | LOG-04 | Phase 37 | Pending |
@@ -74,4 +74,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-08*
-*Last updated: 2026-02-08 after roadmap creation*
+*Last updated: 2026-02-08 after Phase 35 completion*

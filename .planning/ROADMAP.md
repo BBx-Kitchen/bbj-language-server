@@ -25,10 +25,10 @@ This milestone implements debug logging controls and diagnostic filtering for th
 3. Logger calls have zero overhead when disabled (enum comparison only, no string formatting)
 4. Logger builds and type-checks with existing TypeScript configuration
 
-**Plans:** 1 plan
+**Status:** ✓ Complete (2026-02-08)
 
 Plans:
-- [ ] 35-01-PLAN.md -- Create logger singleton module and unit tests
+- [x] 35-01-PLAN.md -- Create logger singleton module and unit tests
 
 ---
 
@@ -102,7 +102,7 @@ Plans:
 
 | Phase | Status | Requirements | Plans | Completed |
 |-------|--------|--------------|-------|-----------|
-| 35 - Logger Infrastructure | Planned | LOG-01 (partial) | 0/1 | — |
+| 35 - Logger Infrastructure | ✓ Complete | LOG-01 (partial) | 1/1 | 2026-02-08 |
 | 36 - Settings Plumbing | Pending | LOG-01, LOG-05 | 0/0 | — |
 | 37 - Console Migration | Pending | LOG-02, LOG-03, LOG-04 | 0/0 | — |
 | 38 - Diagnostic Filtering | Pending | DIAG-01, DIAG-02 | 0/0 | — |
@@ -149,4 +149,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08*
+*Last updated: 2026-02-08 after Phase 35 completion*
