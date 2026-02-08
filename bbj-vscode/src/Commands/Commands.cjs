@@ -6,6 +6,13 @@ const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
 
+// Shared output channel from extension.ts
+let outputChannel = null;
+
+const setOutputChannel = (channel) => {
+  outputChannel = channel;
+};
+
 /**
  * Helper function to wrap child_process.exec() in a Promise for use with withProgress
  * @param {string} cmd - The command to execute
@@ -90,10 +97,9 @@ const runWeb = (params, client, credentials) => {
   const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}" "${configPath}"`;
 
   const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
-  if (isDebug) {
+  if (isDebug && outputChannel) {
     const debugCmd = cmd.replace(`"${token}"`, '"***"').replace(`"${password}"`, '"***"');
-    const out = vscode.window.createOutputChannel('BBj');
-    out.appendLine(`${client} run: ${debugCmd}`);
+    outputChannel.appendLine(`${client} run: ${debugCmd}`);
   }
 
   exec(cmd, (err, stdout, stderr) => {
@@ -226,9 +232,8 @@ const Commands = {
     const cmd = `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"`;
 
     const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
-    if (isDebug) {
-      const out = vscode.window.createOutputChannel('BBj');
-      out.appendLine(`GUI run: ${cmd}`);
+    if (isDebug && outputChannel) {
+      outputChannel.appendLine(`GUI run: ${cmd}`);
     }
 
     const runCommand = () => {
@@ -311,3 +316,4 @@ const Commands = {
 };
 
 module.exports = Commands;
+module.exports.setOutputChannel = setOutputChannel;

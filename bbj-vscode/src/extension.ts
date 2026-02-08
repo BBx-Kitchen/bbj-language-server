@@ -345,6 +345,7 @@ export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     secretStorage = context.secrets;
     outputChannel = vscode.window.createOutputChannel('BBj');
+    (Commands as any).setOutputChannel(outputChannel);
     client = startLanguageClient(context);
     vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
     vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
