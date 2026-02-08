@@ -1,0 +1,17 @@
+class public ClassA
+
+    field private BBjNumber someNumber
+    field private BBjNumber someOtherNumber!
+    field private BBjString someString$
+    field private BBjString someString!
+    field private String someString!
+    field private Integer someInt!
+
+classend
+
+class public ClassB extends ClassA
+
+classend
+
+declare BBjString a!
+declare BBjNumber b!

@@ -1,0 +1,28 @@
+
+let steptest$="TEST"
+
+indF$="J"
+
+indexFile$ = "docindex.search"
+
+fileTest$="jj"
+
+htat$="J"
+
+printTest$="JJ"
+
+class public Test
+
+    field private BBjString stepABC!
+    field private BBjString modeABC!
+
+    method public void Test()
+        let steptest$="TEST"
+        indF$="J"
+        indexFile$ = "docindex.search"
+        fileTest$="jj"
+        htat$="J"
+        printTest$="JJ"
+    methodend
+    
+classend
