@@ -4,11 +4,11 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexManager, LeafCstNode, Properties, Reference, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexManager, LangiumDocuments, LeafCstNode, Properties, Reference, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { basename, dirname, isAbsolute, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -63,6 +63,7 @@ export function registerValidationChecks(services: BBjServices) {
 export class BBjValidator {
     protected readonly javaInterop: JavaInteropService;
     protected readonly indexManager: IndexManager;
+    protected readonly langiumDocuments: LangiumDocuments;
     protected readonly workspaceManager: BBjWorkspaceManager;
     protected readonly typeInferer: TypeInferer;
     checkExceptClause(node: BeginStatement, accept: ValidationAcceptor): void {
@@ -77,6 +78,7 @@ export class BBjValidator {
     constructor(services: BBjServices) {
         this.javaInterop = services.java.JavaInteropService;
         this.indexManager = services.shared.workspace.IndexManager;
+        this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.workspaceManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         this.typeInferer = services.types.Inferer;
     }
@@ -305,11 +307,13 @@ export class BBjValidator {
                 ].concat(
                     prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
                 );
-                const resolved = this.indexManager.allElements(BbjClass.$type).some(bbjClass => {
-                    return adjustedFileUris.some(adjustedFileUri =>
-                        normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
-                    );
-                });
+                // Check if a document exists at any candidate URI. We check document
+                // existence rather than BbjClass index entries because external files
+                // may have parser errors that prevent BbjClass nodes from being created,
+                // but the file path itself is still valid and resolvable.
+                const resolved = adjustedFileUris.some(uri =>
+                    this.langiumDocuments.hasDocument(uri)
+                );
                 if (!resolved) {
                     const searchedPaths = adjustedFileUris.map(u => u.fsPath);
                     accept('error', `File '${cleanPath}' could not be resolved. Searched: ${searchedPaths.join(', ')}`, {

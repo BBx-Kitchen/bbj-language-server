@@ -17,7 +17,7 @@ import { dirname, relative } from 'node:path';
 import { isTemplateStringArray } from './bbj-scope-local.js';
 import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, JavaClass, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
+import { BinaryExpression, ConstructorCall, isArrayDecl, isBBjClassMember, isMemberCall, isMethodCall, isMethodDecl, isSymbolRef, isUse, JavaClass, LibFunction, MethodDecl, ParameterCall, VariableDecl } from './generated/ast.js';
 
 export class BbjLinker extends DefaultLinker {
 
@@ -126,6 +126,15 @@ export class BbjLinker extends DefaultLinker {
                 }
                 return this.createLinkingError(refInfo);
             }
+        }
+        if (isUse(refInfo.container) && refInfo.property === 'bbjClass') {
+            const scope = this.scopeProvider.getScope(refInfo);
+            const refText = isReference(refInfo.reference) ? refInfo.reference.$refText : undefined;
+            const candidate = refText ? scope.getElement(refText) : undefined;
+            if (candidate) {
+                return candidate;
+            }
+            return this.createLinkingError(refInfo);
         }
         return super.getCandidate(refInfo);
     }

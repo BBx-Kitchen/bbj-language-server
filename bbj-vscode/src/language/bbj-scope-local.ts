@@ -18,6 +18,7 @@ import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
+    BbjClass,
     CompoundStatement,
     FieldDecl, isArrayDecl, isAssignment, isBbjClass,
     isClass,
@@ -57,23 +58,58 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
     override async collectExportedSymbols(document: LangiumDocument, cancelToken = CancellationToken.None): Promise<AstNodeDescription[]> {
         // Only make classes and library elements globally "visible" in index
-        return this.collectExportedSymbolsForNode(document.parseResult.value, document, (node) => AstUtils.streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
+        const exports = await this.collectExportedSymbolsForNode(document.parseResult.value, document, (node) => AstUtils.streamContents(node).filter(child => isClass(child) || isLibMember(child) || isLibEventType(child)), cancelToken);
+
+        // Fallback: if parser errors prevented some BbjClass nodes from being created,
+        // supplement with classes found via AST deep-search or regex so that partially
+        // parsed files still export all their classes.
+        if (document.parseResult.parserErrors.length > 0 || document.parseResult.lexerErrors.length > 0) {
+            const exportedClassNames = new Set(exports.filter(e => e.type === BbjClass.$type).map(e => e.name));
+
+            // First, try to find BbjClass nodes anywhere in the AST tree
+            // (parser recovery may have created them in unexpected locations)
+            const allBbjClasses = AstUtils.streamAllContents(document.parseResult.value)
+                .filter(isBbjClass)
+                .toArray();
+            for (const bbjClass of allBbjClasses) {
+                if (bbjClass.name && !exportedClassNames.has(bbjClass.name)) {
+                    const desc = this.descriptions.createDescription(bbjClass, bbjClass.name, document);
+                    exports.push(desc);
+                    exportedClassNames.add(bbjClass.name);
+                }
+            }
+
+            // Also scan raw text via regex to catch classes the parser couldn't recover.
+            // These entries have no AST node, so references to them will
+            // resolve to the document but not to a specific BbjClass node.
+            const text = document.textDocument.getText();
+            const classPattern = /^\s*class\s+(?:public\s+|private\s+|protected\s+)?(\w+)/gim;
+            let match;
+            while ((match = classPattern.exec(text)) !== null) {
+                const className = match[1];
+                if (!exportedClassNames.has(className)) {
+                    exports.push({
+                        name: className,
+                        type: BbjClass.$type,
+                        documentUri: document.uri,
+                        path: '',
+                    });
+                    exportedClassNames.add(className);
+                }
+            }
+        }
+
+        return exports;
     }
 
     override async collectLocalSymbols(document: LangiumDocument, cancelToken: CancellationToken): Promise<LocalSymbols> {
         const rootNode = document.parseResult.value;
         const scopes = new MultiMap<AstNode, AstNodeDescription>();
-        const docName = document.uri.toString().split('/').pop();
-        const t0 = Date.now();
         // Override to process node in an async way
         // to trigger backend resolution of Java class references.
         for (const node of AstUtils.streamAllContents(rootNode)) {
             await interruptAndCheck(cancelToken);
             await this.processNode(node, document, scopes);
-        }
-        const elapsed = Date.now() - t0;
-        if (elapsed > 200) {
-            console.warn(`[SCOPE] collectLocalSymbols for ${docName} took ${elapsed}ms`);
         }
 
         if (isProgram(rootNode)) {

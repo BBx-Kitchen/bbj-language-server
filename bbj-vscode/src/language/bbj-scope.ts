@@ -223,14 +223,17 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath)))
         );
         let bbjClasses = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
-            // FIXME
-            // DONE 1. load first files in same folder
-            // TODO 2. try resolve with path relative to project root
-            // DONE 3. Access PREFIX folder information and load the first match
             return adjustedFileUris.some(adjustedFileUri => normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase());
         })
         if (!simpleName) {
-            bbjClasses = bbjClasses.map(d => this.descriptions.createDescription(d.node!, `::${bbjFilePath}::${d.name}`));
+            bbjClasses = bbjClasses.map(d => {
+                if (d.node) {
+                    return this.descriptions.createDescription(d.node, `::${bbjFilePath}::${d.name}`);
+                }
+                // Fallback for synthetic index entries (e.g. regex-extracted classes
+                // from files with parser errors) that have no AST node.
+                return { ...d, name: `::${bbjFilePath}::${d.name}` };
+            });
         }
         return new StreamScopeWithPredicate(bbjClasses);
     }

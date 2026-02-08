@@ -12,7 +12,7 @@ export function registerClassChecks(registry: ValidationRegistry) {
             }
             const ref = use.bbjClass;
             const uriOfUsage = AstUtils.getDocument(ref.$refNode!.root.astNode).uri.fsPath;
-            if(ref.ref) {
+            if(ref.ref && isBbjClass(ref.ref)) {
                 const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
                 validator.checkBBjClass(ref.ref, uriOfDeclaration, uriOfUsage, accept, {
                     node: use,

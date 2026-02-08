@@ -57,6 +57,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     /**
+     * Collect all LangiumDocument objects for the given URIs from the document registry.
+     */
+    private getDocumentsForUris(uris: URI[]): LangiumDocument[] {
+        return uris
+            .filter(uri => this.langiumDocuments.hasDocument(uri))
+            .map(uri => this.langiumDocuments.getDocument(uri)!);
+    }
+
+    /**
      * Override shouldRelink to prevent documents from being unnecessarily
      * relinked just because they have unresolved references. The default
      * Langium behavior relinks any document with reference errors on every
@@ -75,7 +84,8 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // During import resolution, also relink documents that have unresolved
         // references -- the newly imported documents may resolve them.
         if (this.isImportingBBjDocuments) {
-            if (document.references.some(ref => ref.error !== undefined)) {
+            const hasErrors = document.references.some(ref => ref.error !== undefined);
+            if (hasErrors) {
                 return true;
             }
         }
@@ -96,21 +106,21 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // Depth guard: prevent infinite recursion from transitive USE chains
         this.importDepth++;
         if (this.importDepth > BBjDocumentBuilder.MAX_IMPORT_DEPTH) {
-            console.warn(`Maximum transitive import depth (${BBjDocumentBuilder.MAX_IMPORT_DEPTH}) reached. Stopping USE resolution.`);
+            console.warn(`[PREFIX] Maximum transitive import depth (${BBjDocumentBuilder.MAX_IMPORT_DEPTH}) reached. Stopping USE resolution.`);
             this.importDepth--;
             return;
         }
 
+        // Only the outermost call manages the flag; recursive calls inherit it.
+        const isOutermostCall = !this.isImportingBBjDocuments;
         this.isImportingBBjDocuments = true;
         try {
-            // Only scan workspace documents for USE statements — imported/external
-            // documents should not trigger further transitive loading.
-            const workspaceDocuments = (bbjWsManager instanceof BBjWorkspaceManager)
-                ? documents.filter(doc => !bbjWsManager.isExternalDocument(doc.uri))
-                : documents;
-
+            // Scan ALL passed documents for USE statements, including external/PREFIX
+            // documents. This enables transitive dependency loading: if A.bbj uses
+            // B.bbj (loaded from PREFIX), and B.bbj uses C.bbj, then C.bbj also
+            // gets loaded. The depth guard above prevents infinite recursion.
             const bbjImports = new Set<string>();
-            for (const document of workspaceDocuments) {
+            for (const document of documents) {
                 await interruptAndCheck(cancelToken);
                 AstUtils.streamAllContents(document.parseResult.value).filter(isUse).forEach((use: Use) => {
                     if (use.bbjFilePath) {
@@ -134,11 +144,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         docFileData = { uri: prefixedPath, text: fileContent };
                         break; // early stop iterating prefixes when file is found
                     } catch (e) {
-                        console.debug(`[PREFIX] File not found at ${prefixedPath.fsPath}`);
+                        // File not found at this prefix, try next
                     }
                 }
                 if (!docFileData) {
-                    console.warn(`[PREFIX] Could not load '${importPath}' from any PREFIX directory. Searched: ${prefixes.join(', ')}`);
+                    // Could not load from any PREFIX directory; will be reported as a diagnostic
                 }
                 if (docFileData) {
                     // Skip binary/tokenized BBj files that can't be parsed
@@ -150,17 +160,25 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     if (!langiumDocuments.hasDocument(document.uri)) {
                         langiumDocuments.addDocument(document);
                         addedDocuments.push(document.uri);
-                        console.debug(`[PREFIX] Loaded: ${importPath} -> ${document.uri.fsPath} (new document)`);
-                    } else {
-                        console.debug(`[PREFIX] Already loaded: ${importPath} -> ${document.uri.fsPath}`);
                     }
+                    // else: already loaded, skip
                 }
             }
             if (addedDocuments.length > 0) {
                 await this.update(addedDocuments, [], cancelToken);
+                // Recursively load transitive USE dependencies from the newly-added
+                // external documents. For example, if workspace file uses BBjGridExWidget.bbj
+                // (loaded from PREFIX), and BBjGridExWidget.bbj uses GxOptions.bbj, then
+                // GxOptions.bbj also needs to be loaded from PREFIX.
+                const newDocs = this.getDocumentsForUris(addedDocuments);
+                if (newDocs.length > 0) {
+                    await this.addImportedBBjDocuments(newDocs, options, cancelToken);
+                }
             }
         } finally {
-            this.isImportingBBjDocuments = false;
+            if (isOutermostCall) {
+                this.isImportingBBjDocuments = false;
+            }
             this.importDepth--;
         }
     };
@@ -211,22 +229,12 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     );
                 });
 
-                if (!nowResolved) {
-                    const indexEntries = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
-                        return adjustedFileUris.some(adjustedFileUri =>
-                            normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
-                        );
-                    }).toArray();
-                    console.warn(`[PREFIX] Reconciliation: '${cleanPath}' NOT resolved. ${indexEntries.length} BbjClass entries found at searched URIs. Searched: ${adjustedFileUris.map(u => u.fsPath).join(', ')}`);
-                }
-
                 // If now resolved, remove the diagnostic (return false to filter out)
                 return !nowResolved;
             });
 
             // If diagnostics changed, notify the editor
             if (document.diagnostics.length !== originalLength) {
-                console.debug(`[PREFIX] Reconciliation: cleared ${originalLength - document.diagnostics.length} USE file-path diagnostic(s) for ${document.uri.fsPath}`);
                 await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
             }
         }
