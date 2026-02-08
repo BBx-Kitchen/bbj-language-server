@@ -29,6 +29,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
             _document.state = DocumentState.Validated;
             return false;
         }
+        if (_document.uri.scheme === 'bbjlib') {
+            // never validate synthetic bbjlib files (functions.bbl, variables.bbl, etc.)
+            _document.state = DocumentState.Validated;
+            return false;
+        }
         if (this.wsManager() instanceof BBjWorkspaceManager) {
             const validate = super.shouldValidate(_document)
                 && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
