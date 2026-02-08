@@ -15,17 +15,17 @@
 
 ## Current Position
 
-**Active Phase:** Phase 36 - Settings Plumbing
-**Active Plan:** 1 of 1 (Plan 01 complete)
+**Active Phase:** Phase 37 - Console Migration
+**Active Plan:** 2 of 2 (Plan 02 complete)
 
-**Phase Status:** Complete
-**Phase Goal:** Debug flag flows from IDE settings to language server and controls logger behavior
-**Last Activity:** 2026-02-08 - Completed 36-01-PLAN.md
+**Phase Status:** In progress (1 of 2 plans complete)
+**Phase Goal:** Migrate all console.log/debug/warn calls to logger for quiet startup
+**Last Activity:** 2026-02-08 - Completed 37-02-PLAN.md
 
 **Progress Bar:**
 ```
 Milestone v3.3: [████░░░░░░░░░░░░░░░░] 2/10 requirements (20%)
-Phase 36:       [████████████████████] 3/3 success criteria (100%)
+Phase 37:       [██████████░░░░░░░░░░] 1/2 plans complete (50%)
 ```
 
 ---
@@ -36,10 +36,11 @@ Phase 36:       [████████████████████] 3
 
 **Started:** 2026-02-08
 **Phases completed:** 2/5
+**Plans completed:** 3/7 (35-01, 36-01, 37-02)
 **Requirements completed:** 2/10
 **Days elapsed:** 0
 
-**Velocity:** 2 phases/day (Phase 35-36 completed 2026-02-08)
+**Velocity:** 3 plans/day (Phase 35-36 complete, Phase 37 50% complete)
 
 ### Recent History
 
@@ -115,7 +116,8 @@ Phase 36:       [████████████████████] 3
 
 - [x] Phase 35 (Logger Infrastructure) — COMPLETE
 - [x] Phase 36 (Settings Plumbing) — COMPLETE
-- [ ] Determine exact console.* call sites for migration (Phase 37 scope)
+- [x] Phase 37 Plan 02 (Console Migration - lower-volume files) — COMPLETE
+- [ ] Phase 37 Plan 01 (Console Migration - high-volume files)
 - [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 37
 - [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
 - [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
@@ -136,25 +138,25 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 36 (Settings Plumbing) completed in 2 minutes
-- Added bbj.debug boolean setting to package.json (default: false)
-- Wired onDidChangeConfiguration handler to logger.setLevel()
-- Implemented quiet startup (ERROR level until first validation)
-- Implemented hot-reload (debug=true→DEBUG, false→WARN without LS restart)
-- Added 8 integration tests (25/25 passing total)
-- All tests pass, TypeScript compilation succeeds with zero errors
-- Commits: b840f2e (feat: wire setting), f21b251 (test: integration tests)
+- Phase 37 Plan 02 (Console Migration) completed in 2 minutes
+- Migrated 11 console.log/debug/warn calls across 8 server files to logger
+- All remaining console.log/debug/warn eliminated from production server code
+- Full codebase now respects bbj.debug flag
+- All console.error calls preserved untouched
+- TypeScript compilation succeeds with zero errors
+- Commits: 11b4610 (Task 1: main.ts, bbj-scope-local.ts, bbj-scope.ts), f2ff04a (Task 2: 5 remaining files)
 
 ### What's Next
 
-**Immediate:** Phase 37 - Console Migration (systematic refactoring of 56 console.* call sites)
+**Immediate:** Phase 37 Plan 01 - Console Migration high-volume files (java-interop.ts, bbj-ws-manager.ts)
 
-**After Phase 37:**
+**After Phase 37 Plan 01:**
+- Complete Phase 37 (Plan 01 + Plan 02 together achieve LOG-04)
 - Phase 38: Diagnostic Filtering (verification only)
 - Phase 39: Parser Diagnostics (investigation + docs)
 
-**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓, 36 ✓)
-**Parallel opportunity:** Phase 38 can run independently
+**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓, 36 ✓, 37 50% ✓)
+**Parallel opportunity:** Phase 38 can run independently after Phase 37 complete
 
 ### Context for Next Session
 
@@ -165,16 +167,16 @@ None currently identified.
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
 
 **Key files for v3.3:**
-- `bbj-vscode/src/language/main.ts` — LS entry point, onDidChangeConfiguration handler
-- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, onInitialize pattern
-- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files
-- `bbj-vscode/src/language/java-interop.ts` — High console output volume (javadoc scanning)
+- `bbj-vscode/src/language/main.ts` — LS entry point, now uses logger.info for settings changes
+- `bbj-vscode/src/language/bbj-ws-manager.ts` — Settings initialization, needs migration in Plan 01
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic, now uses logger.warn
+- `bbj-vscode/src/language/java-interop.ts` — High console output volume, needs migration in Plan 01
 - `bbj-vscode/package.json` — VS Code settings schema
 
-**Research insights:**
-- 56 console.* call sites across 10 files need migration
-- Existing shouldValidate() likely already filters synthetic files (verification needed)
-- Chevrotain ambiguity warnings emitted during grammar construction (before document processing)
+**Phase 37 progress:**
+- Plan 02 complete: 11 console calls migrated across 8 lower-volume files
+- Plan 01 remaining: High-volume files (java-interop.ts, bbj-ws-manager.ts)
+- Combined Plans 01+02 will achieve LOG-04 (all console calls routed through logger)
 
 ---
 
