@@ -23,6 +23,7 @@ import {
 import { BBjServices } from './bbj-module.js';
 import { isBbjDocument, isJavaDocument } from './bbj-scope-local.js';
 import { TypeInferer } from './bbj-type-inferer.js';
+import { logger } from './logger.js';
 import {
     BBjAstType,
     BbjClass, BBjTypeRef, Class,
@@ -138,9 +139,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                         // return cached JavaClass MapScope
                         return doc.classesMapScope
                     }
-                    console.warn(`JavaDocument without classesMapScope.`)
+                    logger.warn('JavaDocument without classesMapScope.')
                 }
-                console.warn(`Resolving JavaMember from outside of JavaDocument.`)
+                logger.warn('Resolving JavaMember from outside of JavaDocument.')
                 const classPath = AstUtils.getContainerOfType(context.container, isClasspath);
                 if (classPath) {
                     const allDescriptions = precomputed.getStream(classPath).toArray();

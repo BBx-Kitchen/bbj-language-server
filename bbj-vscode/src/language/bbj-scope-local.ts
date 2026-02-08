@@ -14,6 +14,7 @@ import {
 import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { FunctionNodeDescription, getClassRefNode, getFQNFullname, ParameterData } from './bbj-nodedescription-provider.js';
+import { logger } from './logger.js';
 import { collectAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
@@ -155,14 +156,14 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     return;
                 }
                 if (javaClass.error) {
-                    console.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
+                    logger.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
                     return;
                 }
                 const program = node.$container;
                 const simpleName = javaClassName.substring(javaClassName.lastIndexOf('.') + 1);
                 this.addToScope(scopes, program, this.descriptions.createDescription(javaClass, simpleName))
             } catch (e) {
-                console.warn(`Error processing USE statement for ${getFQNFullname(node.javaClass)}: ${e}`);
+                logger.warn(`Error processing USE statement for ${getFQNFullname(node.javaClass)}: ${e}`);
                 return;
             }
         } else if (isVariableDecl(node) && !isArrayDecl(node) && node.$containerProperty !== 'params') {
@@ -272,7 +273,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                 if (isJavaPackage(rootPackage)) {
                     const classFqn = qualifiers.concat(node.member.$refText).join('.');
                     if (!this.javaInterop.getResolvedClass(classFqn)) {
-                        console.debug(`Java class ${classFqn}, check it is resolved.`)
+                        logger.debug(`Java class ${classFqn}, check it is resolved.`)
                         // Just try resolve FQN class.
                         await this.tryResolveJavaReference(classFqn, this.javaInterop)
                     }
@@ -326,7 +327,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             try {
                 javaClass = await this.javaInterop.resolveClassByName(javaClassName);
             } catch (e) {
-                console.warn(e)
+                logger.warn(String(e))
             }
         }
         if (!javaClass?.$container) {

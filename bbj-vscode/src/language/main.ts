@@ -117,7 +117,7 @@ connection.onDidChangeConfiguration(async (change) => {
         // Update configPath in wsManager for PREFIX resolution
         wsManager.setConfigPath(config.configPath || '');
 
-        console.log('BBj settings changed, refreshing Java classes...');
+        logger.info('BBj settings changed, refreshing Java classes...');
         javaInterop.setConnectionConfig(newInteropHost, newInteropPort);
 
         // Clear all cached Java class data (includes disconnecting)
