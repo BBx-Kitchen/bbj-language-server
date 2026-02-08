@@ -58,6 +58,15 @@
             <keyboard-shortcut keymap="$default" first-keystroke="alt D"/>
         </action>
 
+        <!-- BBj Compile Action (toolbar only) -->
+        <action id="bbj.compile"
+                class="com.basis.bbj.intellij.actions.BbjCompileAction"
+                text="Compile BBj File"
+                description="Compile the current BBj file"
+                icon="com.basis.bbj.intellij.BbjIcons.COMPILE">
+            <add-to-group group-id="MainToolbar" anchor="before" relative-to-action="RunConfiguration"/>
+        </action>
+
         <!-- BBj Run submenu for Project View context menu -->
         <group id="bbj.runGroup"
                text="BBj Run"

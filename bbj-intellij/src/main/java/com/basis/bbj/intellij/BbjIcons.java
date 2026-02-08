@@ -15,4 +15,5 @@ public interface BbjIcons {
     Icon RUN_GUI = IconLoader.getIcon("/icons/run-gui.svg", BbjIcons.class);
     Icon RUN_BUI = IconLoader.getIcon("/icons/run-bui.svg", BbjIcons.class);
     Icon RUN_DWC = IconLoader.getIcon("/icons/run-dwc.svg", BbjIcons.class);
+    Icon COMPILE = IconLoader.getIcon("/icons/compile.svg", BbjIcons.class);
 }
