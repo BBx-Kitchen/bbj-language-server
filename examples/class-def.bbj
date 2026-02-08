@@ -4,7 +4,6 @@ REM  * @author jcorea
 REM  * Configuration widget to save/load a state of a component in a VKEYED file.
 REM  *
 REM  */
- 
 use ::BBjWidget/BBjWidget.bbj::BBjWidget
 use ::BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget
 REM use ::BBjGridExWidget/BBjGridExWidgetState.bbj::BBjGridExWidgetState 
