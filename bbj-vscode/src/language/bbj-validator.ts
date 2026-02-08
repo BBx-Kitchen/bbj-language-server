@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexManager, LeafCstNode, Properties, Reference, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { basename, dirname, isAbsolute, relative, resolve } from 'path';
+import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
@@ -307,11 +307,12 @@ export class BBjValidator {
                 );
                 const resolved = this.indexManager.allElements(BbjClass.$type).some(bbjClass => {
                     return adjustedFileUris.some(adjustedFileUri =>
-                        bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase())
+                        normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
                     );
                 });
                 if (!resolved) {
-                    accept('error', `File '${cleanPath}' could not be resolved. Check the file path and PREFIX configuration.`, {
+                    const searchedPaths = adjustedFileUris.map(u => u.fsPath);
+                    accept('error', `File '${cleanPath}' could not be resolved. Searched: ${searchedPaths.join(', ')}`, {
                         node: use,
                         property: 'bbjFilePath'
                     });

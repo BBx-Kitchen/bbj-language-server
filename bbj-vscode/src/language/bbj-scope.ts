@@ -47,7 +47,7 @@ import {
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
-import { resolve } from 'path';
+import { normalize, resolve } from 'path';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
 import { assertTrue } from './assertions.js';
@@ -227,7 +227,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             // DONE 1. load first files in same folder
             // TODO 2. try resolve with path relative to project root
             // DONE 3. Access PREFIX folder information and load the first match
-            return adjustedFileUris.some(adjustedFileUri => bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase()));
+            return adjustedFileUris.some(adjustedFileUri => normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase());
         })
         if (!simpleName) {
             bbjClasses = bbjClasses.map(d => this.descriptions.createDescription(d.node!, `::${bbjFilePath}::${d.name}`));

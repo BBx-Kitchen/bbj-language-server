@@ -5,7 +5,7 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
-import { resolve } from "path";
+import { normalize, resolve } from "path";
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
@@ -134,8 +134,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                         docFileData = { uri: prefixedPath, text: fileContent };
                         break; // early stop iterating prefixes when file is found
                     } catch (e) {
-                        // Continue to the next prefixPath if readFile fails
+                        console.debug(`[PREFIX] File not found at ${prefixedPath.fsPath}`);
                     }
+                }
+                if (!docFileData) {
+                    console.warn(`[PREFIX] Could not load '${importPath}' from any PREFIX directory. Searched: ${prefixes.join(', ')}`);
                 }
                 if (docFileData) {
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
@@ -196,7 +199,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 // Check if any BbjClass now exists at these URIs
                 const nowResolved = this.indexManager.allElements(BbjClass.$type).some(bbjClass => {
                     return adjustedFileUris.some(adjustedFileUri =>
-                        bbjClass.documentUri.toString().toLowerCase().endsWith(adjustedFileUri.fsPath.toLowerCase())
+                        normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
                     );
                 });
 
