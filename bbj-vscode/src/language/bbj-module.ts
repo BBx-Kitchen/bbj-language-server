@@ -109,9 +109,11 @@ function createBBjParser(services: LangiumServices): LangiumParser {
     const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
     if (lookaheadStrategy) {
         lookaheadStrategy.logging = (message: string) => {
-            if (!ambiguitiesReported) {
+            if (logger.isDebug()) {
+                logger.debug(`Parser: ${message}`);
+            } else if (!ambiguitiesReported) {
                 ambiguitiesReported = true;
-                logger.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
+                logger.debug('Parser: Ambiguous Alternatives Detected. Enable bbj.debug to see details.');
             }
         }
     }
