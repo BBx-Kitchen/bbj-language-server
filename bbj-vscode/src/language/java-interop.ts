@@ -13,6 +13,7 @@ import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
+import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
@@ -84,7 +85,7 @@ export class JavaInteropService {
     public setConnectionConfig(host: string, port: number): void {
         this.interopHost = host || '127.0.0.1';
         this.interopPort = port || 5008;
-        console.log(`Java interop connection config: ${this.interopHost}:${this.interopPort}`);
+        logger.debug(`Java interop connection config: ${this.interopHost}:${this.interopPort}`);
     }
 
     /**
@@ -155,7 +156,7 @@ export class JavaInteropService {
      * @returns true if classpath was loaded successfully, false otherwise
      */
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
-        console.warn("Load classpath from: " + classPath.join(', '))
+        logger.debug(() => "Load classpath from: " + classPath.join(', '))
         try {
             const entries = classPath.filter(entry => entry.length > 0).map(entry => {
                 // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
@@ -179,7 +180,7 @@ export class JavaInteropService {
      * @returns true if implicit imports were loaded successfully, false otherwise
      */
     public async loadImplicitImports(token?: CancellationToken): Promise<boolean> {
-        console.warn("Load package classes: ", implicitJavaImports.join(', '))
+        logger.debug(() => "Load package classes: " + implicitJavaImports.join(', '))
         try {
             const connection = await this.connect();
             await Promise.all(implicitJavaImports.concat('java.sql').map(async pack => {
@@ -197,7 +198,7 @@ export class JavaInteropService {
                     }
                 }))
             }))
-            console.debug("Loaded " + this.classpath.classes.length + " classes")
+            logger.info(() => "Loaded " + this.classpath.classes.length + " classes")
 
             if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
                 this.langiumDocuments.addDocument(this.classpathDocument);
@@ -235,7 +236,7 @@ export class JavaInteropService {
                 }
             } catch (topLevelErr) {
                 // getTopLevelPackages might not be supported by older Java interop versions
-                console.debug("getTopLevelPackages not supported, skipping top-level package initialization");
+                logger.debug("getTopLevelPackages not supported, skipping top-level package initialization");
             }
             return true;
         } catch (e) {
@@ -283,7 +284,7 @@ export class JavaInteropService {
 
         javaClass.$type = JavaClass.$type; // make isJavaClass work
         const packageName = extractPackageName(className);
-        console.debug(`Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
+        logger.debug(() => `Resolving class ${className}: ${javaClass.methods?.length ?? 0} methods, ${javaClass.fields?.length ?? 0} fields`);
 
         if (!javaClass.packageName) {
             // can happen if the class was not found by Java backend
@@ -378,7 +379,7 @@ export class JavaInteropService {
 
         const simpleName = (packageName.length > 0) ? javaClass.name.replace(packageName + '.', '') : javaClass.name;
         if (javaClass.packageName !== packageName) {
-            console.warn(`Package name mismatch for class ${javaClass.name}: expected '${javaClass.packageName}', got '${packageName}'`);
+            logger.warn(`Package name mismatch for class ${javaClass.name}: expected '${javaClass.packageName}', got '${packageName}'`);
         }
 
         const classpath = this.classpath;
@@ -450,7 +451,7 @@ export class JavaInteropService {
             this.connection = undefined;
         }
 
-        console.log('Java interop cache cleared');
+        logger.info('Java interop cache cleared');
     }
 
     private async acquireLock(): Promise<void> {

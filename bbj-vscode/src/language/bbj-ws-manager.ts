@@ -6,6 +6,7 @@ import { URI } from "vscode-uri";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
 import { JavadocProvider } from "./java-javadoc.js";
+import { logger } from "./logger.js";
 import { builtinFunctions } from "./lib/functions.js";
 import { builtinSymbolicLabels } from "./lib/labels.js";
 import { builtinVariables } from "./lib/variables.js";
@@ -31,7 +32,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
-            console.log('Initialization options received:', JSON.stringify(params.initializationOptions));
+            logger.debug(() => `Initialization options received: ${JSON.stringify(params.initializationOptions)}`);
             if (typeof params.initializationOptions === 'string') {
                 // Legacy: just the home directory
                 this.bbjdir = params.initializationOptions;
@@ -39,8 +40,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 // New format: object with home and classpath
                 this.bbjdir = params.initializationOptions.home || "";
                 this.classpathFromSettings = params.initializationOptions.classpath || "";
-                console.log(`BBj home: ${this.bbjdir}`);
-                console.log(`Classpath from settings: ${this.classpathFromSettings}`);
+                logger.info(`BBj home: ${this.bbjdir}`);
+                logger.debug(`Classpath from settings: ${this.classpathFromSettings}`);
 
                 // Extract interop settings and apply to JavaInteropService
                 const interopHost = params.initializationOptions.interopHost || 'localhost';
@@ -54,10 +55,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 const typeResWarnings = params.initializationOptions.typeResolutionWarnings;
                 if (typeResWarnings === false) {
                     setTypeResolutionWarnings(false);
-                    console.log('Type resolution warnings disabled');
+                    logger.info('Type resolution warnings disabled');
                 } else {
                     setTypeResolutionWarnings(true);
-                    console.log('Type resolution warnings enabled');
+                    logger.info('Type resolution warnings enabled');
                 }
             }
         });
@@ -83,9 +84,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                         const configUri = safeUri(this.configPath);
                         const configContents = await this.fileSystemProvider.readFile(configUri);
                         prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
-                        console.log(`Loaded config.bbx from custom path: ${this.configPath}`);
+                        logger.info(`Loaded config.bbx from custom path: ${this.configPath}`);
                     } catch (e) {
-                        console.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
+                        logger.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
                     }
                 } else if (this.bbjdir) {
                     try {
@@ -95,10 +96,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                             prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
                         }
                     } catch (e) {
-                        console.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
+                        logger.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
                     }
                 } else {
-                    console.warn("No bbjdir set. No classpath and prefixes loaded.")
+                    logger.warn("No bbjdir set. No classpath and prefixes loaded.")
                 }
             }
             this.settings = parseSettings(propcontents, prefixfromconfig)
@@ -112,7 +113,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                     joinPath(safeUri(this.bbjdir), 'documentation', 'javadoc')
                 );
             }
-            console.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
+            logger.debug(`JavaDoc provider initialize ${wsJavadocFolders}`);
             await tryInitializeJavaDoc(wsJavadocFolders, this.fileSystemProvider, cancelToken);
 
             // Use classpath from project.properties if available, otherwise fall back to VS Code settings
@@ -126,19 +127,19 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 // The setting value should be wrapped in square brackets
                 // For example: if bbj.classpath = "something", we pass ["[something]"]
                 classpathToUse = [`[${this.classpathFromSettings}]`];
-                console.log(`Using classpath from VS Code settings: bbj.classpath="${this.classpathFromSettings}"`);
-                console.log(`Formatted for Java interop: ${JSON.stringify(classpathToUse)}`);
+                logger.debug(`Using classpath from VS Code settings: bbj.classpath="${this.classpathFromSettings}"`);
+                logger.debug(() => `Formatted for Java interop: ${JSON.stringify(classpathToUse)}`);
             }
             
             if (classpathToUse.length > 0) {
-                console.log(`Loading classpath with entries: ${JSON.stringify(classpathToUse)}`);
+                logger.debug(() => `Loading classpath with entries: ${JSON.stringify(classpathToUse)}`);
                 const loaded = await this.javaInterop.loadClasspath(classpathToUse, cancelToken)
-                console.log(`Java Classes ${loaded ? '' : 'not '}loaded`)
+                logger.info(`Java Classes ${loaded ? '' : 'not '}loaded`)
             } else {
-                console.warn("No classpath set. No Java classes loaded.")
+                logger.warn("No classpath set. No Java classes loaded.")
             }
             const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
-            console.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
+            logger.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
         } catch (e) {
             // all fine
             console.error(e);
