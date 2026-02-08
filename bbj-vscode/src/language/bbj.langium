@@ -800,6 +800,7 @@ PrimaryExpression infers Expression:
     | Mnemonic
     | PositionalMnemonic
     | ConstructorCall
+    | CastExpression
     | SymbolicLabelName
     | BBjTypeRef
     | JavaSymbol
@@ -839,6 +840,10 @@ ConstructorCall:
         | ('[' (args+=Expression (',' args+=Expression)*)? ']')
     )
     ;
+
+CastExpression:
+    'CAST' '(' castType=QualifiedClass (arrayDims+='[' ']')* ',' value=Expression Err? RPAREN
+;
 
 QualifiedClass:
     BBjTypeRef | SimpleTypeRef | JavaTypeRef;

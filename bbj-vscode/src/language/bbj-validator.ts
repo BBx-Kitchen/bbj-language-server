@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, LeafCstNo
 import { basename, dirname, isAbsolute, relative } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BeginStatement, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { registerVariableScopingChecks } from './validations/check-variable-scoping.js';
@@ -41,6 +41,7 @@ export function registerValidationChecks(services: BBjServices) {
         CommentStatement: validator.checkCommentNewLines,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
         MethodCall: validator.checkCastTypeResolvable,
+        CastExpression: validator.checkCastExpressionTypeResolvable,
         SymbolicLabelRef: validator.checkSymbolicLabelRef,
 
         BeginStatement: validator.checkExceptClause,
@@ -106,6 +107,27 @@ export class BBjValidator {
         if (!typeResolved) {
             accept('warning', 'CAST references an unresolvable type', {
                 node: methodCall
+            });
+        }
+    }
+
+    checkCastExpressionTypeResolvable(castExpr: CastExpression, accept: ValidationAcceptor): void {
+        if (!typeResolutionWarningsEnabled) return;
+
+        // Array casts: just stop the false error, no type resolution
+        if (castExpr.arrayDims && castExpr.arrayDims.length > 0) {
+            return;
+        }
+
+        let typeResolved = false;
+        if (isBBjTypeRef(castExpr.castType)) {
+            typeResolved = castExpr.castType.klass.ref !== undefined;
+        } else if (isSimpleTypeRef(castExpr.castType)) {
+            typeResolved = isClass(castExpr.castType.simpleClass.ref);
+        }
+        if (!typeResolved) {
+            accept('warning', 'CAST references an unresolvable type', {
+                node: castExpr
             });
         }
     }

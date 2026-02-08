@@ -1,7 +1,7 @@
 import { AstNode } from "langium";
 import { BBjServices } from "./bbj-module.js";
 import { getClass } from "./bbj-nodedescription-provider.js";
-import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isLibFunction, isMemberCall, isMethodCall, isMethodDecl, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
+import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isCastExpression, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isLibFunction, isMemberCall, isMethodCall, isMethodDecl, isSimpleTypeRef, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
@@ -74,6 +74,15 @@ export class BBjTypeInferer implements TypeInferer {
             } else {
                 return undefined
             }
+        } else if (isCastExpression(expression)) {
+            // CastExpression has castType as a QualifiedClass directly
+            if (isBBjTypeRef(expression.castType)) {
+                return expression.castType.klass.ref;
+            } else if (isSimpleTypeRef(expression.castType)) {
+                return expression.castType.simpleClass.ref;
+            }
+            // For array casts or unresolvable types, return undefined (treat as untyped)
+            return undefined;
         } else if (isStringLiteral(expression)) {
             return this.javaInterop.getResolvedClass('java.lang.String')
         } else if(isMethodCall(expression)) {
