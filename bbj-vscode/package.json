@@ -111,16 +111,6 @@
       },
       {
         "category": "BBj",
-        "command": "bbj.decompile",
-        "title": "Decompile BBj Program",
-        "icon": {
-          "light": "./images/bbj-decompile-light.svg",
-          "dark": "./images/bbj-decompile-dark.svg"
-        },
-        "key": "alt+x"
-      },
-      {
-        "category": "BBj",
         "command": "bbj.compile",
         "title": "Compile BBj Program",
         "icon": {
@@ -189,16 +179,14 @@
           "group": "BBj@3"
         },
         {
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.compile",
           "group": "BBj@4"
         },
         {
-          "command": "bbj.decompile",
-          "group": "BBj@5"
-        },
-        {
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.denumber",
-          "group": "BBj@6"
+          "group": "BBj@5"
         }
       ],
       "editor/title": [
@@ -218,14 +206,12 @@
           "group": "navigation"
         },
         {
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.compile",
           "group": "navigation@2"
         },
         {
-          "command": "bbj.decompile",
-          "group": "navigation@2"
-        },
-        {
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.denumber",
           "group": "navigation@2"
         }
@@ -247,18 +233,14 @@
           "group": "BBj@3"
         },
         {
-          "when": "resourceLangId == bbj",
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.compile",
           "group": "BBj@4"
         },
         {
-          "when": "resourceLangId == bbj",
-          "command": "bbj.decompile",
-          "group": "BBj@5"
-        },
-        {
+          "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.denumber",
-          "group": "BBj@6"
+          "group": "BBj@5"
         }
       ]
     },
@@ -521,7 +503,6 @@
     "onCommand:bbj.autoComment",
     "onCommand:bbj.compile",
     "onCommand:bbj.configureCompileOptions",
-    "onCommand:bbj.decompile",
     "onCommand:bbj.denumber"
   ],
   "main": "./out/extension.cjs",
