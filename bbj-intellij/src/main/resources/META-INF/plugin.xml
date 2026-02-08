@@ -80,7 +80,7 @@
             implementationClass="com.basis.bbj.intellij.BbjFileType"
             fieldName="INSTANCE"
             language="BBj"
-            extensions="bbj;bbl;bbjt;src;bbx"/>
+            extensions="bbj;bbjt;src;bbx"/>
 
         <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
         <lang.parserDefinition

@@ -153,11 +153,12 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     }
 
     override shouldIncludeEntry(entry: { isFile: boolean; isDirectory: boolean; uri: URI }): boolean {
-        // Filter files to only include BBj-related extensions (.bbj, .bbl, .bbjt)
+        // Filter files to only include BBj source extensions (.bbj, .bbjt)
+        // .bbl excluded — library files are not user-editable source (#369)
         // This prevents Langium from trying to index .class files or other non-language files
         if (entry.isFile) {
             const path = entry.uri.path.toLowerCase();
-            if (!path.endsWith('.bbj') && !path.endsWith('.bbl') && !path.endsWith('.bbjt')) {
+            if (!path.endsWith('.bbj') && !path.endsWith('.bbjt') && !path.endsWith('.bbx') && !path.endsWith('.src')) {
                 return false;
             }
         }
