@@ -5,17 +5,17 @@
 See: .planning/PROJECT.md (updated 2026-02-07)
 
 **Core value:** BBj developers get consistent, high-quality language intelligence in both VS Code and IntelliJ through a single shared language server.
-**Current focus:** Phase 33 - Parser and Lexer Fixes (v3.2 Bug Fix Release)
+**Current focus:** Phase 34 - Diagnostic Polish (v3.2 Bug Fix Release)
 
 ## Current Position
 
 Milestone: v3.2 Bug Fix Release
-Phase: 33 of 34 (Parser and Lexer Fixes)
-Plan: 3 of 3 in current phase
+Phase: 34 of 34 (Diagnostic Polish)
+Plan: 1 of 1 in current phase
 Status: Phase complete
-Last activity: 2026-02-08 -- Completed 33-03-PLAN.md (CastExpression grammar rule for cast array notation)
+Last activity: 2026-02-08 -- Completed 34-01-PLAN.md (BBj settings capitalization and file path validation)
 
-Progress: [██████░░░░] 67%
+Progress: [████████░░] 68%
 
 ## Milestone History
 
@@ -35,8 +35,8 @@ See: .planning/MILESTONES.md
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 95 across all milestones (33-03 completed)
-- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32) + 92 min (Phase 33)
+- Total plans completed: 96 across all milestones (34-01 completed)
+- Total execution time: ~501 min (through v3.0) + v3.1 + 66 min (Phase 32) + 92 min (Phase 33) + 2 min (Phase 34)
 - 8 milestones shipped in 8 days
 
 *Updated after each plan completion*
@@ -56,6 +56,11 @@ See: .planning/MILESTONES.md
 - Use BinaryExpression instead of Expression for SELECT template to avoid StringMask operator ambiguity
 - CastExpression as dedicated PrimaryExpression alternative with QualifiedClass + arrayDims brackets - avoids ArrayElement ambiguity entirely
 - CAST keyword with caseInsensitive:true handles cast/CAST/Cast automatically via Langium keyword config
+
+**Phase 34 (Diagnostic Polish):**
+- Use IndexManager.allElements for BBj file path validation (synchronous API matches existing scope resolution pattern)
+- Target bbjFilePath property for error diagnostic (squiggly appears on ::path:: portion only)
+- Match case-insensitive using .toLowerCase() on both paths (consistent with bbj-scope.ts resolution logic)
 
 See archived decisions in:
 - .planning/milestones/v2.0-ROADMAP.md
@@ -77,12 +82,16 @@ See archived decisions in:
 
 ### Blockers/Concerns
 
-**Phase 33 fully complete (all gaps closed):**
-- PARSE-01 (void return type) complete - eliminates false "unresolvable class" errors for `method public void doSomething()`
-- PARSE-02 (DEF FN suffixed variables) complete - `mode$`, `count%`, `obj!` work in DEF FN inside class methods
-- PARSE-03 (SELECT verb) complete - full grammar support for SELECT with MODE, ERR, WHERE, SORTBY, LIMIT, field lists
-- PARSE-04 (cast array notation) complete - CastExpression grammar rule with QualifiedClass + arrayDims brackets
-- Test coverage: 430 passing (+4 from 33-03), 10 failing (pre-existing), 4 skipped (1 pre-existing TABLE test + 3 other)
+**Phase 34 complete:**
+- POL-01 (settings capitalization) complete - VS Code settings panel shows "BBj" not "bbj" in AutoSaveUponRun description
+- POL-02 (BBj file path validation) complete - USE statements with non-existent file paths show error diagnostic on ::path:: portion
+- Test coverage: 432 passing (+2 from Phase 33), 10 failing (pre-existing), 4 skipped
+
+**Phase 33 complete (all gaps closed):**
+- PARSE-01 (void return type) - eliminates false "unresolvable class" errors for `method public void doSomething()`
+- PARSE-02 (DEF FN suffixed variables) - `mode$`, `count%`, `obj!` work in DEF FN inside class methods
+- PARSE-03 (SELECT verb) - full grammar support for SELECT with MODE, ERR, WHERE, SORTBY, LIMIT, field lists
+- PARSE-04 (cast array notation) - CastExpression grammar rule with QualifiedClass + arrayDims brackets
 
 **Phase 32 complete. Pending user verification:**
 - User needs to rebuild and verify BBjAPI CC and BBjVector resolution work in VS Code
@@ -92,6 +101,6 @@ See archived decisions in:
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 33-03-PLAN.md (Phase 33 fully complete, all gaps closed)
-Resume file: .planning/phases/33-parser-and-lexer-fixes/33-03-SUMMARY.md
-Next: Phase 34 or v3.2 milestone planning
+Stopped at: Completed 34-01-PLAN.md (Phase 34 complete - diagnostic polish)
+Resume file: .planning/phases/34-diagnostic-polish/34-01-SUMMARY.md
+Next: v3.2 milestone verification and release preparation
