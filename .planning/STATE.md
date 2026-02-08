@@ -15,17 +15,17 @@
 
 ## Current Position
 
-**Active Phase:** Phase 37 - Console Migration (Complete)
-**Active Plan:** 2 of 2 complete
+**Active Phase:** Phase 38 - Diagnostic Filtering (Complete)
+**Active Plan:** 1 of 1 complete
 
 **Phase Status:** Complete
-**Phase Goal:** All console output respects debug flag — quiet by default, verbose on-demand
-**Last Activity:** 2026-02-08 - Completed Phase 37 (both plans + verification passed)
+**Phase Goal:** Filter synthetic file diagnostics and aggregate javadoc errors — users see only actionable diagnostics
+**Last Activity:** 2026-02-08 - Completed 38-01-PLAN.md (bbjlib:/ filtering + javadoc aggregation)
 
 **Progress Bar:**
 ```
-Milestone v3.3: [██████████░░░░░░░░░░] 5/10 requirements (50%)
-Phase 37:       [████████████████████] 2/2 plans complete (100%)
+Milestone v3.3: [████████████░░░░░░░░] 6/10 requirements (60%)
+Phase 38:       [████████████████████] 1/1 plans complete (100%)
 ```
 
 ---
@@ -35,12 +35,12 @@ Phase 37:       [████████████████████] 2
 ### Current Milestone (v3.3)
 
 **Started:** 2026-02-08
-**Phases completed:** 3/5
-**Plans completed:** 4/4 (35-01, 36-01, 37-01, 37-02)
-**Requirements completed:** 5/10
+**Phases completed:** 4/5
+**Plans completed:** 5/5 (35-01, 36-01, 37-01, 37-02, 38-01)
+**Requirements completed:** 6/10
 **Days elapsed:** 0
 
-**Velocity:** 4 plans/day (Phases 35-37 complete)
+**Velocity:** 5 plans/day (Phases 35-38 complete)
 
 ### Recent History
 
@@ -127,7 +127,7 @@ Phase 37:       [████████████████████] 2
 - [x] Phase 35 (Logger Infrastructure) — COMPLETE
 - [x] Phase 36 (Settings Plumbing) — COMPLETE
 - [x] Phase 37 (Console Migration) — COMPLETE (42 calls migrated, 0 remain)
-- [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
+- [x] Phase 38 (Diagnostic Filtering) — COMPLETE (bbjlib:/ filtering + javadoc aggregation)
 - [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
 
 ### Known Blockers
@@ -146,23 +146,23 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 37 (Console Migration) completed — both plans executed in parallel
-- Plan 01: 31 console calls migrated in java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts
-- Plan 02: 14 console calls migrated in main.ts, scopes, linker, module, hover, builder, formatter
-- Total: 42 console.log/debug/warn calls migrated, 0 remain in server code
-- 14 console.error calls preserved untouched across all files
-- Verification passed: 8/8 must-haves verified, LOG-02/LOG-03/LOG-04 satisfied
-- Commits: a0a5238, 7b34eb3, ecaa701 (Plan 01); 11b4610, f2ff04a, c39afe1 (Plan 02)
+- Phase 38 (Diagnostic Filtering) completed — Plan 01 executed
+- Added bbjlib:/ URI scheme check to shouldValidate() (filters functions.bbl, variables.bbl, labels.bbl, events.bbl, bbj-api.bbl)
+- Implemented javadoc error aggregation: single summary warning only when ALL sources fail, silent on partial success
+- Migrated 2 console.error calls to logger.error in java-javadoc.ts (0 remain)
+- Added 2 new tests for javadoc aggregation behavior
+- Verification passed: 460 tests passing (+2), 11 pre-existing failures unchanged
+- Commits: da2323c (bbjlib filtering), ed63217 (javadoc aggregation)
 
 ### What's Next
 
-**Immediate:** Phase 38 - Diagnostic Filtering (verification of existing behavior)
+**Immediate:** Phase 39 - Parser Diagnostics (investigation + docs)
 
-**After Phase 38:**
-- Phase 39: Parser Diagnostics (investigation + docs)
+**After Phase 39:**
+- Milestone v3.3 complete (5/5 phases)
 
-**Critical path complete:** 35 ✓ → 36 ✓ → 37 ✓
-**Remaining:** Phase 38 (independent), Phase 39 (depends on Phase 36 ✓)
+**Critical path complete:** 35 ✓ → 36 ✓ → 37 ✓ → 38 ✓
+**Remaining:** Phase 39 (depends on Phase 36 ✓)
 
 ### Context for Next Session
 
@@ -173,11 +173,12 @@ None currently identified.
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
 
 **Key files for remaining phases:**
-- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic for synthetic files (Phase 38)
 - `bbj-vscode/src/language/bbj-module.ts` — Parser construction, ambiguity warnings (Phase 39)
-- `bbj-vscode/src/language/logger.ts` — Logger singleton (Phases 35-37 complete)
+- `bbj-vscode/src/language/logger.ts` — Logger singleton (Phases 35-38 complete)
 - `bbj-vscode/src/language/main.ts` — LS entry point, debug flag handling
 - `bbj-vscode/package.json` — VS Code settings schema
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic (Phase 38 complete)
+- `bbj-vscode/src/language/java-javadoc.ts` — Javadoc error aggregation (Phase 38 complete)
 
 ---
 
