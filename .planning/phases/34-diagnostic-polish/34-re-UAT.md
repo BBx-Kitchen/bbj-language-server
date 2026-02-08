@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 34-diagnostic-polish
 source: 34-01-SUMMARY.md, 34-02-SUMMARY.md
 started: 2026-02-08T06:15:00Z
@@ -50,7 +50,17 @@ skipped: 1
   reason: "User reported: Still seeing File 'BBjGridExWidget/BBjGridExWidget.bbj' could not be resolved. Check the file path and PREFIX configuration. Idea: can we add the PREFIX that was searched to the error message? List the directories?"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Three compounding bugs: (1) URI-to-fsPath cross-format endsWith comparison is fragile and fails on path normalization differences, (2) silent catch blocks in addImportedBBjDocuments hide file loading failures, (3) error message doesn't list searched PREFIX directories"
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-document-builder.ts"
+      issue: "endsWith comparison between URI string and fsPath at line 199; silent catch at lines 136-138"
+    - path: "bbj-vscode/src/language/bbj-validator.ts"
+      issue: "Same endsWith comparison at line 310; error message lacks PREFIX paths at line 314"
+    - path: "bbj-vscode/src/language/bbj-scope.ts"
+      issue: "Same endsWith comparison at line 230"
+  missing:
+    - "Replace endsWith with proper fsPath-to-fsPath equality in all 3 locations"
+    - "Add logging to addImportedBBjDocuments catch blocks"
+    - "Include searched PREFIX directories in error message"
+    - "Enable and fix skipped PREFIX test in imports.test.ts"
+  debug_session: ".planning/phases/34-diagnostic-polish/34-re-DEBUG-PREFIX.md"
