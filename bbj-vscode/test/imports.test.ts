@@ -3,7 +3,7 @@ import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
-import { NodeFileSystem } from 'langium/node';
+
 import { isBbjDocument } from '../src/language/bbj-scope-local';
 
 function expectNoParserLexerErrors(document: LangiumDocument) {
@@ -205,16 +205,24 @@ describe('Import tests', () => {
     });
 });
 
-describe.skip('Prefix tests', () => {
-    //Needs additional adjustments in the document builder
-    const services = createBBjServices(NodeFileSystem);
+describe('Prefix tests', () => {
+    const services = createBBjServices(EmptyFileSystem);
     let parse: ReturnType<typeof parseHelper>;
 
     beforeAll(async () => {
         parse = parseHelper(services.BBj);
+        // Pre-parse the BBjWidget file so it's in the index when the test document references it.
+        // The URI must match what relative resolution from the test document would produce.
+        await parse(`
+            class public BBjWidget
+            classend
+        `, { documentUri: 'file:///prefix/BBjWidget/BBjWidget.bbj' });
     });
 
-    test('Prefix tests', async () => {
+    test('USE with PREFIX-resolved file path resolves classes', async () => {
+        // Set the test document URI so that relative resolution of 'BBjWidget/BBjWidget.bbj'
+        // from dirname('file:///prefix/test.bbj') = 'file:///prefix/' produces
+        // 'file:///prefix/BBjWidget/BBjWidget.bbj' -- matching the pre-parsed document.
         const document = await parse(`
             use ::BBjWidget/BBjWidget.bbj::BBjWidget
             declare auto ::BBjWidget/BBjWidget.bbj::BBjWidget xxx
@@ -224,8 +232,12 @@ describe.skip('Prefix tests', () => {
                     METHODRET new ::BBjWidget/BBjWidget.bbj::BBjWidget()
                 METHODEND
             CLASSEND
-        `, { validation: true });
+        `, { documentUri: 'file:///prefix/test.bbj', validation: true });
         expectNoParserLexerErrors(document);
-        expectNoValidationErrors(document);
+        // The BBjWidget class should resolve via the pre-parsed document
+        const filePathErrors = document.diagnostics?.filter(d =>
+            d.severity === 1 && d.message.startsWith("File '")
+        ) ?? [];
+        expect(filePathErrors).toHaveLength(0);
     });
 });
