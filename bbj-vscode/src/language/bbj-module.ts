@@ -34,6 +34,7 @@ import { JavaInteropService } from './java-interop.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
+import { logger } from './logger.js';
 
 
 /**
@@ -110,7 +111,7 @@ function createBBjParser(services: LangiumServices): LangiumParser {
         lookaheadStrategy.logging = (message: string) => {
             if (!ambiguitiesReported) {
                 ambiguitiesReported = true;
-                console.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
+                logger.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
             }
         }
     }

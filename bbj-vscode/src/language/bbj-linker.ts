@@ -14,6 +14,7 @@ import { LangiumServices } from 'langium/lsp';
 import { CancellationToken } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { dirname, relative } from 'node:path';
+import { logger } from './logger.js';
 import { isTemplateStringArray } from './bbj-scope-local.js';
 import { StreamScopeWithPredicate } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -62,7 +63,7 @@ export class BbjLinker extends DefaultLinker {
         const elapsed = Date.now() - started
         const threshold = 500
         if (elapsed > threshold) {
-            console.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
+            logger.debug(`Linking (>${threshold}ms) ${document.uri} took ${elapsed}ms`)
         }
         document.state = DocumentState.Linked;
     }

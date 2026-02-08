@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
+import { logger } from './language/logger.js';
 
 // Store unsaved content in memory
 const unsavedContentMap = new Map<string, string>();
@@ -39,7 +40,7 @@ export const DocumentFormatter = {
       },
       (err: any) => {
         if (err) {
-          console.log(err);
+          logger.warn(String(err));
           return Promise.reject(err);
         }
 
@@ -72,7 +73,7 @@ export const DocumentFormatter = {
 
         let timeTaken = Date.now() - t0;
         if (timeTaken > 750) {
-          console.log(`Formatting took too long (${timeTaken}ms). Format On Save feature could be aborted.`);
+          logger.warn(`Formatting took too long (${timeTaken}ms). Format On Save feature could be aborted.`);
         }
 
         resolve(stdout);

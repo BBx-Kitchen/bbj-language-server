@@ -8,6 +8,7 @@ import { JavadocProvider, MethodDoc, isMethodDoc } from "./java-javadoc.js";
 import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
+import { logger } from './logger.js';
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
@@ -116,7 +117,7 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
             * <a href="{@docRoot}/java.base/java/util/package-summary.html#CollectionsFramework">\n
             * Java Collections Framework</a>
             */
-            console.warn(e)
+            logger.warn(String(e))
             return this.commentProvider.getComment(node);
         }
     }

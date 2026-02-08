@@ -6,6 +6,7 @@ import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
 import { normalize, resolve } from "path";
+import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
@@ -106,7 +107,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // Depth guard: prevent infinite recursion from transitive USE chains
         this.importDepth++;
         if (this.importDepth > BBjDocumentBuilder.MAX_IMPORT_DEPTH) {
-            console.warn(`[PREFIX] Maximum transitive import depth (${BBjDocumentBuilder.MAX_IMPORT_DEPTH}) reached. Stopping USE resolution.`);
+            logger.warn(`Maximum transitive import depth (${BBjDocumentBuilder.MAX_IMPORT_DEPTH}) reached. Stopping USE resolution.`);
             this.importDepth--;
             return;
         }
@@ -153,7 +154,7 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                 if (docFileData) {
                     // Skip binary/tokenized BBj files that can't be parsed
                     if (docFileData.text.startsWith('<<bbj>>')) {
-                        console.warn(`[PREFIX] Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
+                        logger.warn(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
                         continue;
                     }
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
