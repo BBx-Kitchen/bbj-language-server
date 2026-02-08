@@ -116,8 +116,10 @@ Plans:
 4. Debug logging setting documented in Docusaurus docs with instructions for enabling verbose output
 5. If grammar changes required, all tests pass with zero regressions
 
+**Status:** ✓ Complete (2026-02-08)
+
 Plans:
-- [ ] 39-01-PLAN.md -- Enhance ambiguity logging hook with debug-gated verbosity and document bbj.debug setting
+- [x] 39-01-PLAN.md -- Enhance ambiguity logging hook with debug-gated verbosity and document bbj.debug setting
 
 ---
 
@@ -129,9 +131,9 @@ Plans:
 | 36 - Settings Plumbing | ✓ Complete | LOG-01, LOG-05 | 1/1 | 2026-02-08 |
 | 37 - Console Migration | ✓ Complete | LOG-02, LOG-03, LOG-04 | 2/2 | 2026-02-08 |
 | 38 - Diagnostic Filtering | ✓ Complete | DIAG-01, DIAG-02 | 1/1 | 2026-02-08 |
-| 39 - Parser Diagnostics | Planned | PARSE-01, PARSE-02, DOCS-01 | 0/1 | — |
+| 39 - Parser Diagnostics | ✓ Complete | PARSE-01, PARSE-02, DOCS-01 | 1/1 | 2026-02-08 |
 
-**Milestone Progress:** 7/10 requirements (70%)
+**Milestone Progress:** 10/10 requirements (100%)
 
 ---
 
@@ -172,4 +174,4 @@ All requirements covered:
 ---
 
 *Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 39 planning complete*
+*Last updated: 2026-02-08 after Phase 39 execution complete — milestone v3.3 done*
