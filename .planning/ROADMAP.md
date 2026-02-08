@@ -146,10 +146,10 @@ Plans:
   1. `.bbl` files do not trigger BBj language server features (diagnostics, completion)
   2. `.bbl` files still recognized by IDE but treated as plain text
   3. `.bbj`, `.bbx`, `.src` files continue working as BBj source files
-**Plans**: 1 plan
+**Plans**: TBD
 
 Plans:
-- [ ] 41-01-PLAN.md — Remove .bbl from VS Code and IntelliJ file type registrations
+- [ ] 41-01: TBD
 
 ### Phase 42: Toolbar Button Polish
 **Goal**: Compile/Decompile toolbar buttons behave correctly in IntelliJ
@@ -160,10 +160,10 @@ Plans:
   2. Compile button displays with a proper icon (not default placeholder)
   3. Compile button only appears when a BBj file is open in the editor
   4. Compile button hidden when non-BBj files are active
-**Plans**: 1 plan
+**Plans**: TBD
 
 Plans:
-- [ ] 42-01-PLAN.md — Create Compile action with proper file scoping and icon; ensure no Decompile action
+- [ ] 42-01: TBD
 
 ### Phase 43: Run Command Fixes
 **Goal**: BUI/DWC run commands work reliably with proper authentication
@@ -174,10 +174,10 @@ Plans:
   2. BUI/DWC launch completes without repeated login prompts
   3. Run commands use configured config.bbx path from extension settings
   4. Token authentication flow documented as closed in issue #256
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 43-01: TBD
+- [ ] 43-01-PLAN.md — Fix token auth and add config.bbx path support
 
 ## Progress
 
@@ -195,8 +195,8 @@ Plans:
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 | 40-43 | v3.4 0.8.0 Issue Closure | TBD | In progress | - |
 
-**Total:** 11 milestones shipped (11), 43 phases (39 complete), 105 plans shipped in 8 days
+**Total:** 11 milestones shipped (11), 43 phases (40 complete), 106 plans shipped in 8 days
 
 ---
 
-*Roadmap last updated: 2026-02-08 after Phase 42 planning*
+*Roadmap last updated: 2026-02-08 after Phase 43 planning*
