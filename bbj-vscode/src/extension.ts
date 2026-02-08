@@ -23,6 +23,7 @@ import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
 let secretStorage: vscode.SecretStorage;
+let outputChannel: vscode.OutputChannel;
 
 // Function to read BBj.properties and extract classpath entry names
 function getBBjClasspathEntries(bbjHome: string | undefined): string[] {
@@ -343,6 +344,7 @@ export async function getEMCredentials(): Promise<{username: string, password: s
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     secretStorage = context.secrets;
+    outputChannel = vscode.window.createOutputChannel('BBj');
     client = startLanguageClient(context);
     vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
     vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
@@ -384,7 +386,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
-            console.log(`[BBj] EM login command: ${emLoginCmd.replace(`"${password}"`, '"***"')}`);
+            outputChannel.appendLine(`EM login: ${emLoginCmd.replace(`"${password}"`, '"***"')}`);
         }
 
         try {

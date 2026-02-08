@@ -91,9 +91,9 @@ const runWeb = (params, client, credentials) => {
 
   const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
   if (isDebug) {
-    // Mask token/password in debug output
     const debugCmd = cmd.replace(`"${token}"`, '"***"').replace(`"${password}"`, '"***"');
-    console.log(`[BBj] ${client} command: ${debugCmd}`);
+    const out = vscode.window.createOutputChannel('BBj');
+    out.appendLine(`${client} run: ${debugCmd}`);
   }
 
   exec(cmd, (err, stdout, stderr) => {
@@ -227,7 +227,8 @@ const Commands = {
 
     const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
     if (isDebug) {
-      console.log(`[BBj] Run command: ${cmd}`);
+      const out = vscode.window.createOutputChannel('BBj');
+      out.appendLine(`GUI run: ${cmd}`);
     }
 
     const runCommand = () => {
