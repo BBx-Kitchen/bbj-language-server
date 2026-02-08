@@ -219,6 +219,22 @@ describe('Prefix tests', () => {
         `, { documentUri: 'file:///prefix/BBjWidget/BBjWidget.bbj' });
     });
 
+    test('USE referencing file with no classes (e.g., binary) shows file-path error', async () => {
+        // Pre-parse binary-like content at a PREFIX URI - produces no BbjClass nodes
+        await parse('<<bbj>>', { documentUri: 'file:///prefix/BinaryFile/BinaryFile.bbj' });
+
+        const document = await parse(`
+            use ::BinaryFile/BinaryFile.bbj::SomeClass
+        `, { documentUri: 'file:///prefix/test-binary.bbj', validation: true });
+        expectNoParserLexerErrors(document);
+        // Should have a file-path error because the "binary" file has no BbjClass in the index
+        const filePathErrors = document.diagnostics?.filter(d =>
+            d.severity === 1 && d.message.startsWith("File '")
+        ) ?? [];
+        expect(filePathErrors).toHaveLength(1);
+        expect(filePathErrors[0].message).toContain("could not be resolved");
+    });
+
     test('USE with PREFIX-resolved file path resolves classes', async () => {
         // Set the test document URI so that relative resolution of 'BBjWidget/BBjWidget.bbj'
         // from dirname('file:///prefix/test.bbj') = 'file:///prefix/' produces
