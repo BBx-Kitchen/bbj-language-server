@@ -133,10 +133,10 @@ Research-only milestone — no phases.
   1. Class field declarations like `stepXYZ!` parse without error
   2. Structure view shows fields starting with `step` at correct nesting level
   3. No false parsing errors on valid BBj class definitions containing `step*` field names
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 40-01: TBD
+- [ ] 40-01-PLAN.md — Verify STEP LONGER_ALT and add test coverage
 
 ### Phase 41: File Type Fix
 **Goal**: `.bbl` files excluded from BBj source code language features
@@ -199,4 +199,4 @@ Plans:
 
 ---
 
-*Roadmap last updated: 2026-02-08 after v3.4 milestone added*
+*Roadmap last updated: 2026-02-08 after Phase 40 planning*
