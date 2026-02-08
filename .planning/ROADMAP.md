@@ -136,7 +136,7 @@ Research-only milestone — no phases.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 40-01-PLAN.md — Verify STEP LONGER_ALT and add test coverage
+- [x] 40-01-PLAN.md — Verify STEP LONGER_ALT and add test coverage
 
 ### Phase 41: File Type Fix
 **Goal**: `.bbl` files excluded from BBj source code language features
@@ -146,10 +146,10 @@ Plans:
   1. `.bbl` files do not trigger BBj language server features (diagnostics, completion)
   2. `.bbl` files still recognized by IDE but treated as plain text
   3. `.bbj`, `.bbx`, `.src` files continue working as BBj source files
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 41-01: TBD
+- [ ] 41-01-PLAN.md — Remove .bbl from VS Code and IntelliJ file type registrations
 
 ### Phase 42: Toolbar Button Polish
 **Goal**: Compile/Decompile toolbar buttons behave correctly in IntelliJ
@@ -199,4 +199,4 @@ Plans:
 
 ---
 
-*Roadmap last updated: 2026-02-08 after Phase 40 planning*
+*Roadmap last updated: 2026-02-08 after Phase 41 planning*
