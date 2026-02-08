@@ -8,3 +8,8 @@ REM hovering toString points to Object.toString()
  
 a! = BBjAPI().openSysGui("X0")
 ? a!.toString()
+
+v! = new BBjVector()
+
+hm! = new java.util.HashMap()
+hm!.clear()

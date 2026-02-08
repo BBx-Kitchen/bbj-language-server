@@ -6,3 +6,9 @@ class public QVGrid implements BBjControl
     methodend
 
 classend
+
+
+api! = BBjAPI()
+api!.clearCustomEventCallback("kj")
+
+ BBjAPI().clearCustomEventCallback(proc_id$)

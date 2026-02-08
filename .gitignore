@@ -13,6 +13,13 @@ META-INF/
 bbj-intellij/.gradle/
 bbj-intellij/.intellijPlatform/
 bbj-intellij/build/
+bbj-intellij/bin/
+
+# Build caches
+bbj-vscode/tsconfig.tsbuildinfo
+
+# IDE settings
+java-interop/.settings/
 
 # Auto Claude data directory
 .auto-claude/
