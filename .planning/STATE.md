@@ -84,7 +84,7 @@ None currently identified.
 |---|-------------|------|--------|-----------|
 | 1 | Fix duplicate BBj output channels created on each launch | 2026-02-08 | e0e3306 | [1-fix-duplicate-bbj-output-channels-create](./quick/1-fix-duplicate-bbj-output-channels-create/) |
 | 2 | Fix em-login.bbj not found in IntelliJ plugin bundle | 2026-02-08 | 24804d4 | [2-fix-em-login-bbj-not-found-in-intellij-p](./quick/2-fix-em-login-bbj-not-found-in-intellij-p/) |
-| 3 | Fix duplicate BBj output channel (LanguageClient) | 2026-02-08 | 937abf7 | [3-fix-duplicate-bbj-output-channel-ensure-](./quick/3-fix-duplicate-bbj-output-channel-ensure-/) |
+| 3 | Fix duplicate BBj output channel (LanguageClient) | 2026-02-08 | 16944c0 | [3-fix-duplicate-bbj-output-channel-ensure-](./quick/3-fix-duplicate-bbj-output-channel-ensure-/) |
 
 ---
 
