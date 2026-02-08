@@ -52,6 +52,13 @@ The ADJN() function returns an 8-byte binary string suitable for string comparis
 ADJN():string
 
 /@@
+\`ARGV(int{, ERR: lineref})\`
+
+The ARGV() function returns the arguments passed to PRO/5 when invoked. ARGC returns the number of arguments passed on the command line. ARGV(0) always returns the fully qualified name of the PRO/5 executable. User-defined arguments are returned in ARGV(1), ARGV(2), etc., up to ARGV(ARGC-1). If there are no user-defined arguments, then ARGC is 1.
+@/
+ARGV(param:int, ERR?:lineref): string
+
+/@@
 \`ATH(string{, ERR: lineref})\`
 
 The ATH() function converts a human-readable hexadecimal string to the internal form.
