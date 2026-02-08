@@ -300,7 +300,7 @@
         "bbj.web.AutoSaveUponRun": {
           "type": "boolean",
           "default": false,
-          "description": "Auto Save upon run of bbj program",
+          "description": "Auto Save upon run of BBj program",
           "scope": "window"
         },
         "bbj.formatter.indentWidth": {
