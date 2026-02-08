@@ -32,6 +32,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     constructor(services: LangiumSharedServices) {
         super(services);
         services.lsp.LanguageServer.onInitialize(params => {
+            // Always print startup banner so the output channel is visible
+            const version = params.initializationOptions?.version || 'unknown';
+            console.log(`BBj Language Server v${version}`);
+
             logger.debug(() => `Initialization options received: ${JSON.stringify(params.initializationOptions)}`);
             if (typeof params.initializationOptions === 'string') {
                 // Legacy: just the home directory

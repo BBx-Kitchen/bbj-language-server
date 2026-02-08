@@ -63,16 +63,11 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // Start the language server with the shared services
 startLanguageServer(shared);
 
-// Track pending debug setting received before workspace init
-let pendingDebugLevel: LogLevel = LogLevel.WARN; // Default when debug=false
-
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
     if (!workspaceInitialized) {
         workspaceInitialized = true;
-        // Quiet startup complete: apply user's debug preference
-        logger.setLevel(pendingDebugLevel);
     }
 });
 
@@ -81,22 +76,23 @@ connection.onDidChangeConfiguration(async (change) => {
     // Forward to Langium's ConfigurationProvider so its internals stay in sync
     shared.workspace.ConfigurationProvider.updateConfiguration(change);
 
-    // Only process BBj-specific setting changes
-    const config = change.settings?.bbj;
+    // Get BBj settings: try push model first, fall back to pull model
+    let config = change.settings?.bbj;
+    if (!config) {
+        try {
+            config = await connection.workspace.getConfiguration('bbj');
+        } catch {
+            return;
+        }
+    }
     if (!config) {
         return;
     }
 
-    // Apply debug setting to logger
+    // Apply debug setting to logger immediately (no startup gate)
     if (config.debug !== undefined) {
         const newLevel = config.debug === true ? LogLevel.DEBUG : LogLevel.WARN;
-        if (workspaceInitialized) {
-            // Post-startup: apply immediately
-            logger.setLevel(newLevel);
-        } else {
-            // Pre-startup: store for deferred application (quiet startup mode)
-            pendingDebugLevel = newLevel;
-        }
+        logger.setLevel(newLevel);
     }
 
     // Skip Java class reload during initial startup — initializeWorkspace handles it

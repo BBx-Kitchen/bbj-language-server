@@ -12,7 +12,7 @@ enum LogLevel {
 
 type LogMessage = string | (() => string);
 
-let currentLevel: LogLevel = LogLevel.ERROR; // Default: quietest startup
+let currentLevel: LogLevel = LogLevel.WARN; // Default: matches bbj.debug=false
 
 function evaluateMessage(message: LogMessage): string {
   return typeof message === 'function' ? message() : message;
@@ -20,6 +20,7 @@ function evaluateMessage(message: LogMessage): string {
 
 const logger = {
   setLevel(level: LogLevel): void {
+    if (level === currentLevel) return;
     currentLevel = level;
     console.log(`Log level changed to ${LogLevel[level]}`);
   },

@@ -544,6 +544,7 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             configurationSection: 'bbj'
         },
         initializationOptions: {
+            version: context.extension.packageJSON.version,
             home: vscode.workspace.getConfiguration("bbj").get("home"),
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
             typeResolutionWarnings: vscode.workspace.getConfiguration("bbj").get("typeResolution.warnings", true),
