@@ -75,7 +75,7 @@ Plans:
 - [x] 34-01-PLAN.md -- Fix settings capitalization (POL-01) and USE file path validation (POL-02)
 - [x] 34-02-PLAN.md -- Gap closure: reconcile USE file-path diagnostics after PREFIX docs indexed
 - [x] 34-03-PLAN.md -- Gap closure: fix URI comparison, add logging, include searched paths in error
-- [ ] 34-04-PLAN.md -- Gap closure: binary file detection, runtime logging, post-index verification
+- [x] 34-04-PLAN.md -- Gap closure: binary file detection, runtime logging, post-index verification
 
 ## Progress
 
@@ -86,4 +86,4 @@ Phases execute in numeric order: 32 -> 33 -> 34
 |-------|-----------|----------------|--------|-----------|
 | 32. Regression Fixes | v3.2 | 3/3 | Complete | 2026-02-07 |
 | 33. Parser and Lexer Fixes | v3.2 | 3/3 | Complete | 2026-02-08 |
-| 34. Diagnostic Polish | v3.2 | 3/4 | Gap closure | - |
+| 34. Diagnostic Polish | v3.2 | 4/4 | Complete | 2026-02-08 |
