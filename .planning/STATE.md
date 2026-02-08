@@ -16,15 +16,16 @@
 ## Current Position
 
 **Active Phase:** Phase 35 - Logger Infrastructure
-**Active Plan:** None (awaiting `/gsd:plan-phase 35`)
+**Active Plan:** 1 of 1 (Plan 01 complete)
 
-**Phase Status:** Pending
+**Phase Status:** Complete
 **Phase Goal:** Foundation layer exists for level-based logging with zero overhead when disabled
+**Last Activity:** 2026-02-08 - Completed 35-01-PLAN.md
 
 **Progress Bar:**
 ```
-Milestone v3.3: [░░░░░░░░░░░░░░░░░░░░] 0/10 requirements (0%)
-Phase 35:       [░░░░░░░░░░░░░░░░░░░░] 0/4 success criteria (0%)
+Milestone v3.3: [██░░░░░░░░░░░░░░░░░░] 1/10 requirements (10%)
+Phase 35:       [████████████████████] 4/4 success criteria (100%)
 ```
 
 ---
@@ -69,6 +70,21 @@ Phase 35:       [░░░░░░░░░░░░░░░░░░░░] 0
 
 ### Recent Decisions
 
+**Decision:** Regular enum instead of const enum for LogLevel
+**Rationale:** Regular numeric enum ensures compatibility with isolatedModules (may be used in IntelliJ LSP4IJ builds) and provides better debuggability; performance difference for 4 enum values is negligible
+**Date:** 2026-02-08 (Phase 35-01)
+**Impact:** Logger uses regular enum, safe for all build configurations
+
+**Decision:** ISO 8601 timestamps on debug messages only
+**Rationale:** Debug messages include full timestamp via toISOString() for unambiguous log analysis; info/warn/error messages are plain text for cleaner output
+**Date:** 2026-02-08 (Phase 35-01)
+**Impact:** Debug output includes [2026-02-08T14:28:52.123Z] prefix, other levels are plain
+
+**Decision:** Scoped loggers expose debug method only
+**Rationale:** Component tags are most valuable for debug-level output where identifying the source matters; info/warn/error don't need component context
+**Date:** 2026-02-08 (Phase 35-01)
+**Impact:** logger.scoped(component) returns {debug()} object, not full logger interface
+
 **Decision:** Lightweight logger wrapper instead of external framework
 **Rationale:** Existing `vscode-languageserver` provides all needed logging features; Pino/Winston add 200KB-1MB+ bundle size for features LSP already provides
 **Date:** 2026-02-08
@@ -97,7 +113,8 @@ Phase 35:       [░░░░░░░░░░░░░░░░░░░░] 0
 
 ### Pending TODOs
 
-- [ ] Plan Phase 35 (Logger Infrastructure) — awaiting `/gsd:plan-phase 35`
+- [x] Phase 35 (Logger Infrastructure) — COMPLETE
+- [ ] Plan and execute Phase 36 (Settings Plumbing) — wire logger.setLevel() to onDidChangeConfiguration
 - [ ] Determine exact console.* call sites for migration (Phase 37 scope)
 - [ ] Test debug flag behavior in IntelliJ LSP4IJ during Phase 36
 - [ ] Verify synthetic URI scheme coverage (classpath:/, bbjlib:/) in Phase 38
@@ -119,23 +136,22 @@ None currently identified.
 
 ### What Just Happened
 
-- v3.3 milestone started after v3.2 shipped (2026-02-08)
-- Research phase completed with HIGH confidence (research/SUMMARY.md)
-- Roadmap created with 5 phases (35-39) covering all 10 requirements
-- 100% requirement coverage validated
-- STATE.md initialized for project memory
+- Phase 35 (Logger Infrastructure) completed in 1 minute
+- Created logger singleton (~67 lines) with LogLevel enum, lazy evaluation, scoped factory
+- Wrote 17 unit tests verifying level filtering, lazy evaluation, zero overhead, output format
+- All tests pass, TypeScript compilation succeeds with zero errors
+- Commits: 5882034 (feat: logger module), d3eb84f (test: logger tests)
 
 ### What's Next
 
-**Immediate:** Run `/gsd:plan-phase 35` to decompose Logger Infrastructure phase into executable plans
+**Immediate:** Phase 36 - Settings Plumbing (wire logger to bbj.debug setting)
 
-**After Phase 35:**
-- Phase 36: Settings Plumbing (debug flag flow)
-- Phase 37: Console Migration (systematic refactoring)
+**After Phase 36:**
+- Phase 37: Console Migration (systematic refactoring of 56 console.* call sites)
 - Phase 38: Diagnostic Filtering (verification only)
 - Phase 39: Parser Diagnostics (investigation + docs)
 
-**Critical path:** Phases 35 → 36 → 37 must execute sequentially
+**Critical path:** Phases 35 → 36 → 37 must execute sequentially (now: 35 ✓)
 **Parallel opportunity:** Phase 38 can run independently
 
 ### Context for Next Session
