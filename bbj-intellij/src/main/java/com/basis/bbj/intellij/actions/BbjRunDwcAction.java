@@ -75,7 +75,7 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String classpath = state.classpathEntry != null ? state.classpathEntry : "";
 
-        // Get config path
+        // Get config path - only add if configured (web.bbj handles absent ARGV(9) gracefully)
         String configPath = getConfigPath();
 
         // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme> <workingDir> "" "" <classpath> <token> <configPath>
@@ -92,7 +92,9 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         cmd.addParameter("");  // password placeholder
         cmd.addParameter(classpath);
         cmd.addParameter(token);
-        cmd.addParameter(configPath);
+        if (!configPath.isEmpty()) {
+            cmd.addParameter(configPath);
+        }
 
         cmd.setWorkDirectory(webRunnerDir);
 
