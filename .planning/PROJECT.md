@@ -104,19 +104,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ VS Code settings labels show "BBj" capitalization (#315) — v3.2
 - ✓ Unresolvable file path in USE statement flagged with searched-paths error (#172) — v3.2
 
+- ✓ Debug logging flag (`bbj.debug`) off by default, hot-reloadable without LS restart — v3.3
+- ✓ Quiet startup — class resolution, classpath, javadoc scanning behind debug flag — v3.3
+- ✓ All console.log/debug/warn calls migrated to logger singleton respecting debug flag — v3.3
+- ✓ Smart javadoc error reporting — single summary warning only when all sources fail — v3.3
+- ✓ Synthetic file diagnostics suppressed (bbjlib:/ scheme, classpath:/ scheme) — v3.3
+- ✓ Chevrotain ambiguity warnings investigated (47 patterns, all safe) and moved behind debug flag — v3.3
+- ✓ Debug logging setting documented in Docusaurus configuration guide — v3.3
+
 ### Active
 
-## Current Milestone: v3.3 Output & Diagnostic Cleanup
-
-**Goal:** Reduce default LS output to a quiet, professional minimum — users see only what matters.
-
-**Target features:**
-- Debug logging flag (off by default) gating verbose startup output
-- Quiet startup — class resolution, classpath, javadoc scanning behind debug flag
-- Smart javadoc error reporting — only report if no javadoc source succeeds
-- Suppress diagnostics from synthetic/internal files (bbj-api.bbl, functions.bbl)
-- Ambiguous Alternatives investigation — fix or suppress based on root cause
-- Document debug logging setting in Docusaurus docs
+(No active requirements — start next milestone with `/gsd:new-milestone`)
 
 ### Out of Scope
 
@@ -127,7 +125,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.3 in progress. v3.2 shipped 2026-02-08. Fixed regressions (BBjAPI resolution, USE navigation), parser bugs (void, suffixed variables, SELECT, CAST array), and diagnostic polish (settings capitalization, USE file path validation with PREFIX reconciliation). 10 milestones in 8 days.
+**Current state:** v3.3 shipped 2026-02-08. Implemented debug logging controls and diagnostic filtering — quiet startup by default, verbose on-demand via `bbj.debug` setting. 11 milestones in 8 days.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -143,7 +141,8 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - CPU stability mitigations documented but not yet implemented (#232)
 - Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression
-- 10 pre-existing test failures (hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, access-level, completion)
+- 11 pre-existing test failures (hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, access-level, completion)
+- 14 pre-existing TODO/FIXME comments across 6 files (java-interop, ws-manager, javadoc, scopes, linker)
 
 ## Constraints
 
@@ -221,5 +220,12 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Binary <<bbj>> header detection before parsing | Prevents silent failures when loading tokenized BBj files via PREFIX | ✓ Good — v3.2 shipped |
 | USE_FILE_NOT_RESOLVED_PREFIX sentinel pattern | Enables targeted diagnostic filtering without diagnostic metadata | ✓ Good — v3.2 shipped |
 
+| Lightweight logger singleton over Pino/Winston | 60-line module-scoped singleton avoids 200KB-1MB+ bundle for features LSP already provides | ✓ Good — v3.3 shipped |
+| Singleton logger over Langium DI injection | Logger needs immediate availability in main.ts before DI container fully configured | ✓ Good — v3.3 shipped |
+| Regular enum over const enum for LogLevel | Compatibility with isolatedModules; better debuggability; negligible perf difference for 4 values | ✓ Good — v3.3 shipped |
+| Quiet startup via temporary ERROR level override | Gate verbose output until first document validation completes; restore user's level after workspace ready | ✓ Good — v3.3 shipped |
+| Lazy evaluation callbacks for logger.debug | `() => string` callbacks for JSON.stringify and array.join prevent computation when debug disabled | ✓ Good — v3.3 shipped |
+| Suppress all 47 parser ambiguities (no grammar refactoring) | BBj's non-reserved keywords create inherent ambiguity that ALL(*) resolves correctly; refactoring would require language redesign | ✓ Good — v3.3 shipped |
+
 ---
-*Last updated: 2026-02-08 after v3.3 milestone started*
+*Last updated: 2026-02-08 after v3.3 milestone complete*

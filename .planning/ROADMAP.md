@@ -1,177 +1,137 @@
-# Roadmap: BBj Language Server v3.3
+# Roadmap: BBj Language Server
 
-**Milestone:** v3.3 Output & Diagnostic Cleanup
-**Goal:** Reduce default LS output to a quiet, professional minimum — users see only what matters.
-**Phases:** 35-39
-**Depth:** Standard
+## Milestones
 
-## Overview
-
-This milestone implements debug logging controls and diagnostic filtering for the BBj Language Server. Users get a quiet, professional startup experience by default with verbose output available on-demand via debug flag. Synthetic file diagnostics are properly suppressed, javadoc errors are smartly aggregated, and parser ambiguity warnings are investigated for proper handling.
+- ✅ **v1.0 Internal Alpha** — Phases 1-6 (shipped 2026-02-01)
+- ✅ **v1.1 Polish & Run Commands** — Phases 7-10 (shipped 2026-02-02)
+- ✅ **v1.2 Run Fixes & Marketplace** — Phases 11-13 (shipped 2026-02-02)
+- ✅ **v2.0 Langium 4 Upgrade** — Phases 14-20 (shipped 2026-02-04)
+- ✅ **v2.1 Feature Gap Analysis** — Research only (shipped 2026-02-04)
+- ✅ **v2.2 IntelliJ Build & Release Automation** — Phases 21-23 (shipped 2026-02-05)
+- ✅ **v3.0 Improving BBj Language Support** — Phases 24-27 (shipped 2026-02-06)
+- ✅ **v3.1 PRIO 1+2 Issue Burndown** — Phases 28-31 (shipped 2026-02-07)
+- ✅ **v3.2 Bug Fix Release** — Phases 32-34 (shipped 2026-02-08)
+- ✅ **v3.3 Output & Diagnostic Cleanup** — Phases 35-39 (shipped 2026-02-08)
 
 ## Phases
 
-### Phase 35: Logger Infrastructure
+<details>
+<summary>✅ v1.0 Internal Alpha (Phases 1-6) — SHIPPED 2026-02-01</summary>
 
-**Goal:** Foundation layer exists for level-based logging with zero overhead when disabled
+- [x] Phase 1: Plugin Scaffolding (3/3 plans)
+- [x] Phase 2: Syntax Highlighting (2/2 plans)
+- [x] Phase 3: Settings & Runtime (3/3 plans)
+- [x] Phase 4: Language Server Integration (5/5 plans)
+- [x] Phase 5: Java Interop (3/3 plans)
+- [x] Phase 6: Distribution (3/3 plans)
 
-**Dependencies:** None
+</details>
 
-**Requirements:** LOG-01 (partial - logger singleton structure)
+<details>
+<summary>✅ v1.1 Polish & Run Commands (Phases 7-10) — SHIPPED 2026-02-02</summary>
 
-**Success Criteria:**
-1. Developer can import logger singleton and call `logger.info()`, `logger.warn()`, `logger.error()`, `logger.debug()` methods
-2. Logger respects LogLevel enum (DEBUG, INFO, WARN, ERROR) and silently drops messages below current level
-3. Logger calls have zero overhead when disabled (enum comparison only, no string formatting)
-4. Logger builds and type-checks with existing TypeScript configuration
+- [x] Phase 7: Brand Icons (1/1 plan)
+- [x] Phase 8: Run Commands (2/2 plans)
+- [x] Phase 9: Structure View (1/1 plan)
+- [x] Phase 10: Bug Fixes & Polish (2/2 plans)
 
-**Status:** ✓ Complete (2026-02-08)
+</details>
 
-Plans:
-- [x] 35-01-PLAN.md -- Create logger singleton module and unit tests
+<details>
+<summary>✅ v1.2 Run Fixes & Marketplace (Phases 11-13) — SHIPPED 2026-02-02</summary>
 
----
+- [x] Phase 11: Run Command Fixes (2/2 plans)
+- [x] Phase 12: Marketplace Preparation (2/2 plans)
+- [x] Phase 13: Plugin ID Fix (1/1 plan)
 
-### Phase 36: Settings Plumbing
+</details>
 
-**Goal:** Debug flag flows from IDE settings to language server and controls logger behavior
+<details>
+<summary>✅ v2.0 Langium 4 Upgrade (Phases 14-20) — SHIPPED 2026-02-04</summary>
 
-**Dependencies:** Phase 35
+- [x] Phase 14: Deps & Grammar (1/1 plan)
+- [x] Phase 15: Core API Renames & Type Constants (2/2 plans)
+- [x] Phase 16: API Signature & Deprecated API Migration (2/2 plans)
+- [x] Phase 17: Build Verification & Test Suite (2/2 plans)
+- [x] Phase 18: Functional Verification & Release (2/2 plans)
+- [x] Phase 19: Test Plan (1/1 plan)
+- [x] Phase 20: Human QA Testing (1/1 plan)
 
-**Requirements:** LOG-01 (complete), LOG-05 (hot-reload)
+</details>
 
-**Success Criteria:**
-1. User can toggle `bbj.debug` setting in VS Code and IntelliJ without LS restart
-2. Setting change triggers `onDidChangeConfiguration` handler that updates logger level immediately
-3. Quiet startup mode gates verbose output until first document validation completes (temporary ERROR level override)
-4. Logger level persists correctly across setting changes (no state desync)
+<details>
+<summary>✅ v2.1 Feature Gap Analysis — SHIPPED 2026-02-04</summary>
 
-**Plans:** 1 plan
+Research-only milestone — no phases.
 
-**Status:** ✓ Complete (2026-02-08)
+</details>
 
-Plans:
-- [x] 36-01-PLAN.md -- Wire bbj.debug setting to logger via onDidChangeConfiguration with quiet startup
+<details>
+<summary>✅ v2.2 IntelliJ Build & Release Automation (Phases 21-23) — SHIPPED 2026-02-05</summary>
 
----
+- [x] Phase 21: Preview Workflow (1/1 plan)
+- [x] Phase 22: Release Workflow (1/1 plan)
+- [x] Phase 23: PR Validation (1/1 plan)
 
-### Phase 37: Console Migration
+</details>
 
-**Goal:** All console output respects debug flag — quiet by default, verbose on-demand
+<details>
+<summary>✅ v3.0 Improving BBj Language Support (Phases 24-27) — SHIPPED 2026-02-06</summary>
 
-**Dependencies:** Phase 36
+- [x] Phase 24: Grammar & Parsing Fixes (3/3 plans)
+- [x] Phase 25: Type Resolution & Crash Fixes (3/3 plans)
+- [x] Phase 26: CPU Stability (2/2 plans)
+- [x] Phase 27: IDE Polish (3/3 plans)
 
-**Requirements:** LOG-02 (quiet default), LOG-03 (verbose on-demand), LOG-04 (console call migration)
+</details>
 
-**Success Criteria:**
-1. Startup output shows only essential summary lines when debug is off (BBj home, class count, errors only)
-2. Verbose output shows detailed information when debug is on (individual class resolution, classpath details, javadoc scanning)
-3. All `console.log()` and `console.debug()` calls migrated to `logger.info()` or `logger.debug()` as appropriate
-4. Error output (`console.error()`) never suppressed regardless of debug flag state
-5. High-impact files migrated first (java-interop.ts, bbj-ws-manager.ts, bbj-scope-local.ts, main.ts)
+<details>
+<summary>✅ v3.1 PRIO 1+2 Issue Burndown (Phases 28-31) — SHIPPED 2026-02-07</summary>
 
-**Status:** ✓ Complete (2026-02-08)
+- [x] Phase 28: Variable Scoping & Declaration Order (4/4 plans)
+- [x] Phase 29: DEF FN & Inheritance Resolution (3/3 plans)
+- [x] Phase 30: Java Reflection & Error Reporting (3/3 plans)
+- [x] Phase 31: Extension Settings & File Types (3/3 plans)
 
-Plans:
-- [x] 37-01-PLAN.md -- Migrate high-volume files (java-interop.ts, bbj-ws-manager.ts, java-javadoc.ts)
-- [x] 37-02-PLAN.md -- Migrate remaining files (main.ts, scopes, linker, module, hover, builder, formatter)
+</details>
 
----
+<details>
+<summary>✅ v3.2 Bug Fix Release (Phases 32-34) — SHIPPED 2026-02-08</summary>
 
-### Phase 38: Diagnostic Filtering
+- [x] Phase 32: Regression Fixes (4/4 plans)
+- [x] Phase 33: Parser & Lexer Fixes (4/4 plans)
+- [x] Phase 34: Diagnostic Polish (2/2 plans)
 
-**Goal:** Users see only actionable diagnostics — synthetic file errors and javadoc spam eliminated
+</details>
 
-**Dependencies:** None (verification of existing behavior)
+<details>
+<summary>✅ v3.3 Output & Diagnostic Cleanup (Phases 35-39) — SHIPPED 2026-02-08</summary>
 
-**Requirements:** DIAG-01 (synthetic file suppression), DIAG-02 (javadoc error aggregation)
+- [x] Phase 35: Logger Infrastructure (1/1 plan)
+- [x] Phase 36: Settings Plumbing (1/1 plan)
+- [x] Phase 37: Console Migration (2/2 plans)
+- [x] Phase 38: Diagnostic Filtering (1/1 plan)
+- [x] Phase 39: Parser Diagnostics (1/1 plan)
 
-**Success Criteria:**
-1. Parse errors from synthetic/internal files (bbj-api.bbl, functions.bbl, classpath:/, bbjlib:/ URIs) are not shown to users
-2. Existing `shouldValidate()` logic verified to cover all synthetic URI schemes
-3. Javadoc loading shows single summary error if all sources fail (not per-path spam)
-4. Javadoc loading shows no error if any source succeeds (silent partial success)
+</details>
 
-**Status:** ✓ Complete (2026-02-08)
+## Progress
 
-Plans:
-- [x] 38-01-PLAN.md -- Add bbjlib:/ scheme suppression, aggregate javadoc errors, migrate last console.error calls
+| Phase Range | Milestone | Plans | Status | Shipped |
+|-------------|-----------|-------|--------|---------|
+| 1-6 | v1.0 Internal Alpha | 19 | ✓ Complete | 2026-02-01 |
+| 7-10 | v1.1 Polish & Run Commands | 6 | ✓ Complete | 2026-02-02 |
+| 11-13 | v1.2 Run Fixes & Marketplace | 5 | ✓ Complete | 2026-02-02 |
+| 14-20 | v2.0 Langium 4 Upgrade | 11 | ✓ Complete | 2026-02-04 |
+| N/A | v2.1 Feature Gap Analysis | N/A | ✓ Complete | 2026-02-04 |
+| 21-23 | v2.2 IntelliJ Build & Release | 3 | ✓ Complete | 2026-02-05 |
+| 24-27 | v3.0 BBj Language Support | 11 | ✓ Complete | 2026-02-06 |
+| 28-31 | v3.1 PRIO 1+2 Burndown | 13 | ✓ Complete | 2026-02-07 |
+| 32-34 | v3.2 Bug Fix Release | 10 | ✓ Complete | 2026-02-08 |
+| 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 
----
-
-### Phase 39: Parser Diagnostics
-
-**Goal:** Chevrotain ambiguity warnings handled appropriately — either fixed or moved behind debug flag
-
-**Dependencies:** Phase 36 (uses debug flag infrastructure)
-
-**Requirements:** PARSE-01 (investigation), PARSE-02 (fix or suppress), DOCS-01 (documentation)
-
-**Plans:** 1 plan
-
-**Success Criteria:**
-1. Root cause of Chevrotain "Ambiguous Alternatives Detected" message documented with specific grammar rules identified
-2. Grammar ambiguities either resolved via refactoring or explicitly suppressed via IGNORE_AMBIGUITIES with rationale
-3. Parser ambiguity details available on-demand via debug flag (not shown by default)
-4. Debug logging setting documented in Docusaurus docs with instructions for enabling verbose output
-5. If grammar changes required, all tests pass with zero regressions
-
-**Status:** ✓ Complete (2026-02-08)
-
-Plans:
-- [x] 39-01-PLAN.md -- Enhance ambiguity logging hook with debug-gated verbosity and document bbj.debug setting
-
----
-
-## Progress Tracking
-
-| Phase | Status | Requirements | Plans | Completed |
-|-------|--------|--------------|-------|-----------|
-| 35 - Logger Infrastructure | ✓ Complete | LOG-01 (partial) | 1/1 | 2026-02-08 |
-| 36 - Settings Plumbing | ✓ Complete | LOG-01, LOG-05 | 1/1 | 2026-02-08 |
-| 37 - Console Migration | ✓ Complete | LOG-02, LOG-03, LOG-04 | 2/2 | 2026-02-08 |
-| 38 - Diagnostic Filtering | ✓ Complete | DIAG-01, DIAG-02 | 1/1 | 2026-02-08 |
-| 39 - Parser Diagnostics | ✓ Complete | PARSE-01, PARSE-02, DOCS-01 | 1/1 | 2026-02-08 |
-
-**Milestone Progress:** 10/10 requirements (100%)
+**Total:** 11 milestones, 39 phases, 105 plans shipped in 8 days
 
 ---
 
-## Phase Dependencies
-
-```
-Phase 35 (Logger Infrastructure)
-  ↓
-Phase 36 (Settings Plumbing)
-  ↓
-Phase 37 (Console Migration)
-
-Phase 38 (Diagnostic Filtering) [independent]
-
-Phase 36 (Settings Plumbing)
-  ↓
-Phase 39 (Parser Diagnostics)
-```
-
-**Critical path:** 35 → 36 → 37 (sequential)
-**Parallel work:** Phase 38 can run independently
-
----
-
-## Coverage Summary
-
-**Total v3.3 requirements:** 10
-**Mapped to phases:** 10
-**Unmapped:** 0
-
-All requirements covered:
-- Phase 35: LOG-01 (partial)
-- Phase 36: LOG-01 (complete), LOG-05
-- Phase 37: LOG-02, LOG-03, LOG-04
-- Phase 38: DIAG-01, DIAG-02
-- Phase 39: PARSE-01, PARSE-02, DOCS-01
-
----
-
-*Roadmap created: 2026-02-08*
-*Last updated: 2026-02-08 after Phase 39 execution complete — milestone v3.3 done*
+*Roadmap last updated: 2026-02-08 after v3.3 milestone archived*
