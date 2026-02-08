@@ -43,18 +43,10 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
                     && !BBjTokenBuilder.EXCLUDED.has(keywordToken.name)) {
                 // add all matching keywords to ID category
                 keywordToken.CATEGORIES = [id];
-                // prefer longer ID token when keyword is prefix of identifier (e.g., getResult -> ID, not GET + Result)
-                // Also prefer ID_WITH_SUFFIX (e.g., mode$ -> ID_WITH_SUFFIX, not MODE + $)
-                keywordToken.LONGER_ALT = [id, idWithSuffix];
+                // ID_WITH_SUFFIX first: identifiers with suffix (printTest$, stepXYZ!, indVal%)
+                // must match before ID, otherwise ID matches without suffix and $ is orphaned
+                keywordToken.LONGER_ALT = [idWithSuffix, id];
             }
-        }
-
-        // Fix for issue #368: STEP keyword needs explicit LONGER_ALT configuration
-        // to allow identifiers like "stepXYZ!" in field declarations
-        const stepToken = tokens.find(t => t.name === 'STEP');
-        if (stepToken) {
-            stepToken.CATEGORIES = [id];
-            stepToken.LONGER_ALT = idWithSuffix;
         }
 
         const releaseNl = terminalTokens.find(e => e.name === 'RELEASE_NL')!;

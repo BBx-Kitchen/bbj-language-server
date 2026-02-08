@@ -2505,4 +2505,23 @@ PRINT getResult$, isNew%, readData
         expectNoParserLexerErrors(program)
     })
 
+    test('Identifiers starting with any keyword parse correctly (generic LONGER_ALT)', async () => {
+        const program = await parse(`
+        class public A
+            field protected BBjString printTest$
+            field protected BBjString indXY$
+            field protected BBjString indexABC$
+            field protected BBjString fileTest$
+            field protected BBjStaticText stepXYZ!
+
+            method public void test()
+                declare auto BBjString printResult$
+                declare auto BBjString fileData$
+                declare auto BBjNumber indexVal
+            methodend
+        classend
+    `)
+        expectNoParserLexerErrors(program)
+    })
+
 });
