@@ -1,5 +1,34 @@
 # Project Milestones: BBj Language Server
 
+## v3.2 Bug Fix Release (Shipped: 2026-02-08)
+
+**Delivered:** Fixed regressions and parser bugs that produced false errors on valid BBj code — restored BBjAPI() resolution, USE statement navigation, and eliminated diagnostics noise from void methods, suffixed variables, SELECT statements, and cast expressions.
+
+**Phases completed:** 32-34 (10 plans total, including 4 gap closures)
+
+**Key accomplishments:**
+
+- Built-in BBjAPI class loaded as synthetic document — resolves case-insensitively independent of Java interop, restoring completion on `api!.` variables
+- Custom DefinitionProvider for USE statement Ctrl-click navigation to exact class declaration line via nameProvider.getNameNode()
+- Fixed onDidChangeConfiguration race condition that cleared Java class cache during VS Code startup
+- CastExpression grammar rule — `cast(BBjString[], var!)` parses correctly with array type notation and arrayDims support
+- void return type (`voidReturn` property), DEF FN suffixed variables (LONGER_ALT fix), and SELECT verb grammar — eliminated false errors on valid BBj syntax
+- USE file path validation with PREFIX reconciliation, binary file detection (`<<bbj>>` header), normalize(fsPath) URI comparison, and searched-paths error messages
+
+**Stats:**
+
+- 21 files modified (+812 / -72 lines)
+- 3 phases, 10 plans (including 4 gap closures)
+- 2 days (2026-02-07 → 2026-02-08)
+- Test improvement: +30 passing (434 total), -7 failures (10 remaining, all pre-existing)
+- Milestone audit: 8/8 requirements, 3/3 phases, 15/15 integrations, 6/6 E2E flows
+
+**Git range:** `v3.1` → `542438f`
+
+**What's next:** Start next milestone for remaining feature gaps, CPU stability mitigations, or PRIO 3 issue burndown.
+
+---
+
 ## v3.1 PRIO 1+2 Issue Burndown (Shipped: 2026-02-07)
 
 **Delivered:** Closed all PRIO 1+2 GitHub issues — fixed variable scoping bugs, DEF FN parameter isolation, inheritance resolution, Java reflection staleness, cyclic reference detection, and made extension settings (interop host/port, config.bbx path, EM auth) fully configurable with token-based security.

@@ -95,20 +95,18 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Cyclic inheritance detection (A extends B, B extends A) — v3.1
 - ✓ False positive cyclic detection on self-referencing variables eliminated — v3.1
 
+- ✓ BBjAPI() resolves via built-in synthetic document, independent of Java interop — v3.2
+- ✓ USE statement Ctrl-click navigation to class definition via DefinitionProvider (#357) — v3.2
+- ✓ `void` keyword in method signature not flagged as unresolvable class (#356) — v3.2
+- ✓ `mode$` and suffixed variables in DEF FN inside class methods parse correctly (#355) — v3.2
+- ✓ `select` statement with from/where/sortby clauses parses without false errors (#295) — v3.2
+- ✓ `cast(BBjString[],...)` array type notation in CAST parsed via CastExpression (#296) — v3.2
+- ✓ VS Code settings labels show "BBj" capitalization (#315) — v3.2
+- ✓ Unresolvable file path in USE statement flagged with searched-paths error (#172) — v3.2
+
 ### Active
 
-#### Current Milestone: v3.2 Bug Fix Release
-
-**Goal:** Fix regressions and parser bugs that produce false errors on valid BBj code.
-
-- [ ] BBjAPI() not recognized — linker regression, kills completion
-- [ ] Can't follow class from USE statement — navigation regression (#357)
-- [ ] `void` falsely flagged in method signature (#356)
-- [ ] `mode$` variable flagged as error in DEF FN inside class methods (#355)
-- [ ] `select` statement produces false line-break errors (#295)
-- [ ] `cast(BBjString[],...)` — array type in CAST not parsed (#296)
-- [ ] "Bbj" → "BBj" case fix in VS Code settings labels (#315)
-- [ ] Flag unresolvable file path in USE statement (#172)
+(No active requirements — planning next milestone)
 
 ### Out of Scope
 
@@ -119,7 +117,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.2 in progress. Fixing BBjAPI() regression, parser bugs on valid BBj patterns, and navigation regression. v3.1 shipped 2026-02-07 with all PRIO 1+2 issues closed.
+**Current state:** v3.2 shipped 2026-02-08. Fixed regressions (BBjAPI resolution, USE navigation), parser bugs (void, suffixed variables, SELECT, CAST array), and diagnostic polish (settings capitalization, USE file path validation with PREFIX reconciliation). 9 milestones shipped in 8 days.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -133,9 +131,9 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 **Known tech debt:**
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
-- BBjAPI case-insensitive test requires test module indexing fix (workaround: skipped)
 - CPU stability mitigations documented but not yet implemented (#232)
-- Single-line DEF FN inside class methods not parsed correctly by validate test helper (parser/lexer issue)
+- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression
+- 10 pre-existing test failures (hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, access-level, completion)
 
 ## Constraints
 
@@ -203,5 +201,15 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Token as 8th param to web.bbj | Backward compatibility with existing username/password interface | ✓ Good — v3.1 shipped |
 | Configurable interop host/port with hot-reload | Settings changes take effect without extension restart | ✓ Good — v3.1 shipped |
 
+| Built-in synthetic BBjAPI via loadAdditionalDocuments | BBjAPI resolves independent of Java interop; methods from JavaClass when available | ✓ Good — v3.2 shipped |
+| Override collectLocationLinks for DefinitionProvider | Preserves Langium's reference resolution pipeline while customizing navigation | ✓ Good — v3.2 shipped |
+| Settings change detection guard | Track current config and skip reload when BBj-specific settings unchanged | ✓ Good — v3.2 shipped |
+| voidReturn boolean instead of class reference | Avoids false "unresolvable class" errors for void methods | ✓ Good — v3.2 shipped |
+| LONGER_ALT array [id, idWithSuffix] for keywords | Prevents keyword matching when identifier has suffix (mode$ vs MODE) | ✓ Good — v3.2 shipped |
+| CastExpression as dedicated PrimaryExpression | Avoids ArrayElement ambiguity; CAST parsed as keyword-level construct | ✓ Good — v3.2 shipped |
+| normalize(fsPath) equality for URI comparison | Cross-document URI comparison in scope, validation, and reconciliation | ✓ Good — v3.2 shipped |
+| Binary <<bbj>> header detection before parsing | Prevents silent failures when loading tokenized BBj files via PREFIX | ✓ Good — v3.2 shipped |
+| USE_FILE_NOT_RESOLVED_PREFIX sentinel pattern | Enables targeted diagnostic filtering without diagnostic metadata | ✓ Good — v3.2 shipped |
+
 ---
-*Last updated: 2026-02-07 after v3.2 milestone started*
+*Last updated: 2026-02-08 after v3.2 milestone complete*

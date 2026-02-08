@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 34-diagnostic-polish
 source: 34-01-SUMMARY.md, 34-02-SUMMARY.md, 34-03-SUMMARY.md
 started: 2026-02-08T07:00:00Z
@@ -53,7 +53,12 @@ skipped: 0
   reason: "User reported: File exists at /Users/beff/bbx/plugins/BBjGridExWidget/BBjGridExWidget.bbj (confirmed in searched paths list) but error persists. Reconciliation finds the path but still doesn't clear the diagnostic."
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "addImportedBBjDocuments loads PREFIX files without checking if they're binary/tokenized (<<bbj>> header). Binary files parse with no BbjClass nodes, so class never enters index. Also needs runtime logging to diagnose PREFIX ordering (25+ dirs, first match wins) and parse errors in loaded files."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-document-builder.ts"
+      issue: "addImportedBBjDocuments line 143 - no binary file check before fromString()"
+  missing:
+    - "Add binary file detection (<<bbj>> header) to skip tokenized files"
+    - "Add runtime logging for loaded PREFIX files (class count, parse errors)"
+    - "Add post-index verification that expected BbjClass is in index"
+  debug_session: ".planning/debug/prefix-reconciliation-final.md"
