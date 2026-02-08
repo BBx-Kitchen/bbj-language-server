@@ -15,17 +15,17 @@
 
 ## Current Position
 
-**Active Phase:** Phase 38 - Diagnostic Filtering (Complete)
+**Active Phase:** Phase 39 - Parser Diagnostics (Complete)
 **Active Plan:** 1 of 1 complete
 
 **Phase Status:** Complete
-**Phase Goal:** Filter synthetic file diagnostics and aggregate javadoc errors — users see only actionable diagnostics
-**Last Activity:** 2026-02-08 - Completed 38-01-PLAN.md (bbjlib:/ filtering + javadoc aggregation)
+**Phase Goal:** Investigate and document parser ambiguity warnings, implement debug-gated verbose logging
+**Last Activity:** 2026-02-08 - Completed 39-01-PLAN.md (ambiguity investigation + debug logging + docs)
 
 **Progress Bar:**
 ```
-Milestone v3.3: [██████████████░░░░░░] 7/10 requirements (70%)
-Phase 38:       [████████████████████] 1/1 plans complete (100%)
+Milestone v3.3: [████████████████████] 10/10 requirements (100%)
+Phase 39:       [████████████████████] 1/1 plans complete (100%)
 ```
 
 ---
@@ -35,12 +35,12 @@ Phase 38:       [████████████████████] 1
 ### Current Milestone (v3.3)
 
 **Started:** 2026-02-08
-**Phases completed:** 4/5
-**Plans completed:** 5/5 (35-01, 36-01, 37-01, 37-02, 38-01)
-**Requirements completed:** 7/10
+**Phases completed:** 5/5
+**Plans completed:** 6/6 (35-01, 36-01, 37-01, 37-02, 38-01, 39-01)
+**Requirements completed:** 10/10
 **Days elapsed:** 0
 
-**Velocity:** 5 plans/day (Phases 35-38 complete)
+**Velocity:** 6 plans/day (Phases 35-39 complete, milestone COMPLETE)
 
 ### Recent History
 
@@ -70,6 +70,16 @@ Phase 38:       [████████████████████] 1
 ## Accumulated Context
 
 ### Recent Decisions
+
+**Decision:** Suppress all parser ambiguities rather than refactor grammar
+**Rationale:** All 47 Chevrotain ambiguity patterns are safe - BBj's non-reserved keywords create inherent ambiguity that ALL(*) successfully resolves. Grammar refactoring would require BBj syntax redesign.
+**Date:** 2026-02-08 (Phase 39-01)
+**Impact:** Parser correctly handles BBj's permissive syntax; ambiguity warnings are diagnostic noise shown only when debug=true
+
+**Decision:** Use existing bbj.debug flag for parser ambiguity verbosity
+**Rationale:** Phase 36 established bbj.debug as unified debug flag; parser ambiguities are debug-level diagnostics like other verbose output
+**Date:** 2026-02-08 (Phase 39-01)
+**Impact:** Consistent UX - one debug flag controls all verbose output including parser ambiguity details
 
 **Decision:** Regular enum instead of const enum for LogLevel
 **Rationale:** Regular numeric enum ensures compatibility with isolatedModules (may be used in IntelliJ LSP4IJ builds) and provides better debuggability; performance difference for 4 enum values is negligible
@@ -128,7 +138,7 @@ Phase 38:       [████████████████████] 1
 - [x] Phase 36 (Settings Plumbing) — COMPLETE
 - [x] Phase 37 (Console Migration) — COMPLETE (42 calls migrated, 0 remain)
 - [x] Phase 38 (Diagnostic Filtering) — COMPLETE (bbjlib:/ filtering + javadoc aggregation)
-- [ ] Enable Chevrotain ambiguity logging to identify grammar rules in Phase 39
+- [x] Phase 39 (Parser Diagnostics) — COMPLETE (47 ambiguities documented, debug-gated logging, docs)
 
 ### Known Blockers
 
@@ -146,23 +156,23 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 38 (Diagnostic Filtering) completed — Plan 01 executed
-- Added bbjlib:/ URI scheme check to shouldValidate() (filters functions.bbl, variables.bbl, labels.bbl, events.bbl, bbj-api.bbl)
-- Implemented javadoc error aggregation: single summary warning only when ALL sources fail, silent on partial success
-- Migrated 2 console.error calls to logger.error in java-javadoc.ts (0 remain)
-- Added 2 new tests for javadoc aggregation behavior
-- Verification passed: 460 tests passing (+2), 11 pre-existing failures unchanged
-- Commits: da2323c (bbjlib filtering), ed63217 (javadoc aggregation)
+- Phase 39 (Parser Diagnostics) completed — Plan 01 executed
+- Investigated 47 Chevrotain ambiguity patterns via parser initialization (SingleStatement, MethodDecl, QualifiedClass, PrimaryExpression, DefFunction, etc.)
+- All ambiguities classified as safe to suppress - BBj's non-reserved keywords create inherent grammar conflicts resolved by ALL(*) lookahead
+- Enhanced bbj-module.ts lookaheadStrategy.logging callback with logger.isDebug() check
+- Debug mode shows full Chevrotain messages with grammar rule names; non-debug shows one-time summary
+- Documented bbj.debug setting in Docusaurus configuration.md with usage instructions and troubleshooting guidance
+- Verification passed: 460 tests passing, 11 pre-existing failures unchanged, TypeScript compiles cleanly
+- Commits: 2b1998c (investigation), 08c0625 (enhanced logging), aee2ee2 (documentation)
 
 ### What's Next
 
-**Immediate:** Phase 39 - Parser Diagnostics (investigation + docs)
+**Immediate:** Milestone v3.3 COMPLETE (5/5 phases, 10/10 requirements)
 
-**After Phase 39:**
-- Milestone v3.3 complete (5/5 phases)
+**After v3.3:**
+- Plan next milestone or address backlog items
 
-**Critical path complete:** 35 ✓ → 36 ✓ → 37 ✓ → 38 ✓
-**Remaining:** Phase 39 (depends on Phase 36 ✓)
+**Milestone v3.3 path:** 35 ✓ → 36 ✓ → 37 ✓ → 38 ✓ → 39 ✓ (COMPLETE)
 
 ### Context for Next Session
 
@@ -172,13 +182,14 @@ None currently identified.
 **Test coverage:** 88% with V8 coverage
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
 
-**Key files for remaining phases:**
-- `bbj-vscode/src/language/bbj-module.ts` — Parser construction, ambiguity warnings (Phase 39)
-- `bbj-vscode/src/language/logger.ts` — Logger singleton (Phases 35-38 complete)
-- `bbj-vscode/src/language/main.ts` — LS entry point, debug flag handling
-- `bbj-vscode/package.json` — VS Code settings schema
-- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic (Phase 38 complete)
-- `bbj-vscode/src/language/java-javadoc.ts` — Javadoc error aggregation (Phase 38 complete)
+**Key files from milestone v3.3:**
+- `bbj-vscode/src/language/logger.ts` — Logger singleton (Phase 35)
+- `bbj-vscode/src/language/main.ts` — LS entry point, debug flag handling (Phase 36)
+- `bbj-vscode/src/language/bbj-module.ts` — Parser construction, debug-gated ambiguity logging (Phase 39)
+- `bbj-vscode/src/language/bbj-document-builder.ts` — shouldValidate() logic (Phase 38)
+- `bbj-vscode/src/language/java-javadoc.ts` — Javadoc error aggregation (Phase 38)
+- `.planning/phases/39-parser-diagnostics/39-INVESTIGATION.md` — Parser ambiguity root cause analysis (Phase 39)
+- `documentation/docs/user-guide/configuration.md` — bbj.debug documentation (Phase 39)
 
 ---
 
