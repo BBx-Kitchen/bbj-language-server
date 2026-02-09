@@ -24,12 +24,12 @@ configFile! = ARGV(9,err=*next)
 
 rem Token-based authentication if token is provided
 if (token! <> null() and token! > "") then
-    admin! = BBjAdminFactory.getBBjAdmin(token!)
+    admin! = BBjAdminFactory.getBBjAdmin(token!,err=login_failed)
 else
     rem Legacy username/password authentication (backward compatible)
     if (username! = null()) username! = "admin"
     if (password! = null()) password! = "admin123"
-    admin! = BBjAdminFactory.getBBjAdmin(username!, password!)
+    admin! = BBjAdminFactory.getBBjAdmin(username!, password!,err=login_failed)
 fi
 configuration! = admin!.getRemoteConfiguration()
 
@@ -77,4 +77,9 @@ rem open the app in the browser
 url! = iff(isDWC!, app!.getDwcUrl(0), app!.getBuiUrl(0))
 BBjAPI().getThinClient().browse(url!)
 
+release
+
+
+login_failed:
+    a=MSGBOX("Login Failed!",0,"Launching "+str(programme!))
 release
