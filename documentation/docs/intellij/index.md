@@ -22,10 +22,10 @@ The BBj Language Support plugin provides comprehensive IDE support for BBj devel
 
 | Topic | Description |
 |-------|-------------|
-| [Getting Started](./getting-started) | Installation and initial setup |
-| [Features](./features) | Overview of all plugin features |
-| [Configuration](./configuration) | IntelliJ settings reference |
-| [Commands](./commands) | Keyboard shortcuts and run commands |
+| [Getting Started](intellij/getting-started) | Installation and initial setup |
+| [Features](intellij/features) | Overview of all plugin features |
+| [Configuration](intellij/configuration) | IntelliJ settings reference |
+| [Commands](intellij/commands) | Keyboard shortcuts and run commands |
 
 ## Requirements
 

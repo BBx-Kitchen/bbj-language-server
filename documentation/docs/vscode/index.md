@@ -22,10 +22,10 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 
 | Topic | Description |
 |-------|-------------|
-| [Getting Started](./getting-started.md) | Installation and initial setup |
-| [Features](./features.md) | Overview of all extension features |
-| [Configuration](./configuration.md) | VS Code settings reference |
-| [Commands](./commands.md) | Keyboard shortcuts and commands |
+| [Getting Started](vscode/getting-started) | Installation and initial setup |
+| [Features](vscode/features) | Overview of all extension features |
+| [Configuration](vscode/configuration) | VS Code settings reference |
+| [Commands](vscode/commands) | Keyboard shortcuts and commands |
 
 ## Requirements
 
