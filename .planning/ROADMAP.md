@@ -141,20 +141,15 @@ Plans:
 - [x] 44-01-PLAN.md — Restructure docs directories (move user-guide to vscode/, create intellij/ stubs, delete developer-guide/)
 - [x] 44-02-PLAN.md — Update site config, navbar, footer, and landing page for dual-IDE presentation
 
-#### Phase 45: IntelliJ User Guide Creation
+#### Phase 45: IntelliJ User Guide Creation ✅ (2026-02-09)
 **Goal**: IntelliJ users have complete documentation covering getting started, features, configuration, and commands
 **Depends on**: Phase 44 (site infrastructure ready)
 **Requirements**: IJUG-01, IJUG-02, IJUG-03, IJUG-04
-**Success Criteria** (what must be TRUE):
-  1. IntelliJ Getting Started page documents installation from JetBrains Marketplace and .zip file with initial setup steps
-  2. IntelliJ Features page documents all working features (completion, diagnostics, hover, go-to-definition, structure view, run commands, syntax highlighting, Java interop)
-  3. IntelliJ Configuration page documents Settings UI with all available settings (BBj Home, classpath, interop host/port, config.bbx, debug flag, EM token auth)
-  4. IntelliJ Commands page documents all keyboard shortcuts (Alt+G/B/D), toolbar buttons, and context menu actions
-**Plans**: 2 plans
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] 45-01-PLAN.md — Write index page, Getting Started page, and Features page (IJUG-01, IJUG-02)
-- [ ] 45-02-PLAN.md — Write Configuration page and Commands page (IJUG-03, IJUG-04)
+- [x] 45-01-PLAN.md — Write index page, Getting Started page, and Features page (IJUG-01, IJUG-02)
+- [x] 45-02-PLAN.md — Write Configuration page and Commands page (IJUG-03, IJUG-04)
 
 #### Phase 46: VS Code User Guide Audit
 **Goal**: VS Code documentation accurately reflects current extension capabilities without phantom features
@@ -213,7 +208,7 @@ Phases execute in numeric order: 44 → 45 → 46 → 47
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 44. Site Chrome | 2/2 | ✓ Complete | 2026-02-09 |
-| 45. IntelliJ Guide | 0/2 | Not started | - |
+| 45. IntelliJ Guide | 2/2 | ✓ Complete | 2026-02-09 |
 | 46. VS Code Audit | 0/TBD | Not started | - |
 | 47. Cleanup | 0/TBD | Not started | - |
 
