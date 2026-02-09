@@ -7,6 +7,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
 } from 'vscode-languageclient/node.js';
@@ -401,8 +402,11 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
         // Build path to em-validate-token.bbj
         const emValidatePath = context.asAbsolutePath(path.join('tools', 'em-validate-token.bbj'));
 
-        // Build command: bbj -q -tIO em-validate-token.bbj - <token>
-        const emValidateCmd = `"${bbj}" -q -tIO "${emValidatePath}" - "${token}"`;
+        // Create temp file for BBj output
+        const tmpFile = path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`);
+
+        // Build command: bbj -q em-validate-token.bbj - <token> <tmpFile>
+        const emValidateCmd = `"${bbj}" -q "${emValidatePath}" - "${token}" "${tmpFile}"`;
 
         // Log command if debug mode is on (with masked token)
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
@@ -416,14 +420,17 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
             exec(emValidateCmd,
                 { timeout: 10000 },
                 (err: any, stdout: string, stderr: string) => {
-                    if (err) {
-                        reject(new Error(stderr || err.message));
-                        return;
+                    try {
+                        if (err) {
+                            reject(new Error(stderr || err.message));
+                            return;
+                        }
+                        const output = fs.readFileSync(tmpFile, 'utf-8').trim();
+                        resolve(output);
+                    } finally {
+                        // Clean up temp file
+                        try { fs.unlinkSync(tmpFile); } catch {}
                     }
-                    // Take last non-empty line
-                    const lines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                    const output = lines[lines.length - 1] || '';
-                    resolve(output);
                 }
             );
         });
@@ -511,7 +518,11 @@ export function activate(context: vscode.ExtensionContext): void {
         // Launch em-login.bbj to validate credentials and get token
         const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
         const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
-        const emLoginCmd = `"${bbj}" -q -tIO "${emLoginPath}" - "${username}" "${password}"`;
+
+        // Create temp file for BBj output
+        const tmpFile = path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`);
+
+        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}"`;
 
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
@@ -524,19 +535,20 @@ export function activate(context: vscode.ExtensionContext): void {
                 exec(emLoginCmd,
                     { timeout: 15000 },
                     (err: any, stdout: string, stderr: string) => {
-                        if (err) {
-                            reject(new Error(stderr || err.message));
-                            return;
+                        try {
+                            if (err) {
+                                reject(new Error(stderr || err.message));
+                                return;
+                            }
+                            const output = fs.readFileSync(tmpFile, 'utf-8').trim();
+                            if (output.startsWith('ERROR:')) {
+                                reject(new Error(output.substring(6)));
+                                return;
+                            }
+                            resolve(output);
+                        } finally {
+                            try { fs.unlinkSync(tmpFile); } catch {}
                         }
-                        // Take only the last non-empty line — earlier lines may contain
-                        // BBj mnemonic output (e.g. ? 'HIDE') that is not the token
-                        const lines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                        const output = lines[lines.length - 1] || '';
-                        if (output.startsWith('ERROR:')) {
-                            reject(new Error(output.substring(6)));
-                            return;
-                        }
-                        resolve(output);
                     }
                 );
             });
