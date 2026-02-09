@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 44 of 47 (Site Chrome for Dual-IDE Support)
-Plan: 01 of 02
-Status: Executing phase
-Last activity: 2026-02-09 — Completed 44-01-PLAN.md (Documentation Directory Restructure)
+Plan: 02 of 02
+Status: Phase complete
+Last activity: 2026-02-09 — Completed 44-02-PLAN.md (Site Config Updates)
 
-Progress: [████████████████████████████████████████░░░░] 91% (43 of 47 phases complete)
+Progress: [█████████████████████████████████████████░░░] 93% (44 of 47 phases complete)
 
 ---
 
@@ -29,8 +29,8 @@ Progress: [███████████████████████
 
 **Started:** 2026-02-01
 **Milestones shipped:** 12
-**Phases completed:** 43
-**Plans completed:** 111
+**Phases completed:** 44
+**Plans completed:** 113
 **Days elapsed:** 8
 **Velocity:** ~14 plans/day
 
@@ -69,6 +69,9 @@ Progress: [███████████████████████
 ### Decisions
 
 Recent decisions affecting v3.5:
+- 44-02: Set onBrokenLinks to 'warn' temporarily during directory restructuring
+- 44-02: Three hero buttons with equal visual weight for dual-IDE parity
+- 44-02: Removed decompile reference to reflect actual v3.x commands
 - v3.4: Generic LONGER_ALT order for all keyword-prefixed identifiers with type suffixes
 - v3.4: Config path as ARGV(9) to web.bbj for backward-compatible parameter passing
 - v3.3: Quiet startup via temporary ERROR level override until first document validation
@@ -93,15 +96,16 @@ None currently identified.
 
 ### What Just Happened
 
-- Completed 44-01-PLAN.md: Documentation Directory Restructure
-  - Moved VS Code guide from /docs/user-guide/ to /docs/vscode/
-  - Created IntelliJ guide stubs at /docs/intellij/
-  - Deleted developer-guide/ directory entirely
-  - Established new URL structure for dual-IDE documentation
+- Completed 44-02-PLAN.md: Site Config Updates
+  - Changed site title from "BBj Language Server" to "BBj Language Support"
+  - Updated navbar and footer for dual-IDE presentation
+  - Added three hero buttons with equal visual weight
+  - Updated landing page feature cards to reference both VS Code and IntelliJ
+  - Set onBrokenLinks to 'warn' temporarily for restructuring
 
 ### What's Next
 
-**Immediate:** Execute 44-02-PLAN.md (Site Config Updates)
+**Immediate:** Execute Phase 45 plans (next phase in v3.5)
 
 ### Context for Next Session
 
@@ -130,7 +134,7 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 
-**Total velocity:** 111 plans across 12 milestones in 8 days
+**Total velocity:** 113 plans across 12 milestones in 8 days
 
 See: `.planning/MILESTONES.md`
 
@@ -139,8 +143,9 @@ See: `.planning/MILESTONES.md`
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 44-01 | 105s | 2 | 23 |
+| 44-02 | 119s | 2 | 2 |
 
 ---
 
-*State updated: 2026-02-09 after completing 44-01-PLAN.md*
+*State updated: 2026-02-09 after completing 44-02-PLAN.md*
 
