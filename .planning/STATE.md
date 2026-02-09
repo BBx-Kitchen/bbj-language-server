@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.5 Documentation for 0.8.0 Release - Phase 46 (VS Code Audit)
+**Current Focus:** v3.5 Documentation for 0.8.0 Release - Phase 47 (Documentation Cleanup)
 
 ---
 
 ## Current Position
 
-Phase: 46 of 47 (VS Code User Guide Audit) ✓ VERIFIED
-Plan: All complete
-Status: Phase verified — ready for Phase 47
-Last activity: 2026-02-09 — Phase 46 verified (8/10 initial, 2 gaps fixed inline, all requirements satisfied)
+Phase: 47 of 47 (Documentation Cleanup) ✓ COMPLETE
+Plan: All complete (1 of 1)
+Status: Phase 47 complete — ready for milestone completion
+Last activity: 2026-02-09 — Removed stale roadmap, restored strict link checking (116s)
 
-Progress: [██████████████████████████████████████████░░] 96% (46 of 47 phases complete)
+Progress: [████████████████████████████████████████████] 100% (47 of 47 phases complete)
 
 ---
 
@@ -29,10 +29,10 @@ Progress: [███████████████████████
 
 **Started:** 2026-02-01
 **Milestones shipped:** 12
-**Phases completed:** 46
-**Plans completed:** 117
+**Phases completed:** 47
+**Plans completed:** 118
 **Days elapsed:** 8
-**Velocity:** ~14 plans/day
+**Velocity:** ~15 plans/day
 
 ### Recent History
 
@@ -79,6 +79,8 @@ Recent decisions affecting v3.5:
 - 44-02: Removed decompile reference to reflect actual v3.x commands
 
 Full decision log in PROJECT.md Key Decisions table.
+- [Phase 47]: Restored onBrokenLinks: 'throw' for strict link validation after Phase 44 restructuring complete
+- [Phase 47]: Fixed broken link format in index pages to prevent 404s with strict checking enabled
 
 ### Tech Debt
 
@@ -139,6 +141,12 @@ None currently identified.
 
 See: `.planning/MILESTONES.md`
 
+### Phase 47 Execution
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 47-01 | 116s | 2 | 4 |
+
 ### Phase 46 Execution
 
 | Plan | Duration | Tasks | Files |
@@ -162,5 +170,5 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after completing 46-02-PLAN.md*
+*State updated: 2026-02-09 after completing 47-01-PLAN.md*
 
