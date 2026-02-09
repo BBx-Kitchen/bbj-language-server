@@ -15,9 +15,9 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 44 of 47 (Site Chrome for Dual-IDE Support)
-Plan: Not yet planned
-Status: Ready to plan
-Last activity: 2026-02-09 — Roadmap created for v3.5 milestone
+Plan: 01 of 02
+Status: Executing phase
+Last activity: 2026-02-09 — Completed 44-01-PLAN.md (Documentation Directory Restructure)
 
 Progress: [████████████████████████████████████████░░░░] 91% (43 of 47 phases complete)
 
@@ -30,7 +30,7 @@ Progress: [███████████████████████
 **Started:** 2026-02-01
 **Milestones shipped:** 12
 **Phases completed:** 43
-**Plans completed:** 110
+**Plans completed:** 111
 **Days elapsed:** 8
 **Velocity:** ~14 plans/day
 
@@ -93,13 +93,15 @@ None currently identified.
 
 ### What Just Happened
 
-- Milestone v3.5 started — Documentation for 0.8.0 Release
-- Roadmap created with 4 phases (44-47): Site Chrome, IntelliJ Guide, VS Code Audit, Cleanup
-- All 16 v3.5 requirements mapped to phases (100% coverage)
+- Completed 44-01-PLAN.md: Documentation Directory Restructure
+  - Moved VS Code guide from /docs/user-guide/ to /docs/vscode/
+  - Created IntelliJ guide stubs at /docs/intellij/
+  - Deleted developer-guide/ directory entirely
+  - Established new URL structure for dual-IDE documentation
 
 ### What's Next
 
-**Immediate:** Plan Phase 44 (Site Chrome for Dual-IDE Support)
+**Immediate:** Execute 44-02-PLAN.md (Site Config Updates)
 
 ### Context for Next Session
 
@@ -128,10 +130,17 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 
-**Total velocity:** 110 plans across 12 milestones in 8 days
+**Total velocity:** 111 plans across 12 milestones in 8 days
 
 See: `.planning/MILESTONES.md`
 
+### Phase 44 Execution
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 44-01 | 105s | 2 | 23 |
+
 ---
 
-*State updated: 2026-02-09 after v3.5 roadmap created*
+*State updated: 2026-02-09 after completing 44-01-PLAN.md*
+
