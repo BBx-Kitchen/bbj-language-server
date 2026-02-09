@@ -169,10 +169,10 @@ Plans:
   1. Roadmap page is removed entirely from docs site
   2. Developer Guide directory and all pages are removed from docs site
   3. Sidebar and category metadata reflect new structure without references to removed content
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 47-01: TBD
+- [ ] 47-01-PLAN.md — Remove stale roadmap page, restore strict link checking, verify clean sidebar
 
 ## Progress
 
