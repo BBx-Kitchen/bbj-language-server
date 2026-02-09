@@ -2,16 +2,26 @@ rem BBj EM Login Stub - Authenticates and returns JWT token
 rem Parameters:
 rem   1) username
 rem   2) password
+rem   3) outputFile (path to temp file for writing result)
+
+? 'HIDE'
 
 username! = ARGV(1,err=*next)
 password! = ARGV(2,err=*next)
+outputFile! = ARGV(3,err=*next)
 
 if (username! = null()) then
-    print "ERROR:Username required"
+    ch=unt
+    open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+    write(ch)"ERROR:Username required"
+    close(ch)
     release
 fi
 if (password! = null()) then
-    print "ERROR:Password required"
+    ch=unt
+    open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+    write(ch)"ERROR:Password required"
+    close(ch)
     release
 fi
 
@@ -24,9 +34,15 @@ host! = InetAddress.getLoopbackAddress()
 payload! = new HashMap()
 rem Get auth token
 token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)
-print token!
+ch=unt
+open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+write(ch)token!
+close(ch)
 release
 
 authFailed:
-print "ERROR:Authentication failed - invalid credentials or EM not available"
+ch=unt
+open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+write(ch)"ERROR:Authentication failed - invalid credentials or EM not available"
+close(ch)
 release

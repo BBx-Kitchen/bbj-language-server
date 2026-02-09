@@ -1,11 +1,18 @@
 rem BBj EM Token Validation - Tests token against EM before usage
 rem Parameters:
 rem   1) token
+rem   2) outputFile (path to temp file for writing result)
+
+? 'HIDE'
 
 token! = ARGV(1,err=*next)
+outputFile! = ARGV(2,err=*next)
 
 if (token! = null()) then
-    print "INVALID"
+    ch=unt
+    open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+    write(ch)"INVALID"
+    close(ch)
     release
 fi
 
@@ -13,9 +20,15 @@ rem Validate token by attempting admin connection
 use com.basis.api.admin.BBjAdminFactory
 
 admin! = BBjAdminFactory.getBBjAdmin(token!, err=token_invalid)
-print "VALID"
+ch=unt
+open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+write(ch)"VALID"
+close(ch)
 release
 
 token_invalid:
-print "INVALID"
+ch=unt
+open(ch,mode="O_CREATE,O_TRUNC")outputFile!
+write(ch)"INVALID"
+close(ch)
 release
