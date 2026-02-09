@@ -151,21 +151,15 @@ Plans:
 - [x] 45-01-PLAN.md — Write index page, Getting Started page, and Features page (IJUG-01, IJUG-02)
 - [x] 45-02-PLAN.md — Write Configuration page and Commands page (IJUG-03, IJUG-04)
 
-#### Phase 46: VS Code User Guide Audit
+#### Phase 46: VS Code User Guide Audit ✅ (2026-02-09)
 **Goal**: VS Code documentation accurately reflects current extension capabilities without phantom features
 **Depends on**: Phase 45 (parallel with IntelliJ guide ensures consistency)
 **Requirements**: VSCA-01, VSCA-02, VSCA-03, VSCA-04, VSCA-05
-**Success Criteria** (what must be TRUE):
-  1. Features page lists only implemented features and includes all v3.x additions (EM token auth, debug flag, type resolution warnings, config.bbx, interop settings)
-  2. Configuration page documents token-based EM authentication instead of plaintext passwords, includes all new settings from v3.x
-  3. Commands page lists only existing commands (removes Decompile, includes Refresh Java Classes)
-  4. Getting Started page installation steps match current extension behavior
-  5. File types table correctly documents .bbl exclusion from source features, .bbx and .src inclusion
-**Plans**: 2 plans
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] 46-01-PLAN.md — Audit Features page (remove Decompile, fix file types table) and verify Getting Started page
-- [ ] 46-02-PLAN.md — Audit Configuration page (token auth, new settings) and Commands page (remove Decompile, add missing commands)
+- [x] 46-01-PLAN.md — Audit Features page (remove Decompile, fix file types table) and verify Getting Started page
+- [x] 46-02-PLAN.md — Audit Configuration page (token auth, new settings) and Commands page (remove Decompile, add missing commands)
 
 #### Phase 47: Documentation Cleanup
 **Goal**: Documentation site is free of stale content that confuses users
@@ -210,7 +204,7 @@ Phases execute in numeric order: 44 → 45 → 46 → 47
 |-------|----------------|--------|-----------|
 | 44. Site Chrome | 2/2 | ✓ Complete | 2026-02-09 |
 | 45. IntelliJ Guide | 2/2 | ✓ Complete | 2026-02-09 |
-| 46. VS Code Audit | 0/TBD | Not started | - |
+| 46. VS Code Audit | 2/2 | ✓ Complete | 2026-02-09 |
 | 47. Cleanup | 0/TBD | Not started | - |
 
 **Total:** 12 milestones shipped, 43 phases complete, 110 plans shipped
