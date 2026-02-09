@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 Phase: None — between milestones
 Plan: N/A
 Status: v3.5 Documentation for 0.8.0 Release shipped
-Last activity: 2026-02-09 — v3.5 milestone completed (4 phases, 7 plans, 41 files, +3,689/-1,695 lines)
+Last activity: 2026-02-09 - Completed quick task 6: Fix em-login.bbj and em-validate-token.bbj Windows compatibility
 
 Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
 
@@ -81,6 +81,12 @@ Full decision log in PROJECT.md Key Decisions table.
 ### Blockers/Concerns
 
 None currently identified.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 6 | Fix em-login.bbj and em-validate-token.bbj Windows compatibility: replace -tIO with GUI client using PRINT HIDE and temp file output | 2026-02-09 | 5cb33ab | [6-fix-em-login-bbj-and-em-validate-token-b](./quick/6-fix-em-login-bbj-and-em-validate-token-b/) |
 
 ---
 
