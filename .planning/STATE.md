@@ -8,16 +8,16 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.5 Documentation for 0.8.0 Release - Phase 44 (Site Chrome)
+**Current Focus:** v3.5 Documentation for 0.8.0 Release - Phase 45 (IntelliJ Guide)
 
 ---
 
 ## Current Position
 
-Phase: 44 of 47 (Site Chrome for Dual-IDE Support)
-Plan: 02 of 02
-Status: Phase complete
-Last activity: 2026-02-09 — Completed 44-02-PLAN.md (Site Config Updates)
+Phase: 44 of 47 (Site Chrome for Dual-IDE Support) ✓ VERIFIED
+Plan: All complete
+Status: Phase verified — ready for Phase 45
+Last activity: 2026-02-09 — Phase 44 verified (9/9 must-haves passed)
 
 Progress: [█████████████████████████████████████████░░░] 93% (44 of 47 phases complete)
 
@@ -96,16 +96,14 @@ None currently identified.
 
 ### What Just Happened
 
-- Completed 44-02-PLAN.md: Site Config Updates
-  - Changed site title from "BBj Language Server" to "BBj Language Support"
-  - Updated navbar and footer for dual-IDE presentation
-  - Added three hero buttons with equal visual weight
-  - Updated landing page feature cards to reference both VS Code and IntelliJ
-  - Set onBrokenLinks to 'warn' temporarily for restructuring
+- Phase 44 executed and verified (2 plans, 2 waves, 6 commits)
+  - 44-01: Restructured docs directories (user-guide → vscode/, created intellij/ stubs, deleted developer-guide/)
+  - 44-02: Updated site config, navbar, footer, and landing page for dual-IDE presentation
+  - Verification: 9/9 must-haves passed, all requirements (SITE-01..04) satisfied
 
 ### What's Next
 
-**Immediate:** Execute Phase 45 plans (next phase in v3.5)
+**Immediate:** Plan Phase 45 (IntelliJ User Guide Creation)
 
 ### Context for Next Session
 

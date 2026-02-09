@@ -131,20 +131,15 @@ Research-only milestone — no phases.
 
 **Milestone Goal:** Restructure the Docusaurus documentation site for dual-IDE coverage (VS Code + IntelliJ), audit user guide pages for accuracy, remove developer guide from public site, and update site chrome — ready for 0.8.0 release.
 
-#### Phase 44: Site Chrome for Dual-IDE Support
+#### Phase 44: Site Chrome for Dual-IDE Support ✅ (2026-02-09)
 **Goal**: Documentation site presents both VS Code and IntelliJ as equal first-class citizens
 **Depends on**: Nothing (first phase of milestone)
 **Requirements**: SITE-01, SITE-02, SITE-03, SITE-04
-**Success Criteria** (what must be TRUE):
-  1. Site tagline references both VS Code and IntelliJ
-  2. JetBrains Marketplace link appears in navbar and footer alongside VS Code Marketplace
-  3. Developer Guide is removed from navbar and footer navigation
-  4. Landing page presents both IDEs with equal marketplace link prominence
-**Plans**: 2 plans
+**Plans**: 2/2 complete
 
 Plans:
-- [ ] 44-01-PLAN.md — Restructure docs directories (move user-guide to vscode/, create intellij/ stubs, delete developer-guide/)
-- [ ] 44-02-PLAN.md — Update site config, navbar, footer, and landing page for dual-IDE presentation
+- [x] 44-01-PLAN.md — Restructure docs directories (move user-guide to vscode/, create intellij/ stubs, delete developer-guide/)
+- [x] 44-02-PLAN.md — Update site config, navbar, footer, and landing page for dual-IDE presentation
 
 #### Phase 45: IntelliJ User Guide Creation
 **Goal**: IntelliJ users have complete documentation covering getting started, features, configuration, and commands
@@ -216,7 +211,7 @@ Phases execute in numeric order: 44 → 45 → 46 → 47
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 44. Site Chrome | 0/TBD | Not started | - |
+| 44. Site Chrome | 2/2 | ✓ Complete | 2026-02-09 |
 | 45. IntelliJ Guide | 0/TBD | Not started | - |
 | 46. VS Code Audit | 0/TBD | Not started | - |
 | 47. Cleanup | 0/TBD | Not started | - |
