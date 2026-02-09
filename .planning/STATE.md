@@ -14,12 +14,12 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 44 of 47 (Site Chrome for Dual-IDE Support) ✓ VERIFIED
-Plan: All complete
-Status: Phase verified — ready for Phase 45
-Last activity: 2026-02-09 — Phase 44 verified (9/9 must-haves passed)
+Phase: 45 of 47 (IntelliJ User Guide Creation)
+Plan: 1 of 2 complete
+Status: In progress — executing Phase 45
+Last activity: 2026-02-09 — Completed 45-02 (Configuration & Commands documentation)
 
-Progress: [█████████████████████████████████████████░░░] 93% (44 of 47 phases complete)
+Progress: [█████████████████████████████████████████░░░] 94% (45 of 47 phases in progress)
 
 ---
 
@@ -30,7 +30,7 @@ Progress: [███████████████████████
 **Started:** 2026-02-01
 **Milestones shipped:** 12
 **Phases completed:** 44
-**Plans completed:** 113
+**Plans completed:** 115
 **Days elapsed:** 8
 **Velocity:** ~14 plans/day
 
@@ -77,6 +77,8 @@ Recent decisions affecting v3.5:
 - v3.3: Quiet startup via temporary ERROR level override until first document validation
 
 Full decision log in PROJECT.md Key Decisions table.
+- [Phase 45]: Document Settings UI path as Languages & Frameworks > BBj (IntelliJ native UI, not JSON)
+- [Phase 45]: Log Level dropdown (Error/Warn/Info/Debug) documented instead of bbj.debug flag
 
 ### Tech Debt
 
@@ -96,14 +98,16 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 44 executed and verified (2 plans, 2 waves, 6 commits)
-  - 44-01: Restructured docs directories (user-guide → vscode/, created intellij/ stubs, deleted developer-guide/)
-  - 44-02: Updated site config, navbar, footer, and landing page for dual-IDE presentation
-  - Verification: 9/9 must-haves passed, all requirements (SITE-01..04) satisfied
+- Phase 45 plan 02 executed (2 tasks, 2 commits)
+  - 45-02: Wrote IntelliJ Configuration and Commands documentation
+  - Replaced "Coming Soon" stubs with comprehensive IntelliJ-specific documentation
+  - Settings UI: Languages & Frameworks > BBj, all settings documented
+  - Commands: Alt+G/B/D shortcuts, toolbar compile, Tools menu actions
+  - Site builds successfully with expected warnings
 
 ### What's Next
 
-**Immediate:** Plan Phase 45 (IntelliJ User Guide Creation)
+**Immediate:** Continue Phase 45 plan 01 or verify Phase 45 completion
 
 ### Context for Next Session
 
@@ -132,9 +136,11 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 
-**Total velocity:** 113 plans across 12 milestones in 8 days
+**Total velocity:** 115 plans across 12 milestones in 8 days
 
 See: `.planning/MILESTONES.md`
+| Phase 45 P02 | 146 | 2 tasks | 2 files |
+| Phase 45 P01 | 151 | 2 tasks | 3 files |
 
 ### Phase 44 Execution
 
@@ -145,5 +151,5 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after completing 44-02-PLAN.md*
+*State updated: 2026-02-09 after completing 45-02-PLAN.md*
 
