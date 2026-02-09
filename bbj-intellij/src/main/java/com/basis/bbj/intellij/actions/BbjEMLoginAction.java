@@ -100,6 +100,13 @@ public final class BbjEMLoginAction extends AnAction {
             cmd.addParameter(password);
             cmd.addParameter(tmpFile.toString());
 
+            // Client info for EM token payload
+            String platform;
+            if (os.contains("win")) platform = "Windows";
+            else if (os.contains("mac")) platform = "MacOS";
+            else platform = "Linux";
+            cmd.addParameter(platform + " IntelliJ IDE");
+
             CapturingProcessHandler handler = new CapturingProcessHandler(cmd);
             ProcessOutput output = handler.runProcess(15000); // 15s timeout
 

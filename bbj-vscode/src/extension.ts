@@ -522,7 +522,10 @@ export function activate(context: vscode.ExtensionContext): void {
         // Create temp file for BBj output
         const tmpFile = path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`);
 
-        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}"`;
+        const platform = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
+        const infoString = `${platform} VS Code`;
+
+        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}" "${infoString}"`;
 
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
