@@ -34,7 +34,7 @@ The name of the classpath entry to use for Java class resolution.
 
 ```json
 {
-  "bbj.classpath": "default"
+  "bbj.classpath": "bbj_default"
 }
 ```
 

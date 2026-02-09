@@ -142,7 +142,8 @@ The extension supports multiple BBj file types:
 | `.bbjt` | BBj template files |
 | `.src` | BBj source files (legacy) |
 | `.bbx` | BBx configuration files |
-| `.bbl` | BBj library files (syntax highlighting only; excluded from code intelligence features) |
+
+> **Note:** `.bbl` (BBj library) files are not supported by the extension. They are excluded from workspace indexing and do not receive language features.
 
 ## Workspace Features
 
