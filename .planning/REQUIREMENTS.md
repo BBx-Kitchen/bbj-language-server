@@ -71,9 +71,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | IJUG-02 | Phase 45 | Pending |
 | IJUG-03 | Phase 45 | Pending |
 | IJUG-04 | Phase 45 | Pending |
-| CLEAN-01 | Phase 47 | Pending |
-| CLEAN-02 | Phase 47 | Pending |
-| CLEAN-03 | Phase 47 | Pending |
+| CLEAN-01 | Phase 47 | ✓ Complete |
+| CLEAN-02 | Phase 47 | ✓ Complete |
+| CLEAN-03 | Phase 47 | ✓ Complete |
 
 **Coverage:**
 - v3.5 requirements: 16 total

@@ -161,18 +161,14 @@ Plans:
 - [x] 46-01-PLAN.md — Audit Features page (remove Decompile, fix file types table) and verify Getting Started page
 - [x] 46-02-PLAN.md — Audit Configuration page (token auth, new settings) and Commands page (remove Decompile, add missing commands)
 
-#### Phase 47: Documentation Cleanup
+#### Phase 47: Documentation Cleanup ✅ (2026-02-09)
 **Goal**: Documentation site is free of stale content that confuses users
 **Depends on**: Phase 46 (cleanup after content updates)
 **Requirements**: CLEAN-01, CLEAN-02, CLEAN-03
-**Success Criteria** (what must be TRUE):
-  1. Roadmap page is removed entirely from docs site
-  2. Developer Guide directory and all pages are removed from docs site
-  3. Sidebar and category metadata reflect new structure without references to removed content
-**Plans**: 1 plan
+**Plans**: 1/1 complete
 
 Plans:
-- [ ] 47-01-PLAN.md — Remove stale roadmap page, restore strict link checking, verify clean sidebar
+- [x] 47-01-PLAN.md — Remove stale roadmap page, restore strict link checking, verify clean sidebar
 
 ## Progress
 
@@ -205,7 +201,7 @@ Phases execute in numeric order: 44 → 45 → 46 → 47
 | 44. Site Chrome | 2/2 | ✓ Complete | 2026-02-09 |
 | 45. IntelliJ Guide | 2/2 | ✓ Complete | 2026-02-09 |
 | 46. VS Code Audit | 2/2 | ✓ Complete | 2026-02-09 |
-| 47. Cleanup | 0/TBD | Not started | - |
+| 47. Cleanup | 1/1 | ✓ Complete | 2026-02-09 |
 
 **Total:** 12 milestones shipped, 43 phases complete, 110 plans shipped
 
