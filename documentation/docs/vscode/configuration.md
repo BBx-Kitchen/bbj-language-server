@@ -64,27 +64,19 @@ To view debug output:
 
 This setting takes effect immediately without restarting the language server.
 
-### Web/BUI Settings
+### Enterprise Manager Settings
 
-#### `bbj.web.username`
+#### `bbj.em.url`
 
-Username for Enterprise Manager authentication.
-
-```json
-{
-  "bbj.web.username": "admin"
-}
-```
-
-#### `bbj.web.password`
-
-Password for Enterprise Manager authentication.
+Enterprise Manager URL for BUI/DWC run commands and authentication.
 
 ```json
 {
-  "bbj.web.password": "admin123"
+  "bbj.em.url": "http://localhost:8888"
 }
 ```
+
+**Default**: `null` (defaults to `http://localhost:8888` when not set)
 
 #### `bbj.web.apps`
 
@@ -112,6 +104,62 @@ Automatically save files before running.
 ```
 
 **Default**: `false`
+
+### Advanced Settings
+
+#### `bbj.configPath`
+
+Path to a custom `config.bbx` file. When not set, defaults to `{bbj.home}/cfg/config.bbx`.
+
+```json
+{
+  "bbj.configPath": "/path/to/custom/config.bbx"
+}
+```
+
+**Default**: `null` (uses `{bbj.home}/cfg/config.bbx`)
+
+Set this when your `config.bbx` is in a non-standard location. Used for PREFIX directory resolution.
+
+#### `bbj.typeResolution.warnings`
+
+Enable or disable type resolution warnings (CAST, USE, inheritance). Disable for heavily dynamic codebases where these warnings are noisy.
+
+```json
+{
+  "bbj.typeResolution.warnings": true
+}
+```
+
+**Default**: `true`
+
+### Java Interop Settings
+
+#### `bbj.interop.host`
+
+Hostname for the Java interop service.
+
+```json
+{
+  "bbj.interop.host": "localhost"
+}
+```
+
+**Default**: `"localhost"`
+
+Change this to connect to a remote Java interop instance.
+
+#### `bbj.interop.port`
+
+Port number for the Java interop service.
+
+```json
+{
+  "bbj.interop.port": 5008
+}
+```
+
+**Default**: `5008`
 
 ### Formatter Settings
 
@@ -169,11 +217,14 @@ Here's a complete `settings.json` example with all BBj settings:
 
 ```json
 {
-  "bbj.debug": false,
   "bbj.home": "/opt/bbj",
-  "bbj.classpath": "default",
-  "bbj.web.username": "admin",
-  "bbj.web.password": "admin123",
+  "bbj.classpath": "bbj_default",
+  "bbj.debug": false,
+  "bbj.em.url": "http://localhost:8888",
+  "bbj.configPath": null,
+  "bbj.typeResolution.warnings": true,
+  "bbj.interop.host": "localhost",
+  "bbj.interop.port": 5008,
   "bbj.web.AutoSaveUponRun": true,
   "bbj.formatter.indentWidth": 4,
   "bbj.formatter.removeLineContinuation": false,
@@ -181,6 +232,8 @@ Here's a complete `settings.json` example with all BBj settings:
   "bbj.formatter.splitSingleLineIF": false
 }
 ```
+
+**Note:** Compiler options (`bbj.compiler.*`) are configured through the "Configure Compile Options" command UI and are not typically set manually in settings.json.
 
 ## Workspace Configuration
 
@@ -213,14 +266,24 @@ The BBj properties file is located at:
 
 Access it using the **BBj: Show BBj.properties** command.
 
-## Enterprise Manager
+## Enterprise Manager Authentication
 
-The extension can integrate with BBj Enterprise Manager for:
+BUI and DWC run commands require authentication with Enterprise Manager.
+
+**Authentication Flow:**
+1. Run `BBj: Login to Enterprise Manager` from the Command Palette
+2. Enter your EM username and password in the dialog
+3. The extension stores the JWT token securely in VS Code's SecretStorage
+4. Token is used automatically for subsequent BUI/DWC runs
+5. Re-authenticate if the token expires
+
+The stored token persists across VS Code restarts. No plaintext passwords are stored in settings.
+
+**Integration Features:**
 - Running BUI applications
+- Running DWC applications
 - Managing classpath entries
 - Configuring applications
-
-Configure the connection using `bbj.web.username` and `bbj.web.password`.
 
 ## Environment Variables
 
@@ -233,18 +296,13 @@ The extension respects the following environment variables:
 
 ## Java Interop Service
 
-The Java interop service runs on port **5008** by default. It starts automatically when the extension activates but can also be started manually:
-
-```bash
-cd java-interop
-./gradlew run
-```
-
-The service provides:
+The Java interop service provides:
 - Java class introspection
 - Method signature resolution
 - Field information
 - Package structure
+
+The service is managed by BBjServices and starts automatically when the extension activates. Configure the connection using `bbj.interop.host` and `bbj.interop.port` if you need to connect to a remote instance.
 
 ## Troubleshooting Configuration
 
