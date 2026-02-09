@@ -18,13 +18,18 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/user-guide/getting-started">
+            to="/docs/vscode/getting-started">
             Get Started
           </Link>
           <Link
-            className="button button--secondary button--lg margin-left--md"
+            className="button button--secondary button--lg"
             href="https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang">
-            Install Extension
+            VS Code Marketplace
+          </Link>
+          <Link
+            className="button button--secondary button--lg"
+            href="https://plugins.jetbrains.com/plugin/com.basis.bbj">
+            JetBrains Marketplace
           </Link>
         </div>
       </div>
@@ -43,7 +48,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Get context-aware suggestions for BBj keywords, built-in functions,
-        and Java classes. The language server provides rich completions with
+        and Java classes in VS Code or IntelliJ. The language server provides rich completions with
         documentation and parameter hints.
       </>
     ),
@@ -53,7 +58,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Catch errors as you type with instant syntax and semantic validation.
-        The extension highlights issues and provides helpful diagnostics to
+        Highlights issues in VS Code or IntelliJ and provides helpful diagnostics to
         improve code quality.
       </>
     ),
@@ -72,8 +77,8 @@ const FeatureList: FeatureItem[] = [
     title: 'Developer Commands',
     description: (
       <>
-        Run BBj programs directly from VS Code as GUI, BUI, or DWC applications.
-        Compile, decompile, and manage your BBj projects with built-in commands.
+        Run BBj programs directly from VS Code or IntelliJ as GUI, BUI, or DWC applications.
+        Refresh Java classes and manage your BBj projects with built-in commands.
       </>
     ),
   },
@@ -91,8 +96,8 @@ const FeatureList: FeatureItem[] = [
     title: 'Syntax Highlighting',
     description: (
       <>
-        Enjoy rich syntax highlighting for BBj code with semantic tokens.
-        The extension provides accurate highlighting for keywords, strings,
+        Enjoy rich syntax highlighting for BBj code with semantic tokens in VS Code or IntelliJ.
+        Provides accurate highlighting for keywords, strings,
         comments, and more.
       </>
     ),
@@ -129,7 +134,7 @@ export default function Home(): JSX.Element {
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="VS Code extension and language server for BBj development">
+      description="Language intelligence for BBj development">
       <HomepageHeader />
       <main>
         <HomepageFeatures />
