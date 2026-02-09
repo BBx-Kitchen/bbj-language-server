@@ -161,10 +161,11 @@ Plans:
   3. Commands page lists only existing commands (removes Decompile, includes Refresh Java Classes)
   4. Getting Started page installation steps match current extension behavior
   5. File types table correctly documents .bbl exclusion from source features, .bbx and .src inclusion
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 46-01: TBD
+- [ ] 46-01-PLAN.md — Audit Features page (remove Decompile, fix file types table) and verify Getting Started page
+- [ ] 46-02-PLAN.md — Audit Configuration page (token auth, new settings) and Commands page (remove Decompile, add missing commands)
 
 #### Phase 47: Documentation Cleanup
 **Goal**: Documentation site is free of stale content that confuses users
