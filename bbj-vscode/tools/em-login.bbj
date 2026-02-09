@@ -22,8 +22,8 @@ use com.basis.api.admin.BBjAdminFactory
 
 host! = InetAddress.getLoopbackAddress()
 payload! = new HashMap()
-rem Get auth token with default duration (0 = server default)
-token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 525000, payload!, err=authFailed)
+rem Get auth token
+token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)
 print token!
 release
 
