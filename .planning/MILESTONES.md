@@ -362,3 +362,13 @@
 
 ---
 
+
+## v3.5 Documentation for 0.8.0 Release (Shipped: 2026-02-09)
+
+**Phases completed:** 47 phases, 93 plans, 14 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
