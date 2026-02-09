@@ -14,10 +14,10 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 ## Current Position
 
-Phase: 45 of 47 (IntelliJ User Guide Creation) ✓ VERIFIED
-Plan: All complete
-Status: Phase verified — ready for Phase 46
-Last activity: 2026-02-09 — Phase 45 verified (11/11 must-haves passed)
+Phase: 46 of 47 (VS Code User Guide Audit)
+Plan: 1 of 2 complete
+Status: Executing Phase 46
+Last activity: 2026-02-09 — Completed 46-01 (VS Code audit: phantom features removed, file types corrected)
 
 Progress: [██████████████████████████████████████████░░] 95% (45 of 47 phases complete)
 
@@ -29,8 +29,8 @@ Progress: [███████████████████████
 
 **Started:** 2026-02-01
 **Milestones shipped:** 12
-**Phases completed:** 44
-**Plans completed:** 115
+**Phases completed:** 45
+**Plans completed:** 116
 **Days elapsed:** 8
 **Velocity:** ~14 plans/day
 
@@ -98,15 +98,15 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 45 executed and verified (2 plans, 1 wave parallel, 6 commits)
-  - 45-01: Index, Getting Started, Features pages (IJUG-01, IJUG-02)
-  - 45-02: Configuration, Commands pages (IJUG-03, IJUG-04)
-  - Verification: 11/11 must-haves passed, all requirements (IJUG-01..04) satisfied
-  - All 5 IntelliJ Guide pages complete — no "Coming Soon" stubs remaining
+- Phase 46 Plan 01 executed (2 tasks, 2 commits, 81s)
+  - Removed phantom Decompile command from Features page
+  - Fixed file types table: added .src, corrected .bbl exclusion note
+  - Fixed classpath default value from "default" to "bbj_default"
+  - Removed misleading manual gradlew service instructions
 
 ### What's Next
 
-**Immediate:** Plan Phase 46 (VS Code User Guide Audit)
+**Immediate:** Execute Phase 46 Plan 02 (VS Code Configuration Settings Documentation)
 
 ### Context for Next Session
 
@@ -135,9 +135,15 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 
-**Total velocity:** 115 plans across 12 milestones in 8 days
+**Total velocity:** 116 plans across 12 milestones in 8 days
 
 See: `.planning/MILESTONES.md`
+
+### Phase 46 Execution
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 46-01 | 81s | 2 | 2 |
 
 ### Phase 45 Execution
 
@@ -155,5 +161,5 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after completing 45-01-PLAN.md*
+*State updated: 2026-02-09 after completing 46-01-PLAN.md*
 
