@@ -1,0 +1,21 @@
+rem BBj EM Token Validation - Tests token against EM before usage
+rem Parameters:
+rem   1) token
+
+token! = ARGV(1,err=*next)
+
+if (token! = null()) then
+    print "INVALID"
+    release
+fi
+
+rem Validate token by attempting admin connection
+use com.basis.api.admin.BBjAdminFactory
+
+admin! = BBjAdminFactory.getBBjAdmin(token!, err=token_invalid)
+print "VALID"
+release
+
+token_invalid:
+print "INVALID"
+release
