@@ -327,17 +327,145 @@ export async function configureCompileOptions(): Promise<void> {
 }
 
 /**
+ * Check if a JWT token is expired by decoding its payload
+ * Returns true if token is expired, false otherwise or if unable to determine
+ */
+function isTokenExpired(token: string): boolean {
+    try {
+        // JWTs have 3 dot-separated parts: header.payload.signature
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return false; // Not a JWT, let server decide
+        }
+
+        // Base64url-decode the payload (index 1)
+        // Replace base64url chars with base64 equivalents
+        let payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+
+        // Decode base64 to UTF-8 string
+        const decoded = Buffer.from(payload, 'base64').toString('utf-8');
+        const claims = JSON.parse(decoded);
+
+        // Check if exp field exists
+        if (!claims.exp) {
+            return false; // No expiration claim, can't determine
+        }
+
+        // Compare exp (Unix timestamp in seconds) against current time
+        const now = Math.floor(Date.now() / 1000);
+        return claims.exp <= now;
+    } catch (error) {
+        // If any parsing fails, let server validate
+        return false;
+    }
+}
+
+/**
  * Get EM credentials from SecretStorage
  * Returns {username, password} object or undefined if not stored
  */
 export async function getEMCredentials(): Promise<{username: string, password: string} | undefined> {
     // Try token first
     const token = await secretStorage?.get('bbj.em.token');
-    if (token) return { username: '__token__', password: token };
+    if (token) {
+        // Check if token is expired (client-side JWT decode)
+        if (isTokenExpired(token)) {
+            // Delete expired token from storage
+            await secretStorage?.delete('bbj.em.token');
+            return undefined; // Triggers re-login flow
+        }
+        return { username: '__token__', password: token };
+    }
     // Try stored credentials (fallback if BBj doesn't support tokens)
     const creds = await secretStorage?.get('bbj.em.credentials');
     if (creds) return JSON.parse(creds);
     return undefined;
+}
+
+/**
+ * Validate a token server-side against EM by running em-validate-token.bbj
+ * Returns true if token is valid, false otherwise
+ */
+async function validateTokenServerSide(context: vscode.ExtensionContext, token: string): Promise<boolean> {
+    try {
+        const config = vscode.workspace.getConfiguration("bbj");
+        const bbjHome = config.get<string>("home");
+
+        if (!bbjHome) {
+            return false;
+        }
+
+        // Build path to bbj executable
+        const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
+
+        // Build path to em-validate-token.bbj
+        const emValidatePath = context.asAbsolutePath(path.join('tools', 'em-validate-token.bbj'));
+
+        // Build command: bbj -q -tIO em-validate-token.bbj - <token>
+        const emValidateCmd = `"${bbj}" -q -tIO "${emValidatePath}" - "${token}"`;
+
+        // Log command if debug mode is on (with masked token)
+        const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
+        if (isDebug) {
+            outputChannel.appendLine(`EM token validation: ${emValidateCmd.replace(token, '***')}`);
+        }
+
+        // Execute with 10s timeout
+        const result = await new Promise<string>((resolve, reject) => {
+            const { exec } = require('child_process');
+            exec(emValidateCmd,
+                { timeout: 10000 },
+                (err: any, stdout: string, stderr: string) => {
+                    if (err) {
+                        reject(new Error(stderr || err.message));
+                        return;
+                    }
+                    // Take last non-empty line
+                    const lines = stdout.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    const output = lines[lines.length - 1] || '';
+                    resolve(output);
+                }
+            );
+        });
+
+        // Return true only if output is "VALID"
+        return result === 'VALID';
+    } catch (error) {
+        // On any error, consider token invalid
+        return false;
+    }
+}
+
+/**
+ * Ensure valid EM credentials are available, with automatic re-login on expired/invalid tokens
+ * Returns credentials or undefined if user cancelled login
+ */
+async function ensureValidToken(context: vscode.ExtensionContext): Promise<{username: string, password: string} | undefined> {
+    let creds = await getEMCredentials();
+    if (!creds) {
+        const login = await vscode.window.showInformationMessage(
+            'EM login required. Login now?', 'Login', 'Cancel'
+        );
+        if (login === 'Login') {
+            await vscode.commands.executeCommand('bbj.loginEM');
+            creds = await getEMCredentials();
+        }
+        if (!creds) return undefined;
+    }
+
+    // Server-side validation for token auth (catches revoked tokens)
+    if (creds.username === '__token__') {
+        const valid = await validateTokenServerSide(context, creds.password);
+        if (!valid) {
+            await context.secrets.delete('bbj.em.token');
+            vscode.window.showInformationMessage('EM token expired or invalid. Please log in again.');
+            await vscode.commands.executeCommand('bbj.loginEM');
+            creds = await getEMCredentials();
+            if (!creds) return undefined;
+        }
+    }
+
+    return creds;
 }
 
 // This function is called when the extension is activated.
@@ -422,35 +550,17 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     vscode.commands.registerCommand("bbj.run", Commands.run);
 
-    // BUI command with auto-prompt login
+    // BUI command with auto-prompt login and token validation
     vscode.commands.registerCommand("bbj.runBUI", async (params) => {
-        let creds = await getEMCredentials();
-        if (!creds) {
-            const login = await vscode.window.showInformationMessage(
-                'EM login required for BUI. Login now?', 'Login', 'Cancel'
-            );
-            if (login === 'Login') {
-                await vscode.commands.executeCommand('bbj.loginEM');
-                creds = await getEMCredentials();
-            }
-            if (!creds) return; // User cancelled login
-        }
+        const creds = await ensureValidToken(context);
+        if (!creds) return; // User cancelled login
         Commands.runBUI(params, creds);
     });
 
-    // DWC command with auto-prompt login
+    // DWC command with auto-prompt login and token validation
     vscode.commands.registerCommand("bbj.runDWC", async (params) => {
-        let creds = await getEMCredentials();
-        if (!creds) {
-            const login = await vscode.window.showInformationMessage(
-                'EM login required for DWC. Login now?', 'Login', 'Cancel'
-            );
-            if (login === 'Login') {
-                await vscode.commands.executeCommand('bbj.loginEM');
-                creds = await getEMCredentials();
-            }
-            if (!creds) return; // User cancelled login
-        }
+        const creds = await ensureValidToken(context);
+        if (!creds) return; // User cancelled login
         Commands.runDWC(params, creds);
     });
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
