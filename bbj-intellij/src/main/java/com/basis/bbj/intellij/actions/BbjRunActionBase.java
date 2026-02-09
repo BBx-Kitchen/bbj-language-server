@@ -287,33 +287,30 @@ public abstract class BbjRunActionBase extends AnAction {
                 return false;
             }
 
-            // Build command: bbj -q -tIO em-validate-token.bbj - <token>
-            GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
-            cmd.addParameter("-q");
-            cmd.addParameter("-tIO");
-            cmd.addParameter(emValidatePath);
-            cmd.addParameter("-");
-            cmd.addParameter(token);
+            // Create temp file for BBj output
+            Path tmpFile = Files.createTempFile("bbj-em-validate-", ".tmp");
+            try {
+                // Build command: bbj -q em-validate-token.bbj - <token> <tmpFile>
+                GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
+                cmd.addParameter("-q");
+                cmd.addParameter(emValidatePath);
+                cmd.addParameter("-");
+                cmd.addParameter(token);
+                cmd.addParameter(tmpFile.toString());
 
-            // Execute with 10s timeout
-            com.intellij.execution.process.CapturingProcessHandler handler =
-                new com.intellij.execution.process.CapturingProcessHandler(cmd);
-            com.intellij.execution.process.ProcessOutput output = handler.runProcess(10000);
+                // Execute with 10s timeout
+                com.intellij.execution.process.CapturingProcessHandler handler =
+                    new com.intellij.execution.process.CapturingProcessHandler(cmd);
+                com.intellij.execution.process.ProcessOutput output = handler.runProcess(10000);
 
-            // Parse stdout: take last non-empty line
-            String stdout = output.getStdout();
-            String[] lines = stdout.split("\n");
-            String result = "";
-            for (int i = lines.length - 1; i >= 0; i--) {
-                String line = lines[i].trim();
-                if (!line.isEmpty()) {
-                    result = line;
-                    break;
-                }
+                // Read result from temp file
+                String result = Files.readString(tmpFile).trim();
+
+                // Return true only if output is "VALID"
+                return "VALID".equals(result);
+            } finally {
+                try { Files.deleteIfExists(tmpFile); } catch (Exception ignored) {}
             }
-
-            // Return true only if output is "VALID"
-            return "VALID".equals(result);
         } catch (Exception e) {
             // On any error, consider token invalid
             return false;
