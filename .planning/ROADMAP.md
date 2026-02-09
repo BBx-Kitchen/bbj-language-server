@@ -13,6 +13,7 @@
 - ✅ **v3.2 Bug Fix Release** — Phases 32-34 (shipped 2026-02-08)
 - ✅ **v3.3 Output & Diagnostic Cleanup** — Phases 35-39 (shipped 2026-02-08)
 - ✅ **v3.4 0.8.0 Issue Closure** — Phases 40-43 (shipped 2026-02-08)
+- 🚧 **v3.5 Documentation for 0.8.0 Release** — Phases 44-47 (in progress)
 
 ## Phases
 
@@ -126,7 +127,70 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v3.5 Documentation for 0.8.0 Release (In Progress)
+
+**Milestone Goal:** Restructure the Docusaurus documentation site for dual-IDE coverage (VS Code + IntelliJ), audit user guide pages for accuracy, remove developer guide from public site, and update site chrome — ready for 0.8.0 release.
+
+#### Phase 44: Site Chrome for Dual-IDE Support
+**Goal**: Documentation site presents both VS Code and IntelliJ as equal first-class citizens
+**Depends on**: Nothing (first phase of milestone)
+**Requirements**: SITE-01, SITE-02, SITE-03, SITE-04
+**Success Criteria** (what must be TRUE):
+  1. Site tagline references both VS Code and IntelliJ
+  2. JetBrains Marketplace link appears in navbar and footer alongside VS Code Marketplace
+  3. Developer Guide is removed from navbar and footer navigation
+  4. Landing page presents both IDEs with equal marketplace link prominence
+**Plans**: TBD
+
+Plans:
+- [ ] 44-01: TBD
+
+#### Phase 45: IntelliJ User Guide Creation
+**Goal**: IntelliJ users have complete documentation covering getting started, features, configuration, and commands
+**Depends on**: Phase 44 (site infrastructure ready)
+**Requirements**: IJUG-01, IJUG-02, IJUG-03, IJUG-04
+**Success Criteria** (what must be TRUE):
+  1. IntelliJ Getting Started page documents installation from JetBrains Marketplace and .zip file with initial setup steps
+  2. IntelliJ Features page documents all working features (completion, diagnostics, hover, go-to-definition, structure view, run commands, syntax highlighting, Java interop)
+  3. IntelliJ Configuration page documents Settings UI with all available settings (BBj Home, classpath, interop host/port, config.bbx, debug flag, EM token auth)
+  4. IntelliJ Commands page documents all keyboard shortcuts (Alt+G/B/D), toolbar buttons, and context menu actions
+**Plans**: TBD
+
+Plans:
+- [ ] 45-01: TBD
+
+#### Phase 46: VS Code User Guide Audit
+**Goal**: VS Code documentation accurately reflects current extension capabilities without phantom features
+**Depends on**: Phase 45 (parallel with IntelliJ guide ensures consistency)
+**Requirements**: VSCA-01, VSCA-02, VSCA-03, VSCA-04, VSCA-05
+**Success Criteria** (what must be TRUE):
+  1. Features page lists only implemented features and includes all v3.x additions (EM token auth, debug flag, type resolution warnings, config.bbx, interop settings)
+  2. Configuration page documents token-based EM authentication instead of plaintext passwords, includes all new settings from v3.x
+  3. Commands page lists only existing commands (removes Decompile, includes Refresh Java Classes)
+  4. Getting Started page installation steps match current extension behavior
+  5. File types table correctly documents .bbl exclusion from source features, .bbx and .src inclusion
+**Plans**: TBD
+
+Plans:
+- [ ] 46-01: TBD
+
+#### Phase 47: Documentation Cleanup
+**Goal**: Documentation site is free of stale content that confuses users
+**Depends on**: Phase 46 (cleanup after content updates)
+**Requirements**: CLEAN-01, CLEAN-02, CLEAN-03
+**Success Criteria** (what must be TRUE):
+  1. Roadmap page is removed entirely from docs site
+  2. Developer Guide directory and all pages are removed from docs site
+  3. Sidebar and category metadata reflect new structure without references to removed content
+**Plans**: TBD
+
+Plans:
+- [ ] 47-01: TBD
+
 ## Progress
+
+<details>
+<summary>✅ Completed Milestones (v1.0 - v3.4)</summary>
 
 | Phase Range | Milestone | Plans | Status | Shipped |
 |-------------|-----------|-------|--------|---------|
@@ -142,8 +206,22 @@ Research-only milestone — no phases.
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 | 40-43 | v3.4 0.8.0 Issue Closure | 4 | ✓ Complete | 2026-02-08 |
 
-**Total:** 12 milestones shipped, 43 phases complete, 110 plans shipped in 8 days
+</details>
+
+### v3.5 Documentation for 0.8.0 Release
+
+**Execution Order:**
+Phases execute in numeric order: 44 → 45 → 46 → 47
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 44. Site Chrome | 0/TBD | Not started | - |
+| 45. IntelliJ Guide | 0/TBD | Not started | - |
+| 46. VS Code Audit | 0/TBD | Not started | - |
+| 47. Cleanup | 0/TBD | Not started | - |
+
+**Total:** 12 milestones shipped, 43 phases complete, 110 plans shipped
 
 ---
 
-*Roadmap last updated: 2026-02-08 after v3.4 milestone shipped*
+*Roadmap last updated: 2026-02-09 after v3.5 roadmap created*

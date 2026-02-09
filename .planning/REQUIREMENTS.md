@@ -58,28 +58,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SITE-01 | — | Pending |
-| SITE-02 | — | Pending |
-| SITE-03 | — | Pending |
-| SITE-04 | — | Pending |
-| VSCA-01 | — | Pending |
-| VSCA-02 | — | Pending |
-| VSCA-03 | — | Pending |
-| VSCA-04 | — | Pending |
-| VSCA-05 | — | Pending |
-| IJUG-01 | — | Pending |
-| IJUG-02 | — | Pending |
-| IJUG-03 | — | Pending |
-| IJUG-04 | — | Pending |
-| CLEAN-01 | — | Pending |
-| CLEAN-02 | — | Pending |
-| CLEAN-03 | — | Pending |
+| SITE-01 | Phase 44 | Pending |
+| SITE-02 | Phase 44 | Pending |
+| SITE-03 | Phase 44 | Pending |
+| SITE-04 | Phase 44 | Pending |
+| VSCA-01 | Phase 46 | Pending |
+| VSCA-02 | Phase 46 | Pending |
+| VSCA-03 | Phase 46 | Pending |
+| VSCA-04 | Phase 46 | Pending |
+| VSCA-05 | Phase 46 | Pending |
+| IJUG-01 | Phase 45 | Pending |
+| IJUG-02 | Phase 45 | Pending |
+| IJUG-03 | Phase 45 | Pending |
+| IJUG-04 | Phase 45 | Pending |
+| CLEAN-01 | Phase 47 | Pending |
+| CLEAN-02 | Phase 47 | Pending |
+| CLEAN-03 | Phase 47 | Pending |
 
 **Coverage:**
 - v3.5 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16
+- Mapped to phases: 16 (100%)
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-09*
-*Last updated: 2026-02-09 after initial definition*
+*Last updated: 2026-02-09 after v3.5 roadmap created*

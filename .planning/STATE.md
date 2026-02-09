@@ -8,16 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.5 Documentation for 0.8.0 Release
+**Current Focus:** v3.5 Documentation for 0.8.0 Release - Phase 44 (Site Chrome)
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-09 — Milestone v3.5 started
+Phase: 44 of 47 (Site Chrome for Dual-IDE Support)
+Plan: Not yet planned
+Status: Ready to plan
+Last activity: 2026-02-09 — Roadmap created for v3.5 milestone
+
+Progress: [████████████████████████████████████████░░░░] 91% (43 of 47 phases complete)
 
 ---
 
@@ -64,6 +66,15 @@ Last activity: 2026-02-09 — Milestone v3.5 started
 **Never suppress console.error():** Error output must always be visible regardless of debug flag state
 **Hot-reload all settings:** Settings changes via `onDidChangeConfiguration` must clear cached state
 
+### Decisions
+
+Recent decisions affecting v3.5:
+- v3.4: Generic LONGER_ALT order for all keyword-prefixed identifiers with type suffixes
+- v3.4: Config path as ARGV(9) to web.bbj for backward-compatible parameter passing
+- v3.3: Quiet startup via temporary ERROR level override until first document validation
+
+Full decision log in PROJECT.md Key Decisions table.
+
 ### Tech Debt
 
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
@@ -72,19 +83,9 @@ Last activity: 2026-02-09 — Milestone v3.5 started
 - 6 pre-existing test failures
 - 14 pre-existing TODO/FIXME comments across 6 files
 
-### Known Blockers
+### Blockers/Concerns
 
 None currently identified.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 1 | Fix duplicate BBj output channels created on each launch | 2026-02-08 | e0e3306 | [1-fix-duplicate-bbj-output-channels-create](./quick/1-fix-duplicate-bbj-output-channels-create/) |
-| 2 | Fix em-login.bbj not found in IntelliJ plugin bundle | 2026-02-08 | 24804d4 | [2-fix-em-login-bbj-not-found-in-intellij-p](./quick/2-fix-em-login-bbj-not-found-in-intellij-p/) |
-| 3 | Fix duplicate BBj output channel (LanguageClient) | 2026-02-08 | 16944c0 | [3-fix-duplicate-bbj-output-channel-ensure-](./quick/3-fix-duplicate-bbj-output-channel-ensure-/) |
-| 4 | Fix IntelliJ BUI/DWC passing empty string as config argument | 2026-02-08 | 79f20a0 | [4-fix-intellij-bui-dwc-passing-dash-as-con](./quick/4-fix-intellij-bui-dwc-passing-dash-as-con/) |
-| 5 | Fix EM token expiration — JWT expiry check and server-side validation before usage | 2026-02-09 | 34cee89 | [5-fix-em-token-expiration-jwt-expiry-check](./quick/5-fix-em-token-expiration-jwt-expiry-check/) |
 
 ---
 
@@ -93,13 +94,12 @@ None currently identified.
 ### What Just Happened
 
 - Milestone v3.5 started — Documentation for 0.8.0 Release
-- Restructuring docs site for dual-IDE coverage (VS Code + IntelliJ)
-- Removing Developer Guide from public site, removing stale Roadmap
-- Auditing user guide pages for accuracy
+- Roadmap created with 4 phases (44-47): Site Chrome, IntelliJ Guide, VS Code Audit, Cleanup
+- All 16 v3.5 requirements mapped to phases (100% coverage)
 
 ### What's Next
 
-**Immediate:** Define requirements and create roadmap for v3.5
+**Immediate:** Plan Phase 44 (Site Chrome for Dual-IDE Support)
 
 ### Context for Next Session
 
@@ -108,6 +108,7 @@ None currently identified.
 **Codebase size:** ~23,000 LOC TypeScript
 **Test coverage:** 88% with V8 coverage (468 passing, 6 failing pre-existing)
 **Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
+**Documentation:** Docusaurus site at bbj-language-server/docs/
 
 ---
 
@@ -133,4 +134,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after v3.5 milestone started*
+*State updated: 2026-02-09 after v3.5 roadmap created*
