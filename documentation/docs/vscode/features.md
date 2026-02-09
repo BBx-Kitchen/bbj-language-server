@@ -101,7 +101,6 @@ Format the document with `Shift+Alt+F` or configure format-on-save.
 | Command | Shortcut | Description |
 |---------|----------|-------------|
 | Compile | `Alt+C` | Compile BBj program to bytecode |
-| Decompile | `Alt+X` | Decompile compiled BBj program |
 | Denumber | `Alt+N` | Remove line numbers from program |
 
 ### Configuration Commands
@@ -140,9 +139,10 @@ The extension supports multiple BBj file types:
 | Extension | Description |
 |-----------|-------------|
 | `.bbj` | BBj source files |
-| `.bbl` | BBj library files |
 | `.bbjt` | BBj template files |
-| `.bbx` | BBj configuration files |
+| `.src` | BBj source files (legacy) |
+| `.bbx` | BBx configuration files |
+| `.bbl` | BBj library files (syntax highlighting only; excluded from code intelligence features) |
 
 ## Workspace Features
 
