@@ -19,7 +19,7 @@ const config: Config = {
   projectName: 'bbj-language-server',
   trailingSlash: false,
 
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
 
   i18n: {
     defaultLocale: 'en',
