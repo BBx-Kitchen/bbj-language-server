@@ -244,6 +244,83 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
+     * Returns the path to the bundled em-validate-token.bbj script.
+     * This file is bundled at lib/tools/em-validate-token.bbj relative to the plugin installation.
+     *
+     * @return absolute path to em-validate-token.bbj, or null if not found
+     */
+    @Nullable
+    private String getEmValidateBbjPath() {
+        try {
+            com.intellij.openapi.extensions.PluginId pluginId = com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj");
+            if (pluginId == null) {
+                return null;
+            }
+            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(pluginId);
+            if (plugin == null) {
+                return null;
+            }
+            java.nio.file.Path emValidatePath = plugin.getPluginPath().resolve("lib/tools/em-validate-token.bbj");
+            return java.nio.file.Files.exists(emValidatePath) ? emValidatePath.toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Validate a token server-side against EM by running em-validate-token.bbj.
+     * Returns true if token is valid, false otherwise.
+     *
+     * @param project the current project
+     * @param token the JWT token to validate
+     * @return true if valid, false otherwise
+     */
+    protected boolean validateTokenServerSide(@NotNull Project project, @NotNull String token) {
+        try {
+            String bbjPath = getBbjExecutablePath();
+            if (bbjPath == null) {
+                return false;
+            }
+
+            String emValidatePath = getEmValidateBbjPath();
+            if (emValidatePath == null) {
+                return false;
+            }
+
+            // Build command: bbj -q -tIO em-validate-token.bbj - <token>
+            GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
+            cmd.addParameter("-q");
+            cmd.addParameter("-tIO");
+            cmd.addParameter(emValidatePath);
+            cmd.addParameter("-");
+            cmd.addParameter(token);
+
+            // Execute with 10s timeout
+            com.intellij.execution.process.CapturingProcessHandler handler =
+                new com.intellij.execution.process.CapturingProcessHandler(cmd);
+            com.intellij.execution.process.ProcessOutput output = handler.runProcess(10000);
+
+            // Parse stdout: take last non-empty line
+            String stdout = output.getStdout();
+            String[] lines = stdout.split("\n");
+            String result = "";
+            for (int i = lines.length - 1; i >= 0; i--) {
+                String line = lines[i].trim();
+                if (!line.isEmpty()) {
+                    result = line;
+                    break;
+                }
+            }
+
+            // Return true only if output is "VALID"
+            return "VALID".equals(result);
+        } catch (Exception e) {
+            // On any error, consider token invalid
+            return false;
+        }
+    }
+
+    /**
      * Returns the config.bbx path argument from settings, formatted for BBj command line.
      *
      * @return "-c<path>" if configPath is configured, or null if empty

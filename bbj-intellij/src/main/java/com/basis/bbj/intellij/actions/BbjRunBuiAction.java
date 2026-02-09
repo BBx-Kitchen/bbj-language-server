@@ -71,6 +71,38 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
             }
         }
 
+        // Client-side JWT expiry check (fast path)
+        if (BbjEMTokenStore.isTokenExpired(token)) {
+            BbjEMTokenStore.deleteToken();
+            token = null;
+        }
+
+        // Server-side validation (catches revoked tokens too)
+        if (token != null && !validateTokenServerSide(project, token)) {
+            BbjEMTokenStore.deleteToken();
+            token = null;
+        }
+
+        // If token was invalidated, re-prompt login
+        if (token == null) {
+            int result = Messages.showYesNoDialog(
+                project,
+                "EM token expired or invalid. Login again?",
+                "Enterprise Manager Token Invalid",
+                Messages.getQuestionIcon()
+            );
+            if (result == Messages.YES) {
+                boolean loginOk = BbjEMLoginAction.performLogin(project);
+                if (loginOk) {
+                    token = BbjEMTokenStore.getToken();
+                }
+            }
+            if (token == null || token.isEmpty()) {
+                logError(project, "EM login required for BUI run.");
+                return null;
+            }
+        }
+
         // Get classpath from settings
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String classpath = state.classpathEntry != null ? state.classpathEntry : "";
