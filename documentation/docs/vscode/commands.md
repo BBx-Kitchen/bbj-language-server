@@ -31,7 +31,7 @@ Runs the current BBj program as a BUI (Browser User Interface) web application.
 - Open a `.bbj` file
 - Press `Alt+B` or right-click and select "Run as BUI"
 
-**Note:** Requires BUI configuration in BBj Enterprise Manager.
+**Note:** Requires BUI configuration in BBj Enterprise Manager and authentication via `BBj: Login to Enterprise Manager`.
 
 ### Run as DWC (`Alt+D`)
 
@@ -42,6 +42,8 @@ Runs the current BBj program as a DWC (Dynamic Web Client) application.
 **Usage:**
 - Open a `.bbj` file
 - Press `Alt+D` or right-click and select "Run as DWC"
+
+**Note:** Requires Enterprise Manager authentication via `BBj: Login to Enterprise Manager`.
 
 ## Build Commands
 
@@ -56,16 +58,6 @@ Compiles the current BBj source file to bytecode.
 - Press `Alt+C` or right-click and select "Compile"
 
 **Output:** Creates a compiled `.bbj` file (tokenized format).
-
-### Decompile (`Alt+X`)
-
-Decompiles a compiled BBj program back to source code.
-
-**Command ID:** `bbj.decompile`
-
-**Usage:**
-- Open a compiled `.bbj` file
-- Press `Alt+X` or right-click and select "Decompile"
 
 ### Denumber (`Alt+N`)
 
@@ -123,6 +115,36 @@ Displays available classpath entries configured in BBj Enterprise Manager.
 
 **Usage:** Useful for verifying which classpath entries are available for Java class resolution.
 
+### Login to Enterprise Manager
+
+Authenticates with BBj Enterprise Manager and stores the JWT token for BUI/DWC run commands.
+
+**Command ID:** `bbj.loginEM`
+
+**Usage:**
+1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Type "BBj: Login to Enterprise Manager"
+3. Enter your Enterprise Manager username and password
+4. Token is stored securely in VS Code's SecretStorage
+
+**Required for:** Running BUI and DWC programs. Token persists across VS Code restarts.
+
+### Refresh Java Classes
+
+Reloads the Java classpath and clears cached class information.
+
+**Command ID:** `bbj.refreshJavaClasses`
+
+**Usage:** Run from the Command Palette when Java classes are not appearing in code completion, or after classpath changes in Enterprise Manager.
+
+### Configure Compile Options
+
+Opens a settings dialog to configure BBj compiler options (type checking, line numbering, output settings, content protection, and diagnostics).
+
+**Command ID:** `bbj.configureCompileOptions`
+
+**Usage:** Run from the Command Palette to configure compiler flags before compiling.
+
 ## Keyboard Shortcuts Summary
 
 | Command | Windows/Linux | macOS |
@@ -131,7 +153,6 @@ Displays available classpath entries configured in BBj Enterprise Manager.
 | Run as BUI | `Alt+B` | `Alt+B` |
 | Run as DWC | `Alt+D` | `Alt+D` |
 | Compile | `Alt+C` | `Alt+C` |
-| Decompile | `Alt+X` | `Alt+X` |
 | Denumber | `Alt+N` | `Alt+N` |
 
 ## Command Palette
@@ -150,7 +171,6 @@ Right-click in a BBj file editor to access:
 - Run as BUI
 - Run as DWC
 - Compile
-- Decompile
 - Denumber
 
 ### Explorer Context Menu
@@ -182,7 +202,7 @@ For commands to work properly, ensure:
 1. **BBj Home** is configured (`bbj.home` setting)
 2. **BBjServices** is running
 3. **Java** is available in PATH
-4. **Enterprise Manager** is accessible (for BUI/DWC)
+4. **Enterprise Manager** is accessible and authenticated (for BUI/DWC commands - use `BBj: Login to Enterprise Manager`)
 
 ## Troubleshooting
 
@@ -198,7 +218,14 @@ For commands to work properly, ensure:
 2. Verify program file has no syntax errors
 3. Check BBj configuration files
 
-### Compile/Decompile Issues
+### BUI/DWC Commands Fail
+
+If BUI or DWC run commands fail:
+1. Verify Enterprise Manager is accessible at the configured EM URL
+2. Authenticate using `BBj: Login to Enterprise Manager` from the Command Palette
+3. Check if the token has expired (re-authenticate if needed)
+
+### Compile Issues
 
 1. Verify Java is installed and in PATH
 2. Check file permissions
