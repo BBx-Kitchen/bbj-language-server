@@ -121,7 +121,15 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — all 0.8.0 issues closed)
+<!-- Current scope: v3.5 Documentation for 0.8.0 Release -->
+
+- [ ] Restructure docs site for dual-IDE coverage (VS Code + IntelliJ)
+- [ ] Create separate IntelliJ User Guide section
+- [ ] Audit all user-facing pages for accuracy against actual codebase
+- [ ] Update site-wide chrome (tagline, navbar, footer, marketplace links)
+- [ ] Remove Developer Guide from public docs site
+- [ ] Remove stale Roadmap page
+- [ ] Document EM token authentication and new settings
 
 ### Out of Scope
 
@@ -238,5 +246,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Remove ? 'HIDE' from BBj scripts | BBj print statement corrupts stdout capture of JWT tokens | ✓ Good — v3.4 shipped |
 | Config path as ARGV(9) to web.bbj | Backward-compatible parameter passing; empty = default config | ✓ Good — v3.4 shipped |
 
+## Current Milestone: v3.5 Documentation for 0.8.0 Release
+
+**Goal:** Restructure the Docusaurus documentation site for dual-IDE coverage (VS Code + IntelliJ), audit user guide pages for accuracy, remove developer guide from public site, and update site chrome — ready for 0.8.0 release.
+
+**Target features:**
+- Separate IntelliJ User Guide section with getting started, features, configuration, and commands
+- Accuracy audit of all VS Code user guide pages against actual codebase (remove phantom features, add missing ones)
+- EM token authentication and new settings documented (config.bbx, interop host/port, debug flag, type resolution warnings)
+- Developer Guide removed from public docs site (stays in repo)
+- Roadmap page removed (stale)
+- Site-wide updates: tagline, navbar, footer, JetBrains Marketplace link
+
 ---
-*Last updated: 2026-02-08 after v3.4 milestone shipped*
+*Last updated: 2026-02-09 after v3.5 milestone started*

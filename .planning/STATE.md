@@ -4,22 +4,20 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-08)
+See: .planning/PROJECT.md (updated 2026-02-09)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.4 shipped — planning next milestone
+**Current Focus:** v3.5 Documentation for 0.8.0 Release
 
 ---
 
 ## Current Position
 
-Phase: 43 of 43 (Run Command Fixes)
-Plan: 1 of 1 in current phase
-Status: Milestone complete
-Last activity: 2026-02-09 - Completed quick task 5: Fix EM token expiration — JWT expiry check and server-side validation before usage
-
-Progress: [████████████████████] 100% (110 plans shipped)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-09 — Milestone v3.5 started
 
 ---
 
@@ -94,14 +92,14 @@ None currently identified.
 
 ### What Just Happened
 
-- Milestone v3.4 shipped — all 7 GitHub issues tagged 0.8.0 closed
-- Phases 40-43 completed: parser fix, .bbl exclusion, toolbar polish, run command fixes
-- Token auth corruption root-caused and fixed (? 'HIDE' in BBj scripts)
-- Config.bbx path support added to all run commands in both IDEs
+- Milestone v3.5 started — Documentation for 0.8.0 Release
+- Restructuring docs site for dual-IDE coverage (VS Code + IntelliJ)
+- Removing Developer Guide from public site, removing stale Roadmap
+- Auditing user guide pages for accuracy
 
 ### What's Next
 
-**Immediate:** Run `/gsd:new-milestone` to start next milestone or release 0.8.0
+**Immediate:** Define requirements and create roadmap for v3.5
 
 ### Context for Next Session
 
@@ -135,4 +133,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-08 after v3.4 milestone shipped*
+*State updated: 2026-02-09 after v3.5 milestone started*
