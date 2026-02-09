@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 ## Current Position
 
 Phase: 46 of 47 (VS Code User Guide Audit)
-Plan: 1 of 2 complete
-Status: Executing Phase 46
-Last activity: 2026-02-09 — Completed 46-01 (VS Code audit: phantom features removed, file types corrected)
+Plan: All complete
+Status: Phase verified — ready for Phase 47
+Last activity: 2026-02-09 — Completed 46-02 (VS Code config/commands audit: token auth, v3.x settings/commands)
 
-Progress: [██████████████████████████████████████████░░] 95% (45 of 47 phases complete)
+Progress: [██████████████████████████████████████████░░] 96% (46 of 47 phases complete)
 
 ---
 
@@ -29,8 +29,8 @@ Progress: [███████████████████████
 
 **Started:** 2026-02-01
 **Milestones shipped:** 12
-**Phases completed:** 45
-**Plans completed:** 116
+**Phases completed:** 46
+**Plans completed:** 117
 **Days elapsed:** 8
 **Velocity:** ~14 plans/day
 
@@ -69,16 +69,16 @@ Progress: [███████████████████████
 ### Decisions
 
 Recent decisions affecting v3.5:
+- 46-02: Document token-based EM auth via bbj.loginEM command instead of plaintext password settings
+- 46-02: Remove manual gradlew instructions as Java interop service is managed by BBjServices
+- 46-02: Add note that compiler options are configured through UI command, not manually in settings.json
+- 45-02: Document Settings UI path as Languages & Frameworks > BBj (IntelliJ native UI, not JSON)
+- 45-02: Log Level dropdown (Error/Warn/Info/Debug) documented instead of bbj.debug flag
 - 44-02: Set onBrokenLinks to 'warn' temporarily during directory restructuring
 - 44-02: Three hero buttons with equal visual weight for dual-IDE parity
 - 44-02: Removed decompile reference to reflect actual v3.x commands
-- v3.4: Generic LONGER_ALT order for all keyword-prefixed identifiers with type suffixes
-- v3.4: Config path as ARGV(9) to web.bbj for backward-compatible parameter passing
-- v3.3: Quiet startup via temporary ERROR level override until first document validation
 
 Full decision log in PROJECT.md Key Decisions table.
-- [Phase 45]: Document Settings UI path as Languages & Frameworks > BBj (IntelliJ native UI, not JSON)
-- [Phase 45]: Log Level dropdown (Error/Warn/Info/Debug) documented instead of bbj.debug flag
 
 ### Tech Debt
 
@@ -98,15 +98,15 @@ None currently identified.
 
 ### What Just Happened
 
-- Phase 46 Plan 01 executed (2 tasks, 2 commits, 81s)
-  - Removed phantom Decompile command from Features page
-  - Fixed file types table: added .src, corrected .bbl exclusion note
-  - Fixed classpath default value from "default" to "bbj_default"
-  - Removed misleading manual gradlew service instructions
+- Phase 46 executed and completed (2 plans, 4 commits, 252s)
+  - 46-01: Removed phantom Decompile, fixed file types, corrected classpath default (81s)
+  - 46-02: Audited Configuration/Commands pages, removed phantom settings/commands, added v3.x features (171s)
+  - VS Code User Guide now accurately reflects v3.x capabilities
+  - Token-based EM authentication documented, all v3.x settings/commands added
 
 ### What's Next
 
-**Immediate:** Execute Phase 46 Plan 02 (VS Code Configuration Settings Documentation)
+**Immediate:** Plan Phase 47 (Final phase of v3.5 Documentation)
 
 ### Context for Next Session
 
@@ -135,7 +135,7 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 
-**Total velocity:** 116 plans across 12 milestones in 8 days
+**Total velocity:** 117 plans across 12 milestones in 8 days
 
 See: `.planning/MILESTONES.md`
 
@@ -144,6 +144,7 @@ See: `.planning/MILESTONES.md`
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | 46-01 | 81s | 2 | 2 |
+| 46-02 | 171s | 2 | 2 |
 
 ### Phase 45 Execution
 
@@ -161,5 +162,5 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after completing 46-01-PLAN.md*
+*State updated: 2026-02-09 after completing 46-02-PLAN.md*
 
