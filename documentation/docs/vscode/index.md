@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
-title: User Guide
-slug: /user-guide
+title: VS Code Guide
+slug: /vscode
 ---
 
-# User Guide
+# VS Code Guide
 
 Welcome to the BBj Language Server extension for Visual Studio Code. This guide covers everything you need to know to install, configure, and use the extension effectively.
 
 ## What is BBj Language Server?
 
-The BBj Language Server provides comprehensive IDE support for BBj development, including:
+The BBj Language Server provides comprehensive IDE support for BBj development in VS Code, including:
 
 - **Intelligent code completion** for BBj keywords, functions, and Java classes
 - **Real-time validation** to catch errors as you type
@@ -38,4 +38,3 @@ The BBj Language Server provides comprehensive IDE support for BBj development, 
 
 - [GitHub Issues](https://github.com/BBx-Kitchen/bbj-language-server/issues) - Report bugs or request features
 - [BBj Documentation](https://documentation.basis.cloud/BASISHelp/WebHelp/bbjoverview/bbjoverview.htm) - Official BBj reference
-- [Roadmap](/docs/roadmap) - See planned features and improvements

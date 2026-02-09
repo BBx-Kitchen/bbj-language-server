@@ -129,4 +129,3 @@ cd java-interop
 
 - Learn about [Features](./features) available in the extension
 - Configure [Extension Settings](./configuration)
-- Explore the [Architecture](/docs/developer-guide/architecture/overview) of the language server (Developer Guide)
