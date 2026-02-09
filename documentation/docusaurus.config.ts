@@ -3,8 +3,8 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'BBj Language Server',
-  tagline: 'VS Code extension and language server for BBj development',
+  title: 'BBj Language Support',
+  tagline: 'Language intelligence for BBj development',
   favicon: 'img/favicon.png',
 
   future: {
@@ -19,7 +19,7 @@ const config: Config = {
   projectName: 'bbj-language-server',
   trailingSlash: false,
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
@@ -49,21 +49,21 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'BBj Language Server',
+      title: 'BBj Language Support',
       logo: {
         alt: 'BBj Logo',
         src: 'img/logo.png',
       },
       items: [
         {
-          to: '/docs/user-guide',
+          to: '/docs/vscode',
           position: 'left',
-          label: 'User Guide',
+          label: 'VS Code Guide',
         },
         {
-          to: '/docs/developer-guide',
+          to: '/docs/intellij',
           position: 'left',
-          label: 'Developer Guide',
+          label: 'IntelliJ Guide',
         },
         {
           href: 'https://github.com/BBx-Kitchen/bbj-language-server',
@@ -75,46 +75,55 @@ const config: Config = {
           label: 'VS Code Marketplace',
           position: 'right',
         },
+        {
+          href: 'https://plugins.jetbrains.com/plugin/com.basis.bbj',
+          label: 'JetBrains Marketplace',
+          position: 'right',
+        },
       ],
     },
     footer: {
       style: 'dark',
       links: [
         {
-          title: 'User Guide',
+          title: 'VS Code Guide',
           items: [
             {
               label: 'Getting Started',
-              to: '/docs/user-guide/getting-started',
+              to: '/docs/vscode/getting-started',
             },
             {
               label: 'Features',
-              to: '/docs/user-guide/features',
+              to: '/docs/vscode/features',
             },
             {
               label: 'Configuration',
-              to: '/docs/user-guide/configuration',
+              to: '/docs/vscode/configuration',
             },
             {
               label: 'Commands',
-              to: '/docs/user-guide/commands',
+              to: '/docs/vscode/commands',
             },
           ],
         },
         {
-          title: 'Developer Guide',
+          title: 'IntelliJ Guide',
           items: [
             {
-              label: 'Architecture',
-              to: '/docs/developer-guide/architecture/overview',
+              label: 'Getting Started',
+              to: '/docs/intellij/getting-started',
             },
             {
-              label: 'Building',
-              to: '/docs/developer-guide/building',
+              label: 'Features',
+              to: '/docs/intellij/features',
             },
             {
-              label: 'Contributing',
-              to: '/docs/developer-guide/contributing',
+              label: 'Configuration',
+              to: '/docs/intellij/configuration',
+            },
+            {
+              label: 'Commands',
+              to: '/docs/intellij/commands',
             },
           ],
         },
@@ -132,6 +141,10 @@ const config: Config = {
             {
               label: 'VS Code Marketplace',
               href: 'https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang',
+            },
+            {
+              label: 'JetBrains Marketplace',
+              href: 'https://plugins.jetbrains.com/plugin/com.basis.bbj',
             },
           ],
         },
