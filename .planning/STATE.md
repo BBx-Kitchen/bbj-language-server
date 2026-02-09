@@ -1,6 +1,6 @@
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-08
+**Last Updated:** 2026-02-09
 
 ## Project Reference
 
@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-08)
 Phase: 43 of 43 (Run Command Fixes)
 Plan: 1 of 1 in current phase
 Status: Milestone complete
-Last activity: 2026-02-08 - Completed quick task 4: Fix IntelliJ BUI/DWC passing empty string as config argument
+Last activity: 2026-02-09 - Completed quick task 5: Fix EM token expiration JWT expiry check
 
 Progress: [████████████████████] 100% (110 plans shipped)
 
@@ -86,6 +86,7 @@ None currently identified.
 | 2 | Fix em-login.bbj not found in IntelliJ plugin bundle | 2026-02-08 | 24804d4 | [2-fix-em-login-bbj-not-found-in-intellij-p](./quick/2-fix-em-login-bbj-not-found-in-intellij-p/) |
 | 3 | Fix duplicate BBj output channel (LanguageClient) | 2026-02-08 | 16944c0 | [3-fix-duplicate-bbj-output-channel-ensure-](./quick/3-fix-duplicate-bbj-output-channel-ensure-/) |
 | 4 | Fix IntelliJ BUI/DWC passing empty string as config argument | 2026-02-08 | 79f20a0 | [4-fix-intellij-bui-dwc-passing-dash-as-con](./quick/4-fix-intellij-bui-dwc-passing-dash-as-con/) |
+| 5 | Fix EM token expiration JWT expiry check | 2026-02-09 | 3a17f15 | [5-fix-em-token-expiration-jwt-expiry-check](./quick/5-fix-em-token-expiration-jwt-expiry-check/) |
 
 ---
 
