@@ -70,11 +70,11 @@ To enable Java class completions, configure the classpath:
 
 ```json
 {
-  "bbj.classpath": "default"
+  "bbj.classpath": "bbj_default"
 }
 ```
 
-The extension will automatically detect classpath entries from your BBj installation.
+The extension will automatically detect classpath entries from your BBj installation. Run the command "BBj: Show Available Classpath Entries" to see all available options.
 
 ## Testing Your Setup
 
@@ -112,18 +112,13 @@ If features like completion aren't working:
 
 ### Java Integration Not Working
 
-The Java interop service requires:
+The Java interop service starts automatically with the extension and requires:
 
 1. BBjServices to be running
 2. Proper `bbj.home` configuration
 3. Valid classpath configuration
 
-Start the interop service manually if needed:
-
-```bash
-cd java-interop
-./gradlew run
-```
+The Java interop service manages Java class completions and method signatures automatically.
 
 ## Next Steps
 
