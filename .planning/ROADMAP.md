@@ -140,10 +140,11 @@ Research-only milestone — no phases.
   2. JetBrains Marketplace link appears in navbar and footer alongside VS Code Marketplace
   3. Developer Guide is removed from navbar and footer navigation
   4. Landing page presents both IDEs with equal marketplace link prominence
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 44-01: TBD
+- [ ] 44-01-PLAN.md — Restructure docs directories (move user-guide to vscode/, create intellij/ stubs, delete developer-guide/)
+- [ ] 44-02-PLAN.md — Update site config, navbar, footer, and landing page for dual-IDE presentation
 
 #### Phase 45: IntelliJ User Guide Creation
 **Goal**: IntelliJ users have complete documentation covering getting started, features, configuration, and commands
