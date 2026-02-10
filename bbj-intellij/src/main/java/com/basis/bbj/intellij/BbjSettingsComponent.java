@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.ComponentValidator;
@@ -65,7 +66,7 @@ public class BbjSettingsComponent {
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
-        var nodeFileDescriptor = FileChooserDescriptorFactory.createSingleFileDescriptor()
+        var nodeFileDescriptor = new FileChooserDescriptor(true, false, false, false, false, false)
                 .withTitle("Select Node.js Executable")
                 .withDescription("Choose the Node.js binary");
         nodeJsField.addBrowseFolderListener(new TextBrowseFolderListener(nodeFileDescriptor, null));
