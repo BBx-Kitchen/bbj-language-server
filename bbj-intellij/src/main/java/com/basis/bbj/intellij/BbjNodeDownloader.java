@@ -14,6 +14,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.HttpRequests;
+import com.intellij.util.system.CpuArch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -229,11 +230,11 @@ public final class BbjNodeDownloader {
 
     private static @NotNull String getArchitecture() {
         // Check ARM64 first - works on all platforms (macOS, Linux, Windows)
-        if (SystemInfo.isAarch64) {
+        if (CpuArch.isArm64()) {
             return "arm64";
         }
         // Fall through to x64 for all other 64-bit systems
-        if (!SystemInfo.is64Bit) {
+        if (CpuArch.CURRENT.width != 64) {
             throw new UnsupportedOperationException("32-bit systems are not supported");
         }
         return "x64";
