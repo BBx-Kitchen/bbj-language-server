@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.ui.ComboBox;
 import com.intellij.openapi.ui.ComponentValidator;
+import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.ui.CollectionComboBoxModel;
@@ -41,12 +42,10 @@ public class BbjSettingsComponent {
     public BbjSettingsComponent(@NotNull Disposable parentDisposable) {
         // --- BBj Home field ---
         bbjHomeField = new TextFieldWithBrowseButton();
-        bbjHomeField.addBrowseFolderListener(
-            "Select BBj Home Directory",
-            "Choose the root directory of your BBj installation",
-            null,
-            FileChooserDescriptorFactory.createSingleFolderDescriptor()
-        );
+        var bbjFolderDescriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                .withTitle("Select BBj Home Directory")
+                .withDescription("Choose the root directory of your BBj installation");
+        bbjHomeField.addBrowseFolderListener(new TextBrowseFolderListener(bbjFolderDescriptor, null));
 
         new ComponentValidator(parentDisposable)
             .withValidator(() -> {
@@ -66,12 +65,10 @@ public class BbjSettingsComponent {
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
-        nodeJsField.addBrowseFolderListener(
-            "Select Node.js Executable",
-            "Choose the Node.js binary",
-            null,
-            FileChooserDescriptorFactory.createSingleLocalFileDescriptor()
-        );
+        var nodeFileDescriptor = FileChooserDescriptorFactory.createSingleFileDescriptor()
+                .withTitle("Select Node.js Executable")
+                .withDescription("Choose the Node.js binary");
+        nodeJsField.addBrowseFolderListener(new TextBrowseFolderListener(nodeFileDescriptor, null));
 
         nodeVersionLabel = new JBLabel(" ");
 
