@@ -16,13 +16,13 @@ Requirements for IntelliJ Platform API compatibility. Each maps to roadmap phase
 
 ### Compatibility — Deprecated
 
-- [ ] **COMPAT-05**: Replace `ProcessAdapter` class with `ProcessListener` interface in `BbjRunActionBase`
-- [ ] **COMPAT-06**: Replace `LanguageCodeStyleSettingsProvider.getDefaultCommonSettings()` with current code style API in `BbjLanguageCodeStyleSettingsProvider`
+- [x] **COMPAT-05**: Replace `ProcessAdapter` class with `ProcessListener` interface in `BbjRunActionBase`
+- [x] **COMPAT-06**: Replace `LanguageCodeStyleSettingsProvider.getDefaultCommonSettings()` with current code style API in `BbjLanguageCodeStyleSettingsProvider`
 
 ### Verification
 
-- [ ] **VERIFY-01**: Plugin verifier reports 0 scheduled-for-removal API usages
-- [ ] **VERIFY-02**: Plugin verifier reports 0 deprecated API usages
+- [x] **VERIFY-01**: Plugin verifier reports 0 scheduled-for-removal API usages
+- [x] **VERIFY-02**: Plugin verifier reports 0 deprecated API usages
 
 ## Future Requirements
 
@@ -47,10 +47,10 @@ Requirements for IntelliJ Platform API compatibility. Each maps to roadmap phase
 | COMPAT-02 | Phase 48 | ✓ Done |
 | COMPAT-03 | Phase 48 | ✓ Done |
 | COMPAT-04 | Phase 48 | ✓ Done |
-| COMPAT-05 | Phase 49 | Pending |
-| COMPAT-06 | Phase 49 | Pending |
-| VERIFY-01 | Phase 49 | Pending |
-| VERIFY-02 | Phase 49 | Pending |
+| COMPAT-05 | Phase 49 | ✓ Done |
+| COMPAT-06 | Phase 49 | ✓ Done |
+| VERIFY-01 | Phase 49 | ✓ Done |
+| VERIFY-02 | Phase 49 | ✓ Done |
 
 **Coverage:**
 - v3.6 requirements: 8 total
