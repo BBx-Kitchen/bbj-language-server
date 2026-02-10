@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 Phase: None — between milestones
 Plan: N/A
 Status: v3.5 Documentation for 0.8.0 Release shipped
-Last activity: 2026-02-09 - Completed quick task 7: Add client info string to EM auth token
+Last activity: 2026-02-10 - Completed quick task 8: Fix documentation links
 
 Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
 
@@ -86,6 +86,7 @@ None currently identified.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 8 | Fix documentation links: correct JetBrains Marketplace and BBj Documentation URLs | 2026-02-10 | c8b4b91 | [8-fix-documentation-links-add-jetbrains-ma](./quick/8-fix-documentation-links-add-jetbrains-ma/) |
 | 7 | Add client info string to EM auth token: include OS and IDE info (e.g. "MacOS VS Code") in token payload | 2026-02-09 | 3f6aa1f | [7-add-client-info-string-to-em-auth-token-](./quick/7-add-client-info-string-to-em-auth-token-/) |
 | 6 | Fix em-login.bbj and em-validate-token.bbj Windows compatibility: replace -tIO with GUI client using PRINT HIDE and temp file output | 2026-02-09 | 5cb33ab | [6-fix-em-login-bbj-and-em-validate-token-b](./quick/6-fix-em-login-bbj-and-em-validate-token-b/) |
 
