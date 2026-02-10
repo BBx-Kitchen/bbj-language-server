@@ -175,10 +175,10 @@ Plans:
   3. Plugin verifier reports 0 scheduled-for-removal API usages
   4. Plugin verifier reports 0 deprecated API usages
 
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 49-01: TBD
+- [ ] 49-01-PLAN.md — Replace ProcessAdapter with ProcessListener, replace getDefaultCommonSettings with customizeDefaults, run plugin verifier
 
 ## Progress
 
@@ -196,10 +196,10 @@ Plans:
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 | 40-43 | v3.4 0.8.0 Issue Closure | 4 | ✓ Complete | 2026-02-08 |
 | 44-47 | v3.5 Documentation | 7 | ✓ Complete | 2026-02-09 |
-| 48-49 | v3.6 API Compatibility | 1/? | ◆ In progress | - |
+| 48-49 | v3.6 API Compatibility | 1/2 | ◆ In progress | - |
 
 **Total:** 13 milestones shipped, 47 phases complete, 119 plans shipped
 
 ---
 
-*Roadmap last updated: 2026-02-10 after v3.6 roadmap created*
+*Roadmap last updated: 2026-02-10 after Phase 49 planning*
