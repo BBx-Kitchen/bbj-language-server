@@ -37,4 +37,4 @@ The BBj Language Server provides comprehensive IDE support for BBj development i
 ## Getting Help
 
 - [GitHub Issues](https://github.com/BBx-Kitchen/bbj-language-server/issues) - Report bugs or request features
-- [BBj Documentation](https://documentation.basis.cloud/BASISHelp/WebHelp/bbjoverview/bbjoverview.htm) - Official BBj reference
+- [BBj Documentation](https://documentation.basis.cloud/BASISHelp/WebHelp/index.htm) - Official BBj reference

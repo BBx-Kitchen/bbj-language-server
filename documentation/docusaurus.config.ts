@@ -76,7 +76,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://plugins.jetbrains.com/plugin/com.basis.bbj',
+          href: 'https://plugins.jetbrains.com/plugin/30033-bbj-language-support',
           label: 'JetBrains Marketplace',
           position: 'right',
         },
@@ -132,7 +132,7 @@ const config: Config = {
           items: [
             {
               label: 'BBj Documentation',
-              href: 'https://documentation.basis.cloud/BASISHelp/WebHelp/bbjoverview/bbjoverview.htm',
+              href: 'https://documentation.basis.cloud/BASISHelp/WebHelp/index.htm',
             },
             {
               label: 'GitHub',
@@ -144,7 +144,7 @@ const config: Config = {
             },
             {
               label: 'JetBrains Marketplace',
-              href: 'https://plugins.jetbrains.com/plugin/com.basis.bbj',
+              href: 'https://plugins.jetbrains.com/plugin/30033-bbj-language-support',
             },
           ],
         },

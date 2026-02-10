@@ -28,7 +28,7 @@ function HomepageHeader() {
           </Link>
           <Link
             className="button button--secondary button--lg"
-            href="https://plugins.jetbrains.com/plugin/com.basis.bbj">
+            href="https://plugins.jetbrains.com/plugin/30033-bbj-language-support">
             JetBrains Marketplace
           </Link>
         </div>
