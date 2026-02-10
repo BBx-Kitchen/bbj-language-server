@@ -18,11 +18,10 @@ public class BbjLanguageCodeStyleSettingsProvider extends LanguageCodeStyleSetti
     }
 
     @Override
-    public CommonCodeStyleSettings getDefaultCommonSettings() {
-        CommonCodeStyleSettings settings = new CommonCodeStyleSettings(BbjLanguage.INSTANCE);
-        settings.LINE_COMMENT_AT_FIRST_COLUMN = true;
-        settings.BLOCK_COMMENT_AT_FIRST_COLUMN = true;
-        return settings;
+    protected void customizeDefaults(@NotNull CommonCodeStyleSettings commonSettings,
+                                      @NotNull CommonCodeStyleSettings.IndentOptions indentOptions) {
+        commonSettings.LINE_COMMENT_AT_FIRST_COLUMN = true;
+        commonSettings.BLOCK_COMMENT_AT_FIRST_COLUMN = true;
     }
 
     @Override

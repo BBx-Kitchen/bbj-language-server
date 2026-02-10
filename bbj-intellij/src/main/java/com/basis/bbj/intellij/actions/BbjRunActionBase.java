@@ -5,7 +5,7 @@ import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.OSProcessHandler;
-import com.intellij.execution.process.ProcessAdapter;
+import com.intellij.execution.process.ProcessListener;
 import com.intellij.execution.process.ProcessEvent;
 import com.intellij.execution.process.ProcessOutputTypes;
 import com.intellij.execution.ui.ConsoleViewContentType;
@@ -68,8 +68,8 @@ public abstract class BbjRunActionBase extends AnAction {
             try {
                 OSProcessHandler handler = new OSProcessHandler(cmd);
 
-                // Attach ProcessAdapter BEFORE startNotify() to capture all output
-                handler.addProcessListener(new ProcessAdapter() {
+                // Attach ProcessListener BEFORE startNotify() to capture all output
+                handler.addProcessListener(new ProcessListener() {
                     @Override
                     public void onTextAvailable(@NotNull ProcessEvent event, @NotNull Key outputType) {
                         if (outputType == ProcessOutputTypes.STDERR) {
