@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.6 IntelliJ Platform API Compatibility — Phase 48: Fix Scheduled-for-Removal APIs
+**Current Focus:** v3.6 IntelliJ Platform API Compatibility — Phase 49: Fix Deprecated APIs and Verify
 
 ---
 
 ## Current Position
 
-Phase: 48 of 49 (Fix Scheduled-for-Removal APIs)
+Phase: 49 of 49 (Fix Deprecated APIs and Verify)
 Plan: 1 of 1 complete
-Status: Phase 48 complete
-Last activity: 2026-02-10 — Completed 48-01: Fix Scheduled-for-Removal APIs
+Status: Phase 49 complete
+Last activity: 2026-02-10 — Completed 49-01: Fix Deprecated APIs and Verify
 
-Progress: [████████████████████████████████████████████████░░] 97% (119/120 estimated plans)
+Progress: [██████████████████████████████████████████████████] 100% (120/120 estimated plans)
 
 ---
 
@@ -29,8 +29,8 @@ Progress: [███████████████████████
 
 **Started:** 2026-02-01
 **Milestones shipped:** 13
-**Phases completed:** 47
-**Plans completed:** 119
+**Phases completed:** 49
+**Plans completed:** 120
 **Days elapsed:** 9
 **Velocity:** ~13 plans/day
 
@@ -72,6 +72,9 @@ Progress: [███████████████████████
 Full decision log in PROJECT.md Key Decisions table.
 - [Phase 48]: Use TextBrowseFolderListener constructor pattern for browse folder listeners with title/description
 - [Phase 48]: Remove null check on PluginId.getId() result as it never returns null
+- [Phase 49]: Use ProcessListener interface instead of ProcessAdapter for process event handling
+- [Phase 49]: Use customizeDefaults() mutation pattern instead of getDefaultCommonSettings() for code style configuration
+- [Phase 49]: Use FileChooserDescriptor constructor pattern instead of deprecated factory methods
 
 ### Tech Debt
 
@@ -97,30 +100,34 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 
 ---
 | Phase 48 P01 | 180 | 2 tasks | 3 files |
+| Phase 49 P01 | 501 | 2 tasks | 3 files |
 
 ## Session Continuity
 
 ### What Just Happened
 
-- Completed Phase 48 Plan 01: Fix Scheduled-for-Removal APIs
-  - Replaced SystemInfo.is64Bit/isAarch64 with CpuArch API (COMPAT-01)
-  - Replaced PluginId.findId with PluginId.getId (COMPAT-02)
-  - Replaced 4-parameter addBrowseFolderListener with TextBrowseFolderListener (COMPAT-03)
-  - Replaced createSingleLocalFileDescriptor with createSingleFileDescriptor (COMPAT-04)
-- All 4 scheduled-for-removal API usages eliminated
+- Completed Phase 49 Plan 01: Fix Deprecated APIs and Verify
+  - Replaced ProcessAdapter with ProcessListener interface (COMPAT-05)
+  - Replaced getDefaultCommonSettings() with customizeDefaults() (COMPAT-06)
+  - Fixed deprecated createSingleFileDescriptor with FileChooserDescriptor constructor (bug from Phase 48)
+  - Ran plugin verifier across 6 IntelliJ IDE versions (2024.2 to 2026.1 EAP)
+  - Verified zero deprecated and zero scheduled-for-removal API usages (VERIFY-01, VERIFY-02)
+- v3.6 milestone complete: Zero IntelliJ Platform compatibility warnings
 - 3 files modified, 2 commits created
-- Duration: 180 seconds
+- Duration: 501 seconds
 
 ### What's Next
 
-**Immediate:** `/gsd:plan-phase 49` — Plan Phase 49 (Fix Deprecated APIs)
+**Immediate:** Milestone v3.6 complete — ready for release or next milestone planning
 
 ### Context for Next Session
 
-**Milestone focus:** IntelliJ Platform API compatibility (v3.6)
-**Phase 48 status:** Complete (1/1 plans)
-**Phase 49 scope:** Fix 2 deprecated APIs + verification
-**Remaining work:** Phase 49 (estimated 1 plan)
+**Milestone v3.6 status:** Complete (phases 48-49, 2/2 plans)
+**All IntelliJ Platform API compatibility issues resolved:**
+- 0 scheduled-for-removal API usages
+- 0 deprecated API usages
+- 19 experimental API usages from LSP4IJ (expected, tracked in tech debt)
+**Forward compatibility:** Plugin verified against IntelliJ 2024.2 through 2026.1 EAP
 
 ---
 
@@ -140,12 +147,12 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 | v3.5 Documentation for 0.8.0 Release | 44-47 | 7 | 2026-02-09 |
-| v3.6 IntelliJ Platform API Compatibility | 48-49 | TBD | In progress |
+| v3.6 IntelliJ Platform API Compatibility | 48-49 | 2 | 2026-02-10 |
 
-**Total velocity:** 119 plans across 13 milestones in 9 days
+**Total velocity:** 120 plans across 14 milestones in 9 days
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-10 after completing Phase 48 Plan 01*
+*State updated: 2026-02-10 after completing Phase 49 Plan 01*
