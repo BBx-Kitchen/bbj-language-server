@@ -131,6 +131,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew verifyPlugin
 
+      - name: Publish to JetBrains Marketplace
+        working-directory: bbj-intellij
+        run: ./gradlew publishPlugin -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
@@ -171,12 +175,7 @@ jobs:
           Install from [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=basis-intl.bbj-lang) or download the \`.vsix\` file below and install via **Extensions > ... > Install from VSIX...**
 
           ### IntelliJ IDEA
-          1. Download \`bbj-intellij-$VERSION.zip\` from the Assets below
-          2. Open IntelliJ IDEA
-          3. Go to **Settings** > **Plugins**
-          4. Click the gear icon and select **Install Plugin from Disk...**
-          5. Select the downloaded ZIP file
-          6. Restart IntelliJ when prompted
+          Install from [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/30033-bbj-language-support) (may take a few days for review) or download \`bbj-intellij-$VERSION.zip\` from the Assets below and install via **Settings > Plugins > ⚙ > Install Plugin from Disk...**
 
           ---
           " \
