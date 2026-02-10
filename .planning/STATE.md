@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.6 IntelliJ Platform API Compatibility
+**Current Focus:** v3.6 IntelliJ Platform API Compatibility — Phase 48: Fix Scheduled-for-Removal APIs
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-02-10 — Milestone v3.6 started
+Phase: 48 of 49 (Fix Scheduled-for-Removal APIs)
+Plan: Ready to plan first plan
+Status: Ready to plan
+Last activity: 2026-02-10 — v3.6 roadmap created
 
-Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
+Progress: [████████████████████████████████████████████████░░] 96% (118/120 estimated plans)
 
 ---
 
@@ -63,8 +63,9 @@ Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
 
 ### Active Constraints
 
-**Never suppress console.error():** Error output must always be visible regardless of debug flag state
-**Hot-reload all settings:** Settings changes via `onDidChangeConfiguration` must clear cached state
+**IntelliJ plugin only:** All v3.6 work is in bbj-intellij/ directory (Java code)
+**No language server changes:** These are IntelliJ Platform API replacements only
+**Forward compatibility:** Ensure plugin works with IntelliJ 2026.1+
 
 ### Decisions
 
@@ -80,7 +81,7 @@ Full decision log in PROJECT.md Key Decisions table.
 
 ### Blockers/Concerns
 
-None currently identified.
+None — all v3.6 requirements are straightforward API replacements with clear IntelliJ Platform documentation.
 
 ### Quick Tasks Completed
 
@@ -98,22 +99,25 @@ None currently identified.
 
 ### What Just Happened
 
-- v3.6 IntelliJ Platform API Compatibility milestone started
-  - JetBrains plugin verifier flagged 4 scheduled-for-removal and 4 deprecated API usages
-  - 19 experimental API usages (all LSP4IJ) accepted as unavoidable
+- v3.6 roadmap created with 2 phases (48-49)
+  - Phase 48: Fix 4 scheduled-for-removal APIs
+  - Phase 49: Fix 2 deprecated APIs + verification
+- ROADMAP.md and STATE.md updated
+- Ready to plan Phase 48
 
 ### What's Next
 
-**Immediate:** Define requirements and create roadmap
+**Immediate:** `/gsd:plan-phase 48` — Plan replacement of 4 scheduled-for-removal APIs
 
 ### Context for Next Session
 
-**Project:** Langium 4.1.3 language server with 13 milestones shipped over 9 days
-**Tech stack:** TypeScript, Node.js 20.18.1, Langium 4.1.3, vscode-languageserver 9.0.1
-**Codebase size:** ~23,000 LOC TypeScript
-**Test coverage:** 88% with V8 coverage (468 passing, 6 failing pre-existing)
-**Deployment:** Both VS Code extension and IntelliJ plugin via LSP4IJ
-**Documentation:** Docusaurus site with dual-IDE guides (VS Code + IntelliJ)
+**Milestone focus:** IntelliJ Platform API compatibility
+**Scope:** bbj-intellij/ directory only (Java code)
+**Requirements:** 8 total (4 scheduled-for-removal, 2 deprecated, 2 verification)
+**Phase 48 targets:**
+- BbjNodeDownloader.getArchitecture() (SystemInfo API)
+- BbjEMLoginAction.getEMLoginBbjPath() (PluginId API)
+- BbjSettingsComponent (TextFieldWithBrowseButton and FileChooserDescriptorFactory APIs)
 
 ---
 
@@ -133,6 +137,7 @@ None currently identified.
 | v3.3 Output & Diagnostic Cleanup | 35-39 | 6 | 2026-02-08 |
 | v3.4 0.8.0 Issue Closure | 40-43 | 4 | 2026-02-08 |
 | v3.5 Documentation for 0.8.0 Release | 44-47 | 7 | 2026-02-09 |
+| v3.6 IntelliJ Platform API Compatibility | 48-49 | TBD | In progress |
 
 **Total velocity:** 118 plans across 13 milestones in 9 days
 
@@ -140,4 +145,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-10 after v3.6 milestone started*
+*State updated: 2026-02-10 after v3.6 roadmap created*

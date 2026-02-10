@@ -43,20 +43,22 @@ Requirements for IntelliJ Platform API compatibility. Each maps to roadmap phase
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMPAT-01 | TBD | Pending |
-| COMPAT-02 | TBD | Pending |
-| COMPAT-03 | TBD | Pending |
-| COMPAT-04 | TBD | Pending |
-| COMPAT-05 | TBD | Pending |
-| COMPAT-06 | TBD | Pending |
-| VERIFY-01 | TBD | Pending |
-| VERIFY-02 | TBD | Pending |
+| COMPAT-01 | Phase 48 | Pending |
+| COMPAT-02 | Phase 48 | Pending |
+| COMPAT-03 | Phase 48 | Pending |
+| COMPAT-04 | Phase 48 | Pending |
+| COMPAT-05 | Phase 49 | Pending |
+| COMPAT-06 | Phase 49 | Pending |
+| VERIFY-01 | Phase 49 | Pending |
+| VERIFY-02 | Phase 49 | Pending |
 
 **Coverage:**
 - v3.6 requirements: 8 total
-- Mapped to phases: 0
-- Unmapped: 8
+- Mapped to phases: 8
+- Unmapped: 0
+
+**Validation:** 100% requirement coverage ✓
 
 ---
 *Requirements defined: 2026-02-10*
-*Last updated: 2026-02-10 after initial definition*
+*Last updated: 2026-02-10 after roadmap created*

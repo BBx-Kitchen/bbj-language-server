@@ -14,6 +14,7 @@
 - ✅ **v3.3 Output & Diagnostic Cleanup** — Phases 35-39 (shipped 2026-02-08)
 - ✅ **v3.4 0.8.0 Issue Closure** — Phases 40-43 (shipped 2026-02-08)
 - ✅ **v3.5 Documentation for 0.8.0 Release** — Phases 44-47 (shipped 2026-02-09)
+- 🚧 **v3.6 IntelliJ Platform API Compatibility** — Phases 48-49 (in progress)
 
 ## Phases
 
@@ -137,6 +138,48 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v3.6 IntelliJ Platform API Compatibility (In Progress)
+
+**Milestone Goal:** Eliminate all deprecated and scheduled-for-removal IntelliJ Platform API usages flagged by JetBrains plugin verifier, ensuring forward compatibility with IntelliJ 2026.1+.
+
+#### Phase 48: Fix Scheduled-for-Removal APIs
+
+**Goal**: Replace all 4 scheduled-for-removal IntelliJ Platform APIs with current equivalents, eliminating critical compatibility errors that will break the plugin in future IDE versions.
+
+**Depends on**: Nothing (first phase of milestone)
+
+**Requirements**: COMPAT-01, COMPAT-02, COMPAT-03, COMPAT-04
+
+**Success Criteria** (what must be TRUE):
+  1. BbjNodeDownloader uses current platform detection API instead of SystemInfo.is64Bit/isAarch64
+  2. BbjEMLoginAction uses current plugin lookup API instead of PluginId.findId(String)
+  3. BbjSettingsComponent uses current browse folder API instead of TextFieldWithBrowseButton.addBrowseFolderListener
+  4. BbjSettingsComponent uses current file chooser API instead of FileChooserDescriptorFactory.createSingleLocalFileDescriptor
+
+**Plans**: TBD
+
+Plans:
+- [ ] 48-01: TBD
+
+#### Phase 49: Fix Deprecated APIs and Verify
+
+**Goal**: Replace all deprecated IntelliJ Platform APIs with current equivalents and verify via plugin verifier that all compatibility issues are resolved, achieving zero compatibility warnings.
+
+**Depends on**: Phase 48
+
+**Requirements**: COMPAT-05, COMPAT-06, VERIFY-01, VERIFY-02
+
+**Success Criteria** (what must be TRUE):
+  1. BbjRunActionBase uses ProcessListener interface instead of ProcessAdapter class
+  2. BbjLanguageCodeStyleSettingsProvider uses current code style API override
+  3. Plugin verifier reports 0 scheduled-for-removal API usages
+  4. Plugin verifier reports 0 deprecated API usages
+
+**Plans**: TBD
+
+Plans:
+- [ ] 49-01: TBD
+
 ## Progress
 
 | Phase Range | Milestone | Plans | Status | Shipped |
@@ -153,9 +196,10 @@ Research-only milestone — no phases.
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 | 40-43 | v3.4 0.8.0 Issue Closure | 4 | ✓ Complete | 2026-02-08 |
 | 44-47 | v3.5 Documentation | 7 | ✓ Complete | 2026-02-09 |
+| 48-49 | v3.6 API Compatibility | 0/? | Not started | - |
 
 **Total:** 13 milestones shipped, 47 phases complete, 118 plans shipped
 
 ---
 
-*Roadmap last updated: 2026-02-09 after v3.5 milestone completed*
+*Roadmap last updated: 2026-02-10 after v3.6 roadmap created*
