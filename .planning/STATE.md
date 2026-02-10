@@ -1,23 +1,23 @@
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-10
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-09)
+See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone
+**Current Focus:** v3.6 IntelliJ Platform API Compatibility
 
 ---
 
 ## Current Position
 
-Phase: None — between milestones
-Plan: N/A
-Status: v3.5 Documentation for 0.8.0 Release shipped
-Last activity: 2026-02-10 - Completed quick task 10: Fix IntelliJ MainToolbar group registration
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-10 — Milestone v3.6 started
 
 Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
 
@@ -98,16 +98,13 @@ None currently identified.
 
 ### What Just Happened
 
-- v3.5 Documentation for 0.8.0 Release milestone completed
-  - Phase 44: Restructured docs for dual-IDE support (VS Code + IntelliJ)
-  - Phase 45: Created complete IntelliJ User Guide (5 pages)
-  - Phase 46: Audited VS Code docs (removed phantom features, added v3.x)
-  - Phase 47: Removed stale content, restored strict link validation
-  - Milestone audit passed: 16/16 requirements, 4/4 E2E flows, 28/28 integration points
+- v3.6 IntelliJ Platform API Compatibility milestone started
+  - JetBrains plugin verifier flagged 4 scheduled-for-removal and 4 deprecated API usages
+  - 19 experimental API usages (all LSP4IJ) accepted as unavoidable
 
 ### What's Next
 
-**Immediate:** Start next milestone with `/gsd:new-milestone`
+**Immediate:** Define requirements and create roadmap
 
 ### Context for Next Session
 
@@ -143,4 +140,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-09 after v3.5 milestone completed*
+*State updated: 2026-02-10 after v3.6 milestone started*
