@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-09)
 Phase: None — between milestones
 Plan: N/A
 Status: v3.5 Documentation for 0.8.0 Release shipped
-Last activity: 2026-02-10 - Completed quick task 9: Automate JetBrains Marketplace publishing
+Last activity: 2026-02-10 - Completed quick task 10: Fix IntelliJ MainToolbar group registration
 
 Progress: 13 milestones shipped, 47 phases complete, 118 plans shipped
 
@@ -86,6 +86,7 @@ None currently identified.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 10 | Fix IntelliJ MainToolbar group registration: move compile action to EditorPopupMenu + ToolsMenu with alt+C shortcut | 2026-02-10 | 8c57712 | [10-fix-intellij-maintoolbar-group-registrat](./quick/10-fix-intellij-maintoolbar-group-registrat/) |
 | 9 | Automate JetBrains Marketplace publishing in manual release workflow | 2026-02-10 | 576198d | [9-automate-jetbrains-marketplace-publishin](./quick/9-automate-jetbrains-marketplace-publishin/) |
 | 8 | Fix documentation links: correct JetBrains Marketplace and BBj Documentation URLs | 2026-02-10 | c8b4b91 | [8-fix-documentation-links-add-jetbrains-ma](./quick/8-fix-documentation-links-add-jetbrains-ma/) |
 | 7 | Add client info string to EM auth token: include OS and IDE info (e.g. "MacOS VS Code") in token payload | 2026-02-09 | 3f6aa1f | [7-add-client-info-string-to-em-auth-token-](./quick/7-add-client-info-string-to-em-auth-token-/) |
