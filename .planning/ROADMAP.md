@@ -156,10 +156,10 @@ Research-only milestone — no phases.
   3. BbjSettingsComponent uses current browse folder API instead of TextFieldWithBrowseButton.addBrowseFolderListener
   4. BbjSettingsComponent uses current file chooser API instead of FileChooserDescriptorFactory.createSingleLocalFileDescriptor
 
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 48-01: TBD
+- [ ] 48-01-PLAN.md — Replace all 4 scheduled-for-removal APIs (SystemInfo, PluginId.findId, addBrowseFolderListener, createSingleLocalFileDescriptor)
 
 #### Phase 49: Fix Deprecated APIs and Verify
 
