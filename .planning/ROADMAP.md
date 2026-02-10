@@ -159,7 +159,7 @@ Research-only milestone — no phases.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 48-01-PLAN.md — Replace all 4 scheduled-for-removal APIs (SystemInfo, PluginId.findId, addBrowseFolderListener, createSingleLocalFileDescriptor)
+- [x] 48-01-PLAN.md — Replace all 4 scheduled-for-removal APIs (SystemInfo, PluginId.findId, addBrowseFolderListener, createSingleLocalFileDescriptor) ✓
 
 #### Phase 49: Fix Deprecated APIs and Verify
 
@@ -196,9 +196,9 @@ Plans:
 | 35-39 | v3.3 Output & Diagnostic Cleanup | 6 | ✓ Complete | 2026-02-08 |
 | 40-43 | v3.4 0.8.0 Issue Closure | 4 | ✓ Complete | 2026-02-08 |
 | 44-47 | v3.5 Documentation | 7 | ✓ Complete | 2026-02-09 |
-| 48-49 | v3.6 API Compatibility | 0/? | Not started | - |
+| 48-49 | v3.6 API Compatibility | 1/? | ◆ In progress | - |
 
-**Total:** 13 milestones shipped, 47 phases complete, 118 plans shipped
+**Total:** 13 milestones shipped, 47 phases complete, 119 plans shipped
 
 ---
 

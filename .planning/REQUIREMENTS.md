@@ -9,10 +9,10 @@ Requirements for IntelliJ Platform API compatibility. Each maps to roadmap phase
 
 ### Compatibility — Scheduled for Removal
 
-- [ ] **COMPAT-01**: Replace `SystemInfo.is64Bit` and `SystemInfo.isAarch64` with current platform detection API in `BbjNodeDownloader.getArchitecture()`
-- [ ] **COMPAT-02**: Replace `PluginId.findId(String)` with non-deprecated plugin lookup in `BbjEMLoginAction.getEMLoginBbjPath()`
-- [ ] **COMPAT-03**: Replace `TextFieldWithBrowseButton.addBrowseFolderListener(...)` with current browse API in `BbjSettingsComponent`
-- [ ] **COMPAT-04**: Replace `FileChooserDescriptorFactory.createSingleLocalFileDescriptor()` with current file chooser API in `BbjSettingsComponent`
+- [x] **COMPAT-01**: Replace `SystemInfo.is64Bit` and `SystemInfo.isAarch64` with current platform detection API in `BbjNodeDownloader.getArchitecture()`
+- [x] **COMPAT-02**: Replace `PluginId.findId(String)` with non-deprecated plugin lookup in `BbjEMLoginAction.getEMLoginBbjPath()`
+- [x] **COMPAT-03**: Replace `TextFieldWithBrowseButton.addBrowseFolderListener(...)` with current browse API in `BbjSettingsComponent`
+- [x] **COMPAT-04**: Replace `FileChooserDescriptorFactory.createSingleLocalFileDescriptor()` with current file chooser API in `BbjSettingsComponent`
 
 ### Compatibility — Deprecated
 
@@ -43,10 +43,10 @@ Requirements for IntelliJ Platform API compatibility. Each maps to roadmap phase
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMPAT-01 | Phase 48 | Pending |
-| COMPAT-02 | Phase 48 | Pending |
-| COMPAT-03 | Phase 48 | Pending |
-| COMPAT-04 | Phase 48 | Pending |
+| COMPAT-01 | Phase 48 | ✓ Done |
+| COMPAT-02 | Phase 48 | ✓ Done |
+| COMPAT-03 | Phase 48 | ✓ Done |
+| COMPAT-04 | Phase 48 | ✓ Done |
 | COMPAT-05 | Phase 49 | Pending |
 | COMPAT-06 | Phase 49 | Pending |
 | VERIFY-01 | Phase 49 | Pending |
