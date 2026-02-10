@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 ## Current Position
 
 Phase: 48 of 49 (Fix Scheduled-for-Removal APIs)
-Plan: Ready to plan first plan
-Status: Ready to plan
-Last activity: 2026-02-10 — v3.6 roadmap created
+Plan: 1 of 1 complete
+Status: Phase 48 complete
+Last activity: 2026-02-10 — Completed 48-01: Fix Scheduled-for-Removal APIs
 
-Progress: [████████████████████████████████████████████████░░] 96% (118/120 estimated plans)
+Progress: [████████████████████████████████████████████████░░] 97% (119/120 estimated plans)
 
 ---
 
@@ -30,7 +30,7 @@ Progress: [███████████████████████
 **Started:** 2026-02-01
 **Milestones shipped:** 13
 **Phases completed:** 47
-**Plans completed:** 118
+**Plans completed:** 119
 **Days elapsed:** 9
 **Velocity:** ~13 plans/day
 
@@ -70,6 +70,8 @@ Progress: [███████████████████████
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table.
+- [Phase 48]: Use TextBrowseFolderListener constructor pattern for browse folder listeners with title/description
+- [Phase 48]: Remove null check on PluginId.getId() result as it never returns null
 
 ### Tech Debt
 
@@ -94,30 +96,31 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 | 6 | Fix em-login.bbj and em-validate-token.bbj Windows compatibility: replace -tIO with GUI client using PRINT HIDE and temp file output | 2026-02-09 | 5cb33ab | [6-fix-em-login-bbj-and-em-validate-token-b](./quick/6-fix-em-login-bbj-and-em-validate-token-b/) |
 
 ---
+| Phase 48 P01 | 180 | 2 tasks | 3 files |
 
 ## Session Continuity
 
 ### What Just Happened
 
-- v3.6 roadmap created with 2 phases (48-49)
-  - Phase 48: Fix 4 scheduled-for-removal APIs
-  - Phase 49: Fix 2 deprecated APIs + verification
-- ROADMAP.md and STATE.md updated
-- Ready to plan Phase 48
+- Completed Phase 48 Plan 01: Fix Scheduled-for-Removal APIs
+  - Replaced SystemInfo.is64Bit/isAarch64 with CpuArch API (COMPAT-01)
+  - Replaced PluginId.findId with PluginId.getId (COMPAT-02)
+  - Replaced 4-parameter addBrowseFolderListener with TextBrowseFolderListener (COMPAT-03)
+  - Replaced createSingleLocalFileDescriptor with createSingleFileDescriptor (COMPAT-04)
+- All 4 scheduled-for-removal API usages eliminated
+- 3 files modified, 2 commits created
+- Duration: 180 seconds
 
 ### What's Next
 
-**Immediate:** `/gsd:plan-phase 48` — Plan replacement of 4 scheduled-for-removal APIs
+**Immediate:** `/gsd:plan-phase 49` — Plan Phase 49 (Fix Deprecated APIs)
 
 ### Context for Next Session
 
-**Milestone focus:** IntelliJ Platform API compatibility
-**Scope:** bbj-intellij/ directory only (Java code)
-**Requirements:** 8 total (4 scheduled-for-removal, 2 deprecated, 2 verification)
-**Phase 48 targets:**
-- BbjNodeDownloader.getArchitecture() (SystemInfo API)
-- BbjEMLoginAction.getEMLoginBbjPath() (PluginId API)
-- BbjSettingsComponent (TextFieldWithBrowseButton and FileChooserDescriptorFactory APIs)
+**Milestone focus:** IntelliJ Platform API compatibility (v3.6)
+**Phase 48 status:** Complete (1/1 plans)
+**Phase 49 scope:** Fix 2 deprecated APIs + verification
+**Remaining work:** Phase 49 (estimated 1 plan)
 
 ---
 
@@ -139,10 +142,10 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 | v3.5 Documentation for 0.8.0 Release | 44-47 | 7 | 2026-02-09 |
 | v3.6 IntelliJ Platform API Compatibility | 48-49 | TBD | In progress |
 
-**Total velocity:** 118 plans across 13 milestones in 9 days
+**Total velocity:** 119 plans across 13 milestones in 9 days
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-10 after v3.6 roadmap created*
+*State updated: 2026-02-10 after completing Phase 48 Plan 01*
