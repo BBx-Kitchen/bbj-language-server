@@ -8,18 +8,17 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.6 IntelliJ Platform API Compatibility — Phase 49: Fix Deprecated APIs and Verify
+**Current Focus:** Planning next milestone
 
 ---
 
 ## Current Position
 
-Phase: 49 of 49 (Fix Deprecated APIs and Verify)
-Plan: 1 of 1 complete
-Status: Phase 49 complete
-Last activity: 2026-02-10 — Completed 49-01: Fix Deprecated APIs and Verify
+Phase: N/A — between milestones
+Status: v3.6 milestone complete
+Last activity: 2026-02-10 — Shipped v3.6 IntelliJ Platform API Compatibility
 
-Progress: [██████████████████████████████████████████████████] 100% (120/120 estimated plans)
+Progress: [██████████████████████████████████████████████████] 100% (14 milestones shipped)
 
 ---
 
@@ -28,13 +27,20 @@ Progress: [███████████████████████
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 13
+**Milestones shipped:** 14
 **Phases completed:** 49
-**Plans completed:** 120
-**Days elapsed:** 9
-**Velocity:** ~13 plans/day
+**Plans completed:** 121
+**Days elapsed:** 10
+**Velocity:** ~12 plans/day
 
 ### Recent History
+
+**v3.6 (Shipped: 2026-02-10):**
+- Duration: 1 day
+- Phases: 2 (48-49)
+- Plans: 2
+- Files modified: 12 (+658 / -63 lines)
+- Key: IntelliJ Platform API compatibility — zero deprecated/scheduled-for-removal warnings
 
 **v3.5 (Shipped: 2026-02-09):**
 - Duration: 1 day
@@ -50,31 +56,17 @@ Progress: [███████████████████████
 - Files modified: 25 (+1,052 / -52 lines)
 - Key: Parser keyword fix, .bbl exclusion, toolbar cleanup, token auth fix, config.bbx support
 
-**v3.3 (Shipped: 2026-02-08):**
-- Duration: 1 day
-- Phases: 5 (35-39)
-- Plans: 6
-- Files modified: 45 (+6,578 / -107 lines)
-- Key: Logger infrastructure, debug flag, console migration, diagnostic filtering, parser ambiguity docs
-
 ---
 
 ## Accumulated Context
 
 ### Active Constraints
 
-**IntelliJ plugin only:** All v3.6 work is in bbj-intellij/ directory (Java code)
-**No language server changes:** These are IntelliJ Platform API replacements only
-**Forward compatibility:** Ensure plugin works with IntelliJ 2026.1+
+(None — between milestones)
 
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table.
-- [Phase 48]: Use TextBrowseFolderListener constructor pattern for browse folder listeners with title/description
-- [Phase 48]: Remove null check on PluginId.getId() result as it never returns null
-- [Phase 49]: Use ProcessListener interface instead of ProcessAdapter for process event handling
-- [Phase 49]: Use customizeDefaults() mutation pattern instead of getDefaultCommonSettings() for code style configuration
-- [Phase 49]: Use FileChooserDescriptor constructor pattern instead of deprecated factory methods
 
 ### Tech Debt
 
@@ -83,10 +75,11 @@ Full decision log in PROJECT.md Key Decisions table.
 - Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall)
 - 6 pre-existing test failures
 - 14 pre-existing TODO/FIXME comments across 6 files
+- 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize)
 
 ### Blockers/Concerns
 
-None — all v3.6 requirements are straightforward API replacements with clear IntelliJ Platform documentation.
+None
 
 ### Quick Tasks Completed
 
@@ -99,35 +92,22 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 | 6 | Fix em-login.bbj and em-validate-token.bbj Windows compatibility: replace -tIO with GUI client using PRINT HIDE and temp file output | 2026-02-09 | 5cb33ab | [6-fix-em-login-bbj-and-em-validate-token-b](./quick/6-fix-em-login-bbj-and-em-validate-token-b/) |
 
 ---
-| Phase 48 P01 | 180 | 2 tasks | 3 files |
-| Phase 49 P01 | 501 | 2 tasks | 3 files |
 
 ## Session Continuity
 
 ### What Just Happened
 
-- Completed Phase 49 Plan 01: Fix Deprecated APIs and Verify
-  - Replaced ProcessAdapter with ProcessListener interface (COMPAT-05)
-  - Replaced getDefaultCommonSettings() with customizeDefaults() (COMPAT-06)
-  - Fixed deprecated createSingleFileDescriptor with FileChooserDescriptor constructor (bug from Phase 48)
-  - Ran plugin verifier across 6 IntelliJ IDE versions (2024.2 to 2026.1 EAP)
-  - Verified zero deprecated and zero scheduled-for-removal API usages (VERIFY-01, VERIFY-02)
-- v3.6 milestone complete: Zero IntelliJ Platform compatibility warnings
-- 3 files modified, 2 commits created
-- Duration: 501 seconds
+- Shipped v3.6 IntelliJ Platform API Compatibility milestone
+- All deprecated and scheduled-for-removal IntelliJ Platform APIs replaced
+- Plugin verifier confirms zero compatibility warnings across 6 IDE versions
 
 ### What's Next
 
-**Immediate:** Milestone v3.6 complete — ready for release or next milestone planning
+**Immediate:** `/gsd:new-milestone` — start next milestone
 
 ### Context for Next Session
 
-**Milestone v3.6 status:** Complete (phases 48-49, 2/2 plans)
-**All IntelliJ Platform API compatibility issues resolved:**
-- 0 scheduled-for-removal API usages
-- 0 deprecated API usages
-- 19 experimental API usages from LSP4IJ (expected, tracked in tech debt)
-**Forward compatibility:** Plugin verified against IntelliJ 2024.2 through 2026.1 EAP
+**All milestones complete.** No active work. Ready for next milestone planning.
 
 ---
 
@@ -149,10 +129,10 @@ None — all v3.6 requirements are straightforward API replacements with clear I
 | v3.5 Documentation for 0.8.0 Release | 44-47 | 7 | 2026-02-09 |
 | v3.6 IntelliJ Platform API Compatibility | 48-49 | 2 | 2026-02-10 |
 
-**Total velocity:** 120 plans across 14 milestones in 9 days
+**Total velocity:** 121 plans across 14 milestones in 10 days
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-10 after completing Phase 49 Plan 01*
+*State updated: 2026-02-10 after v3.6 milestone complete*

@@ -372,3 +372,30 @@
 
 ---
 
+
+## v3.6 IntelliJ Platform API Compatibility (Shipped: 2026-02-10)
+
+**Delivered:** Eliminated all deprecated and scheduled-for-removal IntelliJ Platform API usages flagged by JetBrains plugin verifier, ensuring forward compatibility with IntelliJ 2026.1+. Plugin verifier confirms zero compatibility warnings across 6 IDE versions.
+
+**Phases completed:** 48-49 (2 plans total)
+
+**Key accomplishments:**
+
+- Replaced 4 scheduled-for-removal APIs: CpuArch for platform detection, PluginId.getId for plugin lookup, TextBrowseFolderListener for browse folders, FileChooserDescriptor constructor for file selection
+- Replaced 2 deprecated APIs: ProcessListener interface for process events, customizeDefaults() for code style configuration
+- Fixed additional deprecated FileChooserDescriptor factory method discovered during verification
+- Plugin verifier confirms zero deprecated and zero scheduled-for-removal API usages across 6 IntelliJ IDE versions (2024.2 through 2026.1 EAP)
+
+**Stats:**
+
+- 12 files modified (+658 / -63 lines)
+- 2 phases, 2 plans
+- 1 day (2026-02-10)
+- 8/8 requirements satisfied (COMPAT-01 through COMPAT-06, VERIFY-01, VERIFY-02)
+
+**Git range:** `f756600` → `95851ad`
+
+**What's next:** v3.6 milestone complete. All IntelliJ Platform compatibility issues resolved.
+
+---
+
