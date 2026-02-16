@@ -7,6 +7,7 @@ import com.intellij.execution.process.ProcessOutput;
 import com.intellij.ide.plugins.PluginManagerCore;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationNamesInfo;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
@@ -107,7 +108,8 @@ public final class BbjEMLoginAction extends AnAction {
             if (os.contains("win")) platform = "Windows";
             else if (os.contains("mac")) platform = "MacOS";
             else platform = "Linux";
-            cmd.addParameter("IntelliJ on " + platform + " as " + System.getProperty("user.name"));
+            String productName = ApplicationNamesInfo.getInstance().getFullProductName();
+            cmd.addParameter(productName + " on " + platform + " as " + System.getProperty("user.name"));
 
             CapturingProcessHandler handler = new CapturingProcessHandler(cmd);
             ProcessOutput output = handler.runProcess(15000); // 15s timeout
