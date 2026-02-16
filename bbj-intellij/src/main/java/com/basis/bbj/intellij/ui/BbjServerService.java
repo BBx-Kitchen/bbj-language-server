@@ -9,26 +9,17 @@ import com.intellij.notification.NotificationType;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.fileEditor.FileEditorManager;
-import com.intellij.openapi.fileEditor.FileEditorManagerListener;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.Alarm;
-import com.intellij.util.messages.MessageBusConnection;
 import com.intellij.util.messages.Topic;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Project-level service managing BBj language server lifecycle.
@@ -43,41 +34,17 @@ public final class BbjServerService implements Disposable {
     private final Alarm restartAlarm;
     private static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
-    private static final int GRACE_PERIOD_SECONDS = 30;
     private long lastCrashTime = 0;
     private int crashCount = 0;
     private boolean serverCrashed = false;
     private ConsoleView consoleView;
-    private final ScheduledExecutorService gracePeriodScheduler;
-    private ScheduledFuture<?> gracePeriodTask;
-    private boolean inGracePeriod = false;
 
     public BbjServerService(@NotNull Project project) {
         this.project = project;
         this.restartAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
-        this.gracePeriodScheduler = Executors.newSingleThreadScheduledExecutor();
 
-        // Register disposal to force-stop server on project close
+        // Register disposal
         Disposer.register(project, this);
-
-        // Subscribe to file editor events to track BBj file open/close
-        MessageBusConnection connection = project.getMessageBus().connect(this);
-        connection.subscribe(FileEditorManagerListener.FILE_EDITOR_MANAGER,
-            new FileEditorManagerListener() {
-                @Override
-                public void fileOpened(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
-                    if (isBbjFile(file)) {
-                        cancelGracePeriod();
-                    }
-                }
-
-                @Override
-                public void fileClosed(@NotNull FileEditorManager source, @NotNull VirtualFile file) {
-                    if (isBbjFile(file)) {
-                        checkAndStartGracePeriod();
-                    }
-                }
-            });
     }
 
     public static BbjServerService getInstance(@NotNull Project project) {
@@ -123,6 +90,10 @@ public final class BbjServerService implements Disposable {
      * Implements crash detection and auto-restart logic.
      */
     public void updateStatus(@NotNull ServerStatus status) {
+        if (project.isDisposed()) {
+            return;
+        }
+
         // Detect unexpected stop (crash)
         if (status == ServerStatus.stopped &&
             (previousStatus == ServerStatus.started || previousStatus == ServerStatus.starting)) {
@@ -145,6 +116,9 @@ public final class BbjServerService implements Disposable {
                 // Auto-restart on first crash
                 logToConsole("Auto-restarting language server (attempt 1)...", ConsoleViewContentType.SYSTEM_OUTPUT);
                 ApplicationManager.getApplication().invokeLater(() -> {
+                    if (project.isDisposed()) {
+                        return;
+                    }
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
@@ -157,6 +131,9 @@ public final class BbjServerService implements Disposable {
                 logToConsole("Language server crashed twice. Stopping auto-restart.", ConsoleViewContentType.ERROR_OUTPUT);
                 notifyCrash();
                 ApplicationManager.getApplication().invokeLater(() -> {
+                    if (project.isDisposed()) {
+                        return;
+                    }
                     EditorNotifications.getInstance(project).updateAllNotifications();
                 });
             }
@@ -170,6 +147,9 @@ public final class BbjServerService implements Disposable {
             serverCrashed = false;
             crashCount = 0;
             ApplicationManager.getApplication().invokeLater(() -> {
+                if (project.isDisposed()) {
+                    return;
+                }
                 EditorNotifications.getInstance(project).updateAllNotifications();
             });
         }
@@ -178,6 +158,9 @@ public final class BbjServerService implements Disposable {
         this.currentStatus = status;
 
         ApplicationManager.getApplication().invokeLater(() -> {
+            if (project.isDisposed()) {
+                return;
+            }
             project.getMessageBus()
                 .syncPublisher(BbjServerStatusListener.TOPIC)
                 .statusChanged(status);
@@ -218,8 +201,10 @@ public final class BbjServerService implements Disposable {
 
     /**
      * Restart the language server immediately.
+     * Clears crash state to ensure manual restart always works.
      */
     public void restart() {
+        clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
         manager.stop("bbjLanguageServer");
         manager.start("bbjLanguageServer");
@@ -238,98 +223,10 @@ public final class BbjServerService implements Disposable {
         return currentStatus;
     }
 
-    /**
-     * Check if a file is a BBj file (.bbj, .bbl, .bbjt, .src).
-     */
-    private boolean isBbjFile(@NotNull VirtualFile file) {
-        String ext = file.getExtension();
-        return ext != null && (ext.equals("bbj") || ext.equals("bbl") || ext.equals("bbjt") || ext.equals("src"));
-    }
-
-    /**
-     * Check if any BBj files are currently open. If none are open and server is running,
-     * start the grace period shutdown timer.
-     */
-    private void checkAndStartGracePeriod() {
-        FileEditorManager editorManager = FileEditorManager.getInstance(project);
-        VirtualFile[] openFiles = editorManager.getOpenFiles();
-
-        boolean hasBbjFileOpen = false;
-        for (VirtualFile file : openFiles) {
-            if (isBbjFile(file)) {
-                hasBbjFileOpen = true;
-                break;
-            }
-        }
-
-        if (!hasBbjFileOpen && currentStatus == ServerStatus.started) {
-            startGracePeriod();
-        }
-    }
-
-    /**
-     * Start the 30-second grace period shutdown timer.
-     */
-    private void startGracePeriod() {
-        if (inGracePeriod) {
-            return; // Already in grace period
-        }
-
-        inGracePeriod = true;
-        logToConsole("No BBj files open. Starting " + GRACE_PERIOD_SECONDS + "-second grace period...", ConsoleViewContentType.SYSTEM_OUTPUT);
-
-        // Notify status bar to show idle state
-        ApplicationManager.getApplication().invokeLater(() -> {
-            project.getMessageBus()
-                .syncPublisher(BbjServerStatusListener.TOPIC)
-                .statusChanged(currentStatus);
-        });
-
-        gracePeriodTask = gracePeriodScheduler.schedule(() -> {
-            logToConsole("Grace period expired. Stopping language server.", ConsoleViewContentType.SYSTEM_OUTPUT);
-            inGracePeriod = false;
-            ApplicationManager.getApplication().invokeLater(() -> {
-                LanguageServerManager.getInstance(project).stop("bbjLanguageServer");
-            });
-        }, GRACE_PERIOD_SECONDS, TimeUnit.SECONDS);
-    }
-
-    /**
-     * Cancel the grace period shutdown timer if a BBj file is opened.
-     */
-    private void cancelGracePeriod() {
-        if (!inGracePeriod) {
-            return;
-        }
-
-        if (gracePeriodTask != null && !gracePeriodTask.isDone()) {
-            gracePeriodTask.cancel(false);
-            gracePeriodTask = null;
-            inGracePeriod = false;
-            logToConsole("BBj file opened. Cancelling grace period shutdown.", ConsoleViewContentType.SYSTEM_OUTPUT);
-
-            // Notify status bar to remove idle state
-            ApplicationManager.getApplication().invokeLater(() -> {
-                project.getMessageBus()
-                    .syncPublisher(BbjServerStatusListener.TOPIC)
-                    .statusChanged(currentStatus);
-            });
-        }
-    }
-
-    /**
-     * Check if the server is currently in grace period (idle state).
-     */
-    public boolean isInGracePeriod() {
-        return inGracePeriod;
-    }
-
     @Override
     public void dispose() {
-        // Stop language server cleanly on project close
-        logToConsole("Project closing, stopping language server", ConsoleViewContentType.SYSTEM_OUTPUT);
-        gracePeriodScheduler.shutdownNow();
-        LanguageServerManager.getInstance(project).stop("bbjLanguageServer");
+        // LSP4IJ handles server cleanup automatically when project is disposed
+        logToConsole("Project closing", ConsoleViewContentType.SYSTEM_OUTPUT);
         // Alarm is auto-disposed via parent chain
     }
 

@@ -69,19 +69,10 @@ public final class BbjStatusBarWidget implements CustomStatusBarWidget {
             Icon icon;
             String text;
 
-            // Check if server is in grace period (idle state)
-            BbjServerService serverService = BbjServerService.getInstance(project);
-            boolean isIdle = serverService.isInGracePeriod();
-
             switch (status) {
                 case started:
-                    if (isIdle) {
-                        icon = BbjIcons.STATUS_STARTING;
-                        text = "BBj: Idle";
-                    } else {
-                        icon = BbjIcons.STATUS_READY;
-                        text = "BBj: Ready";
-                    }
+                    icon = BbjIcons.STATUS_READY;
+                    text = "BBj: Ready";
                     break;
                 case starting:
                     icon = BbjIcons.STATUS_STARTING;
