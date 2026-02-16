@@ -85,6 +85,7 @@ None
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 11 | Enhance EM auth token info-string: rename payload key to "info-string", enrich format to "{IDE} on {platform} as {username}" | 2026-02-16 | 5a5b6ed | [11-enhance-em-auth-token-info-string-change](./quick/11-enhance-em-auth-token-info-string-change/) |
 | 10 | Fix IntelliJ MainToolbar group registration: move compile action to EditorPopupMenu + ToolsMenu with alt+C shortcut | 2026-02-10 | 8c57712 | [10-fix-intellij-maintoolbar-group-registrat](./quick/10-fix-intellij-maintoolbar-group-registrat/) |
 | 9 | Automate JetBrains Marketplace publishing in manual release workflow | 2026-02-10 | 576198d | [9-automate-jetbrains-marketplace-publishin](./quick/9-automate-jetbrains-marketplace-publishin/) |
 | 8 | Fix documentation links: correct JetBrains Marketplace and BBj Documentation URLs | 2026-02-10 | c8b4b91 | [8-fix-documentation-links-add-jetbrains-ma](./quick/8-fix-documentation-links-add-jetbrains-ma/) |
