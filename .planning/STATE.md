@@ -16,7 +16,7 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 Phase: N/A — between milestones
 Status: v3.6 milestone complete
-Last activity: 2026-02-10 — Shipped v3.6 IntelliJ Platform API Compatibility
+Last activity: 2026-02-16 — Completed quick task 11: Enhance EM auth token info-string
 
 Progress: [██████████████████████████████████████████████████] 100% (14 milestones shipped)
 
