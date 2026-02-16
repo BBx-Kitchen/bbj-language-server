@@ -3,7 +3,7 @@ rem Parameters:
 rem   1) username
 rem   2) password
 rem   3) outputFile (path to temp file for writing result)
-rem   4) infoString (optional - client info string, e.g. "MacOS VS Code")
+rem   4) infoString (optional - client info string, e.g. "VS Code on MacOS as beff")
 
 ? 'HIDE'
 
@@ -34,7 +34,7 @@ use com.basis.api.admin.BBjAdminFactory
 
 host! = InetAddress.getLoopbackAddress()
 payload! = new HashMap()
-if (infoString! <> null()) then payload!.put("client", infoString!)
+if (infoString! <> null()) then payload!.put("info-string", infoString!)
 rem Get auth token
 token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)
 ch=unt

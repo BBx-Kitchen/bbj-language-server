@@ -523,7 +523,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const tmpFile = path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`);
 
         const platform = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
-        const infoString = `${platform} VS Code`;
+        const infoString = `VS Code on ${platform} as ${os.userInfo().username}`;
 
         const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}" "${infoString}"`;
 
