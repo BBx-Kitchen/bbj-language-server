@@ -16,7 +16,7 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 Phase: N/A — between milestones
 Status: v3.6 milestone complete
-Last activity: 2026-02-16 — Completed quick task 12: Use actual JetBrains IDE product name in EM info-string
+Last activity: 2026-02-16 — Completed quick task 13: Fix IntelliJ multi-instance language server lifecycle
 
 Progress: [██████████████████████████████████████████████████] 100% (14 milestones shipped)
 
@@ -85,6 +85,7 @@ None
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 13 | Fix IntelliJ multi-instance language server: replace custom grace period with LSP4IJ native timeout, fix crash recovery, add disposal guards | 2026-02-16 | 293fea5 | [13-fix-intellij-multi-instance-language-ser](./quick/13-fix-intellij-multi-instance-language-ser/) |
 | 12 | Use actual JetBrains IDE product name in EM info-string via ApplicationNamesInfo API | 2026-02-16 | 587e826 | [12-use-actual-jetbrains-ide-product-name-in](./quick/12-use-actual-jetbrains-ide-product-name-in/) |
 | 11 | Enhance EM auth token info-string: rename payload key to "info-string", enrich format to "{IDE} on {platform} as {username}" | 2026-02-16 | 5a5b6ed | [11-enhance-em-auth-token-info-string-change](./quick/11-enhance-em-auth-token-info-string-change/) |
 | 10 | Fix IntelliJ MainToolbar group registration: move compile action to EditorPopupMenu + ToolsMenu with alt+C shortcut | 2026-02-10 | 8c57712 | [10-fix-intellij-maintoolbar-group-registrat](./quick/10-fix-intellij-maintoolbar-group-registrat/) |
