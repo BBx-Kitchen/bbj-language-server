@@ -107,7 +107,7 @@ public final class BbjEMLoginAction extends AnAction {
             if (os.contains("win")) platform = "Windows";
             else if (os.contains("mac")) platform = "MacOS";
             else platform = "Linux";
-            cmd.addParameter(platform + " IntelliJ IDE");
+            cmd.addParameter("IntelliJ on " + platform + " as " + System.getProperty("user.name"));
 
             CapturingProcessHandler handler = new CapturingProcessHandler(cmd);
             ProcessOutput output = handler.runProcess(15000); // 15s timeout
