@@ -129,11 +129,11 @@ jobs:
         working-directory: bbj-intellij
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew verifyPlugin
+        run: ./gradlew verifyPlugin -Pversion=${{ needs.build-vscode.outputs.version }}
 
       - name: Publish to JetBrains Marketplace
         working-directory: bbj-intellij
-        run: ./gradlew publishPlugin -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+        run: ./gradlew publishPlugin -Pversion=${{ needs.build-vscode.outputs.version }} -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
@@ -149,6 +149,8 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download VS Code extension
         uses: actions/download-artifact@v4
         with:
