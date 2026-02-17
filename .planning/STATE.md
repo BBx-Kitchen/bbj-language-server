@@ -16,7 +16,7 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 Phase: N/A — between milestones
 Status: v3.6 milestone complete
-Last activity: 2026-02-16 — Completed quick task 13: Fix IntelliJ multi-instance language server lifecycle
+Last activity: 2026-02-17 — Completed quick task 14: Fix manual release workflow version passing
 
 Progress: [██████████████████████████████████████████████████] 100% (14 milestones shipped)
 
@@ -85,6 +85,7 @@ None
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
+| 14 | Fix manual release workflow: pass -Pversion to verifyPlugin/publishPlugin, add checkout to create-release job for gh CLI git context | 2026-02-17 | 8956e26 | [14-fix-manual-release-workflow-pass-version](./quick/14-fix-manual-release-workflow-pass-version/) |
 | 13 | Fix IntelliJ multi-instance language server: replace custom grace period with LSP4IJ native timeout, fix crash recovery, add disposal guards | 2026-02-16 | 293fea5 | [13-fix-intellij-multi-instance-language-ser](./quick/13-fix-intellij-multi-instance-language-ser/) |
 | 12 | Use actual JetBrains IDE product name in EM info-string via ApplicationNamesInfo API | 2026-02-16 | 587e826 | [12-use-actual-jetbrains-ide-product-name-in](./quick/12-use-actual-jetbrains-ide-product-name-in/) |
 | 11 | Enhance EM auth token info-string: rename payload key to "info-string", enrich format to "{IDE} on {platform} as {username}" | 2026-02-16 | 5a5b6ed | [11-enhance-em-auth-token-info-string-change](./quick/11-enhance-em-auth-token-info-string-change/) |
