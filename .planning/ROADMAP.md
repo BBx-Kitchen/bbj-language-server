@@ -227,7 +227,7 @@ Plans:
 | 44-47 | v3.5 Documentation | 7/7 | Complete | 2026-02-09 |
 | 48-49 | v3.6 API Compatibility | 2/2 | Complete | 2026-02-10 |
 | 50. Diagnostic Noise Reduction | 2/2 | Complete   | 2026-02-19 | - |
-| 51. Outline Resilience | 1/1 | Complete   | 2026-02-19 | - |
+| 51. Outline Resilience | 1/1 | Complete    | 2026-02-19 | - |
 | 52. BBjCPL Foundation | v3.7 | 0/TBD | Not started | - |
 | 53. BBjCPL Diagnostic Integration | v3.7 | 0/TBD | Not started | - |
 
