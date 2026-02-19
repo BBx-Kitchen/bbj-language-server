@@ -1,7 +1,7 @@
 // This class extends DefaultDocumentValidator
 
 import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
-import { Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
+import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -16,7 +16,101 @@ interface ValidationOptions {
     stopAfterLinkingErrors?: boolean;
 }
 
+// Diagnostic suppression configuration
+let suppressCascadingEnabled = true;
+let maxErrorsDisplayed = 20;
+
+export function setSuppressCascading(enabled: boolean): void {
+    suppressCascadingEnabled = enabled;
+}
+export function setMaxErrors(max: number): void {
+    maxErrorsDisplayed = max;
+}
+
+/**
+ * Diagnostic source tiers — ordered by priority.
+ * Higher-priority tiers suppress lower ones.
+ * Phase 53 will add BBjCPL = 3 as the highest tier.
+ */
+const enum DiagnosticTier {
+    Warning  = 0,   // warnings/hints — suppressed when any error present
+    Semantic = 1,   // semantic/validation errors (Error severity, non-parse)
+    Parse    = 2,   // parser errors — also suppress linking errors
+    // BBjCPL = 3,  // Phase 53: compiler errors — suppress everything below
+}
+
+function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
+    // Phase 53 adds: if (d.source === 'bbj-cpl') return DiagnosticTier.BBjCPL;
+    if (d.data?.code === DocumentValidator.ParsingError) return DiagnosticTier.Parse;
+    if (d.severity === DiagnosticSeverity.Error) return DiagnosticTier.Semantic;
+    return DiagnosticTier.Warning;
+}
+
+/**
+ * Apply the BBj diagnostic hierarchy rules:
+ *
+ * - Parse errors present → suppress ALL linking errors (identified by data.code, NOT severity)
+ * - Any Error-severity diagnostic present → suppress all warnings/hints
+ * - Cap parse errors at maxErrors
+ *
+ * IMPORTANT: Rule 1 matches linking errors by data.code (DocumentValidator.LinkingError),
+ * NOT by severity. The existing toDiagnostic() override downgrades non-cyclic linking
+ * errors to Warning severity, but they must still be identified and suppressed by their
+ * data.code when parse errors exist. Without Rule 1, linking errors would only be
+ * suppressed when ANY error exists (Rule 2), which is wrong — linking errors should
+ * survive when only semantic errors (no parse errors) are present.
+ */
+function applyDiagnosticHierarchy(
+    diagnostics: Diagnostic[],
+    suppressEnabled: boolean,
+    maxErrors: number
+): Diagnostic[] {
+    if (!suppressEnabled) return diagnostics;
+
+    const hasParseErrors = diagnostics.some(
+        d => getDiagnosticTier(d) === DiagnosticTier.Parse
+    );
+    const hasAnyError = diagnostics.some(
+        d => d.severity === DiagnosticSeverity.Error
+    );
+
+    let result = diagnostics;
+
+    // Rule 1: parse errors present → suppress ALL linking errors
+    // Must match on data.code, not severity (linking errors are downgraded to Warning by toDiagnostic)
+    if (hasParseErrors) {
+        result = result.filter(
+            d => d.data?.code !== DocumentValidator.LinkingError
+        );
+    }
+
+    // Rule 2: any Error-severity diagnostic → suppress all warnings/hints
+    if (hasAnyError) {
+        result = result.filter(
+            d => d.severity === DiagnosticSeverity.Error
+        );
+    }
+
+    // Rule 3: cap displayed parse errors at maxErrors (semantic errors never capped)
+    const parseErrors = result.filter(d => getDiagnosticTier(d) === DiagnosticTier.Parse);
+    if (parseErrors.length > maxErrors) {
+        const nonParseErrors = result.filter(d => getDiagnosticTier(d) !== DiagnosticTier.Parse);
+        result = [...parseErrors.slice(0, maxErrors), ...nonParseErrors];
+    }
+
+    return result;
+}
+
 export class BBjDocumentValidator extends DefaultDocumentValidator {
+
+    override async validateDocument(
+        document: LangiumDocument,
+        options?: ValidationOptions,
+        cancelToken?: CancellationToken
+    ): Promise<Diagnostic[]> {
+        const diagnostics = await super.validateDocument(document, options, cancelToken);
+        return applyDiagnosticHierarchy(diagnostics, suppressCascadingEnabled, maxErrorsDisplayed);
+    }
 
     protected override processLinkingErrors(document: LangiumDocument, diagnostics: Diagnostic[], _options: ValidationOptions): void {
         for (const reference of document.references) {
