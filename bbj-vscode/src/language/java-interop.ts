@@ -29,7 +29,17 @@ export class JavaInteropService {
     private connection?: MessageConnection;
     private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
-    private resolvedClassesLock: Promise<void> = Promise.resolve();
+    /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
+    private lockQueue: Array<() => void> = [];
+    private lockHeld = false;
+    /** Tracks the current lock owner to allow re-entrant acquisition during recursive resolveClass calls. */
+    private currentLockToken: object | null = null;
+    /** In-flight resolution promises keyed by class name, preventing duplicate concurrent resolution of the same class. */
+    private readonly _pendingResolutions: Map<string, Promise<JavaClass>> = new Map();
+    /** Maximum recursion depth for Java class resolution to prevent runaway resolution chains. */
+    private static readonly MAX_RESOLUTION_DEPTH = 20;
+    /** Maximum time (ms) allowed for a single resolveClassByName call chain before aborting. */
+    private static readonly RESOLUTION_TIMEOUT_MS = 30_000;
     private interopHost: string = '127.0.0.1';
     private interopPort: number = 5008;
 
@@ -252,17 +262,86 @@ export class JavaInteropService {
      * @param token cancellation token for request cancellation
      * @returns the resolved JavaClass with all dependencies linked
      */
-    async resolveClassByName(className: string, token?: CancellationToken): Promise<JavaClass> {
-        await this.acquireLock();
+    async resolveClassByName(className: string, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
+        // Safeguard 2: depth limit to prevent runaway recursive resolution chains
+        if (_depth > JavaInteropService.MAX_RESOLUTION_DEPTH) {
+            logger.warn(`Java class resolution depth limit (${JavaInteropService.MAX_RESOLUTION_DEPTH}) exceeded for '${className}', returning partial class`);
+            return this.createStubClass(className);
+        }
+
+        // Fast path: already fully resolved
+        if (this.resolvedClasses.has(className)) {
+            return this.resolvedClasses.get(className)!;
+        }
+
+        // Safeguard 3: deduplicate — if another caller is already resolving this class, wait for it
+        const pending = this._pendingResolutions.get(className);
+        if (pending) {
+            return pending;
+        }
+
+        const resolutionPromise = this.doResolveClassByName(className, token, _depth);
+        this._pendingResolutions.set(className, resolutionPromise);
         try {
+            return await resolutionPromise;
+        } finally {
+            this._pendingResolutions.delete(className);
+        }
+    }
+
+    private async doResolveClassByName(className: string, token: CancellationToken | undefined, depth: number): Promise<JavaClass> {
+        // Safeguard 4: timeout to prevent indefinitely stuck resolution chains
+        const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Java class resolution chain timed out after ${JavaInteropService.RESOLUTION_TIMEOUT_MS}ms for '${className}'`)), JavaInteropService.RESOLUTION_TIMEOUT_MS)
+        );
+
+        // Create a lock token scoped to this top-level resolution chain.
+        // Re-entrant calls from resolveClass (field/method type resolution) share the same token.
+        const lockToken = depth === 0 ? {} : (this.currentLockToken ?? {});
+        const release = await this.acquireLock(lockToken);
+        try {
+            // Double-check after acquiring lock
             if (this.resolvedClasses.has(className)) {
                 return this.resolvedClasses.get(className)!;
             }
-            const javaClass: Mutable<JavaClass> = await this.getRawClass(className, token);
-            return await this.resolveClass(javaClass, token);
+            const javaClass: Mutable<JavaClass> = await Promise.race([
+                this.getRawClass(className, token),
+                timeoutPromise
+            ]);
+            return await Promise.race([
+                this.resolveClass(javaClass, token, depth),
+                timeoutPromise
+            ]);
+        } catch (e) {
+            logger.warn(`Failed to resolve Java class '${className}': ${e}`);
+            return this.createStubClass(className);
         } finally {
-            // unlocked
+            release();
         }
+    }
+
+    /**
+     * Creates a minimal stub JavaClass for cases where resolution fails or is aborted.
+     * This prevents callers from receiving undefined and allows partial results.
+     */
+    private createStubClass(className: string): JavaClass {
+        const existing = this.resolvedClasses.get(className);
+        if (existing) return existing;
+
+        const stub: Mutable<JavaClass> = {
+            $type: JavaClass.$type,
+            $container: this.classpath,
+            $containerProperty: 'classes',
+            $containerIndex: this.classpath.classes.length,
+            name: className,
+            packageName: extractPackageName(className),
+            fields: [],
+            methods: [],
+            classes: [],
+            error: `Resolution failed or depth limit exceeded`,
+        } as unknown as Mutable<JavaClass>;
+        this.resolvedClasses.set(className, stub);
+        return stub;
     }
 
     /**
@@ -272,7 +351,7 @@ export class JavaInteropService {
      * @param token cancellation token for request cancellation
      * @returns the resolved and linked JavaClass
      */
-    protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken): Promise<JavaClass> {
+    protected async resolveClass(javaClass: Mutable<JavaClass>, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
         const className = javaClass.name
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
@@ -304,7 +383,7 @@ export class JavaInteropService {
             for (const field of javaClass.fields) {
                 (field as Mutable<JavaField>).$type = JavaField.$type;
                 field.resolvedType = {
-                    ref: await this.resolveClassByName(field.type, token),
+                    ref: await this.resolveClassByName(field.type, token, _depth + 1),
                     $refText: field.type
                 };
             }
@@ -315,13 +394,13 @@ export class JavaInteropService {
                         && m.params.length === method.parameters.length
                 ) : [];
                 method.resolvedReturnType = {
-                    ref: await this.resolveClassByName(method.returnType, token),
+                    ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
                     $refText: method.returnType
                 };
                 for (const [index, parameter] of method.parameters.entries()) {
                     (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
                     parameter.resolvedType = {
-                        ref: await this.resolveClassByName(parameter.type, token),
+                        ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
                         $refText: parameter.type
                     };
                     if (methodDocs.length > 0) {
@@ -435,11 +514,19 @@ export class JavaInteropService {
         // Clear resolved classes cache
         this._resolvedClasses.clear();
 
+        // Clear in-flight resolution promises
+        this._pendingResolutions.clear();
+
         // Clear children-of-by-name map
         this.childrenOfByName.clear();
 
         // Clear java.lang.Object cache
         this.JAVA_LANG_OBJECT = undefined;
+
+        // Reset lock state
+        this.lockQueue = [];
+        this.lockHeld = false;
+        this.currentLockToken = null;
 
         // Reset classpath document arrays
         this.classpath.packages = [];
@@ -454,13 +541,44 @@ export class JavaInteropService {
         logger.info('Java interop cache cleared');
     }
 
-    private async acquireLock(): Promise<void> {
-        let release: () => void;
-        const lock = new Promise<void>((resolve) => (release = resolve));
-        const previousLock = this.resolvedClassesLock;
-        this.resolvedClassesLock = lock;
-        await previousLock;
-        release!();
+    /**
+     * Acquires the resolution lock. Uses a queue-based async mutex that supports
+     * re-entrant acquisition: if the current async context already holds the lock
+     * (tracked via lockToken), the call returns immediately without deadlocking.
+     * @returns a release function that MUST be called when the critical section is done
+     */
+    private acquireLock(lockToken: object): Promise<() => void> {
+        // Re-entrant: if this token already owns the lock, return a no-op release
+        if (this.lockHeld && this.currentLockToken === lockToken) {
+            return Promise.resolve(() => { /* re-entrant, no-op release */ });
+        }
+
+        if (!this.lockHeld) {
+            this.lockHeld = true;
+            this.currentLockToken = lockToken;
+            return Promise.resolve(() => {
+                this.drainLockQueue();
+            });
+        }
+
+        return new Promise<() => void>((resolve) => {
+            this.lockQueue.push(() => {
+                this.currentLockToken = lockToken;
+                resolve(() => {
+                    this.drainLockQueue();
+                });
+            });
+        });
+    }
+
+    private drainLockQueue(): void {
+        if (this.lockQueue.length > 0) {
+            const next = this.lockQueue.shift()!;
+            next();
+        } else {
+            this.lockHeld = false;
+            this.currentLockToken = null;
+        }
     }
 }
 
