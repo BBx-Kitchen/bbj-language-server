@@ -60,24 +60,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIAG-01 | TBD | Pending |
-| DIAG-02 | TBD | Pending |
-| OUTL-01 | TBD | Pending |
-| OUTL-02 | TBD | Pending |
-| CPL-01 | TBD | Pending |
-| CPL-02 | TBD | Pending |
-| CPL-03 | TBD | Pending |
-| CPL-04 | TBD | Pending |
-| CPL-05 | TBD | Pending |
-| CPL-06 | TBD | Pending |
-| CPL-07 | TBD | Pending |
-| CPL-08 | TBD | Pending |
+| DIAG-01 | Phase 50 | Pending |
+| DIAG-02 | Phase 50 | Pending |
+| OUTL-01 | Phase 51 | Pending |
+| OUTL-02 | Phase 51 | Pending |
+| CPL-01 | Phase 52 | Pending |
+| CPL-02 | Phase 52 | Pending |
+| CPL-03 | Phase 52 | Pending |
+| CPL-04 | Phase 52 | Pending |
+| CPL-05 | Phase 53 | Pending |
+| CPL-06 | Phase 53 | Pending |
+| CPL-07 | Phase 53 | Pending |
+| CPL-08 | Phase 53 | Pending |
 
 **Coverage:**
 - v3.7 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 after initial definition*
+*Last updated: 2026-02-19 after roadmap creation — all 12 requirements mapped*
