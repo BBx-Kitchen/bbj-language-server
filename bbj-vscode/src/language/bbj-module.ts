@@ -16,6 +16,7 @@ import { BBjCommentProvider } from './bbj-comment-provider.js';
 import { BBjCompletionProvider } from './bbj-completion-provider.js';
 import { BBjDefinitionProvider } from './bbj-definition-provider.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
+import { BBjDocumentSymbolProvider } from './bbj-document-symbol-provider.js';
 import { BBjDocumentValidator } from './bbj-document-validator.js';
 import { BBjHoverProvider } from './bbj-hover.js';
 import { BBjIndexManager } from './bbj-index-manager.js';
@@ -84,6 +85,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CommentProvider: () => new BBjCommentProvider()
     },
     lsp: {
+        DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),
         DefinitionProvider: (services) => new BBjDefinitionProvider(services),
         HoverProvider: (services) => new BBjHoverProvider(services),
         CompletionProvider: (services) => new BBjCompletionProvider(services),
