@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 ## Current Position
 
 Phase: 50 of 53 (Diagnostic Noise Reduction)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-19 — v3.7 roadmap created (4 phases, 12 requirements mapped)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-19 — Phase 50 Plan 01 complete: diagnostic suppression hierarchy implemented
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (v3.7)
+Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 10% (v3.7)
 
 ---
 
@@ -66,6 +66,9 @@ Progress: [░░░░░░░░░░░░░░░░░░░░░░░
 Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - BBjCPL output parser regex (to be determined empirically in Phase 52)
 - On-save trigger implementation approach (BBjDocumentUpdateHandler vs onChange guard)
+- [Phase 50]: Match linking errors by data.code not severity in Rule 1 — toDiagnostic() downgrades non-cyclic linking errors to Warning, so severity check misses them
+- [Phase 50]: getDiagnosticTier() wired into applyDiagnosticHierarchy() for parse detection and cap logic — avoids TS noUnusedLocals error while strengthening extensibility
+- [Phase 50]: Per-file suppression only: File B linking errors survive when File A has parse errors — users fix File A first
 
 ### Tech Debt
 
@@ -93,18 +96,17 @@ None
 
 ### What Just Happened
 
-- v3.7 milestone roadmap created: 4 phases (50-53), 12 requirements mapped, 100% coverage
-- Phase ordering: 50 (noise reduction) → 51 (outline resilience) → 52 (BBjCPL foundation) → 53 (integration)
-- Phases 50 and 51 are independent of BBjCPL and ship immediate user value; execute in parallel if possible
-- Phase 52 must complete with fixture-backed tests before Phase 53 begins
+- Phase 50 Plan 01 complete: diagnostic suppression hierarchy implemented in BBjDocumentValidator
+- validateDocument() override with applyDiagnosticHierarchy() filter, DiagnosticTier enum, and exported config functions
+- DIAG-01 and DIAG-02 requirements marked complete
 
 ### What's Next
 
-**Immediate:** `/gsd:plan-phase 50` — Diagnostic Noise Reduction
+**Immediate:** Phase 50 Plan 02 — wire setSuppressCascading() and setMaxErrors() into module config/test infrastructure
 
 ### Context for Next Session
 
-**v3.7 roadmap ready for planning.** Start with Phase 50: override `BBjDocumentValidator.validateDocument()` to add `applyHierarchyFilter()` — suppress linking/semantic diagnostics when `document.parseResult.parserErrors.length > 0`. Then Phase 51: new `BBjDocumentSymbolProvider` with null-safe `getSymbol()`/`getChildSymbols()` to prevent blank Structure View on partial ASTs. Both are independent components, confirmed patterns, no research gaps.
+**Phase 50 Plan 01 complete.** `setSuppressCascading()` and `setMaxErrors()` are exported from `bbj-document-validator.ts` and ready for Plan 02 wiring. The diagnostic hierarchy suppresses linking errors on parse errors, warnings on any error, and caps parse errors at 20. Phase 53 extension path: add `BBjCPL = 3` to `DiagnosticTier` enum and one branch to `getDiagnosticTier()`.
 
 ---
 
@@ -133,4 +135,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-19 after v3.7 roadmap creation*
+*State updated: 2026-02-19 after Phase 50 Plan 01 completion*

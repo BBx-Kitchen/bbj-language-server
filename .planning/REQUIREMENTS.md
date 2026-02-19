@@ -9,8 +9,8 @@ Requirements for Diagnostic Quality & BBjCPL Integration milestone. Each maps to
 
 ### Diagnostic Noise Reduction
 
-- [ ] **DIAG-01**: Suppress cascading linking/validation errors when parser errors exist — only show the actual syntax errors, not downstream noise
-- [ ] **DIAG-02**: Show warnings/hints only when no hard errors present from any source — clean diagnostic hierarchy across all error levels
+- [x] **DIAG-01**: Suppress cascading linking/validation errors when parser errors exist — only show the actual syntax errors, not downstream noise
+- [x] **DIAG-02**: Show warnings/hints only when no hard errors present from any source — clean diagnostic hierarchy across all error levels
 
 ### Outline Resilience
 
@@ -60,8 +60,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIAG-01 | Phase 50 | Pending |
-| DIAG-02 | Phase 50 | Pending |
+| DIAG-01 | Phase 50 | Complete |
+| DIAG-02 | Phase 50 | Complete |
 | OUTL-01 | Phase 51 | Pending |
 | OUTL-02 | Phase 51 | Pending |
 | CPL-01 | Phase 52 | Pending |

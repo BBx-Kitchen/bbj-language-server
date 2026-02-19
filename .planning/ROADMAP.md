@@ -224,7 +224,7 @@ Plans:
 | 40-43 | v3.4 0.8.0 Issue Closure | 4/4 | Complete | 2026-02-08 |
 | 44-47 | v3.5 Documentation | 7/7 | Complete | 2026-02-09 |
 | 48-49 | v3.6 API Compatibility | 2/2 | Complete | 2026-02-10 |
-| 50. Diagnostic Noise Reduction | v3.7 | 0/TBD | Not started | - |
+| 50. Diagnostic Noise Reduction | 1/2 | In Progress|  | - |
 | 51. Outline Resilience | v3.7 | 0/TBD | Not started | - |
 | 52. BBjCPL Foundation | v3.7 | 0/TBD | Not started | - |
 | 53. BBjCPL Diagnostic Integration | v3.7 | 0/TBD | Not started | - |
