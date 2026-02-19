@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 51 next
+**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 next
 
 ---
 
 ## Current Position
 
-Phase: 50 of 53 (Diagnostic Noise Reduction — COMPLETE)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase 50 complete, advancing to Phase 51
-Last activity: 2026-02-19 — Phase 50 Plan 02 complete: VS Code settings wiring and status bar indicator
+Phase: 51 of 53 (Outline Resilience — COMPLETE)
+Plan: 1 of 1 in current phase (complete)
+Status: Phase 51 complete, advancing to Phase 52
+Last activity: 2026-02-19 — Phase 51 Plan 01 complete: BBjDocumentSymbolProvider with error-safe AST traversal
 
-Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 20% (v3.7)
+Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 25% (v3.7)
 
 ---
 
@@ -71,6 +71,9 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 50]: Per-file suppression only: File B linking errors survive when File A has parse errors — users fix File A first
 - [Phase 50-diagnostic-noise-reduction]: Diagnostic suppression settings placed before !workspaceInitialized guard — apply immediately without Java class reload
 - [Phase 50-diagnostic-noise-reduction]: Status bar uses getDiagnostics() heuristic (any error + setting enabled) — not a custom LSP notification; Phase 53 can refine
+- [Phase 51-outline-resilience]: DefaultDocumentSymbolProvider imported from langium/lsp (not langium) — only exported from LSP sub-module
+- [Phase 51-outline-resilience]: BBjDocumentSymbolProvider: per-node try/catch, (parse error) fallback, deep-walk via AstUtils.streamAllContents — keeps Structure View populated during syntax errors
+- [Phase 51-outline-resilience]: Large file threshold for deep-walk fallback: 200,000 chars (~10k lines) — skips expensive full-tree scan on large files
 
 ### Tech Debt
 
@@ -98,17 +101,19 @@ None
 
 ### What Just Happened
 
-- Phase 50 Plan 02 complete: bbj.diagnostics.suppressCascading and bbj.diagnostics.maxErrors settings wired end-to-end
-- Settings flow: package.json -> extension.ts initializationOptions -> bbj-ws-manager.ts onInitialize -> bbj-document-validator.ts
-- Live config flow: onDidChangeConfiguration in main.ts -> bbj-document-validator.ts (before startup gate)
-- Status bar indicator added showing "Diagnostics filtered" when errors present and suppression enabled
-- Phase 50 fully complete (both plans done)
+- Phase 51 Plan 01 complete: BBjDocumentSymbolProvider registered and active
+- BBjDocumentSymbolProvider: per-node try/catch, (parse error) fallback for nodes with missing names, synthetic doc guard
+- Deep-walk fallback via AstUtils.streamAllContents recovers symbols after error points (only runs on files with parse errors, under 200K chars)
+- 4 new error-recovery tests: broken method body, symbols before/after error, missing class name, completely broken file
+- Phase 51 fully complete (1 plan done)
 
 ### What's Next
 
-**Immediate:** Phase 51 — Outline Resilience
+**Immediate:** Phase 52 — BBjCPL Output Parser
 
 ### Context for Next Session
+
+**Phase 51 complete.** BBjDocumentSymbolProvider active — Structure View now populated even for files with syntax errors.
 
 **Phase 50 complete.** Full diagnostic suppression stack in place:
 - Plan 01: Core suppression logic in BBjDocumentValidator (DiagnosticTier, applyDiagnosticHierarchy, setSuppressCascading, setMaxErrors)
@@ -142,4 +147,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-19 after Phase 50 Plan 02 completion (Phase 50 complete)*
+*State updated: 2026-02-19 after Phase 51 Plan 01 completion (Phase 51 complete)*

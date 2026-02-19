@@ -14,8 +14,8 @@ Requirements for Diagnostic Quality & BBjCPL Integration milestone. Each maps to
 
 ### Outline Resilience
 
-- [ ] **OUTL-01**: Document symbols survive syntax errors without crashing — Structure View does not go blank or throw errors on partial ASTs
-- [ ] **OUTL-02**: Methods/classes before and after error point visible in Structure View — syntax error in one method does not hide other methods in the outline
+- [x] **OUTL-01**: Document symbols survive syntax errors without crashing — Structure View does not go blank or throw errors on partial ASTs
+- [x] **OUTL-02**: Methods/classes before and after error point visible in Structure View — syntax error in one method does not hide other methods in the outline
 
 ### BBjCPL Foundation
 
@@ -62,8 +62,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | DIAG-01 | Phase 50 | Complete |
 | DIAG-02 | Phase 50 | Complete |
-| OUTL-01 | Phase 51 | Pending |
-| OUTL-02 | Phase 51 | Pending |
+| OUTL-01 | Phase 51 | Complete |
+| OUTL-02 | Phase 51 | Complete |
 | CPL-01 | Phase 52 | Pending |
 | CPL-02 | Phase 52 | Pending |
 | CPL-03 | Phase 52 | Pending |
