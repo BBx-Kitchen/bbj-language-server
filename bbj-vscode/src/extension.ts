@@ -641,6 +641,41 @@ export function activate(context: vscode.ExtensionContext): void {
         DocumentFormatter
     );
 
+    // Diagnostic suppression status bar indicator
+    const suppressionStatusBar = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left, 100
+    );
+    suppressionStatusBar.text = '$(warning) Diagnostics filtered';
+    suppressionStatusBar.tooltip = 'Parse errors detected — cascading linking and validation noise is hidden. Fix parse errors to see full diagnostics.';
+    context.subscriptions.push(suppressionStatusBar);
+
+    // Show/hide based on whether the active document has errors
+    const updateSuppressionStatus = () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.document.languageId !== 'bbj') {
+            suppressionStatusBar.hide();
+            return;
+        }
+        const diags = vscode.languages.getDiagnostics(editor.document.uri);
+        const hasError = diags.some(
+            d => d.severity === vscode.DiagnosticSeverity.Error
+        );
+        // Simple heuristic: show when any error exists (suppression is likely active)
+        // Phase 53 can refine with a custom LSP notification if needed
+        if (hasError && vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true)) {
+            suppressionStatusBar.show();
+        } else {
+            suppressionStatusBar.hide();
+        }
+    };
+
+    context.subscriptions.push(
+        vscode.languages.onDidChangeDiagnostics(() => updateSuppressionStatus())
+    );
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(() => updateSuppressionStatus())
+    );
+
 }
 
 // This function is called when the extension is deactivated.
