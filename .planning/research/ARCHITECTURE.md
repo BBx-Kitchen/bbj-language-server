@@ -1,512 +1,584 @@
-# Architecture: Debug Logging and Diagnostic Filtering Integration
+# Architecture Research
 
-**Domain:** Langium Language Server Enhancement (Output Cleanup)
-**Researched:** 2026-02-08
-**Confidence:** HIGH (based on existing codebase analysis and Langium LSP patterns)
+**Domain:** Langium-based Language Server — BBjCPL integration, diagnostic hierarchy, outline resilience
+**Researched:** 2026-02-19
+**Confidence:** HIGH (based on direct source inspection of Langium 4.1.3 type definitions and existing codebase)
 
-## Executive Summary
+---
 
-This milestone adds debug logging, quiet startup, and synthetic file diagnostic suppression to an existing Langium 4.1.3 language server. The architecture leverages Langium's dependency injection system, existing settings flow via LSP `initializationOptions`, and the established diagnostic pipeline. **Key insight: All new features integrate into existing components—no new architectural layers needed.** The challenge is coordinating logging behavior across 10+ files that use `console.log/warn/error/debug` without introducing a heavyweight logging framework.
-
-## Current Architecture (Baseline)
+## Standard Architecture
 
 ### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    VS Code Extension                         │
-│  extension.ts → startLanguageClient() → initializationOptions │
-├─────────────────────────────────────────────────────────────┤
-│                    Language Server (Node.js)                 │
-├─────────────────────────────────────────────────────────────┤
-│  main.ts (LS Entry)                                          │
-│    ↓ createConnection()                                      │
-│    ↓ createBBjServices() ← DI injection                      │
-│    ↓ startLanguageServer()                                   │
-├─────────────────────────────────────────────────────────────┤
-│  BBjWorkspaceManager (Settings)                              │
-│    onInitialize → receives initializationOptions             │
-│    → applies to JavaInteropService, setTypeResolutionWarnings│
-├─────────────────────────────────────────────────────────────┤
-│  Langium Services (via DI)                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ Validator    │  │ Scope        │  │ Linker       │       │
-│  │ (diagnostics)│  │ (synthetic)  │  │ (refs)       │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │ DocBuilder   │  │ JavaInterop  │  │ IndexMgr     │       │
-│  │ (validation) │  │ (verbose)    │  │ (external)   │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-├─────────────────────────────────────────────────────────────┤
-│  Logging Landscape (Current: console.*)                      │
-│    56 total usages across 10 files                           │
-│    - java-interop.ts: 14 (loadClasspath, resolveClass)      │
-│    - bbj-ws-manager.ts: 18 (PREFIX, settings, startup)       │
-│    - bbj-scope-local.ts: 5 (scope computation)               │
-│    - main.ts: 3 (settings change, errors)                    │
-│    - bbj-module.ts: 1 (parser ambiguities)                   │
-│    - Others: 15 (scattered debug/error)                      │
-└─────────────────────────────────────────────────────────────┘
++---------------------------------------------------------------------+
+|                    VS Code / IntelliJ (LSP Client)                   |
++---------------------------------------------------------------------+
+|  didChange     textDocument    workspace/                            |
+|  didSave       /symbol         publishDiag                           |
++--+-------------+---------------+---------+---------------------------+
+   |             |               |         |
++--v-------------v---------------v---------v---------------------------+
+|                  Language Server (Node.js / stdio)                   |
+|                                                                      |
+|  +------------------------------------------------------------------+|
+|  |  BBjDocumentBuilder  (extends DefaultDocumentBuilder)            ||
+|  |                                                                  ||
+|  |  buildDocuments()                                                ||
+|  |    -> parse -> index -> computeScopes -> link -> indexRefs       ||
+|  |    -> validate (BBjDocumentValidator)                            ||
+|  |    -> addImportedBBjDocuments()       [existing]                 ||
+|  |    -> revalidateUseFilePathDiags()    [existing]                 ||
+|  |    -> [NEW] invokeBBjCPLAndMerge()                               ||
+|  |    -> notifyDocumentPhase(Validated)  <- Langium publishes       ||
+|  |                                                                  ||
+|  +------------------------------------------------------------------+|
+|                                                                      |
+|  +--------------------+  +--------------------+  +-----------------+ |
+|  |BBjDocumentValidator|  |[NEW] BBjCPL         |  |[NEW] BBjDocument| |
+|  |(extends Default    |  |CompilerService      |  |SymbolProvider   | |
+|  |DocumentValidator)  |  |                     |  |(extends Default)| |
+|  |                    |  | invokeCPL()         |  |                 | |
+|  |applyHierarchyFilter|  | parseCPLOutput()    |  |getSymbols()     | |
+|  |() in validateDoc() |  | mapToLSP()          |  | with parse-error| |
+|  +--------------------+  +--------------------+  | resilience      | |
+|                                                  +-----------------+ |
+|                                                                      |
+|  +------------------------------------------------------------------+|
+|  |  BBjWorkspaceManager  (settings: bbjHome, trigger config)        ||
+|  +------------------------------------------------------------------+|
+|  +------------------------------------------------------------------+|
+|  |  BBjModule DI  -- registers all services                         ||
+|  +------------------------------------------------------------------+|
++----------------------------------------------------------------------+
+                         |
+                         v
++----------------------------------------------------------------------+
+|                  BBjCPL  (external subprocess)                        |
+|    bbjcpl -N [options] filename.bbj  ->  stderr: line diagnostics    |
++----------------------------------------------------------------------+
 ```
 
-### Settings Flow (Current)
+### Component Responsibilities
+
+| Component | Responsibility | Status |
+|-----------|----------------|--------|
+| `BBjDocumentBuilder` | Document lifecycle orchestration, transitive USE import resolution | Existing - extend |
+| `BBjDocumentValidator` | Langium diagnostics: linking errors, semantic checks, hierarchy filtering | Existing - extend |
+| `BBjCPLCompilerService` | Subprocess invocation, output parsing, LSP diagnostic mapping | New |
+| `BBjDocumentSymbolProvider` | Outline with parse-error resilience | New |
+| `BBjWorkspaceManager` | BBj home path, settings, trigger config | Existing - no changes needed |
+
+---
+
+## Question-by-Question Architecture Answers
+
+### Q1: Where Does BBjCPL Invocation Fit in the Langium Document Lifecycle?
+
+**Answer: After `DocumentState.Validated`, inside the existing `buildDocuments()` override.**
+
+Langium's document lifecycle (confirmed from `documents.d.ts`):
 
 ```
-VS Code Settings (package.json "configuration")
-    ↓
-extension.ts: getConfiguration("bbj")
-    ↓
-initializationOptions object
-    ↓
-LSP initialize request
-    ↓
-BBjWorkspaceManager.onInitialize(params)
-    ↓ params.initializationOptions.{field}
-Applied to services:
-  - setTypeResolutionWarnings(bool)
-  - JavaInteropService.setConnectionConfig(host, port)
-  - this.configPath = ...
+Changed(0) -> Parsed(1) -> IndexedContent(2) -> ComputedScopes(3)
+           -> Linked(4) -> IndexedReferences(5) -> Validated(6)
 ```
 
-**Current settings in `initializationOptions`:**
-- `home` (BBj installation)
-- `classpath` (BBj classpath name)
-- `typeResolutionWarnings` (boolean)
-- `configPath` (custom config.bbx path)
-- `interopHost` (Java service host)
-- `interopPort` (Java service port)
+After `Validated`, Langium's internal `addDiagnosticsHandler` calls `connection.sendDiagnostics()` via its own `onDocumentPhase(DocumentState.Validated, ...)` listener. To merge BBjCPL output into that single send, BBjCPL must run before `notifyDocumentPhase` is called.
 
-### Diagnostic Flow (Current)
+**The integration point:**
 
-```
-Document change
-    ↓
-BBjDocumentBuilder.buildDocuments()
-    ↓ shouldValidate() → filters JavaSyntheticDocUri, external docs
-    ↓
-BBjDocumentValidator.validateDocument()
-    ↓ processLinkingErrors() → downgrades LinkingError to Warning (except cyclic)
-    ↓
-BBjValidator validation checks
-    ↓ checkUsedClassExists(), checkCastTypeResolvable(), etc.
-    ↓ respects typeResolutionWarningsEnabled flag
-    ↓
-Diagnostics published to client
-```
+BBjCPL invocation belongs **inside** the existing `BBjDocumentBuilder.buildDocuments()` override, appended after `super.buildDocuments()` completes. This is exactly the same pattern already used by `addImportedBBjDocuments()` and `revalidateUseFilePathDiagnostics()`.
 
-**Key insight:** Synthetic file filtering already exists in `BBjDocumentBuilder.shouldValidate()` (line 26-29):
 ```typescript
-if (_document.uri.toString() === JavaSyntheticDocUri) {
-    _document.state = DocumentState.Validated;
-    return false;
+// In BBjDocumentBuilder.buildDocuments():
+protected override async buildDocuments(
+    documents: LangiumDocument[], options: BuildOptions, cancelToken: CancellationToken
+): Promise<void> {
+    await super.buildDocuments(documents, options, cancelToken);
+    if (!this.isImportingBBjDocuments) {
+        await this.addImportedBBjDocuments(documents, options, cancelToken);
+        await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
+        // NEW: invoke BBjCPL and merge diagnostics for qualifying documents
+        await this.invokeBBjCPLAndMerge(documents, cancelToken);
+    }
 }
 ```
 
-## Recommended Integration Architecture
+`invokeBBjCPLAndMerge` mutates `document.diagnostics` in place, then calls `notifyDocumentPhase(document, DocumentState.Validated, cancelToken)` to push the merged result. The Langium `addDiagnosticsHandler` listener fires on this notification and sends the updated array to the client.
 
-### New Components (Minimal)
+**Why NOT parallel:** BBjCPL should run sequentially after Langium validation. Diagnostic merging is simpler when both result sets exist before the final send. Parallel invocation could race with Langium's own `onDocumentPhase` emission.
 
-| Component | Location | Purpose | Type |
-|-----------|----------|---------|------|
-| **LogLevel enum** | `bbj-logging.ts` (new) | `OFF \| ERROR \| WARN \| INFO \| DEBUG` | Simple enum |
-| **Logger singleton** | `bbj-logging.ts` (new) | Wraps `console.*` with level checking | 60 lines |
-| **Settings extension** | `initializationOptions` | Add `logLevel`, `quietStartup` fields | Config only |
+**Why NOT a separate `onBuildPhase` listener in main.ts:** Putting it inside `buildDocuments()` keeps all post-validation side effects in one place (consistent with `revalidateUseFilePathDiagnostics`). It also ensures the build cancel token propagates to BBjCPL invocations, so rapid edits properly cancel pending CPL runs.
 
-**Rationale for singleton Logger vs DI:**
-- Langium services are created before settings arrive (onInitialize is async)
-- Logging needs to work immediately in `main.ts` and `bbj-module.ts`
-- Simple global state (current log level) is easier than threading through 10 DI services
-- **Trade-off:** Singleton is less testable, but this is diagnostic infrastructure, not business logic
+---
 
-### Pattern: Lightweight Logger Wrapper
+### Q2: How Should Diagnostics Be Merged/Reconciled?
 
-**What:** A module-level singleton that checks a global log level before calling `console.*`
+**Answer: Mutate `document.diagnostics` in place before calling `notifyDocumentPhase`.**
 
-**When to use:** When you need coordinated logging across many services without heavyweight framework overhead
+The `document.diagnostics` field (type `Diagnostic[] | undefined`) is populated by `DefaultDocumentBuilder.validate()`. After `super.buildDocuments()` returns, this array contains all Langium diagnostics. To merge BBjCPL output:
 
-**Trade-offs:**
-- **Pro:** No DI changes, works immediately, easy to migrate from console.*
-- **Pro:** Zero runtime overhead when logging disabled (early return)
-- **Con:** Singleton state (but acceptable for infrastructure)
-- **Con:** Can't easily inject different loggers per service (not needed here)
-
-**Example:**
 ```typescript
-// bbj-logging.ts
-export enum LogLevel {
-    OFF = 0,
-    ERROR = 1,
-    WARN = 2,
-    INFO = 3,
-    DEBUG = 4
+private async invokeBBjCPLAndMerge(
+    documents: LangiumDocument[], cancelToken: CancellationToken
+): Promise<void> {
+    for (const doc of documents) {
+        if (!this.shouldValidate(doc)) continue;  // skips bbjlib, external, etc.
+        if (!this.shouldRunCPL(doc)) continue;    // trigger mode check
+
+        const cplDiags = await this.cplService.compile(doc.uri, cancelToken);
+        // Append CPL diagnostics; document.diagnostics already contains Langium's
+        doc.diagnostics = [...(doc.diagnostics ?? []), ...cplDiags];
+        // Re-emit so the client sees the merged set
+        await this.notifyDocumentPhase(doc, DocumentState.Validated, cancelToken);
+    }
+}
+```
+
+**Deduplication strategy:** CPL and Langium may report similar errors (e.g., a syntax error detected by both). Use source tagging: Langium diagnostics carry `source: 'bbj'` (from `getSource()` in `DefaultDocumentValidator`). Tag CPL diagnostics `source: 'BBjCPL'`. No deduplication by default - if both report the same issue, both appear. This is honest behavior and lets users understand which tool caught what.
+
+**Severity mapping from BBjCPL:** All stderr output maps to `DiagnosticSeverity.Error` unless the `-W` flag is used and BBjCPL distinguishes warnings in its output format (needs empirical verification).
+
+---
+
+### Q3: Where Does Diagnostic Hierarchy Filtering Happen?
+
+**Answer: In `BBjDocumentValidator`, extending `validateDocument()` to filter after `super.validateDocument()`.**
+
+The existing `BBjDocumentValidator.toDiagnostic()` already performs severity overrides (linking errors downgraded from Error to Warning). The hierarchy filtering extends the same class:
+
+```typescript
+// In BBjDocumentValidator (extends DefaultDocumentValidator):
+override async validateDocument(
+    document: LangiumDocument,
+    options?: ValidationOptions,
+    cancelToken?: CancellationToken
+): Promise<Diagnostic[]> {
+    const all = await super.validateDocument(document, options, cancelToken);
+    return this.applyHierarchyFilter(all);
 }
 
-let currentLogLevel: LogLevel = LogLevel.INFO; // default
-
-export function setLogLevel(level: LogLevel): void {
-    currentLogLevel = level;
+private applyHierarchyFilter(diags: Diagnostic[]): Diagnostic[] {
+    const hasParseErrors = diags.some(
+        d => (d.data as DiagnosticData)?.code === DocumentValidator.ParsingError
+    );
+    if (hasParseErrors) {
+        // Suppress downstream noise when the document doesn't parse
+        return diags.filter(d => {
+            const code = (d.data as DiagnosticData)?.code;
+            return code === DocumentValidator.LexingError
+                || code === DocumentValidator.ParsingError;
+        });
+    }
+    return diags;
 }
+```
 
-export const logger = {
-    error: (message: string, ...args: unknown[]) => {
-        if (currentLogLevel >= LogLevel.ERROR) {
-            console.error(message, ...args);
+**Hierarchy rationale:** Parse errors make linking and semantic errors unreliable. Showing 40 cascade diagnostics from a single unclosed brace is noise. The filter suppresses linking and semantic diagnostics when parse errors are present - the user should fix parsing first.
+
+**Alternative placement considered:** Filtering in `BBjDocumentBuilder` after `validate()` was rejected because `BBjDocumentValidator.validateDocument()` returns a fresh array - the builder stores it in `document.diagnostics`. Filtering in the validator ensures the stored array is clean from the start, and the logic stays encapsulated with the rest of the diagnostic transformation.
+
+---
+
+### Q4: How to Override Langium's DefaultDocumentSymbolProvider for Outline Resilience?
+
+**Answer: New service `BBjDocumentSymbolProvider`, registered in `BBjModule.lsp.DocumentSymbolProvider`.**
+
+The `DefaultDocumentSymbolProvider` (confirmed from `document-symbol-provider.d.ts`) traverses the AST via `getSymbols()` -> `getSymbol()` -> `getChildSymbols()`. When there are parse errors, the AST is partial - some nodes are missing or malformed - which can cause an empty or broken outline.
+
+**Langium registers the document symbol handler at `DocumentState.Parsed`** (confirmed from `addDocumentSymbolHandler` using `requiredState = DocumentState.Parsed`), so the AST is always at least partially available. The resilience layer adds null-safety when traversing that partial AST.
+
+```typescript
+// bbj-document-symbol-provider.ts
+export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
+    override getSymbols(
+        document: LangiumDocument,
+        params: DocumentSymbolParams,
+        cancelToken?: CancellationToken
+    ): MaybePromise<DocumentSymbol[]> {
+        try {
+            return super.getSymbols(document, params, cancelToken);
+        } catch {
+            // Parse error fallback: extract symbols from partial AST via safe traversal
+            return this.getSymbolsFromPartialAst(document);
         }
+    }
+
+    private getSymbolsFromPartialAst(document: LangiumDocument): DocumentSymbol[] {
+        // Walk document.parseResult.value with null-checks on every node
+        // Collect: BbjClass nodes, MethodDecl, FieldDecl, LabelDecl, DefFunction
+        // Return whatever is recoverable - better than nothing
+        const symbols: DocumentSymbol[] = [];
+        try {
+            AstUtils.streamAllContents(document.parseResult.value).forEach(node => {
+                try {
+                    const syms = this.getSymbol(document, node);
+                    symbols.push(...syms);
+                } catch { /* skip broken nodes */ }
+            });
+        } catch { /* AST too broken to walk */ }
+        return symbols;
+    }
+}
+```
+
+**Registration in BBjModule:**
+
+```typescript
+// bbj-module.ts - in BBjModule lsp section:
+lsp: {
+    // ... existing providers ...
+    DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),  // NEW
+}
+```
+
+---
+
+### Q5: Data Flow - "File Changed" to "Diagnostics Published"
+
+**Complete flow after integration:**
+
+```
+1. User saves/edits BBj file
+   |
+2. DocumentUpdateHandler.didChangeContent() / didSaveDocument()
+   |
+3. DocumentBuilder.update([changedUri], [])
+   |
+4. BBjDocumentBuilder.buildDocuments(documents, options, cancelToken)
+   |
+   +-- 4a. super.buildDocuments()
+   |       +-- parse (Chevrotain)
+   |       +-- index content
+   |       +-- compute scopes
+   |       +-- link (BbjLinker)
+   |       +-- index references
+   |       +-- validate (BBjDocumentValidator)
+   |               +-- lexing errors
+   |               +-- parsing errors
+   |               +-- linking errors (severity-overridden)
+   |               +-- AST validation checks
+   |               +-- applyHierarchyFilter()  [NEW]
+   |
+   +-- 4b. addImportedBBjDocuments()  [existing]
+   |
+   +-- 4c. revalidateUseFilePathDiagnostics()  [existing]
+   |
+   +-- 4d. [NEW] invokeBBjCPLAndMerge()
+           +-- shouldRunCPL(doc)?  -> check trigger mode & bbj.home
+           +-- BBjCPLCompilerService.compile(doc.uri, cancelToken)
+           |       +-- spawn bbjcpl -N [options] filename.bbj
+           |       +-- collect stderr
+           |       +-- parseCPLOutput() -> Diagnostic[]
+           +-- merge into document.diagnostics
+           +-- notifyDocumentPhase(doc, Validated, cancelToken)
+                   |
+5. addDiagnosticsHandler listener fires (Langium internal, language-server.js line 278)
+   |
+6. connection.sendDiagnostics({ uri, diagnostics: merged })
+   |
+7. Client (VS Code / IntelliJ LSP4IJ) shows squiggles
+```
+
+---
+
+### Q6: Configurable Trigger (On-Save vs Debounced)
+
+**Answer: The trigger decision lives in a guard method in `BBjDocumentBuilder`, checking settings at invocation time. On-save tracking requires a `BBjDocumentUpdateHandler` override.**
+
+Langium's `DocumentUpdateHandler` has `didSaveDocument?` and `didChangeContent?` hooks (confirmed from `document-update-handler.d.ts`). For on-save mode, track the last-saved URIs in a Set populated by a custom handler:
+
+```typescript
+// bbj-document-update-handler.ts
+export class BBjDocumentUpdateHandler extends DefaultDocumentUpdateHandler {
+    private readonly savedUris = new Set<string>();
+
+    override didSaveDocument(event: TextDocumentChangeEvent<TextDocument>): void {
+        this.savedUris.add(event.document.uri);
+        super.didSaveDocument(event);
+    }
+
+    wasRecentlySaved(uri: URI): boolean {
+        const key = uri.toString();
+        const result = this.savedUris.has(key);
+        this.savedUris.delete(key);  // consume - one-shot check
+        return result;
+    }
+}
+```
+
+**Trigger guard in BBjDocumentBuilder:**
+
+```typescript
+private shouldRunCPL(document: LangiumDocument): boolean {
+    const bbjHome = (this.wsManager() as BBjWorkspaceManager).getBBjDir();
+    if (!bbjHome) return false;  // no compiler available
+
+    const trigger = this.getCPLTrigger(); // 'onChange' | 'onSave' | 'off'
+    if (trigger === 'off') return false;
+    if (trigger === 'onSave') {
+        return this.updateHandler?.wasRecentlySaved(document.uri) ?? false;
+    }
+    return true; // 'onChange': always run (debounced by Langium's own update queue)
+}
+```
+
+**On-change debouncing:** Langium handles keystroke debouncing via `WorkspaceLock` internally - rapid edits cancel and restart the build. BBjCPL automatically benefits because it runs inside `buildDocuments()`, which is guarded by the cancel token. No additional debouncing needed.
+
+**Settings path:** New setting `bbj.compiler.autoCheck` with values `'onChange' | 'onSave' | 'off'` (default `'onChange'`). Read from workspace config at invocation time for hot-reload compatibility, consistent with how other settings are read via `wsManager`.
+
+**Registration in BBjSharedModule:**
+
+```typescript
+// bbj-module.ts BBjSharedModule:
+export const BBjSharedModule = {
+    lsp: {
+        NodeKindProvider: () => new BBjNodeKindProvider(),
+        DocumentUpdateHandler: (services) => new BBjDocumentUpdateHandler(services),  // NEW (if onSave needed)
     },
-    warn: (message: string, ...args: unknown[]) => {
-        if (currentLogLevel >= LogLevel.WARN) {
-            console.warn(message, ...args);
-        }
-    },
-    info: (message: string, ...args: unknown[]) => {
-        if (currentLogLevel >= LogLevel.INFO) {
-            console.log(message, ...args);
-        }
-    },
-    debug: (message: string, ...args: unknown[]) => {
-        if (currentLogLevel >= LogLevel.DEBUG) {
-            console.debug(message, ...args);
-        }
+    workspace: {
+        DocumentBuilder: (services) => new BBjDocumentBuilder(services),
+        WorkspaceManager: (services) => new BBjWorkspaceManager(services),
+        IndexManager: (services) => new BBjIndexManager(services)
     }
 };
 ```
 
-**Migration pattern:**
+---
+
+## New vs Modified Components
+
+### New Files
+
+| File | Type | Purpose |
+|------|------|---------|
+| `bbj-cpl-compiler-service.ts` | New service | Subprocess invocation, stderr parsing, LSP Diagnostic mapping |
+| `bbj-document-symbol-provider.ts` | New LSP provider | Outline resilience with parse-error fallback |
+| `bbj-document-update-handler.ts` | New shared service (optional) | On-save tracking if on-save trigger mode is required |
+
+### Modified Files
+
+| File | Change | Scope |
+|------|--------|-------|
+| `bbj-document-builder.ts` | Add `invokeBBjCPLAndMerge()`, `shouldRunCPL()` methods | ~40 lines in `buildDocuments()` and new guard methods |
+| `bbj-document-validator.ts` | Add `applyHierarchyFilter()` private method, override `validateDocument()` | ~25 lines |
+| `bbj-module.ts` | Register `DocumentSymbolProvider`, `BBjCPLCompilerService`, optional `DocumentUpdateHandler` | ~15 lines in DI declarations and type definitions |
+| `main.ts` | Add `cplTrigger` to settings change handler | ~5 lines |
+
+---
+
+## Component Boundaries
+
+| Component | Communicates With | Protocol |
+|-----------|-------------------|----------|
+| `BBjCPLCompilerService` | `BBjDocumentBuilder` | Direct method call (DI-injected) |
+| `BBjCPLCompilerService` | `BBjWorkspaceManager` | Via `services.shared.workspace.WorkspaceManager` cast |
+| `BBjCPLCompilerService` | `bbjcpl` subprocess | `child_process.spawn` + stderr pipe |
+| `BBjDocumentBuilder` | `BBjCPLCompilerService` | DI-injected reference in `BBjServices.compiler.CPLCompilerService` |
+| `BBjDocumentSymbolProvider` | Langium AST | `document.parseResult.value` direct access |
+| `BBjDocumentUpdateHandler` | `BBjDocumentBuilder` | `wasRecentlySaved(uri)` method call |
+
+---
+
+## BBjCPL Invocation Details
+
+**Command for diagnostic-only mode** (confirmed from BASIS docs, `-N` flag):
+```
+bbjcpl -N [additional options] filename.bbj
+```
+
+The `-N` flag (validate-only) avoids producing tokenized `.bbj` output as a side effect. The existing VS Code `compile` command (in `Commands.cjs`) uses the same binary path pattern:
+```javascript
+"${home}/bin/bbjcpl${os.platform() === 'win32' ? '.exe' : ''}"
+```
+
+**Stderr format (LOW confidence - needs empirical verification):**
+
+From the BASIS documentation search results, BBjCPL error messages include both the BBj line number and the ASCII file line number. The exact format requires a live test run. Likely format:
+```
+filename.bbj(42): Error: Undeclared variable 'foo!'
+```
+or possibly:
+```
+Error in filename.bbj at line 42: ...
+```
+
+The regex in `BBjCPLCompilerService.parseCPLOutput()` must be verified empirically against a real BBj installation before shipping.
+
+---
+
+## Diagnostic Merge Data Flow
+
+```
+document.diagnostics (after Langium validate + hierarchy filter)
+    = [lexErr1, parseErr2, linkWarn3, semanticErr4]  <- source: 'bbj'
+
+BBjCPLCompilerService.compile()
+    = [cplErr5, cplErr6]  <- source: 'BBjCPL', severity: Error
+
+invokeBBjCPLAndMerge() mutates document.diagnostics
+    = [lexErr1, parseErr2, linkWarn3, semanticErr4, cplErr5, cplErr6]
+
+notifyDocumentPhase(Validated)
+    -> addDiagnosticsHandler listener (Langium internal)
+    -> connection.sendDiagnostics({ uri, diagnostics })
+    -> client receives merged array, all squiggles updated atomically
+```
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: Post-Validate Extension in buildDocuments()
+
+**What:** Append async operations after `super.buildDocuments()` in the existing override.
+**When to use:** Any operation that needs the final validated AST and diagnostics.
+**Established by:** `addImportedBBjDocuments()` and `revalidateUseFilePathDiagnostics()` already follow this pattern.
+
 ```typescript
-// BEFORE
-console.log('Loaded PREFIX from config.bbx:', prefix);
-console.debug('Resolving class:', className);
-
-// AFTER
-import { logger } from './bbj-logging.js';
-logger.info('Loaded PREFIX from config.bbx:', prefix);
-logger.debug('Resolving class:', className);
-```
-
-### Data Flow Changes
-
-#### 1. Settings Flow (Extended)
-
-```
-VS Code Settings (package.json)
-    NEW: bbj.logging.level: "off" | "error" | "warn" | "info" | "debug"
-    NEW: bbj.logging.quietStartup: boolean
-    ↓
-extension.ts: initializationOptions
-    NEW: logLevel: string
-    NEW: quietStartup: boolean
-    ↓
-BBjWorkspaceManager.onInitialize()
-    NEW: import { setLogLevel, LogLevel } from '../bbj-logging.js'
-    NEW: setLogLevel(LogLevel[params.initializationOptions.logLevel.toUpperCase()])
-    NEW: if (quietStartup) setLogLevel(LogLevel.ERROR)  // temporary override
-    ↓
-Logger singleton updated
-    ↓
-All subsequent logger.* calls respect new level
-```
-
-**Quiet startup timing:**
-```
-Server starts → logLevel = ERROR (quietStartup overrides setting)
-    ↓
-onInitialize completes
-    ↓
-Workspace loaded
-    ↓
-DocumentBuilder.onBuildPhase(DocumentState.Validated) fires
-    ↓ (existing hook in main.ts, line 68)
-    NEW: if (quietStartup && originalLevel > ERROR) setLogLevel(originalLevel)
-    ↓
-Full logging restored after initial workspace validation
-```
-
-#### 2. Diagnostic Flow (No Changes to Pipeline)
-
-The diagnostic pipeline is **unchanged**. Filtering happens earlier:
-
-```
-BBjDocumentBuilder.shouldValidate()
-    EXISTING: if (uri === JavaSyntheticDocUri) return false
-    EXISTING: if (isExternalDocument(uri)) return false
-    NEW: (no changes—synthetic filtering already complete)
-    ↓
-BBjDocumentValidator.validateDocument()
-    (runs normally, synthetic docs already filtered out)
-```
-
-**Key insight:** The existing `shouldValidate()` check already prevents validation of synthetic documents. The milestone requirement "suppress diagnostics for synthetic files" is already satisfied—we just need to verify it works for all synthetic URIs.
-
-**Synthetic URI check extension:**
-```typescript
-// bbj-document-builder.ts shouldValidate()
-protected override shouldValidate(_document: LangiumDocument<AstNode>): boolean {
-    // Existing: never validate JavaSyntheticDocUri (classpath:/bbj.bbl)
-    if (_document.uri.toString() === JavaSyntheticDocUri) {
-        _document.state = DocumentState.Validated;
-        return false;
+protected override async buildDocuments(
+    documents: LangiumDocument[], options: BuildOptions, cancelToken: CancellationToken
+): Promise<void> {
+    await super.buildDocuments(documents, options, cancelToken);
+    if (!this.isImportingBBjDocuments) {
+        await this.addImportedBBjDocuments(documents, options, cancelToken);
+        await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
+        await this.invokeBBjCPLAndMerge(documents, cancelToken);  // NEW
     }
-    // NEW: also skip bbjlib:/ synthetic library docs
-    if (_document.uri.scheme === 'bbjlib') {
-        _document.state = DocumentState.Validated;
-        return false;
-    }
-    // Existing: external document filtering
-    if (this.wsManager() instanceof BBjWorkspaceManager) {
-        const validate = super.shouldValidate(_document)
-            && !(this.wsManager() as BBjWorkspaceManager).isExternalDocument(_document.uri)
-        if (!validate) {
-            _document.state = DocumentState.Validated;
-        }
-        return validate;
-    }
-    return super.shouldValidate(_document);
 }
 ```
+
+### Pattern 2: notifyDocumentPhase for Incremental Diagnostic Updates
+
+**What:** Call `notifyDocumentPhase(doc, DocumentState.Validated, cancelToken)` after mutating `document.diagnostics`.
+**When to use:** Any time updated diagnostics need pushing without re-running the full build pipeline.
+**Established by:** `revalidateUseFilePathDiagnostics()` already calls this to remove false-positive USE path diagnostics.
+
+### Pattern 3: Lazy Settings Access via wsManager
+
+**What:** Read settings from `BBjWorkspaceManager` at invocation time, not at constructor time.
+**When to use:** Any setting that can change via hot-reload (`bbj.home`, trigger mode).
+**Established by:** All existing services that read `bbjdir` or `prefixes` do this pattern.
+
+---
+
+## Anti-Patterns to Avoid
+
+### Anti-Pattern 1: Registering a Separate onBuildPhase Listener for CPL in main.ts
+
+**What people do:** Register `documentBuilder.onBuildPhase(DocumentState.Validated, ...)` in `main.ts` to fire CPL.
+**Why it's wrong:** This listener fires AFTER Langium has already called `sendDiagnostics` (Langium registers its own `onDocumentPhase` listener that fires first). The merged CPL diagnostics would arrive in a second `publishDiagnostics` notification, causing visible diagnostic flicker - squiggles appear, then change.
+**Do this instead:** Merge inside `buildDocuments()` before `notifyDocumentPhase` so one `sendDiagnostics` carries all diagnostics.
+
+### Anti-Pattern 2: Running BBjCPL on Every Keystroke Without Relying on Build Queue
+
+**What people do:** Hook CPL invocation directly into `didChangeContent` without cancel token support.
+**Why it's wrong:** BBjCPL is a subprocess - it doesn't support mid-process cancellation. Concurrent invocations pile up on large files.
+**Do this instead:** CPL runs inside `buildDocuments()` which is already guarded by Langium's `WorkspaceLock` and `cancelToken`. Rapid edits cancel the previous build, so CPL is naturally debounced.
+
+### Anti-Pattern 3: Failing Silently on bbjcpl Not Found
+
+**What people do:** Return empty diagnostics when `bbjcpl` executable is missing.
+**Why it's wrong:** Users think CPL is running and producing no errors when it is not running at all.
+**Do this instead:** If `bbj.home` is set but the binary is not found, emit one `DiagnosticSeverity.Warning` at range (0,0)-(0,0): `"BBjCPL not found at {path}. Compiler checks disabled."` If `bbj.home` is not configured, log at debug level and return silently (user hasn't opted in).
+
+### Anti-Pattern 4: Mutating Document State from BBjCPLCompilerService
+
+**What people do:** Mark documents as needing relinking after CPL runs, or reset `document.state`.
+**Why it's wrong:** BBjCPL diagnostics are line-based, not AST-based. They do not affect reference resolution. Resetting document state triggers a full rebuild loop.
+**Do this instead:** Only mutate `document.diagnostics`. Never touch `document.state`.
+
+---
+
+## Build Order Recommendation
+
+Given dependencies between new components:
+
+1. **`BBjDocumentValidator` (hierarchy filter)** - Modifies existing class, no new dependencies. Can ship independently for immediate noise-reduction benefit even before CPL integration.
+
+2. **`BBjDocumentSymbolProvider`** - Independent of CPL. Can ship with or before CPL integration. Straightforward override of `DefaultDocumentSymbolProvider`.
+
+3. **`BBjCPLCompilerService`** - Self-contained subprocess wrapper. No dependencies on other new components. Testable independently with a fixture `.bbj` file and a real BBj installation.
+
+4. **`BBjDocumentBuilder` (CPL integration)** - Depends on `BBjCPLCompilerService` being stable. Wire `invokeBBjCPLAndMerge()` into `buildDocuments()` after service is verified.
+
+5. **`BBjDocumentUpdateHandler`** (on-save trigger, optional) - Only needed if `'onSave'` trigger mode is a requirement. Can be deferred until trigger mode configuration is designed.
+
+---
+
+## DI Registration Plan
+
+New additions to `bbj-module.ts`:
+
+```typescript
+// Extend BBjAddedServices type:
+export type BBjAddedServices = {
+    validation: { BBjValidator: BBjValidator },
+    java: { JavaInteropService: JavaInteropService },
+    types: { Inferer: TypeInferer },
+    compiler: { CPLCompilerService: BBjCPLCompilerService },  // NEW
+}
+
+// In BBjModule lsp section:
+lsp: {
+    DefinitionProvider: (services) => new BBjDefinitionProvider(services),
+    HoverProvider: (services) => new BBjHoverProvider(services),
+    CompletionProvider: (services) => new BBjCompletionProvider(services),
+    SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
+    SignatureHelp: () => new BBjSignatureHelpProvider(),
+    DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),  // NEW
+},
+
+// In BBjModule compiler section (new top-level group):
+compiler: {
+    CPLCompilerService: (services) => new BBjCPLCompilerService(services),  // NEW
+},
+
+// In BBjSharedModule (optional, for on-save trigger):
+lsp: {
+    NodeKindProvider: () => new BBjNodeKindProvider(),
+    DocumentUpdateHandler: (services) => new BBjDocumentUpdateHandler(services),  // NEW (optional)
+},
+```
+
+---
 
 ## Integration Points
 
-### Modified Components
+### External Services
 
-| Component | File | Change Type | Lines Changed |
-|-----------|------|-------------|---------------|
-| **Logger singleton** | `bbj-logging.ts` | NEW | +60 |
-| **Settings handler** | `bbj-ws-manager.ts` | EXTEND | +15 |
-| **Main entry** | `main.ts` | EXTEND | +5 (quiet startup restore) |
-| **VS Code client** | `extension.ts` | EXTEND | +2 (initializationOptions) |
-| **Settings schema** | `package.json` | EXTEND | +20 (configuration) |
-| **Logger imports** | 10 files with console.* | MODIFY | ~56 import + call sites |
-| **Doc builder** | `bbj-document-builder.ts` | VERIFY | 0 (existing check sufficient) |
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| `bbjcpl` binary | `child_process.spawn` with stderr pipe | Use `-N` (validate-only) flag; path from `BBjWorkspaceManager.getBBjDir()` + `/bin/bbjcpl` |
+| LSP connection | `connection.sendDiagnostics` via Langium's `addDiagnosticsHandler` | No direct connection access needed - mutate `document.diagnostics` and call `notifyDocumentPhase` |
 
-### External Boundaries
+### Internal Boundaries
 
-| Boundary | Protocol | Notes |
-|----------|----------|-------|
-| **VS Code ↔ LS** | LSP initialize | `initializationOptions` extended with `logLevel`, `quietStartup` |
-| **IntelliJ ↔ LS** | LSP initialize | Same `initializationOptions` (IntelliJ passes via LSP client config) |
-| **Console ↔ Output** | Node.js stdio | Logger wraps `console.*`, output unchanged (still goes to Output panel) |
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `BBjDocumentBuilder` <-> `BBjCPLCompilerService` | Direct method call (DI-injected) | Service injected via `BBjServices.compiler.CPLCompilerService` |
+| `BBjDocumentValidator` <-> Langium pipeline | Return filtered `Diagnostic[]` from `validateDocument()` | Override intercepts after `super.validateDocument()` |
+| `BBjDocumentSymbolProvider` <-> Langium LSP | Registered as `lsp.DocumentSymbolProvider` in `BBjModule` | Replaces default implementation |
+| `BBjDocumentUpdateHandler` <-> `BBjDocumentBuilder` | `wasRecentlySaved(uri)` method call | Optional - only if on-save mode is required |
 
-**IntelliJ integration:** IntelliJ LSP plugin must pass same `initializationOptions` structure. This is likely done in Kotlin LSP client configuration (exact file unknown—IntelliJ plugin structure not visible in provided context).
-
-## Recommended Build Order
-
-### Phase 1: Logger Infrastructure (Foundation)
-
-**Why first:** Establish logging before migrating console.* calls
-
-1. Create `bbj-logging.ts` with `LogLevel` enum, `setLogLevel()`, `logger` singleton
-2. Add unit tests for logger (vitest)
-3. Verify logger compiles and bundles correctly
-
-**Validation:** `npm run build` succeeds, logger imports correctly
-
-### Phase 2: Settings Plumbing (Configuration)
-
-**Why second:** Settings must be in place before logger can be configured
-
-1. Add `bbj.logging.level` and `bbj.logging.quietStartup` to `package.json` configuration
-2. Extend `extension.ts` `initializationOptions` with `logLevel`, `quietStartup`
-3. Update `bbj-ws-manager.ts` to read settings and call `setLogLevel()`
-4. Add quiet startup restore logic in `main.ts` (onBuildPhase hook)
-
-**Validation:** Settings appear in VS Code, `console.log` in `onInitialize` shows correct values
-
-### Phase 3: Console Migration (Systematic)
-
-**Why third:** Logger works, settings work, now replace console.* calls
-
-**Migration checklist (56 call sites across 10 files):**
-
-| File | console.log | console.warn | console.error | console.debug | Total |
-|------|-------------|--------------|---------------|---------------|-------|
-| java-interop.ts | 4 | 2 | 2 | 6 | 14 |
-| bbj-ws-manager.ts | 10 | 3 | 1 | 4 | 18 |
-| bbj-scope-local.ts | 0 | 1 | 1 | 3 | 5 |
-| main.ts | 1 | 0 | 2 | 0 | 3 |
-| bbj-module.ts | 0 | 0 | 0 | 1 | 1 |
-| java-javadoc.ts | 0 | 1 | 7 | 0 | 8 |
-| bbj-scope.ts | 0 | 3 | 0 | 0 | 3 |
-| bbj-document-builder.ts | 1 | 1 | 0 | 0 | 2 |
-| bbj-linker.ts | 0 | 0 | 1 | 0 | 1 |
-| bbj-hover.ts | 0 | 0 | 1 | 0 | 1 |
-
-**Systematic approach:**
-1. Start with highest-impact files (java-interop, bbj-ws-manager)
-2. Add `import { logger } from './bbj-logging.js'` to each file
-3. Replace `console.log` → `logger.info`
-4. Replace `console.warn` → `logger.warn`
-5. Replace `console.error` → `logger.error`
-6. Replace `console.debug` → `logger.debug`
-7. Verify each file compiles after changes
-
-**Special case: Parser ambiguities (bbj-module.ts line 113):**
-```typescript
-// BEFORE
-lookaheadStrategy.logging = (message: string) => {
-    if (!ambiguitiesReported) {
-        ambiguitiesReported = true;
-        console.debug('Parser: Ambiguous Alternatives Detected. ...');
-    }
-}
-
-// AFTER
-import { logger } from './bbj-logging.js';
-lookaheadStrategy.logging = (message: string) => {
-    if (!ambiguitiesReported) {
-        ambiguitiesReported = true;
-        logger.debug('Parser: Ambiguous Alternatives Detected. ...');
-    }
-}
-```
-
-### Phase 4: Synthetic File Verification (Minimal)
-
-**Why last:** Diagnostic filtering already works, just verify coverage
-
-1. Verify `JavaSyntheticDocUri` (`classpath:/bbj.bbl`) check exists (already confirmed)
-2. Verify `bbjlib:/` scheme check exists in `shouldValidate()` (already confirmed at line 15 of bbj-index-manager.ts)
-3. Add test case: Create document with synthetic URI, verify no diagnostics published
-
-**Expected result:** No code changes needed, existing filtering is sufficient
-
-### Phase 5: Integration Testing
-
-**Why last:** Full end-to-end verification
-
-1. Manual test: Set `bbj.logging.level` to each value, verify output
-2. Manual test: Enable `bbj.logging.quietStartup`, verify silent startup then full logging
-3. Manual test: Open workspace with syntax errors in synthetic files, verify no diagnostics shown
-4. Manual test: Verify IntelliJ plugin respects same settings (requires IntelliJ Kotlin changes)
-
-## Ambiguous Alternatives Investigation (Separate Feature)
-
-**Architecture note:** This is a separate toggle from general debug logging
-
-### Current Behavior
-
-Parser ambiguity detection is hardcoded in `bbj-module.ts` (lines 108-116):
-```typescript
-const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
-if (lookaheadStrategy) {
-    lookaheadStrategy.logging = (message: string) => {
-        if (!ambiguitiesReported) {
-            ambiguitiesReported = true;
-            console.debug('Parser: Ambiguous Alternatives Detected. ...');
-        }
-    }
-}
-```
-
-**Problem:** The original Chevrotain ambiguity messages are suppressed. The one-time warning is shown, but individual ambiguity details are lost.
-
-### Recommended Approach
-
-**Option A: Add setting to enable full ambiguity logging**
-
-```typescript
-// bbj-module.ts
-let showAmbiguityDetails = false; // set via initializationOptions
-
-lookaheadStrategy.logging = (message: string) => {
-    if (showAmbiguityDetails) {
-        logger.debug(`Parser ambiguity: ${message}`);
-    } else if (!ambiguitiesReported) {
-        ambiguitiesReported = true;
-        logger.debug('Parser: Ambiguous Alternatives Detected. Enable ambiguity logging to see details.');
-    }
-}
-```
-
-**Settings:**
-- `bbj.parser.showAmbiguities` (boolean, default false)
-- When enabled, logs every ambiguity message (can be verbose)
-- When disabled, shows one-time summary (current behavior)
-
-**Option B: Collect and log summary at startup**
-
-```typescript
-const ambiguities: string[] = [];
-lookaheadStrategy.logging = (message: string) => {
-    ambiguities.push(message);
-}
-// After parser finalization:
-if (ambiguities.length > 0) {
-    logger.warn(`Parser: ${ambiguities.length} ambiguous alternatives detected`);
-    if (showAmbiguityDetails) {
-        ambiguities.forEach(msg => logger.debug(`  - ${msg}`));
-    }
-}
-```
-
-**Recommendation:** Option B (collect and summarize) is better for UX—one-time message with count, details on demand.
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Threading Log Level Through DI
-
-**What people do:** Add `logLevel` parameter to every service constructor, thread through DI module
-
-**Why it's wrong:**
-- Langium services are created synchronously in `createBBjServices()` before `onInitialize` receives settings
-- Would require async service initialization or two-phase init (complex)
-- Logger is cross-cutting concern, not business logic (singleton is acceptable)
-
-**Do this instead:** Use module-level singleton with `setLogLevel()` called from `onInitialize`
-
-### Anti-Pattern 2: Filtering Diagnostics in DocumentValidator
-
-**What people do:** Add URI checks in `BBjDocumentValidator.validateDocument()` to skip synthetic files
-
-**Why it's wrong:**
-- Validation already skipped by `shouldValidate()` in `BBjDocumentBuilder`
-- Adding redundant checks in validator creates two sources of truth
-- Breaks separation of concerns (document builder decides what to validate, validator just validates)
-
-**Do this instead:** Use existing `shouldValidate()` hook, extend URI scheme checks if needed
-
-### Anti-Pattern 3: Heavyweight Logging Framework
-
-**What people do:** Add Winston, Pino, or similar structured logging framework
-
-**Why it's wrong:**
-- Adds dependency weight (100KB+ bundle size)
-- Overkill for diagnostic logging to console
-- Langium LS is CLI tool, not production service (structured logs not needed)
-- Migration effort multiplied (configure framework, change all call sites)
-
-**Do this instead:** Simple logger wrapper (60 lines) around `console.*` with level checking
-
-## Scaling Considerations
-
-| Concern | Current State | At Scale |
-|---------|---------------|----------|
-| **Log volume** | ~56 log points | Use DEBUG level for verbose operations (Java class resolution, scope computation) |
-| **Startup time** | Quiet startup hides logs | No performance impact—logger just skips console.* calls |
-| **Diagnostic volume** | Synthetic files already filtered | No change—filtering prevents diagnostic explosion |
-
-**Key insight:** This is output cleanup, not performance optimization. Logger overhead is negligible (one enum comparison per log call).
-
-## IntelliJ Integration (Unknown Structure)
-
-**Problem:** IntelliJ plugin structure not visible in provided context. No Kotlin files found.
-
-**Required changes (best guess):**
-1. IntelliJ LSP client configuration must pass `initializationOptions` with `logLevel`, `quietStartup`
-2. Settings UI in IntelliJ preferences (if settings are exposed)
-3. Likely in `BbjLanguageClient.kt` or similar LSP client wrapper
-
-**Recommendation:** Search IntelliJ plugin for:
-- `initializationOptions` (LSP client setup)
-- `LanguageClient` or `LanguageClientCustomization` (IntelliJ LSP integration)
-- Settings persistence (IntelliJ Settings UI)
+---
 
 ## Sources
 
-- BBj Language Server codebase analysis (main.ts, bbj-module.ts, bbj-ws-manager.ts, bbj-document-builder.ts, etc.)
-- [Langium language server debug logging discussion](https://github.com/eclipse-langium/langium/discussions/376)
-- [LSP specification: workspace/configuration vs initializationOptions](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/)
-- [LSP workspace/didChangeConfiguration discussion](https://github.com/sst/opencode/issues/2180)
+- Langium 4.1.3 source: `bbj-vscode/node_modules/langium/lib/workspace/document-builder.d.ts` (HIGH confidence - direct inspection)
+- Langium 4.1.3 source: `bbj-vscode/node_modules/langium/lib/workspace/documents.d.ts` - `DocumentState` enum (HIGH confidence)
+- Langium 4.1.3 source: `bbj-vscode/node_modules/langium/lib/lsp/document-symbol-provider.d.ts` (HIGH confidence)
+- Langium 4.1.3 source: `bbj-vscode/node_modules/langium/lib/lsp/document-update-handler.d.ts` (HIGH confidence)
+- Langium 4.1.3 source: `bbj-vscode/node_modules/langium/lib/lsp/language-server.js` lines 268-285 - `addDiagnosticsHandler` implementation confirming `onDocumentPhase(Validated)` emit (HIGH confidence)
+- Existing `bbj-document-builder.ts` - `notifyDocumentPhase` and `revalidateUseFilePathDiagnostics` usage patterns (HIGH confidence)
+- Existing `bbj-document-validator.ts` - `toDiagnostic` severity override pattern (HIGH confidence)
+- Existing `bbj-module.ts` - DI registration conventions (HIGH confidence)
+- BASIS BBjCPL documentation: https://documentation.basis.com/BASISHelp/WebHelp/util/bbjcpl_bbj_compiler.htm (MEDIUM confidence - found via search, confirms stderr output and -N flag)
+- BBjCPL stderr output format: LOW confidence - exact regex pattern needs empirical verification against a real BBj installation
+- [Langium Document Lifecycle docs](https://langium.org/docs/reference/document-lifecycle/) (MEDIUM confidence - found via search)
 
 ---
-*Architecture research for: Debug Logging and Diagnostic Filtering Integration*
-*Researched: 2026-02-08*
+
+*Architecture research for: BBjCPL integration with Langium-based BBj Language Server*
+*Researched: 2026-02-19*

@@ -1,426 +1,249 @@
-# Feature Landscape: Langium 3.2.1 to 4.x Migration
+# Feature Research
 
-**Domain:** Language server framework major version upgrade
-**Researched:** 2026-02-03
-**Target version:** Langium 4.1.3 (latest stable), langium-cli 4.1.0
-**Current version:** Langium 3.2.1, langium-cli 3.2.0
-
----
-
-## Breaking Changes That MUST Be Addressed
-
-These changes will cause compilation failures. The build will not succeed without fixing them.
-
-### BC-1: `PrecomputedScopes` Renamed to `LocalSymbols`
-
-**PR:** #1788
-**Confidence:** HIGH (verified in CHANGELOG, multiple sources)
-**Complexity:** MEDIUM (pervasive rename + interface change)
-
-The type `PrecomputedScopes` has been renamed to `LocalSymbols` and a dedicated interface was introduced.
-
-**Files affected:**
-- `bbj-scope-local.ts` -- Uses `PrecomputedScopes` as return type from `computeLocalScopes()` and parameter type in `processNode()` and `addToScope()`. Also imports `MultiMap` to construct it.
-- `bbj-scope.ts` -- Accesses `document.precomputedScopes` property on `LangiumDocument`.
-
-**What to change:**
-- All `PrecomputedScopes` type references become `LocalSymbols`
-- `document.precomputedScopes` property accessor likely renamed to `document.localSymbols` (or similar -- verify during implementation)
-- Import statements must be updated
-- `MultiMap<AstNode, AstNodeDescription>` construction may need to use the new `LocalSymbols` interface instead
-
-**Risk:** The `LocalSymbols` interface may have different methods than `MultiMap`. The old `PrecomputedScopes` was simply `MultiMap<AstNode, AstNodeDescription>`. The new `LocalSymbols` is a dedicated interface -- need to verify it still supports `.get()`, `.add()`, and iteration patterns used in `bbj-scope-local.ts`.
+**Domain:** Compiler-integrated language server — diagnostic quality, external compiler integration, outline resilience
+**Researched:** 2026-02-19
+**Confidence:** HIGH (sourced from gopls official docs, LSP 3.17 spec, langium internals, rust-analyzer docs, BBjCPL official docs)
 
 ---
 
-### BC-2: `computeExports` / `computeLocalScopes` Method Renames
+## Milestone Scope
 
-**PR:** #1788 (same as above)
-**Confidence:** MEDIUM (inferred from the `PrecomputedScopes` -> `LocalSymbols` rename and naming consistency; file-based scoping recipe uses `collectExportedSymbols`)
-**Complexity:** LOW-MEDIUM (method renames in one file)
-
-The `ScopeComputation` interface methods were likely renamed:
-- `computeExports()` -> `collectExportedSymbols()`
-- `computeLocalScopes()` -> `collectLocalSymbols()`
-
-**Files affected:**
-- `bbj-scope-local.ts` -- Overrides both `computeExports()` and `computeLocalScopes()` in `BbjScopeComputation extends DefaultScopeComputation`.
-
-**What to change:**
-```
-// Old (3.x)
-override async computeExports(document, cancelToken): Promise<AstNodeDescription[]>
-override async computeLocalScopes(document, cancelToken): Promise<PrecomputedScopes>
-
-// New (4.x) -- VERIFY exact names during implementation
-override async collectExportedSymbols(document, cancelToken): Promise<AstNodeDescription[]>
-override async collectLocalSymbols(document, cancelToken): Promise<LocalSymbols>
-```
-
-**Risk:** If the method names in `DefaultScopeComputation` changed but we don't update our overrides, TypeScript will error because the `override` keyword requires the method to exist in the base class. The `computeExportsForNode` helper called inside `computeExports` may also be renamed.
+This file covers only **new features** for v3.7: BBjCPL compiler integration, diagnostic hierarchy/noise reduction, and outline resilience. Existing features (Langium parser validation, document symbols, logger, cascading suppression for synthetic files, Chevrotain ambiguity handling) are already shipped and not re-scoped here.
 
 ---
 
-### BC-3: Generated AST Type Constants Changed from `TypeName` to `TypeName.$type`
+## Feature Landscape
 
-**PR:** #1942
-**Confidence:** HIGH (verified in CHANGELOG, multiple sources)
-**Complexity:** HIGH (pervasive across entire codebase)
+### Table Stakes (Users Expect These)
 
-Previously, the generated `ast.ts` exported constant strings like `export const MethodDecl = 'MethodDecl'`. Now they are accessed as `MethodDecl.$type` (the constant is now an object with a `$type` property).
+Features that users of compiler-integrated language servers (TypeScript, rust-analyzer, gopls) take for granted. Missing them makes the tool feel unfinished.
 
-**Files affected (EVERY file that uses generated type constants as strings):**
-- `bbj-scope.ts` -- Uses `MethodDecl`, `LibFunction`, `Class`, `NamedElement`, `JavaClass`, `LibEventType`, `LibMember`, `FieldDecl`, `CompoundStatement`, `BbjClass` as string constants in comparisons like `descr.type === MethodDecl`
-- `bbj-scope-local.ts` -- Uses `FieldDecl`, `MethodDecl`, `CompoundStatement` as string constants in object literal `type:` fields
-- `bbj-linker.ts` -- Uses `VariableDecl`, `BinaryExpression`, `ParameterCall`, `ConstructorCall`, `MethodDecl`, `LibFunction` as string constants
-- `bbj-validator.ts` -- Uses `JavaField`, `JavaMethod`, `MethodDecl`, `FieldDecl` in comparisons; uses `BBjAstType` in `ValidationChecks<BBjAstType>`
-- `bbj-completion-provider.ts` -- Uses `LibSymbolicLabelDecl`, `LibEventType` in comparisons
-- `bbj-hover.ts` -- Uses `MethodDecl`, `LibFunction`, `JavaMethod`, `LibEventType` in switch cases
-- `bbj-nodedescription-provider.ts` -- Uses `MethodDecl`, `LibFunction`, `JavaMethod`, `LibEventType` in switch cases
-- `bbj-semantic-token-provider.ts` -- Uses `ParameterDecl`, `SymbolRef`, `MethodCall` in switch on `$type`
-- `bbj-node-kind.ts` -- Uses `MethodDecl`, `LibFunction`, `BbjClass`, `ArrayDecl`, `LibEventType`, `JavaPackage`, `JavaMethod`, `JavaClass` in switch cases
-- `bbj-type-inferer.ts` -- Likely uses type constants in comparisons
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| **Authoritative compiler errors surfaced in-editor** | TypeScript/gopls users never leave the editor to check compiler output. Diagnostics from the real compiler carry the most trust. | MEDIUM | BBjCPL invoked as child process; stdout/stderr captured and parsed. BBjCPL error messages contain both BBj line number and ASCII line number — need to map to the latter for LSP ranges. |
+| **Compiler errors clear when parser errors resolve** | Users expect the editor to not show stale compiler results once source is clean. gopls clears prior diagnostics on each new analysis pass. | LOW | Tracked per-document; clear BBjCPL diagnostics from prior invocation before publishing new ones. |
+| **Diagnostic source label distinguishes compiler from parser** | gopls uses `"compiler"` vs `"go list"`; rust-analyzer uses `"rust-analyzer"` vs `"rustc"`. Users need to know who is reporting what. LSP 3.17 spec explicitly cites `source` as "e.g. 'typescript' or 'super lint'". | LOW | Langium's `DefaultDocumentValidator.getSource()` returns `this.metadata.languageId` = `"bbj"`. BBjCPL diagnostics should use source `"BBjCPL"`. Langium parser/linking diagnostics keep `"bbj"`. |
+| **On-save trigger for external compilation** | All major LS implementations trigger expensive external operations on-save, not on every keystroke. `textDocument/didSave` is the standard hook. | LOW | Register `connection.onDidSaveTextDocument` handler. Default behavior users expect: compile on save, see results immediately. |
+| **Cascading diagnostics suppressed when parser has errors** | When a missing `(` produces 15 downstream errors, users expect the LS to show only the root cause. This is the stated pain point. Rust-analyzer and TypeScript both suppress semantic/linking errors when parser errors exist. | MEDIUM | Already have `BBjDocumentValidator` with per-phase stop flags (`stopAfterParsingErrors`, `stopAfterLinkingErrors`). The `ValidationOptions` interface already declares these; they need to be wired and enforced in the validation pipeline. |
+| **Outline/Structure View survives syntax errors in individual methods** | TypeScript outline persists with syntax errors — the tree shows what the parser could recover. Users report frustration when the entire outline vanishes for a single typo. | MEDIUM | Langium's Chevrotain parser does error recovery and produces a partial AST. The fix is ensuring DocumentSymbol computation does not bail on AST nodes with `$cstNode` gaps — walk what is present. |
+| **Configurable compilation trigger** | Power users expect to disable on-save compilation or switch to debounced. gopls has `build.onSave`, rust-analyzer has `check.onChange`. | LOW | `package.json` setting: `bbj.compiler.trigger` with values `"onSave"` (default) and `"off"`. Debounced is a v2 concern — adds complexity for modest gain. |
 
-**What to change:**
-Every usage of a generated type constant as a string must change:
-```typescript
-// Old (3.x): Type constant IS the string
-case MethodDecl:           // MethodDecl === 'MethodDecl'
-descr.type === MethodDecl  // string comparison
+### Differentiators (Competitive Advantage)
 
-// New (4.x): Type constant is an object, use .$type
-case MethodDecl.$type:           // MethodDecl.$type === 'MethodDecl'
-descr.type === MethodDecl.$type  // string comparison
-```
+Features that go beyond the minimum and establish the BBj LS as a first-class tool for BBj developers.
 
-**IMPORTANT:** The `is*` type guard functions (like `isMethodDecl`, `isBbjClass`, etc.) should still work unchanged since they check `node.$type`. The constant change primarily affects:
-1. Direct comparisons: `node.$type === TypeName` -> `node.$type === TypeName.$type`
-2. Type constants used as strings: `type: FieldDecl` -> `type: FieldDecl.$type` (in object literals for AstNodeDescription)
-3. Switch cases: `case TypeName:` -> `case TypeName.$type:`
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| **Diagnostic hierarchy — BBjCPL first, then parser, then hints** | When BBjCPL reports an error, its verdict is authoritative. The LS should either suppress or downgrade Langium parser errors for the same location when BBjCPL has spoken. This is unusual; most LS tools show both independently. | HIGH | Requires correlating BBjCPL error ranges with Langium diagnostic ranges. Approach: if BBjCPL reports errors for a document, clear Langium parse/linking errors for that document and publish only BBjCPL + Langium warnings/hints. |
+| **BBjCPL integration with BBj home auto-detection** | Uses existing `bbj.home` setting (already wired for run commands) to locate `bbjcpl` binary. No extra user config for basic case. | LOW | `{bbj.home}/bin/bbjcpl` on the same path pattern as the run commands. |
+| **Timeout + cancellation for compiler invocation** | BBjCPL on a large file could block. Users don't expect their editor to hang. | MEDIUM | Node.js `child_process.spawn` with `AbortController` / `setTimeout` kill. Emit a warning diagnostic if BBjCPL times out instead of hanging the UI. |
+| **Outline error indicator without losing structure** | Rust-analyzer and gopls both preserve the outline tree but do not add visual error indicators within the DocumentSymbol response — that's a client concern. The differentiating UX is that the outline stays populated even when there are errors, so users can still navigate. | LOW | The structural fix (walk partial AST) is the key. Error indicators (e.g., a `⚠` prefix on symbol names) are client-side behavior; the LS should not embed them in symbol names. |
+| **Parse error noise-reduction scope: suppress linking+validation, not syntax** | The existing `cascading diagnostic suppression` in `BBjDocumentBuilder` suppresses synthetic file diagnostics. The new suppression should suppress *downstream Langium linking/semantic errors* when the document has parser errors, while keeping the parser error itself visible. | MEDIUM | In `BBjDocumentValidator`, check `document.parseResult.parserErrors.length > 0`. If true, skip linking error processing and custom validations — only surface parser errors. Implement via `stopAfterParsingErrors` flag. |
 
-**Risk:** This is the single highest-volume change. Missing one occurrence will cause a runtime bug (comparison will fail because `TypeName` is now an object, not a string). Thorough search-and-replace needed. A global find for all imported type constants used in comparisons is required.
+### Anti-Features (Commonly Requested, Often Problematic)
 
----
-
-### BC-4: `Reference | MultiReference` in Linker and Scope Provider
-
-**PR:** #1509
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** MEDIUM (affects linker method signatures)
-
-The type of references used throughout the linker service and scope provider is now `Reference | MultiReference`. The `ReferenceInfo` type may also be affected.
-
-**Files affected:**
-- `bbj-linker.ts` -- Overrides `link()`, `doLink()`, and `getCandidate()` on `DefaultLinker`. The `doLink(refInfo: ReferenceInfo, document: LangiumDocument)` signature may need updating if `ReferenceInfo` now contains `Reference | MultiReference`.
-- `bbj-scope.ts` -- `getScope(context: ReferenceInfo)` in `BbjScopeProvider`. The `ReferenceInfo` type may have changed.
-
-**What to change:**
-- Method signatures for `doLink` and `getCandidate` may need to accept `Reference | MultiReference`
-- Need to handle the case where `refInfo.reference` could be a `MultiReference`
-- The `link()` method override iterates `AstUtils.streamReferences(node)` which may now yield `MultiReference` items
-
-**Risk:** Since BBj grammar does not use multi-references, the actual MultiReference path is unlikely to be triggered at runtime. However, the TypeScript types must still match. The simplest approach is to type-narrow to `Reference` at the entry point of each override.
+| Feature | Why Requested | Why Problematic | Alternative |
+|---------|---------------|-----------------|-------------|
+| **Debounced compilation on every keystroke** | Faster feedback loop | BBjCPL is a batch compiler — spawning it on every change would create process churn, block the workspace, and produce noisy intermediate-state errors. Langium's incremental parser already provides fast syntactic feedback. | On-save trigger (default) with `"off"` escape hatch. |
+| **Embedding error count/indicator in DocumentSymbol name** | "Show me that method 3 has errors" | LSP `DocumentSymbol.name` is a string — modifying it breaks search, refactoring, and breadcrumb navigation. Clients (VS Code Outline, IntelliJ Structure View) manage their own error decorators from the diagnostics stream, not from symbol names. | Trust the client to render error indicators via the standard diagnostics stream. |
+| **Replacing Langium parser entirely with BBjCPL as the only validator** | "Just trust the compiler" | BBjCPL is a batch compiler with no incremental mode. It is too slow for keystroke-level feedback, does not provide CST nodes for hover/completion, and produces tokenized output (not source AST). The hybrid approach (Langium for IDE features, BBjCPL for authoritative errors) is the correct pattern — identical to how gopls and rust-analyzer work. | Maintain Langium as the IDE AST provider; BBjCPL as the authoritative error source on save. |
+| **Blocking the LS thread waiting for BBjCPL** | Simplicity of implementation | Blocks all LSP responses (hover, completion, go-to-definition) during compilation. Creates a frozen editor. | `child_process.spawn` (async, non-blocking) with CancellationToken support. |
+| **Global error suppression setting ("disable BBjCPL diagnostics")** | "I want to disable all this noise" | Coarse-grained switches lead to users turning off diagnostics entirely and missing real errors. | Configurable trigger (`"off"` disables BBjCPL invocation). Fine-grained suppression via existing `bbj.typeResolution.warnings` pattern. |
 
 ---
 
-### BC-5: `createReferenceCompletionItem` Signature Change
-
-**PR:** #1976
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW-MEDIUM
-
-`DefaultCompletionProvider#createReferenceCompletionItem` now requires additional arguments (`refInfo` and `context` parameters).
-
-**Files affected:**
-- `bbj-completion-provider.ts` -- Overrides `createReferenceCompletionItem(nodeDescription: AstNodeDescription)`. Must be updated to accept the new parameters.
-
-**What to change:**
-```typescript
-// Old (3.x)
-override createReferenceCompletionItem(nodeDescription: AstNodeDescription): CompletionValueItem
-
-// New (4.x) -- exact params need verification
-override createReferenceCompletionItem(nodeDescription: AstNodeDescription, refInfo: ReferenceInfo, context: CompletionContext): CompletionValueItem
-```
-
-**Risk:** LOW. The override currently only uses `nodeDescription`. The new params can be accepted and ignored. But the super call `super.createReferenceCompletionItem(nodeDescription)` must also pass the new arguments.
-
----
-
-### BC-6: TypeScript >= 5.8.0 Required
-
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** NONE (already satisfied)
-
-Langium 4.x requires TypeScript >= 5.8.0.
-
-**Current project:** TypeScript ^5.8.3 -- already compatible. No action needed.
-
----
-
-### BC-7: `langium-cli` 4.x Regeneration Required
-
-**Confidence:** HIGH (follows from major version change)
-**Complexity:** LOW
-
-The generated files in `src/language/generated/` must be regenerated with langium-cli 4.x. The generated `module.ts`, `ast.ts`, and `grammar.ts` will have structural changes including:
-- Type constants as objects with `$type` (BC-3)
-- Potential changes to `BBjGeneratedModule` and `BBjGeneratedSharedModule` types
-- New imports from different langium subpaths
-- `BBjAstType` structure may change from string enum to object type mapping
-
-**Files affected:**
-- `src/language/generated/ast.ts` (regenerated)
-- `src/language/generated/grammar.ts` (regenerated)
-- `src/language/generated/module.ts` (regenerated)
-
-**What to change:**
-```bash
-npm install langium@~4.1.3 langium-cli@~4.1.0
-npx langium generate
-```
-
-Then fix any compilation errors in hand-written code that depends on generated types.
-
----
-
-### BC-8: Rule Naming Restrictions
-
-**PR:** #1979
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW (verify only)
-
-Rules are no longer allowed to use the same name as the grammar in which they are contained. Grammar names must be unique.
-
-**Files affected:**
-- `bbj.langium` -- Grammar is named `BBj`. Must verify no parser rule is named `BBj`.
-- `java-types.langium` -- No grammar name declared (it's imported), so no issue.
-
-**Assessment:** The grammar is named `BBj` and there is no parser rule named `BBj` in the grammar file. The entry rule is `Model`. **No action required** but verify during generation.
-
----
-
-### BC-9: Removed Deprecated Fields and Functions
-
-**PR:** #1991
-**Confidence:** MEDIUM (CHANGELOG confirms removal but does not enumerate specific items)
-**Complexity:** UNKNOWN until compilation attempted
-
-Several deprecated fields and functions were removed. The specific list is not fully documented in the CHANGELOG.
-
-**Potentially affected APIs used in this project:**
-- `prepareLangiumParser` -- Used in `bbj-module.ts` to create a custom parser. This function may have been removed or renamed.
-- `getDiagnosticRange` -- Used in `bbj-document-validator.ts`. May have been removed.
-- `toDiagnosticSeverity` -- Used in `bbj-document-validator.ts`. May have been removed.
-- `DocumentValidator.LinkingError` -- Static constant used in `bbj-document-validator.ts`. May have changed.
-
-**Risk:** HIGH for `prepareLangiumParser` specifically. The custom parser creation in `bbj-module.ts` (lines 103-117) uses `prepareLangiumParser(services)` then calls `parser.finalize()`. If this API was removed, the entire parser customization approach needs reworking.
-
-**Strategy:** Attempt compilation first. Any removed APIs will surface as import errors. Check PR #1991 diff at `https://github.com/eclipse-langium/langium/pull/1991` for the definitive list.
-
----
-
-### BC-10: Singleton Item Removed from `DefaultServiceRegistry`
-
-**PR:** #1768
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW
-
-The singleton item in the `DefaultServiceRegistry` has been removed.
-
-**Files affected:**
-- `bbj-ws-manager.ts` -- Uses `services.ServiceRegistry.all` to find BBj services: `services.ServiceRegistry.all.find(service => service.LanguageMetaData.languageId === 'bbj')`. If `ServiceRegistry` API changed, this will break.
-
-**What to change:** Verify `ServiceRegistry.all` still exists and returns the expected type. If not, find the new API for looking up language-specific services from shared services.
-
----
-
-### BC-11: Extended File System Provider Interface
-
-**PR:** #1784
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW
-
-The extended file system provider interface requires implementing more methods.
-
-**Files affected:**
-- `bbj-ws-manager.ts` -- Uses `this.fileSystemProvider.readDirectory()` and `this.fileSystemProvider.readFile()`. Since the project uses the default `NodeFileSystem` from `langium/node`, this is unlikely to need manual changes.
-
-**Assessment:** Likely no action needed since we use `NodeFileSystem` from `langium/node`, which should implement the extended interface. But verify.
-
----
-
-### BC-12: Refined EBNF-Based Terminals
-
-**PR:** #1966
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW
-
-Refined EBNF-based terminals to avoid synthetic capturing groups.
-
-**Files affected:**
-- `bbj.langium` -- Uses regex-based terminals (not EBNF-based). The BBj grammar defines terminals with explicit regex patterns: `terminal ID: /[_a-zA-Z][\w_]*(@)?/;` etc.
-- `bbj-token-builder.ts` -- Builds custom tokens with regex patterns. No EBNF terminals used.
-
-**Assessment:** The BBj grammar uses explicit regex terminals, not EBNF character ranges. **Likely no action needed**, but verify during generation.
-
----
-
-### BC-13: Removed Unused Xtext Features from Langium Grammar
-
-**PR:** #1945
-**Confidence:** HIGH (verified in CHANGELOG)
-**Complexity:** LOW (verify only)
-
-Removed unused Xtext features from the Langium grammar language itself.
-
-**Assessment:** This affects what syntax is valid in `.langium` files. Potentially affects:
-- `type` declarations (like `type BBjClassMember = FieldDecl | MethodDecl`)
-- `interface` declarations
-- `fragment` rules
-
-The BBj grammar uses all of these. Run `langium generate` to check if any grammar constructs are now invalid. The grammar uses standard Langium features; Xtext-specific features (like wildcard imports or certain annotation syntax) are not used.
-
----
-
-## Behavioral Changes (Compiles But Behavior Differs)
-
-These changes may not cause compilation errors but could change runtime behavior.
-
-### BH-1: `$type` Property on Generated Interfaces
-
-The generated AST interfaces now include a `readonly $type` property with a string literal type. Runtime `node.$type` checks still work, but the constants used for comparison have changed (see BC-3). If any code does `node.$type === 'MethodDecl'` using raw strings instead of constants, those will still work. Only constant-based comparisons break at compile time.
-
----
-
-### BH-2: `findDeclaration` Renamed to `findDeclarations`
-
-**PR:** #1509
-**Confidence:** HIGH
-
-`References#findDeclaration` was renamed to `findDeclarations` and now returns an array.
-
-**Files affected:** None directly -- the project does not appear to call `findDeclaration` in custom code. This is primarily an LSP-level concern. But verify no usages exist in the extension code.
-
----
-
-### BH-3: Document Builder Option to Skip Eager Linking
-
-Langium 4.0 added a `DocumentBuilder` option to skip eager linking. This is a new feature, not a breaking change, but could affect performance characteristics if the default behavior changed.
-
-**Assessment:** Verify that `BBjDocumentBuilder` still behaves correctly with the new defaults. The `buildDocuments` override may need signature adjustment if `BuildOptions` type changed.
-
----
-
-## Deprecation Warnings (Works But Should Be Updated)
-
-### DW-1: Check for New Deprecation Warnings After Upgrade
-
-After upgrading, compile and watch for TypeScript deprecation warnings. Langium 4.x may have deprecated APIs that still work but are marked for removal in 5.x. Address these in a follow-up commit to stay current.
-
----
-
-## New Features Available (NOT Needed for This Milestone)
-
-These are available after upgrading but are optional enhancements, not required for migration.
-
-### NF-1: Infix Operator Support
-
-Langium 4.0 adds infix operator notation for describing binary operator precedence more concisely. The BBj grammar currently uses the traditional left-recursive pattern for binary expressions. Could be adopted later to simplify the expression grammar.
-
-### NF-2: Strict Grammar Mode
-
-Can be enabled in `langium-config.json` to disallow inferred types. Could improve type safety but requires declaring all types explicitly. The BBj grammar heavily uses inferred types -- this would be a large effort to adopt.
-
-### NF-3: GBNF Grammar Generation
-
-The CLI now supports generating GBNF grammars for AI/LLM integration.
-
-### NF-4: `fileNames` Configuration Option
-
-New config option for better control over file associations.
-
-### NF-5: `DeepPartialAstNode` Utility Type
-
-New utility type for better type checking in tests.
-
-### NF-6: Multi-Reference Support in Grammar
-
-Grammar cross-references can now target multiple AST nodes (partial classes, namespaces). Not relevant for BBj.
-
----
-
-## Feature Dependencies and Migration Order
+## Feature Dependencies
 
 ```
-BC-7 (regenerate with CLI 4.x)
-  |
-  v
-BC-3 (fix type constants .$type) -- highest volume change
-  |
-  +---> BC-1 + BC-2 (PrecomputedScopes -> LocalSymbols + method renames)
-  |
-  +---> BC-4 (Reference | MultiReference in linker)
-  |
-  +---> BC-5 (completion provider signature)
-  |
-  +---> BC-9 (removed deprecated APIs -- especially prepareLangiumParser)
-  |
-  +---> BC-10, BC-11 (service registry, filesystem provider)
-  |
-  v
-Compile and fix remaining errors
-  |
-  v
-Run tests
+[BBjCPL child process invocation]
+    └──requires──> [bbj.home setting resolution] (already exists)
+    └──requires──> [textDocument/didSave handler] (new)
+    └──requires──> [BBjCPL output parser] (new — parse line/col from compiler stdout)
+    └──requires──> [per-document diagnostic store] (new — track BBjCPL diagnostics separately from Langium)
+    └──requires──> [connection.sendDiagnostics / publishDiagnostics] (exists in Langium infrastructure)
+
+[Diagnostic hierarchy (BBjCPL first)]
+    └──requires──> [BBjCPL child process invocation]
+    └──requires──> [parse error detection] (exists via document.parseResult.parserErrors)
+    └──enhances──> [cascading suppression] (existing mechanism, extended)
+
+[Parse error noise reduction (suppress linking when parser errors exist)]
+    └──requires──> [ValidationOptions.stopAfterParsingErrors wired] (interface exists, enforcement may not)
+    └──enhances──> [Diagnostic hierarchy] (complementary — reduces Langium noise independently of BBjCPL)
+
+[Outline resilience (partial AST walk)]
+    └──requires──> [DocumentSymbol provider handles null/undefined $cstNode gracefully]
+    └──conflicts──> [strict AST completeness checks in symbol walkers]
+
+[On-save trigger config (bbj.compiler.trigger)]
+    └──requires──> [textDocument/didSave handler]
+    └──requires──> [package.json setting declaration]
+
+[BBjCPL timeout + cancellation]
+    └──requires──> [BBjCPL child process invocation]
 ```
 
-**Recommended migration sequence:**
+### Dependency Notes
 
-1. **Phase 1: Dependencies** -- Update `package.json` to langium ~4.1.3 and langium-cli ~4.1.0. Run `npm install`.
-2. **Phase 2: Regenerate** -- Run `npx langium generate`. This regenerates `ast.ts`, `grammar.ts`, `module.ts`. Fix any grammar issues (BC-8, BC-12, BC-13).
-3. **Phase 3: Fix type constants** -- Global search-and-replace for all type constant usages (BC-3). This is the highest volume change.
-4. **Phase 4: Fix scope computation** -- Rename `PrecomputedScopes` to `LocalSymbols`, rename overridden methods (BC-1, BC-2).
-5. **Phase 5: Fix linker** -- Update `BbjLinker` for `Reference | MultiReference` (BC-4).
-6. **Phase 6: Fix completion provider** -- Update `createReferenceCompletionItem` signature (BC-5).
-7. **Phase 7: Fix deprecated API removals** -- Address `prepareLangiumParser` and any other removed APIs (BC-9).
-8. **Phase 8: Fix remaining** -- Service registry (BC-10), filesystem provider (BC-11), other compilation errors.
-9. **Phase 9: Test** -- Run full test suite, verify all features work.
+- **BBjCPL invocation requires bbj.home**: The `bbjcpl` binary path is `{bbj.home}/bin/bbjcpl`. Already wired for run commands. The BBjCPL service can read from the same workspace settings object.
+- **Diagnostic hierarchy enhances cascading suppression**: Both reduce noise, but from different sources. Cascading suppression reduces Langium noise; diagnostic hierarchy establishes BBjCPL as authoritative over Langium.
+- **Outline resilience is independent**: Can be implemented without BBjCPL integration. The Langium parser already does error recovery — the fix is in the symbol walker, not the parser.
+- **Parse error noise reduction conflicts with strict validation**: Suppressing linking errors when parse errors exist means some real semantic errors will not appear until the parse error is fixed. This is the correct trade-off — identical to how TypeScript and gopls behave.
 
 ---
 
-## Complexity Summary
+## MVP Definition
 
-| Breaking Change | ID | Files Affected | Complexity | Risk |
-|----------------|-----|---------------|------------|------|
-| PrecomputedScopes -> LocalSymbols | BC-1 | 2 | MEDIUM | Interface shape may differ |
-| Method renames (scope computation) | BC-2 | 1 | LOW-MEDIUM | Override becomes dead code if missed |
-| Type constants .$type | BC-3 | 10+ | HIGH | Runtime bugs if any missed |
-| Reference/MultiReference | BC-4 | 2 | MEDIUM | Type narrowing needed |
-| Completion provider signature | BC-5 | 1 | LOW | Accept and pass through |
-| TypeScript >= 5.8.0 | BC-6 | 0 | NONE | Already satisfied |
-| Regenerate with CLI 4.x | BC-7 | 3 (generated) | LOW | Automated |
-| Rule naming restrictions | BC-8 | 0 | NONE (verify) | Already compliant |
-| Removed deprecated APIs | BC-9 | 2+ | UNKNOWN | prepareLangiumParser is critical |
-| ServiceRegistry changes | BC-10 | 1 | LOW | Verify API |
-| FileSystem provider | BC-11 | 0 | NONE | NodeFileSystem handles it |
-| EBNF terminals | BC-12 | 0 | NONE (verify) | Uses regex, not EBNF |
-| Xtext features removed | BC-13 | 0 | NONE (verify) | Run langium generate |
+### Launch With (v1 = this milestone)
 
-**Overall migration complexity:** MEDIUM-HIGH, primarily due to the pervasive type constant changes (BC-3) and the unknown scope of deprecated API removals (BC-9).
+- [x] **BBjCPL on-save invocation** — spawn `bbjcpl` after `textDocument/didSave`, capture output, parse errors, publish as diagnostics with source `"BBjCPL"`. Gated by `bbj.home` being set and `bbj.compiler.trigger !== "off"`.
+- [x] **BBjCPL output parser** — parse error lines (format: `{file}({line}): {message}` based on BASIS docs pattern), map to LSP `Diagnostic` with correct range.
+- [x] **Source label convention** — BBjCPL diagnostics: `source: "BBjCPL"`. Langium parser/linking/validation diagnostics: `source: "bbj"` (existing, unchanged).
+- [x] **Parse error noise reduction** — when `document.parseResult.parserErrors.length > 0`, suppress Langium linking errors and custom validations for that document. Parser errors remain visible.
+- [x] **Outline resilience** — ensure `DocumentSymbol` computation walks the partial AST without throwing when `$cstNode` is null/undefined on error-recovered nodes.
+- [x] **Configurable trigger** — `bbj.compiler.trigger`: `"onSave"` (default) | `"off"`. Declared in `package.json` settings contribution.
+- [x] **Timeout protection** — BBjCPL invocation killed after configurable timeout (default 10s). Warning diagnostic published if timeout exceeded.
+
+### Add After Validation (v1.x)
+
+- [ ] **Diagnostic deduplication** — if BBjCPL reports an error on a line and Langium also reports a parse error on the same line, show only BBjCPL's. Requires range-overlap comparison.
+- [ ] **Debounced trigger** — `bbj.compiler.trigger: "debounced"` with configurable delay. Low value relative to complexity; defer until users request it.
+- [ ] **IntelliJ-specific timeout tuning** — IntelliJ's LSP4IJ may have different latency characteristics for didSave. Monitor and tune if needed.
+
+### Future Consideration (v2+)
+
+- [ ] **BBjCPL quickfix integration** — surface BBjCPL error codes as `code` field in Diagnostic; register code actions for known fixable errors.
+- [ ] **Project-wide compilation** — compile the full project (not just the saved file) when requested via command. `bbj/compileProject` custom request.
+- [ ] **Watch mode** — persistent BBjCPL process watching for file changes. Requires BBjCPL to support a watch API (unknown if it does).
+
+---
+
+## Feature Prioritization Matrix
+
+| Feature | User Value | Implementation Cost | Priority |
+|---------|------------|---------------------|----------|
+| Parse error noise reduction (suppress linking) | HIGH | LOW | P1 |
+| Outline resilience (partial AST walk) | HIGH | LOW | P1 |
+| BBjCPL on-save invocation + output parsing | HIGH | MEDIUM | P1 |
+| Source label convention (BBjCPL vs bbj) | MEDIUM | LOW | P1 |
+| Configurable trigger (onSave / off) | MEDIUM | LOW | P1 |
+| Timeout protection for BBjCPL | MEDIUM | LOW | P1 |
+| Diagnostic hierarchy (BBjCPL clears Langium) | HIGH | HIGH | P2 |
+| Diagnostic deduplication (range overlap) | MEDIUM | MEDIUM | P2 |
+| Debounced trigger | LOW | MEDIUM | P3 |
+| Project-wide compilation command | MEDIUM | HIGH | P3 |
+
+**Priority key:**
+- P1: Must have for this milestone — directly addresses stated pain points
+- P2: Should have — completes the feature story but can ship in a follow-up
+- P3: Nice to have — defer
+
+---
+
+## Competitor Feature Analysis
+
+How established language servers handle the same problems:
+
+| Feature | gopls (Go) | rust-analyzer (Rust) | TypeScript LS | Our BBj Approach |
+|---------|------------|---------------------|---------------|-----------------|
+| External compiler invocation | Runs `go list` (not full `go build`) on-demand; async, non-blocking | Runs `cargo check` async on save; separate target dir | tsserver is the compiler — in-process, no external invocation | Spawn `bbjcpl` async on `didSave`; kill after timeout |
+| Compiler vs LS diagnostic source | `"go list"` / `"compiler"` (separate sources) | `"rustc"` (cargo check) / `"rust-analyzer"` (RA-native) | Single source: `"typescript"` | `"BBjCPL"` vs `"bbj"` |
+| Parse error → downstream suppression | Yes — type errors not shown when parse errors exist | Yes — type errors suppressed for files with parse errors | Yes — cascading errors managed by tsserver internally | Implement via `stopAfterParsingErrors` in `ValidationOptions` |
+| Outline with syntax errors | Outline persists via error-recovering parser (tree-sitter) | Outline persists via RA's own parser with recovery | Outline persists — tsserver recovers from most syntax errors | Fix: walk Langium's partial AST without crashing on null `$cstNode` |
+| On-save trigger | `build.onSave` config (default: true) | `check.onChange: "save"` (default) | Always-on, in-process (no separate trigger needed) | `bbj.compiler.trigger: "onSave"` (default) |
+| Compilation timeout | N/A (go list is fast) | `check.invocationStrategy` controls parallelism; inherits cargo timeouts | N/A (in-process) | `bbj.compiler.timeout` (default 10000ms) |
+
+---
+
+## Research Findings by Question
+
+### Q1: What do users expect from compiler-integrated diagnostics?
+
+**Finding (HIGH confidence — gopls, rust-analyzer, TypeScript LS docs):**
+
+Users expect compiler diagnostics to be authoritative and fast. The pattern across all major language servers:
+1. In-process analysis (Langium parser equivalent) provides immediate keystroke-level feedback.
+2. External compiler/check runs on save and provides authoritative results.
+3. The two streams are distinguished by `source` label and do not conflict — the LS shows both, with compiler errors taking precedence in user mental models.
+4. Parse errors block semantic errors — users do not want 20 "could not resolve" errors when one `(` is missing.
+
+### Q2: How do language servers handle diagnostic cascading/hierarchy?
+
+**Finding (HIGH confidence — gopls docs, rust-analyzer docs, Langium source):**
+
+Standard approach: **phase-gate validation**. gopls and rust-analyzer do not run type-checking if parse/syntax errors exist in a file. TypeScript's tsserver is in-process and manages this internally. Langium already declares `ValidationOptions` with `stopAfterParsingErrors` and `stopAfterLinkingErrors` flags — these need to be wired and respected.
+
+The existing `BBjDocumentValidator.processLinkingErrors` is only called if the base class decides to process linking errors. The `DefaultDocumentValidator` checks parse error counts before proceeding. The BBj LS inherits this behavior but may need explicit enforcement.
+
+### Q3: What's the expected UX for outline with syntax errors?
+
+**Finding (MEDIUM confidence — LSP spec, rust-analyzer, TypeScript LS behavior):**
+
+- Outline **should persist** with whatever the parser recovered — never become empty due to a single syntax error.
+- Error indicators in the outline (⚠ decorators, red icons) are **client-side concerns** — VS Code and IntelliJ manage these from the diagnostics stream, not from DocumentSymbol data.
+- The LS's job: return all DocumentSymbols the AST can provide, even if some AST nodes have null CST nodes.
+- "Stale outline" (showing prior valid state) is acceptable but not preferred. Best UX: show partial current outline.
+
+**For BBj specifically:** Langium's Chevrotain parser has built-in error recovery. When `myEditBox!.setText"00-00-0000_0000")` is parsed, the parser recovers and produces a partial AST. The issue is that DocumentSymbol computation may traverse AST nodes that have null `$cstNode` and throw or skip the entire method body. The fix is defensive null checks in the symbol walker.
+
+### Q4: Common trigger patterns for external compilation
+
+**Finding (HIGH confidence — gopls, rust-analyzer config docs, LSP spec):**
+
+- **on-save** (`textDocument/didSave`) — universal default across gopls, rust-analyzer.
+- **on-change (debounced)** — rust-analyzer supports `"check.onChange: true"` but defaults to save. Creates process churn if the compiler is slow.
+- **manual** — always available via command, but not a replacement for automatic triggers.
+- **off** — escape hatch for users who want zero external compilation.
+
+**BBj recommendation:** `onSave` default. `off` as the only alternative for v1. Debounced is P3.
+
+### Q5: Diagnostic severity/source labeling conventions
+
+**Finding (HIGH confidence — LSP 3.17 spec, gopls source, rust-analyzer source, Langium source):**
+
+LSP 3.17 spec: `source` is "a human-readable string describing the source of this diagnostic, e.g. 'typescript' or 'super lint'".
+
+Real-world conventions:
+- **gopls**: `"compiler"` (parsing/type-check phase) and `"go list"` (build metadata phase)
+- **rust-analyzer**: `"rust-analyzer"` (RA-native diagnostics) and `"rustc"` (cargo check)
+- **TypeScript LS**: `"typescript"` for all diagnostics (single source)
+- **ESLint LSP**: `"eslint"` for all ESLint diagnostics
+
+**BBj recommendation:**
+- Langium parser/linking/validation: `"bbj"` (existing — from `this.metadata.languageId` in `DefaultDocumentValidator.getSource()`)
+- BBjCPL compiler: `"BBjCPL"` (capitalized — matches the tool name as known to BBj developers, consistent with gopls using the tool name)
+
+---
+
+## BBjCPL Output Format (Research Finding)
+
+**Source:** [BASIS documentation for bbjcpl](https://documentation.basis.com/BASISHelp/WebHelp/util/bbjcpl_bbj_compiler.htm) — HIGH confidence.
+
+Key facts:
+- `bbjcpl` is a standalone CLI program that compiles ASCII BBj source files to tokenized format.
+- **Error messages contain both BBj line number and ASCII file line number.** The ASCII file line number is what maps to LSP diagnostics (source positions).
+- Supports `-e<errorlog>` flag to write errors to a file rather than stdout — useful for reliable capture.
+- Errors are for syntax errors, duplicate labels, and duplicate DEF FN names.
+- Error format: needs empirical verification of exact string format during implementation (LOW confidence on exact format — test with a known-bad file during the implementation phase).
+
+**Implementation implication:** Use `-e<errorlogfile>` to redirect error output to a temp file. Read and parse the temp file after the process exits. Avoids stdout/stderr interleaving issues.
 
 ---
 
 ## Sources
 
-- [Langium 4.0 Release Blog Post](https://www.typefox.io/blog/langium-release-4.0/)
-- [Langium CHANGELOG (packages/langium)](https://github.com/langium/langium/blob/main/packages/langium/CHANGELOG.md)
-- [Langium GitHub Releases](https://github.com/langium/langium/releases)
-- [Langium npm Package](https://www.npmjs.com/package/langium) -- latest stable: 4.1.3
-- [langium-cli npm Package](https://www.npmjs.com/package/langium-cli) -- latest stable: 4.1.0
-- [Langium API Docs v4.1.0](https://eclipse-langium.github.io/langium/)
-- [Langium Documentation](https://langium.org/docs/)
-- [Langium File-based Scoping Recipe](https://langium.org/docs/recipes/scoping/file-based/)
-- [Langium Qualified Name Scoping Recipe](https://langium.org/docs/recipes/scoping/qualified-name/)
+- [Language Server Protocol Specification 3.17 — Diagnostic](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — `source` field definition, severity levels
+- [Gopls: Diagnostics](https://go.dev/gopls/features/diagnostics) — `"compiler"` vs `"go list"` source labels, diagnostic phases
+- [rust-analyzer: Diagnostics](https://rust-analyzer.github.io/book/diagnostics.html) — `"rust-analyzer"` vs `"rustc"` separation
+- [BBjCPL Documentation](https://documentation.basis.com/BASISHelp/WebHelp/util/bbjcpl_bbj_compiler.htm) — error output format, `-e` flag, line number format
+- [BASIS IDE Compiler Overview](https://documentation.basis.com/BASISHelp/WebHelp/ide/basis_ide_complier.htm) — compiler error linking behavior
+- Langium source: `node_modules/langium/lib/validation/document-validator.js` — `getSource()` returns `this.metadata.languageId` = `"bbj"`
+- Langium source: `ValidationOptions` interface — `stopAfterParsingErrors`, `stopAfterLinkingErrors` flags exist and are designed for this use case
+- [Langium Document Lifecycle](https://langium.org/docs/reference/document-lifecycle/) — `onBuildPhase(DocumentState.Validated)` pattern for injecting external tool diagnostics
+- [DeepWiki: rust-analyzer LSP Integration](https://deepwiki.com/rust-lang/rust-analyzer/3-language-server-protocol-integration)
+- [VSCode Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) — `textDocument/didSave` trigger pattern
 
-**Confidence note:** The exact details of BC-9 (removed deprecated APIs) could not be fully enumerated from web sources. PR #1991 on the Langium GitHub contains the definitive list. The `prepareLangiumParser` removal is flagged as LOW confidence -- it may still exist in 4.x. This will be resolved definitively when compilation is attempted.
+---
+
+*Feature research for: BBj Language Server v3.7 — BBjCPL Integration & Diagnostic Quality*
+*Researched: 2026-02-19*

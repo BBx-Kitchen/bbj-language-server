@@ -1,133 +1,265 @@
 # Pitfalls Research
 
-**Domain:** Adding Debug Logging Controls, Diagnostic Filtering, and Log Level Management to Existing Langium Language Server
-**Researched:** 2026-02-08
-**Confidence:** HIGH
+**Domain:** Adding external compiler integration, diagnostic hierarchy, and outline resilience to an existing Langium language server (BBj LS v3.7 milestone)
+**Researched:** 2026-02-19
+**Confidence:** HIGH (codebase analysis + official documentation + verified community reports)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Global Debug Flag State Hiding Real Errors in Development
+### Pitfall 1: Orphaned BBjCPL Processes When LS Restarts or Client Disconnects
 
 **What goes wrong:**
-Adding a global debug flag to suppress console.log/console.warn output works perfectly in production, but then developers accidentally ship code with real errors because they never saw the warnings during development. The flag becomes "set and forget" — turned on once, and then critical parser errors, type resolution failures, or PREFIX loading issues go unnoticed for months.
+The language server spawns a BBjCPL process per save event. When the LS crashes, is restarted by the IDE, or the client disconnects unexpectedly, in-flight BBjCPL processes are left running. Because BBjCPL is a JVM-based compiler (Java startup cost is ~500ms-2s), multiple orphaned processes accumulate quickly. On macOS/Linux they become zombies; on Windows they hold file locks on the .bbj file being compiled, blocking the next invocation.
 
 **Why it happens:**
-The debug flag is typically set at the language server initialization level (in main.ts or ws-manager.ts) and affects ALL console output globally. Developers working on unrelated features never think to check the flag state. When they add new code that logs errors, those errors get silently suppressed if the flag is enabled in their workspace settings.
+The existing codebase uses `child_process.exec()` in extension.ts for EM login/validation with no AbortController hookup. The pattern is fire-and-forget with a timeout but no process reference for cleanup. When developers add BBjCPL invocation inside the language server (main.ts or a new service), they follow the same pattern and don't register a `process.on('exit')` or connection `onShutdown` handler to kill the child process.
 
 **How to avoid:**
-1. **Never suppress console.error() calls** — only console.log() and console.debug(). Errors should always be visible regardless of debug settings.
-2. **Use log levels with selective suppression**: `console.debug()` for verbose output, `console.log()` for normal operation logging, `console.warn()` for potential issues, `console.error()` for actual errors. Only suppress debug/log, never warn/error.
-3. **Add environment detection**: In development mode (NODE_ENV=development or when running via VS Code debug launch), ignore the debug flag and show all logs. Only respect the flag in production/packaged builds.
-4. **Document the flag in developer guide**: Make it obvious where the flag is set and what it suppresses, so new developers don't assume all logging is broken.
+1. **Use `spawn()` with AbortController, not `exec()`**: `AbortSignal.timeout(30000)` automatically kills the process on timeout. Store the AbortController per-document so a new save can abort the previous invocation.
+2. **Register cleanup on LS shutdown**: In main.ts, register `process.on('SIGTERM', cleanup)` and `process.on('SIGINT', cleanup)` plus the LSP `shutdown` handler to kill all active BBjCPL processes.
+3. **Use `detached: false`** (the default) so child processes die when the Node.js parent dies on Linux/macOS. On Windows, use `tree-kill` pattern or track PIDs for explicit `process.kill()`.
+4. **Serialize invocations per document URI**: Keep a `Map<string, AbortController>` keyed by document URI. On new invocation, abort the previous controller before spawning.
 
 **Warning signs:**
-- Developers report "logging doesn't work" — it does, but the flag is suppressing it
-- Bug reports from users about issues that should have been caught during development
-- console.error() calls in the codebase that should have triggered during testing but didn't get noticed
-- Tests that assert against console output start failing intermittently based on local developer settings
+- `ps aux | grep bbjcpl` shows multiple compiler processes after a rapid-save sequence
+- Windows: "file is locked" errors when attempting the second BBjCPL run on the same file
+- Memory growth in the LS process over time (stdout/stderr streams accumulate without `.unref()`)
+- IntelliJ health monitor reports LS as healthy but BBjCPL processes pile up in Activity Monitor
 
 **Phase to address:**
-Phase 1 (debug flag implementation) — establish the log level hierarchy and suppression rules BEFORE writing any flag-checking code. Phase 2 (verification) — add tests that verify console.error() is NEVER suppressed regardless of flag state.
+Phase 1 (BBjCPL process management foundation) — before any diagnostic surfacing, establish the spawn/abort/cleanup lifecycle. Serialize invocations in this phase so later phases inherit correct process lifetime.
 
 ---
 
-### Pitfall 2: Filtering Synthetic File Diagnostics Masks Parser Bugs
+### Pitfall 2: Concurrent BBjCPL Invocations on Rapid Save (Race Condition on Diagnostics)
 
 **What goes wrong:**
-You add logic to suppress diagnostics from "synthetic" or "generated" files (like the JavaSyntheticDocUri document containing imported Java classes, or PREFIX-loaded library files). This works great for hiding noise from imported libraries — until a parser bug affects those files and you never see the error. The parser crashes silently, classes don't get indexed, but the diagnostic filter prevents the error from surfacing. Users report "IntelliSense doesn't work for this library" and you have no visibility into why.
+User saves twice in quick succession. Two BBjCPL processes start. The first process finishes and publishes its diagnostics. The second process (running stale code from save #1) finishes and overwrites the diagnostics with results based on the same stale content. The diagnostics panel shows results from whichever process finished last, not the most recent save.
 
 **Why it happens:**
-The existing codebase already has synthetic file handling in bbj-document-builder.ts (line 26-30 for JavaSyntheticDocUri, line 32-38 for isExternalDocument). When adding diagnostic filtering, developers extend this pattern without distinguishing between "expected diagnostics we want to hide" (like unresolved references in library files) vs. "parser/lexer errors that indicate real bugs" (like grammar ambiguities or malformed AST nodes).
+BBjCPL is invoked on `textDocument/didSave`. Langium's document builder also runs on `textDocument/didChange`. If BBjCPL is called directly from the save handler without debouncing, two concurrent invocations can produce out-of-order diagnostic updates. This is more likely with IntelliJ which sends `didSave` more aggressively than VS Code.
 
 **How to avoid:**
-1. **Filter by diagnostic severity and code, not by file type**: Only suppress specific diagnostic types (e.g., "Class could not be resolved" warnings) from external files, never ALL diagnostics.
-2. **Never suppress parser/lexer errors**: Langium's DocumentValidator emits different diagnostic categories. Parser errors (syntax errors) should ALWAYS be visible, even for synthetic files. Only suppress semantic validation warnings (reference resolution, type checking).
-3. **Log suppressed diagnostics in debug mode**: When the debug flag is on, log "Suppressed X diagnostic(s) for file Y: [messages]" so developers can see what's being hidden.
-4. **Separate validation from suppression**: Keep the shouldValidate() logic (which prevents validation from running at all) separate from diagnostic filtering (which runs validation but hides results). Don't over-apply shouldValidate().
+1. **One-process-per-URI invariant**: Before spawning, abort any previous AbortController for the URI. Only the last-invoked process should publish diagnostics.
+2. **Version-stamp diagnostics**: Capture the document version number at invocation time. When the process finishes, only publish diagnostics if the document version matches what was current at invocation time. Langium's `LangiumDocument.version` is the right source.
+3. **Debounce on-save trigger**: Apply a 200-300ms debounce before invoking BBjCPL, so rapid saves collapse into a single invocation. This mirrors the existing `shouldRelink` debouncing pattern in `bbj-document-builder.ts`.
+4. **Never publish stale results**: If the AbortController was aborted, discard all output from that process even if it completed before the abort propagated.
 
 **Warning signs:**
-- Binary files (like `<<bbj>>` tokenized BBj files) loaded via PREFIX don't produce any feedback — you added them to the index but parser failures are invisible
-- Users report "library X doesn't work" but no diagnostics appear in the Problems panel
-- Tests pass (because synthetic file diagnostics are suppressed) but real-world usage fails
-- Console shows "Maximum transitive import depth reached" warnings but no corresponding user-facing diagnostic
+- Diagnostics flicker between two states after rapid saves
+- Diagnostics from a previous save reappear momentarily after being cleared
+- "Compiler reported 0 errors" appears briefly then reverts to showing errors (or vice versa)
 
 **Phase to address:**
-Phase 2 (diagnostic suppression implementation) — before adding any filtering logic, enumerate which diagnostic codes/severities should be filtered. Phase 3 (testing) — add tests that verify parser errors in synthetic files ARE visible even when the filtering is active.
+Phase 1 (BBjCPL process management) — the document version stamp and abort pattern must be built in from the start, not retrofitted after diagnostic merging.
 
 ---
 
-### Pitfall 3: Configuration Hot-Reload State Desynchronization
+### Pitfall 3: Stale BBjCPL Diagnostics Not Cleared When File Is Modified
 
 **What goes wrong:**
-User changes the debug flag setting (or diagnostic filtering setting) in VS Code settings. The language server's onDidChangeConfiguration handler fires, updates a global variable (like `typeResolutionWarningsEnabled` in bbj-validator.ts line 22), and documents get re-validated. But parts of the system still hold stale state — cached diagnostics aren't cleared, the DocumentBuilder still has old settings, or only NEW documents get the updated setting. Result: inconsistent behavior where some files respect the new setting and others don't.
+BBjCPL runs on save and publishes diagnostics tagged with `source: "BBjCPL"`. User then edits the file (typing fixes the error). The Langium parser re-runs and clears Langium diagnostics. But the BBjCPL diagnostics are never cleared — they persist until the next save triggers another BBjCPL run. If the user edits without saving, the Problems panel shows BBjCPL errors pointing at line numbers that no longer correspond to the actual code.
 
 **Why it happens:**
-The existing codebase has TWO configuration update paths: (1) onDidChangeConfiguration in main.ts (line 72) which forwards to ConfigurationProvider, and (2) initialization in ws-manager.ts (line 33) which sets initial values. When adding a new debug flag, developers often update one path but not the other. Additionally, the existing onDidChangeConfiguration handler (main.ts line 100) calls setTypeResolutionWarnings() but doesn't re-validate all open documents — that only happens for classpath/PREFIX changes (line 125).
+`textDocument/publishDiagnostics` is a document-scoped notification that replaces ALL diagnostics for a URI per-source. If BBjCPL uses its own source tag, Langium's diagnostic publications don't touch BBjCPL's diagnostics (and vice versa). Standard LSP behavior per spec section 3.17: diagnostics are keyed by URI AND version. Clients like VS Code merge diagnostics from multiple sources.
 
 **How to avoid:**
-1. **Single source of truth**: Store the debug flag in BBjWorkspaceManager's settings object alongside prefixes and classpath, not as a module-level global variable.
-2. **Invalidate ALL cached state on change**: When settings change, reset document state to Parsed (forcing re-validation), clear any cached diagnostic results, and notify all open documents (see main.ts line 113-125 pattern).
-3. **Apply settings in both paths**: Update both onDidChangeConfiguration (for runtime changes) AND onInitialize (for startup). Don't assume one implies the other.
-4. **Test hot-reload explicitly**: Add integration tests that change settings via workspace/didChangeConfiguration LSP notification and verify diagnostics update without requiring document edits.
+1. **Clear BBjCPL diagnostics on `textDocument/didChange`**: When the document changes (before the next save), emit `publishDiagnostics` with an empty array for the BBjCPL source so stale line numbers are immediately removed.
+2. **Or: merge BBjCPL diagnostics into the single Langium diagnostic publication**: Override `BBjDocumentValidator` or hook into `notifyDocumentPhase(DocumentState.Validated)` to include BBjCPL results. This avoids the multi-source problem entirely. Only the last published diagnostic set is valid per the LSP spec.
+3. **Use the same source tag consistently**: Langium currently uses no source tag (defaults to the language server name). BBjCPL diagnostics must use a DIFFERENT identifiable source so they can be cleared independently. Name it `"BBjCPL"` or `"bbj-compiler"` consistently everywhere.
 
 **Warning signs:**
-- User reports "I disabled debug logging but still see logs" — the setting changed but cached logger state didn't update
-- Reloading VS Code fixes the issue but changing settings doesn't
-- Only newly opened files respect the setting, existing open files don't
-- onDidChangeConfiguration logs "BBj settings changed" but behavior doesn't change
+- Errors pointing at wrong line numbers (lines shifted by edits since last save)
+- Resolving an error in the editor doesn't remove it from the Problems panel until save
+- IntelliJ Structure view shows error indicators that VS Code doesn't (client-side diagnostic merging differs)
 
 **Phase to address:**
-Phase 1 (settings infrastructure) — establish the configuration storage pattern and update protocol. Phase 2 (implementation) — ensure BOTH init and change handlers update the same state. Phase 3 (verification) — integration test that simulates didChangeConfiguration and verifies behavior updates.
+Phase 2 (diagnostic merging) — establish the clear-on-change + publish-on-save pattern before integrating compiler results into the Problems panel.
 
 ---
 
-### Pitfall 4: Debug Flag Doesn't Work in IntelliJ (LSP4IJ)
+### Pitfall 4: Duplicate Diagnostics From Parser and Compiler Reporting the Same Error
 
 **What goes wrong:**
-You implement a debug flag that works perfectly in VS Code — controls console output, filters diagnostics, everything great. Then you test in IntelliJ via LSP4IJ and nothing happens. The debug flag has no effect because IntelliJ's language server integration doesn't send the same initializationOptions structure as VS Code, or it doesn't support workspace/didChangeConfiguration for this setting, or the console output goes to a different log stream that bypasses your logging controls.
+BBjCPL and Langium both report the same syntax error on the same line. The Problems panel shows it twice, with slightly different messages. For example: Langium reports "Expected ',' but found 'STRING'" and BBjCPL reports "Syntax error at line 42: unexpected token". User sees two red squiggles on the same location.
 
 **Why it happens:**
-VS Code and IntelliJ use different LSP client implementations with different capabilities. VS Code's vscode-languageclient handles configuration synchronization automatically (see extension.ts line 544 `synchronize.configurationSection: 'bbj'`). IntelliJ's LSP4IJ has its own configuration mechanism via preferences UI and may not map settings to initializationOptions in the same way. Additionally, console.log() in a Node.js language server shows up in VS Code's Output panel but may go to IntelliJ's IDE log file instead.
+Langium's parser (Chevrotain) and BBjCPL are both full compilers. They independently detect the same syntax errors. Without a hierarchy rule, both sets of diagnostics are published and the user sees the overlap. This is especially bad for parse errors where Langium's recovery-based parser may report different error boundaries than BBjCPL.
 
 **How to avoid:**
-1. **Use LSP-standard mechanisms**: Instead of custom initializationOptions for debug flags, use the LSP `workspace/configuration` request (language server pulls config from client) or `workspace/didChangeConfiguration` notification (client pushes config to server). These work across all LSP clients.
-2. **Test with minimal IntelliJ integration early**: Don't wait until the feature is "done" in VS Code. Set up a basic IntelliJ LSP4IJ integration and verify initializationOptions are received as expected (log them like ws-manager.ts line 34).
-3. **Document IDE-specific differences**: If some features only work in VS Code, document this clearly in settings descriptions and user guide.
-4. **Use LSP4IJ trace settings**: LSP4IJ provides its own debug/trace configuration (see search results: "Language Servers preferences page to configure the LSP trace level"). Don't try to reinvent this — use the platform's mechanism.
+1. **Establish precedence hierarchy**: When BBjCPL reports errors, suppress Langium parser-level errors (DiagnosticKind errors from Chevrotain). This requires tracking "is BBjCPL reporting errors for this document?" state.
+2. **Do NOT suppress Langium semantic errors**: Only suppress Langium parse errors when BBjCPL has spoken. Semantic errors (linking, type checking, scope) are Langium-only and should always be shown.
+3. **Implement in `BBjDocumentValidator.validateDocument()`**: Check if a BBjCPL result is available for this document/version. If yes, skip adding parser-level diagnostics (check `document.parseResult.parserErrors`). This is the same location where `stopAfterParsingErrors` is already checked.
+4. **Use `data` field on diagnostics to tag origin**: Tag each diagnostic with `data: { source: 'parser' | 'semantic' | 'compiler' }` so the hierarchy can be enforced during merging.
 
 **Warning signs:**
-- Feature works in VS Code but reports from IntelliJ users say "setting has no effect"
-- initializationOptions log shows empty or missing fields when running in IntelliJ
-- console.log() output appears in IDE log file but not in LSP console view
-- didChangeConfiguration notifications aren't received (check with console.log in onDidChangeConfiguration handler)
+- Two identical or near-identical errors shown for the same line
+- User reports "I see the error twice — which one should I fix?"
+- Test assertions fail because expected 1 diagnostic but got 2
 
 **Phase to address:**
-Phase 1 (design) — review LSP spec and LSP4IJ documentation for configuration handling. Phase 2 (implementation) — test with IntelliJ alongside VS Code. Phase 4 (documentation) — document any IDE-specific limitations.
+Phase 2 (diagnostic merging) — the hierarchy rules must be specified before implementing merging, not discovered after.
 
 ---
 
-### Pitfall 5: Chevrotain Ambiguity Warnings Suppressed by Blanket Diagnostic Filter
+### Pitfall 5: BBjCPL Error Output Format Parsing Brittleness
 
 **What goes wrong:**
-You add diagnostic filtering to hide noise from PREFIX-loaded files. As a side effect, Chevrotain parser ambiguity warnings (generated during grammar construction, not document validation) also get suppressed because your filter is too broad. Developers then change the grammar in ways that introduce real conflicts, but they never see the warnings because the diagnostic filter is active. Parser behavior becomes unpredictable (wrong alternatives chosen, lookahead failures) and debugging is extremely difficult without the ambiguity warnings.
+BBjCPL error messages contain both the BBj line number and the ASCII file line number. A naive regex parser extracts the wrong line number, placing squiggles on the wrong line. Or the error format changes between BBj runtime versions (e.g., BBj 23 vs BBj 24) and the regex silently fails to match, resulting in zero diagnostics even when BBjCPL reports errors.
 
 **Why it happens:**
-Chevrotain ambiguity warnings are emitted at parser initialization time (when Langium constructs the parser from the grammar), not during document parsing. They appear as console.warn() calls and may also surface as LSP diagnostics if Langium's grammar analyzer detects them. Developers assume "diagnostic filtering" only affects user file validation, not grammar meta-analysis.
+BBjCPL writes errors to stderr. The format includes both BBj internal line numbers and ASCII source line numbers. Developers regex-parse stderr assuming a fixed format and don't handle: (a) multi-line error messages, (b) warnings vs errors mixed in output, (c) path separators that differ by platform (backslash on Windows), (d) relative vs absolute paths in error output.
 
 **How to avoid:**
-1. **Never suppress Chevrotain warnings**: Grammar ambiguity warnings should ALWAYS be visible during development. These are framework-level errors, not user code issues.
-2. **Distinguish initialization logs from runtime logs**: Chevrotain warnings appear during language server startup (before any documents are opened). Use console grouping or prefixes like `[GRAMMAR]` for initialization-time logs vs. `[VALIDATION]` for runtime logs. Only suppress runtime logs, never initialization logs.
-3. **Preserve Chevrotain's IGNORE_AMBIGUITIES mechanism**: Chevrotain provides explicit grammar-level controls for suppressing known-safe ambiguities (see search results: "IGNORE_AMBIGUITIES property should be used instead on specific DSL rules"). Use that for intentional suppressions, not blanket diagnostic filtering.
-4. **Test grammar changes with debug flag both on and off**: When modifying the Langium grammar, verify ambiguity warnings still appear regardless of debug flag state.
+1. **Parse the ASCII file line number, not the BBj line number**: BBjCPL includes both. The ASCII line number is what corresponds to the source the user edits. Identify the exact field in BBjCPL output via manual testing with a known file.
+2. **Test the parser against real BBjCPL output samples**: Capture actual stderr from multiple BBjCPL versions and commit as test fixtures. Run unit tests against these fixtures, not mocked output.
+3. **Fail gracefully**: If the regex doesn't match, don't crash — return zero BBjCPL diagnostics and log a DEBUG-level message with the raw output for investigation. Never throw.
+4. **Normalize line numbers to 0-based**: LSP uses 0-based line numbers. BBjCPL output is 1-based. The off-by-one error is one of the most common bugs when integrating compiler output into LSP diagnostics.
+5. **Handle no-error exit as authoritative**: If BBjCPL exits with code 0 and empty stderr, treat the document as compiler-clean and clear all previous BBjCPL diagnostics for that URI.
 
 **Warning signs:**
-- Grammar changes that should produce ambiguity warnings don't show any output
-- Parser behavior changes unexpectedly after grammar modifications
-- Tests pass but production parsing has different behavior (indicates parser is choosing wrong alternatives due to undetected ambiguity)
-- Developers report "parser is broken" but no warnings appear in console
+- Squiggles appear one line off from the actual error
+- Empty diagnostics in Problems even when code clearly has errors
+- `console.error` messages containing raw BBjCPL output that wasn't parseable
+- Diagnostics appear correctly on one platform but not another (path separator issue)
 
 **Phase to address:**
-Phase 1 (debug flag implementation) — explicitly exclude parser initialization logs from suppression. Phase 2 (grammar testing) — add test that verifies Chevrotain warnings appear during parser construction.
+Phase 1 (BBjCPL integration) — write the output parser with test fixtures BEFORE integrating into the document builder lifecycle. Treat the parser as a standalone unit with known-good test cases.
+
+---
+
+### Pitfall 6: Langium Rebuild Loop Triggered by BBjCPL Diagnostic Publications
+
+**What goes wrong:**
+BBjCPL publishes diagnostics. Langium's document builder interprets the diagnostic publication as a "document changed" signal and schedules a rebuild. The rebuild triggers another BBjCPL invocation (because shouldValidate returns true). BBjCPL publishes more diagnostics. Loop. CPU hits 100%.
+
+**Why it happens:**
+This is related to the documented issue #232 (CPU stability mitigations not yet implemented). The existing `shouldRelink` override in `BBjDocumentBuilder` prevents relinking loops but doesn't address the scenario where external diagnostic publication triggers rebuild. This is a new failure mode introduced specifically by adding BBjCPL.
+
+The existing `isImportingBBjDocuments` flag prevents recursive `addImportedBBjDocuments` calls, but there's no equivalent guard for "BBjCPL is already running for this document."
+
+**How to avoid:**
+1. **Trigger BBjCPL only from `onDidSave`, not from document build callbacks**: Never invoke BBjCPL from `onBuildPhase(DocumentState.Validated)` — this fires on every rebuild, creating the loop.
+2. **Add a per-URI "BBjCPL in-flight" flag**: Before invoking BBjCPL, check if it's already running for this URI. If yes, skip the new invocation.
+3. **Publish BBjCPL diagnostics without triggering Langium rebuild**: The key is that `publishDiagnostics` (the LSP notification) does NOT inherently trigger a rebuild. It only triggers rebuild if the LS itself interprets published diagnostics as a change. Confirm the current code path does not feed published diagnostics back into the document builder.
+4. **Gate BBjCPL on `bbj.compiler.enabled` setting**: Default to disabled. This ensures the rebuild loop can never happen unless the user has explicitly opted in.
+
+**Warning signs:**
+- CPU consistently above 80% after enabling BBjCPL integration
+- `DocumentBuilder.update()` calls appearing in logs at high frequency
+- Log shows repeated "Building document: file.bbj" for the same file with no user action
+- IntelliJ health monitor shows LS unresponsive (spin detected in health probe)
+
+**Phase to address:**
+Phase 1 (BBjCPL process management) — establish trigger mechanism (on-save only, with debounce) before adding any diagnostic feedback. Phase 3 (CPU stability) — verify no rebuild loops with a test that simulates rapid saves.
+
+---
+
+### Pitfall 7: Diagnostic Cascading — Linking/Semantic Errors From Broken Parse
+
+**What goes wrong:**
+A syntax error in one class method causes Chevrotain's error recovery to produce a partial AST. The partial AST has undefined or malformed nodes for the rest of the file. The linker then fails to resolve references that touch the broken nodes and emits "could not resolve" warnings for every reference in the file — dozens of false warnings drowning out the single real syntax error.
+
+**Why it happens:**
+The existing `BBjDocumentValidator` already has `stopAfterParsingErrors` support in the interface, but doesn't enforce it by default. The `BBjDocumentBuilder.shouldValidate()` runs validation even when `document.parseResult.parserErrors.length > 0`. Langium's default behavior is to report all errors at all stages regardless of parse state.
+
+**How to avoid:**
+1. **Suppress linking/semantic diagnostics when parser errors exist**: In `BBjDocumentValidator`, check `document.parseResult.parserErrors.length > 0` at the top of `validateDocument()`. If parse errors exist, only emit parse error diagnostics — skip the linking and semantic validation phases.
+2. **Do NOT suppress warnings that are independent of the parse state**: Some validators (like `checkLabelDecl`, `checkSymbolicLabelRef`) may still be safe to run on partially parsed documents. Evaluate per-check.
+3. **Coordinate with BBjCPL hierarchy**: If BBjCPL reports errors, AND the parser has errors, show BBjCPL errors only. BBjCPL is the authoritative source on parse validity.
+4. **Test with intentionally broken files**: Confirm that a single syntax error produces only 1-3 diagnostics (the error + immediate recovery artifacts), not 20+ cascading failures.
+
+**Warning signs:**
+- A single syntax error causes a flood of "could not resolve" warnings
+- Problems panel shows 40+ diagnostics for a file with one obvious error
+- After fixing the syntax error, all cascading warnings disappear instantly (confirming they were false positives)
+
+**Phase to address:**
+Phase 2 (diagnostic noise reduction) — implement the parse-error gate before adding BBjCPL results so the baseline noise level is already controlled.
+
+---
+
+### Pitfall 8: Outline/DocumentSymbol Crashes With Null `$cstNode` From Partial Parse
+
+**What goes wrong:**
+Langium's `DefaultDocumentSymbolProvider` walks the AST to build DocumentSymbol items. For each node, it accesses `node.$cstNode.range` to get the symbol's location. When Chevrotain's error recovery produces nodes with `undefined` or null `$cstNode` (recoveredNode=true), the symbol provider throws `TypeError: Cannot read properties of undefined (reading 'range')`. The entire outline request fails with an error, and the IDE shows an empty Structure view.
+
+**Why it happens:**
+`DefaultDocumentSymbolProvider.getSymbol()` assumes `$cstNode` is always present. This assumption holds for valid parses. With error recovery (which Langium enables by default), Chevrotain can produce AST nodes where `$cstNode` is set but has a zero-width or invalid range, OR where the node was inserted via token deletion recovery and has no corresponding source text.
+
+The existing codebase does not override `DefaultDocumentSymbolProvider`, making it vulnerable to this crash the first time a BBj file has a syntax error.
+
+**How to avoid:**
+1. **Override `DefaultDocumentSymbolProvider` with null guards**: Check `node.$cstNode?.range` before accessing range. If undefined, skip the symbol (return undefined from `getSymbol()`).
+2. **Guard against zero-width ranges**: A `range.start.line === range.end.line && range.start.character === range.end.character` indicates an empty range. These symbols are valid to show but may indicate a recovery artifact — optionally skip them.
+3. **Never crash — always return a valid (possibly empty) array**: Wrap the entire symbol computation in try/catch. LSP clients expect symbol requests to always succeed, even if the result is `[]`.
+4. **Test specifically with files containing parse errors**: Add a test that opens a file with a known syntax error and verifies: (a) no exception thrown, (b) symbols for the portions that DID parse correctly are returned.
+
+**Warning signs:**
+- `Request textDocument/documentSymbol failed. TypeError: Cannot read properties of undefined (reading 'range')` in LS output
+- Structure view/Outline panel empty whenever a syntax error exists in the file
+- Error appears in IntelliJ's IDE log but not in VS Code (client handles the error differently)
+
+**Phase to address:**
+Phase 3 (outline resilience) — must be implemented before any user-facing testing of BBjCPL integration, since BBjCPL errors guarantee partial ASTs and the outline will immediately crash.
+
+---
+
+### Pitfall 9: Windows Path Handling — BBj Home With Spaces, Backslashes in Compiler Output
+
+**What goes wrong:**
+Two separate failures on Windows:
+
+(A) **Spawn failure**: `bbj.home` is `C:\Program Files\BASIS` (contains spaces). `child_process.spawn()` with the command assembled by string concatenation fails because the executable path isn't quoted. On Windows, `spawn('C:\Program Files\BASIS\bin\bbjcpl.exe', args)` works when passing the executable as the first argument directly. But `spawn('cmd', ['/c', 'C:\\Program Files\\BASIS\\bin\\bbjcpl.exe ' + args.join(' ')])` fails without additional quoting.
+
+(B) **Output parsing failure**: BBjCPL error messages on Windows include backslash-separated paths (`C:\Users\dev\project\file.bbj:42`). A regex written on macOS uses forward-slash assumptions and fails to match Windows paths in error output.
+
+**Why it happens:**
+The existing codebase already handles this for EM login/validation in extension.ts (lines 400-436) using `"${bbj}"` with quotes in the exec command string. But when BBjCPL is integrated into the language server (main.ts), a new implementation is written without referencing the existing pattern. The output parser is developed on macOS and never tested on Windows before shipping.
+
+**How to avoid:**
+1. **Use `spawn(executable, args, options)` with args as array, not string concatenation**: `spawn('/path with spaces/bbjcpl', ['-N', filePath])` handles spaces in the executable path on all platforms. Never build a shell string with spaces in it.
+2. **Normalize paths before building spawn arguments**: Use `path.normalize()` on all paths from settings and document URIs. Convert URI `fsPath` (which is always platform-native) to the spawn argument directly.
+3. **Build the output regex to handle both `/` and `\` path separators**: Use `[/\\]` in regex character classes for path separators. Or normalize all paths in the output to forward slashes before parsing.
+4. **Test BBjCPL invocation on Windows as part of Phase 1 acceptance criteria**: The existing EM login tests on Windows (noted in PROJECT.md v1.2) show this is possible. Add a BBjCPL integration test to the smoke test checklist.
+5. **Guard against `bbj.home` undefined**: If `bbj.home` is not configured, skip BBjCPL invocation entirely and surface a status bar indicator or diagnostic suggesting the user configure the setting.
+
+**Warning signs:**
+- "No such file or directory" or "spawn ENOENT" errors on Windows but not macOS
+- Zero BBjCPL diagnostics on Windows despite known errors in the file
+- Error output with `\` separators causing the line number regex to not match
+- Path in spawn error contains double-quotes within the path (over-quoting symptom)
+
+**Phase to address:**
+Phase 1 (BBjCPL process management) — cross-platform path handling must be part of the spawn implementation, not a subsequent fix. Add Windows-specific test cases to the compiler output parser unit tests.
+
+---
+
+### Pitfall 10: IntelliJ Receives Different Timing for `didSave` Than VS Code
+
+**What goes wrong:**
+BBjCPL is triggered on `textDocument/didSave`. In VS Code, the extension controls when `didSave` is sent (it can be delayed until auto-save). In IntelliJ via LSP4IJ, `didSave` is sent immediately on Ctrl+S. If BBjCPL takes 2-3 seconds to run (JVM startup + compilation), IntelliJ users experience a visible delay before diagnostics update, whereas VS Code users with debouncing see a smoother experience.
+
+Additionally, IntelliJ's health monitor probe interval (defined in `BbjLanguageServerDescriptor`) may coincide with BBjCPL runs, and if BBjCPL blocks the LS event loop, the health probe times out and IntelliJ marks the LS as unhealthy.
+
+**Why it happens:**
+BBjCPL is a Java process (JVM startup overhead). The existing LS already runs one external Java process (java-interop). Adding a second increases the risk that overlapping JVM startups cause the Node.js event loop to lag (setImmediate starvation on Node.js 20, documented in Node.js 20 performance regression).
+
+**How to avoid:**
+1. **Never await BBjCPL synchronously from the LSP message handler**: The `didSave` handler must fire the spawn and return immediately. BBjCPL runs in the background. This is a hard requirement to avoid blocking the event loop.
+2. **Implement BBjCPL as non-blocking**: Use `spawn()` with event handlers (`on('close', ...)`) rather than `execSync()` or `await exec()`. Never block the event loop.
+3. **Verify health probe timing is unaffected**: After adding BBjCPL, run IntelliJ's health probe under load and verify it succeeds. The 30-second grace period in `BbjServerHealthChecker` provides buffer, but sustained load can exhaust it.
+4. **Consider optional JVM reuse**: If BBjCPL supports being invoked via stdin (it does — "bbjcpl can be used as a pipe"), a persistent process that accepts filenames over stdin eliminates JVM startup overhead for subsequent invocations.
+
+**Warning signs:**
+- IntelliJ status bar shows language server as "degraded" or shows the health indicator flicker after saves
+- VS Code shows diagnostics quickly but IntelliJ lags by 3-5 seconds
+- Node.js event loop lag metrics (if logged) spike on save events
+
+**Phase to address:**
+Phase 1 (BBjCPL process management) — async-only invocation is a design constraint, not an optimization. Phase 4 (performance validation) — test under IntelliJ with the health probe active to verify no false-unhealthy reports.
 
 ---
 
@@ -135,116 +267,130 @@ Phase 1 (debug flag implementation) — explicitly exclude parser initialization
 
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Global mutable flag for debug mode (`let debugEnabled = true` at module level) | Easy to implement, works immediately | Hard to test (tests affect global state), doesn't hot-reload cleanly, breaks in multi-workspace scenarios | Never — always use configuration service or dependency injection |
-| Checking debug flag on every console call (`if (debug) console.log(...)`) | Straightforward, no abstraction needed | Scattered throughout codebase, easy to miss checks, performance overhead | Only for hot path logging (called thousands of times). Use logger abstraction elsewhere. |
-| Filtering ALL diagnostics for external files (blanket `if (isExternal) return []`) | Silences library file noise completely | Hides parser bugs, grammar errors, and real issues in libraries | Never — always filter by severity/code, not by file type |
-| Storing debug settings in global variables instead of ConfigurationProvider | Avoids LSP complexity, works for single-client scenarios | Breaks hot-reload, doesn't sync across workspace folders, fails in multi-root workspaces | Only for prototyping — production code must use ConfigurationProvider |
-| Hard-coding quiet startup (no logs before initialization completes) | Cleaner output panel on startup | Violates LSP spec (allowed to send logs during initialize), hides initialization errors | Never during actual initialize request — quiet mode should only apply AFTER initialization completes |
+| Use `exec()` instead of `spawn()` for BBjCPL | Simpler API, familiar from existing EM login code | No streaming of large output; buffer overflow for files with many errors (default 1MB limit); no AbortController support | Never — BBjCPL output can exceed exec buffer. Use `spawn()` with stream handling. |
+| Invoke BBjCPL from `onBuildPhase(Validated)` callback | Triggered automatically after every build | Creates rebuild loop (Pitfall 6). CPU hits 100% | Never — always trigger from `didSave` handler only. |
+| Parse BBjCPL output with a single regex | Fast to implement | Brittle — format varies by BBj version, platform, error type | Acceptable for prototype/spike only. Production needs fixture-tested multi-pattern parser. |
+| Merge BBjCPL diagnostics as a separate diagnostic source | Easier to implement independently | Stale diagnostics problem (Pitfall 3), user sees duplicate errors from both sources | Never for production — merge into the single Langium document validation cycle. |
+| Skip null guard for `$cstNode.range` in symbol provider | One line of code saved | Crash on first syntax error (Pitfall 8), empty outline for any file with errors | Never — `$cstNode` can be undefined whenever error recovery is active. |
+| Hard-code BBjCPL path relative to `bbj.home` | No configuration needed | Breaks when BBj is not installed at expected location; fails on non-standard installs | Acceptable as the default, but must fall back gracefully when not found. |
+
+---
 
 ## Integration Gotchas
 
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| VS Code initializationOptions | Assuming all settings are sent in initializationOptions | Use `workspace/configuration` request after initialization for dynamic settings. Only send minimal config (home dir, critical paths) via initializationOptions. |
-| IntelliJ LSP4IJ | Using same configuration mechanism as VS Code | Check LSP4IJ documentation for platform-specific config handling. Use LSP4IJ's preferences UI and trace settings instead of custom debug flags. |
-| Langium DocumentBuilder validation | Assuming shouldValidate() and diagnostics filtering are the same | shouldValidate() = prevent validation from running (for performance). Diagnostic filtering = run validation but hide certain results (for UX). Use shouldValidate() for synthetic docs, filtering for warnings. |
-| onDidChangeConfiguration handler | Forwarding to ConfigurationProvider only | ALSO apply settings to services (like JavaInteropService, validators) and re-validate affected documents. See main.ts line 72-131 for full pattern. |
-| Console output in language servers | Assuming console.log() goes to editor's Output panel | In VS Code, goes to Output panel. In IntelliJ, may go to IDE log file. In tests, goes to test runner output. Use proper LSP logging (window/logMessage) for user-visible messages. |
+| BBjCPL process invocation | Using `exec()` with shell: true and string-interpolated arguments | `spawn(bbjcplPath, ['-N', filePath], { stdio: ['ignore', 'pipe', 'pipe'] })` — no shell, array args, explicit stream capture |
+| BBjCPL output parsing | Reading from stdout | BBjCPL writes errors to stderr. stdout is the compiled output. Use the stderr stream only for diagnostic parsing. |
+| Langium diagnostic publication | Calling `publishDiagnostics` directly from compiler callback | Hook into `notifyDocumentPhase()` or override `DefaultDocumentValidator` to inject BBjCPL results during the Langium build cycle |
+| Document version tracking | Assuming document version at process start matches version at process finish | Capture `document.version` before spawn; compare at output handler time; discard results if version changed |
+| IntelliJ LSP4IJ `didSave` behavior | Assuming same throttling as VS Code | LSP4IJ sends `didSave` synchronously on Ctrl+S. Implement debouncing in the LS, not the client extension. |
+| Cross-platform path | Using `URI.fsPath` directly in regex for output parsing | `URI.fsPath` returns platform-native separators. Normalize with `path.normalize()` before comparison; use `[/\\]` in output-parsing regex. |
+| BBj HOME not set | Throwing an unhandled error if `bbj.home` is undefined | Check setting before invoking BBjCPL; skip silently with a status bar hint if not configured. The ws-manager already tracks `this.bbjdir` — use that. |
+
+---
 
 ## Performance Traps
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Checking debug flag on every console.log call in hot path | Slowdown during large workspace builds, high CPU usage during validation | Move debug check outside loop. Use conditional logging wrapper: `if (debug) { /* expensive string building */ logger.log(...) }`. Cache flag value per-document instead of reading config repeatedly. | When processing 100+ documents or logging inside AST traversal loops (called thousands of times per document) |
-| Re-validating all documents on EVERY configuration change | Lag when changing settings, progress bar shows "Validating..." for seconds | Only re-validate documents affected by the changed setting. If changing classpath, re-validate; if changing debug flag, just update logger state. | Workspaces with 50+ BBj files — full re-validation takes 5-10 seconds |
-| Creating new diagnostic arrays during filtering | Memory churn, GC pauses during large builds | Mutate existing diagnostic arrays (filter in place) or use immutable.js for efficient transforms. Cache filtered results if diagnostics don't change often. | Workspaces with heavily-imported libraries (PREFIX loading creates hundreds of synthetic diagnostics to filter) |
-| Synchronous file I/O during diagnostic filtering | Language server freezes, "not responding" errors in IDE | Diagnostic filtering should only check in-memory state (like isExternalDocument check against cached URI set). Never do file I/O during validation. | When diagnostic filtering logic tries to re-check file existence on disk for every diagnostic |
+| JVM startup per save (no process reuse) | 1-3 second delay on every save; IntelliJ health probe misses during compilation | Use BBjCPL pipe mode (stdin input) for a persistent compiler process; or accept JVM startup cost but make it async | Immediately visible on first use; worsens as file size grows |
+| Synchronous BBjCPL wait (blocking event loop) | IDE shows "language server not responding"; IntelliJ health indicator goes red; VS Code freezes briefly on save | Always async: `spawn` + event handlers, never `execFileSync` or `await` with synchronous wait | Any file that takes >100ms to compile; all files on slower machines |
+| BBjCPL for every file on workspace open | Startup floods with compiler invocations; other workspace files starve for processing | Only trigger BBjCPL on explicit save (`didSave`), never on `didOpen` or initial workspace build | Large workspaces with 50+ BBj files |
+| Full workspace revalidation when compiler config changes | Every file gets revalidated + BBjCPL-recompiled when user changes `-t` flag in settings | Only re-run BBjCPL on the currently open/active document when compiler settings change; don't trigger on all documents | Workspaces with 100+ files; compound with #232 rebuild loop debt |
+| Output buffer accumulation without process cleanup | Memory growth over long sessions; LS OOM crash | Always call `process.stdout.destroy()` and `process.stderr.destroy()` after reading output; unref streams when not needed | Sessions lasting hours with frequent saves |
+
+---
 
 ## UX Pitfalls
 
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Enabling quiet mode by default | Users think language server is broken when there's no feedback during long operations (PREFIX loading, Java class reflection) | Default to normal logging. Provide explicit setting "bbj.logging.quiet" that users opt into. Show progress notifications (window/workDoneProgress) even in quiet mode. |
-| Filtering diagnostics without user awareness | User sees no errors but code doesn't work. They have no idea diagnostics are being hidden. | When filtering diagnostics, add setting description: "Note: diagnostics from library files in PREFIX directories are automatically suppressed." Add command to "Show all diagnostics including libraries" for debugging. |
-| Debug flag requires language server restart | User changes setting, nothing happens, they think it's broken | Implement hot-reload via onDidChangeConfiguration. If restart IS required (e.g., for grammar changes), show notification: "Debug setting changed. Reload window to apply: [Reload]". |
-| No indication of what debug mode does | User enables "debug" setting and wonders what changed | Setting description should be explicit: "Debug mode: show verbose logging including PREFIX resolution, class loading, and validation details in the Output panel." |
-| Suppressing warnings that users need to see | User's code has real issues but warnings are hidden by default | Never suppress warnings by default. Provide granular controls: "bbj.diagnostics.hideTypeResolutionWarnings", "bbj.diagnostics.hideLibraryFileErrors" — all default to false (show everything). |
+| Diagnostics flicker on save (clear then re-appear) | Jarring UX; users think errors are "fixed" then "return" | Clear BBjCPL diagnostics when BBjCPL run starts, not on `didChange`. Show a progress indicator (status bar item) during compilation. |
+| No indicator that BBjCPL is running | User sees no feedback during 1-3s JVM startup; thinks LS is hung | Status bar item: "BBjCPL: checking..." while running, "BBjCPL: OK" or "BBjCPL: N errors" when done. |
+| Showing BBjCPL errors when bbj.home is wrong | User sees "BBjCPL not found" error in Problems panel | Use informational notification for configuration errors, not a document diagnostic. Document diagnostics should only reflect source code problems. |
+| Showing BOTH compiler and parser errors for the same issue | User sees duplicates; doesn't know which source to trust | Implement the hierarchy: BBjCPL errors take precedence over parser errors for the same line. Show a "source" tag on each diagnostic (VS Code already displays `source` field). |
+| BBjCPL errors on a file the user can't see (imported USE file) | Errors in a library file surface on the wrong document | Only publish BBjCPL diagnostics for the document URI that was compiled, not for transitive USE imports. |
+| Structure view disappears entirely on first syntax error | User loses navigation when they need it most | Override symbol provider with null guards (Pitfall 8). Partial symbols from unaffected regions should always be shown. |
+
+---
 
 ## "Looks Done But Isn't" Checklist
 
-- [ ] **Debug flag**: Setting exists and is read at initialization — verify it's ALSO read in onDidChangeConfiguration and applied without requiring restart
-- [ ] **Debug flag**: console.log() calls are suppressed when flag is off — verify console.error() and console.warn() are NOT suppressed (only debug/log should be affected)
-- [ ] **Diagnostic filtering**: Diagnostics from PREFIX files are hidden — verify parser/lexer errors ARE shown even for PREFIX files (only suppress semantic warnings)
-- [ ] **Diagnostic filtering**: isExternalDocument check exists — verify JavaSyntheticDocUri is also excluded from validation (see bbj-document-builder.ts line 26)
-- [ ] **Configuration hot-reload**: onDidChangeConfiguration handler exists — verify it calls ConfigurationProvider.updateConfiguration(), applies settings to all affected services, and re-validates documents
-- [ ] **Configuration hot-reload**: Settings change triggers re-validation — verify document state is reset to Parsed before calling update() (see main.ts line 119)
-- [ ] **Multi-IDE support**: Works in VS Code — verify initializationOptions are logged and used correctly in IntelliJ (test with LSP4IJ integration)
-- [ ] **Multi-IDE support**: Configuration is set via VS Code settings UI — verify IntelliJ has equivalent settings in preferences (may need platform-specific implementation)
-- [ ] **Chevrotain warnings**: Grammar ambiguity warnings appear during development — verify they're not suppressed by debug flag or diagnostic filtering
-- [ ] **Logging to correct stream**: console.log() output appears in Output panel — verify window/logMessage is used for user-facing messages that should appear as notifications
+- [ ] **BBjCPL process management**: Process spawns and produces output — verify the process is killed on LS shutdown, on abort, and when a new invocation supersedes the previous one
+- [ ] **BBjCPL process management**: Works on macOS — verify it also works on Windows (path spaces, backslash in output, `.exe` extension)
+- [ ] **Diagnostic merging**: BBjCPL errors appear in Problems panel — verify Langium parser errors are suppressed when BBjCPL speaks, and stale BBjCPL errors are cleared on `didChange`
+- [ ] **Diagnostic merging**: Both sources publish diagnostics — verify no duplicate errors for the same line number across sources
+- [ ] **Error recovery**: Outline works on valid files — verify outline also works (no crash, partial symbols shown) when file has syntax errors
+- [ ] **Error recovery**: Symbol provider doesn't crash — run the documentSymbol request against 5 files each with different parse error types
+- [ ] **Cascading suppression**: Langium validator shows all errors on valid file — verify it suppresses linking/semantic noise when parse errors exist
+- [ ] **CPU stability**: Feature works on single file — verify no rebuild loop after 10 rapid saves with `ps` showing only one BBjCPL process at a time
+- [ ] **IntelliJ compatibility**: Works in VS Code — verify in IntelliJ that health probe doesn't report LS as unhealthy during BBjCPL run
+- [ ] **BBjCPL not configured**: Feature works when `bbj.home` is set — verify graceful degradation (no crash, no spurious errors) when `bbj.home` is empty or BBjCPL binary is not found
+
+---
 
 ## Recovery Strategies
 
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Debug flag globally suppresses all logging including errors | MEDIUM | 1. Add environment check (if NODE_ENV=development, ignore flag). 2. Change suppression to only affect console.debug/console.log, never console.warn/error. 3. Audit all existing console calls and categorize by severity. 4. Add tests verifying errors are always visible. |
-| Diagnostic filtering hides parser bugs in synthetic files | HIGH | 1. Review all isExternalDocument/shouldValidate usages. 2. Add severity/code checks: only filter DiagnosticSeverity.Warning, never Error. 3. Add debug logging "Suppressed N diagnostics from file X". 4. Add setting to show all diagnostics (disable filtering) for troubleshooting. 5. Re-test library integrations to verify parser errors now surface. |
-| Configuration doesn't hot-reload | LOW | 1. Add document state reset to onDidChangeConfiguration (doc.state = DocumentState.Parsed). 2. Call DocumentBuilder.update() with all open document URIs. 3. Add integration test for hot-reload. Cost is low because the pattern already exists in main.ts (classpath reload), just needs to be applied to new settings. |
-| Debug flag doesn't work in IntelliJ | MEDIUM-HIGH | 1. Investigate LSP4IJ configuration mechanism (may require platform plugin changes). 2. Document VS Code-only features. 3. Consider alternative: use LSP trace setting ($/setTrace) instead of custom debug flag — this is LSP-standard and works everywhere. Cost is medium if alternative approach works, high if platform-specific code is needed. |
-| Chevrotain warnings suppressed | LOW | 1. Add check in logging suppression: never suppress logs during parser construction (before first document build). 2. Use console group/prefix to distinguish initialization logs from runtime logs. 3. Test by introducing intentional grammar ambiguity and verifying warning appears. |
+| Orphaned BBjCPL processes discovered post-ship | MEDIUM | Add AbortController cleanup to spawn wrapper. Add `process.on('exit')` handler to kill all tracked PIDs. Ship hotfix. No user-visible behavior change except reduced zombie processes. |
+| Rebuild loop triggered (CPU 100%) | HIGH | Disable BBjCPL trigger from any callback other than `didSave`. Add `bbj.compiler.enabled = false` as emergency escape hatch. Ships as hotfix config change users can apply immediately. |
+| Outline crash on parse errors (TypeError) | LOW | Single null guard `node.$cstNode?.range` in `getSymbol()` method. Contained change, no state impact. |
+| Stale BBjCPL diagnostics (wrong line numbers) | LOW-MEDIUM | Add `publishDiagnostics(uri, [])` call on `didChange`. One-line fix in the document change handler. |
+| Duplicate diagnostics from parser and BBjCPL | MEDIUM | Add parse-error gate in `BBjDocumentValidator`. Requires careful testing to avoid over-suppression of legitimate semantic errors. |
+| Windows spawn failure (path spaces) | LOW | Switch from string interpolation to array args in `spawn()`. Existing EM login code (extension.ts:520) shows the correct pattern to copy. |
+
+---
 
 ## Pitfall-to-Phase Mapping
 
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Global debug flag hiding real errors | Phase 1: Debug flag implementation | Test: verify console.error() output appears regardless of flag state. Test: introduce intentional error and verify it's visible. |
-| Filtering synthetic files masks parser bugs | Phase 2: Diagnostic filtering implementation | Test: create PREFIX file with parse error. Verify error diagnostic appears even though file is external. Test: verify only warnings are filtered, not errors. |
-| Configuration hot-reload state desync | Phase 1: Settings infrastructure + Phase 3: Hot-reload implementation | Integration test: send workspace/didChangeConfiguration LSP notification. Verify diagnostics update without document edit. Verify logger behavior changes immediately. |
-| Debug flag doesn't work in IntelliJ | Phase 4: IntelliJ testing | Manual verification: test in IntelliJ with LSP4IJ. Verify initializationOptions received. Document any limitations. |
-| Chevrotain warnings suppressed | Phase 1: Debug flag implementation | Test: trigger grammar ambiguity warning during parser construction. Verify warning appears regardless of debug flag. |
+| Orphaned BBjCPL processes | Phase 1: Process management | Test: kill LS mid-compilation; verify no orphan processes remain in `ps` output |
+| Concurrent invocation race condition | Phase 1: Process management | Test: trigger 5 rapid saves; verify only 1 BBjCPL process runs at a time via process count |
+| Stale diagnostics not cleared on edit | Phase 2: Diagnostic merging | Test: save with errors, edit without saving, verify Problems panel is empty |
+| Duplicate parser + compiler errors | Phase 2: Diagnostic merging | Test: introduce syntax error; verify exactly 1 diagnostic per error location, not 2 |
+| BBjCPL output format brittleness | Phase 1: BBjCPL integration | Unit tests: parse 5 different BBjCPL error output samples; assert correct line numbers |
+| Langium rebuild loop | Phase 1: Process management | Load test: 10 rapid saves; verify CPU returns to <10% within 5 seconds |
+| Cascading diagnostic noise | Phase 2: Diagnostic noise reduction | Test: single syntax error produces ≤3 diagnostics in Problems panel |
+| Outline crash on partial AST | Phase 3: Outline resilience | Test: request documentSymbols on file with parse error; assert no exception thrown |
+| Windows path handling | Phase 1: BBjCPL integration | Test: BBjCPL invocation with `bbj.home` containing spaces succeeds on Windows |
+| IntelliJ event loop blocking | Phase 4: IntelliJ validation | Manual: save in IntelliJ during BBjCPL run; verify health indicator remains green |
+
+---
 
 ## Sources
 
 ### Primary (HIGH confidence — codebase analysis)
 
-- **bbj-vscode/src/language/main.ts** (lines 72-131): Existing onDidChangeConfiguration pattern with document re-validation, classpath reload, and ConfigurationProvider sync
-- **bbj-vscode/src/language/bbj-validator.ts** (line 22-26): Existing typeResolutionWarningsEnabled global flag and setTypeResolutionWarnings() pattern (anti-pattern to avoid repeating)
-- **bbj-vscode/src/language/bbj-document-builder.ts** (lines 25-40): Existing shouldValidate() logic for JavaSyntheticDocUri and isExternalDocument filtering
-- **bbj-vscode/src/language/bbj-ws-manager.ts** (lines 33-62): Existing initializationOptions handling for home, classpath, configPath, interopHost/Port, typeResolutionWarnings
-- **bbj-vscode/src/extension.ts** (line 544): VS Code configuration synchronization pattern (`synchronize.configurationSection: 'bbj'`)
-- **.planning/phases/34-diagnostic-polish/34-04-PLAN.md**: Binary file detection pattern (<<bbj>> header check), PREFIX loading diagnostics reconciliation
-- **.planning/phases/34-diagnostic-polish/34-RESEARCH.md**: USE statement file path validation pattern, diagnostic property targeting, FileSystemProvider usage
+- **bbj-vscode/src/language/bbj-document-builder.ts** — `shouldRelink` override, `isImportingBBjDocuments` guard, `revalidateUseFilePathDiagnostics` pattern (reconciliation after async external loading)
+- **bbj-vscode/src/language/bbj-document-validator.ts** — `processLinkingErrors` override, `toDiagnostic` severity downgrade pattern (existing diagnostic hierarchy precedent)
+- **bbj-vscode/src/language/main.ts** — `onDidChangeConfiguration` handler, document re-validation pattern, `workspaceInitialized` gate (models for BBjCPL lifecycle hooks)
+- **bbj-vscode/src/language/java-interop.ts** — Socket-based external process connection with timeout, `resolvedClassesLock` mutex (parallel to BBjCPL serialization pattern)
+- **bbj-vscode/src/extension.ts** (lines 396-444) — Existing `exec()` usage for EM validation with temp file pattern (anti-pattern to avoid repeating for BBjCPL)
+- **bbj-vscode/src/Commands/CompilerOptions.ts** — BBjCPL flag definitions, `-N` validate-only flag (key for diagnostic-only invocation without output side effects)
+- **bbj-vscode/src/language/bbj-index-manager.ts** — `isAffected` override preventing external document reindex (model for preventing BBjCPL-induced rebuild loops)
+- **.planning/PROJECT.md** — Issue #232 (CPU stability, rebuild loops), existing tech debt list, 11 pre-existing test failures
 
 ### Secondary (MEDIUM confidence — official documentation)
 
-- [Language Server Protocol Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — TraceValue definition, initialize request restrictions, window/logMessage vs console output
-- [VS Code Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) — Configuration synchronization, onDidChangeConfiguration pattern
-- [Chevrotain Resolving Grammar Errors](https://chevrotain.io/docs/guide/resolving_grammar_errors.html) — Ambiguous alternatives detection, IGNORE_AMBIGUITIES property usage
-- [Chevrotain FAQ](https://chevrotain.io/docs/FAQ) — Parser ambiguity false positives, explicit suppression mechanism
-- [LSP4IJ GitHub Documentation](https://github.com/redhat-developer/lsp4ij) — IntelliJ language server preferences UI, debug tab configuration, trace level settings
-- [LSP4IJ Developer Guide](https://github.com/redhat-developer/lsp4ij/blob/main/docs/DeveloperGuide.md) — JavaProcessCommandBuilder debug flag handling
-- [Langium Configuration via Services](https://langium.org/docs/reference/configuration-services/) — Service dependency injection, avoiding global state
+- [LSP 3.17 Specification — textDocument/publishDiagnostics](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — `source` field, version semantics, per-URI diagnostic replacement behavior
+- [Node.js child_process documentation](https://nodejs.org/api/child_process.html) — AbortController/AbortSignal support for `spawn()`, Windows-specific quoting behavior, `detached` option
+- [Chevrotain Fault Tolerance guide](https://chevrotain.io/docs/tutorial/step4_fault_tolerance.html) — `recoveredNode` flag, re-sync recovery behavior, how partial ASTs are produced
+- [vscode-languageserver-node issue #726](https://github.com/microsoft/vscode-languageserver-node/issues/726) — Orphaned process reports when client closes before server is ready
+- [vscode-languageserver-node issue #900](https://github.com/microsoft/vscode-languageserver-node/issues/900) — Orphaned dotnet process after exit (identical pattern to BBjCPL)
+- [BBjCPL documentation](https://documentation.basis.com/BASISHelp/WebHelp/util/bbjcpl_bbj_compiler.htm) — Both BBj and ASCII line numbers in output, stderr for errors, pipe mode support
 
-### Tertiary (LOW confidence — community articles, Stack Overflow patterns)
+### Tertiary (LOW confidence — community reports, verified by pattern matching)
 
-- [DEV: Hide console logs in production](https://dev.to/sharmakushal/hide-all-console-logs-in-production-with-just-3-lines-of-code-pp4) — Environment-based console suppression pattern (use with caution, shows common pitfall)
-- [Medium: Console.log in Production](https://medium.com/@lordmoma/do-you-have-console-log-in-production-161927490df0) — Why production console logs are problematic, selective suppression strategies
-- [GitHub: VS Code Issue #134271](https://github.com/microsoft/vscode/issues/134271) — Add option to disable diagnostics on custom file system or read-only files (shows user demand for diagnostic filtering)
-- [GitHub: VS Code Issue #76405](https://github.com/microsoft/vscode/issues/76405) — Restart language server generic solution (hot-reload vs restart trade-offs)
+- [Node.js issue #46569](https://github.com/nodejs/node/issues/46569) — Zombie process generation with unref'd child processes (runtime concern)
+- [Node.js child_process issue #7367](https://github.com/nodejs/node/issues/7367) — spawn fails on Windows with spaces in command and argument simultaneously
+- [vscode-languageserver-node issue #1257](https://github.com/microsoft/vscode-languageserver-node/issues/1257) — `TypeError: Cannot read properties of undefined (reading 'range')` in textDocument/documentSymbol (exact Pitfall 8 scenario)
+- [Neovim issue #29927](https://github.com/neovim/neovim/issues/29927) — Duplicate diagnostics when LSP implements both push and pull (same root cause as Pitfall 4)
+- [Node.js setImmediate performance (2024)](https://blog.platformatic.dev/the-dangers-of-setimmediate) — Node.js 20 event loop changes that can cause health check starvation under load
 
-## Metadata
+---
 
-**Confidence breakdown:**
-- Critical pitfalls (1-5): HIGH — based on existing codebase patterns, LSP specification, and Langium/Chevrotain documentation
-- Technical debt patterns: HIGH — anti-patterns observed in existing code (global flags, blanket filtering) with documented correct approaches
-- Integration gotchas: MEDIUM-HIGH — VS Code patterns HIGH (in codebase), IntelliJ patterns MEDIUM (from LSP4IJ docs, not yet tested in this project)
-- Performance traps: MEDIUM — based on Langium patterns and typical language server performance issues, not project-specific profiling
-- UX pitfalls: HIGH — based on existing setting descriptions in package.json and user feedback patterns from issue tracking
-
-**Research date:** 2026-02-08
-**Valid until:** 2026-03-08 (30 days — stable APIs for Langium 4.1.3, Chevrotain 11.0.3, LSP 3.17)
-
-**Gaps to address in phase-specific research:**
-- IntelliJ LSP4IJ integration testing (current patterns are from documentation, need hands-on verification)
-- Actual performance profiling of debug flag checking overhead (current recommendations are based on typical patterns, not measured)
-- User preferences for default logging verbosity (UX recommendations assume users prefer quiet by default, may need validation)
+*Pitfalls research for: Adding external compiler integration (BBjCPL), diagnostic hierarchy, and outline resilience to an existing Langium-based BBj language server*
+*Researched: 2026-02-19*

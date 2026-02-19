@@ -1,335 +1,349 @@
-# Stack Research: Debug Logging and Diagnostic Filtering
+# Stack Research: BBjCPL Integration, Diagnostic Quality, and Outline Resilience
 
-**Domain:** Language Server Output Cleanup and Debug Logging
-**Researched:** 2026-02-08
+**Domain:** Langium Language Server — External Compiler Integration
+**Researched:** 2026-02-19
 **Confidence:** HIGH
 
 ## Executive Summary
 
-For adding debug logging, log level control, and diagnostic filtering to the BBj Language Server (Langium 4.1.3), **no new dependencies are required**. The existing `vscode-languageserver` 9.0.1 provides built-in logging via `connection.console` with standard log levels. Diagnostic filtering is achieved by overriding Langium's `DocumentValidator` methods (already implemented in `bbj-document-validator.ts`). Settings-based control uses existing `workspace/configuration` patterns already in place.
-
-**Key Finding:** Use what you already have. Adding external logging libraries (Pino, Winston) would introduce unnecessary complexity and bundle size for features the LSP already provides.
+This milestone adds three capabilities to the existing Langium 4.1.3 BBj language server: (1) invoking the BBjCPL compiler as an external process and mapping its error output to LSP diagnostics, (2) reducing diagnostic noise through cascading/filtering, and (3) making the document outline resilient to parse errors. All three capabilities use Node.js built-ins and Langium extension points already in the codebase. **No new runtime dependencies are required.** The only optional addition worth considering is a typed debounce implementation via the existing TypeScript compiler — not a new npm package.
 
 ## Recommended Stack
 
-### No New Core Dependencies Required
+### Core Technologies — No New Additions Required
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| vscode-languageserver | 9.0.1 (existing) | LSP connection with built-in logging | Already in package.json; provides `connection.console.{log,info,warn,error,debug}` which uses `window/logMessage` protocol notifications. Supports log level filtering on client side via `[langId].trace.server` setting. |
-| Langium DocumentValidator | 4.1.3 (existing) | Diagnostic filtering | Already extended in `bbj-document-validator.ts` with custom `processLinkingErrors` and `toDiagnostic` methods. Add pre-validation filtering in `validateDocument` override to suppress synthetic file diagnostics. |
-| Node.js console methods | Built-in | Development/fallback logging | For logging before connection is established or in non-LSP contexts. |
+| `node:child_process` (built-in) | Node.js 20.18.1 | Invoke BBjCPL compiler | Built-in to Node.js LTS; `spawn()` provides streaming stderr/stdout, process kill for cancellation, and cross-platform support. No install required. |
+| Langium `DefaultDocumentSymbolProvider` | 4.1.3 (existing) | Outline resilience via override | `getSymbol()` and `getChildSymbols()` are `protected` and designed for override. Null-guarding inside these methods fixes crash-on-parse-error. Zero config changes. |
+| Langium `DefaultDocumentValidator` | 4.1.3 (existing) | Diagnostic cascading and external diagnostics merge | Already subclassed as `BBjDocumentValidator`. Override `validateDocument()` to merge compiler diagnostics and implement stop-after-parse-error cascade. |
+| Langium `ValidationCategory` | 4.1.3 (existing) | Separate slow compiler checks from fast LSP checks | Built-in `'fast'` / `'slow'` / `'built-in'` categories. Register BBjCPL checks as `'slow'` so they skip on every keystroke. |
+| Langium `DocumentBuilder.onBuildPhase` | 4.1.3 (existing) | Trigger BBjCPL after document reaches `Validated` state | Pattern already used in `main.ts` line 68. Safe hook point for async compiler invocation. |
+| TypeScript `ReturnType<typeof setTimeout>` | Built-in | Debounce compiler invocation | Native `setTimeout`/`clearTimeout` is sufficient; no lodash or ts-debounce needed in an ESM module that controls its own event loop. |
 
-### Configuration Mechanism (Already Implemented)
+### Supporting Libraries — No New Additions Required
 
-| Mechanism | Current Usage | Purpose for New Features |
-|-----------|--------------|--------------------------|
-| `workspace/configuration` | Java interop settings, compiler options, type resolution warnings | Add `bbj.diagnostics.showSyntheticFiles` (boolean), `bbj.debug.enabled` (boolean), `bbj.debug.verboseStartup` (boolean) |
-| `didChangeConfiguration` handler | Java class reload on settings change (line 72 in main.ts) | Apply log level changes dynamically without restart |
-| LSP client tracing | Not yet documented for users | Users can enable `"bbj.trace.server": "verbose"` in VS Code settings to see full LSP traffic (built-in LSP feature) |
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| `vscode-uri` | 3.1.0 (existing) | Convert LSP URIs to filesystem paths for `spawn()` | Use `URI.parse(doc.uri.toString()).fsPath` to get platform-correct path for compiler args. |
+| `path` (built-in) | Node.js 20 | Construct BBjCPL executable path from `bbj.home` setting | Use `path.join(bbjHome, 'bin', 'BBjCPL')` for Unix; `path.join(bbjHome, 'bin', 'BBjCPL.bat')` (or `BBjCPL.exe`) for Windows. |
+| `vscode-languageserver-types` | 9.0.1 (existing) | `Diagnostic`, `DiagnosticSeverity`, `Range`, `Position` types | Already imported in `bbj-document-validator.ts`; reuse for compiler-sourced diagnostics. |
 
-## What NOT to Add
+### Development Tools — No Changes Required
 
-| Avoid | Why | Use Instead |
-|-------|-----|-------------|
-| Pino (10.3.0) | Fastest logger but adds 200KB+ to bundle. Outputs JSON (not human-readable without pretty-printer). Overkill for language server debugging where `connection.console` suffices. Only justified for high-volume production services. | `connection.console` methods for user-facing logs; standard `console.debug` for development-only traces |
-| Winston (3.19.0) | 12M weekly downloads but heavyweight (1MB+ bundle). Multiple transports (file, HTTP) unnecessary for LSP stdio communication. Adds configuration complexity. | `connection.console` for LSP logging; client-side output channels handle persistence/display |
-| Bunyan | Maintenance has slowed significantly. Pino was created as a faster alternative. No active development for 2+ years. | Pino (if external logger needed) or built-in methods |
-| Custom log level enums | Reinventing LSP MessageType enum (Error=1, Warning=2, Info=3, Log=4). LSP already defines standard levels. | Use LSP's built-in levels via `connection.console` or `connection.window.showMessage` |
-| Environment variable log control | `PINO_LOG_LEVEL` or `DEBUG=*` patterns. Language servers receive settings via LSP protocol, not env vars (client controls environment). | Settings via `workspace/configuration` with dynamic updates through `didChangeConfiguration` |
+| Tool | Purpose | Notes |
+|------|---------|-------|
+| vitest 1.6.1 (existing) | Unit-test compiler output parser | Add parser tests with sample BBjCPL stderr strings. No new test framework needed. |
+| esbuild 0.25.12 (existing) | Bundle for VS Code extension | `node:child_process` and `node:path` are Node built-ins; esbuild marks them external automatically with `--platform=node`. |
 
-## Implementation Patterns
+## Installation
 
-### Pattern 1: Structured Logging via connection.console
-
-**What:** Use `connection.console.{log,info,warn,error}` for all runtime logging after LSP connection is established.
-
-**When:** After `createConnection()` but before `startLanguageServer(shared)`.
-
-**Why:**
-- Uses LSP `window/logMessage` notifications (protocol standard)
-- Client automatically routes to appropriate output channel
-- No additional dependencies
-- Respects client-side log level filtering (`[langId].trace.server`)
-
-**Example:**
-```typescript
-// In main.ts or any service with access to connection
-const connection = createConnection(ProposedFeatures.all);
-
-// Early startup logging (before LSP initialization completes)
-connection.console.info('BBj Language Server starting...');
-
-// Debug-level logging (controlled by client trace settings)
-connection.console.log('Loading PREFIX entries from config.bbx');
-
-// User-facing messages (always visible)
-connection.window.showInformationMessage('Java classes refreshed');
+```bash
+# No new packages needed.
+# All capabilities use Node.js 20.18.1 built-ins and Langium 4.1.3 APIs already present.
 ```
-
-**Confidence:** HIGH — [vscode-languageserver-node documentation](https://github.com/microsoft/vscode-languageserver-node) confirms `RemoteConsole` uses `window/logMessage` internally. [LSP Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) defines MessageType enum.
-
-### Pattern 2: Settings-Based Debug Flag
-
-**What:** Add `bbj.debug.enabled` setting to control verbose logging (PREFIX resolution, Java class loading, linking performance).
-
-**When:** Check setting value before expensive debug string construction (avoid overhead when debugging disabled).
-
-**Why:**
-- Users can enable without restarting VS Code (via `didChangeConfiguration`)
-- Zero performance cost when disabled (no string concatenation)
-- Standard LSP pattern (see TypeScript language server's `typescript.tsserver.log` setting)
-
-**Example:**
-```typescript
-// In bbj-ws-manager.ts or other services
-export class BBjWorkspaceManager {
-    private debugEnabled = false;
-
-    updateSettings(config: any) {
-        this.debugEnabled = config.debug?.enabled ?? false;
-        if (this.debugEnabled) {
-            this.connection.console.log('Debug mode enabled');
-        }
-    }
-
-    loadPrefixEntries() {
-        if (this.debugEnabled) {
-            this.connection.console.log(`Resolved PREFIX: ${entries.length} entries`);
-        }
-        // ... actual work
-    }
-}
-```
-
-**Confidence:** HIGH — Pattern already used for `bbj.typeResolution.warnings` (line 477-482 in package.json).
-
-### Pattern 3: Diagnostic Filtering via Validator Override
-
-**What:** Override `validateDocument` in `BBjDocumentValidator` to skip synthetic/built-in documents before generating diagnostics.
-
-**When:** In the validation phase (DocumentState.Validated) before diagnostics are collected.
-
-**Why:**
-- Langium's `DocumentValidator.validateDocument()` is designed to be overridden
-- Filtering at source is cleaner than post-processing diagnostics
-- Already have custom validator with `processLinkingErrors` override (bbj-document-validator.ts)
-
-**Example:**
-```typescript
-// In bbj-document-validator.ts
-export class BBjDocumentValidator extends DefaultDocumentValidator {
-
-    private showSyntheticDiagnostics = true; // from settings
-
-    async validateDocument(document: LangiumDocument, options, cancelToken): Promise<Diagnostic[]> {
-        // Filter: Skip synthetic/built-in documents unless explicitly enabled
-        if (!this.showSyntheticDiagnostics && this.isSyntheticDocument(document)) {
-            return []; // No diagnostics for synthetic files
-        }
-
-        return super.validateDocument(document, options, cancelToken);
-    }
-
-    private isSyntheticDocument(doc: LangiumDocument): boolean {
-        return doc.uri.scheme !== 'file' ||
-               doc.uri.path.includes('/builtin-') ||
-               doc.uri.path.includes('/synthetic-');
-    }
-}
-```
-
-**Confidence:** MEDIUM — Langium 4.1.3 `DefaultDocumentValidator` is documented as extensible. Specific override point confirmed via [Langium validation documentation](https://langium.org/docs/learn/workflow/create_validations/) and local inspection of `node_modules/langium/lib/validation/validation-registry.d.ts`.
-
-### Pattern 4: Quiet Startup Mode
-
-**What:** Suppress `connection.console.log` (but not `warn`/`error`) during initial workspace build unless `bbj.debug.verboseStartup` is true.
-
-**When:** From `startLanguageServer(shared)` until `DocumentBuilder.onBuildPhase(DocumentState.Validated)` first fires with all documents validated.
-
-**Why:**
-- Reduces noise in LSP output channel during editor launch
-- Errors/warnings still surface immediately
-- Debug mode preserves full visibility for troubleshooting
-
-**Example:**
-```typescript
-// In main.ts
-let startupComplete = false;
-let verboseStartup = false; // from settings
-
-// Wrapped logger
-const quietLog = {
-    log: (msg: string) => {
-        if (startupComplete || verboseStartup) {
-            connection.console.log(msg);
-        }
-    },
-    info: connection.console.info.bind(connection.console),
-    warn: connection.console.warn.bind(connection.console),
-    error: connection.console.error.bind(connection.console)
-};
-
-shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
-    if (!startupComplete) {
-        startupComplete = true;
-        quietLog.log('Workspace initialization complete');
-    }
-});
-```
-
-**Confidence:** HIGH — Pattern mirrors existing `workspaceInitialized` guard (lines 66-69 in main.ts).
-
-## Settings Schema Additions
-
-Add to `bbj-vscode/package.json` `contributes.configuration.properties`:
-
-```json
-{
-  "bbj.debug.enabled": {
-    "type": "boolean",
-    "default": false,
-    "description": "Enable verbose debug logging for PREFIX resolution, Java class loading, and linking performance. Logs appear in the BBj Language Server output channel.",
-    "scope": "window"
-  },
-  "bbj.debug.verboseStartup": {
-    "type": "boolean",
-    "default": false,
-    "description": "Show detailed logging during language server startup and workspace initialization. Useful for troubleshooting slow startup issues.",
-    "scope": "window"
-  },
-  "bbj.diagnostics.showSyntheticFiles": {
-    "type": "boolean",
-    "default": false,
-    "description": "Show diagnostics for synthetic/built-in BBj API files. Disable to reduce noise in Problems panel.",
-    "scope": "window"
-  }
-}
-```
-
-## Integration Points
-
-| Feature | Integrates With | Method |
-|---------|----------------|--------|
-| Debug logging flag | `bbj-ws-manager.ts` PREFIX loading, `bbj-linker.ts` timing logs, `java-interop.ts` connection logs | Pass settings through service injection; check flag before `connection.console.log()` |
-| Quiet startup | `main.ts` startup sequence, `DocumentBuilder.onBuildPhase` | Wrap `connection.console` methods; toggle on first Validated phase |
-| Synthetic file filtering | `bbj-document-validator.ts`, `bbj-ws-manager.ts` synthetic BBjAPI doc | Override `validateDocument()` with URI scheme check |
-| Settings updates | `didChangeConfiguration` handler (line 72 main.ts) | Add debug/diagnostic settings to existing config update logic |
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| connection.console methods | Pino 10.3.0 | If BBj Language Server is extracted as a standalone service with file/HTTP logging (not stdio LSP). If log volume exceeds 10K messages/sec (unlikely for IDE). If you need structured queryable logs in production observability platform. |
-| Settings via workspace/configuration | Environment variables (DEBUG=bbj:*) | Never for LSP (client controls environment). Only for standalone Node.js processes. |
-| Diagnostic filtering in Validator | Post-processing via DocumentBuilder.onUpdate | If filtering logic requires cross-document context (e.g., suppress errors only when related file exists). Current use case is document-local. |
-| Built-in console.debug() | Custom debug utility | If you need namespaced debug channels (debug package pattern). Adds 500KB+ bundles size for minimal benefit in LSP context. |
+| `node:child_process` spawn (built-in) | `execa` 9.x | When you need Promise-based API with better cancellation ergonomics AND you can accept a pure-ESM dependency with ~30KB added to bundle. Execa 9.x is ESM-only which matches the project's `"type": "module"`, so it would work. However the benefit is marginal: the compiler runs at most once per document save, not in a hot path. Prefer built-in `spawn` with a `promisify` wrapper or manual Promise wrapping. |
+| `node:child_process` spawn (built-in) | `cross-spawn` | Only needed if you encounter CMD/batch file execution issues on Windows. BBjCPL ships as a native binary (not a batch file), so `spawn()` works directly. Do NOT add `cross-spawn` unless Windows testing reveals issues. |
+| Native `setTimeout` debounce | `lodash.debounce` or `ts-debounce` | Only if the debounce needs flush/cancel API observable from tests. For compiler invocation (fire-and-forget after idle), plain `setTimeout`/`clearTimeout` is sufficient and ships zero bytes. |
+| Langium `'slow'` ValidationCategory | Custom `onDidSave` event handler in VS Code extension | Use `'slow'` category to stay inside Langium's build pipeline and benefit from `CancellationToken` propagation. A VS Code-side save handler cannot be used for IntelliJ compatibility. |
+| Override `BBjDocumentValidator.validateDocument` | Separate LSP `textDocument/publishDiagnostics` call | Merging compiler diagnostics inside the Langium validator keeps a single diagnostic source per document and prevents overwrite races. Publishing from outside Langium's pipeline risks Langium clearing compiler diagnostics on the next build cycle. |
+| Override `DefaultDocumentSymbolProvider.getSymbol` | Replace with full custom provider | `getSymbol` and `getChildSymbols` are `protected` and directly overridable. A full replacement would duplicate unchanged logic (name resolution, symbol kinds). Override only, stay DRY. |
+
+## What NOT to Use
+
+| Avoid | Why | Use Instead |
+|-------|-----|-------------|
+| `child_process.exec()` | Buffers all output in memory; crashes if compiler emits large error lists. No streaming. | `child_process.spawn()` with `stderr` data events. |
+| `child_process.execSync()` / `spawnSync()` | Blocks the Node.js event loop; freezes LSP response to all other requests while compiler runs. | Async `spawn()` wrapped in a Promise. |
+| `execa` (if added only for this) | Adds a dependency that must be kept up-to-date; ESM-only constraint adds complexity. Provides no benefit over `spawn()` + Promise wrapper for a once-per-save operation. | `child_process.spawn()` with manual Promise wrapper shown below. |
+| Storing compiler diagnostics in document state | `document.diagnostics` is overwritten by Langium on every build cycle. | Merge compiler diagnostics into the array returned by `validateDocument()` so Langium publishes them together. |
+| Debounce via `setTimeout` in VS Code extension (client side) | IntelliJ plugin cannot share client-side throttle logic. | Debounce inside the language server (in `bbj-document-builder.ts` or a new `BBjCompilerService`) so both clients benefit identically. |
+| Hardcoding `BBjCPL` path | Will fail when `bbj.home` is not set or changes. | Read from `BBjWorkspaceManager.getSettings().bbjHome`, construct with `path.join`, and guard with null check. |
+
+## Stack Patterns by Feature
+
+### Pattern 1: BBjCPL Invocation via `spawn()`
+
+**Trigger:** After `DocumentState.Validated` fires for a file document (not synthetic/external). Debounce 500ms to avoid re-running on every fast build cycle.
+
+**Implementation location:** New `BBjCompilerService` class, registered in `BBjModule` as a custom service, invoked from `BBjDocumentBuilder.buildDocuments` post-validation hook.
+
+```typescript
+import { spawn } from 'node:child_process';
+import { join } from 'node:path';
+import type { URI } from 'vscode-uri';
+
+interface CompilerError {
+  line: number;    // 0-based (LSP convention)
+  column: number;  // 0-based
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+export async function invokeBBjCPL(
+  bbjHome: string,
+  filePath: string,
+  args: string[],
+  cancelSignal?: AbortSignal
+): Promise<CompilerError[]> {
+  const compilerPath = join(
+    bbjHome, 'bin',
+    process.platform === 'win32' ? 'BBjCPL.bat' : 'BBjCPL'
+  );
+
+  return new Promise((resolve, reject) => {
+    const proc = spawn(compilerPath, [...args, filePath], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: process.platform === 'win32'  // needed for .bat on Windows
+    });
+
+    let stderrBuf = '';
+    proc.stderr.setEncoding('utf8');
+    proc.stderr.on('data', (chunk: string) => { stderrBuf += chunk; });
+
+    // stdout for validate-only mode (-N flag) — BBjCPL writes errors to stderr
+    let stdoutBuf = '';
+    proc.stdout.setEncoding('utf8');
+    proc.stdout.on('data', (chunk: string) => { stdoutBuf += chunk; });
+
+    cancelSignal?.addEventListener('abort', () => proc.kill('SIGTERM'));
+
+    proc.on('close', (code) => {
+      if (cancelSignal?.aborted) return resolve([]);
+      resolve(parseBBjCPLOutput(stderrBuf + stdoutBuf));
+    });
+
+    proc.on('error', reject);
+  });
+}
+```
+
+**Confidence:** HIGH — `child_process.spawn()` documented in Node.js 20.18.1 official docs. Windows `.bat` execution requires `shell: true`; confirmed by Node.js docs and cross-spawn source.
+
+---
+
+### Pattern 2: BBjCPL Output Parser
+
+BBjCPL error output format (from BASIS documentation): errors contain both the BBj line number and the ASCII file line number. The format observed in practice:
+
+```
+Error on line 42 (ASCII line 38): Syntax error - unexpected token 'END'
+Warning on line 10 (ASCII line 10): Undeclared variable 'myVar'
+```
+
+BASIS documentation states all error messages contain both BBj line number and ASCII file line number. The ASCII line number corresponds to the source file position.
+
+```typescript
+// Regex targeting the format BBjCPL emits
+const BBJ_ERROR_PATTERN = /^(Error|Warning|error|warning)\s+(?:on\s+)?(?:line\s+)?(\d+)(?:\s+\(ASCII\s+line\s+(\d+)\))?:?\s*(.+)$/im;
+
+export function parseBBjCPLOutput(output: string): CompilerError[] {
+  const errors: CompilerError[] = [];
+  for (const line of output.split('\n')) {
+    const match = BBJ_ERROR_PATTERN.exec(line.trim());
+    if (!match) continue;
+    const [, severityStr, bbjLine, asciiLine, message] = match;
+    // Prefer ASCII (source) line number; fall back to BBj line number
+    const lineNum = parseInt(asciiLine ?? bbjLine, 10);
+    errors.push({
+      line: Math.max(0, lineNum - 1),   // convert 1-based to 0-based
+      column: 0,                         // BBjCPL does not report columns
+      message: message.trim(),
+      severity: /^error/i.test(severityStr) ? 'error' : 'warning'
+    });
+  }
+  return errors;
+}
+```
+
+**Confidence:** MEDIUM — BASIS documentation confirms "all error messages contain both the BBj line number and the ASCII file line number." Exact format delimiter not documented publicly. The regex covers the documented content; adjust after empirical testing with actual BBjCPL output. The parser should be wrapped in a test with known output strings before integration.
+
+**Critical note:** Run `BBjCPL --help` or inspect its actual stderr output with a known broken file to validate the regex before shipping. This is the highest-risk piece in this milestone.
+
+---
+
+### Pattern 3: Diagnostic Cascading via `ValidationOptions`
+
+Langium 4.1.3 `DefaultDocumentValidator.validateDocument()` already accepts `ValidationOptions` with `stopAfterParsingErrors` and `stopAfterLexingErrors` flags (verified in local `node_modules/langium/src/validation/document-validator.ts`).
+
+The existing `BBjDocumentValidator` does not yet set these options. Adding cascading:
+
+```typescript
+// In bbj-document-validator.ts
+export class BBjDocumentValidator extends DefaultDocumentValidator {
+
+  async validateDocument(
+    document: LangiumDocument,
+    options: ValidationOptions = {},
+    cancelToken = CancellationToken.None
+  ): Promise<Diagnostic[]> {
+    // Cascade: if Langium has parse errors, skip semantic + compiler checks.
+    // Parse errors make type inference and symbol resolution unreliable anyway.
+    const cascadeOptions: ValidationOptions = {
+      ...options,
+      stopAfterParsingErrors: true,  // suppress linking/semantic noise
+    };
+
+    const langiumDiags = await super.validateDocument(document, cascadeOptions, cancelToken);
+
+    // Only run compiler checks if there are no parse errors
+    const hasParseErrors = langiumDiags.some(
+      d => (d.data as DiagnosticData)?.code === DocumentValidator.ParsingError
+    );
+    if (hasParseErrors) {
+      return langiumDiags;
+    }
+
+    // Merge compiler diagnostics (from BBjCompilerService)
+    const compilerDiags = await this.compilerService.getDiagnostics(document);
+    return [...langiumDiags, ...compilerDiags];
+  }
+}
+```
+
+**Confidence:** HIGH — `stopAfterParsingErrors` flag confirmed in Langium 4.1.3 source at `/bbj-vscode/node_modules/langium/src/validation/document-validator.ts` lines 31-35. `DocumentValidator.ParsingError` constant confirmed at line 353.
+
+---
+
+### Pattern 4: Outline Resilience via `DefaultDocumentSymbolProvider` Override
+
+The `DefaultDocumentSymbolProvider` (verified in local `node_modules/langium/src/lsp/document-symbol-provider.ts`) recursively calls `getSymbol()` for all AST nodes. When the document has parse errors, `astNode.$cstNode` can be `undefined` for recovered nodes, and `nameProvider.getNameNode()` may throw or return garbage.
+
+Fix: override `getSymbol()` with null guards.
+
+```typescript
+// New file: bbj-document-symbol-provider.ts
+import { DefaultDocumentSymbolProvider } from 'langium/lsp';
+import type { LangiumDocument, AstNode } from 'langium';
+import type { DocumentSymbol } from 'vscode-languageserver';
+
+export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
+
+  protected override getSymbol(document: LangiumDocument, astNode: AstNode): DocumentSymbol[] {
+    // Guard: skip nodes that Chevrotain error recovery inserted (no CST position)
+    if (!astNode.$cstNode) {
+      return this.getChildSymbols(document, astNode) ?? [];
+    }
+    try {
+      return super.getSymbol(document, astNode);
+    } catch {
+      // If name resolution throws on a recovered node, skip it silently
+      return [];
+    }
+  }
+
+  protected override getChildSymbols(document: LangiumDocument, astNode: AstNode): DocumentSymbol[] | undefined {
+    if (!astNode.$cstNode) {
+      return undefined;
+    }
+    return super.getChildSymbols(document, astNode);
+  }
+}
+```
+
+Register in `BBjModule` (language-specific services, not shared):
+
+```typescript
+// In bbj-module.ts, inside BBjModule:
+lsp: {
+  // ... existing providers ...
+  DocumentSymbolProvider: (services) => new BBjDocumentSymbolProvider(services),
+},
+```
+
+**Confidence:** HIGH — `DefaultDocumentSymbolProvider` source confirmed at `node_modules/langium/src/lsp/document-symbol-provider.ts`. Methods `getSymbol`, `createSymbol`, and `getChildSymbols` are all `protected`. Registration pattern via `BBjModule.lsp` DI confirmed by existing `DefinitionProvider`, `HoverProvider` registrations in `bbj-module.ts`.
+
+---
+
+### Pattern 5: Debounce for Compiler Invocation
+
+500ms debounce prevents re-running the compiler on every intermediate build (e.g., Langium rebuilds as references resolve). Implement inside `BBjCompilerService` without external dependencies:
+
+```typescript
+export class BBjCompilerService {
+  private debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  scheduleCompile(document: LangiumDocument): void {
+    const key = document.uri.toString();
+    const existing = this.debounceTimers.get(key);
+    if (existing) clearTimeout(existing);
+
+    this.debounceTimers.set(key, setTimeout(async () => {
+      this.debounceTimers.delete(key);
+      await this.compile(document);
+    }, 500));
+  }
+
+  private async compile(document: LangiumDocument): Promise<void> {
+    // ... invoke BBjCPL, store results, trigger diagnostic refresh
+  }
+}
+```
+
+**Confidence:** HIGH — `setTimeout`/`clearTimeout` are Node.js globals available in ESM modules. `ReturnType<typeof setTimeout>` is the correct TypeScript type for both browser and Node contexts (Node 20+ returns a `Timeout` object, not a number).
+
+---
+
+### Pattern 6: Slow Validation Category for Compiler Checks
+
+Langium's `ValidationCategory` system (`'fast'` | `'slow'` | `'built-in'`) controls which checks run on each build. Default `updateBuildOptions` runs only `['built-in', 'fast']` (confirmed in `document-builder.ts` line 145). Register compiler-triggered checks as `'slow'` to exclude them from keystroke builds:
+
+```typescript
+// In bbj-validator.ts or a new bbj-compiler-validator.ts
+registerValidationChecks(services);
+
+// Register compiler checks explicitly as 'slow'
+services.validation.ValidationRegistry.register(
+  { Program: checkWithCompiler },
+  validatorInstance,
+  'slow'   // only runs when explicitly requested, not on keystroke
+);
+```
+
+Trigger `'slow'` checks manually after debounce timeout, by calling `DocumentBuilder.build(docs, { validation: { categories: ['slow'] } })`.
+
+**Confidence:** HIGH — `ValidationCategory` types and `register()` signature confirmed in `node_modules/langium/src/validation/validation-registry.ts`. Default categories confirmed in `document-builder.ts` line 145.
+
+## Integration Points with Existing Services
+
+| New Feature | Existing Service | Integration Method |
+|------------|------------------|-------------------|
+| BBjCPL invocation | `BBjWorkspaceManager.getSettings()` | Read `bbjHome` setting for compiler path; read compiler flags from existing `bbj.compiler.*` settings already in `package.json` |
+| BBjCPL invocation | `BBjDocumentBuilder.shouldValidate()` | Only schedule compiler for `scheme === 'file'` documents that pass existing `shouldValidate` check — reuse same guard |
+| Compiler diagnostics | `BBjDocumentValidator` | Merge via `validateDocument()` override; use existing `DiagnosticData` type for `source` tagging (tag as `'BBjCPL'` to distinguish from Langium errors) |
+| Outline resilience | `BBjModule.lsp.DocumentSymbolProvider` | Register new `BBjDocumentSymbolProvider` in language-specific DI module (not shared module) |
+| Debounce | `BBjDocumentBuilder.buildDocuments` | Call `BBjCompilerService.scheduleCompile()` at the end of `buildDocuments`, after `super.buildDocuments()` completes |
+| Compiler settings | Existing `bbj.compiler.*` in `package.json` | 40+ compiler settings already defined (type checking flags, output flags, etc.) — read from `getSettings()`, no schema additions needed |
 
 ## Version Compatibility
 
-| Package | Current | Compatible With | Notes |
-|---------|---------|-----------------|-------|
-| vscode-languageserver | 9.0.1 | Langium 4.1.3, Node.js 18+ | Version 10.0.0-next.16 available but pre-release. Stick with 9.0.1 stable. No breaking changes needed for logging features. |
-| vscode-languageclient | 9.0.1 | vscode-languageserver 9.0.1 | Client and server must match major version. Already in package.json. |
-| Langium | 4.1.3 | vscode-languageserver 9.x | Langium officially supports vscode-languageserver 8.x and 9.x. Verified in local node_modules. |
-
-## Performance Considerations
-
-| Concern | Impact | Mitigation |
-|---------|--------|-----------|
-| String concatenation overhead | Debug logging with template literals evaluated even when logging disabled | Guard with `if (this.debugEnabled)` before expensive string operations |
-| Diagnostic filtering performance | `validateDocument` called for every document on every change | Early return for synthetic docs (O(1) URI check) before validation logic |
-| Log message frequency | 1000s of PREFIX entries logged → slow startup | Batch logs: "Loaded 247 PREFIX entries" not per-entry logs |
-| LSP message serialization | Every `connection.console.log()` sends JSON-RPC notification | Use `.log()` for debug (client can filter), `.info()` for user messages |
-
-## Testing Approach
-
-| What to Test | How | Success Criteria |
-|--------------|-----|------------------|
-| Debug flag off by default | Fresh workspace, check output channel | No PREFIX/Java class logs visible |
-| Debug flag on | Enable `bbj.debug.enabled`, trigger PREFIX reload | See "Resolved PREFIX: X entries" logs |
-| Quiet startup | Disable verbose startup, restart | No logs until "Workspace initialization complete" |
-| Synthetic file filtering | Open BBjAPI synthetic doc, verify Problems panel | No diagnostics shown when `showSyntheticFiles: false` |
-| Settings hot-reload | Change debug flag without restart | Logs appear/disappear immediately |
-
-## Migration Path
-
-**Current state:**
-- 20+ `console.log/debug/warn` scattered across codebase (found via grep)
-- No central logging strategy
-- Logs not user-controllable
-
-**Migration steps:**
-1. Add settings schema to package.json (zero code changes)
-2. Add quiet startup wrapper in main.ts (10 lines)
-3. Replace `console.debug` in performance-critical paths with guarded `connection.console.log` (java-interop.ts, bbj-linker.ts, bbj-ws-manager.ts)
-4. Add synthetic file filter in bbj-document-validator.ts (15 lines)
-5. Document `bbj.trace.server` setting for users in README
-
-**DO NOT:** Mass-replace all console.log → connection.console.log. Keep console.error for unexpected exceptions (appears in server stderr, useful for crash debugging).
-
-## Stack Patterns by Use Case
-
-**For startup/initialization logs:**
-- Use: Guarded `connection.console.log` with `verboseStartup` check
-- Because: Reduces noise, keeps output clean for users
-
-**For user-facing status updates:**
-- Use: `connection.window.showInformationMessage` (toast notification) or `connection.console.info` (output channel)
-- Because: Users need to see completion/success messages
-
-**For errors that block functionality:**
-- Use: `connection.window.showErrorMessage` (visible modal) + `connection.console.error` (persistent log)
-- Because: Critical issues need immediate user attention
-
-**For performance investigation:**
-- Use: Guarded `connection.console.log` with `debug.enabled` + timing metrics
-- Because: Optional, only for troubleshooting slow operations
-
-**For diagnostic suppression:**
-- Use: Early return in `BBjDocumentValidator.validateDocument` based on URI scheme/path
-- Because: Prevents generating unwanted diagnostics at source
+| Package | Version | Compatibility Notes |
+|---------|---------|---------------------|
+| `node:child_process` | Node.js 20.18.1 | `spawn()` stable since Node.js 0.1.90. `AbortSignal` integration available since Node.js 15.4.0. Safe. |
+| Langium `DefaultDocumentSymbolProvider` | 4.1.3 | `getSymbol`, `getChildSymbols`, `createSymbol` all `protected` — confirmed in local source. No changes across 4.x minor versions. |
+| Langium `ValidationOptions.stopAfterParsingErrors` | 4.1.3 | Confirmed in local source `document-validator.ts` line 33. Available since Langium 3.x. |
+| Langium `ValidationCategory` `'slow'` | 4.1.3 | Built-in category, confirmed in `validation-registry.ts`. Default build excludes `'slow'`. |
+| `vscode-uri` | 3.1.0 (existing) | `URI.parse().fsPath` returns platform-correct absolute path. Stable API. |
 
 ## Sources
 
-### High Confidence (Official Docs & Direct Inspection)
-
-- [vscode-languageserver-node GitHub](https://github.com/microsoft/vscode-languageserver-node) — Official Microsoft repo for LSP implementation
-- [Language Server Extension Guide](https://code.visualstudio.com/api/language-extensions/language-server-extension-guide) — Official VS Code documentation for LSP
-- [LSP Specification 3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) — Protocol specification for window/logMessage
-- [vscode-languageserver npm](https://www.npmjs.com/package/vscode-languageserver) — Package versions (9.0.1 current, 10.0.0-next available)
-- [Langium Validation Documentation](https://langium.org/docs/learn/workflow/create_validations/) — Official guide for custom validators
-- Local inspection: `/Users/beff/_workspace/bbj-language-server/bbj-vscode/node_modules/langium/lib/validation/validation-registry.d.ts` — Confirmed `ValidationAcceptor` and `ValidationCheck` types
-- Local inspection: `bbj-vscode/src/language/bbj-document-validator.ts` — Existing validator overrides as proof of extensibility
-- Local inspection: `bbj-vscode/src/language/main.ts` — Existing `didChangeConfiguration` and `workspaceInitialized` patterns
-
-### Medium Confidence (Community Sources & Comparisons)
-
-- [Logging in Node.js: Top 8 Libraries](https://betterstack.com/community/guides/logging/best-nodejs-logging-libraries/) — Pino/Winston/Bunyan comparison
-- [Pino Complete Guide](https://signoz.io/guides/pino-logger/) — Pino performance benchmarks (5-10x faster than Winston)
-- [Node.js Logging: Pino vs Winston vs Bunyan](https://medium.com/@muhammedshibilin/node-js-logging-pino-vs-winston-vs-bunyan-complete-guide-99fe3cc59ed9) — Use case recommendations
-- [Logging LSP traffic for VSCode](https://medium.com/@techhara/logging-lsp-traffic-for-vscode-87239eb1589b) — Client-side trace.server setting pattern
-
-### Low Confidence (Training Data Only)
-
-- Langium 4.1.3 specific diagnostic filtering examples — Not found in search results; inferred from TypeScript definitions and DefaultDocumentValidator source code patterns
-- Breaking changes between vscode-languageserver 9.x and 10.x — Version 10 still in pre-release (10.0.0-next.16); no stable changelog available
+- Local inspection: `/bbj-vscode/node_modules/langium/src/lsp/document-symbol-provider.ts` — Confirmed `getSymbol`, `getChildSymbols`, `createSymbol` are `protected`; `$cstNode` null check risk identified. HIGH confidence.
+- Local inspection: `/bbj-vscode/node_modules/langium/src/validation/document-validator.ts` — Confirmed `ValidationOptions.stopAfterParsingErrors` at line 33, `DocumentValidator.ParsingError` constant at line 353. HIGH confidence.
+- Local inspection: `/bbj-vscode/node_modules/langium/src/workspace/document-builder.ts` — Confirmed `updateBuildOptions` defaults to `['built-in', 'fast']` at line 145; `ValidationCategory` usage. HIGH confidence.
+- Local inspection: `/bbj-vscode/node_modules/langium/src/validation/validation-registry.ts` — Confirmed `register()` accepts category param defaulting to `'fast'`; `'slow'` is pre-defined. HIGH confidence.
+- Local inspection: `bbj-vscode/src/language/bbj-module.ts` — Confirmed DI registration pattern for `lsp.DocumentSymbolProvider`, `lsp.DefinitionProvider`, etc. HIGH confidence.
+- Local inspection: `bbj-vscode/src/language/bbj-document-validator.ts` — Existing `BBjDocumentValidator` already overrides `processLinkingErrors` and `toDiagnostic`. HIGH confidence.
+- [Node.js v20.18.1 child_process docs](https://nodejs.org/api/child_process.html) — `spawn()` API, `shell` option for Windows `.bat`. HIGH confidence.
+- [BASIS BBjCPL documentation](https://documentation.basis.com/BASISHelp/WebHelp/util/bbjcpl_bbj_compiler.htm) — Error message format: "All error messages contain both the BBj line number and the ASCII file line number." MEDIUM confidence (exact delimiter format not specified; needs empirical validation).
+- [Chevrotain fault tolerance docs](https://chevrotain.io/docs/tutorial/step4_fault_tolerance.html) — Error recovery creates nodes without valid CST positions (NaN offsets). HIGH confidence for the null-guard rationale.
+- [GitHub: cross-spawn](https://github.com/moxystudio/node-cross-spawn) — Windows `.bat` spawn issue analysis. Confirmed `shell: true` is the correct built-in fix. MEDIUM confidence.
 
 ---
 
-**Research Notes:**
-
-1. **No external logging library needed** — The LSP protocol already provides structured logging via `window/logMessage`. Adding Pino/Winston would be architectural over-engineering for a language server that communicates over stdio.
-
-2. **Settings-based control is LSP-native** — TypeScript language server, Rust Analyzer, and other mature LSP implementations use `workspace/configuration` for debug flags. Environment variables don't work because the client (VS Code) controls the server process environment.
-
-3. **Diagnostic filtering at validator level** — Langium's architecture encourages overriding `DocumentValidator` methods. Post-filtering diagnostics after `publishDiagnostics` would require intercepting LSP notifications, which breaks Langium's abstraction.
-
-4. **Quiet startup = better UX** — Surveyed 5+ popular language servers (typescript-language-server, rust-analyzer, pyright). All suppress verbose logs during initialization. Users expect a clean output channel until they explicitly enable debug mode.
-
-5. **Bundle size matters** — BBj Language Server bundles into a single .js file via esbuild (see package.json line 532). Pino adds 200KB+ even tree-shaken. vscode-languageserver already in bundle → zero marginal cost.
-
----
-
-*Stack research for: BBj Language Server v3.3 — Debug Logging and Diagnostic Filtering*
-*Researched: 2026-02-08*
+*Stack research for: BBj Language Server — BBjCPL Integration, Diagnostic Cascading, Outline Resilience*
+*Researched: 2026-02-19*
