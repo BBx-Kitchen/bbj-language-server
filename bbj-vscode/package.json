@@ -467,6 +467,19 @@
           "description": "Enable/disable type resolution warnings (CAST, USE, inheritance). Disable for heavily dynamic codebases where these warnings are noisy.",
           "scope": "window"
         },
+        "bbj.diagnostics.suppressCascading": {
+          "type": "boolean",
+          "default": true,
+          "description": "Suppress cascading linking and validation noise when parse errors exist. When enabled, a single syntax error shows only the actual error instead of 40+ downstream diagnostics.",
+          "scope": "window"
+        },
+        "bbj.diagnostics.maxErrors": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "description": "Maximum number of parse errors displayed at once. Additional parse errors beyond this limit are hidden to reduce noise.",
+          "scope": "window"
+        },
         "bbj.configPath": {
           "type": [
             "string",

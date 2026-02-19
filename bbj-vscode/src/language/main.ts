@@ -11,6 +11,7 @@ import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
+import { setSuppressCascading, setMaxErrors } from './bbj-document-validator.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -93,6 +94,14 @@ connection.onDidChangeConfiguration(async (change) => {
     if (config.debug !== undefined) {
         const newLevel = config.debug === true ? LogLevel.DEBUG : LogLevel.WARN;
         logger.setLevel(newLevel);
+    }
+
+    // Apply diagnostic suppression settings (no startup gate — apply immediately)
+    if (config.diagnostics?.suppressCascading !== undefined) {
+        setSuppressCascading(config.diagnostics.suppressCascading);
+    }
+    if (config.diagnostics?.maxErrors !== undefined) {
+        setMaxErrors(config.diagnostics.maxErrors);
     }
 
     // Skip Java class reload during initial startup — initializeWorkspace handles it

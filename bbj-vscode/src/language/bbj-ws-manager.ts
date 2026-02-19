@@ -19,6 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { builtinEvents } from "./lib/events.js";
 import { setTypeResolutionWarnings } from "./bbj-validator.js";
+import { setSuppressCascading, setMaxErrors } from "./bbj-document-validator.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -63,6 +64,24 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 } else {
                     setTypeResolutionWarnings(true);
                     logger.info('Type resolution warnings enabled');
+                }
+
+                // Set diagnostic suppression settings
+                const suppressCascading = params.initializationOptions.suppressCascading;
+                if (suppressCascading === false) {
+                    setSuppressCascading(false);
+                    logger.info('Diagnostic cascading suppression disabled');
+                } else {
+                    setSuppressCascading(true);
+                    logger.info('Diagnostic cascading suppression enabled');
+                }
+
+                const maxErrors = params.initializationOptions.maxErrors;
+                if (typeof maxErrors === 'number' && maxErrors >= 1) {
+                    setMaxErrors(maxErrors);
+                    logger.info(`Max displayed errors: ${maxErrors}`);
+                } else {
+                    setMaxErrors(20);
                 }
             }
         });
