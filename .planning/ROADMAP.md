@@ -166,7 +166,10 @@ Research-only milestone — no phases.
   1. A file with a single syntax error shows only that syntax error and no downstream linking or validation errors in the Problems panel
   2. Warnings and hints are absent from the Problems panel when any hard error (parse or semantic) is present in the file
   3. When the syntax error is fixed, warnings and hints reappear without requiring a file save or reload
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 50-01-PLAN.md — Core diagnostic suppression logic with extensible hierarchy in BBjDocumentValidator
+- [ ] 50-02-PLAN.md — Settings wiring (package.json, initializationOptions, config change) and status bar indicator
 
 ### Phase 51: Outline Resilience
 **Goal**: Structure View stays populated even when a file has parse errors — methods and classes before and after the error point remain visible
