@@ -1,6 +1,6 @@
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-10
+**Last Updated:** 2026-02-19
 
 ## Project Reference
 
@@ -8,17 +8,17 @@ See: .planning/PROJECT.md (updated 2026-02-10)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone
+**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration
 
 ---
 
 ## Current Position
 
-Phase: N/A — between milestones
-Status: v3.6 milestone complete
-Last activity: 2026-02-17 — Completed quick task 14: Fix manual release workflow version passing
+Phase: Not started (defining requirements)
+Status: Defining requirements
+Last activity: 2026-02-19 — Milestone v3.7 started
 
-Progress: [██████████████████████████████████████████████████] 100% (14 milestones shipped)
+Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0%
 
 ---
 
@@ -101,17 +101,16 @@ None
 
 ### What Just Happened
 
-- Shipped v3.6 IntelliJ Platform API Compatibility milestone
-- All deprecated and scheduled-for-removal IntelliJ Platform APIs replaced
-- Plugin verifier confirms zero compatibility warnings across 6 IDE versions
+- Started v3.7 Diagnostic Quality & BBjCPL Integration milestone
+- Defining requirements for BBjCPL integration, diagnostic noise reduction, outline resilience
 
 ### What's Next
 
-**Immediate:** `/gsd:new-milestone` — start next milestone
+**Immediate:** Define requirements, create roadmap, then `/gsd:plan-phase [N]`
 
 ### Context for Next Session
 
-**All milestones complete.** No active work. Ready for next milestone planning.
+**v3.7 milestone in requirements phase.** BBjCPL = authoritative compiler invoked via BBj home path. Diagnostic hierarchy: BBjCPL errors > Langium parser errors > warnings. Trigger: configurable on-save (default) or debounced.
 
 ---
 

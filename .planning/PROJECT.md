@@ -133,7 +133,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active milestone — run `/gsd:new-milestone` to start next)
+## Current Milestone: v3.7 Diagnostic Quality & BBjCPL Integration
+
+**Goal:** Give BBj developers authoritative, noise-free error diagnostics by integrating BBjCPL compiler output, reducing cascading parser noise, and preserving document outline despite syntax errors.
+
+**Target features:**
+- BBjCPL compiler integration — invoke via configured BBj home, parse output, surface as authoritative diagnostics
+- Cascading diagnostic hierarchy — BBjCPL errors first, then Langium parser errors, then warnings/hints
+- Configurable trigger — on-save (default) or debounced invocation of BBjCPL
+- Parser error noise reduction — suppress cascading linking/validation diagnostics when parse errors exist
+- Outline resilience — preserve document symbols/Structure View despite syntax errors in individual methods
 
 ### Out of Scope
 
@@ -144,7 +153,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.6 shipped 2026-02-10. All IntelliJ Platform API compatibility issues resolved. Plugin verifier clean across 6 IDE versions. 14 milestones shipped in 10 days.
+**Current state:** v3.7 milestone started 2026-02-19. Focus on diagnostic quality and BBjCPL compiler integration. Previous: v3.6 shipped 2026-02-10 (IntelliJ Platform API compatibility). 14 milestones shipped.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -262,4 +271,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | FileChooserDescriptor constructor over factory methods | Factory methods deprecated; direct constructor with explicit parameters | ✓ Good — v3.6 shipped |
 
 ---
-*Last updated: 2026-02-10 after v3.6 milestone complete*
+*Last updated: 2026-02-19 after v3.7 milestone start*
