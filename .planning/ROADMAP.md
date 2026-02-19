@@ -151,7 +151,7 @@ Research-only milestone — no phases.
 
 **Milestone Goal:** Give BBj developers authoritative, noise-free error diagnostics by reducing cascading parser noise, preserving document outline despite syntax errors, and integrating BBjCPL compiler output as a verified, independent diagnostic source.
 
-- [ ] **Phase 50: Diagnostic Noise Reduction** - Suppress cascading linking/validation errors when parse errors exist; clean diagnostic hierarchy
+- [x] **Phase 50: Diagnostic Noise Reduction** - Suppress cascading linking/validation errors when parse errors exist; clean diagnostic hierarchy (completed 2026-02-19)
 - [ ] **Phase 51: Outline Resilience** - Document symbols survive syntax errors; Structure View stays populated on partial ASTs
 - [ ] **Phase 52: BBjCPL Foundation** - Discover output format empirically, build verified compiler service with safe process lifecycle
 - [ ] **Phase 53: BBjCPL Diagnostic Integration** - Wire compiler service into document lifecycle; BBjCPL errors labeled and shown with hierarchy enforced
@@ -224,7 +224,7 @@ Plans:
 | 40-43 | v3.4 0.8.0 Issue Closure | 4/4 | Complete | 2026-02-08 |
 | 44-47 | v3.5 Documentation | 7/7 | Complete | 2026-02-09 |
 | 48-49 | v3.6 API Compatibility | 2/2 | Complete | 2026-02-10 |
-| 50. Diagnostic Noise Reduction | 1/2 | In Progress|  | - |
+| 50. Diagnostic Noise Reduction | 2/2 | Complete   | 2026-02-19 | - |
 | 51. Outline Resilience | v3.7 | 0/TBD | Not started | - |
 | 52. BBjCPL Foundation | v3.7 | 0/TBD | Not started | - |
 | 53. BBjCPL Diagnostic Integration | v3.7 | 0/TBD | Not started | - |

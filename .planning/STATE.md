@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 50: Diagnostic Noise Reduction
+**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 51 next
 
 ---
 
 ## Current Position
 
-Phase: 50 of 53 (Diagnostic Noise Reduction)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-19 — Phase 50 Plan 01 complete: diagnostic suppression hierarchy implemented
+Phase: 50 of 53 (Diagnostic Noise Reduction — COMPLETE)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase 50 complete, advancing to Phase 51
+Last activity: 2026-02-19 — Phase 50 Plan 02 complete: VS Code settings wiring and status bar indicator
 
-Progress: [█████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 10% (v3.7)
+Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 20% (v3.7)
 
 ---
 
@@ -69,6 +69,8 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 50]: Match linking errors by data.code not severity in Rule 1 — toDiagnostic() downgrades non-cyclic linking errors to Warning, so severity check misses them
 - [Phase 50]: getDiagnosticTier() wired into applyDiagnosticHierarchy() for parse detection and cap logic — avoids TS noUnusedLocals error while strengthening extensibility
 - [Phase 50]: Per-file suppression only: File B linking errors survive when File A has parse errors — users fix File A first
+- [Phase 50-diagnostic-noise-reduction]: Diagnostic suppression settings placed before !workspaceInitialized guard — apply immediately without Java class reload
+- [Phase 50-diagnostic-noise-reduction]: Status bar uses getDiagnostics() heuristic (any error + setting enabled) — not a custom LSP notification; Phase 53 can refine
 
 ### Tech Debt
 
@@ -96,17 +98,22 @@ None
 
 ### What Just Happened
 
-- Phase 50 Plan 01 complete: diagnostic suppression hierarchy implemented in BBjDocumentValidator
-- validateDocument() override with applyDiagnosticHierarchy() filter, DiagnosticTier enum, and exported config functions
-- DIAG-01 and DIAG-02 requirements marked complete
+- Phase 50 Plan 02 complete: bbj.diagnostics.suppressCascading and bbj.diagnostics.maxErrors settings wired end-to-end
+- Settings flow: package.json -> extension.ts initializationOptions -> bbj-ws-manager.ts onInitialize -> bbj-document-validator.ts
+- Live config flow: onDidChangeConfiguration in main.ts -> bbj-document-validator.ts (before startup gate)
+- Status bar indicator added showing "Diagnostics filtered" when errors present and suppression enabled
+- Phase 50 fully complete (both plans done)
 
 ### What's Next
 
-**Immediate:** Phase 50 Plan 02 — wire setSuppressCascading() and setMaxErrors() into module config/test infrastructure
+**Immediate:** Phase 51 — Outline Resilience
 
 ### Context for Next Session
 
-**Phase 50 Plan 01 complete.** `setSuppressCascading()` and `setMaxErrors()` are exported from `bbj-document-validator.ts` and ready for Plan 02 wiring. The diagnostic hierarchy suppresses linking errors on parse errors, warnings on any error, and caps parse errors at 20. Phase 53 extension path: add `BBjCPL = 3` to `DiagnosticTier` enum and one branch to `getDiagnosticTier()`.
+**Phase 50 complete.** Full diagnostic suppression stack in place:
+- Plan 01: Core suppression logic in BBjDocumentValidator (DiagnosticTier, applyDiagnosticHierarchy, setSuppressCascading, setMaxErrors)
+- Plan 02: VS Code settings wiring + status bar indicator
+- Phase 53 extension path: add `BBjCPL = 3` to `DiagnosticTier` enum and one branch to `getDiagnosticTier()`; add custom LSP notification for precise status bar state
 
 ---
 
@@ -135,4 +142,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-19 after Phase 50 Plan 01 completion*
+*State updated: 2026-02-19 after Phase 50 Plan 02 completion (Phase 50 complete)*
