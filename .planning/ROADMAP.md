@@ -180,7 +180,9 @@ Plans:
   2. Methods and classes defined before the syntax error point are visible in Structure View
   3. Methods and classes defined after the syntax error point are visible in Structure View
   4. No TypeError or unhandled exception is thrown during document symbol computation on a partial AST
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 51-01-PLAN.md -- Error-safe BBjDocumentSymbolProvider with per-node recovery, (parse error) fallback, deep-walk fallback, and tests
 
 ### Phase 52: BBjCPL Foundation
 **Goal**: A verified, safe BBjCPL compiler service exists with empirically validated output parsing and complete process lifecycle management
