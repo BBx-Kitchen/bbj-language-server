@@ -8,16 +8,16 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.8 Test & Debt Cleanup — Phase 54: Fix Failing Tests
+**Current Focus:** v3.8 Test & Debt Cleanup — Phase 55: Test Hardening & Dead Code Removal
 
 ---
 
 ## Current Position
 
-Phase: 54 of 56 (Fix Failing Tests)
-Plan: 1 of TBD in current phase
+Phase: 55 of 56 (Test Hardening & Dead Code Removal)
+Plan: 2 of 2 in current phase
 Status: In progress
-Last activity: 2026-02-20 — Completed 54-01-PLAN.md (TEST-01, TEST-02, TEST-05, TEST-06 fixed)
+Last activity: 2026-02-20 — Completed 55-02-PLAN.md (DEAD-01, DEAD-02 removed)
 
 Progress: [█░░░░░░░░░] 10% (v3.8)
 
@@ -56,6 +56,7 @@ Progress: [█░░░░░░░░░] 10% (v3.8)
 
 ---
 | Phase 54-fix-failing-tests P02 | 8 | 2 tasks | 3 files |
+| Phase 55-test-hardening-dead-code P02 | 2 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 54]: Use toContain/RegExp over toBe/string for error message assertions in tests — tolerates future message format changes
 - [Phase 54-fix-failing-tests]: TEST-03: Skipped — completion returns 0 items inside MethodDecl.body (Langium grammar follower limitation, not a scope issue)
 - [Phase 54-fix-failing-tests]: TEST-04: Use IndexManager.allElements(BbjClass.$type) to detect no-class files; emit warning (not error) when file exists but has no BBj classes
+- [Phase 55-test-hardening-dead-code]: DEAD-01/DEAD-02: Removed MethodCall CAST branches from type-inferer and validator; unreachable since Phase 33 CastExpression grammar rule
 
 ### Tech Debt
 
@@ -98,7 +100,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 54-fix-failing-tests-01-PLAN.md
+Stopped at: Completed 55-02-PLAN.md
 Resume file: None
 
 ---
@@ -127,4 +129,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 54-01-PLAN.md*
+*State updated: 2026-02-20 after completing 55-02-PLAN.md*

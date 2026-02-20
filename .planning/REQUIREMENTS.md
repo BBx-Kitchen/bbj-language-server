@@ -22,8 +22,8 @@ Requirements for test & debt cleanup milestone. Each maps to roadmap phases.
 
 ### Dead Code
 
-- [ ] **DEAD-01**: MethodCall CAST branch removed from `bbj-type-inferer.ts`
-- [ ] **DEAD-02**: `checkCastTypeResolvable` for MethodCall removed from `bbj-validator.ts` (method + registration)
+- [x] **DEAD-01**: MethodCall CAST branch removed from `bbj-type-inferer.ts`
+- [x] **DEAD-02**: `checkCastTypeResolvable` for MethodCall removed from `bbj-validator.ts` (method + registration)
 
 ### Production FIXMEs
 
@@ -78,8 +78,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-05 | Phase 54 | Complete |
 | TEST-06 | Phase 54 | Complete |
 | HARD-01 | Phase 55 | Pending |
-| DEAD-01 | Phase 55 | Pending |
-| DEAD-02 | Phase 55 | Pending |
+| DEAD-01 | Phase 55 | Complete |
+| DEAD-02 | Phase 55 | Complete |
 | FIX-01 | Phase 56 | Pending |
 | FIX-02 | Phase 56 | Pending |
 | FIX-03 | Phase 56 | Pending |
