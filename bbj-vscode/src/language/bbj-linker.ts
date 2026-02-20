@@ -71,7 +71,9 @@ export class BbjLinker extends DefaultLinker {
     override doLink(refInfo: ReferenceInfo, document: LangiumDocument): void {
         if (refInfo.property === 'member' && isMemberCall(refInfo.container)) {
             const receiver = refInfo.container.receiver
-            // FIXME try to not resolve receiver ref
+            // Receiver ref must be resolved here to detect template string arrays.
+            // Template string fields (e.g. key.my_col from DIM key$:"MY_COL:K(10)")
+            // are not real member calls and must skip linking.
             if (isSymbolRef(receiver) && isArrayDecl(receiver.symbol.ref) && isTemplateStringArray(receiver.symbol.ref)) {
                 // don't link member calls to array template.
                 /* Case `my_col` member call:

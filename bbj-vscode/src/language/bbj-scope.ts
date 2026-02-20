@@ -206,7 +206,9 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             return memberAndImports
         }
         if (!context.container.$container && context.container.$cstNode?.astNode.$container) {
-            // FIXME HACK for orphaned AST Instances
+            // Langium AST lifecycle: nodes may lose their $container chain during
+            // re-parsing, but $cstNode.astNode retains a valid container reference.
+            // Fall back to the CST-based container to maintain scope resolution.
             return this.superGetScope({ ...context, container: context.container.$cstNode?.astNode });
         }
         if (isCallbackStatement(context.container) || isRemoveCallbackStatement(context.container)) {
