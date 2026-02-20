@@ -1,6 +1,6 @@
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-19
+**Last Updated:** 2026-02-20
 
 ## Project Reference
 
@@ -8,16 +8,16 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 next
+**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 in progress (Plan 02 remaining)
 
 ---
 
 ## Current Position
 
-Phase: 51 of 53 (Outline Resilience — COMPLETE)
-Plan: 1 of 1 in current phase (complete)
-Status: Phase 51 complete, advancing to Phase 52
-Last activity: 2026-02-19 — Phase 51 Plan 01 complete: BBjDocumentSymbolProvider with error-safe AST traversal
+Phase: 52 of 53 (BBjCPL Foundation — In Progress)
+Plan: 1 of 2 in current phase (complete)
+Status: Phase 52 Plan 01 complete — fixture capture + parseBbjcplOutput() TDD'd
+Last activity: 2026-02-20 — Phase 52 Plan 01 complete: bbjcpl stderr parser with fixture-backed unit tests
 
 Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 25% (v3.7)
 
@@ -59,7 +59,7 @@ Progress: [██████████░░░░░░░░░░░░░
 - Phase 53 depends on Phases 50, 51, and 52 all completing first
 - Phase 52 exit criterion: BBjCPL output parser must have fixture-backed unit tests before Phase 53 wiring
 - CPU rebuild loop pitfall: BBjCPL must be invoked inside `buildDocuments()`, never from an `onBuildPhase` callback
-- BBjCPL stderr format is documented but unconfirmed empirically — validate in Phase 52 before assuming regex
+- BBjCPL stderr format CONFIRMED: source code on same line as error header; regex validated empirically (Phase 52 Plan 01)
 
 ### Decisions
 
@@ -74,6 +74,8 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 51-outline-resilience]: DefaultDocumentSymbolProvider imported from langium/lsp (not langium) — only exported from LSP sub-module
 - [Phase 51-outline-resilience]: BBjDocumentSymbolProvider: per-node try/catch, (parse error) fallback, deep-walk via AstUtils.streamAllContents — keeps Structure View populated during syntax errors
 - [Phase 51-outline-resilience]: Large file threshold for deep-walk fallback: 200,000 chars (~10k lines) — skips expensive full-tree scan on large files
+- [Phase 52-bbjcpl-foundation]: bbjcpl format confirmed empirically: source code on SAME line as error header (not separate line). Format: '<path>: error at line <legacy> (<physical>):     <source>'
+- [Phase 52-bbjcpl-foundation]: BBjCPL parser regex: ^.+:\s+error at line \d+ \((\d+)\):\s*(.*) — physical line in parens is 1-based, converted to 0-based for LSP; source snippet included in diagnostic message
 
 ### Tech Debt
 
@@ -101,17 +103,25 @@ None
 
 ### What Just Happened
 
-- Phase 51 Plan 01 complete: BBjDocumentSymbolProvider registered and active
-- BBjDocumentSymbolProvider: per-node try/catch, (parse error) fallback for nodes with missing names, synthetic doc guard
-- Deep-walk fallback via AstUtils.streamAllContents recovers symbols after error points (only runs on files with parse errors, under 200K chars)
-- 4 new error-recovery tests: broken method body, symbols before/after error, missing class name, completely broken file
-- Phase 51 fully complete (1 plan done)
+- Phase 52 Plan 01 complete: bbjcpl output parser TDD'd with real fixture files
+- Captured real bbjcpl stderr output using /Users/beff/bbx/bin/bbjcpl binary
+- Empirically confirmed format: source code on SAME line as error header (not separate line)
+- parseBbjcplOutput() implemented with 9 unit tests; all pass; 6 pre-existing failures unchanged
+- Requirements CPL-01 and CPL-03 marked complete
 
 ### What's Next
 
-**Immediate:** Phase 52 — BBjCPL Output Parser
+**Immediate:** Phase 52 Plan 02 — BBjCPL Process Lifecycle Service
 
 ### Context for Next Session
+
+**Phase 52 Plan 01 complete.** parseBbjcplOutput() ready; fixture files committed.
+
+**BBjCPL format confirmed:**
+- Format: `<filepath>: error at line <legacy> (<physical>):     <source_code_on_same_line>`
+- Regex: `^.+:\s+error at line \d+ \((\d+)\):\s*(.*)`
+- Binary at: /Users/beff/bbx/bin/bbjcpl (also accessible via BBJCPL_PATH env or bbjcpl-check.sh hook)
+- Always exits 0; errors on stderr only; stdout always empty
 
 **Phase 51 complete.** BBjDocumentSymbolProvider active — Structure View now populated even for files with syntax errors.
 
@@ -147,4 +157,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-19 after Phase 51 Plan 01 completion (Phase 51 complete)*
+*State updated: 2026-02-20 after Phase 52 Plan 01 completion — Stopped at: Completed 52-bbjcpl-foundation 52-01-PLAN.md*

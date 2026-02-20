@@ -231,7 +231,7 @@ Plans:
 | 48-49 | v3.6 API Compatibility | 2/2 | Complete | 2026-02-10 |
 | 50. Diagnostic Noise Reduction | 2/2 | Complete   | 2026-02-19 | - |
 | 51. Outline Resilience | 1/1 | Complete    | 2026-02-19 | - |
-| 52. BBjCPL Foundation | v3.7 | 0/TBD | Not started | - |
+| 52. BBjCPL Foundation | 1/2 | In Progress|  | - |
 | 53. BBjCPL Diagnostic Integration | v3.7 | 0/TBD | Not started | - |
 
 **Total:** 14 milestones shipped, 49 phases complete, 121 plans shipped

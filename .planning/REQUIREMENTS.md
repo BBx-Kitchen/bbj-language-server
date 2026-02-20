@@ -19,9 +19,9 @@ Requirements for Diagnostic Quality & BBjCPL Integration milestone. Each maps to
 
 ### BBjCPL Foundation
 
-- [ ] **CPL-01**: Discover BBjCPL error output format via test fixtures — run compiler against known-bad files, capture actual stderr format, create test data
+- [x] **CPL-01**: Discover BBjCPL error output format via test fixtures — run compiler against known-bad files, capture actual stderr format, create test data
 - [ ] **CPL-02**: Invoke BBjCPL using bbj.home path with -N flag (check-only mode) — cross-platform process spawning with proper path handling
-- [ ] **CPL-03**: Parse BBjCPL stderr into LSP diagnostics with accurate line numbers — error output parser validated against real compiler output
+- [x] **CPL-03**: Parse BBjCPL stderr into LSP diagnostics with accurate line numbers — error output parser validated against real compiler output
 - [ ] **CPL-04**: Safe process management — abort on re-edit, no orphaned processes, configurable timeout, AbortController lifecycle
 
 ### BBjCPL Diagnostics
@@ -64,9 +64,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DIAG-02 | Phase 50 | Complete |
 | OUTL-01 | Phase 51 | Complete |
 | OUTL-02 | Phase 51 | Complete |
-| CPL-01 | Phase 52 | Pending |
+| CPL-01 | Phase 52 | Complete |
 | CPL-02 | Phase 52 | Pending |
-| CPL-03 | Phase 52 | Pending |
+| CPL-03 | Phase 52 | Complete |
 | CPL-04 | Phase 52 | Pending |
 | CPL-05 | Phase 53 | Pending |
 | CPL-06 | Phase 53 | Pending |
