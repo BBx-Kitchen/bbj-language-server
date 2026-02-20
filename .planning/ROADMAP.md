@@ -174,7 +174,7 @@ Research-only milestone — no phases.
 
 - [x] **Phase 57: Bug Fixes** — Fix four reported regressions (EM Config, config.bbx highlighting, suffixed identifiers, DECLARE in class body) (completed 2026-02-20)
 - [x] **Phase 58: Grammar Additions** — Add missing EXIT parameter, SERIAL verb, and ADDR verb to parser (completed 2026-02-20)
-- [ ] **Phase 59: Java Class Reference Features** — Add .class resolution, static method completion, deprecated indicators, and constructor completion
+- [x] **Phase 59: Java Class Reference Features** — Add .class resolution, static method completion, deprecated indicators, and constructor completion (completed 2026-02-20)
 
 ## Phase Details
 

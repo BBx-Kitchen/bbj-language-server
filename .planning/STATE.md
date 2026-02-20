@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.9 Quick Wins — Phase 59: Java Class Reference Features (In Progress)
+**Current Focus:** v3.9 Quick Wins — Phase 59: Java Class Reference Features (Complete)
 
 ---
 
 ## Current Position
 
-Phase: 59 of 59 (Java Class Reference Features) — In Progress
-Plan: 2 of 3 in current phase
-Status: Plan 02 Complete
-Last activity: 2026-02-20 — Completed 59-02-PLAN.md (.class resolves to java.lang.Class, static method completion for USE class references, 510 tests pass)
+Phase: 59 of 59 (Java Class Reference Features) — Complete
+Plan: 3 of 3 in current phase
+Status: Plan 03 Complete
+Last activity: 2026-02-20 — Completed 59-03-PLAN.md (deprecated strikethrough FEAT-03, constructor completion FEAT-04, 511 tests pass)
 
-Progress: [█████░░░░░] 70% (v3.9)
+Progress: [██████████] 100% (v3.9)
 
 ---
 
@@ -29,10 +29,10 @@ Progress: [█████░░░░░] 70% (v3.9)
 
 **Started:** 2026-02-01
 **Milestones shipped:** 15
-**Phases completed:** 58
-**Plans completed:** 142
+**Phases completed:** 59
+**Plans completed:** 143
 **Days elapsed:** 19
-**Velocity:** ~6.7 plans/day
+**Velocity:** ~7.5 plans/day
 
 ### Recent History
 
@@ -43,6 +43,7 @@ Progress: [█████░░░░░] 70% (v3.9)
 - Phase 58 Plan 02: 2 tasks, 2 files, 3 min
 - Phase 59 Plan 01: 2 tasks, 6 files, 3 min
 - Phase 59 Plan 02: 2 tasks, 3 files, 3 min
+- Phase 59 Plan 03: 2 tasks, 2 files, 5 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -69,6 +70,8 @@ Progress: [█████░░░░░] 70% (v3.9)
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 59]: Deprecated items: strikethrough via CompletionItemTag.Deprecated only — no sort change, no label suffix
+- [Phase 59]: Constructor completion: getConstructorCompletion() walks AST to find ConstructorCall, resolves class, offers each overload as separate Constructor item
 - [Phase 59]: .class type-inferer check placed before member.ref resolution to short-circuit all other resolution paths
 - [Phase 59]: isClassRef detection via SymbolRef.symbol.ref → isJavaClass enables static-only completion for USE class references
 - [Phase 59]: StreamScopeWithPredicate used to inject .class AstNodeDescription as outer scope wrapper (createScopeForNodes only accepts AstNode)
@@ -111,7 +114,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 59-02-PLAN.md — .class resolves to java.lang.Class, static method completion for USE class references, 510 tests pass
+Stopped at: Completed 59-03-PLAN.md — deprecated strikethrough (FEAT-03) and constructor completion (FEAT-04) implemented, all 511 tests pass
 Resume file: None
 
 ---
@@ -140,4 +143,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 59-02 (.class resolution, static method completion for USE class references)*
+*State updated: 2026-02-20 after completing 59-03 (deprecated strikethrough, constructor completion — Phase 59 complete)*
