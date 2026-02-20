@@ -187,7 +187,10 @@ Research-only milestone — no phases.
   2. Opening a config.bbx file shows BBj syntax highlighting (keywords, strings, comments colored)
   3. Variables named `releaseVersion!`, `stepMode!`, or any keyword-prefixed suffixed identifier parse without a red squiggly error
   4. A DECLARE statement written in a class body outside any method does not produce a parse error
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 57-01-PLAN.md — EM Config "--" sentinel stripping + config.bbx file association exclusion
+- [ ] 57-02-PLAN.md — RELEASE token LONGER_ALT fix + DECLARE in class body grammar recovery
 
 ### Phase 58: Grammar Additions
 **Goal**: The BBj parser recognizes three previously unsupported constructs — EXIT with an integer argument, the SERIAL verb, and the ADDR function — so valid BBj programs no longer produce false parse errors
