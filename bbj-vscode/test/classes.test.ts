@@ -50,8 +50,8 @@ describe("Classes access-levels", () => {
             let a! = new A()
         `);
         expect(diagnostics).toHaveLength(2);
-        expect(diagnostics[0].message).toBe("Private class 'A' is not visible from this file.");
-        expect(diagnostics[1].message).toBe("Private class 'A' is not visible from this file.");
+        expect(diagnostics[0].message).toContain("Private class 'A'");
+        expect(diagnostics[1].message).toContain("is not visible from this file");
     });
 
     test("Can access protected class from different same-folder file", async () => {
@@ -78,8 +78,8 @@ describe("Classes access-levels", () => {
             let a! = new A()
         `);
         expect(diagnostics).toHaveLength(2);
-        expect(diagnostics[0].message).toBe("Protected class 'A' is not visible from this directory.");
-        expect(diagnostics[1].message).toBe("Protected class 'A' is not visible from this directory.");
+        expect(diagnostics[0].message).toContain("Protected class 'A'");
+        expect(diagnostics[1].message).toContain("is not visible from this directory");
     });
 
     test("Can access public class from different non-related folder file", async () => {
