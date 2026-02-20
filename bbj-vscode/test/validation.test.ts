@@ -297,27 +297,27 @@ describe('BBj validation', async () => {
         `);
         const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
         expect(memberCalls).toHaveLength(11);
-        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doPrivately' from the type 'Test'.*is not visible/, {
             node: memberCalls[2],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldPrivate' from the type 'Test'.*is not visible/, {
             node: memberCalls[4],
             property: 'member'
         });
-        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doPrivately' from the type 'Test'.*is not visible/, {
             node: memberCalls[5],
             property: 'member'
         });
-        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doProtected' from the type 'Test'.*is not visible/, {
             node: memberCalls[6],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldPrivate' from the type 'Test'.*is not visible/, {
             node: memberCalls[8],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldProtected' from the type 'Test'.*is not visible/, {
             node: memberCalls[9],
             property: 'member'
         });
@@ -359,27 +359,27 @@ describe('BBj validation', async () => {
         `);
         const memberCalls  = AstUtils.streamAllContents(validationResult.document.parseResult.value).filter(isMemberCall).toArray();
         expect(memberCalls).toHaveLength(11);
-        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doPrivately' from the type 'Test'.*is not visible/, {
             node: memberCalls[2],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldPrivate' from the type 'Test'.*is not visible/, {
             node: memberCalls[4],
             property: 'member'
         });
-        expectError(validationResult, "The member 'doPrivately' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doPrivately' from the type 'Test'.*is not visible/, {
             node: memberCalls[5],
             property: 'member'
         });
-        expectError(validationResult, "The member 'doProtected' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'doProtected' from the type 'Test'.*is not visible/, {
             node: memberCalls[6],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldPrivate' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldPrivate' from the type 'Test'.*is not visible/, {
             node: memberCalls[8],
             property: 'member'
         });
-        expectError(validationResult, "The member 'fieldProtected' from the type 'Test' is not visible", {
+        expectError(validationResult, /The member 'fieldProtected' from the type 'Test'.*is not visible/, {
             node: memberCalls[9],
             property: 'member'
         });
