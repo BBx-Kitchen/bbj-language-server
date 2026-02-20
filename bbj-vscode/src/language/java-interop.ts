@@ -4,7 +4,7 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstUtils, LangiumDocument, LangiumDocuments, Mutable } from 'langium';
+import { AstUtils, isJSDoc, LangiumDocument, LangiumDocuments, Mutable, parseJSDoc } from 'langium';
 import { Socket } from 'net';
 import {
     CancellationToken, createMessageConnection, MessageConnection, RequestType, SocketMessageReader, SocketMessageWriter
@@ -409,6 +409,20 @@ export class JavaInteropService {
                         parameter.realName = methodDocs[0].params[index]?.name
                     }
                 }
+                if (methodDocs.length > 0 && methodDocs[0].docu) {
+                    const doc = methodDocs[0];
+                    // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
+                    const params = method.parameters.map((p, idx) => {
+                        const realName = doc.params[idx]?.name ?? p.name;
+                        return `${javaTypeAdjust(p.type)} ${realName}`;
+                    }).join(', ');
+                    const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
+                    const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
+                    (method as Mutable<JavaMethod>).docu = {
+                        javadoc: tryParseJavaDoc(doc.docu),
+                        signature: signature
+                    };
+                }
                 AstUtils.linkContentToContainer(method);
             }
         } catch (e) {
@@ -597,6 +611,29 @@ function extractPackageName(className: string): string {
     }
 
     return className.substring(0, lastIndexOfDot); // Fallback to last dot
+}
+
+/**
+ * Strips the java.lang. prefix from fully qualified type names for display.
+ * Mirrors the same helper in bbj-hover.ts.
+ */
+function javaTypeAdjust(typeFqn: string): string {
+    return typeFqn.replace(/^java\.lang\./, '');
+}
+
+/**
+ * Attempts to parse a raw Javadoc comment string into Markdown.
+ * Falls back to the raw comment if parsing fails or input is not JSDoc.
+ */
+function tryParseJavaDoc(comment: string): string {
+    if (isJSDoc(comment)) {
+        try {
+            return parseJSDoc(comment).toMarkdown();
+        } catch {
+            // JSDoc parsing can fail on complex Java documentation
+        }
+    }
+    return comment;
 }
 
 /**
