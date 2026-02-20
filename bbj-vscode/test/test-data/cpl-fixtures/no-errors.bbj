@@ -1,0 +1,6 @@
+rem No errors test fixture
+class public TestClass
+    method public void validMethod()
+        print "hello"
+    methodend
+classend

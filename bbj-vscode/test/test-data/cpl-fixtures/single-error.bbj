@@ -1,0 +1,6 @@
+rem Single error test fixture
+class public TestClass
+    method public void brokenMethod())
+        print "hello"
+    methodend
+classend

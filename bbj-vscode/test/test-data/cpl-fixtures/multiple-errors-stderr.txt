@@ -1,0 +1,4 @@
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/multiple-errors.bbj: error at line 30 (3):     method public void firstBroken())
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/multiple-errors.bbj: error at line 50 (5):     methodend
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/multiple-errors.bbj: error at line 60 (6):     method public void secondBroken(
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/multiple-errors.bbj: error at line 80 (8):     methodend

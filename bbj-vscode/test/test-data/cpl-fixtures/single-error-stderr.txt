@@ -1,0 +1,2 @@
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/single-error.bbj: error at line 30 (3):     method public void brokenMethod())
+/Users/beff/_workspace/bbj-language-server/bbj-vscode/test/test-data/cpl-fixtures/single-error.bbj: error at line 50 (5):     methodend

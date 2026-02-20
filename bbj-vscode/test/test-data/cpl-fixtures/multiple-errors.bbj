@@ -1,0 +1,9 @@
+rem Multiple error test fixture
+class public TestClass
+    method public void firstBroken())
+        print "hello"
+    methodend
+    method public void secondBroken(
+        print "world"
+    methodend
+classend
