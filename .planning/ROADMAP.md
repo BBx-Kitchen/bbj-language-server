@@ -193,7 +193,10 @@ Plans:
   2. The output parser produces LSP Diagnostic objects with accurate line numbers when run against those real fixtures
   3. A second invocation on the same document aborts any in-flight compiler process before starting a new one, leaving no orphaned processes
   4. When BBjCPL does not complete within the configured timeout, the process is killed and execution continues without hanging the language server
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 52-01-PLAN.md — Capture real bbjcpl output as test fixtures, TDD the stderr-to-LSP-Diagnostic parser
+- [ ] 52-02-PLAN.md — BBjCPLService with process lifecycle (spawn, abort-on-resave, timeout, ENOENT) and DI registration
 
 ### Phase 53: BBjCPL Diagnostic Integration
 **Goal**: BBjCPL compiler errors appear in the Problems panel on save, labeled "BBjCPL", with diagnostic hierarchy enforced and graceful degradation when BBj is not installed
