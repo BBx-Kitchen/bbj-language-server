@@ -157,10 +157,50 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             if (!receiverType) {
                 return EMPTY_SCOPE;
             }
+            // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
+            // (e.g., `String.` after `USE java.lang.String`) — show only static methods
+            let isClassRef = false;
+            if (isSymbolRef(receiver)) {
+                try {
+                    const ref = receiver.symbol.ref;
+                    isClassRef = isJavaClass(ref);
+                } catch {
+                    // cyclic reference, ignore
+                }
+            }
             if (isJavaClass(receiverType)) {
-                return this.createScopeForNodes(stream(receiverType.fields).concat(receiverType.methods));
+                const javaLangClass = this.javaInterop.getResolvedClass('java.lang.Class');
+                const classDesc = javaLangClass
+                    ? this.descriptions.createDescription(javaLangClass, 'class')
+                    : undefined;
+                if (isClassRef) {
+                    // Class reference access — static methods only (no fields per user decision)
+                    const staticMethods = receiverType.methods.filter(m => m.isStatic);
+                    const scope = this.createScopeForNodes(stream(staticMethods));
+                    if (classDesc) {
+                        return new StreamScopeWithPredicate(stream([classDesc]), scope);
+                    }
+                    return scope;
+                }
+                // Instance access — all methods and fields plus .class
+                const members = stream(receiverType.fields).concat(receiverType.methods);
+                const membersScope = this.createScopeForNodes(members);
+                if (classDesc) {
+                    return new StreamScopeWithPredicate(stream([classDesc]), membersScope);
+                }
+                return membersScope;
             } else if (isBbjClass(receiverType)) {
-                return new StreamScopeWithPredicate(this.createBBjClassMemberScope(receiverType).getAllElements(), super.getScope(context));
+                const javaLangClass = this.javaInterop.getResolvedClass('java.lang.Class');
+                const classDesc = javaLangClass
+                    ? this.descriptions.createDescription(javaLangClass, 'class')
+                    : undefined;
+                const bbjScope = this.createBBjClassMemberScope(receiverType);
+                const outerScope = super.getScope(context);
+                const bbjMemberScope = new StreamScopeWithPredicate(bbjScope.getAllElements(), outerScope);
+                if (classDesc) {
+                    return new StreamScopeWithPredicate(stream([classDesc]), bbjMemberScope);
+                }
+                return bbjMemberScope;
             } else if (isJavaPackage(receiverType)) {
                 return this.createScopeForNodes(this.javaInterop.getChildrenOf(receiverType));
             }

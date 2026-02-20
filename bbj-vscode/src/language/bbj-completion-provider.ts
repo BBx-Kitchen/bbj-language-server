@@ -1,10 +1,10 @@
 import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
 import type { LangiumDocument } from "langium";
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices } from "langium/lsp";
-import { CancellationToken, CompletionItem, CompletionItemKind, CompletionList, CompletionParams } from "vscode-languageserver";
+import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, FieldDecl, isBbjClass, isDocumented, isFieldDecl, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
+import { BbjClass, FieldDecl, isBbjClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 
 
@@ -123,6 +123,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         const superImpl = super.createReferenceCompletionItem(nodeDescription, _refInfo, _context)
         superImpl.kind = this.nodeKindProvider.getCompletionItemKind(nodeDescription)
         superImpl.sortText = undefined
+        // Apply deprecated strikethrough tag based on the resolved AST node's deprecated flag
+        if (nodeDescription.node) {
+            const node = nodeDescription.node;
+            if ((isJavaMethod(node) && node.deprecated) ||
+                (isJavaField(node) && node.deprecated) ||
+                (isJavaClass(node) && node.deprecated)) {
+                superImpl.tags = [CompletionItemTag.Deprecated];
+            }
+        }
         if (isFunctionNodeDescription(nodeDescription)) {
 
             const label = (paramAdjust: ((param: string, index: number) => string) = (p, i) => p) =>
