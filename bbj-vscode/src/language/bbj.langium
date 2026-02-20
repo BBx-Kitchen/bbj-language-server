@@ -91,6 +91,7 @@ SingleStatement:
     SaveStatement |
     SavePStatement |
     SelectStatement |
+    SerialStatement |
     SetDayStatement |
     SetErrorStatement |
     SetOptsStatement |
@@ -196,6 +197,10 @@ FulltextStatement:
 
 IndexedStatement:
     'INDEXED' fileid=Expression ',' records=Expression ',' recsize=Expression Mode? Err?
+    ;
+
+SerialStatement:
+    'SERIAL' fileid=Expression (',' records=Expression ',' recsize=Expression)? Mode? Err?
     ;
 
 RemoveCallbackStatement:
@@ -640,7 +645,7 @@ LastVerifyOption:
 ;
 
 AddrStatement:
-    'ADDR' fileid=StringLiteral Err?
+    'ADDR' fileid=Expression Err?
 ;
 
 ClipFromStrStatement:
