@@ -178,7 +178,10 @@ Research-only milestone — no phases.
   3. USE referencing a file with no classes produces a file-path error diagnostic (TEST-04 passes)
   4. Private instance and static member access across file boundaries are flagged as errors (TEST-05, TEST-06 pass)
   5. `npm test` exits zero with all 6 previously failing tests now green
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 54-01-PLAN.md — Update stale test assertions for class and member access-level error messages (TEST-01, TEST-02, TEST-05, TEST-06)
+- [ ] 54-02-PLAN.md — Fix DEF FN completion inside class methods and add USE validation for files with no classes (TEST-03, TEST-04)
 
 ### Phase 55: Test Hardening & Dead Code
 **Goal**: The parser test file has its 9 disabled assertions re-enabled and passing, and the confirmed dead MethodCall CAST branches are deleted from the type inferer and validator — leaving the codebase smaller and the test suite more complete.
