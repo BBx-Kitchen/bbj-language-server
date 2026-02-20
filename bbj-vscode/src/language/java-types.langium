@@ -36,6 +36,8 @@ interface JavaClass extends Class, Documented {
     methods: JavaMethod[]
     error?: string
     classes: JavaClass[]
+    deprecated: boolean
+    constructors: JavaMethod[]
 }
 
 type JavaMember = JavaField | JavaMethod
@@ -43,12 +45,16 @@ type JavaMember = JavaField | JavaMethod
 interface JavaField extends NamedElement, Documented {
     type: string
     resolvedType?: @JavaClass
+    isStatic: boolean
+    deprecated: boolean
 }
 
 interface JavaMethod extends NamedElement, Documented {
     returnType: string
     parameters: JavaMethodParameter[]
     resolvedReturnType?: @JavaClass
+    isStatic: boolean
+    deprecated: boolean
 }
 
 interface JavaMethodParameter {

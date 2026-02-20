@@ -339,6 +339,8 @@ export class JavaInteropService {
             fields: [],
             methods: [],
             classes: [],
+            constructors: [],
+            deprecated: false,
             error: `Resolution failed or depth limit exceeded`,
         } as unknown as Mutable<JavaClass>;
         this.resolvedClasses.set(className, stub);
@@ -371,6 +373,9 @@ export class JavaInteropService {
             javaClass.packageName = packageName;
         }
         javaClass.classes ??= [];
+        javaClass.constructors ??= [];
+        // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated) for the class itself
+        javaClass.deprecated = (javaClass as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
 
         this.storeJavaClass(javaClass, javaClass.packageName);
         if (javaClass.$container === undefined) {
@@ -383,6 +388,9 @@ export class JavaInteropService {
             const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
                 (field as Mutable<JavaField>).$type = JavaField.$type;
+                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
+                field.deprecated = (field as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+                field.isStatic = (field as unknown as { isStatic?: boolean }).isStatic ?? false;
                 field.resolvedType = {
                     ref: await this.resolveClassByName(field.type, token, _depth + 1),
                     $refText: field.type
@@ -390,6 +398,9 @@ export class JavaInteropService {
             }
             for (const method of javaClass.methods) {
                 (method as Mutable<JavaMethod>).$type = JavaMethod.$type;
+                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
+                method.deprecated = (method as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+                method.isStatic = (method as unknown as { isStatic?: boolean }).isStatic ?? false;
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
@@ -426,6 +437,24 @@ export class JavaInteropService {
                     } as DocumentationInfo;
                 }
                 AstUtils.linkContentToContainer(method);
+            }
+            for (const constructor of javaClass.constructors) {
+                (constructor as Mutable<JavaMethod>).$type = JavaMethod.$type;
+                constructor.isStatic = false;
+                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
+                constructor.deprecated = (constructor as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+                constructor.resolvedReturnType = {
+                    ref: await this.resolveClassByName(constructor.returnType, token, _depth + 1),
+                    $refText: constructor.returnType
+                };
+                for (const parameter of constructor.parameters) {
+                    (parameter as Mutable<JavaMethodParameter>).$type = JavaMethodParameter.$type;
+                    parameter.resolvedType = {
+                        ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
+                        $refText: parameter.type
+                    };
+                }
+                AstUtils.linkContentToContainer(constructor);
             }
         } catch (e) {
             // finish linking of the class even if it has an error
