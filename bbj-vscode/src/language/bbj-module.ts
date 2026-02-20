@@ -35,6 +35,7 @@ import { JavaInteropService } from './java-interop.js';
 import { BBjTypeInferer, TypeInferer } from './bbj-type-inferer.js';
 import { BBjSemanticTokenProvider } from './bbj-semantic-token-provider.js';
 import { BBjSignatureHelpProvider } from './bbj-signature-help-provider.js';
+import { BBjCPLService } from './bbj-cpl-service.js';
 import { logger } from './logger.js';
 
 
@@ -50,6 +51,9 @@ export type BBjAddedServices = {
     },
     types: {
         Inferer: TypeInferer
+    },
+    compiler: {
+        BBjCPLService: BBjCPLService
     }
 }
 
@@ -80,6 +84,9 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     java: {
         JavaInteropService: (services) => new JavaInteropService(services)
+    },
+    compiler: {
+        BBjCPLService: (services) => new BBjCPLService(services),
     },
     documentation: {
         CommentProvider: () => new BBjCommentProvider()

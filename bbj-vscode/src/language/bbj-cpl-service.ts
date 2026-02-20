@@ -22,6 +22,18 @@ interface BBjCPLServiceContext {
 }
 
 /**
+ * Handle for a single in-flight bbjcpl compilation.
+ *
+ * Exposes a safe cancel() method that only kills the underlying process
+ * if it actually started (has a valid PID). This prevents sending kill
+ * signals to undefined/invalid PIDs when the spawn itself failed with ENOENT.
+ */
+interface CompileHandle {
+    /** Cancel this compilation. Safe to call even if the process never started. */
+    cancel(): void;
+}
+
+/**
  * Spawns the bbjcpl binary to compile BBj source files and produce
  * LSP Diagnostic objects from the compiler's stderr output.
  *
@@ -29,7 +41,7 @@ interface BBjCPLServiceContext {
  * - Uses spawn() (not exec()) for streaming stdout/stderr
  * - Abort-on-resave: second compile() call for the same file cancels the first
  * - Race-safe inFlight map: handlers check identity before cleanup
- * - Timeout via AbortController: process killed after timeoutMs
+ * - Timeout via a timer that kills the process directly (not AbortController)
  * - ENOENT graceful degradation: returns [] if bbjcpl not installed
  * - Never rejects: all errors logged and resolved with []
  *
@@ -39,7 +51,7 @@ interface BBjCPLServiceContext {
 export class BBjCPLService {
 
     /** Tracks in-flight compilations keyed by absolute file path. */
-    private readonly inFlight: Map<string, AbortController> = new Map();
+    private readonly inFlight: Map<string, CompileHandle> = new Map();
 
     /** Timeout in ms before killing bbjcpl. Configurable via setTimeout(). */
     private timeoutMs: number = 30_000;
@@ -77,28 +89,59 @@ export class BBjCPLService {
         // Abort any existing in-flight compilation for this file
         const existing = this.inFlight.get(filePath);
         if (existing) {
-            existing.abort();
+            existing.cancel();
         }
 
-        const controller = new AbortController();
-        this.inFlight.set(filePath, controller);
+        // Cancellation flag: set to true when this compilation is superseded
+        let cancelled = false;
+
+        // Placeholder handle — updated once the process spawns
+        const handle: CompileHandle = {
+            cancel() {
+                cancelled = true;
+                // kill() is called on the process if it started; see below
+            }
+        };
+        this.inFlight.set(filePath, handle);
 
         return new Promise<Diagnostic[]>((resolve) => {
-            // Kill process after timeout
-            const timeoutId = setTimeout(() => {
-                controller.abort();
-            }, this.timeoutMs);
-
             let stderr = '';
             let stdout = '';
+            let proc: ReturnType<typeof spawn> | null = null;
+            let settled = false;
 
-            let proc: ReturnType<typeof spawn>;
-            try {
-                proc = spawn(bbjcplBin, ['-N', filePath], { signal: controller.signal });
-            } catch (spawnErr: unknown) {
-                // Synchronous spawn errors (e.g., invalid options) — treat as abort or ENOENT
+            function settle(result: Diagnostic[]) {
+                if (!settled) {
+                    settled = true;
+                    resolve(result);
+                }
+            }
+
+            // Set up timeout to kill the process after timeoutMs
+            const timeoutId = setTimeout(() => {
+                if (proc && proc.pid !== undefined) {
+                    proc.kill();
+                }
+                cancelled = true;
+                settle([]);
+            }, this.timeoutMs);
+
+            // Override cancel to also kill the live process if it started
+            handle.cancel = () => {
+                cancelled = true;
+                if (proc && proc.pid !== undefined) {
+                    proc.kill();
+                }
                 clearTimeout(timeoutId);
-                if (this.inFlight.get(filePath) === controller) {
+                settle([]);
+            };
+
+            try {
+                proc = spawn(bbjcplBin, ['-N', filePath]);
+            } catch (spawnErr: unknown) {
+                // Synchronous spawn error (rare — usually ENOENT comes as async 'error' event)
+                clearTimeout(timeoutId);
+                if (this.inFlight.get(filePath) === handle) {
                     this.inFlight.delete(filePath);
                 }
                 const err = spawnErr as NodeJS.ErrnoException;
@@ -107,7 +150,7 @@ export class BBjCPLService {
                 } else {
                     logger.warn(`bbjcpl spawn error: ${err.message}`);
                 }
-                resolve([]);
+                settle([]);
                 return;
             }
 
@@ -121,31 +164,36 @@ export class BBjCPLService {
 
             proc.on('close', () => {
                 clearTimeout(timeoutId);
-                // Race-safe cleanup: only delete if this controller is still the active one
-                if (this.inFlight.get(filePath) === controller) {
+                // Race-safe cleanup: only delete if this handle is still the active one
+                if (this.inFlight.get(filePath) === handle) {
                     this.inFlight.delete(filePath);
+                }
+                if (cancelled) {
+                    // This compilation was superseded or timed out — discard results
+                    settle([]);
+                    return;
                 }
                 if (stdout) {
                     logger.debug(() => `bbjcpl stdout: ${stdout}`);
                 }
-                resolve(parseBbjcplOutput(stderr));
+                settle(parseBbjcplOutput(stderr));
             });
 
             proc.on('error', (err: NodeJS.ErrnoException) => {
                 clearTimeout(timeoutId);
                 // Race-safe cleanup
-                if (this.inFlight.get(filePath) === controller) {
+                if (this.inFlight.get(filePath) === handle) {
                     this.inFlight.delete(filePath);
                 }
-                if (err.name === 'AbortError' || controller.signal.aborted) {
+                if (cancelled) {
                     // Aborted — expected when superseded by a newer compile() call or timeout
-                    resolve([]);
+                    settle([]);
                 } else if (err.code === 'ENOENT') {
                     logger.info('bbjcpl not found — BBj compiler diagnostics unavailable');
-                    resolve([]);
+                    settle([]);
                 } else {
                     logger.warn(`bbjcpl error: ${err.message}`);
-                    resolve([]);
+                    settle([]);
                 }
             });
         });
