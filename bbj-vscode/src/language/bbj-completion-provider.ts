@@ -4,7 +4,7 @@ import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultComp
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionList, CompletionParams } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, FieldDecl, isBbjClass, isFieldDecl, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
+import { BbjClass, FieldDecl, isBbjClass, isDocumented, isFieldDecl, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 
 
@@ -129,7 +129,6 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 `${nodeDescription.name}(${nodeDescription.parameters.filter(p => !p.optional).map((p, idx) => paramAdjust(p.realName ?? p.name, idx)).join(', ')})`
 
             const retType = ': ' + toSimpleName(nodeDescription.returnType)
-            // TODO load param names for java methods from Javadoc
             const signature = methodSignature(nodeDescription, type => toSimpleName(type))
 
             superImpl.label = label()
@@ -141,10 +140,26 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             superImpl.insertText = label((p, i) => "${" + (i + 1) + ":" + p + "}")  // snippet syntax: ${1:foo} ${2:bar}
             superImpl.detail = signature
             if (nodeDescription.node) {
-                // TODO Add docu to description?
-                const content = documentationHeader(nodeDescription.node)
-                if (content) {
-                    superImpl.documentation = { kind: 'markdown', value: content }
+                // Build documentation from node's pre-populated docu field (set by java-interop.ts
+                // during class resolution from Javadoc) or fall back to the signature header.
+                const node = nodeDescription.node;
+                if (isDocumented(node) && node.docu) {
+                    const parts: string[] = [];
+                    if (node.docu.signature) {
+                        parts.push(`\`\`\`java\n${node.docu.signature}\n\`\`\``);
+                    }
+                    if (node.docu.javadoc) {
+                        parts.push(node.docu.javadoc);
+                    }
+                    if (parts.length > 0) {
+                        superImpl.documentation = { kind: 'markdown', value: parts.join('\n\n') };
+                    }
+                }
+                if (!superImpl.documentation) {
+                    const content = documentationHeader(node);
+                    if (content) {
+                        superImpl.documentation = { kind: 'markdown', value: content };
+                    }
                 }
             }
         } else if (nodeDescription.type === LibSymbolicLabelDecl.$type) {
