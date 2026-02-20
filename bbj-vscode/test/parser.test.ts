@@ -2550,4 +2550,49 @@ classend
         expectNoParserLexerErrors(program)
     })
 
+    // BUG-03: RELEASE-prefixed suffixed identifiers
+    test('Keyword-prefixed suffixed identifiers parse without error', async () => {
+        const document = await parse(`
+            releaseVersion! = "1.0"
+            stepMode! = 0
+            release! = null()
+            releaseDate = "2024-01-01"
+        `, { validation: false });
+        expectNoParserLexerErrors(document);
+    });
+
+    test('Bare RELEASE keyword still works as statement', async () => {
+        const document = await parse(`
+            RELEASE
+        `, { validation: false });
+        expectNoParserLexerErrors(document);
+    });
+
+    // BUG-04: DECLARE in class body
+    test('DECLARE in class body produces validation error, not parser crash', async () => {
+        const document = await parse(`
+            CLASS PUBLIC MyClass
+                DECLARE AUTO BBjString name!
+                METHOD PUBLIC void doSomething()
+                METHODEND
+            CLASSEND
+        `, { validation: true });
+        // Parser should NOT crash — no lexer/parser errors
+        expectNoParserLexerErrors(document);
+        // Validator should report an error about DECLARE at class member level
+        expect(document.diagnostics?.length).toBeGreaterThan(0);
+        expect(document.diagnostics?.some(d => d.message.toLowerCase().includes('declare'))).toBeTruthy();
+    });
+
+    test('DECLARE inside method body is valid', async () => {
+        const document = await parse(`
+            CLASS PUBLIC MyClass
+                METHOD PUBLIC void doSomething()
+                    DECLARE AUTO BBjString name!
+                METHODEND
+            CLASSEND
+        `, { validation: false });
+        expectNoParserLexerErrors(document);
+    });
+
 });

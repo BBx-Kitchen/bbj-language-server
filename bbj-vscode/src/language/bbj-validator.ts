@@ -76,6 +76,8 @@ export class BBjValidator {
     }
 
     checkDeclareNotInClassBody(node: VariableDecl, accept: ValidationAcceptor): void {
+        // Only check base VariableDecl (DECLARE statements), not FieldDecl/ParameterDecl/ArrayDecl subtypes
+        if (node.$type !== 'VariableDecl') return;
         if (isBbjClass(node.$container) && node.$containerProperty === 'members') {
             accept('error', 'DECLARE is not valid at class member level. Use FIELD for class-level declarations, or move DECLARE inside a method body.', {
                 node
