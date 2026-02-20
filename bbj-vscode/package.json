@@ -1,6 +1,6 @@
 {
   "name": "bbj-lang",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "publisher": "basis-intl",
   "displayName": " BBj Programming Language Support",
   "description": "BBj Language Support for Visual Studio Code",
@@ -482,7 +482,11 @@
         },
         "bbj.compiler.trigger": {
           "type": "string",
-          "enum": ["debounced", "on-save", "off"],
+          "enum": [
+            "debounced",
+            "on-save",
+            "off"
+          ],
           "default": "debounced",
           "description": "Controls when the BBjCPL compiler checks for errors. 'debounced' runs after a pause in typing (2s), 'on-save' runs on file save only, 'off' disables BBjCPL checking entirely.",
           "scope": "window"
