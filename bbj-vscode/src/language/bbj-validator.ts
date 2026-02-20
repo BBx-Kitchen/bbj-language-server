@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexMana
 import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -49,6 +49,7 @@ export function registerValidationChecks(services: BBjServices) {
         SymbolicLabelRef: validator.checkSymbolicLabelRef,
 
         BeginStatement: validator.checkExceptClause,
+        VariableDecl: validator.checkDeclareNotInClassBody,
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
@@ -70,6 +71,14 @@ export class BBjValidator {
         for (const except of wrongs) {
             accept("error", `'${except.$cstNode?.text}' must be symbol reference or array access with ALL`, {
                 node: except
+            });
+        }
+    }
+
+    checkDeclareNotInClassBody(node: VariableDecl, accept: ValidationAcceptor): void {
+        if (isBbjClass(node.$container) && node.$containerProperty === 'members') {
+            accept('error', 'DECLARE is not valid at class member level. Use FIELD for class-level declarations, or move DECLARE inside a method body.', {
+                node
             });
         }
     }
@@ -155,7 +164,7 @@ export class BBjValidator {
         }
         const member = memberCall.member.ref;
         if (member && isBBjClassMember(member)) {
-            const actualAccessLevel = (member.visibility ?? "PUBLIC").toUpperCase();
+            const actualAccessLevel = ((member as { visibility?: string }).visibility ?? "PUBLIC").toUpperCase();
             if (!expectedAccessLevels.includes(actualAccessLevel)) {
                 // Get source location info for the member declaration
                 const memberDoc = AstUtils.getDocument(member);

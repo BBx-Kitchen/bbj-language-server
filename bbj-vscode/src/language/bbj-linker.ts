@@ -48,7 +48,7 @@ export class BbjLinker extends DefaultLinker {
         for (const node of treeIter) {
             await interruptAndCheck(cancelToken);
             if (externalDoc && isBBjClassMember(node)) {
-                if (node.visibility?.toLowerCase() !== 'private') {
+                if ((node as { visibility?: string }).visibility?.toLowerCase() !== 'private') {
                     AstUtils.streamReferences(node).forEach(ref => this.doLink(ref, document));
                     // don't link the method body or Field initialization, we are only interested on its signature
                     if (isMethodDecl(node)) {

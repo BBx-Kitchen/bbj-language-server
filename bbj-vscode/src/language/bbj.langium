@@ -344,7 +344,7 @@ fragment Comments:
 ;
 
 ClassMember returns ClassMember:
-    FieldDecl | MethodDecl
+    FieldDecl | MethodDecl | VariableDecl
 ;
 
 FieldDecl returns FieldDecl:
@@ -1023,5 +1023,5 @@ interface LibSymbolicLabelDecl extends LabelDecl {
 }
 
 
-type BBjClassMember = FieldDecl | MethodDecl
+type BBjClassMember = FieldDecl | MethodDecl | VariableDecl
 type ClassMember =  BBjClassMember | JavaMember

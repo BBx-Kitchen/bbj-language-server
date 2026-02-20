@@ -53,8 +53,8 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         const releaseNoNl = terminalTokens.find(e => e.name === 'RELEASE_NO_NL')!;
         releaseNl.CATEGORIES = [id];
         releaseNoNl.CATEGORIES = [id];
-        releaseNl.LONGER_ALT = id;
-        releaseNoNl.LONGER_ALT = id;
+        releaseNl.LONGER_ALT = [idWithSuffix, id];
+        releaseNoNl.LONGER_ALT = [idWithSuffix, id];
 
         return tokens;
     }
