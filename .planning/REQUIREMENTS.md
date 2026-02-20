@@ -71,27 +71,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | — | Pending |
-| TEST-02 | — | Pending |
-| TEST-03 | — | Pending |
-| TEST-04 | — | Pending |
-| TEST-05 | — | Pending |
-| TEST-06 | — | Pending |
-| HARD-01 | — | Pending |
-| DEAD-01 | — | Pending |
-| DEAD-02 | — | Pending |
-| FIX-01 | — | Pending |
-| FIX-02 | — | Pending |
-| FIX-03 | — | Pending |
-| FIX-04 | — | Pending |
-| TODO-01 | — | Pending |
-| TODO-02 | — | Pending |
+| TEST-01 | Phase 54 | Pending |
+| TEST-02 | Phase 54 | Pending |
+| TEST-03 | Phase 54 | Pending |
+| TEST-04 | Phase 54 | Pending |
+| TEST-05 | Phase 54 | Pending |
+| TEST-06 | Phase 54 | Pending |
+| HARD-01 | Phase 55 | Pending |
+| DEAD-01 | Phase 55 | Pending |
+| DEAD-02 | Phase 55 | Pending |
+| FIX-01 | Phase 56 | Pending |
+| FIX-02 | Phase 56 | Pending |
+| FIX-03 | Phase 56 | Pending |
+| FIX-04 | Phase 56 | Pending |
+| TODO-01 | Phase 56 | Pending |
+| TODO-02 | Phase 56 | Pending |
 
 **Coverage:**
 - v3.8 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after roadmap creation — all 15 requirements mapped*
