@@ -208,7 +208,10 @@ Plans:
   3. Setting `bbj.compiler.trigger` to `"off"` stops BBjCPL invocation and falls back to Langium-only diagnostics without requiring a reload
   4. On a machine where BBj is not installed, saving a file produces no error notifications and Langium diagnostics continue to work normally
   5. Ten rapid saves in succession do not cause CPU to spike or diagnostic flicker in the Problems panel
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 53-01-PLAN.md — Source label rename, diagnostic hierarchy extension, merge function, trigger setting plumbing
+- [ ] 53-02-PLAN.md — BBjCPL wiring in buildDocuments() with debounce, client status bar, integration tests
 
 ## Progress
 
