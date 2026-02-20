@@ -37,3 +37,16 @@ export function notifyBbjcplAvailability(available: boolean): void {
         _connection?.sendNotification('bbj/bbjcplAvailability', { available });
     }
 }
+
+/**
+ * Send a window/showMessage Error notification for Java connection failure.
+ * Non-blocking but prominent — helps users understand they need to check
+ * the Java service / BBjServices.
+ */
+export function notifyJavaConnectionError(errorDetail: string): void {
+    _connection?.window.showErrorMessage(
+        `Failed to connect to the Java interop service. ` +
+        `Check that BBj Services is running and the interop host/port settings are correct. ` +
+        `(${errorDetail})`
+    );
+}

@@ -11,6 +11,7 @@ import {
 } from 'vscode-jsonrpc/node.js';
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
+import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 import { logger } from './logger.js';
@@ -75,9 +76,9 @@ export class JavaInteropService {
         try {
             socket = await this.createSocket();
         } catch (e) {
-            // TODO send error message to the client.
-            // Allow the user to retry the connection.
-            console.error('Failed to connect to the Java service.', e)
+            const detail = e instanceof Error ? e.message : String(e);
+            notifyJavaConnectionError(detail);
+            console.error('Failed to connect to the Java service.', e);
             return Promise.reject(e);
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
