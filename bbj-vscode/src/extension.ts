@@ -676,6 +676,24 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.onDidChangeActiveTextEditor(() => updateSuppressionStatus())
     );
 
+    // BBjCPL availability status bar indicator
+    // Hidden by default — shown only when BBjCPL is detected as unavailable
+    const bbjcplStatusBar = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left, 99
+    );
+    bbjcplStatusBar.text = '$(warning) BBjCPL: unavailable';
+    bbjcplStatusBar.tooltip = 'BBjCPL compiler not found. Check that BBj is installed and bbj.home is configured.';
+    context.subscriptions.push(bbjcplStatusBar);
+
+    // Listen for BBjCPL availability notifications from the language server
+    client.onNotification('bbj/bbjcplAvailability', (params: { available: boolean }) => {
+        if (params.available) {
+            bbjcplStatusBar.hide();
+        } else {
+            bbjcplStatusBar.show();
+        }
+    });
+
 }
 
 // This function is called when the extension is deactivated.
@@ -723,7 +741,8 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host", "localhost"),
             interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008),
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
-            maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20)
+            maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20),
+            compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced")
         }
     };
 
