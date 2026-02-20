@@ -1,7 +1,7 @@
 import { AstNode } from "langium";
 import { BBjServices } from "./bbj-module.js";
 import { getClass } from "./bbj-nodedescription-provider.js";
-import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isCastExpression, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isLibFunction, isMemberCall, isMethodCall, isMethodDecl, isSimpleTypeRef, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
+import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isCastExpression, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isMemberCall, isMethodDecl, isSimpleTypeRef, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
@@ -85,28 +85,6 @@ export class BBjTypeInferer implements TypeInferer {
             return undefined;
         } else if (isStringLiteral(expression)) {
             return this.javaInterop.getResolvedClass('java.lang.String')
-        } else if(isMethodCall(expression)) {
-            // Check if this is a CAST() call
-            if (isSymbolRef(expression.method)) {
-                const methodRef = expression.method.symbol.ref;
-                if (isLibFunction(methodRef) && methodRef.name.toLowerCase() === 'cast') {
-                    // CAST(type, object) - first argument is the type
-                    if (expression.args.length > 0) {
-                        const typeArg = expression.args[0].expression;
-                        if (isBBjTypeRef(typeArg)) {
-                            return typeArg.klass.ref;
-                        } else if (isSymbolRef(typeArg)) {
-                            const typeRef = typeArg.symbol.ref;
-                            if (isClass(typeRef)) {
-                                return typeRef;
-                            }
-                        }
-                    }
-                    // If type is unresolvable, return undefined (treat as untyped)
-                    return undefined;
-                }
-            }
-            return this.getType(expression.method);
         } else if(isBBjTypeRef(expression)) {
             return expression.klass.ref;
         }

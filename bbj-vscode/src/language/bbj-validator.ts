@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexMana
 import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -45,7 +45,6 @@ export function registerValidationChecks(services: BBjServices) {
         DefFunction: validator.checkReturnValueInDef,
         CommentStatement: validator.checkCommentNewLines,
         MemberCall: validator.checkMemberCallUsingAccessLevels,
-        MethodCall: validator.checkCastTypeResolvable,
         CastExpression: validator.checkCastExpressionTypeResolvable,
         SymbolicLabelRef: validator.checkSymbolicLabelRef,
 
@@ -81,44 +80,6 @@ export class BBjValidator {
         this.langiumDocuments = services.shared.workspace.LangiumDocuments;
         this.workspaceManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         this.typeInferer = services.types.Inferer;
-    }
-
-    checkCastTypeResolvable(methodCall: MethodCall, accept: ValidationAcceptor): void {
-        if (!typeResolutionWarningsEnabled) return;
-
-        // Check if this is a CAST() call
-        if (!isSymbolRef(methodCall.method)) {
-            return;
-        }
-        const methodRef = methodCall.method.symbol.ref;
-        if (!isLibFunction(methodRef) || methodRef.name.toLowerCase() !== 'cast') {
-            return;
-        }
-        // CAST(type, object) - first argument is the type
-        if (methodCall.args.length === 0) {
-            return;
-        }
-        const typeArg = methodCall.args[0].expression;
-
-        // Check if typeArg is an ArrayElement with empty indices (e.g., Type[])
-        // This represents array type notation like cast(BBjString[], x!)
-        // Per user decision: just stop the false error, don't add type resolution for array casts
-        if (isArrayElement(typeArg) && typeArg.indices.length === 0 && !typeArg.all) {
-            return;
-        }
-
-        let typeResolved = false;
-        if (isBBjTypeRef(typeArg)) {
-            typeResolved = typeArg.klass.ref !== undefined;
-        } else if (isSymbolRef(typeArg)) {
-            const typeRef = typeArg.symbol.ref;
-            typeResolved = isClass(typeRef);
-        }
-        if (!typeResolved) {
-            accept('warning', 'CAST references an unresolvable type', {
-                node: methodCall
-            });
-        }
     }
 
     checkCastExpressionTypeResolvable(castExpr: CastExpression, accept: ValidationAcceptor): void {
