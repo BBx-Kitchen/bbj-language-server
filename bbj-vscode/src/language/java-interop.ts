@@ -12,7 +12,7 @@ import {
 import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
-import { Classpath, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
+import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
 import { isClassDoc, JavadocProvider } from './java-javadoc.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
@@ -419,9 +419,11 @@ export class JavaInteropService {
                     const ownerName = javaClass.name.split('.').pop() ?? javaClass.name;
                     const signature = `${javaTypeAdjust(method.returnType)} ${ownerName}.${method.name}(${params})`;
                     (method as Mutable<JavaMethod>).docu = {
-                        javadoc: tryParseJavaDoc(doc.docu),
+                        $type: 'DocumentationInfo',
+                        $container: method,
+                        javadoc: tryParseJavaDoc(doc.docu!),
                         signature: signature
-                    };
+                    } as DocumentationInfo;
                 }
                 AstUtils.linkContentToContainer(method);
             }
