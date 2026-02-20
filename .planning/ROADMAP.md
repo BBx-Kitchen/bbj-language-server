@@ -192,7 +192,10 @@ Plans:
   2. The MethodCall CAST branch is deleted from `bbj-type-inferer.ts` with no test regressions
   3. `checkCastTypeResolvable` for MethodCall is deleted from `bbj-validator.ts` (method body and registration call)
   4. `npm test` continues to exit zero after all deletions
-**Plans**: TBD
+**Plans**: 2 plans
+Plans:
+- [ ] 55-01-PLAN.md — Re-enable 9 disabled parser test validation assertions (HARD-01)
+- [ ] 55-02-PLAN.md — Remove dead MethodCall CAST branches from type inferer and validator (DEAD-01, DEAD-02)
 
 ### Phase 56: Production FIXME & TODO Resolution
 **Goal**: Every actionable FIXME and TODO in production code is either resolved with a working implementation or explicitly documented as intentional with a clear rationale — leaving no ambiguous technical debt markers.
