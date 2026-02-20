@@ -15,5 +15,8 @@ public class MethodInfo extends WithError {
     public String declaringClass;
 
     public List<ParameterInfo> parameters;
-    
+
+    public boolean isStatic;
+    public boolean isDeprecated;
+
 }

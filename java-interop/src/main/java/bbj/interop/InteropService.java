@@ -7,6 +7,7 @@ package bbj.interop;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URI;
@@ -175,11 +176,14 @@ public class InteropService {
 
 			classInfo.simpleName = clazz.getCanonicalName();
 			classInfo.packageName = clazz.getPackageName();
+			classInfo.isDeprecated = clazz.isAnnotationPresent(Deprecated.class);
 			classInfo.fields = Stream.of(clazz.getFields()).map(f -> {
 				var fi = new FieldInfo();
 				fi.name = f.getName();
 				fi.type = getProperTypeName(f.getType());
 				fi.declaringClass = f.getDeclaringClass().getName();
+				fi.isStatic = Modifier.isStatic(f.getModifiers());
+				fi.isDeprecated = f.isAnnotationPresent(Deprecated.class);
 				return fi;
 			}).collect(Collectors.toList());
 			List<Method> methods = Lists.newArrayList(clazz.getMethods());
@@ -193,6 +197,8 @@ public class InteropService {
 				mi.name = m.getName();
 				mi.declaringClass = m.getDeclaringClass().getName();
 				mi.returnType = getProperTypeName(m.getReturnType());
+				mi.isStatic = Modifier.isStatic(m.getModifiers());
+				mi.isDeprecated = m.isAnnotationPresent(Deprecated.class);
 				mi.parameters = Stream.of(m.getParameters()).map(p -> {
 					var pi = new ParameterInfo();
 					pi.name = p.getName();
@@ -201,14 +207,31 @@ public class InteropService {
 				}).collect(Collectors.toList());
 				return mi;
 			}).collect(Collectors.toList());
-			System.out.println("ClassInfo: " + className + " has " + classInfo.methods.size() + " methods, " + classInfo.fields.size() + " fields");
+			classInfo.constructors = Stream.of(clazz.getConstructors()).map(c -> {
+				var ci = new MethodInfo();
+				ci.name = clazz.getSimpleName();
+				ci.returnType = className;
+				ci.declaringClass = className;
+				ci.isStatic = false;
+				ci.isDeprecated = c.isAnnotationPresent(Deprecated.class);
+				ci.parameters = Stream.of(c.getParameters()).map(p -> {
+					var pi = new ParameterInfo();
+					pi.name = p.getName();
+					pi.type = getProperTypeName(p.getType());
+					return pi;
+				}).collect(Collectors.toList());
+				return ci;
+			}).collect(Collectors.toList());
+			System.out.println("ClassInfo: " + className + " has " + classInfo.methods.size() + " methods, " + classInfo.fields.size() + " fields, " + classInfo.constructors.size() + " constructors");
 		} catch (ClassNotFoundException exc) {
 			classInfo.fields = Collections.emptyList();
 			classInfo.methods = Collections.emptyList();
+			classInfo.constructors = Collections.emptyList();
 			classInfo.error = "Class not found: " + className;
 		} catch (NoClassDefFoundError error) {
 			classInfo.fields = Collections.emptyList();
 			classInfo.methods = Collections.emptyList();
+			classInfo.constructors = Collections.emptyList();
 			classInfo.error = "No class definition found: " + error.getMessage();
 		}
 		return classInfo;

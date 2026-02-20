@@ -6,10 +6,13 @@
 package bbj.interop.data;
 
 public class FieldInfo extends WithError {
-    
+
     public String name;
 
     public String type;
-    
+
     public String declaringClass;
+
+    public boolean isStatic;
+    public boolean isDeprecated;
 }

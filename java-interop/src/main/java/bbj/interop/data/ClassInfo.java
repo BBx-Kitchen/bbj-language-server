@@ -12,11 +12,15 @@ public class ClassInfo extends WithError {
     public String name;
 
     public String packageName;
-    
+
     public String simpleName;
+
+    public boolean isDeprecated;
 
     public List<FieldInfo> fields;
 
     public List<MethodInfo> methods;
-    
+
+    public List<MethodInfo> constructors;
+
 }
