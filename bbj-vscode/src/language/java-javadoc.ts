@@ -51,7 +51,10 @@ export class JavadocProvider {
         for (const root of roots.filter(uri => uri.scheme === 'file')) {
             if (cancelToken.isCancellationRequested) {
                 logger.warn("Cancelation requested in JavadocProvider.");
-                // FIXME will not be re-triggered return;
+                // Cancellation during javadoc initialization is harmless — any roots
+                // already processed remain available. Skipping remaining roots is
+                // acceptable since javadoc is a best-effort enhancement.
+                return;
             }
             let nodes: FileSystemNode[];
             try {

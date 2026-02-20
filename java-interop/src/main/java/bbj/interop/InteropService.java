@@ -163,7 +163,9 @@ public class InteropService {
 	}
 
 	private ClassInfo loadClassInfo(String className) {
-		// FIXME handle inner class names
+		// Inner class names (Outer.Inner) are handled by loadClassByName(),
+		// which converts dot-separated names to $-separated JVM names when
+		// Class.forName() fails. See #314 for context.
 		var classInfo = new ClassInfo();
 		classInfo.name = className;
 		try {
