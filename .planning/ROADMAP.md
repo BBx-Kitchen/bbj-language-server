@@ -164,7 +164,7 @@ Research-only milestone — no phases.
 
 - [x] **Phase 54: Fix Failing Tests** - Repair 6 pre-existing test failures covering access-level error messages, DEF FN completion, USE import diagnostics, and cross-file access validation (completed 2026-02-20)
 - [x] **Phase 55: Test Hardening & Dead Code** - Uncomment 9 disabled parser assertions and remove confirmed dead MethodCall CAST branches from type inferer and validator (completed 2026-02-20)
-- [x] **Phase 56: Production FIXME & TODO Resolution** - Investigate and resolve or document 4 production FIXMEs and 2 actionable TODOs (2 plans) (completed 2026-02-20)
+- [x] **Phase 56: Production FIXME & TODO Resolution** - Investigate and resolve or document 4 production FIXMEs and 2 actionable TODOs (3 plans) (completed 2026-02-20)
 
 ## Phase Details
 
@@ -208,10 +208,11 @@ Plans:
   4. `InteropService.java:166` inner class name FIXME is resolved or documented
   5. `bbj-completion-provider.ts:144` TODO-01 is implemented (documentation added to completion item description) or deferred with rationale
   6. `java-interop.ts:78` TODO-02 is implemented (connection failure error sent to client) or deferred with rationale
-**Plans**: 2 plans
+**Plans**: 3 plans
 Plans:
 - [ ] 56-01-PLAN.md — Resolve 4 production FIXMEs in linker, scope, javadoc, and InteropService (FIX-01, FIX-02, FIX-03, FIX-04)
 - [ ] 56-02-PLAN.md — Implement Javadoc completion enrichment and Java connection error notification (TODO-01, TODO-02)
+- [ ] 56-03-PLAN.md — Gap closure: populate method.docu during class resolution for completion Javadoc (TODO-01)
 
 ## Progress
 
