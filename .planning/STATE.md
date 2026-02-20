@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 57 of 59 (Bug Fixes)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-20 — v3.9 roadmap created (3 phases: 57-59)
+Plan: 1 of 1 in current phase
+Status: In Progress
+Last activity: 2026-02-20 — Completed 57-01-PLAN.md (BUG-01, BUG-02 fixed)
 
-Progress: [░░░░░░░░░░] 0% (v3.9)
+Progress: [█░░░░░░░░░] 10% (v3.9)
 
 ---
 
@@ -30,11 +30,14 @@ Progress: [░░░░░░░░░░] 0% (v3.9)
 **Started:** 2026-02-01
 **Milestones shipped:** 15
 **Phases completed:** 56
-**Plans completed:** 135
+**Plans completed:** 136
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
 ### Recent History
+
+**v3.9 (In Progress: 2026-02-20):**
+- Phase 57 Plan 01: 2 tasks, 5 files, 2 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -57,10 +60,13 @@ Progress: [░░░░░░░░░░] 0% (v3.9)
 - TEST-03 (DEF FN `$` suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
+- Pre-existing TS errors in bbj-linker.ts and bbj-validator.ts (Property 'visibility' on BBjClassMember) — out of scope
 
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 57-bug-fixes]: Strip '--' EM Config sentinel silently from classpath in all run commands (VS Code + IntelliJ)
+- [Phase 57-bug-fixes]: VS Code configurationDefaults files.associations used to exclude config.bbx and config.min from BBj language; IntelliJ TextMate bundle lacks filename-exclusion support — documented as limitation
 - [Phase 56]: method.docu populated at class resolution time so completion provider can access synchronously
 - [Phase 56]: notifyJavaConnectionError uses window.showErrorMessage — user-actionable issue requiring prominent feedback
 - [Phase 55]: Removed MethodCall CAST branches — unreachable since Phase 33 CastExpression grammar rule
@@ -72,6 +78,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - CPU stability mitigations documented but not yet implemented (#232)
 - 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize)
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change
+- IntelliJ TextMate bundle cannot exclude config.bbx at filename level — IntelliJ users must override in Settings > File Types
 
 ### Blockers/Concerns
 
@@ -89,7 +96,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: v3.9 roadmap created — ready to plan Phase 57
+Stopped at: Completed 57-01-PLAN.md
 Resume file: None
 
 ---
@@ -118,4 +125,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after v3.9 roadmap creation*
+*State updated: 2026-02-20 after completing 57-01 (BUG-01, BUG-02)*
