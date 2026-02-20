@@ -152,7 +152,22 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active milestone — ready for next)
+## Current Milestone: v3.9 Quick Wins
+
+**Goal:** Fix reported bugs, add missing grammar verbs, and close quick feature gaps (static methods, constructors, deprecated indicators).
+
+**Target features:**
+- Fix EM Config "--" causing DWC/BUI startup failure (#382)
+- Fix config.bbx file no longer highlighted (#381)
+- Fix `releaseVersion!` variable flagged as parse error (#379)
+- Fix DECLARE in class outside methods breaking parser (#380)
+- Add EXIT verb optional int parameter (#376)
+- Add SERIAL verb (#375)
+- Add ADDR function (#377)
+- Add `.class` property resolution (#373)
+- Static method completion on class references via USE (#374)
+- Deprecated method visual indicator in completion items
+- Constructor completion for `new ClassName()`
 
 ### Out of Scope
 
@@ -166,7 +181,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.8 shipped 2026-02-20 (15 milestones, 56 phases). Test suite fully green (501 passed, 4 skipped). All production FIXMEs and actionable TODOs resolved. No active milestone.
+**Current state:** v3.9 started 2026-02-20 (15 milestones shipped, 56 phases). Test suite fully green (501 passed, 4 skipped). All production FIXMEs and actionable TODOs resolved.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -298,4 +313,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Status bar over notification balloons for BBjCPL | Non-intrusive "BBjCPL: unavailable" in status bar; no popup dialogs | ✓ Good — v3.7 shipped |
 
 ---
-*Last updated: 2026-02-20 after v3.8 milestone completion*
+*Last updated: 2026-02-20 after v3.9 milestone start*
