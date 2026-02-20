@@ -8,18 +8,16 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 complete, Phase 53 next
+**Current Focus:** v3.8 Test & Debt Cleanup
 
 ---
 
 ## Current Position
 
-Phase: 53 of 53 (BBjCPL Diagnostic Integration — Complete)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase 53 complete — full BBjCPL diagnostic integration with debounce, trigger modes, status bar, and integration tests
-Last activity: 2026-02-20 — Phase 53 Plan 02 complete: BBjCPL wired into buildDocuments(), 500ms debounce, lazy availability detection, client status bar
-
-Progress: [█████████████████████████████████████████░░░░░░░░░] 83% (v3.7)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-02-20 — Milestone v3.8 started
 
 ---
 

@@ -145,7 +145,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+## Current Milestone: v3.8 Test & Debt Cleanup
+
+**Goal:** Get the test suite fully green, remove confirmed dead code, and resolve production FIXMEs and actionable TODOs.
+
+**Target features:**
+- Fix all 6 pre-existing test failures (stale expectations + real bugs)
+- Uncomment and fix 9 disabled `expectNoValidationErrors()` assertions
+- Remove dead MethodCall CAST branches in type inferer and validator
+- Resolve 4 production FIXMEs (linker, scope hack, javadoc, inner class)
+- Address actionable production TODOs
 
 ### Out of Scope
 
@@ -159,7 +168,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.7 shipped 2026-02-20. 15 milestones shipped across 53 phases. BBjCPL compiler integration complete — errors appear in Problems panel with noise reduction and diagnostic hierarchy. Previous: v3.6 shipped 2026-02-10 (IntelliJ Platform API compatibility).
+**Current state:** v3.8 in progress. v3.7 shipped 2026-02-20 (15 milestones, 53 phases). Cleanup milestone targeting test suite health, dead code removal, and production FIXME resolution.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -174,8 +183,8 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 **Known tech debt:**
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - CPU stability mitigations documented but not yet implemented (#232)
-- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression
-- 6 pre-existing test failures (access-level, DEF FN completion, USE import, validation)
+- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression — v3.8 target
+- 6 pre-existing test failures (access-level, DEF FN completion, USE import, validation) — v3.8 target
 - 14 pre-existing TODO/FIXME comments across 6 files (java-interop, ws-manager, javadoc, scopes, linker)
 - CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct)
 
@@ -291,4 +300,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Status bar over notification balloons for BBjCPL | Non-intrusive "BBjCPL: unavailable" in status bar; no popup dialogs | ✓ Good — v3.7 shipped |
 
 ---
-*Last updated: 2026-02-20 after v3.7 milestone*
+*Last updated: 2026-02-20 after v3.8 milestone start*
