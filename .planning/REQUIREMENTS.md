@@ -29,7 +29,7 @@ Requirements for Diagnostic Quality & BBjCPL Integration milestone. Each maps to
 - [x] **CPL-05**: BBjCPL diagnostics labeled with source "BBjCPL" — distinct from Langium "bbj" source for user clarity
 - [x] **CPL-06**: Diagnostic hierarchy — BBjCPL errors shown first; Langium parser errors only when BBjCPL reports clean; warnings/hints only when no hard errors
 - [x] **CPL-07**: Configurable trigger setting — on-save (default) or debounced invocation, controlled via bbj.compiler.trigger setting
-- [ ] **CPL-08**: BBjCPL integration degrades gracefully when BBj not installed — no errors, no UI noise, Langium diagnostics work as before
+- [x] **CPL-08**: BBjCPL integration degrades gracefully when BBj not installed — no errors, no UI noise, Langium diagnostics work as before
 
 ## Future Requirements
 
@@ -71,7 +71,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CPL-05 | Phase 53 | Complete |
 | CPL-06 | Phase 53 | Complete |
 | CPL-07 | Phase 53 | Complete |
-| CPL-08 | Phase 53 | Pending |
+| CPL-08 | Phase 53 | Complete |
 
 **Coverage:**
 - v3.7 requirements: 12 total

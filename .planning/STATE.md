@@ -14,12 +14,12 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 ## Current Position
 
-Phase: 53 of 53 (BBjCPL Diagnostic Integration — In Progress)
-Plan: 1 of 2 in current phase (complete)
-Status: Phase 53 Plan 01 complete — diagnostic data model, merge function, trigger configuration wired
-Last activity: 2026-02-20 — Phase 53 Plan 01 complete: BBjCPL source label, DiagnosticTier.BBjCPL, mergeDiagnostics(), compiler trigger setting
+Phase: 53 of 53 (BBjCPL Diagnostic Integration — Complete)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase 53 complete — full BBjCPL diagnostic integration with debounce, trigger modes, status bar, and integration tests
+Last activity: 2026-02-20 — Phase 53 Plan 02 complete: BBjCPL wired into buildDocuments(), 500ms debounce, lazy availability detection, client status bar
 
-Progress: [████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 42% (v3.7)
+Progress: [█████████████████████████████████████████░░░░░░░░░] 83% (v3.7)
 
 ---
 
@@ -81,6 +81,9 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 53-01-bbjcpl-diagnostic-integration]: setCompilerTrigger/getCompilerTrigger defined in bbj-document-validator.ts (not main.ts) to avoid circular import with bbj-ws-manager.ts
 - [Phase 53-01-bbjcpl-diagnostic-integration]: DiagnosticTier.BBjCPL = 3 (highest); Rule 0 suppresses only Langium Parse-tier diagnostics when BBjCPL errors present — not all Langium diagnostics
 - [Phase 53-01-bbjcpl-diagnostic-integration]: mergeDiagnostics() same-line match: keep Langium message, stamp source='BBjCPL'; BBjCPL-only lines added directly; Langium-only unchanged
+- [Phase 53-02]: notifyBbjcplAvailability extracted to bbj-notifications.ts: importing main.ts from bbj-document-builder crashes tests (createConnection at module load time); isolated module with initNotifications(connection) called by main.ts at startup
+- [Phase 53-02]: trackBbjcplAvailability uses fs.accessSync to check bbjcpl binary at BBj home — direct and reliable vs monitoring compile() return value ([] is ambiguous between clean file and ENOENT)
+- [Phase 53-02]: Both trigger modes 'on-save' and 'debounced' route through debouncedCompile() with 500ms debounce — distinction preserved for future use, both use same path at current integration stage
 
 ### Tech Debt
 
@@ -104,43 +107,37 @@ None
 
 ---
 | Phase 53 P01 | 2 | 2 tasks | 6 files |
+| Phase 53 P02 | 6 | 3 tasks | 5 files |
 
 ## Session Continuity
 
 ### What Just Happened
 
-- Phase 53 Plan 01 complete: diagnostic data model and trigger configuration wired
-- Source label renamed from 'BBj Compiler' to 'BBjCPL' in parseBbjcplOutput() and all tests (9 pass)
-- DiagnosticTier.BBjCPL = 3 added; getDiagnosticTier() BBjCPL branch; Rule 0 suppresses Langium parse errors when BBjCPL errors present
-- mergeDiagnostics() exported from bbj-document-validator.ts — Plan 02 uses this from buildDocuments()
-- bbj.compiler.trigger setting added to package.json (debounced/on-save/off); setCompilerTrigger wired from initializationOptions and onDidChangeConfiguration
-- notifyBbjcplAvailability() ready for Plan 02 to call
-- Requirements CPL-05, CPL-06, CPL-07 marked complete
+- Phase 53 Plan 02 complete: full BBjCPL diagnostic integration wired end-to-end
+- BBjCPLService.compile() called from buildDocuments() after Langium validation (NOT from onBuildPhase)
+- 500ms trailing-edge debounce prevents CPU spike on rapid saves; clear-then-show prevents flicker
+- Trigger mode 'off' clears stale BBjCPL diagnostics; 'on-save' and 'debounced' both use debouncedCompile()
+- Lazy availability detection via fs.accessSync on first compile trigger; notifies client once
+- bbj-notifications.ts created to isolate notifyBbjcplAvailability from main.ts circular import
+- BBjCPL status bar item added (hidden by default); bbj/bbjcplAvailability listener in extension.ts
+- compilerTrigger added to initializationOptions in extension.ts
+- 7 integration tests for mergeDiagnostics() all pass; total 496 tests pass (4 pre-existing failures)
+- Requirements CPL-08 marked complete (CPL-05/06/07 completed in Plan 01)
 
 ### What's Next
 
-**Immediate:** Phase 53 Plan 02 — Wire BBjCPLService.compile() into buildDocuments() using mergeDiagnostics() and getCompilerTrigger()
+**Phase 53 complete.** v3.7 Diagnostic Quality & BBjCPL Integration milestone is fully implemented.
+Next: version bump and release preparation for v3.7.
 
 ### Context for Next Session
 
-**Phase 53 Plan 01 complete.** Data model and config plumbing are in place.
+**Phase 53 complete.** End-to-end BBjCPL integration is working.
 
-**Plan 02 integration points:**
-- `mergeDiagnostics(langiumDiags, cplDiags)` — import from `./bbj-document-validator.js`
-- `getCompilerTrigger()` — returns 'debounced' | 'on-save' | 'off'; gate BBjCPLService.compile() calls
-- `notifyBbjcplAvailability(available)` — import from `./main.js`; call when BBjCPL binary found/not found
-- `services.compiler.BBjCPLService.compile(filePath)` — returns `Promise<Diagnostic[]>`
-
-**BBjCPLService API (from Phase 52):**
-- `services.compiler.BBjCPLService.compile(filePath)` — returns `Promise<Diagnostic[]>`
-- `services.compiler.BBjCPLService.setTimeout(ms)` — configures timeout from VS Code settings
-- `services.compiler.BBjCPLService.isCompiling(filePath)` — check in-flight state
-- Must be called from inside `buildDocuments()`, NOT from `onBuildPhase` callbacks (CPU rebuild loop)
-
-**BBjCPL format confirmed:**
-- Format: `<filepath>: error at line <legacy> (<physical>):     <source_code_on_same_line>`
-- Regex: `^.+:\s+error at line \d+ \((\d+)\):\s*(.*)`
-- Binary derived from `getBBjDir() + '/bin/bbjcpl'` (or bbjcpl.exe on Windows)
+**Key architectural decisions for future reference:**
+- `bbj-notifications.ts` holds connection reference — imported by shared services, initialized by main.ts
+- BBjCPL called from inside `buildDocuments()`, never from `onBuildPhase` (CPU rebuild loop prevention)
+- Lazy availability detection: `trackBbjcplAvailability()` runs once on first compile trigger
+- `mergeDiagnostics()` in `bbj-document-validator.ts` — same-line: keep Langium msg, stamp BBjCPL source
 - Always exits 0; errors on stderr only; stdout always empty
 
 ---
