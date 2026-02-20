@@ -9,6 +9,14 @@ const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
 // Shared output channel from extension.ts
 let outputChannel = null;
 
+/**
+ * Strips the EM Config sentinel value "--" from a classpath string.
+ * "--" means "not configured" in BBj EM Config. Treat it as empty.
+ * @param {string|null|undefined} v - The classpath value to strip
+ * @returns {string} Empty string if v is "--", otherwise v or "" if falsy
+ */
+const stripSentinel = (v) => v === '--' ? '' : (v || '');
+
 const setOutputChannel = (channel) => {
   outputChannel = channel;
 };
@@ -79,7 +87,7 @@ const runWeb = (params, client, credentials) => {
     token = "";
   }
 
-  const sscp = vscode.workspace.getConfiguration("bbj").classpath;
+  const sscp = stripSentinel(vscode.workspace.getConfiguration("bbj").classpath);
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
   const workingDir = path.dirname(fileName);
@@ -212,7 +220,7 @@ const Commands = {
     if (!home) return;
 
     const webConfig = vscode.workspace.getConfiguration('bbj.web');
-    var sscp = vscode.workspace.getConfiguration('bbj').classpath;
+    var sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
 
     const bbj = `${home}/bin/bbj${os.platform() === 'win32' ? '.exe' : ''}`;
     const active = vscode.window.activeTextEditor;

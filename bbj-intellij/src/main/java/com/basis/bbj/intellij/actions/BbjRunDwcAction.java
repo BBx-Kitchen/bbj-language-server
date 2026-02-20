@@ -104,8 +104,9 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         }
 
         // Get classpath from settings
+        // "--" is the EM Config sentinel meaning "not configured" — treat as empty
         BbjSettings.State state = BbjSettings.getInstance().getState();
-        String classpath = state.classpathEntry != null ? state.classpathEntry : "";
+        String classpath = (state.classpathEntry != null && !"--".equals(state.classpathEntry)) ? state.classpathEntry : "";
 
         // Get config path - only add if configured (web.bbj handles absent ARGV(9) gracefully)
         String configPath = getConfigPath();

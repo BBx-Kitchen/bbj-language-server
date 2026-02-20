@@ -214,6 +214,11 @@ public abstract class BbjRunActionBase extends AnAction {
             return null;
         }
 
+        // "--" is the EM Config sentinel meaning "not configured" — treat as no classpath
+        if ("--".equals(entry)) {
+            return null;
+        }
+
         return "-CP" + entry;
     }
 
