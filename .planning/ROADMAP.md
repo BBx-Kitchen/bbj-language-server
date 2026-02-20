@@ -17,6 +17,7 @@
 - ✅ **v3.6 IntelliJ Platform API Compatibility** — Phases 48-49 (shipped 2026-02-10)
 - ✅ **v3.7 Diagnostic Quality & BBjCPL Integration** — Phases 50-53 (shipped 2026-02-20)
 - ✅ **v3.8 Test & Debt Cleanup** — Phases 54-56 (shipped 2026-02-20)
+- 🚧 **v3.9 Quick Wins** — Phases 57-59 (in progress)
 
 ## Phases
 
@@ -167,6 +168,48 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v3.9 Quick Wins (In Progress)
+
+**Milestone Goal:** Fix reported bugs, add missing grammar verbs, and close quick feature gaps (static methods, constructors, deprecated indicators).
+
+- [ ] **Phase 57: Bug Fixes** — Fix four reported regressions (EM Config, config.bbx highlighting, suffixed identifiers, DECLARE in class body)
+- [ ] **Phase 58: Grammar Additions** — Add missing EXIT parameter, SERIAL verb, and ADDR function to parser
+- [ ] **Phase 59: Java Class Reference Features** — Add .class resolution, static method completion, deprecated indicators, and constructor completion
+
+## Phase Details
+
+### Phase 57: Bug Fixes
+**Goal**: Four reported regressions are eliminated — DWC/BUI launches work, config.bbx files are highlighted, suffixed variable identifiers parse cleanly, and DECLARE in class body no longer breaks the parser
+**Depends on**: Phase 56 (v3.8 complete)
+**Requirements**: BUG-01, BUG-02, BUG-03, BUG-04
+**Success Criteria** (what must be TRUE):
+  1. Launching a DWC or BUI program with EM Config "--" set completes without startup failure
+  2. Opening a config.bbx file shows BBj syntax highlighting (keywords, strings, comments colored)
+  3. Variables named `releaseVersion!`, `stepMode!`, or any keyword-prefixed suffixed identifier parse without a red squiggly error
+  4. A DECLARE statement written in a class body outside any method does not produce a parse error
+**Plans**: TBD
+
+### Phase 58: Grammar Additions
+**Goal**: The BBj parser recognizes three previously unsupported constructs — EXIT with an integer argument, the SERIAL verb, and the ADDR function — so valid BBj programs no longer produce false parse errors
+**Depends on**: Phase 57
+**Requirements**: GRAM-01, GRAM-02, GRAM-03
+**Success Criteria** (what must be TRUE):
+  1. `EXIT 0`, `EXIT 1`, and bare `EXIT` all parse without error in any program context
+  2. A statement using the SERIAL verb parses without error and appears in the AST
+  3. An expression using the ADDR function parses without error and is usable in assignments and conditions
+**Plans**: TBD
+
+### Phase 59: Java Class Reference Features
+**Goal**: Completion and type resolution for Java class references are meaningfully richer — `.class` resolves to java.lang.Class, static methods are offered on class reference variables, deprecated methods show strikethrough in the completion list, and `new ClassName()` expressions trigger constructor completion
+**Depends on**: Phase 58
+**Requirements**: FEAT-01, FEAT-02, FEAT-03, FEAT-04
+**Success Criteria** (what must be TRUE):
+  1. Writing `.class` after a Java class reference (e.g., `String.class`) resolves to java.lang.Class and does not produce an "unresolvable" warning
+  2. Typing `.` on a variable declared via USE as a Java class reference offers static methods of that class in the completion list
+  3. Deprecated methods appear in the completion list with strikethrough text decoration, distinguishing them from non-deprecated methods
+  4. After `new ClassName(`, the completion list offers constructor signatures for that class
+**Plans**: TBD
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -176,7 +219,7 @@ Research-only milestone — no phases.
 | v1.2 Run Fixes & Marketplace | 11-13 | 5 | Complete | 2026-02-02 |
 | v2.0 Langium 4 Upgrade | 14-20 | 11 | Complete | 2026-02-04 |
 | v2.1 Feature Gap Analysis | N/A | N/A | Complete | 2026-02-04 |
-| v2.2 IntelliJ Build & Release | 21-23 | 3 | Complete | 2026-02-05 |
+| v2.2 IntelliJ Build & Release Automation | 21-23 | 3 | Complete | 2026-02-05 |
 | v3.0 BBj Language Support | 24-27 | 11 | Complete | 2026-02-06 |
 | v3.1 PRIO 1+2 Burndown | 28-31 | 13 | Complete | 2026-02-07 |
 | v3.2 Bug Fix Release | 32-34 | 10 | Complete | 2026-02-08 |
@@ -186,9 +229,10 @@ Research-only milestone — no phases.
 | v3.6 API Compatibility | 48-49 | 2 | Complete | 2026-02-10 |
 | v3.7 Diagnostic Quality & BBjCPL | 50-53 | 7 | Complete | 2026-02-20 |
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
+| v3.9 Quick Wins | 57-59 | TBD | In progress | - |
 
-**Total:** 15 milestones shipped, 56 phases complete, 135 plans shipped.
+**Total:** 15 milestones shipped, 56 phases complete, 135 plans shipped. 3 phases planned for v3.9.
 
 ---
 
-*Roadmap last updated: 2026-02-20 after v3.8 milestone completion*
+*Roadmap last updated: 2026-02-20 after v3.9 roadmap creation*

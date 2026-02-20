@@ -58,23 +58,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUG-01 | — | Pending |
-| BUG-02 | — | Pending |
-| BUG-03 | — | Pending |
-| BUG-04 | — | Pending |
-| GRAM-01 | — | Pending |
-| GRAM-02 | — | Pending |
-| GRAM-03 | — | Pending |
-| FEAT-01 | — | Pending |
-| FEAT-02 | — | Pending |
-| FEAT-03 | — | Pending |
-| FEAT-04 | — | Pending |
+| BUG-01 | Phase 57 | Pending |
+| BUG-02 | Phase 57 | Pending |
+| BUG-03 | Phase 57 | Pending |
+| BUG-04 | Phase 57 | Pending |
+| GRAM-01 | Phase 58 | Pending |
+| GRAM-02 | Phase 58 | Pending |
+| GRAM-03 | Phase 58 | Pending |
+| FEAT-01 | Phase 59 | Pending |
+| FEAT-02 | Phase 59 | Pending |
+| FEAT-03 | Phase 59 | Pending |
+| FEAT-04 | Phase 59 | Pending |
 
 **Coverage:**
 - v3.9 requirements: 11 total
-- Mapped to phases: 0
-- Unmapped: 11
+- Mapped to phases: 11
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 after initial definition*
+*Last updated: 2026-02-20 after v3.9 roadmap creation*
