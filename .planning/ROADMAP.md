@@ -193,14 +193,17 @@ Plans:
 - [ ] 57-02-PLAN.md — RELEASE token LONGER_ALT fix + DECLARE in class body grammar recovery
 
 ### Phase 58: Grammar Additions
-**Goal**: The BBj parser recognizes three previously unsupported constructs — EXIT with an integer argument, the SERIAL verb, and the ADDR function — so valid BBj programs no longer produce false parse errors
+**Goal**: The BBj parser recognizes three previously unsupported constructs — EXIT with an integer argument, the SERIAL verb, and the ADDR verb — so valid BBj programs no longer produce false parse errors
 **Depends on**: Phase 57
 **Requirements**: GRAM-01, GRAM-02, GRAM-03
 **Success Criteria** (what must be TRUE):
   1. `EXIT 0`, `EXIT 1`, and bare `EXIT` all parse without error in any program context
   2. A statement using the SERIAL verb parses without error and appears in the AST
-  3. An expression using the ADDR function parses without error and is usable in assignments and conditions
-**Plans**: TBD
+  3. The ADDR verb parses without error as a standalone statement, accepting any string expression as fileid
+**Plans**: 2 plans
+Plans:
+- [ ] 58-01-PLAN.md — EXIT verb with optional numeric argument (custom tokens + grammar)
+- [ ] 58-02-PLAN.md — SERIAL verb addition + ADDR fileid broadened to Expression
 
 ### Phase 59: Java Class Reference Features
 **Goal**: Completion and type resolution for Java class references are meaningfully richer — `.class` resolves to java.lang.Class, static methods are offered on class reference variables, deprecated methods show strikethrough in the completion list, and `new ClassName()` expressions trigger constructor completion
