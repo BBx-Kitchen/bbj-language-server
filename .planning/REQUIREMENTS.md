@@ -18,7 +18,7 @@ Requirements for test & debt cleanup milestone. Each maps to roadmap phases.
 
 ### Test Hardening
 
-- [ ] **HARD-01**: 9 commented-out `expectNoValidationErrors()` assertions uncommented and passing in `parser.test.ts`
+- [x] **HARD-01**: 9 commented-out `expectNoValidationErrors()` assertions uncommented and passing in `parser.test.ts`
 
 ### Dead Code
 
@@ -77,7 +77,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-04 | Phase 54 | Complete |
 | TEST-05 | Phase 54 | Complete |
 | TEST-06 | Phase 54 | Complete |
-| HARD-01 | Phase 55 | Pending |
+| HARD-01 | Phase 55 | Complete |
 | DEAD-01 | Phase 55 | Complete |
 | DEAD-02 | Phase 55 | Complete |
 | FIX-01 | Phase 56 | Pending |

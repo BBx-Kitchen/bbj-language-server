@@ -57,6 +57,7 @@ Progress: [█░░░░░░░░░] 10% (v3.8)
 ---
 | Phase 54-fix-failing-tests P02 | 8 | 2 tasks | 3 files |
 | Phase 55-test-hardening-dead-code P02 | 2 | 1 tasks | 2 files |
+| Phase 55-test-hardening-dead-code P01 | 5 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 54-fix-failing-tests]: TEST-03: Skipped — completion returns 0 items inside MethodDecl.body (Langium grammar follower limitation, not a scope issue)
 - [Phase 54-fix-failing-tests]: TEST-04: Use IndexManager.allElements(BbjClass.$type) to detect no-class files; emit warning (not error) when file exists but has no BBj classes
 - [Phase 55-test-hardening-dead-code]: DEAD-01/DEAD-02: Removed MethodCall CAST branches from type-inferer and validator; unreachable since Phase 33 CastExpression grammar rule
+- [Phase 55-test-hardening-dead-code]: Disabled validation assertions in parser.test.ts need Java classpath (String/byte/BBjAPI): replaced //TODO with // DISABLED comments; fixed 6 test inputs instead of disabling
 
 ### Tech Debt
 
@@ -100,7 +102,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 55-02-PLAN.md
+Stopped at: Completed 55-01-PLAN.md (HARD-01 re-enabled 6/9 parser test validation assertions)
 Resume file: None
 
 ---
@@ -129,4 +131,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 55-02-PLAN.md*
+*State updated: 2026-02-20 after completing 55-01-PLAN.md*
