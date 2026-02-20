@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.9 Quick Wins — Phase 57: Bug Fixes
+**Current Focus:** v3.9 Quick Wins — Phase 58: Grammar Additions
 
 ---
 
 ## Current Position
 
-Phase: 57 of 59 (Bug Fixes)
-Plan: 2 of 2 in current phase
-Status: Phase Complete
-Last activity: 2026-02-20 — Completed 57-02-PLAN.md (BUG-03, BUG-04 fixed)
+Phase: 58 of 59 (Grammar Additions)
+Plan: 1 of 2 in current phase
+Status: Plan 01 Complete
+Last activity: 2026-02-20 — Completed 58-01-PLAN.md (GRAM-01: EXIT with numeric argument)
 
-Progress: [██░░░░░░░░] 20% (v3.9)
+Progress: [███░░░░░░░] 30% (v3.9)
 
 ---
 
@@ -29,8 +29,8 @@ Progress: [██░░░░░░░░] 20% (v3.9)
 
 **Started:** 2026-02-01
 **Milestones shipped:** 15
-**Phases completed:** 56
-**Plans completed:** 137
+**Phases completed:** 57
+**Plans completed:** 138
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -39,6 +39,7 @@ Progress: [██░░░░░░░░] 20% (v3.9)
 **v3.9 (In Progress: 2026-02-20):**
 - Phase 57 Plan 01: 2 tasks, 5 files, 2 min
 - Phase 57 Plan 02: 2 tasks, 5 files, 10 min
+- Phase 58 Plan 01: 2 tasks, 3 files, 18 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -65,6 +66,7 @@ Progress: [██░░░░░░░░] 20% (v3.9)
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 58-grammar-additions]: Use restrictive EXIT_NO_NL pattern [0-9(+\-] lookahead to prevent matching flow-control keywords like 'else' in inline-if; keep kind='EXIT' for bare EXIT
 - [Phase 57]: Guard checkDeclareNotInClassBody on $type === 'VariableDecl' to prevent FieldDecl subtypes from being flagged
 - [Phase 57]: Cast BBjClassMember to { visibility?: string } in linker and validator to handle VariableDecl addition to union type
 - [Phase 57-bug-fixes]: Strip '--' EM Config sentinel silently from classpath in all run commands (VS Code + IntelliJ)
@@ -98,7 +100,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 57-02-PLAN.md — Phase 57 complete (BUG-01 through BUG-04 all fixed)
+Stopped at: Completed 58-01-PLAN.md — GRAM-01 (EXIT with numeric argument) done
 Resume file: None
 
 ---
@@ -127,4 +129,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 57-02 (BUG-03, BUG-04) — Phase 57 all plans complete*
+*State updated: 2026-02-20 after completing 58-01 (GRAM-01: EXIT numeric argument) — Phase 58 Plan 1 complete*
