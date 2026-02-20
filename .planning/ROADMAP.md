@@ -153,7 +153,7 @@ Research-only milestone — no phases.
 
 - [x] **Phase 50: Diagnostic Noise Reduction** - Suppress cascading linking/validation errors when parse errors exist; clean diagnostic hierarchy (completed 2026-02-19)
 - [x] **Phase 51: Outline Resilience** - Document symbols survive syntax errors; Structure View stays populated on partial ASTs (completed 2026-02-19)
-- [ ] **Phase 52: BBjCPL Foundation** - Discover output format empirically, build verified compiler service with safe process lifecycle
+- [x] **Phase 52: BBjCPL Foundation** - Discover output format empirically, build verified compiler service with safe process lifecycle (completed 2026-02-20)
 - [ ] **Phase 53: BBjCPL Diagnostic Integration** - Wire compiler service into document lifecycle; BBjCPL errors labeled and shown with hierarchy enforced
 
 ## Phase Details
@@ -231,7 +231,7 @@ Plans:
 | 48-49 | v3.6 API Compatibility | 2/2 | Complete | 2026-02-10 |
 | 50. Diagnostic Noise Reduction | 2/2 | Complete   | 2026-02-19 | - |
 | 51. Outline Resilience | 1/1 | Complete    | 2026-02-19 | - |
-| 52. BBjCPL Foundation | 1/2 | In Progress|  | - |
+| 52. BBjCPL Foundation | 2/2 | Complete   | 2026-02-20 | - |
 | 53. BBjCPL Diagnostic Integration | v3.7 | 0/TBD | Not started | - |
 
 **Total:** 14 milestones shipped, 49 phases complete, 121 plans shipped

@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 in progress (Plan 02 remaining)
+**Current Focus:** v3.7 Diagnostic Quality & BBjCPL Integration — Phase 52 complete, Phase 53 next
 
 ---
 
 ## Current Position
 
-Phase: 52 of 53 (BBjCPL Foundation — In Progress)
-Plan: 1 of 2 in current phase (complete)
-Status: Phase 52 Plan 01 complete — fixture capture + parseBbjcplOutput() TDD'd
-Last activity: 2026-02-20 — Phase 52 Plan 01 complete: bbjcpl stderr parser with fixture-backed unit tests
+Phase: 52 of 53 (BBjCPL Foundation — Complete)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase 52 complete — BBjCPLService process lifecycle + DI registration
+Last activity: 2026-02-20 — Phase 52 Plan 02 complete: BBjCPLService with abort-on-resave, ENOENT graceful degradation, and DI registration
 
-Progress: [██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 25% (v3.7)
+Progress: [████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 37% (v3.7)
 
 ---
 
@@ -76,6 +76,8 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 51-outline-resilience]: Large file threshold for deep-walk fallback: 200,000 chars (~10k lines) — skips expensive full-tree scan on large files
 - [Phase 52-bbjcpl-foundation]: bbjcpl format confirmed empirically: source code on SAME line as error header (not separate line). Format: '<path>: error at line <legacy> (<physical>):     <source>'
 - [Phase 52-bbjcpl-foundation]: BBjCPL parser regex: ^.+:\s+error at line \d+ \((\d+)\):\s*(.*) — physical line in parens is 1-based, converted to 0-based for LSP; source snippet included in diagnostic message
+- [Phase 52-bbjcpl-foundation plan 02]: AbortController.abort() on ENOENT spawn (proc.pid=undefined) sends kill signal to process group 0 — crashes vitest worker with exit 144. Fix: cancel flag + proc.kill() only when proc.pid !== undefined
+- [Phase 52-bbjcpl-foundation plan 02]: BBjCPLService uses CompileHandle interface (not AbortController) in inFlight map; cancel() method checks pid validity; settle() wrapper prevents double-resolve when error+close both fire
 
 ### Tech Debt
 
@@ -103,27 +105,32 @@ None
 
 ### What Just Happened
 
-- Phase 52 Plan 01 complete: bbjcpl output parser TDD'd with real fixture files
-- Captured real bbjcpl stderr output using /Users/beff/bbx/bin/bbjcpl binary
-- Empirically confirmed format: source code on SAME line as error header (not separate line)
-- parseBbjcplOutput() implemented with 9 unit tests; all pass; 6 pre-existing failures unchanged
-- Requirements CPL-01 and CPL-03 marked complete
+- Phase 52 complete: both plans done
+- Plan 01: parseBbjcplOutput() TDD'd with real fixture files; 9 tests; regex confirmed empirically
+- Plan 02: BBjCPLService implemented with abort-on-resave, ENOENT graceful degradation, DI registration
+- Critical bug found and fixed: AbortController.abort() on ENOENT spawn crashes the process — replaced with cancel flag + proc.kill() on valid PID
+- BBjCPLService registered as services.compiler.BBjCPLService in Langium DI
+- Requirements CPL-01, CPL-02, CPL-03, CPL-04 all marked complete
 
 ### What's Next
 
-**Immediate:** Phase 52 Plan 02 — BBjCPL Process Lifecycle Service
+**Immediate:** Phase 53 — Wire BBjCPL diagnostics into document lifecycle via buildDocuments()
 
 ### Context for Next Session
 
-**Phase 52 Plan 01 complete.** parseBbjcplOutput() ready; fixture files committed.
+**Phase 52 complete.** Both the parser and the service are ready.
+
+**BBjCPLService API for Phase 53:**
+- `services.compiler.BBjCPLService.compile(filePath)` — returns `Promise<Diagnostic[]>`
+- `services.compiler.BBjCPLService.setTimeout(ms)` — configures timeout from VS Code settings
+- `services.compiler.BBjCPLService.isCompiling(filePath)` — check in-flight state
+- Must be called from inside `buildDocuments()`, NOT from `onBuildPhase` callbacks (CPU rebuild loop)
 
 **BBjCPL format confirmed:**
 - Format: `<filepath>: error at line <legacy> (<physical>):     <source_code_on_same_line>`
 - Regex: `^.+:\s+error at line \d+ \((\d+)\):\s*(.*)`
-- Binary at: /Users/beff/bbx/bin/bbjcpl (also accessible via BBJCPL_PATH env or bbjcpl-check.sh hook)
+- Binary derived from `getBBjDir() + '/bin/bbjcpl'` (or bbjcpl.exe on Windows)
 - Always exits 0; errors on stderr only; stdout always empty
-
-**Phase 51 complete.** BBjDocumentSymbolProvider active — Structure View now populated even for files with syntax errors.
 
 **Phase 50 complete.** Full diagnostic suppression stack in place:
 - Plan 01: Core suppression logic in BBjDocumentValidator (DiagnosticTier, applyDiagnosticHierarchy, setSuppressCascading, setMaxErrors)
@@ -157,4 +164,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after Phase 52 Plan 01 completion — Stopped at: Completed 52-bbjcpl-foundation 52-01-PLAN.md*
+*State updated: 2026-02-20 after Phase 52 Plan 02 completion — Stopped at: Completed 52-bbjcpl-foundation 52-02-PLAN.md*
