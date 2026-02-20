@@ -14,12 +14,12 @@ See: .planning/PROJECT.md (updated 2026-02-19)
 
 ## Current Position
 
-Phase: 52 of 53 (BBjCPL Foundation — Complete)
-Plan: 2 of 2 in current phase (complete)
-Status: Phase 52 complete — BBjCPLService process lifecycle + DI registration
-Last activity: 2026-02-20 — Phase 52 Plan 02 complete: BBjCPLService with abort-on-resave, ENOENT graceful degradation, and DI registration
+Phase: 53 of 53 (BBjCPL Diagnostic Integration — In Progress)
+Plan: 1 of 2 in current phase (complete)
+Status: Phase 53 Plan 01 complete — diagnostic data model, merge function, trigger configuration wired
+Last activity: 2026-02-20 — Phase 53 Plan 01 complete: BBjCPL source label, DiagnosticTier.BBjCPL, mergeDiagnostics(), compiler trigger setting
 
-Progress: [████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 37% (v3.7)
+Progress: [████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 42% (v3.7)
 
 ---
 
@@ -78,6 +78,9 @@ Full decision log in PROJECT.md Key Decisions table. Key v3.7 decisions pending:
 - [Phase 52-bbjcpl-foundation]: BBjCPL parser regex: ^.+:\s+error at line \d+ \((\d+)\):\s*(.*) — physical line in parens is 1-based, converted to 0-based for LSP; source snippet included in diagnostic message
 - [Phase 52-bbjcpl-foundation plan 02]: AbortController.abort() on ENOENT spawn (proc.pid=undefined) sends kill signal to process group 0 — crashes vitest worker with exit 144. Fix: cancel flag + proc.kill() only when proc.pid !== undefined
 - [Phase 52-bbjcpl-foundation plan 02]: BBjCPLService uses CompileHandle interface (not AbortController) in inFlight map; cancel() method checks pid validity; settle() wrapper prevents double-resolve when error+close both fire
+- [Phase 53-01-bbjcpl-diagnostic-integration]: setCompilerTrigger/getCompilerTrigger defined in bbj-document-validator.ts (not main.ts) to avoid circular import with bbj-ws-manager.ts
+- [Phase 53-01-bbjcpl-diagnostic-integration]: DiagnosticTier.BBjCPL = 3 (highest); Rule 0 suppresses only Langium Parse-tier diagnostics when BBjCPL errors present — not all Langium diagnostics
+- [Phase 53-01-bbjcpl-diagnostic-integration]: mergeDiagnostics() same-line match: keep Langium message, stamp source='BBjCPL'; BBjCPL-only lines added directly; Langium-only unchanged
 
 ### Tech Debt
 
@@ -100,27 +103,35 @@ None
 | 13 | Fix IntelliJ multi-instance language server: replace custom grace period with LSP4IJ native timeout, fix crash recovery, add disposal guards | 2026-02-16 | 293fea5 | [13-fix-intellij-multi-instance-language-ser](./quick/13-fix-intellij-multi-instance-language-ser/) |
 
 ---
+| Phase 53 P01 | 2 | 2 tasks | 6 files |
 
 ## Session Continuity
 
 ### What Just Happened
 
-- Phase 52 complete: both plans done
-- Plan 01: parseBbjcplOutput() TDD'd with real fixture files; 9 tests; regex confirmed empirically
-- Plan 02: BBjCPLService implemented with abort-on-resave, ENOENT graceful degradation, DI registration
-- Critical bug found and fixed: AbortController.abort() on ENOENT spawn crashes the process — replaced with cancel flag + proc.kill() on valid PID
-- BBjCPLService registered as services.compiler.BBjCPLService in Langium DI
-- Requirements CPL-01, CPL-02, CPL-03, CPL-04 all marked complete
+- Phase 53 Plan 01 complete: diagnostic data model and trigger configuration wired
+- Source label renamed from 'BBj Compiler' to 'BBjCPL' in parseBbjcplOutput() and all tests (9 pass)
+- DiagnosticTier.BBjCPL = 3 added; getDiagnosticTier() BBjCPL branch; Rule 0 suppresses Langium parse errors when BBjCPL errors present
+- mergeDiagnostics() exported from bbj-document-validator.ts — Plan 02 uses this from buildDocuments()
+- bbj.compiler.trigger setting added to package.json (debounced/on-save/off); setCompilerTrigger wired from initializationOptions and onDidChangeConfiguration
+- notifyBbjcplAvailability() ready for Plan 02 to call
+- Requirements CPL-05, CPL-06, CPL-07 marked complete
 
 ### What's Next
 
-**Immediate:** Phase 53 — Wire BBjCPL diagnostics into document lifecycle via buildDocuments()
+**Immediate:** Phase 53 Plan 02 — Wire BBjCPLService.compile() into buildDocuments() using mergeDiagnostics() and getCompilerTrigger()
 
 ### Context for Next Session
 
-**Phase 52 complete.** Both the parser and the service are ready.
+**Phase 53 Plan 01 complete.** Data model and config plumbing are in place.
 
-**BBjCPLService API for Phase 53:**
+**Plan 02 integration points:**
+- `mergeDiagnostics(langiumDiags, cplDiags)` — import from `./bbj-document-validator.js`
+- `getCompilerTrigger()` — returns 'debounced' | 'on-save' | 'off'; gate BBjCPLService.compile() calls
+- `notifyBbjcplAvailability(available)` — import from `./main.js`; call when BBjCPL binary found/not found
+- `services.compiler.BBjCPLService.compile(filePath)` — returns `Promise<Diagnostic[]>`
+
+**BBjCPLService API (from Phase 52):**
 - `services.compiler.BBjCPLService.compile(filePath)` — returns `Promise<Diagnostic[]>`
 - `services.compiler.BBjCPLService.setTimeout(ms)` — configures timeout from VS Code settings
 - `services.compiler.BBjCPLService.isCompiling(filePath)` — check in-flight state
@@ -131,11 +142,6 @@ None
 - Regex: `^.+:\s+error at line \d+ \((\d+)\):\s*(.*)`
 - Binary derived from `getBBjDir() + '/bin/bbjcpl'` (or bbjcpl.exe on Windows)
 - Always exits 0; errors on stderr only; stdout always empty
-
-**Phase 50 complete.** Full diagnostic suppression stack in place:
-- Plan 01: Core suppression logic in BBjDocumentValidator (DiagnosticTier, applyDiagnosticHierarchy, setSuppressCascading, setMaxErrors)
-- Plan 02: VS Code settings wiring + status bar indicator
-- Phase 53 extension path: add `BBjCPL = 3` to `DiagnosticTier` enum and one branch to `getDiagnosticTier()`; add custom LSP notification for precise status bar state
 
 ---
 
@@ -164,4 +170,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after Phase 52 Plan 02 completion — Stopped at: Completed 52-bbjcpl-foundation 52-02-PLAN.md*
+*State updated: 2026-02-20 after Phase 53 Plan 01 completion — Stopped at: Completed 53-bbjcpl-diagnostic-integration 53-01-PLAN.md*
