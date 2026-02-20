@@ -31,6 +31,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         this.spliceToken(tokens, 'ASTERISK_STANDALONE');
         this.spliceToken(tokens, 'RELEASE_NL');
         this.spliceToken(tokens, 'RELEASE_NO_NL');
+        this.spliceToken(tokens, 'EXIT_NO_NL');
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
         const idWithSuffix = terminalTokens.find(e => e.name === 'ID_WITH_SUFFIX')!;
@@ -55,6 +56,10 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         releaseNoNl.CATEGORIES = [id];
         releaseNl.LONGER_ALT = [idWithSuffix, id];
         releaseNoNl.LONGER_ALT = [idWithSuffix, id];
+
+        const exitNoNl = terminalTokens.find(e => e.name === 'EXIT_NO_NL')!;
+        exitNoNl.CATEGORIES = [id];
+        exitNoNl.LONGER_ALT = [idWithSuffix, id];
 
         return tokens;
     }
@@ -88,6 +93,18 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             return {
                 name: terminal.name,
                 PATTERN: this.regexPatternFunction(/RELEASE(?=\s*(;\s*|\r?\n))/i),
+                LINE_BREAKS: false
+            };
+        } else if (terminal.name === 'EXIT_NO_NL') {
+            // Matches EXIT followed by horizontal whitespace then a numeric expression starter.
+            // Restricting to [0-9(+\-] ensures EXIT_NO_NL does not fire before keywords (like
+            // `else` in `if cond then exit else ...`) or identifiers that begin with letters.
+            // EXITTO keyword is not matched because 'T' is not in [0-9(+\-].
+            // Bare EXIT (at EOL or before flow-control keywords) is handled by the 'EXIT' keyword
+            // token generated from the `kind='EXIT'` grammar alternative.
+            return {
+                name: terminal.name,
+                PATTERN: this.regexPatternFunction(/EXIT(?=[ \t]+[0-9(+\-])/i),
                 LINE_BREAKS: false
             };
         } else if (terminal.name === 'RPAREN_NL') {
@@ -163,4 +180,3 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 }
 
 const KEYWORD_STANDALONE = 'DELETE|SAVE|ENTER|READ|INPUT|EXTRACT|FIND'
-
