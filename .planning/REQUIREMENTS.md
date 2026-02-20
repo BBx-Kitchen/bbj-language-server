@@ -1,46 +1,57 @@
 # Requirements: BBj Language Server
 
-**Defined:** 2026-02-19
+**Defined:** 2026-02-20
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## v3.7 Requirements
+## v3.8 Requirements
 
-Requirements for Diagnostic Quality & BBjCPL Integration milestone. Each maps to roadmap phases.
+Requirements for test & debt cleanup milestone. Each maps to roadmap phases.
 
-### Diagnostic Noise Reduction
+### Test Failures
 
-- [x] **DIAG-01**: Suppress cascading linking/validation errors when parser errors exist — only show the actual syntax errors, not downstream noise
-- [x] **DIAG-02**: Show warnings/hints only when no hard errors present from any source — clean diagnostic hierarchy across all error levels
+- [ ] **TEST-01**: `classes.test.ts` private class error message expectation updated to match `(declared in ...)` format
+- [ ] **TEST-02**: `classes.test.ts` protected class error message expectation updated to match `(declared in ...)` format
+- [ ] **TEST-03**: `completion-test.test.ts` DEF FN parameters with `$` suffix complete correctly inside class methods
+- [ ] **TEST-04**: `imports.test.ts` USE referencing file with no classes produces file-path error diagnostic
+- [ ] **TEST-05**: `validation.test.ts` private instance member access flagged cross-file
+- [ ] **TEST-06**: `validation.test.ts` private static member access flagged cross-file
 
-### Outline Resilience
+### Test Hardening
 
-- [x] **OUTL-01**: Document symbols survive syntax errors without crashing — Structure View does not go blank or throw errors on partial ASTs
-- [x] **OUTL-02**: Methods/classes before and after error point visible in Structure View — syntax error in one method does not hide other methods in the outline
+- [ ] **HARD-01**: 9 commented-out `expectNoValidationErrors()` assertions uncommented and passing in `parser.test.ts`
 
-### BBjCPL Foundation
+### Dead Code
 
-- [x] **CPL-01**: Discover BBjCPL error output format via test fixtures — run compiler against known-bad files, capture actual stderr format, create test data
-- [x] **CPL-02**: Invoke BBjCPL using bbj.home path with -N flag (check-only mode) — cross-platform process spawning with proper path handling
-- [x] **CPL-03**: Parse BBjCPL stderr into LSP diagnostics with accurate line numbers — error output parser validated against real compiler output
-- [x] **CPL-04**: Safe process management — abort on re-edit, no orphaned processes, configurable timeout, AbortController lifecycle
+- [ ] **DEAD-01**: MethodCall CAST branch removed from `bbj-type-inferer.ts`
+- [ ] **DEAD-02**: `checkCastTypeResolvable` for MethodCall removed from `bbj-validator.ts` (method + registration)
 
-### BBjCPL Diagnostics
+### Production FIXMEs
 
-- [x] **CPL-05**: BBjCPL diagnostics labeled with source "BBjCPL" — distinct from Langium "bbj" source for user clarity
-- [x] **CPL-06**: Diagnostic hierarchy — BBjCPL errors shown first; Langium parser errors only when BBjCPL reports clean; warnings/hints only when no hard errors
-- [x] **CPL-07**: Configurable trigger setting — on-save (default) or debounced invocation, controlled via bbj.compiler.trigger setting
-- [x] **CPL-08**: BBjCPL integration degrades gracefully when BBj not installed — no errors, no UI noise, Langium diagnostics work as before
+- [ ] **FIX-01**: `bbj-linker.ts:74` — Receiver ref resolution FIXME resolved or documented as intentional
+- [ ] **FIX-02**: `bbj-scope.ts:209` — Orphaned AST instances hack resolved or documented as intentional
+- [ ] **FIX-03**: `java-javadoc.ts:54` — Javadoc re-trigger FIXME resolved
+- [ ] **FIX-04**: `InteropService.java:166` — Inner class name handling FIXME resolved
+
+### Actionable TODOs
+
+- [ ] **TODO-01**: `bbj-completion-provider.ts:144` — Add documentation to completion item description
+- [ ] **TODO-02**: `java-interop.ts:78` — Send error message to the client on connection failure
 
 ## Future Requirements
 
-Deferred to subsequent milestones. Tracked but not in current roadmap.
+Deferred to future release. Tracked but not in current roadmap.
 
-### BBjCPL Advanced
+### Architectural TODOs
 
-- **CPL-A01**: Static type checking via -t flag with configurable prefix/config file
-- **CPL-A02**: Undeclared variable warnings via -W flag (requires -t)
-- **CPL-A03**: BBjCPL pipe mode (stdin) for reduced JVM startup overhead
-- **CPL-A04**: Diagnostic range correlation — map BBjCPL line errors to exact token ranges from Langium AST
+- **ARCH-01**: `bbj-scope.ts:450` — Inspect USE inside classes
+- **ARCH-02**: `bbj-scope-local.ts:221` — Move super getter/setter to ScopeProvider
+- **ARCH-03**: `bbj-ws-manager.ts:15` — Extend FileSystemAccess or add additional service
+- **ARCH-04**: `bbj-ws-manager.ts:221` — Check that document is part of workspace folders
+
+### Feature TODOs
+
+- **FEAT-01**: `bbj-completion-provider.ts:132` — Load param names for Java methods from Javadoc
+- **FEAT-02**: `java-interop.ts:407` — Check types of parameters
 
 ## Out of Scope
 
@@ -48,11 +59,11 @@ Explicitly excluded. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| BBjCPL compilation output (.bbj tokenized files) | v3.7 is check-only (-N flag); compilation is a separate feature |
-| BBjCPL type checking (-t flag) | Requires prefix/config file setup; defer to v3.8+ |
-| Custom Chevrotain error recovery rules | High complexity; research showed defensive symbol provider is sufficient |
-| Parser grammar changes for better error recovery | Grammar is stable; outline resilience solved at symbol provider level |
-| IntelliJ-specific BBjCPL UI (tool window, gutter icons) | Both IDEs consume same LSP diagnostics; no IDE-specific work needed |
+| Parser test flakiness TODO | Non-blocking, test infrastructure concern |
+| Matrix operations TODO | Feature-level grammar work |
+| Test-only TODOs (remove `/@@@/`, etc.) | Non-blocking, cosmetic |
+| CPU stability mitigations (#232) | Separate milestone — significant architectural work |
+| BBjCPL deferred items (-t flag, pipe mode, range correlation) | Separate milestone |
 
 ## Traceability
 
@@ -60,24 +71,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DIAG-01 | Phase 50 | Complete |
-| DIAG-02 | Phase 50 | Complete |
-| OUTL-01 | Phase 51 | Complete |
-| OUTL-02 | Phase 51 | Complete |
-| CPL-01 | Phase 52 | Complete |
-| CPL-02 | Phase 52 | Complete |
-| CPL-03 | Phase 52 | Complete |
-| CPL-04 | Phase 52 | Complete |
-| CPL-05 | Phase 53 | Complete |
-| CPL-06 | Phase 53 | Complete |
-| CPL-07 | Phase 53 | Complete |
-| CPL-08 | Phase 53 | Complete |
+| TEST-01 | — | Pending |
+| TEST-02 | — | Pending |
+| TEST-03 | — | Pending |
+| TEST-04 | — | Pending |
+| TEST-05 | — | Pending |
+| TEST-06 | — | Pending |
+| HARD-01 | — | Pending |
+| DEAD-01 | — | Pending |
+| DEAD-02 | — | Pending |
+| FIX-01 | — | Pending |
+| FIX-02 | — | Pending |
+| FIX-03 | — | Pending |
+| FIX-04 | — | Pending |
+| TODO-01 | — | Pending |
+| TODO-02 | — | Pending |
 
 **Coverage:**
-- v3.7 requirements: 12 total
-- Mapped to phases: 12
-- Unmapped: 0
+- v3.8 requirements: 15 total
+- Mapped to phases: 0
+- Unmapped: 15
 
 ---
-*Requirements defined: 2026-02-19*
-*Last updated: 2026-02-19 after roadmap creation — all 12 requirements mapped*
+*Requirements defined: 2026-02-20*
+*Last updated: 2026-02-20 after initial definition*
