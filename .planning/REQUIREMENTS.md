@@ -9,12 +9,12 @@ Requirements for test & debt cleanup milestone. Each maps to roadmap phases.
 
 ### Test Failures
 
-- [ ] **TEST-01**: `classes.test.ts` private class error message expectation updated to match `(declared in ...)` format
-- [ ] **TEST-02**: `classes.test.ts` protected class error message expectation updated to match `(declared in ...)` format
+- [x] **TEST-01**: `classes.test.ts` private class error message expectation updated to match `(declared in ...)` format
+- [x] **TEST-02**: `classes.test.ts` protected class error message expectation updated to match `(declared in ...)` format
 - [ ] **TEST-03**: `completion-test.test.ts` DEF FN parameters with `$` suffix complete correctly inside class methods
 - [ ] **TEST-04**: `imports.test.ts` USE referencing file with no classes produces file-path error diagnostic
-- [ ] **TEST-05**: `validation.test.ts` private instance member access flagged cross-file
-- [ ] **TEST-06**: `validation.test.ts` private static member access flagged cross-file
+- [x] **TEST-05**: `validation.test.ts` private instance member access flagged cross-file
+- [x] **TEST-06**: `validation.test.ts` private static member access flagged cross-file
 
 ### Test Hardening
 
@@ -71,12 +71,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TEST-01 | Phase 54 | Pending |
-| TEST-02 | Phase 54 | Pending |
+| TEST-01 | Phase 54 | Complete |
+| TEST-02 | Phase 54 | Complete |
 | TEST-03 | Phase 54 | Pending |
 | TEST-04 | Phase 54 | Pending |
-| TEST-05 | Phase 54 | Pending |
-| TEST-06 | Phase 54 | Pending |
+| TEST-05 | Phase 54 | Complete |
+| TEST-06 | Phase 54 | Complete |
 | HARD-01 | Phase 55 | Pending |
 | DEAD-01 | Phase 55 | Pending |
 | DEAD-02 | Phase 55 | Pending |

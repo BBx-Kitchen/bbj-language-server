@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 54 of 56 (Fix Failing Tests)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-02-20 — v3.8 roadmap created (Phases 54-56, 15 requirements mapped)
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-02-20 — Completed 54-01-PLAN.md (TEST-01, TEST-02, TEST-05, TEST-06 fixed)
 
-Progress: [░░░░░░░░░░] 0% (v3.8)
+Progress: [█░░░░░░░░░] 10% (v3.8)
 
 ---
 
@@ -30,7 +30,7 @@ Progress: [░░░░░░░░░░] 0% (v3.8)
 **Started:** 2026-02-01
 **Milestones shipped:** 14
 **Phases completed:** 53
-**Plans completed:** 128
+**Plans completed:** 129
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -48,6 +48,12 @@ Progress: [░░░░░░░░░░] 0% (v3.8)
 - Plans: 2
 - Key: IntelliJ Platform API compatibility — zero deprecated/scheduled-for-removal warnings
 
+### v3.8 Plan Metrics
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| 54-fix-failing-tests P01 | 2 min | 2 | 2 |
+
 ---
 
 ## Accumulated Context
@@ -55,7 +61,6 @@ Progress: [░░░░░░░░░░] 0% (v3.8)
 ### Active Constraints
 
 - TEST-03 (DEF FN `$` suffix completion) may be a real bug requiring implementation changes — scope confirmed in Phase 54
-- TEST-05/TEST-06 (cross-file access validation) may require validator changes — confirmed in Phase 54
 - FIX-01 (bbj-linker.ts receiver ref) and FIX-02 (bbj-scope.ts orphaned AST hack) may be intentional — Phase 56 resolves the ambiguity
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 
@@ -66,6 +71,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 53]: BBjCPL called from inside buildDocuments(), never from onBuildPhase (CPU rebuild loop prevention)
 - [Phase 52]: Cancel flag + proc.kill() over AbortController — AbortController crashes vitest worker on ENOENT
 - [Phase 50]: Per-file suppression only — File B linking errors survive when File A has parse errors
+- [Phase 54]: Use toContain/RegExp over toBe/string for error message assertions in tests — tolerates future message format changes
 
 ### Tech Debt
 
@@ -89,7 +95,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: v3.7 complete. v3.8 roadmap created. Ready to plan Phase 54.
+Stopped at: Completed 54-fix-failing-tests-01-PLAN.md
 Resume file: None
 
 ---
@@ -118,4 +124,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after v3.8 roadmap creation*
+*State updated: 2026-02-20 after completing 54-01-PLAN.md*
