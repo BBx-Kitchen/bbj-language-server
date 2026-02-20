@@ -53,6 +53,11 @@ export class BBjTypeInferer implements TypeInferer {
         } else if (isConstructorCall(expression)) {
             return getClass(expression.klass);
         } else if (isMemberCall(expression)) {
+            // Check for .class property — resolves to java.lang.Class
+            const memberRefText = expression.member.$refText;
+            if (memberRefText === 'class') {
+                return this.javaInterop.getResolvedClass('java.lang.Class');
+            }
             let member;
             try {
                 member = expression.member.ref;
