@@ -27,14 +27,14 @@ describe('parseBbjcplOutput', () => {
 
         // Line 3 (physical) -> 0-based line 2
         expect(first.severity).toBe(DiagnosticSeverity.Error);
-        expect(first.source).toBe('BBj Compiler');
+        expect(first.source).toBe('BBjCPL');
         expect(first.range.start.line).toBe(2);
         expect(first.range.start.character).toBe(0);
         expect(first.range.end.character).toBe(Number.MAX_SAFE_INTEGER);
 
         // Line 5 (physical) -> 0-based line 4
         expect(second.severity).toBe(DiagnosticSeverity.Error);
-        expect(second.source).toBe('BBj Compiler');
+        expect(second.source).toBe('BBjCPL');
         expect(second.range.start.line).toBe(4);
         expect(second.range.start.character).toBe(0);
         expect(second.range.end.character).toBe(Number.MAX_SAFE_INTEGER);
@@ -48,7 +48,7 @@ describe('parseBbjcplOutput', () => {
         // Physical line 3 -> 0-based line 2
         expect(diagnostics[0].range.start.line).toBe(2);
         expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Error);
-        expect(diagnostics[0].source).toBe('BBj Compiler');
+        expect(diagnostics[0].source).toBe('BBjCPL');
 
         // Physical line 5 -> 0-based line 4
         expect(diagnostics[1].range.start.line).toBe(4);
@@ -119,7 +119,7 @@ describe('parseBbjcplOutput', () => {
         expect(diagnostics).toHaveLength(2);
         for (const d of diagnostics) {
             expect(d.severity).toBe(DiagnosticSeverity.Error);
-            expect(d.source).toBe('BBj Compiler');
+            expect(d.source).toBe('BBjCPL');
         }
     });
 

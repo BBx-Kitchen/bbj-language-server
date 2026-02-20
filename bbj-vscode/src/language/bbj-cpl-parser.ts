@@ -54,7 +54,7 @@ export function parseBbjcplOutput(stderr: string): Diagnostic[] {
         diagnostics.push({
             range,
             severity: DiagnosticSeverity.Error,
-            source: 'BBj Compiler',
+            source: 'BBjCPL',
             message,
         });
     }

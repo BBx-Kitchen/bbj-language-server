@@ -30,17 +30,16 @@ export function setMaxErrors(max: number): void {
 /**
  * Diagnostic source tiers — ordered by priority.
  * Higher-priority tiers suppress lower ones.
- * Phase 53 will add BBjCPL = 3 as the highest tier.
  */
 const enum DiagnosticTier {
     Warning  = 0,   // warnings/hints — suppressed when any error present
     Semantic = 1,   // semantic/validation errors (Error severity, non-parse)
     Parse    = 2,   // parser errors — also suppress linking errors
-    // BBjCPL = 3,  // Phase 53: compiler errors — suppress everything below
+    BBjCPL   = 3,   // BBjCPL compiler errors — suppress Langium parse errors
 }
 
 function getDiagnosticTier(d: Diagnostic): DiagnosticTier {
-    // Phase 53 adds: if (d.source === 'bbj-cpl') return DiagnosticTier.BBjCPL;
+    if (d.source === 'BBjCPL') return DiagnosticTier.BBjCPL;
     if (d.data?.code === DocumentValidator.ParsingError) return DiagnosticTier.Parse;
     if (d.severity === DiagnosticSeverity.Error) return DiagnosticTier.Semantic;
     return DiagnosticTier.Warning;
@@ -73,8 +72,18 @@ function applyDiagnosticHierarchy(
     const hasAnyError = diagnostics.some(
         d => d.severity === DiagnosticSeverity.Error
     );
+    const hasBbjcplErrors = diagnostics.some(
+        d => getDiagnosticTier(d) === DiagnosticTier.BBjCPL
+    );
 
     let result = diagnostics;
+
+    // Rule 0: BBjCPL errors present → suppress Langium parse errors (they're redundant)
+    if (hasBbjcplErrors) {
+        result = result.filter(
+            d => getDiagnosticTier(d) !== DiagnosticTier.Parse
+        );
+    }
 
     // Rule 1: parse errors present → suppress ALL linking errors
     // Must match on data.code, not severity (linking errors are downgraded to Warning by toDiagnostic)
@@ -96,6 +105,35 @@ function applyDiagnosticHierarchy(
     if (parseErrors.length > maxErrors) {
         const nonParseErrors = result.filter(d => getDiagnosticTier(d) !== DiagnosticTier.Parse);
         result = [...parseErrors.slice(0, maxErrors), ...nonParseErrors];
+    }
+
+    return result;
+}
+
+/**
+ * Merge BBjCPL diagnostics into Langium diagnostics.
+ *
+ * Rules (from CONTEXT.md):
+ * - Same line: prefer Langium message, set source to 'BBjCPL' (compiler confirmed)
+ * - BBjCPL-only errors (no Langium match on same line): add with 'BBjCPL' source
+ * - Langium-only diagnostics: kept unchanged
+ */
+export function mergeDiagnostics(langiumDiags: Diagnostic[], cplDiags: Diagnostic[]): Diagnostic[] {
+    const result: Diagnostic[] = [...langiumDiags];
+
+    for (const cplDiag of cplDiags) {
+        const cplLine = cplDiag.range.start.line;
+        const matchIdx = result.findIndex(
+            d => d.range.start.line === cplLine && d.source !== 'BBjCPL'
+        );
+
+        if (matchIdx >= 0) {
+            // Same line: keep Langium message, change source to 'BBjCPL'
+            result[matchIdx] = { ...result[matchIdx], source: 'BBjCPL' };
+        } else {
+            // BBjCPL-only error: add directly
+            result.push(cplDiag);
+        }
     }
 
     return result;
