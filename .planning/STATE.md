@@ -15,11 +15,11 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 57 of 59 (Bug Fixes)
-Plan: 1 of 1 in current phase
-Status: In Progress
-Last activity: 2026-02-20 — Completed 57-01-PLAN.md (BUG-01, BUG-02 fixed)
+Plan: 2 of 2 in current phase
+Status: Phase Complete
+Last activity: 2026-02-20 — Completed 57-02-PLAN.md (BUG-03, BUG-04 fixed)
 
-Progress: [█░░░░░░░░░] 10% (v3.9)
+Progress: [██░░░░░░░░] 20% (v3.9)
 
 ---
 
@@ -30,7 +30,7 @@ Progress: [█░░░░░░░░░] 10% (v3.9)
 **Started:** 2026-02-01
 **Milestones shipped:** 15
 **Phases completed:** 56
-**Plans completed:** 136
+**Plans completed:** 137
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -38,6 +38,7 @@ Progress: [█░░░░░░░░░] 10% (v3.9)
 
 **v3.9 (In Progress: 2026-02-20):**
 - Phase 57 Plan 01: 2 tasks, 5 files, 2 min
+- Phase 57 Plan 02: 2 tasks, 5 files, 10 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -60,11 +61,12 @@ Progress: [█░░░░░░░░░] 10% (v3.9)
 - TEST-03 (DEF FN `$` suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
-- Pre-existing TS errors in bbj-linker.ts and bbj-validator.ts (Property 'visibility' on BBjClassMember) — out of scope
 
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 57]: Guard checkDeclareNotInClassBody on $type === 'VariableDecl' to prevent FieldDecl subtypes from being flagged
+- [Phase 57]: Cast BBjClassMember to { visibility?: string } in linker and validator to handle VariableDecl addition to union type
 - [Phase 57-bug-fixes]: Strip '--' EM Config sentinel silently from classpath in all run commands (VS Code + IntelliJ)
 - [Phase 57-bug-fixes]: VS Code configurationDefaults files.associations used to exclude config.bbx and config.min from BBj language; IntelliJ TextMate bundle lacks filename-exclusion support — documented as limitation
 - [Phase 56]: method.docu populated at class resolution time so completion provider can access synchronously
@@ -96,7 +98,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 57-01-PLAN.md
+Stopped at: Completed 57-02-PLAN.md — Phase 57 complete (BUG-01 through BUG-04 all fixed)
 Resume file: None
 
 ---
@@ -125,4 +127,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 57-01 (BUG-01, BUG-02)*
+*State updated: 2026-02-20 after completing 57-02 (BUG-03, BUG-04) — Phase 57 all plans complete*

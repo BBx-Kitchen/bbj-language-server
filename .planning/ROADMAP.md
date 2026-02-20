@@ -172,7 +172,7 @@ Research-only milestone — no phases.
 
 **Milestone Goal:** Fix reported bugs, add missing grammar verbs, and close quick feature gaps (static methods, constructors, deprecated indicators).
 
-- [ ] **Phase 57: Bug Fixes** — Fix four reported regressions (EM Config, config.bbx highlighting, suffixed identifiers, DECLARE in class body)
+- [x] **Phase 57: Bug Fixes** — Fix four reported regressions (EM Config, config.bbx highlighting, suffixed identifiers, DECLARE in class body) (completed 2026-02-20)
 - [ ] **Phase 58: Grammar Additions** — Add missing EXIT parameter, SERIAL verb, and ADDR function to parser
 - [ ] **Phase 59: Java Class Reference Features** — Add .class resolution, static method completion, deprecated indicators, and constructor completion
 

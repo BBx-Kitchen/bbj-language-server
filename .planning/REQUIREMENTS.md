@@ -11,8 +11,8 @@ Requirements for v3.9 Quick Wins milestone. Each maps to roadmap phases.
 
 - [x] **BUG-01**: EM Config "--" no longer causes DWC/BUI startup failure (#382)
 - [x] **BUG-02**: config.bbx files are highlighted with BBj syntax highlighting (#381)
-- [ ] **BUG-03**: `releaseVersion!` and similar suffixed identifiers parse without error (#379)
-- [ ] **BUG-04**: DECLARE statement in class body outside methods parses without error (#380)
+- [x] **BUG-03**: `releaseVersion!` and similar suffixed identifiers parse without error (#379)
+- [x] **BUG-04**: DECLARE statement in class body outside methods parses without error (#380)
 
 ### Grammar
 
@@ -60,8 +60,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | BUG-01 | Phase 57 | Complete |
 | BUG-02 | Phase 57 | Complete |
-| BUG-03 | Phase 57 | Pending |
-| BUG-04 | Phase 57 | Pending |
+| BUG-03 | Phase 57 | Complete |
+| BUG-04 | Phase 57 | Complete |
 | GRAM-01 | Phase 58 | Pending |
 | GRAM-02 | Phase 58 | Pending |
 | GRAM-03 | Phase 58 | Pending |
