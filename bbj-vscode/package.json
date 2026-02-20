@@ -513,6 +513,12 @@
           "scope": "window"
         }
       }
+    },
+    "configurationDefaults": {
+      "files.associations": {
+        "config.bbx": "plaintext",
+        "config.min": "plaintext"
+      }
     }
   },
   "activationEvents": [
