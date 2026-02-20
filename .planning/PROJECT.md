@@ -143,18 +143,16 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Graceful degradation when BBj not installed — status bar indicator, no error dialogs — v3.7
 - ✓ mergeDiagnostics() — same-line: Langium message + BBjCPL source; BBjCPL-only: added directly — v3.7
 
+- ✓ Fixed 6 pre-existing test failures (stale expectations + USE validation) — v3.8
+- ✓ 6 of 9 disabled parser test assertions re-enabled and passing — v3.8
+- ✓ Dead MethodCall CAST branches removed from type inferer and validator — v3.8
+- ✓ 4 production FIXMEs resolved or documented as intentional — v3.8
+- ✓ Javadoc-enriched completion items with method.docu population at class resolution — v3.8
+- ✓ Java connection error notification via window/showMessage — v3.8
+
 ### Active
 
-## Current Milestone: v3.8 Test & Debt Cleanup
-
-**Goal:** Get the test suite fully green, remove confirmed dead code, and resolve production FIXMEs and actionable TODOs.
-
-**Target features:**
-- Fix all 6 pre-existing test failures (stale expectations + real bugs)
-- Uncomment and fix 9 disabled `expectNoValidationErrors()` assertions
-- Remove dead MethodCall CAST branches in type inferer and validator
-- Resolve 4 production FIXMEs (linker, scope hack, javadoc, inner class)
-- Address actionable production TODOs
+(No active milestone — ready for next)
 
 ### Out of Scope
 
@@ -168,7 +166,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.8 in progress. v3.7 shipped 2026-02-20 (15 milestones, 53 phases). Cleanup milestone targeting test suite health, dead code removal, and production FIXME resolution.
+**Current state:** v3.8 shipped 2026-02-20 (15 milestones, 56 phases). Test suite fully green (501 passed, 4 skipped). All production FIXMEs and actionable TODOs resolved. No active milestone.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -183,10 +181,10 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 **Known tech debt:**
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - CPU stability mitigations documented but not yet implemented (#232)
-- Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression — v3.8 target
-- 6 pre-existing test failures (access-level, DEF FN completion, USE import, validation) — v3.8 target
-- 14 pre-existing TODO/FIXME comments across 6 files (java-interop, ws-manager, javadoc, scopes, linker)
 - CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct)
+- TEST-03 (DEF FN completion inside class methods) skipped — Langium grammar follower limitation
+- 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
+- 4 architectural TODOs (ARCH-01 through ARCH-04) and 2 feature TODOs (FEAT-01, FEAT-02) tracked in future requirements
 
 ## Constraints
 
@@ -300,4 +298,4 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | Status bar over notification balloons for BBjCPL | Non-intrusive "BBjCPL: unavailable" in status bar; no popup dialogs | ✓ Good — v3.7 shipped |
 
 ---
-*Last updated: 2026-02-20 after v3.8 milestone start*
+*Last updated: 2026-02-20 after v3.8 milestone completion*

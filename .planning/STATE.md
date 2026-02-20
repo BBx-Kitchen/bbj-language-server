@@ -8,7 +8,7 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.8 Test & Debt Cleanup — Phase 56: Production FIXME/TODO Resolution (COMPLETE)
+**Current Focus:** No active milestone — v3.8 shipped 2026-02-20
 
 ---
 
@@ -16,8 +16,8 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 Phase: 56 of 56 (Production FIXME/TODO Resolution)
 Plan: 1 of 1 in current phase
-Status: Complete — all v3.8 phases done
-Last activity: 2026-02-20 — Completed 56-03-PLAN.md (TODO-01 gap closure: method.docu population in resolveClass() for Java Javadoc completion)
+Status: Milestone v3.8 shipped
+Last activity: 2026-02-20 — v3.8 Test & Debt Cleanup milestone completed and archived
 
 Progress: [██████████] 100% (v3.8)
 
@@ -28,9 +28,9 @@ Progress: [██████████] 100% (v3.8)
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 14
-**Phases completed:** 53
-**Plans completed:** 129
+**Milestones shipped:** 15
+**Phases completed:** 56
+**Plans completed:** 135
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -134,10 +134,10 @@ Resume file: None
 | v3.5 Documentation for 0.8.0 Release | 44-47 | 7 | 2026-02-09 |
 | v3.6 IntelliJ Platform API Compatibility | 48-49 | 2 | 2026-02-10 |
 | v3.7 Diagnostic Quality & BBjCPL Integration | 50-53 | 7 | 2026-02-20 |
-| v3.8 Test & Debt Cleanup | 54-56 | TBD | In progress |
+| v3.8 Test & Debt Cleanup | 54-56 | 7 | 2026-02-20 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 56-02-PLAN.md*
+*State updated: 2026-02-20 after v3.8 milestone completion*

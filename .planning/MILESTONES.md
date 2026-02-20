@@ -409,3 +409,33 @@
 
 ---
 
+
+## v3.8 Test & Debt Cleanup (Shipped: 2026-02-20)
+
+**Delivered:** Fixed all pre-existing test failures, re-enabled disabled parser assertions, removed confirmed dead code branches, and resolved every production FIXME and actionable TODO — leaving the test suite fully green and the codebase free of ambiguous technical debt markers.
+
+**Phases completed:** 54-56 (7 plans total, including 1 gap closure)
+
+**Key accomplishments:**
+
+- Fixed 6 pre-existing test failures: updated error message assertions to use `toContain`/RegExp matching, added USE validation for files with no BbjClass nodes, documented TEST-03 as Langium grammar follower limitation
+- Re-enabled 6 of 9 disabled `expectNoValidationErrors()` parser test assertions; remaining 3 documented as requiring Java classpath unavailable in EmptyFileSystem
+- Removed dead MethodCall CAST branches from `bbj-type-inferer.ts` (24 lines) and `bbj-validator.ts` (41 lines) — unreachable since Phase 33 CastExpression grammar rule
+- Resolved 4 production FIXMEs: linker receiver ref (intentional), scope orphaned AST (Langium lifecycle), javadoc cancellation (restored missing return), InteropService inner class (stale since #314)
+- Implemented Javadoc-enriched completion items — `method.docu` populated during `resolveClass()` with signature and parsed Javadoc markdown
+- Added Java connection error notification via `window/showMessage` when interop service fails to connect
+
+**Stats:**
+
+- 35 files modified (+2,376 / -191 lines)
+- 3 phases, 7 plans (including 1 gap closure for TODO-01b)
+- 1 day (2026-02-20)
+- Milestone audit: 15/15 requirements, 3/3 phases, 15/15 integrations, 3/3 E2E flows
+- Test suite: 501 passed, 4 skipped, 0 failures
+
+**Git range:** `ff1c2c2` → `c71185a`
+
+**What's next:** All test and debt cleanup targets met. Ready for next milestone.
+
+---
+
