@@ -27,15 +27,15 @@ Requirements for test & debt cleanup milestone. Each maps to roadmap phases.
 
 ### Production FIXMEs
 
-- [ ] **FIX-01**: `bbj-linker.ts:74` — Receiver ref resolution FIXME resolved or documented as intentional
-- [ ] **FIX-02**: `bbj-scope.ts:209` — Orphaned AST instances hack resolved or documented as intentional
-- [ ] **FIX-03**: `java-javadoc.ts:54` — Javadoc re-trigger FIXME resolved
-- [ ] **FIX-04**: `InteropService.java:166` — Inner class name handling FIXME resolved
+- [x] **FIX-01**: `bbj-linker.ts:74` — Receiver ref resolution FIXME resolved or documented as intentional
+- [x] **FIX-02**: `bbj-scope.ts:209` — Orphaned AST instances hack resolved or documented as intentional
+- [x] **FIX-03**: `java-javadoc.ts:54` — Javadoc re-trigger FIXME resolved
+- [x] **FIX-04**: `InteropService.java:166` — Inner class name handling FIXME resolved
 
 ### Actionable TODOs
 
-- [ ] **TODO-01**: `bbj-completion-provider.ts:144` — Add documentation to completion item description
-- [ ] **TODO-02**: `java-interop.ts:78` — Send error message to the client on connection failure
+- [x] **TODO-01**: `bbj-completion-provider.ts:144` — Add documentation to completion item description
+- [x] **TODO-02**: `java-interop.ts:78` — Send error message to the client on connection failure
 
 ## Future Requirements
 
@@ -80,12 +80,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HARD-01 | Phase 55 | Complete |
 | DEAD-01 | Phase 55 | Complete |
 | DEAD-02 | Phase 55 | Complete |
-| FIX-01 | Phase 56 | Pending |
-| FIX-02 | Phase 56 | Pending |
-| FIX-03 | Phase 56 | Pending |
-| FIX-04 | Phase 56 | Pending |
-| TODO-01 | Phase 56 | Pending |
-| TODO-02 | Phase 56 | Pending |
+| FIX-01 | Phase 56 | Complete |
+| FIX-02 | Phase 56 | Complete |
+| FIX-03 | Phase 56 | Complete |
+| FIX-04 | Phase 56 | Complete |
+| TODO-01 | Phase 56 | Complete |
+| TODO-02 | Phase 56 | Complete |
 
 **Coverage:**
 - v3.8 requirements: 15 total

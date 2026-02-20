@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.8 Test & Debt Cleanup — Phase 55: Test Hardening & Dead Code Removal
+**Current Focus:** v3.8 Test & Debt Cleanup — Phase 56: Production FIXME/TODO Resolution (COMPLETE)
 
 ---
 
 ## Current Position
 
-Phase: 55 of 56 (Test Hardening & Dead Code Removal)
-Plan: 2 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-20 — Completed 55-02-PLAN.md (DEAD-01, DEAD-02 removed)
+Phase: 56 of 56 (Production FIXME/TODO Resolution)
+Plan: 1 of 1 in current phase
+Status: Complete — all v3.8 phases done
+Last activity: 2026-02-20 — Completed 56-01-PLAN.md (FIX-01 through FIX-04 resolved)
 
-Progress: [█░░░░░░░░░] 10% (v3.8)
+Progress: [██████████] 100% (v3.8)
 
 ---
 
@@ -58,13 +58,14 @@ Progress: [█░░░░░░░░░] 10% (v3.8)
 | Phase 54-fix-failing-tests P02 | 8 | 2 tasks | 3 files |
 | Phase 55-test-hardening-dead-code P02 | 2 | 1 tasks | 2 files |
 | Phase 55-test-hardening-dead-code P01 | 5 | 1 tasks | 1 files |
+| Phase 56-production-fixme-todo-resolution P01 | 2 | 2 tasks | 4 files |
+| Phase 56 P02 | 135 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
 ### Active Constraints
 
 - TEST-03 (DEF FN `$` suffix completion) may be a real bug requiring implementation changes — scope confirmed in Phase 54
-- FIX-01 (bbj-linker.ts receiver ref) and FIX-02 (bbj-scope.ts orphaned AST hack) may be intentional — Phase 56 resolves the ambiguity
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 
 ### Decisions
@@ -79,6 +80,12 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 54-fix-failing-tests]: TEST-04: Use IndexManager.allElements(BbjClass.$type) to detect no-class files; emit warning (not error) when file exists but has no BBj classes
 - [Phase 55-test-hardening-dead-code]: DEAD-01/DEAD-02: Removed MethodCall CAST branches from type-inferer and validator; unreachable since Phase 33 CastExpression grammar rule
 - [Phase 55-test-hardening-dead-code]: Disabled validation assertions in parser.test.ts need Java classpath (String/byte/BBjAPI): replaced //TODO with // DISABLED comments; fixed 6 test inputs instead of disabling
+- [Phase 56-01]: FIX-01: Eager receiver ref resolution is necessary — isArrayDecl() requires the ref resolved to detect template string arrays; cannot be deferred
+- [Phase 56-01]: FIX-02: Orphaned AST $container fallback is a known Langium lifecycle workaround; intentional and necessary
+- [Phase 56-01]: FIX-03: Cancellation during javadoc init is harmless (best-effort feature); restored missing return statement that was embedded in FIXME text
+- [Phase 56-01]: FIX-04: Inner class handling already implemented in loadClassByName() since issue #314; FIXME was stale documentation
+- [Phase 56]: Use node.docu pre-populated field for synchronous Javadoc in completion provider (avoids async call in sync createReferenceCompletionItem)
+- [Phase 56]: notifyJavaConnectionError uses window.showErrorMessage (Error level) — user-actionable issue requiring prominent feedback
 
 ### Tech Debt
 
@@ -102,7 +109,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 55-01-PLAN.md (HARD-01 re-enabled 6/9 parser test validation assertions)
+Stopped at: Completed 56-01-PLAN.md (FIX-01 through FIX-04 — all production FIXMEs resolved)
 Resume file: None
 
 ---
@@ -131,4 +138,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 55-01-PLAN.md*
+*State updated: 2026-02-20 after completing 56-01-PLAN.md*

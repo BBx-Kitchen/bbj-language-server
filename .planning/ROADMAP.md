@@ -164,7 +164,7 @@ Research-only milestone — no phases.
 
 - [x] **Phase 54: Fix Failing Tests** - Repair 6 pre-existing test failures covering access-level error messages, DEF FN completion, USE import diagnostics, and cross-file access validation (completed 2026-02-20)
 - [x] **Phase 55: Test Hardening & Dead Code** - Uncomment 9 disabled parser assertions and remove confirmed dead MethodCall CAST branches from type inferer and validator (completed 2026-02-20)
-- [ ] **Phase 56: Production FIXME & TODO Resolution** - Investigate and resolve or document 4 production FIXMEs and 2 actionable TODOs (2 plans)
+- [x] **Phase 56: Production FIXME & TODO Resolution** - Investigate and resolve or document 4 production FIXMEs and 2 actionable TODOs (2 plans) (completed 2026-02-20)
 
 ## Phase Details
 
