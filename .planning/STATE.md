@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.9 Quick Wins — Phase 58: Grammar Additions (Complete)
+**Current Focus:** v3.9 Quick Wins — Phase 59: Java Class Reference Features (In Progress)
 
 ---
 
 ## Current Position
 
-Phase: 58 of 59 (Grammar Additions) — Phase 58 Complete
-Plan: 2 of 2 in current phase
-Status: Plan 02 Complete
-Last activity: 2026-02-20 — Completed 58-02-PLAN.md (GRAM-02: SERIAL verb, GRAM-03: ADDR expression)
+Phase: 59 of 59 (Java Class Reference Features) — In Progress
+Plan: 1 of 3 in current phase
+Status: Plan 01 Complete
+Last activity: 2026-02-20 — Completed 59-01-PLAN.md (Java backend enriched with isStatic/isDeprecated/constructors, Langium type model updated)
 
-Progress: [████░░░░░░] 60% (v3.9)
+Progress: [████░░░░░░] 65% (v3.9)
 
 ---
 
@@ -29,8 +29,8 @@ Progress: [████░░░░░░] 60% (v3.9)
 
 **Started:** 2026-02-01
 **Milestones shipped:** 15
-**Phases completed:** 57
-**Plans completed:** 140
+**Phases completed:** 58
+**Plans completed:** 141
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -41,6 +41,7 @@ Progress: [████░░░░░░] 60% (v3.9)
 - Phase 57 Plan 02: 2 tasks, 5 files, 10 min
 - Phase 58 Plan 01: 2 tasks, 3 files, 18 min
 - Phase 58 Plan 02: 2 tasks, 2 files, 3 min
+- Phase 59 Plan 01: 2 tasks, 6 files, 3 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -67,6 +68,9 @@ Progress: [████░░░░░░] 60% (v3.9)
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 59]: Java DTO uses isDeprecated but Langium type uses deprecated — explicit mapping applied in java-interop.ts during resolveClass()
+- [Phase 59]: getMethods() preserved over getDeclaredMethods() so inherited static methods from superclasses appear in completion
+- [Phase 59]: Constructor resolution reuses JavaMethod type — name=simpleName, returnType=FQN, isStatic=false
 - [Phase 58-grammar-additions]: ADDR fileid changed from StringLiteral to Expression — allows variable references and computed paths, existing string literal tests remain valid
 - [Phase 58-grammar-additions]: records and recsize grouped as optional pair in SerialStatement — both must appear together per BBj syntax
 - [Phase 58-grammar-additions]: Use restrictive EXIT_NO_NL pattern [0-9(+\-] lookahead to prevent matching flow-control keywords like 'else' in inline-if; keep kind='EXIT' for bare EXIT
@@ -103,7 +107,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 58-02-PLAN.md — GRAM-02 (SERIAL verb) and GRAM-03 (ADDR expression) done; Phase 58 complete
+Stopped at: Completed 59-01-PLAN.md — Java backend enriched with isStatic/isDeprecated/constructors, Langium type model updated, all 509 tests pass
 Resume file: None
 
 ---
@@ -132,4 +136,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 58-02 (GRAM-02: SERIAL verb, GRAM-03: ADDR expression) — Phase 58 complete*
+*State updated: 2026-02-20 after completing 59-01 (Java backend metadata enrichment: isStatic, isDeprecated, constructors)*

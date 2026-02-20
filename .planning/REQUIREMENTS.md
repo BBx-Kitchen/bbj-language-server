@@ -23,9 +23,9 @@ Requirements for v3.9 Quick Wins milestone. Each maps to roadmap phases.
 ### Feature Gaps
 
 - [ ] **FEAT-01**: `.class` property on class references resolves to java.lang.Class (#373)
-- [ ] **FEAT-02**: Static method completion on class references via USE statements (#374)
-- [ ] **FEAT-03**: Deprecated methods show strikethrough indicator in completion items
-- [ ] **FEAT-04**: Constructor completion for `new ClassName()` expressions
+- [x] **FEAT-02**: Static method completion on class references via USE statements (#374)
+- [x] **FEAT-03**: Deprecated methods show strikethrough indicator in completion items
+- [x] **FEAT-04**: Constructor completion for `new ClassName()` expressions
 
 ## Future Requirements
 
@@ -66,9 +66,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GRAM-02 | Phase 58 | Complete |
 | GRAM-03 | Phase 58 | Complete |
 | FEAT-01 | Phase 59 | Pending |
-| FEAT-02 | Phase 59 | Pending |
-| FEAT-03 | Phase 59 | Pending |
-| FEAT-04 | Phase 59 | Pending |
+| FEAT-02 | Phase 59 | Complete |
+| FEAT-03 | Phase 59 | Complete |
+| FEAT-04 | Phase 59 | Complete |
 
 **Coverage:**
 - v3.9 requirements: 11 total
