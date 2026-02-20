@@ -480,6 +480,13 @@
           "description": "Maximum number of parse errors displayed at once. Additional parse errors beyond this limit are hidden to reduce noise.",
           "scope": "window"
         },
+        "bbj.compiler.trigger": {
+          "type": "string",
+          "enum": ["debounced", "on-save", "off"],
+          "default": "debounced",
+          "description": "Controls when the BBjCPL compiler checks for errors. 'debounced' runs after a pause in typing (2s), 'on-save' runs on file save only, 'off' disables BBjCPL checking entirely.",
+          "scope": "window"
+        },
         "bbj.configPath": {
           "type": [
             "string",

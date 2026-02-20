@@ -27,6 +27,16 @@ export function setMaxErrors(max: number): void {
     maxErrorsDisplayed = max;
 }
 
+// BBjCPL trigger mode configuration
+let compilerTrigger: 'debounced' | 'on-save' | 'off' = 'debounced';
+
+export function getCompilerTrigger(): 'debounced' | 'on-save' | 'off' {
+    return compilerTrigger;
+}
+export function setCompilerTrigger(trigger: 'debounced' | 'on-save' | 'off'): void {
+    compilerTrigger = trigger;
+}
+
 /**
  * Diagnostic source tiers — ordered by priority.
  * Higher-priority tiers suppress lower ones.

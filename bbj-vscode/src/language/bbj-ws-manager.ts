@@ -19,7 +19,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { builtinEvents } from "./lib/events.js";
 import { setTypeResolutionWarnings } from "./bbj-validator.js";
-import { setSuppressCascading, setMaxErrors } from "./bbj-document-validator.js";
+import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -82,6 +82,15 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                     logger.info(`Max displayed errors: ${maxErrors}`);
                 } else {
                     setMaxErrors(20);
+                }
+
+                // Set compiler trigger mode
+                const compilerTrigger = params.initializationOptions.compilerTrigger;
+                if (compilerTrigger === 'debounced' || compilerTrigger === 'on-save' || compilerTrigger === 'off') {
+                    setCompilerTrigger(compilerTrigger);
+                    logger.info(`Compiler trigger mode: ${compilerTrigger}`);
+                } else {
+                    setCompilerTrigger('debounced');
                 }
             }
         });

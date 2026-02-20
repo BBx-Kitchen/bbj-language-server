@@ -11,7 +11,7 @@ import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
-import { setSuppressCascading, setMaxErrors } from './bbj-document-validator.js';
+import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -64,6 +64,16 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // Start the language server with the shared services
 startLanguageServer(shared);
 
+// BBjCPL availability notification — sent to client when availability changes
+let bbjcplAvailableState: boolean | undefined = undefined;
+
+export function notifyBbjcplAvailability(available: boolean): void {
+    if (bbjcplAvailableState !== available) {
+        bbjcplAvailableState = available;
+        connection.sendNotification('bbj/bbjcplAvailability', { available });
+    }
+}
+
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
@@ -102,6 +112,14 @@ connection.onDidChangeConfiguration(async (change) => {
     }
     if (config.diagnostics?.maxErrors !== undefined) {
         setMaxErrors(config.diagnostics.maxErrors);
+    }
+
+    // Apply compiler trigger setting (no startup gate — apply immediately)
+    if (config.compiler?.trigger !== undefined) {
+        const trigger = config.compiler.trigger;
+        if (trigger === 'debounced' || trigger === 'on-save' || trigger === 'off') {
+            setCompilerTrigger(trigger);
+        }
     }
 
     // Skip Java class reload during initial startup — initializeWorkspace handles it
