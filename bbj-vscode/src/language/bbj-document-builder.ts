@@ -5,9 +5,13 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { Use, isUse, BbjClass } from "./generated/ast.js";
 import { JavaSyntheticDocUri } from "./java-interop.js";
 import { BBjPathPattern } from "./bbj-scope.js";
-import { normalize, resolve } from "path";
+import { normalize, resolve, join } from "path";
+import { accessSync } from "fs";
 import { logger } from './logger.js';
 import { USE_FILE_NOT_RESOLVED_PREFIX } from './bbj-validator.js';
+import { mergeDiagnostics, getCompilerTrigger } from './bbj-document-validator.js';
+import { notifyBbjcplAvailability } from './bbj-notifications.js';
+import type { BBjServices } from './bbj-module.js';
 
 export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
@@ -16,6 +20,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private importDepth = 0;
     private static readonly MAX_IMPORT_DEPTH = 10;
     private isImportingBBjDocuments = false;
+
+    /** Per-file debounce timers for BBjCPL compilation. */
+    private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+    /** Trailing-edge debounce interval for saves (ms). */
+    private static readonly SAVE_DEBOUNCE_MS = 500;
+
+    /** Tracks whether BBjCPL is available (lazily detected on first trigger). */
+    private bbjcplAvailable: boolean | undefined = undefined;
 
     constructor(services: LangiumSharedCoreServices) {
         super(services);
@@ -53,12 +66,150 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         // buildDocuments -> addImportedBBjDocuments -> update -> shouldRelink (marks
         // docs with ref errors) -> buildDocuments -> addImportedBBjDocuments -> ...
         if (!this.isImportingBBjDocuments) {
+            // BBjCPL integration: compile validated documents based on trigger mode.
+            // IMPORTANT: Called here inside buildDocuments(), NOT from onBuildPhase —
+            // onBuildPhase triggers a CPU rebuild loop (see STATE.md).
+            await this.runBbjcplForDocuments(documents, cancelToken);
+
             await this.addImportedBBjDocuments(documents, options, cancelToken);
             // After external PREFIX-resolved documents are loaded and indexed,
             // remove false-positive "could not be resolved" diagnostics for paths
             // that are now in the index. This fixes the timing issue where validation
             // runs before addImportedBBjDocuments loads external files.
             await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
+        }
+    }
+
+    /**
+     * Run BBjCPL compilation for each validated document based on trigger mode.
+     * Called from buildDocuments() after Langium validation completes.
+     *
+     * IMPORTANT: This runs INSIDE buildDocuments(), not from onBuildPhase —
+     * calling from onBuildPhase causes CPU rebuild loops (see STATE.md).
+     */
+    private async runBbjcplForDocuments(
+        documents: LangiumDocument<AstNode>[],
+        cancelToken: CancellationToken
+    ): Promise<void> {
+        const trigger = getCompilerTrigger();
+
+        if (trigger === 'off') {
+            // Clear stale BBjCPL diagnostics for all eligible documents
+            for (const document of documents) {
+                if (!this.shouldCompileWithBbjcpl(document)) continue;
+                const hadBbjcpl = document.diagnostics?.some(d => d.source === 'BBjCPL');
+                if (hadBbjcpl) {
+                    document.diagnostics = (document.diagnostics ?? []).filter(
+                        d => d.source !== 'BBjCPL'
+                    );
+                    await this.notifyDocumentPhase(document, DocumentState.Validated, cancelToken);
+                }
+            }
+            return;
+        }
+
+        // Lazy availability check on first trigger (per CONTEXT.md)
+        this.trackBbjcplAvailability();
+        if (this.bbjcplAvailable === false) return;
+
+        for (const document of documents) {
+            if (!this.shouldCompileWithBbjcpl(document)) continue;
+            this.debouncedCompile(document);
+        }
+    }
+
+    /**
+     * Determine whether a document should be compiled with BBjCPL.
+     * Only compile real .bbj files — skip synthetic, external, and non-file documents.
+     */
+    private shouldCompileWithBbjcpl(document: LangiumDocument): boolean {
+        // Must be a real file path (not bbjlib:// or other virtual schemes)
+        if (document.uri.scheme !== 'file') return false;
+        // Skip the Java synthetic classpath document
+        if (document.uri.toString() === JavaSyntheticDocUri) return false;
+        // Skip external PREFIX-resolved documents
+        if (this.wsManager() instanceof BBjWorkspaceManager) {
+            if ((this.wsManager() as BBjWorkspaceManager).isExternalDocument(document.uri)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Schedule a BBjCPL compilation with trailing-edge debounce.
+     * On rapid saves, only the last save triggers compilation after
+     * a 500ms quiet period. This prevents CPU spike and diagnostic flicker.
+     *
+     * Clear-then-show: old BBjCPL diagnostics are cleared when compile starts,
+     * new ones appear when done.
+     */
+    private debouncedCompile(document: LangiumDocument): void {
+        const key = document.uri.fsPath;
+        const existing = this.cplDebounceTimers.get(key);
+        if (existing) clearTimeout(existing);
+
+        const timer = setTimeout(async () => {
+            this.cplDebounceTimers.delete(key);
+
+            // Clear-then-show: remove old BBjCPL diagnostics before compile
+            document.diagnostics = (document.diagnostics ?? []).filter(
+                d => d.source !== 'BBjCPL'
+            );
+
+            // Resolve BBjCPLService lazily via serviceRegistry
+            // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
+            const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
+            const cplService = langServices.compiler.BBjCPLService;
+
+            const cplDiags = await cplService.compile(key);
+
+            if (cplDiags.length > 0) {
+                // Merge BBjCPL diagnostics with current Langium diagnostics
+                document.diagnostics = mergeDiagnostics(
+                    document.diagnostics ?? [],
+                    cplDiags
+                );
+            }
+
+            // Re-notify client with updated merged diagnostics.
+            // Use CancellationToken.None — the original build's token may be stale
+            // after the 500ms debounce. BBjCPLService handles its own timeout internally.
+            await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+        }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
+
+        this.cplDebounceTimers.set(key, timer);
+    }
+
+    /**
+     * Lazily detect BBjCPL availability on first compile trigger.
+     * Checks whether the bbjcpl binary exists at the configured BBj home.
+     * Sends a bbj/bbjcplAvailability notification to the client on first detection.
+     *
+     * Called once — subsequent calls are no-ops (bbjcplAvailable is already set).
+     */
+    private trackBbjcplAvailability(): void {
+        if (this.bbjcplAvailable !== undefined) return;
+
+        const wsManager = this.wsManager();
+        if (!(wsManager instanceof BBjWorkspaceManager)) return;
+
+        const bbjHome = wsManager.getBBjDir();
+        if (!bbjHome) {
+            this.bbjcplAvailable = false;
+            notifyBbjcplAvailability(false);
+            return;
+        }
+
+        const binaryName = process.platform === 'win32' ? 'bbjcpl.exe' : 'bbjcpl';
+        const bbjcplPath = join(bbjHome, 'bin', binaryName);
+        try {
+            accessSync(bbjcplPath);
+            this.bbjcplAvailable = true;
+            notifyBbjcplAvailability(true);
+        } catch {
+            this.bbjcplAvailable = false;
+            notifyBbjcplAvailability(false);
         }
     }
 
@@ -246,4 +397,3 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         }
     }
 }
-

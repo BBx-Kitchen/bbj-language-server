@@ -12,9 +12,13 @@ import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
+import { initNotifications } from './bbj-notifications.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
+
+// Wire the notification module with the LSP connection (before any notifications can fire)
+initNotifications(connection);
 
 // Inject the shared services and language-specific services
 const { shared, BBj } = createBBjServices({ connection, ...NodeFileSystem });
@@ -63,16 +67,6 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 
 // Start the language server with the shared services
 startLanguageServer(shared);
-
-// BBjCPL availability notification — sent to client when availability changes
-let bbjcplAvailableState: boolean | undefined = undefined;
-
-export function notifyBbjcplAvailability(available: boolean): void {
-    if (bbjcplAvailableState !== available) {
-        bbjcplAvailableState = available;
-        connection.sendNotification('bbj/bbjcplAvailability', { available });
-    }
-}
 
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
