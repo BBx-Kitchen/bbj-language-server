@@ -227,9 +227,10 @@ describe('Prefix tests', () => {
             use ::BinaryFile/BinaryFile.bbj::SomeClass
         `, { documentUri: 'file:///prefix/test-binary.bbj', validation: true });
         expectNoParserLexerErrors(document);
-        // Should have a file-path error because the "binary" file has no BbjClass in the index
+        // Should have a file-path warning because the "binary" file has no BbjClass in the index
+        // (severity 1 = Error for file-not-found, severity 2 = Warning for file-found-no-classes)
         const filePathErrors = document.diagnostics?.filter(d =>
-            d.severity === 1 && d.message.startsWith("File '")
+            (d.severity === 1 || d.severity === 2) && d.message.startsWith("File '")
         ) ?? [];
         expect(filePathErrors).toHaveLength(1);
         expect(filePathErrors[0].message).toContain("could not be resolved");

@@ -5,10 +5,10 @@
  ******************************************************************************/
 
 import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexManager, LangiumDocuments, LeafCstNode, Properties, Reference, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { basename, dirname, isAbsolute, relative, resolve } from 'path';
+import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isLibFunction, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -311,15 +311,29 @@ export class BBjValidator {
                 // existence rather than BbjClass index entries because external files
                 // may have parser errors that prevent BbjClass nodes from being created,
                 // but the file path itself is still valid and resolvable.
-                const resolved = adjustedFileUris.some(uri =>
+                const resolvedUri = adjustedFileUris.find(uri =>
                     this.langiumDocuments.hasDocument(uri)
                 );
-                if (!resolved) {
+                if (!resolvedUri) {
                     const searchedPaths = adjustedFileUris.map(u => u.fsPath);
                     accept('error', `File '${cleanPath}' could not be resolved. Searched: ${searchedPaths.join(', ')}`, {
                         node: use,
                         property: 'bbjFilePath'
                     });
+                } else {
+                    // File exists — verify it actually exports BbjClass nodes.
+                    // A file that parses but contains no classes (e.g. binary-like content)
+                    // cannot satisfy a USE reference and should produce a warning.
+                    const resolvedFsPath = normalize(resolvedUri.fsPath).toLowerCase();
+                    const hasClasses = this.indexManager.allElements(BbjClass.$type).some(desc =>
+                        normalize(desc.documentUri.fsPath).toLowerCase() === resolvedFsPath
+                    );
+                    if (!hasClasses) {
+                        accept('warning', `${USE_FILE_NOT_RESOLVED_PREFIX}${cleanPath}' could not be resolved. The file exists but contains no BBj classes.`, {
+                            node: use,
+                            property: 'bbjFilePath'
+                        });
+                    }
                 }
             }
         }
