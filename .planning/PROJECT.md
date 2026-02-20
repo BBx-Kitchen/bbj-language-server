@@ -131,18 +131,21 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ All scheduled-for-removal IntelliJ Platform APIs replaced with current equivalents — v3.6
 - ✓ Plugin verifier reports zero compatibility warnings across IntelliJ 2024.2-2026.1 — v3.6
 
+- ✓ Diagnostic noise reduction — single syntax error produces 1-3 diagnostics instead of 40+ cascading noise — v3.7
+- ✓ Configurable diagnostic suppression hierarchy (suppressCascading, maxErrors settings) — v3.7
+- ✓ Structure View resilience — outline stays populated during syntax errors with deep-walk AST recovery — v3.7
+- ✓ BBjCPL compiler output format discovered empirically and parser validated against real fixtures — v3.7
+- ✓ BBjCPL process management — abort-on-resave, configurable timeout, ENOENT graceful degradation — v3.7
+- ✓ BBjCPL diagnostics labeled "BBjCPL" with tier 3 (highest) in diagnostic hierarchy — v3.7
+- ✓ BBjCPL errors suppress redundant Langium parse errors via hierarchy Rule 0 — v3.7
+- ✓ Configurable compiler trigger (debounced/on-save/off) via bbj.compiler.trigger setting — v3.7
+- ✓ BBjCPL integration in buildDocuments() with 500ms trailing-edge debounce — v3.7
+- ✓ Graceful degradation when BBj not installed — status bar indicator, no error dialogs — v3.7
+- ✓ mergeDiagnostics() — same-line: Langium message + BBjCPL source; BBjCPL-only: added directly — v3.7
+
 ### Active
 
-## Current Milestone: v3.7 Diagnostic Quality & BBjCPL Integration
-
-**Goal:** Give BBj developers authoritative, noise-free error diagnostics by integrating BBjCPL compiler output, reducing cascading parser noise, and preserving document outline despite syntax errors.
-
-**Target features:**
-- BBjCPL compiler integration — invoke via configured BBj home, parse output, surface as authoritative diagnostics
-- Cascading diagnostic hierarchy — BBjCPL errors first, then Langium parser errors, then warnings/hints
-- Configurable trigger — on-save (default) or debounced invocation of BBjCPL
-- Parser error noise reduction — suppress cascading linking/validation diagnostics when parse errors exist
-- Outline resilience — preserve document symbols/Structure View despite syntax errors in individual methods
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -150,14 +153,17 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - Debugging support — future milestone
 - BBj project wizard/templates — future milestone
 - Refactoring support (rename across files) — future milestone
+- BBjCPL static type checking (-t flag) — requires prefix/config setup; deferred to future milestone
+- BBjCPL pipe mode (stdin) — reduced JVM startup overhead; deferred to future milestone
+- BBjCPL diagnostic range correlation — mapping line errors to exact token ranges; deferred to future milestone
 
 ## Context
 
-**Current state:** v3.7 milestone started 2026-02-19. Focus on diagnostic quality and BBjCPL compiler integration. Previous: v3.6 shipped 2026-02-10 (IntelliJ Platform API compatibility). 14 milestones shipped.
+**Current state:** v3.7 shipped 2026-02-20. 15 milestones shipped across 53 phases. BBjCPL compiler integration complete — errors appear in Problems panel with noise reduction and diagnostic hierarchy. Previous: v3.6 shipped 2026-02-10 (IntelliJ Platform API compatibility).
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
-**Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary.
+**Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary. BBjCPL compiler integration lives in `bbj-document-builder.ts` with lazy service resolution and availability detection via `bbj-notifications.ts`.
 
 **java-interop:** Runs as a configurable Java process (default localhost:5008, now user-configurable) via JSON-RPC, hosted by BBjServices. The language server connects to it for Java class metadata. Both IDEs support Refresh Java Classes command. The IntelliJ plugin monitors connection health via independent TCP probes.
 
@@ -169,8 +175,9 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
 - CPU stability mitigations documented but not yet implemented (#232)
 - Dead code in type inferer (MethodCall CAST branch) and validator (checkCastTypeResolvable for MethodCall) — CAST now handled by CastExpression
-- 11 pre-existing test failures (hex string parsing, array tests, REDIM, RELEASE, FILE/XFILE, access-level, completion)
+- 6 pre-existing test failures (access-level, DEF FN completion, USE import, validation)
 - 14 pre-existing TODO/FIXME comments across 6 files (java-interop, ws-manager, javadoc, scopes, linker)
+- CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct)
 
 ## Constraints
 
@@ -270,5 +277,18 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | customizeDefaults() over getDefaultCommonSettings() | Mutates existing object instead of creating new one; current IntelliJ API | ✓ Good — v3.6 shipped |
 | FileChooserDescriptor constructor over factory methods | Factory methods deprecated; direct constructor with explicit parameters | ✓ Good — v3.6 shipped |
 
+| DiagnosticTier enum with hierarchy rules | Extensible classification (Parse=1, Semantic=2, BBjCPL=3); rules filter by tier, not severity | ✓ Good — v3.7 shipped |
+| Match linking errors by data.code not severity | toDiagnostic() downgrades non-cyclic linking errors to Warning; severity check misses them | ✓ Good — v3.7 shipped |
+| Per-file suppression only | File B linking errors survive when File A has parse errors — users fix File A first | ✓ Good — v3.7 shipped |
+| BBjDocumentSymbolProvider deep-walk fallback | AstUtils.streamAllContents recovers post-error symbols; 200k char threshold for large files | ✓ Good — v3.7 shipped |
+| Cancel flag + proc.kill() over AbortController | AbortController sends SIGTERM to process group 0 on ENOENT — crashes vitest worker | ✓ Good — v3.7 shipped |
+| CompileHandle with settle() wrapper | Prevents double-resolve when both error and close events fire on ENOENT | ✓ Good — v3.7 shipped |
+| setCompilerTrigger in bbj-document-validator.ts | Avoids circular import — main.ts creates services that bbj-ws-manager.ts is part of | ✓ Good — v3.7 shipped |
+| bbj-notifications.ts isolation module | Importing main.ts from bbj-document-builder.ts crashes tests (createConnection at module load) | ✓ Good — v3.7 shipped |
+| BBjCPL inside buildDocuments() not onBuildPhase | onBuildPhase triggers CPU rebuild loop; buildDocuments() integrates naturally | ✓ Good — v3.7 shipped |
+| 500ms trailing-edge debounce for BBjCPL | Prevents CPU spike on rapid saves; 10 saves → 1 compile after 500ms quiet | ✓ Good — v3.7 shipped |
+| Lazy BBjCPL availability via fs.accessSync | Direct binary check on first trigger; compile() returns [] for both clean file and ENOENT | ✓ Good — v3.7 shipped |
+| Status bar over notification balloons for BBjCPL | Non-intrusive "BBjCPL: unavailable" in status bar; no popup dialogs | ✓ Good — v3.7 shipped |
+
 ---
-*Last updated: 2026-02-19 after v3.7 milestone start*
+*Last updated: 2026-02-20 after v3.7 milestone*

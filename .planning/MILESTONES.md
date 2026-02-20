@@ -399,3 +399,13 @@
 
 ---
 
+
+## v3.7 Diagnostic Quality & BBjCPL Integration (Shipped: 2026-02-20)
+
+**Phases completed:** 53 phases, 102 plans, 18 tasks
+
+**Key accomplishments:**
+- (none recorded)
+
+---
+
