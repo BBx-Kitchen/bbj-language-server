@@ -3,7 +3,7 @@ import { AstUtils } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module';
-import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
+import { CompoundStatement, LetStatement, Library, Model, OutputItem, PrintStatement, Program, ReadStatement, StringLiteral, SymbolRef, isAddrStatement, isCallStatement, isClipFromStrStatement, isCloseStatement, isCommentStatement, isCompoundStatement, isExitWithNumberStatement, isGotoStatement, isLetStatement, isLibrary, isPrintStatement, isProgram, isRedimStatement, isRunStatement, isSerialStatement, isSqlCloseStatement, isSqlPrepStatement, isSwitchCase, isSwitchStatement, isWaitStatement } from '../src/language/generated/ast';
 
 const services = createBBjServices(EmptyFileSystem);
 
@@ -1001,6 +1001,30 @@ describe('Parser Tests', () => {
         expectToContainAstNodeType(result, isAddrStatement);
     });
 
+    test('GRAM-02: SERIAL verb (#375)', async () => {
+        const result = await parse(`
+            SERIAL "myfile.dat"
+            SERIAL "myfile.dat",10,80
+            SERIAL "myfile.dat",10,80,MODE="X"
+            SERIAL "myfile.dat",10,80,ERR=ErrorLabel
+            SERIAL "myfile.dat",10,80,MODE="X",ERR=ErrorLabel
+            SERIAL filePath$
+            ErrorLabel: STOP
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isSerialStatement);
+    });
+
+    test('GRAM-03: ADDR with string expression (#377)', async () => {
+        const result = await parse(`
+            myPath$ = "MYPROG"
+            ADDR myPath$
+            ADDR "MYPROG", ERR=ErrorLabel
+            ErrorLabel: STOP
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isAddrStatement);
+    });
 
     test('Check CLIPFROMSTR verb', async () => {
         //documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/clipboard_verbs_and_functions_bbj.htm
