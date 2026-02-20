@@ -2595,4 +2595,25 @@ classend
         expectNoParserLexerErrors(document);
     });
 
+    // GRAM-01: EXIT with optional numeric argument (#376)
+    test('GRAM-01: EXIT with optional numeric argument (#376)', async () => {
+        const result = await parse(`
+            EXIT 0
+            EXIT 1
+            EXIT
+            EXIT myVar
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectToContainAstNodeType(result, isExitWithNumberStatement);
+    });
+
+    test('EXIT-prefixed identifiers parse without error', async () => {
+        const result = await parse(`
+            exitCode! = 0
+            exitStatus = 1
+            exitMode$ = "test"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+    });
+
 });
