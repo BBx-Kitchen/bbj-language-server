@@ -17,8 +17,8 @@ Requirements for v3.9 Quick Wins milestone. Each maps to roadmap phases.
 ### Grammar
 
 - [x] **GRAM-01**: EXIT verb accepts optional integer parameter (#376)
-- [ ] **GRAM-02**: SERIAL verb recognized by parser (#375)
-- [ ] **GRAM-03**: ADDR function recognized by parser (#377)
+- [x] **GRAM-02**: SERIAL verb recognized by parser (#375)
+- [x] **GRAM-03**: ADDR function recognized by parser (#377)
 
 ### Feature Gaps
 
@@ -63,8 +63,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-03 | Phase 57 | Complete |
 | BUG-04 | Phase 57 | Complete |
 | GRAM-01 | Phase 58 | Complete |
-| GRAM-02 | Phase 58 | Pending |
-| GRAM-03 | Phase 58 | Pending |
+| GRAM-02 | Phase 58 | Complete |
+| GRAM-03 | Phase 58 | Complete |
 | FEAT-01 | Phase 59 | Pending |
 | FEAT-02 | Phase 59 | Pending |
 | FEAT-03 | Phase 59 | Pending |

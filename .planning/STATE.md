@@ -8,18 +8,18 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v3.9 Quick Wins — Phase 58: Grammar Additions
+**Current Focus:** v3.9 Quick Wins — Phase 58: Grammar Additions (Complete)
 
 ---
 
 ## Current Position
 
-Phase: 58 of 59 (Grammar Additions)
-Plan: 1 of 2 in current phase
-Status: Plan 01 Complete
-Last activity: 2026-02-20 — Completed 58-01-PLAN.md (GRAM-01: EXIT with numeric argument)
+Phase: 58 of 59 (Grammar Additions) — Phase 58 Complete
+Plan: 2 of 2 in current phase
+Status: Plan 02 Complete
+Last activity: 2026-02-20 — Completed 58-02-PLAN.md (GRAM-02: SERIAL verb, GRAM-03: ADDR expression)
 
-Progress: [███░░░░░░░] 30% (v3.9)
+Progress: [████░░░░░░] 60% (v3.9)
 
 ---
 
@@ -30,7 +30,7 @@ Progress: [███░░░░░░░] 30% (v3.9)
 **Started:** 2026-02-01
 **Milestones shipped:** 15
 **Phases completed:** 57
-**Plans completed:** 138
+**Plans completed:** 140
 **Days elapsed:** 19
 **Velocity:** ~6.7 plans/day
 
@@ -40,6 +40,7 @@ Progress: [███░░░░░░░] 30% (v3.9)
 - Phase 57 Plan 01: 2 tasks, 5 files, 2 min
 - Phase 57 Plan 02: 2 tasks, 5 files, 10 min
 - Phase 58 Plan 01: 2 tasks, 3 files, 18 min
+- Phase 58 Plan 02: 2 tasks, 2 files, 3 min
 
 **v3.8 (Shipped: 2026-02-20):**
 - Duration: 1 day
@@ -66,6 +67,8 @@ Progress: [███░░░░░░░] 30% (v3.9)
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+- [Phase 58-grammar-additions]: ADDR fileid changed from StringLiteral to Expression — allows variable references and computed paths, existing string literal tests remain valid
+- [Phase 58-grammar-additions]: records and recsize grouped as optional pair in SerialStatement — both must appear together per BBj syntax
 - [Phase 58-grammar-additions]: Use restrictive EXIT_NO_NL pattern [0-9(+\-] lookahead to prevent matching flow-control keywords like 'else' in inline-if; keep kind='EXIT' for bare EXIT
 - [Phase 57]: Guard checkDeclareNotInClassBody on $type === 'VariableDecl' to prevent FieldDecl subtypes from being flagged
 - [Phase 57]: Cast BBjClassMember to { visibility?: string } in linker and validator to handle VariableDecl addition to union type
@@ -100,7 +103,7 @@ None
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 58-01-PLAN.md — GRAM-01 (EXIT with numeric argument) done
+Stopped at: Completed 58-02-PLAN.md — GRAM-02 (SERIAL verb) and GRAM-03 (ADDR expression) done; Phase 58 complete
 Resume file: None
 
 ---
@@ -129,4 +132,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-20 after completing 58-01 (GRAM-01: EXIT numeric argument) — Phase 58 Plan 1 complete*
+*State updated: 2026-02-20 after completing 58-02 (GRAM-02: SERIAL verb, GRAM-03: ADDR expression) — Phase 58 complete*
