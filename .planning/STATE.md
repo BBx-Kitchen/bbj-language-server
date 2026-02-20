@@ -17,7 +17,7 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 Phase: 56 of 56 (Production FIXME/TODO Resolution)
 Plan: 1 of 1 in current phase
 Status: Complete — all v3.8 phases done
-Last activity: 2026-02-20 — Completed 56-02-PLAN.md (TODO-01 Javadoc completion, TODO-02 Java connection error notification)
+Last activity: 2026-02-20 — Completed 56-03-PLAN.md (TODO-01 gap closure: method.docu population in resolveClass() for Java Javadoc completion)
 
 Progress: [██████████] 100% (v3.8)
 
@@ -60,6 +60,7 @@ Progress: [██████████] 100% (v3.8)
 | Phase 55-test-hardening-dead-code P01 | 5 | 1 tasks | 1 files |
 | Phase 56-production-fixme-todo-resolution P01 | 2 | 2 tasks | 4 files |
 | Phase 56 P02 | 135 | 2 tasks | 3 files |
+| Phase 56-production-fixme-todo-resolution P03 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 56-01]: FIX-04: Inner class handling already implemented in loadClassByName() since issue #314; FIXME was stale documentation
 - [Phase 56]: Use node.docu pre-populated field for synchronous Javadoc in completion provider (avoids async call in sync createReferenceCompletionItem)
 - [Phase 56]: notifyJavaConnectionError uses window.showErrorMessage (Error level) — user-actionable issue requiring prominent feedback
+- [Phase 56-03]: method.docu populated at class resolution time (not lazily) so completion provider can access synchronously without async calls in createReferenceCompletionItem
 
 ### Tech Debt
 
