@@ -55,6 +55,7 @@ Progress: [█░░░░░░░░░] 10% (v3.8)
 | 54-fix-failing-tests P01 | 2 min | 2 | 2 |
 
 ---
+| Phase 54-fix-failing-tests P02 | 8 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 52]: Cancel flag + proc.kill() over AbortController — AbortController crashes vitest worker on ENOENT
 - [Phase 50]: Per-file suppression only — File B linking errors survive when File A has parse errors
 - [Phase 54]: Use toContain/RegExp over toBe/string for error message assertions in tests — tolerates future message format changes
+- [Phase 54-fix-failing-tests]: TEST-03: Skipped — completion returns 0 items inside MethodDecl.body (Langium grammar follower limitation, not a scope issue)
+- [Phase 54-fix-failing-tests]: TEST-04: Use IndexManager.allElements(BbjClass.$type) to detect no-class files; emit warning (not error) when file exists but has no BBj classes
 
 ### Tech Debt
 

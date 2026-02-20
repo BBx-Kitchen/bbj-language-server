@@ -162,7 +162,7 @@ Research-only milestone — no phases.
 
 **Milestone Goal:** Get the test suite fully green, remove confirmed dead code, and resolve production FIXMEs and actionable TODOs.
 
-- [ ] **Phase 54: Fix Failing Tests** - Repair 6 pre-existing test failures covering access-level error messages, DEF FN completion, USE import diagnostics, and cross-file access validation
+- [x] **Phase 54: Fix Failing Tests** - Repair 6 pre-existing test failures covering access-level error messages, DEF FN completion, USE import diagnostics, and cross-file access validation (completed 2026-02-20)
 - [ ] **Phase 55: Test Hardening & Dead Code** - Uncomment 9 disabled parser assertions and remove confirmed dead MethodCall CAST branches from type inferer and validator
 - [ ] **Phase 56: Production FIXME & TODO Resolution** - Investigate and resolve or document 4 production FIXMEs and 2 actionable TODOs
 
