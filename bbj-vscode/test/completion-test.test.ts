@@ -130,4 +130,29 @@ DEF fnIsText(_f$,_t$)=_f$+<|>
             }
         });
     });
+
+    test('class member access on BBj class instance offers methods', async () => {
+        // Note: .class completion requires java.lang.Class to be resolved via Java interop.
+        // In EmptyFileSystem, Java classes are not available, so .class won't appear.
+        // This test validates the mechanism doesn't crash on member access and that
+        // BBj methods appear correctly for instance variables.
+        const text = `
+class public MyClass
+    method public void doWork()
+    methodend
+classend
+declare MyClass foo!
+foo!.<|>
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const items = completions.items;
+                // In EmptyFileSystem, we expect at least the BBj method to appear
+                const methodItems = items.filter(i => i.label.startsWith('doWork'));
+                expect(methodItems.length).toBeGreaterThanOrEqual(1);
+            }
+        });
+    });
 });
