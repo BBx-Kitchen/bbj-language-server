@@ -4,7 +4,7 @@ import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultComp
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, FieldDecl, isBbjClass, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
+import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 
 
@@ -21,6 +21,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
         if (params.context?.triggerCharacter === '#') {
             return this.getFieldCompletion(document, params);
+        }
+        // Check for constructor argument completion (new ClassName(...))
+        const constructorCompletion = this.getConstructorCompletion(document, params);
+        if (constructorCompletion) {
+            return constructorCompletion;
         }
         return super.getCompletion(document, params, cancelToken);
     }
@@ -65,6 +70,68 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             };
         });
 
+        return { items, isIncomplete: false };
+    }
+
+    protected getConstructorCompletion(document: LangiumDocument, params: CompletionParams): CompletionList | undefined {
+        const offset = document.textDocument.offsetAt(params.position);
+        const rootNode = document.parseResult.value;
+        if (!rootNode.$cstNode) return undefined;
+
+        const leafNode = findLeafNodeAtOffset(rootNode.$cstNode, offset);
+        if (!leafNode) return undefined;
+
+        // Walk up to find ConstructorCall
+        const constructorCall = AstUtils.getContainerOfType(leafNode.astNode, isConstructorCall) as ConstructorCall | undefined;
+        if (!constructorCall) return undefined;
+
+        // Resolve the class being constructed
+        const klass = getClass(constructorCall.klass);
+        if (!klass) return undefined;
+
+        const items: CompletionItem[] = [];
+
+        if (isJavaClass(klass)) {
+            const constructors = klass.constructors ?? [];
+            for (const ctor of constructors) {
+                const paramList = ctor.parameters.map(p => {
+                    const typeName = p.type.split('.').pop() || p.type;
+                    const name = p.realName ?? p.name;
+                    return `${typeName} ${name}`;
+                }).join(', ');
+                const className = klass.name;
+                items.push({
+                    label: `${className}(${paramList})`,
+                    kind: CompletionItemKind.Constructor,
+                    detail: `new ${className}(${paramList})`,
+                    insertText: ctor.parameters.map((p, i) =>
+                        '${' + (i + 1) + ':' + (p.realName ?? p.name) + '}'
+                    ).join(', '),
+                    insertTextFormat: 2, // SnippetString
+                    tags: ctor.deprecated ? [CompletionItemTag.Deprecated] : undefined,
+                });
+            }
+        } else if (isBbjClass(klass)) {
+            // BBj class constructors are MethodDecl named 'create'
+            const createMethods = klass.members.filter(m =>
+                isMethodDecl(m) && m.name.toLowerCase() === 'create'
+            );
+            for (const method of createMethods) {
+                if (!isMethodDecl(method)) continue;
+                const paramList = method.params.map(p => p.name).join(', ');
+                items.push({
+                    label: `${klass.name}(${paramList})`,
+                    kind: CompletionItemKind.Constructor,
+                    detail: `new ${klass.name}(${paramList})`,
+                    insertText: method.params.map((p, i) =>
+                        '${' + (i + 1) + ':' + p.name + '}'
+                    ).join(', '),
+                    insertTextFormat: 2,
+                });
+            }
+        }
+
+        if (items.length === 0) return undefined;
         return { items, isIncomplete: false };
     }
 
