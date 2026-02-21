@@ -214,11 +214,12 @@ Plans:
   2. Typing `.` on a variable declared via USE as a Java class reference offers static methods of that class in the completion list
   3. Deprecated methods appear in the completion list with strikethrough text decoration, distinguishing them from non-deprecated methods
   4. After `new ClassName(`, the completion list offers constructor signatures for that class
-**Plans**: 3 plans
+**Plans**: 4 plans
 Plans:
 - [ ] 59-01-PLAN.md — Java backend + Langium type model: isStatic, isDeprecated, constructors
 - [ ] 59-02-PLAN.md — .class resolution + static method completion on USE class references
 - [ ] 59-03-PLAN.md — Deprecated strikethrough indicators + constructor completion
+- [ ] 59-04-PLAN.md — Gap closure: isStatic race condition fix, MemberCall isClassRef, constructor trigger char, JAR deployment
 
 ## Progress
 
