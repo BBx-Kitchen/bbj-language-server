@@ -11,7 +11,7 @@ import { findLeafNodeAtOffset } from "./bbj-validator.js";
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     override readonly completionOptions = {
-        triggerCharacters: ['#']
+        triggerCharacters: ['#', '(']
     };
 
     constructor(services: LangiumServices) {
@@ -22,7 +22,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (params.context?.triggerCharacter === '#') {
             return this.getFieldCompletion(document, params);
         }
-        // Check for constructor argument completion (new ClassName(...))
+        if (params.context?.triggerCharacter === '(') {
+            // '(' auto-trigger: return constructor items or an empty list — NEVER fall through
+            // to the slow default provider, which would produce irrelevant keyword suggestions.
+            return this.getConstructorCompletion(document, params) ?? { items: [], isIncomplete: false };
+        }
+        // Non-trigger completion (Ctrl+Space) — try constructor first, then fall through to default
         const constructorCompletion = this.getConstructorCompletion(document, params);
         if (constructorCompletion) {
             return constructorCompletion;

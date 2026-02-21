@@ -382,25 +382,43 @@ export class JavaInteropService {
             console.error(`Java class ${className} has no container, packageName: ${javaClass.packageName}`);
             javaClass.$container = this.classpath; // fallback to classpath
         }
-        this.resolvedClasses.set(className, javaClass); // add class even if it has an error
+
+        // Phase 1 (synchronous): set $type, isStatic, and deprecated on all members from the
+        // raw Java DTO data before any async awaits. This is the data that the static-method
+        // filter in bbj-scope.ts depends on, and it must be present before getResolvedClass()
+        // can return this class to external callers.
+        for (const field of javaClass.fields) {
+            (field as Mutable<JavaField>).$type = JavaField.$type;
+            field.deprecated = (field as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+            field.isStatic = (field as unknown as { isStatic?: boolean }).isStatic ?? false;
+        }
+        for (const method of javaClass.methods) {
+            (method as Mutable<JavaMethod>).$type = JavaMethod.$type;
+            method.deprecated = (method as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+            method.isStatic = (method as unknown as { isStatic?: boolean }).isStatic ?? false;
+        }
+        for (const constructor of javaClass.constructors) {
+            (constructor as Mutable<JavaMethod>).$type = JavaMethod.$type;
+            constructor.isStatic = false;
+            constructor.deprecated = (constructor as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
+        }
+
+        // Register in resolvedClasses now that isStatic and deprecated are fully populated.
+        // This must happen before the async type-resolution loop below, which calls
+        // resolveClassByName() recursively — the fast-path check in resolveClassByName
+        // and the re-entry guard in resolveClass both depend on this entry existing.
+        this.resolvedClasses.set(className, javaClass);
 
         try {
+            // Phase 2 (async): resolve type references and populate documentation.
             const documentation = await this.javadocProvider.getDocumentation(javaClass);
             for (const field of javaClass.fields) {
-                (field as Mutable<JavaField>).$type = JavaField.$type;
-                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
-                field.deprecated = (field as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
-                field.isStatic = (field as unknown as { isStatic?: boolean }).isStatic ?? false;
                 field.resolvedType = {
                     ref: await this.resolveClassByName(field.type, token, _depth + 1),
                     $refText: field.type
                 };
             }
             for (const method of javaClass.methods) {
-                (method as Mutable<JavaMethod>).$type = JavaMethod.$type;
-                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
-                method.deprecated = (method as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
-                method.isStatic = (method as unknown as { isStatic?: boolean }).isStatic ?? false;
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
@@ -439,10 +457,6 @@ export class JavaInteropService {
                 AstUtils.linkContentToContainer(method);
             }
             for (const constructor of javaClass.constructors) {
-                (constructor as Mutable<JavaMethod>).$type = JavaMethod.$type;
-                constructor.isStatic = false;
-                // Map Java DTO naming (isDeprecated) to Langium type naming (deprecated)
-                constructor.deprecated = (constructor as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
                 constructor.resolvedReturnType = {
                     ref: await this.resolveClassByName(constructor.returnType, token, _depth + 1),
                     $refText: constructor.returnType

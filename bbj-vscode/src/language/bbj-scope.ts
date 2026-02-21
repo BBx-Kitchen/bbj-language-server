@@ -158,7 +158,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 return EMPTY_SCOPE;
             }
             // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
-            // (e.g., `String.` after `USE java.lang.String`) — show only static methods
+            // (e.g., `String.` after `USE java.lang.String`) — show only static methods.
             let isClassRef = false;
             if (isSymbolRef(receiver)) {
                 try {
