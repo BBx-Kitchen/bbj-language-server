@@ -63,7 +63,32 @@ Progress: [██████████] 100% (v3.9)
 
 ### Active Constraints
 
-- TEST-03 (DEF FN `$` suffix completion) skipped — Langium grammar follower limitation
+- TEST-03 (DEF FN `# Project State: BBj Language Server
+
+**Last Updated:** 2026-02-20
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-02-20)
+
+**Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
+
+**Current Focus:** v3.9 Quick Wins — Phase 59: Java Class Reference Features (Complete)
+
+---
+
+## Current Position
+
+Phase: 59 of 59 (Java Class Reference Features) — Complete
+Plan: 3 of 3 in current phase
+Status: Plan 03 Complete
+Last activity: 2026-02-20 — Completed 59-03-PLAN.md (deprecated strikethrough FEAT-03, constructor completion FEAT-04, 511 tests pass)
+
+Progress: [██████████] 100% (v3.9)
+
+---
+
+ suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
 
@@ -90,6 +115,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 55]: Removed MethodCall CAST branches — unreachable since Phase 33 CastExpression grammar rule
 - [Phase 54]: Use toContain/RegExp over toBe/string for error message assertions — tolerates future format changes
 - [Phase 53]: bbj-notifications.ts isolation module — importing main.ts crashes tests at module load time
+- [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses, eliminating race condition where static filter saw empty isStatic
+- [Phase 59]: MemberCall isClassRef extension dropped — old JAR does not send isStatic for fields; FQN paths continue showing all members until JAR is updated
+- [Phase 59]: ( trigger returns empty CompletionList (not undefined) — prevents slow fallthrough to default completion engine when constructor completion is unavailable
 
 ### Tech Debt
 
@@ -110,6 +138,7 @@ None
 | 13 | Fix IntelliJ multi-instance language server: replace grace period with LSP4IJ native timeout | 2026-02-16 | 293fea5 |
 
 ---
+| Phase 59-java-class-reference-features P04 | 19 | 1 tasks | 2 files |
 
 ## Session Continuity
 
