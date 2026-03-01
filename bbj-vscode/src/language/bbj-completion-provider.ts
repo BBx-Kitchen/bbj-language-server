@@ -35,19 +35,19 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         return super.getCompletion(document, params, cancelToken);
     }
 
-    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList> {
+    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
         // Get cursor position (the # has already been typed)
         const offset = document.textDocument.offsetAt(params.position);
         const rootNode = document.parseResult.value;
 
         // Find the leaf node at the # character position (cursor is after #, so offset - 1)
         if (!rootNode.$cstNode) {
-            return { items: [], isIncomplete: false };
+            return undefined;
         }
         const leafNode = findLeafNodeAtOffset(rootNode.$cstNode, offset - 1);
 
         if (!leafNode) {
-            return { items: [], isIncomplete: false };
+            return undefined;
         }
 
         // Check if cursor is inside a class method body
@@ -56,7 +56,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
         if (!method || !klass) {
             // Not inside a class method — don't provide field completion
-            return { items: [], isIncomplete: false };
+            return undefined;
         }
 
         // Collect fields from the class and its inheritance hierarchy
