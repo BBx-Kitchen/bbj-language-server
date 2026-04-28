@@ -4,7 +4,7 @@ This extension adds support for the BBj language. It allows you to locate your l
 
 ## Documentation
 
-📖 **[Full Documentation](https://BBx-Kitchen.github.io/bbj-language-server/)** | [Getting Started](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/getting-started) | [Features](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/features) | [Configuration](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/configuration) | [Commands](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide/commands)
+📖 **[Full Documentation](https://BBx-Kitchen.github.io/bbj-language-server/)** | [Getting Started](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/getting-started) | [Features](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/features) | [Configuration](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/configuration) | [Commands](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode/commands)
 
 ## Features
 
