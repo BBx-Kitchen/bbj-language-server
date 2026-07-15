@@ -120,9 +120,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * Determine whether a document should be compiled with BBjCPL.
-     * Only compile real .bbj files — skip synthetic, external, and non-file documents.
+     * Only compile real .bbj files that are open in an editor — skip synthetic,
+     * external, and non-file documents.
+     *
+     * The open-editor gate mirrors when Langium itself validates (initial workspace
+     * builds run without the validation option): without it, workspace initialization
+     * spawns one bbjcpl process per .bbj file in the project.
      */
     private shouldCompileWithBbjcpl(document: LangiumDocument): boolean {
+        // Must be open in an editor (LSP didOpen). Outside an LSP context
+        // the inherited textDocuments is undefined and nothing is ever "open".
+        if (!this.textDocuments?.get(document.uri)) return false;
         // Must be a real file path (not bbjlib:// or other virtual schemes)
         if (document.uri.scheme !== 'file') return false;
         // Skip the Java synthetic classpath document
