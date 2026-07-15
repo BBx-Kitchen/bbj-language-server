@@ -1,0 +1,59 @@
+{
+  "name": "bbj-language-server",
+
+  // Node 20 base image (matches CI's node-version: 20). Ships the `node` user,
+  // which the Claude config volume below is mounted for.
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+
+  "features": {
+    // JDK 17 for java-interop (JavaLanguageVersion 17) and the IntelliJ plugin
+    // (sourceCompatibility VERSION_17). Gradle itself comes from each module's
+    // ./gradlew wrapper (8.13), so we don't install a system Gradle.
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "17",
+      "jdkDistro": "tem",
+      "installGradle": false
+    }
+  },
+
+  // Persist Claude Code config + auth across rebuilds (host volume).
+  "mounts": [
+    "source=claude-code-config,target=/home/node/.claude,type=volume"
+  ],
+
+  // java-interop JSON-RPC socket service.
+  "forwardPorts": [5008],
+  "portsAttributes": {
+    "5008": { "label": "java-interop", "onAutoForward": "silent" }
+  },
+
+  "containerEnv": {
+    "JAVA_HOME": "/usr/local/sdkman/candidates/java/current"
+  },
+
+  // The mounted volume is owned by root on first create; hand it to `node`,
+  // install Claude Code, and pull the VS Code extension's npm deps so tests run.
+  "onCreateCommand": "sudo chown -R node:node /home/node/.claude",
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code && npm --prefix bbj-vscode install",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "vscjava.vscode-java-pack",
+        "langium.langium-vscode"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-17",
+            "path": "/usr/local/sdkman/candidates/java/current",
+            "default": true
+          }
+        ]
+      }
+    }
+  },
+
+  "remoteUser": "node"
+}
