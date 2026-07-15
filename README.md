@@ -6,9 +6,8 @@ This project provides a language server and VS Code extension for the BBj langua
 
 **Full documentation is available at: [BBx-Kitchen.github.io/bbj-language-server](https://BBx-Kitchen.github.io/bbj-language-server/)**
 
-- [User Guide](https://BBx-Kitchen.github.io/bbj-language-server/docs/user-guide) – Installation, features, configuration, and commands
-- [Developer Guide](https://BBx-Kitchen.github.io/bbj-language-server/docs/developer-guide) – Architecture, building, testing, and contributing
-- [Roadmap](https://BBx-Kitchen.github.io/bbj-language-server/docs/roadmap) – Planned improvements and future work
+- [VS Code Guide](https://bbx-kitchen.github.io/bbj-language-server/docs/vscode)
+- [IntelliJ Guide](https://bbx-kitchen.github.io/bbj-language-server/docs/intellij)
 
 ## Project Overview
 
