@@ -18,6 +18,9 @@ bbj-intellij/bin/
 # Build caches
 bbj-vscode/tsconfig.tsbuildinfo
 
+# Generated test harness reports
+bbj-vscode/tools/interop-test-harness/report.html
+
 # IDE settings
 java-interop/.settings/
 
