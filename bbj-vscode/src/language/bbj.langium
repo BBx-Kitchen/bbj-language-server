@@ -360,7 +360,7 @@ MethodDecl returns MethodDecl:
     MethodDeclStart
     Comments?
     (
-        (body+=(Statement | DefFunction))*
+        (body+=(DefFunction | Statement))*
         endTag='METHODEND'
     )?
 ;

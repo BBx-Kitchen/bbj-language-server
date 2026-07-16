@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isDefFunction, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -214,13 +214,11 @@ describe('BBj validation', async () => {
         });
     });
 
-    test.skip('Single-line DEF FN inside class method has no line-break errors', async () => {
-        // SKIP: This test reveals a parser bug where single-line DEF FN inside methods
-        // is not being parsed as DefFunction by the validate helper, even though it works
-        // in the parser.test.ts (which uses parseHelper with validation:false).
-        // The validation fix (isDefFunction in isStandaloneStatement) IS correct and would
-        // prevent line-break errors IF the parser correctly identified the DefFunction node.
-        // Multi-line DEF FN works correctly, proving the validation fix is effective.
+    test('Single-line DEF FN inside class method has no line-break errors (#226)', async () => {
+        // Regression for #226: single-line `DEF FN(...)=expr` inside a method must be parsed
+        // as a DefFunction. Because the DEF keyword is also in the ID category, the parser used
+        // to prefer the `Statement` alternative and split the line into `def` + `FNSquare(X)=X*X`,
+        // producing spurious line-break errors. The method-body rule now tries DefFunction first.
         const validationResult = await validate(`
             class public MathHelper
                 method public doMath()
@@ -230,8 +228,25 @@ describe('BBj validation', async () => {
                 methodend
             classend
         `);
+        // The single-line DEF FN must actually be parsed as a DefFunction node...
+        expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
+        // ...and produce no line-break errors.
         const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
-        expect(lineBreakErrors.length).toBe(0);
+        expect(lineBreakErrors.map(d => d.message)).toEqual([]);
+    });
+
+    test('Single-line DEF FN with nested call inside class method (#226)', async () => {
+        // The exact reproducer from issue #226.
+        const validationResult = await validate(`
+            class public BBDialog
+                method public void get_active_func(BBjNamespaceEvent pEvent!)
+                    def fnstr_pos(tmp0$,tmp1$,tmp0)=int((pos(tmp0$=tmp1$,tmp0)+tmp0-1)/tmp0)
+                methodend
+            classend
+        `);
+        expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
+        const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
+        expect(lineBreakErrors.map(d => d.message)).toEqual([]);
     });
 
     test('Multi-line DEF FN inside class method still works', async () => {
