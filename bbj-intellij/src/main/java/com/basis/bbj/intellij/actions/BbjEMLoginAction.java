@@ -4,7 +4,7 @@ import com.basis.bbj.intellij.BbjSettings;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.CapturingProcessHandler;
 import com.intellij.execution.process.ProcessOutput;
-import com.intellij.ide.plugins.PluginManagerCore;
+import com.intellij.ide.plugins.PluginManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.application.ApplicationNamesInfo;
@@ -158,7 +158,7 @@ public final class BbjEMLoginAction extends AnAction {
     private static String getEMLoginBbjPath() {
         try {
             var pluginId = PluginId.getId("com.basis.bbj");
-            var plugin = PluginManagerCore.getPlugin(pluginId);
+            var plugin = PluginManager.getInstance().findEnabledPlugin(pluginId);
             if (plugin == null) return null;
             Path emLogin = plugin.getPluginPath().resolve("lib/tools/em-login.bbj");
             return Files.exists(emLogin) ? emLogin.toString() : null;
