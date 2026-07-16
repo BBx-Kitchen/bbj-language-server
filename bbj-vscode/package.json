@@ -550,7 +550,8 @@
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
     "langium:generate": "langium generate",
-    "langium:watch": "langium generate --watch"
+    "langium:watch": "langium generate --watch",
+    "test:bbj": "RUN_BBJ_TESTS=1 vitest run"
   },
   "dependencies": {
     "@vscode/vsce": "^3.7.1",
