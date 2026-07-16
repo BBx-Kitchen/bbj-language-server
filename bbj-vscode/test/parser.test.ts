@@ -39,9 +39,10 @@ describe('Parser Tests', () => {
         const endTime = performance.now();
         const timeInSeconds = (endTime - startTime) / 1000;
         console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
-        // In a bad state it took 48 seconds
-        // TODO do something against the flakiness: sometimes it hits the timeout; was at 5s once
-        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(14);
+        // In a bad state it took 48 seconds. Locally this runs in ~5s, but CI runners are
+        // considerably slower and were tripping the previous 14s limit (~15-16s observed),
+        // so the threshold is set high enough to only catch gross regressions.
+        expect(timeInSeconds, 'Parser is too slow').toBeLessThan(30);
     });
 
     test('Program definition test', async () => {
