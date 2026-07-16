@@ -80,7 +80,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             case 'SimpleTypeRef': {
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'simpleClass') {
-                    return this.resolveClassScopeByName(context, container.simpleClass.$refText);
+                    // Read the reference text from context.reference, not from the container:
+                    // during completion Langium passes a synthetic container whose cross-ref
+                    // property is undefined, so container.simpleClass.$refText would throw.
+                    return this.resolveClassScopeByName(context, context.reference.$refText);
                 }
                 return EMPTY_SCOPE;
             }
@@ -88,7 +91,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 assertType<BBjTypeRef>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'klass') {
-                    return this.resolveClassScopeByName(context, container.klass?.$refText);
+                    return this.resolveClassScopeByName(context, context.reference.$refText);
                 }
                 return EMPTY_SCOPE;
             }
