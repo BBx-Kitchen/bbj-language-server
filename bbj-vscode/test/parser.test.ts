@@ -40,10 +40,11 @@ describe('Parser Tests', () => {
         const timeInSeconds = (endTime - startTime) / 1000;
         console.log(`Parse ${count} times took: ${timeInSeconds} seconds`);
         // In a bad state it took 48 seconds. Locally this runs in ~5s, but CI runners are
-        // considerably slower and were tripping the previous 14s limit (~15-16s observed),
-        // so the threshold is set high enough to only catch gross regressions.
+        // considerably slower (~15-16s observed), so the threshold is set high enough to
+        // only catch gross regressions.
         expect(timeInSeconds, 'Parser is too slow').toBeLessThan(30);
-    });
+    }, 60_000); // vitest's default 5s test timeout aborts this on slow CI before the
+                // assertion runs; give it 60s of headroom while the assertion guards < 30s.
 
     test('Program definition test', async () => {
         const program = await parse(`
