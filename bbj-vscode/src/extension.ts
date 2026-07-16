@@ -13,6 +13,7 @@ import {
 } from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
+import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -475,6 +476,61 @@ async function ensureValidToken(context: vscode.ExtensionContext): Promise<{user
     return creds;
 }
 
+// Tracks files we've already prompted about this session so re-focusing the tab
+// (or reopening it) doesn't nag the user again.
+const promptedTokenizedFiles = new Set<string>();
+
+/** Read the first `length` bytes of a file, or undefined if it can't be read. */
+async function readLeadingBytes(fsPath: string, length: number): Promise<Uint8Array | undefined> {
+    let handle: fs.promises.FileHandle | undefined;
+    try {
+        handle = await fs.promises.open(fsPath, 'r');
+        const buffer = Buffer.alloc(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, 0);
+        return buffer.subarray(0, bytesRead);
+    } catch {
+        return undefined;
+    } finally {
+        await handle?.close().catch(() => { });
+    }
+}
+
+/** Extract a file URI from any tab whose input carries one (text, custom, notebook…). */
+function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
+    const input = tab.input as { uri?: vscode.Uri } | undefined;
+    return input?.uri instanceof vscode.Uri ? input.uri : undefined;
+}
+
+/**
+ * When a tokenized (binary) BBj program is opened, offer to decompile it to
+ * editable source (replacing the file) or open a read-only decompiled copy (#65).
+ * Detection is content-based (magic bytes), so it works regardless of the file's
+ * extension — tokenized programs are often named `.pub`, `.src`, or extensionless.
+ */
+async function maybePromptTokenized(uri: vscode.Uri | undefined): Promise<void> {
+    if (!uri || uri.scheme !== 'file') return;
+    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('decompile.promptOnOpen', true)) return;
+
+    const key = uri.toString();
+    if (promptedTokenizedFiles.has(key)) return;
+
+    const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
+    if (!bytes || !isTokenizedBBjHeader(bytes)) return;
+    promptedTokenizedFiles.add(key);
+
+    const decompileAction = 'Decompile & Replace';
+    const readOnlyAction = 'Open Read-only';
+    const choice = await vscode.window.showInformationMessage(
+        `"${path.basename(uri.fsPath)}" is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy?`,
+        decompileAction, readOnlyAction
+    );
+    if (choice === decompileAction) {
+        Commands.decompileReplace(uri);
+    } else if (choice === readOnlyAction) {
+        Commands.decompileReadonly(uri);
+    }
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
@@ -580,6 +636,8 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
+    vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace);
+    vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly);
     vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions);
 
     vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
@@ -640,6 +698,23 @@ export function activate(context: vscode.ExtensionContext): void {
         "bbj",
         DocumentFormatter
     );
+
+    // Offer to decompile (or open read-only) when a tokenized/binary BBj program is
+    // opened. Tokenized files are binary, so they may open in a non-text editor —
+    // the Tabs API sees them regardless, and detection reads the file's magic bytes.
+    context.subscriptions.push(
+        vscode.window.tabGroups.onDidChangeTabs((event) => {
+            for (const tab of event.opened) {
+                void maybePromptTokenized(uriFromTab(tab));
+            }
+        })
+    );
+    // Inspect tabs already open when the extension activates.
+    for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+            void maybePromptTokenized(uriFromTab(tab));
+        }
+    }
 
     // Diagnostic suppression status bar indicator
     const suppressionStatusBar = vscode.window.createStatusBarItem(
