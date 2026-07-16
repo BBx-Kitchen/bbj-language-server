@@ -316,9 +316,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // Could not load from any PREFIX directory; will be reported as a diagnostic
                 }
                 if (docFileData) {
-                    // Skip binary/tokenized BBj files that can't be parsed
+                    // Skip binary/tokenized BBj files that can't be parsed.
+                    // Routine/expected — log at debug so it doesn't surface as an
+                    // error in the output channel for workspaces with tokenized files.
                     if (docFileData.text.startsWith('<<bbj>>')) {
-                        logger.warn(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
+                        logger.debug(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
                         continue;
                     }
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
