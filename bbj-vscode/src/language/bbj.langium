@@ -365,7 +365,7 @@ MethodDecl returns MethodDecl:
     )?
 ;
 
-fragment MethodDeclStart returns MethodDecl:
+fragment MethodDeclStart:
     'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (array?='[' ']')?) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
@@ -510,7 +510,7 @@ PrintStatement:
     ;
 
 //actual intent: ('('channelno?options?')')? (items(',' items)*)? ','?
-fragment WithChannelAndOptionsAndOutputItems infers WithChannelAndOptionsAndOutputItems:
+fragment WithChannelAndOptionsAndOutputItems:
     '(' channelno=Expression? Options? (
         RPAREN_NL
         | RPAREN_NO_NL items+=OutputItem (',' items+=OutputItem)* ENDLINE_PRINT_COMMA?
@@ -611,7 +611,7 @@ ReadRecordStatement infers ReadStatement:
 ;
 
 //actual intent: ('('channelno?options?')')? (items(','items)*)?
-fragment WithChannelAndOptionsAndInputItems infers WithChannelAndOptionsAndInputItems:
+fragment WithChannelAndOptionsAndInputItems:
     '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?)
     | items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?
 ;

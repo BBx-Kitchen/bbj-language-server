@@ -367,14 +367,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
             const originalLength = document.diagnostics.length;
             document.diagnostics = document.diagnostics.filter(diag => {
+                // LSP 3.18 widened Diagnostic.message to `string | MarkupContent`; our
+                // diagnostics use plain string messages, so read the string form.
+                const message = typeof diag.message === 'string' ? diag.message : diag.message.value;
                 // Only re-check our specific USE file-path diagnostics
-                if (!diag.message.startsWith(USE_FILE_NOT_RESOLVED_PREFIX)) {
+                if (!message.startsWith(USE_FILE_NOT_RESOLVED_PREFIX)) {
                     return true; // keep all other diagnostics
                 }
 
                 // Extract the clean path from the diagnostic message
                 // Message format: "File 'some/path.bbj' could not be resolved..."
-                const pathMatch = diag.message.match(/^File '([^']+)'/);
+                const pathMatch = message.match(/^File '([^']+)'/);
                 if (!pathMatch) {
                     return true; // keep if we can't parse
                 }

@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
-} from 'vscode-languageclient/node.js';
+} from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
 import {
