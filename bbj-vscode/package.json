@@ -559,7 +559,7 @@
     "langium": "~4.3.1",
     "properties-file": "^3.6.3",
     "properties-reader": "^3.0.1",
-    "vscode-jsonrpc": "^8.2.1",
+    "vscode-jsonrpc": "^9.0.1",
     "vscode-languageclient": "^10.1.0",
     "vscode-uri": "^3.1.0"
   },
