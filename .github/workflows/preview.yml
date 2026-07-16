@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # Updated from 18 to 20
+          node-version: 22  # langium 4.3 toolchain requires Node 22+
 
       - name: Install CLI Tools
         run: |
