@@ -5,3 +5,9 @@ updates:
     directory: "/bbj-vscode"
     schedule:
       interval: "weekly"
+    ignore:
+      # chevrotain is pinned to the version Langium depends on. Bumping it above
+      # Langium's own chevrotain breaks grammar generation ("non exhaustive match"
+      # during `langium generate`) — see PR #347. It should only move when a Langium
+      # upgrade pulls in a newer chevrotain, so let Langium drive it.
+      - dependency-name: "chevrotain"
