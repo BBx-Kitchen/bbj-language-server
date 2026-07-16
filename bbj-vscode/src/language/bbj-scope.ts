@@ -27,6 +27,7 @@ import { logger } from './logger.js';
 import {
     BBjAstType,
     BbjClass, BBjTypeRef, Class,
+    isAssignment,
     isBbjClass,
     isBinaryExpression,
     isCallbackStatement,
@@ -217,7 +218,11 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             var membersStream = EMPTY_STREAM;
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
             if (bbjType) {
-                if (context.container.instanceAccess) {
+                // Instance access is either flagged on the SymbolRef itself (e.g. `#field!`
+                // in expression position) or, on an assignment LHS like `#field! = value`,
+                // consumed by the enclosing Assignment's `instanceAccess` (the grammar binds
+                // the `#` to the Assignment rule, not the inner SymbolRef).
+                if (context.container.instanceAccess || isInstanceAccessAssignment(context.container)) {
                     membersStream = this.createBBjClassMemberScope(bbjType, false, new Set()).getAllElements()
                 }
             }
@@ -474,6 +479,24 @@ export class BbjNameProvider extends DefaultNameProvider {
     }
 }
 
+
+/**
+ * Detects whether `node` is the head symbol of an assignment LHS that carries
+ * instance access, i.e. `#field! = value` or `#field!.member = value`. In the
+ * grammar the leading `#` is consumed by the `Assignment.instanceAccess` slot
+ * rather than the inner `SymbolRef`, so the SymbolRef's own `instanceAccess`
+ * flag is false and must be recovered from the enclosing Assignment.
+ */
+function isInstanceAccessAssignment(node: AstNode): boolean {
+    // Walk up any `receiver` chain (e.g. `#a!.b! = v` links from the `a!` receiver).
+    let current: AstNode = node;
+    while (isMemberCall(current.$container) && current.$containerProperty === 'receiver') {
+        current = current.$container;
+    }
+    return isAssignment(current.$container)
+        && current.$containerProperty === 'variable'
+        && current.$container.instanceAccess === true;
+}
 
 export function collectAllUseStatements(program: Program): Use[] {
     // Check if USE statements are already cached in the document

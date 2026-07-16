@@ -269,6 +269,29 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Instance access (#field!) to super class field on assignment LHS - issue #240', async () => {
+        // The leading `#` of an assignment LHS is consumed by the Assignment rule,
+        // not the inner SymbolRef, so instance access must still resolve inherited fields.
+        const document = await validate(`
+            class public SuperParent
+            classend
+
+            class public Parent extends SuperParent
+                field public Parent someField!
+            classend
+
+            class public Child extends Parent
+                method public void someMethod()
+                    #someField! = new Parent()  REM <== inherited field, instance access on LHS
+                methodend
+            classend
+
+            c! = new Child()
+            c!.someMethod()
+        `)
+        expectNoErrors(document)
+    })
+
     describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
