@@ -99,8 +99,10 @@ const runWeb = (params, client, credentials) => {
       .slice(0, -1)
       .join(".");
 
-  // Get custom config.bbx path if configured
-  const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
+  // Get custom config.bbx path if configured; otherwise fall back to the
+  // installation default. This must be a real path so the app registered in EM
+  // never ends up with the "--" sentinel as its config file (issue #382).
+  const configPath = vscode.workspace.getConfiguration('bbj').configPath || `${home}/cfg/config.bbx`;
 
   const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}" "${configPath}"`;
 

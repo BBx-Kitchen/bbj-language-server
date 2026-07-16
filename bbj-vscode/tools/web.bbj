@@ -59,11 +59,24 @@ app!.setString(app!.NAME, name!)
 app!.setString(app!.PROGRAM, programme!)
 app!.setString(app!.WORKING_DIRECTORY , wd!)
 
-rem Use custom config file if provided, otherwise use system default
+rem Resolve the config file for the registered app.
+rem "--" is the EM Config sentinel meaning "not configured". When no real config
+rem was passed on the command line, fall back to this session's config file - but
+rem only if it too resolves to a real path. getConfigFileName() returns the "--"
+rem sentinel when BBj was started without an explicit -c, which would otherwise
+rem register an unusable config file (issue #382).
+if (configFile! = null() or configFile! = "" or configFile! = "--") then
+    configFile! = ""
+    sessionConfig! = BBjAPI().getConfig().getConfigFileName()
+    if (sessionConfig! <> null() and sessionConfig! > "" and sessionConfig! <> "--") then
+        configFile! = sessionConfig!
+    fi
+fi
+
+rem Only set the config file when we have a real path; never write the "--"
+rem sentinel or an empty value, both of which break the EM launch.
 if (configFile! <> null() and configFile! > "") then
     app!.setString(app!.CONFIG_FILE, configFile!)
-else
-    app!.setString(app!.CONFIG_FILE, BBjAPI().getConfig().getConfigFileName())
 fi
 
 if sscp! <> null() and sscp! > "" and sscp! <> "--" then
