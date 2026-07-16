@@ -557,7 +557,7 @@
     "@vscode/vsce": "^3.7.1",
     "chevrotain": "~12.0.0",
     "langium": "~4.3.1",
-    "properties-file": "^3.6.3",
+    "properties-file": "^5.0.5",
     "properties-reader": "^3.0.1",
     "vscode-jsonrpc": "^8.2.1",
     "vscode-languageclient": "^10.1.0",
