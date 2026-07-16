@@ -5,14 +5,14 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
-import { isPortOpen } from './test-helper.js';
+import { shouldRunBBjTests } from './test-helper.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    let isInteropRunning: boolean = await isPortOpen(5008);
+    let isInteropRunning: boolean = await shouldRunBBjTests();
 
     beforeAll(async () => {
         await initializeWorkspace(services.shared);

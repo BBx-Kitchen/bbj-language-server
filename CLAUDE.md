@@ -24,7 +24,8 @@ npm install                    # Install dependencies
 npm run langium:generate       # Regenerate AST/grammar from bbj.langium (run after grammar changes)
 npm run build                  # TypeScript compile + esbuild bundle
 npm run watch                  # Concurrent tsc + esbuild watch
-npm test                       # Run all tests (vitest)
+npm test                       # Run all tests (vitest); BBj/Java-dependent tests are skipped unless BBj is reachable
+npm run test:bbj               # Run all tests incl. BBj-side tests (RUN_BBJ_TESTS=1); needs java-interop up on :5008
 npx vitest run <file>          # Run a single test file, e.g. npx vitest run test/validation.test.ts
 npm run test:watch             # Watch mode
 npm run test:coverage          # Coverage report (V8)
