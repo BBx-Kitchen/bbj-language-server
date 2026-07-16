@@ -306,6 +306,12 @@
           "description": "When opening a tokenized (binary) BBj program, prompt to decompile it to editable source (replacing the file) or open a read-only decompiled copy.",
           "scope": "window"
         },
+        "bbj.denumber.promptOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "When opening a line-numbered BBj program, prompt to denumber it (replacing the file with editable source) or open it read-only.",
+          "scope": "window"
+        },
         "bbj.formatter.indentWidth": {
           "type": "number",
           "default": 2,
