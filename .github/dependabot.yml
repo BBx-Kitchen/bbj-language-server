@@ -11,3 +11,9 @@ updates:
       # during `langium generate`) — see PR #347. It should only move when a Langium
       # upgrade pulls in a newer chevrotain, so let Langium drive it.
       - dependency-name: "chevrotain"
+      # TypeScript major versions are gated by typescript-eslint, which supports
+      # only `typescript >=4.8.4 <6.1.0` — TS 6/7 (the native compiler) crash
+      # `npm run lint`. See PR #397. Allow 5.x updates; block majors until
+      # typescript-eslint adds support.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
