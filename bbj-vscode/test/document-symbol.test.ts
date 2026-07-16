@@ -49,6 +49,38 @@ describe('DocumentSymbol Tests', async () => {
 
     })
 
+    test('issue #389: variables starting with "rem" keep the class in the outline', async () => {
+        // "rem" is the remark/comment keyword, but identifiers such as rem15, remark1,
+        // remmedOutStuff! or remainingSeconds must NOT be lexed as a comment — otherwise
+        // the whole class (and every class after it) drops out of the outline.
+        const document = await validate(`
+            class public Test
+                method public static BBjString doTheThing()
+                    predictedSecs = 42
+                    rem15 = mod(predictedSecs, 15)
+                    predictedSecs = predictedSecs - rem15
+                    predictedSecs = predictedSecs - remark1
+                    mySales = remmedOutStuff!
+                    remainingSeconds = 18
+                    print "Seconds: ", remainingSeconds
+                methodend
+            classend
+
+            class public AfterTest
+                method public void other()
+                methodend
+            classend
+        `)
+        expectNoErrors(document)
+
+        const symbols = await documentSymbolProvider.getSymbols(document, { textDocument: { uri: document.uri.toString() } });
+        const allNames = flattenSymbolNames(symbols);
+        expect(allNames).toContain('Test');
+        expect(allNames).toContain('doTheThing');
+        // The class after the offending lines must still appear as well
+        expect(allNames).toContain('AfterTest');
+    })
+
     test('symbols survive broken method body', async () => {
         // A class with a broken method body (lexer error mid-body) followed by a valid method.
         // The BBj parser recovers at METHODEND and continues, so both methods appear in the AST.
