@@ -566,7 +566,7 @@
   "devDependencies": {
     "@types/node": "^26.1.1",
     "@types/vscode": "^1.67.0",
-    "@vitest/coverage-v8": "^3.2.7",
+    "@vitest/coverage-v8": "^4.1.10",
     "concurrently": "^8.2.2",
     "esbuild": "^0.28.1",
     "eslint": "^9.39.5",
@@ -574,6 +574,6 @@
     "shx": "^0.4.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.64.0",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.10"
   }
 }
