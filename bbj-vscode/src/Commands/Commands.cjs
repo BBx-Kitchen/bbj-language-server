@@ -121,12 +121,39 @@ const runWeb = (params, client, credentials) => {
   });
 };
 
+const bbjlstBin = (home) =>
+  `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}"`;
+
+/**
+ * Resolve the target file for a decompile/denumber operation.
+ * Prefers an explicit uri/params argument (needed for tokenized binary files,
+ * which open in a non-text editor so `activeTextEditor` may be absent or wrong),
+ * falling back to the active editor.
+ */
+const resolveTargetFileName = (params) => {
+  if (params && params.fsPath) {
+    return params.fsPath;
+  }
+  const active = vscode.window.activeTextEditor;
+  return active ? active.document.fileName : undefined;
+};
+
 const decompile = (params, options = {}) => {
   const home = getBBjHome();
   if (!home) return;
   const active = vscode.window.activeTextEditor;
   const fileName = active ? active.document.fileName : params.fsPath;
-  const resolvedFileName = path.resolve(fileName);
+  decompileInPlace(path.resolve(fileName), options);
+};
+
+/**
+ * Run bbjlst on an already-resolved file, replacing it in place with the result,
+ * then open the result. `options.denumber` selects denumbered (clean) source.
+ */
+const decompileInPlace = (resolvedFileName, options = {}) => {
+  const home = getBBjHome();
+  if (!home) return;
+  const fileName = resolvedFileName;
   const resolvedLstFileName = resolvedFileName.endsWith('.lst')
     ? resolvedFileName
     : resolvedFileName + '.lst';
@@ -135,9 +162,7 @@ const decompile = (params, options = {}) => {
 
   const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') ? '-xlst' : ''}` : '';
 
-  const cmd = `"${home}/bin/bbjlst${
-    os.platform() === 'win32' ? '.exe' : ''
-  }" ${flags} "${resolvedFileName}"`;
+  const cmd = `${bbjlstBin(home)} ${flags} "${resolvedFileName}"`;
 
   const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
 
@@ -322,6 +347,54 @@ const Commands = {
   },
   denumber: function (params) {
     decompile(params, { denumber: true });
+  },
+  /**
+   * Decompile a tokenized (binary) BBj program to denumbered source and replace
+   * the file on disk (issue #65). Resolves the target from the passed uri so it
+   * works for binary files that have no active text editor.
+   */
+  decompileReplace: function (params) {
+    const fileName = resolveTargetFileName(params);
+    if (!fileName) return;
+    decompileInPlace(path.resolve(fileName), { denumber: true });
+  },
+  /**
+   * Decompile a tokenized (binary) BBj program to a temporary, read-only source
+   * view, leaving the original binary file untouched (issue #65).
+   */
+  decompileReadonly: function (params) {
+    const home = getBBjHome();
+    if (!home) return;
+    const fileName = resolveTargetFileName(params);
+    if (!fileName) return;
+    const resolvedFileName = path.resolve(fileName);
+    const lstFile = resolvedFileName + '.lst';
+    const cmd = `${bbjlstBin(home)} -l "${resolvedFileName}"`;
+
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: "Decompiling BBj Program...",
+      cancellable: false
+    }, async () => {
+      try {
+        await execWithProgress(cmd);
+        // Move the generated listing into a temp file so the original binary is
+        // left intact; open that copy read-only. copyFile+unlink avoids EXDEV
+        // when the temp dir is on a different filesystem than the source.
+        const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-decompiled-'));
+        const base = path.basename(resolvedFileName).replace(/\.[^.]*$/, '') || 'program';
+        const tmpFile = path.join(tmpDir, base + '.bbj');
+        await fs.promises.copyFile(lstFile, tmpFile);
+        await fs.promises.unlink(lstFile).catch(() => { });
+
+        const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(tmpFile));
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+      } catch (err) {
+        const errorMsg = `Failed to decompile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
+        vscode.window.showErrorMessage(errorMsg);
+      }
+    });
   },
 };
 

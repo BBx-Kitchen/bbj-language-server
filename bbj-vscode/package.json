@@ -137,6 +137,16 @@
           "dark": "./images/bbj-denumber-dark.svg"
         },
         "key": "alt+n"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.decompile",
+        "title": "Decompile Tokenized BBj Program (Replace)"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.decompileReadonly",
+        "title": "Decompile Tokenized BBj Program (Read-only)"
       }
     ],
     "keybindings": [
@@ -288,6 +298,12 @@
           "type": "boolean",
           "default": false,
           "description": "Auto Save upon run of BBj program",
+          "scope": "window"
+        },
+        "bbj.decompile.promptOnOpen": {
+          "type": "boolean",
+          "default": true,
+          "description": "When opening a tokenized (binary) BBj program, prompt to decompile it to editable source (replacing the file) or open a read-only decompiled copy.",
           "scope": "window"
         },
         "bbj.formatter.indentWidth": {
@@ -533,7 +549,9 @@
     "onCommand:bbj.autoComment",
     "onCommand:bbj.compile",
     "onCommand:bbj.configureCompileOptions",
-    "onCommand:bbj.denumber"
+    "onCommand:bbj.denumber",
+    "onCommand:bbj.decompile",
+    "onCommand:bbj.decompileReadonly"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
