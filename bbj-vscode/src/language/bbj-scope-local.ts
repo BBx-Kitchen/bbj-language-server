@@ -156,7 +156,11 @@ export class BbjScopeComputation extends DefaultScopeComputation {
                     return;
                 }
                 if (javaClass.error) {
-                    logger.warn(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
+                    // An unresolved USE also surfaces as a linking diagnostic on the
+                    // reference (the class is not added to scope below), so keep this
+                    // at debug to avoid alarming [error] noise for classes that simply
+                    // aren't on the BBj classpath (e.g. org.mockito.Mockito in tests).
+                    logger.debug(`Java '${javaClassName}' class resolution error: ${javaClass.error}`)
                     return;
                 }
                 const program = node.$container;
