@@ -1,6 +1,6 @@
 import { AstNode } from "langium";
 import { AbstractSemanticTokenProvider, LangiumServices, SemanticTokenAcceptor } from "langium/lsp";
-import { SymbolRef, ParameterDecl, MethodCall } from "./generated/ast.js";
+import { SymbolRef, ParameterDecl, MethodCall, Assignment } from "./generated/ast.js";
 import { SemanticTokenTypes } from "vscode-languageserver-types";
 
 export class BBjSemanticTokenProvider extends AbstractSemanticTokenProvider {
@@ -16,6 +16,11 @@ export class BBjSemanticTokenProvider extends AbstractSemanticTokenProvider {
                 return this.highlightSymbolRef(node as SymbolRef, acceptor);
             case MethodCall.$type:
                 return this.highlightMethodCall(node as MethodCall, acceptor);
+            case Assignment.$type:
+                // Highlight the leading '#' (instance access) so it matches the '#' on a
+                // SymbolRef; otherwise `#field! = ...` colors the '#' differently than
+                // `#field!.method()` (issue #269).
+                return acceptor({ node: node as Assignment, property: 'instanceAccess', type: SemanticTokenTypes.keyword });
         }
     }
     

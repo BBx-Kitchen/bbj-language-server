@@ -256,6 +256,44 @@ describe('LSP Feature Verification Tests', async () => {
                 expect(semanticTokenProvider).toBeDefined();
             }
         });
+
+        test('instance-access "#" is highlighted consistently in assignment and member call (#269)', async () => {
+            // Regression for #269: the leading '#' was highlighted on a SymbolRef
+            // (`#field!.method()`) but NOT on an assignment LHS (`#field! = ...`),
+            // so the same '#' got different colors.
+            const src = [
+                'class public MyApp',
+                '    field private BBjString myString!',
+                '    method public MyApp()',
+                '        #myString! = "asdf"',              // assignment LHS '#'
+                '        #myString! = #myString! + "1234"',  // LHS '#' and member-ref '#'
+                '    methodend',
+                'classend',
+            ].join('\n');
+            const document = await parse(src, { validation: true });
+            expectNoErrors(document);
+
+            const provider = services.BBj.lsp.SemanticTokenProvider!;
+            const tokens = await provider.semanticHighlight(document, { textDocument: { uri: document.uri.toString() } });
+
+            // Decode the relative-encoded token stream and keep the ones sitting on a '#'.
+            const lines = src.split('\n');
+            const data = tokens.data;
+            const hashTypes: number[] = [];
+            let line = 0, char = 0;
+            for (let i = 0; i < data.length; i += 5) {
+                line += data[i];
+                char = data[i] === 0 ? char + data[i + 1] : data[i + 1];
+                const length = data[i + 2];
+                if (length === 1 && lines[line]?.charAt(char) === '#') {
+                    hashTypes.push(data[i + 3]);
+                }
+            }
+
+            // All three '#' occurrences must be highlighted, and with the same token type.
+            expect(hashTypes.length).toBe(3);
+            expect(new Set(hashTypes).size).toBe(1);
+        });
     });
 
     // Combined test: Multiple LSP features working together
