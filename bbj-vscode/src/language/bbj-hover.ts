@@ -37,9 +37,17 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         if (cstNode && cstNode.offset + cstNode.length > offset) {
             // Store reference context for inherited field detection
             this.referenceCstNode = cstNode;
-            const result = await super.getHoverContent(document, params);
-            this.referenceCstNode = undefined;
-            return result;
+            try {
+                return await super.getHoverContent(document, params);
+            } catch (e) {
+                // A hover computation error must never surface as a failed LSP request
+                // (the user just sees repeated "textDocument/hover failed" noise). Log
+                // the stack for diagnosis and degrade gracefully to "no hover".
+                logger.warn(`Hover failed at offset ${offset}: ${e instanceof Error ? (e.stack ?? e.message) : String(e)}`);
+                return undefined;
+            } finally {
+                this.referenceCstNode = undefined;
+            }
         }
         return undefined;
     }
@@ -173,8 +181,9 @@ export function documentationHeader(node: AstNode): string | undefined {
     return undefined;
 }
 
-function javaTypeAdjust(typeFqn: string): string {
-    return typeFqn.replace(/^java\.lang\./, '')
+function javaTypeAdjust(typeFqn: string | undefined): string {
+    // Java type strings come from external data and may be missing on a malformed payload.
+    return (typeFqn ?? '').replace(/^java\.lang\./, '')
 }
 
 function ownerClass(member: ClassMember): string {
@@ -183,14 +192,19 @@ function ownerClass(member: ClassMember): string {
 }
 
 export function methodSignature(nodeDescription: MethodData, typeAdjust: ((type: string) => string) = (t) => t ?? '') {
-    return `${nodeDescription.name}(${nodeDescription.parameters.map(p => `${typeAdjust(p.type)} ${p.realName ?? p.name}${p.optional ? '?' : ''}`).join(', ')})`
+    // `parameters` originates from external Java data (java-interop socket / javadoc
+    // JSON); guard against a missing array so hover never crashes on a malformed payload.
+    const parameters = nodeDescription.parameters ?? [];
+    return `${nodeDescription.name}(${parameters.map(p => `${typeAdjust(p.type)} ${p.realName ?? p.name}${p.optional ? '?' : ''}`).join(', ')})`
 }
 
 function toMethodDocToMethodData(methodDoc: MethodDoc, node: JavaMethod): MethodData {
-    const javaParams = node.parameters
+    // Both arrays come from external sources (classpath payload / javadoc JSON) and may
+    // be absent for a given method — default to empty so index access can't throw.
+    const javaParams = node.parameters ?? []
     return {
         name: methodDoc.name,
-        parameters: methodDoc.params.map((p, idx) => ({ name: p.name, type: javaParams[idx]?.type ?? 'Object', optional: false })),
+        parameters: (methodDoc.params ?? []).map((p, idx) => ({ name: p.name, type: javaParams[idx]?.type ?? 'Object', optional: false })),
         returnType: node.returnType
     }
 }
