@@ -15,6 +15,7 @@ import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
 import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
 import { isLineNumberedSource } from './line-numbering.js';
+import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -577,6 +578,7 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): P
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
+    registerMsgboxComposer(context); // spike: visual MSGBOX composer (#426)
     secretStorage = context.secrets;
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;

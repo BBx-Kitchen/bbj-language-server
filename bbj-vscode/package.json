@@ -147,6 +147,11 @@
         "category": "BBj",
         "command": "bbj.decompileReadonly",
         "title": "Decompile Tokenized BBj Program (Read-only)"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeMsgbox",
+        "title": "Compose MSGBOX\u2026"
       }
     ],
     "keybindings": [
@@ -197,6 +202,11 @@
           "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
           "command": "bbj.denumber",
           "group": "BBj@5"
+        },
+        {
+          "command": "bbj.composeMsgbox",
+          "when": "editorLangId == bbj",
+          "group": "1_modification"
         }
       ],
       "editor/title": [
