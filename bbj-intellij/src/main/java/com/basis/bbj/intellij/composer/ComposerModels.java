@@ -53,6 +53,7 @@ public final class ComposerModels {
         public List<String> customButtons;
         public List<String> trailingArgs;
         public Boolean editMode;
+        public Boolean useConstants;
     }
 
     /** Param wrapper: the handler expects {@code { "input": ... }}. */

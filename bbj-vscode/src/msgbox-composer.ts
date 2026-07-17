@@ -13,40 +13,42 @@ export interface CatalogItem {
     value: number;
     label: string;
     detail?: string;
+    /** The `BBjMsgBox.*` constant name for this value (for the readable constants form). */
+    constant?: string;
 }
 
 /** Button sets — the low bits of `expr` (0..7). */
 export const BUTTON_SETS: CatalogItem[] = [
-    { value: 0, label: 'OK' },
-    { value: 1, label: 'OK, Cancel' },
-    { value: 2, label: 'Abort, Retry, Ignore' },
-    { value: 3, label: 'Yes, No, Cancel' },
-    { value: 4, label: 'Yes, No' },
-    { value: 5, label: 'Retry, Cancel' },
-    { value: 7, label: 'Custom (button1..button3)' },
+    { value: 0, label: 'OK', constant: 'MSGBOX_BUTTONS_OK' },
+    { value: 1, label: 'OK, Cancel', constant: 'MSGBOX_BUTTONS_OK_CANCEL' },
+    { value: 2, label: 'Abort, Retry, Ignore', constant: 'MSGBOX_BUTTONS_ABORT_RETRY_IGNORE' },
+    { value: 3, label: 'Yes, No, Cancel', constant: 'MSGBOX_BUTTONS_YES_NO_CANCEL' },
+    { value: 4, label: 'Yes, No', constant: 'MSGBOX_BUTTONS_YES_NO' },
+    { value: 5, label: 'Retry, Cancel', constant: 'MSGBOX_BUTTONS_RETRY_CANCEL' },
+    { value: 7, label: 'Custom (button1..button3)', constant: 'MSGBOX_BUTTONS_CUSTOM' },
 ];
 
 /** Icon — added to the button value. */
 export const ICONS: CatalogItem[] = [
-    { value: 0, label: 'None' },
-    { value: 16, label: 'Stop' },
-    { value: 32, label: 'Question' },
-    { value: 48, label: 'Exclamation' },
-    { value: 64, label: 'Information' },
+    { value: 0, label: 'None', constant: 'MSGBOX_ICON_NONE' },
+    { value: 16, label: 'Stop', constant: 'MSGBOX_ICON_STOP' },
+    { value: 32, label: 'Question', constant: 'MSGBOX_ICON_QUESTION' },
+    { value: 48, label: 'Exclamation', constant: 'MSGBOX_ICON_EXCLAMATION' },
+    { value: 64, label: 'Information', constant: 'MSGBOX_ICON_INFORMATION' },
 ];
 
 /** Default button — added on top. */
 export const DEFAULT_BUTTONS: CatalogItem[] = [
-    { value: 0, label: 'First button' },
-    { value: 256, label: 'Second button' },
-    { value: 512, label: 'Third button' },
+    { value: 0, label: 'First button', constant: 'MSGBOX_DEFAULT_FIRST' },
+    { value: 256, label: 'Second button', constant: 'MSGBOX_DEFAULT_SECOND' },
+    { value: 512, label: 'Third button', constant: 'MSGBOX_DEFAULT_THIRD' },
 ];
 
 /** Independent flags (multi-select). */
 export const FLAGS: CatalogItem[] = [
-    { value: 65536, label: 'Do not allow Enter selection' },
-    { value: 32768, label: 'Disable HTML processing' },
-    { value: 131072, label: 'Restrict to MDI desktop' },
+    { value: 65536, label: 'Do not allow Enter selection', constant: 'MSGBOX_DEFAULT_NONE' },
+    { value: 32768, label: 'Disable HTML processing', constant: 'MSGBOX_RAW_TEXT' },
+    { value: 131072, label: 'Restrict to MDI desktop', constant: 'MSGBOX_MDI_DESKTOP' },
 ];
 
 const BUTTON_MASK = 0x7;     // 0..7
@@ -128,6 +130,8 @@ export interface ComposeInput {
     /** BBj expression text for the message, e.g. `"Are you sure?"` or a variable. */
     message: string;
     expr: number;
+    /** Overrides how the `expr` argument is rendered (e.g. the `BBjMsgBox.*` constants form). */
+    exprText?: string;
     /** BBj expression text for the title, if any. */
     title?: string;
     /** Custom button label expressions (only meaningful with the "Custom" button set). */
@@ -146,15 +150,32 @@ export function composeStatement(input: ComposeInput): string {
     const extras = [...(input.buttons ?? []), ...(input.trailingArgs ?? [])];
     const hasExtras = extras.length > 0;
     const needTitle = (input.title !== undefined && input.title !== '') || hasExtras;
-    const needExpr = input.expr !== 0 || needTitle;
+    const hasExprText = input.exprText !== undefined && input.exprText !== '';
+    const needExpr = input.expr !== 0 || needTitle || hasExprText;
 
     const args: string[] = [input.message];
-    if (needExpr) args.push(String(input.expr));
+    if (needExpr) args.push(hasExprText ? input.exprText! : String(input.expr));
     if (needTitle) args.push(input.title || '""');
     if (hasExtras) args.push(...extras);
 
     const call = `MSGBOX(${args.join(', ')})`;
     return input.assignTo ? `${input.assignTo} = ${call}` : call;
+}
+
+/**
+ * Render `expr` as the readable `BBjMsgBox.*` constants form, e.g.
+ * `BBjMsgBox.MSGBOX_BUTTONS_OK_CANCEL+BBjMsgBox.MSGBOX_ICON_QUESTION`. The button-set constant is
+ * always emitted (it is the base); the zero-valued icon/default-button are omitted.
+ */
+export function msgboxConstantsExpr(s: MsgboxState): string {
+    const constOf = (catalog: CatalogItem[], value: number) => catalog.find(i => i.value === value)?.constant;
+    const parts: string[] = [];
+    const button = constOf(BUTTON_SETS, s.buttonSet);
+    if (button) parts.push(button);
+    if (s.icon) { const c = constOf(ICONS, s.icon); if (c) parts.push(c); }
+    if (s.defaultButton) { const c = constOf(DEFAULT_BUTTONS, s.defaultButton); if (c) parts.push(c); }
+    for (const flag of flagsFromState(s)) { const c = constOf(FLAGS, flag); if (c) parts.push(c); }
+    return parts.map(p => `BBjMsgBox.${p}`).join('+');
 }
 
 /** The flag values (65536/32768/131072) set on a state — inverse of the flag part of stateFromSelection. */
@@ -345,11 +366,15 @@ export interface MsgboxPreviewInput {
     trailingArgs?: string[];
     /** In edit mode the assignment prefix already exists in the source, so it is omitted. */
     editMode?: boolean;
+    /** Emit the readable `BBjMsgBox.*` constants form for `expr` instead of the numeric literal. */
+    useConstants?: boolean;
 }
 
 /** Everything a composer UI needs to render one state: the statement, validation, and a schematic. */
 export interface MsgboxPreview {
     expr: number;
+    /** The constants form of `expr` when `useConstants` is set (else undefined). */
+    exprText?: string;
     statement: string;
     summary: string;
     messageError?: string;
@@ -375,9 +400,10 @@ export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
     const firstBadButton = cleanCustom.map(b => validateStringField(b)).find(v => !v.ok);
     const customOk = !isCustom || (cleanCustom.length > 0 && !firstBadButton);
 
+    const exprText = input.useConstants ? msgboxConstantsExpr(state) : undefined;
     const statement = composeStatement({
         message: input.message || '""',
-        expr,
+        expr, exprText,
         title: input.title || undefined,
         buttons: isCustom ? cleanCustom : undefined,
         trailingArgs: input.trailingArgs,
@@ -387,7 +413,7 @@ export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
     const labels = buttonLabels(state.buttonSet, input.customButtons);
     const defaultIndex = state.defaultButton === 256 ? 1 : state.defaultButton === 512 ? 2 : 0;
     return {
-        expr, statement, summary: describe(expr),
+        expr, exprText, statement, summary: describe(expr),
         messageError: msgV.ok ? undefined : msgV.message,
         titleError: titleV.ok ? undefined : titleV.message,
         customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : (firstBadButton?.message ?? 'Invalid button expression')),

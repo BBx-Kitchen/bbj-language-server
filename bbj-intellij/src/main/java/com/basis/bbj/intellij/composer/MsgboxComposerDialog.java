@@ -62,6 +62,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final Map<Long, JBCheckBox> flagChecks = new LinkedHashMap<>();
     private final JBTextField[] customButtons = { new JBTextField(), new JBTextField(), new JBTextField() };
     private JPanel customPanel;
+    private final JBCheckBox useConstants = new JBCheckBox("Use named constants (BBjMsgBox.*) instead of a numeric code");
 
     private final MsgboxSchematicPanel schematic = new MsgboxSchematicPanel();
     private final JBTextField statementField = new JBTextField();
@@ -142,10 +143,12 @@ public final class MsgboxComposerDialog extends DialogWrapper {
             flags.add(cb);
         }
         root.add(flags);
+        root.add(useConstants);
 
         buttonSet.addActionListener(e -> { updateCustomVisibility(); refresh(); });
         icon.addActionListener(e -> refresh());
         defaultButton.addActionListener(e -> refresh());
+        useConstants.addActionListener(e -> refresh());
         message.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
         titleField.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
         assignTo.getDocument().addDocumentListener(new SimpleDocumentListener(this::refresh));
@@ -200,6 +203,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         input.customButtons = custom;
         input.editMode = editMode;
         input.trailingArgs = trailingArgs;
+        input.useConstants = useConstants.isSelected();
 
         int mySeq = seq.incrementAndGet();
         server.msgboxPreview(new MsgboxPreviewParams(input)).thenAccept(preview ->

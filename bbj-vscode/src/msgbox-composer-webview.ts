@@ -42,6 +42,7 @@ interface Selection {
     message: string;
     title: string;
     assignTo: string;
+    useConstants: boolean;
 }
 
 export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: MsgboxPanelArg): void {
@@ -242,6 +243,11 @@ function getHtml(webview: vscode.Webview): string {
 
   <fieldset id="flags"><legend>Extra options</legend></fieldset>
 
+  <div class="check" style="margin: 4px 0 10px;">
+    <input type="checkbox" id="useConstants">
+    <label for="useConstants" style="opacity:1;">Use named constants (<code>BBjMsgBox.*</code>) instead of a numeric code</label>
+  </div>
+
   <div class="preview">
     <label>Generated statement</label>
     <pre id="preview">—</pre>
@@ -284,6 +290,7 @@ function getHtml(webview: vscode.Webview): string {
       message: $('message').value,
       title: $('title').value,
       assignTo: $('assignTo').value,
+      useConstants: $('useConstants').checked,
     };
   }
 
@@ -346,6 +353,7 @@ function getHtml(webview: vscode.Webview): string {
     $(id).addEventListener('input', change);
     $(id).addEventListener('change', change);
   }
+  $('useConstants').addEventListener('change', change);
   $('insert').addEventListener('click', () => vscode.postMessage({ type: 'insert', payload: readForm() }));
   $('cancel').addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 
