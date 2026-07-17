@@ -1,6 +1,6 @@
 {
   "name": "bbj-lang",
-  "version": "0.8.36",
+  "version": "0.8.37",
   "publisher": "basis-intl",
   "displayName": " BBj Programming Language Support",
   "description": "BBj Language Support for Visual Studio Code",
@@ -151,7 +151,7 @@
       {
         "category": "BBj",
         "command": "bbj.composeMsgbox",
-        "title": "Compose MSGBOX\u2026"
+        "title": "Compose MSGBOX…"
       }
     ],
     "keybindings": [
