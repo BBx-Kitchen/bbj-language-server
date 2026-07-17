@@ -1,8 +1,11 @@
 package com.basis.bbj.intellij.composer;
 
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.ComposerCatalogs;
+import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
+import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
@@ -29,4 +32,12 @@ public interface BbjComposerServer extends LanguageServer {
     /** Full addWindow preview (flags/event hex + statement + summaries + schematic) for one selection. */
     @JsonRequest("bbj/composer/addwindow/preview")
     CompletableFuture<AddWindowPreview> addWindowPreview(AddWindowPreviewParams params);
+
+    /** Decode the MSGBOX call at the caret into a prefill payload + the call span to replace. */
+    @JsonRequest("bbj/composer/msgbox/decodeCall")
+    CompletableFuture<MsgboxDecodeResult> msgboxDecodeCall(DecodeCallParams params);
+
+    /** Decode the addWindow call at the caret into a prefill payload + token ranges to rewrite. */
+    @JsonRequest("bbj/composer/addwindow/decodeCall")
+    CompletableFuture<AddWindowDecodeResult> addWindowDecodeCall(DecodeCallParams params);
 }

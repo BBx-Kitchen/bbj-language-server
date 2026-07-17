@@ -101,6 +101,18 @@
         <!-- Welcome notification on first launch -->
         <postStartupActivity implementation="com.basis.bbj.intellij.BbjWelcomeNotification"/>
 
+        <!-- Visual composer lightbulb intentions (#426 / #430) -->
+        <intentionAction>
+            <language>BBj</language>
+            <className>com.basis.bbj.intellij.composer.ConfigureMsgboxIntention</className>
+            <category>BBj</category>
+        </intentionAction>
+        <intentionAction>
+            <language>BBj</language>
+            <className>com.basis.bbj.intellij.composer.ConfigureAddWindowIntention</className>
+            <category>BBj</category>
+        </intentionAction>
+
         <fileType
             name="BBj"
             implementationClass="com.basis.bbj.intellij.BbjFileType"

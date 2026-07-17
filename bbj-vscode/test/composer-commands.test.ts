@@ -88,6 +88,45 @@ describe('composer LS command layer (#433)', () => {
         expect(parsed.call.flagsValue).toBe(0x00080002);
     });
 
+    test('msgbox/decodeCall decodes the call at the caret into a prefill + call span', () => {
+        const line = '    ret! = MSGBOX("Are you sure?", 36, "Confirm")';
+        const r = call('bbj/composer/msgbox/decodeCall', { line, character: line.indexOf('36') }) as any;
+        expect(r.found).toBe(true);
+        expect(r.initial.message).toBe('"Are you sure?"');
+        expect(r.initial.title).toBe('"Confirm"');
+        expect(r.initial.buttonSet).toBe(4);  // Yes/No
+        expect(r.initial.icon).toBe(32);       // Question
+        expect(line.slice(r.edit.callStart, r.edit.callEnd)).toBe('MSGBOX("Are you sure?", 36, "Confirm")');
+
+        // caret outside any call -> not found
+        expect((call('bbj/composer/msgbox/decodeCall', { line, character: 0 }) as any).found).toBe(false);
+        // bare call -> found (lets the UI add options), zeroed selection
+        const bare = call('bbj/composer/msgbox/decodeCall', { line: 'x = MSGBOX("Hi")', character: 12 }) as any;
+        expect(bare.found).toBe(true);
+        expect(bare.initial.buttonSet).toBe(0);
+        expect(bare.initial.message).toBe('"Hi"');
+    });
+
+    test('addwindow/decodeCall decodes flags/event bits + token ranges at the caret', () => {
+        const line = 'w! = g!.addWindow(0, 0, 9, 9, "T", $01000002$, $00000440$)';
+        const r = call('bbj/composer/addwindow/decodeCall', { line, character: line.indexOf('$01000002$') }) as any;
+        expect(r.found).toBe(true);
+        expect(r.initial.flags).toContain(0x00000002);       // Close box
+        expect(r.initial.flags).toContain(0x01000000);       // No title bar
+        expect(r.initial.eventMaskEnabled).toBe(true);
+        expect(r.initial.eventMask).toContain(0x00000040);   // Mouse button down
+        expect(r.initial.title).toBe('"T"');
+        expect(line.slice(r.edit.flagsRange[0], r.edit.flagsRange[1])).toBe('$01000002$');
+        expect(line.slice(r.edit.eventMaskRange[0], r.edit.eventMaskRange[1])).toBe('$00000440$');
+
+        // a call with no flags yet -> found, with a flags-insert offset and no event mask
+        const bare = call('bbj/composer/addwindow/decodeCall', { line: 'g!.addWindow("T")', character: 5 }) as any;
+        expect(bare.found).toBe(true);
+        expect(bare.initial.flags).toEqual([]);
+        expect(bare.edit.flagsInsertOffset).toBeGreaterThan(0);
+        expect(bare.edit.eventMaskRange).toBeUndefined();
+    });
+
     test('registerComposerRequests wires every handler onto the connection', () => {
         const onRequest = vi.fn();
         registerComposerRequests({ onRequest } as any);

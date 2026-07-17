@@ -130,4 +130,51 @@ public final class ComposerModels {
         public String eventSummary;
         public WindowRender render;
     }
+
+    // ---- decodeCall (edit-in-place) --------------------------------------------------------------
+
+    /** Params for the {@code decodeCall} requests: a source line and the caret column within it. */
+    public static final class DecodeCallParams {
+        public String line;
+        public Integer character;
+        public DecodeCallParams(String line, int character) { this.line = line; this.character = character; }
+    }
+
+    /** The MSGBOX call span (line-relative) to replace when reconfiguring in place. */
+    public static final class MsgboxEdit {
+        public int callStart;
+        public int callEnd;
+    }
+
+    /** Result of {@code bbj/composer/msgbox/decodeCall}; {@code found=false} when none at the caret. */
+    public static final class MsgboxDecodeResult {
+        public boolean found;
+        public MsgboxEdit edit;
+        public List<String> trailingArgs;
+        public MsgboxPreviewInput initial;
+    }
+
+    /** addWindow token ranges / insert offsets (line-relative) to rewrite in place. */
+    public static final class AddWindowEdit {
+        public int[] flagsRange;
+        public Integer flagsInsertOffset;
+        public int[] eventMaskRange;
+        public Integer eventMaskInsertOffset;
+        public long preservedFlagBits;
+        public long preservedEventBits;
+    }
+
+    public static final class AddWindowInitial {
+        public List<Long> flags;
+        public boolean eventMaskEnabled;
+        public List<Long> eventMask;
+        public String title;
+    }
+
+    /** Result of {@code bbj/composer/addwindow/decodeCall}; {@code found=false} when none at the caret. */
+    public static final class AddWindowDecodeResult {
+        public boolean found;
+        public AddWindowEdit edit;
+        public AddWindowInitial initial;
+    }
 }

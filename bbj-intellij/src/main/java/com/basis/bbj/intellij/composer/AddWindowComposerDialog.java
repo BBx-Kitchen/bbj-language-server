@@ -65,18 +65,42 @@ public final class AddWindowComposerDialog extends DialogWrapper {
     private final JBTextField statementField = new JBTextField();
     private final JBLabel flagsSummary = new JBLabel();
     private final JBLabel eventSummary = new JBLabel();
+    private JPanel geometryPanel;
+
+    private final boolean editMode;
+    private final ComposerModels.AddWindowInitial initial;
+    private final long preservedFlagBits;
+    private final long preservedEventBits;
 
     private volatile String statement = "";
+    private volatile String flagsHex = "";
+    private volatile String eventHex;
 
+    /** Create flow. */
     public AddWindowComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs) {
+        this(project, server, catalogs, null, false, 0L, 0L);
+    }
+
+    /** Full constructor; pass a non-null {@code initial} for edit-in-place. */
+    public AddWindowComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs,
+                                   @Nullable ComposerModels.AddWindowInitial initial, boolean editMode,
+                                   long preservedFlagBits, long preservedEventBits) {
         super(project);
         this.server = server;
         this.catalogs = catalogs;
-        setTitle("Compose addWindow");
-        setOKButtonText("Insert");
+        this.initial = initial;
+        this.editMode = editMode;
+        this.preservedFlagBits = preservedFlagBits;
+        this.preservedEventBits = preservedEventBits;
+        setTitle(editMode ? "Configure window flags" : "Compose addWindow");
+        setOKButtonText(editMode ? "Apply" : "Insert");
         init();
-        // Default to the BASIS doc example: Resizable + Close box + Keyboard navigation.
-        preselect(0x00000001L, 0x00000002L, 0x00010000L);
+        if (initial != null) {
+            prefill(initial);
+        } else {
+            // Create: default to the BASIS doc example (Resizable + Close box + Keyboard navigation).
+            preselect(0x00000001L, 0x00000002L, 0x00010000L);
+        }
         refresh();
     }
 
@@ -107,17 +131,18 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         root.add(eventSummary);
         root.add(Box.createVerticalStrut(JBUI.scale(8)));
 
-        // Statement fields (create flow).
-        JPanel geo = new JPanel(new GridLayout(0, 4, JBUI.scale(6), JBUI.scale(4)));
-        geo.setBorder(BorderFactory.createTitledBorder("Statement"));
-        geo.add(labeled("Assign to", receiver));
-        geo.add(labeled("SysGui expr", sysgui));
-        geo.add(labeled("Title expr", title));
-        geo.add(labeled("x", x));
-        geo.add(labeled("y", y));
-        geo.add(labeled("width", width));
-        geo.add(labeled("height", height));
-        root.add(geo);
+        // Statement fields — create flow only; in edit mode we rewrite just the hex tokens in place.
+        geometryPanel = new JPanel(new GridLayout(0, 4, JBUI.scale(6), JBUI.scale(4)));
+        geometryPanel.setBorder(BorderFactory.createTitledBorder("Statement"));
+        geometryPanel.add(labeled("Assign to", receiver));
+        geometryPanel.add(labeled("SysGui expr", sysgui));
+        geometryPanel.add(labeled("Title expr", title));
+        geometryPanel.add(labeled("x", x));
+        geometryPanel.add(labeled("y", y));
+        geometryPanel.add(labeled("width", width));
+        geometryPanel.add(labeled("height", height));
+        geometryPanel.setVisible(!editMode);
+        root.add(geometryPanel);
 
         // Window flags, grouped.
         JPanel flags = new JPanel();
@@ -205,6 +230,9 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         input.y = y.getText();
         input.width = width.getText();
         input.height = height.getText();
+        input.editMode = editMode;
+        input.preservedFlagBits = preservedFlagBits;
+        input.preservedEventBits = preservedEventBits;
 
         int mySeq = seq.incrementAndGet();
         server.addWindowPreview(new AddWindowPreviewParams(input)).thenAccept(preview ->
@@ -217,10 +245,30 @@ public final class AddWindowComposerDialog extends DialogWrapper {
 
     private void apply(AddWindowPreview p) {
         statement = p.statement;
+        flagsHex = p.flagsHex;
+        eventHex = p.eventHex;
         statementField.setText(p.statement);
         flagsSummary.setText("flags = " + p.flagsHex + "   ·   " + p.flagsSummary);
         eventSummary.setText("event_mask = " + (p.eventHex == null ? "(unset)" : p.eventHex) + "   ·   " + p.eventSummary);
         schematic.setRender(p.render);
+    }
+
+    /** Prefill flag/event selections and title from a decoded call (edit-in-place). */
+    private void prefill(ComposerModels.AddWindowInitial in) {
+        setSelected(flagChecks, in.flags);
+        setSelected(eventChecks, in.eventMask);
+        eventEnabled.setSelected(in.eventMaskEnabled);
+        updateEventEnabled();
+        if (in.title != null) {
+            title.setText(in.title); // kept for the preview even though the geometry panel is hidden
+        }
+    }
+
+    private static void setSelected(Map<Long, JBCheckBox> checks, List<Long> values) {
+        List<Long> on = values == null ? List.of() : values;
+        for (Map.Entry<Long, JBCheckBox> e : checks.entrySet()) {
+            e.getValue().setSelected(on.contains(e.getKey()));
+        }
     }
 
     private static JPanel labeled(String label, JComponent field) {
@@ -230,9 +278,23 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         return panel;
     }
 
-    /** The composed statement to insert; valid after the dialog is accepted. */
+    /** The composed statement to insert (create flow); valid after the dialog is accepted. */
     public @NotNull String getStatement() {
         return statement;
+    }
+
+    /** The `$flags$` hex token (edit flow: replace the existing flags literal with this). */
+    public @NotNull String getFlagsHex() {
+        return flagsHex;
+    }
+
+    /** The `$event_mask$` hex token, or null when the event mask is unset. */
+    public @Nullable String getEventHex() {
+        return eventHex;
+    }
+
+    public boolean isEventEnabled() {
+        return eventEnabled.isSelected();
     }
 
     /** Small DocumentListener that runs one callback on any change. */

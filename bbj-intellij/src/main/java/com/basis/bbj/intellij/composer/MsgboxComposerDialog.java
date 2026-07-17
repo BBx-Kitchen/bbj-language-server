@@ -46,7 +46,11 @@ public final class MsgboxComposerDialog extends DialogWrapper {
 
     private final BbjComposerServer server;
     private final MsgboxCatalogs catalogs;
+    private final boolean editMode;
+    private final ComposerModels.MsgboxPreviewInput initial;
+    private final List<String> trailingArgs;
     private final AtomicInteger seq = new AtomicInteger();
+    private JPanel assignToRow;
 
     private final JBTextField message = new JBTextField("\"Message\"");
     private final JBTextField titleField = new JBTextField();
@@ -66,13 +70,20 @@ public final class MsgboxComposerDialog extends DialogWrapper {
 
     private volatile String statement = "";
 
-    public MsgboxComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs) {
+    public MsgboxComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
+                               @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs) {
         super(project);
         this.server = server;
         this.catalogs = catalogs;
-        setTitle("Compose MSGBOX");
-        setOKButtonText("Insert");
+        this.initial = initial;
+        this.editMode = editMode;
+        this.trailingArgs = trailingArgs;
+        setTitle(editMode ? "Configure MSGBOX" : "Compose MSGBOX");
+        setOKButtonText(editMode ? "Apply" : "Insert");
         init();
+        if (initial != null) {
+            prefill(initial);
+        }
         refresh();
     }
 
@@ -91,7 +102,9 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         root.add(messageError);
         root.add(labeled("Title expression (optional)", titleField));
         root.add(titleError);
-        root.add(labeled("Assign result to (optional)", assignTo));
+        assignToRow = labeled("Assign result to (optional)", assignTo);
+        assignToRow.setVisible(!editMode); // in edit mode the assignment lives outside the replaced call span
+        root.add(assignToRow);
 
         fillCombo(icon, catalogs.icons);
         fillCombo(buttonSet, catalogs.buttonSets);
@@ -138,6 +151,33 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         customPanel.setVisible(value(buttonSet) == CUSTOM_BUTTON_SET);
     }
 
+    /** Prefill the controls from a decoded call (edit-in-place). */
+    private void prefill(ComposerModels.MsgboxPreviewInput in) {
+        message.setText(in.message == null ? "" : in.message);
+        titleField.setText(in.title == null ? "" : in.title);
+        selectByValue(icon, in.icon);
+        selectByValue(buttonSet, in.buttonSet);
+        selectByValue(defaultButton, in.defaultButton);
+        List<Long> flags = in.flags == null ? List.of() : in.flags;
+        for (Map.Entry<Long, JBCheckBox> e : flagChecks.entrySet()) {
+            e.getValue().setSelected(flags.contains(e.getKey()));
+        }
+        List<String> custom = in.customButtons == null ? List.of() : in.customButtons;
+        for (int i = 0; i < customButtons.length; i++) {
+            customButtons[i].setText(i < custom.size() ? custom.get(i) : "");
+        }
+        updateCustomVisibility();
+    }
+
+    private static void selectByValue(ComboBox<CatalogItem> combo, long value) {
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (combo.getItemAt(i).value == value) {
+                combo.setSelectedIndex(i);
+                return;
+            }
+        }
+    }
+
     private void refresh() {
         MsgboxPreviewInput input = new MsgboxPreviewInput();
         input.message = message.getText();
@@ -152,6 +192,8 @@ public final class MsgboxComposerDialog extends DialogWrapper {
             custom.add(cb.getText());
         }
         input.customButtons = custom;
+        input.editMode = editMode;
+        input.trailingArgs = trailingArgs;
 
         int mySeq = seq.incrementAndGet();
         server.msgboxPreview(new MsgboxPreviewParams(input)).thenAccept(preview ->

@@ -16,6 +16,7 @@ import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     encode, decode, describe as describeMsgbox, composeStatement, stateFromSelection, flagsFromState,
     validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine, msgboxPreview,
+    splitButtonsAndTrailing,
     type ComposeInput, type MsgboxPreviewInput,
 } from '../msgbox-composer.js';
 import {
@@ -28,6 +29,12 @@ import {
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }
+
+/** Best-effort title for an addWindow preview: the last string-literal argument in the call. */
+function addWindowTitleArg(args: string[]): string {
+    const literal = [...args].reverse().find(a => /^"([^"]|"")*"$/.test(a));
+    return literal ?? '"Window"';
+}
 
 /**
  * The composer request handlers, keyed by LSP method. Exported (not just wired) so they can be
@@ -59,6 +66,33 @@ export const composerHandlers = {
     /** Locate a MSGBOX call on a line (the one at `character`, or the first). */
     'bbj/composer/msgbox/parseLine': (p: LineQuery) =>
         ({ call: p.character === undefined ? parseMsgboxCallOnLine(p.line) : findMsgboxCallAt(p.line, p.character) }),
+    /**
+     * Find the MSGBOX call at the caret and decode it into a ready-to-prefill payload + the call
+     * span to replace (edit-in-place). `found: false` when the caret is not inside a MSGBOX call.
+     */
+    'bbj/composer/msgbox/decodeCall': (p: LineQuery) => {
+        const info = p.character === undefined ? parseMsgboxCallOnLine(p.line) : findMsgboxCallAt(p.line, p.character);
+        const hasExpr = !!info && info.exprRange !== undefined && info.exprValue !== undefined;
+        const canAddOptions = !!info && info.optionInsertOffset !== undefined;
+        if (!info || (!hasExpr && !canAddOptions)) {
+            return { found: false };
+        }
+        const st = decode(hasExpr ? info.exprValue! : 0);
+        const { buttons, trailing } = hasExpr
+            ? splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7)
+            : { buttons: [], trailing: [] };
+        return {
+            found: true,
+            edit: { callStart: info.callStart, callEnd: info.callEnd },
+            trailingArgs: trailing,
+            initial: {
+                message: info.args[0] ?? '""',
+                title: hasExpr ? (info.args[2] ?? '') : '',
+                buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
+                flags: flagsFromState(st), customButtons: buttons,
+            },
+        };
+    },
 
     // ---- addWindow -------------------------------------------------------------------------------
     /** Chosen flag bits -> mask + `$........$` hex (unknown bits OR-ed back for round-trip safety). */
@@ -91,6 +125,34 @@ export const composerHandlers = {
     /** Locate an addWindow call on a line (the one at `character`, or the first). */
     'bbj/composer/addwindow/parseLine': (p: LineQuery) =>
         ({ call: p.character === undefined ? parseAddWindowCallOnLine(p.line) : findAddWindowCallAt(p.line, p.character) }),
+    /**
+     * Find the addWindow call at the caret and decode it into a prefill payload + the token ranges/
+     * insert offsets to rewrite in place. `found: false` when the caret is not inside such a call.
+     */
+    'bbj/composer/addwindow/decodeCall': (p: LineQuery) => {
+        const info = p.character === undefined ? parseAddWindowCallOnLine(p.line) : findAddWindowCallAt(p.line, p.character);
+        if (!info) {
+            return { found: false };
+        }
+        const flags = info.flagsValue ?? 0;
+        const hasEvent = info.eventMaskValue !== undefined;
+        const eventMask = info.eventMaskValue ?? 0;
+        return {
+            found: true,
+            edit: {
+                flagsRange: info.flagsRange, flagsInsertOffset: info.flagsInsertOffset,
+                eventMaskRange: info.eventMaskRange, eventMaskInsertOffset: info.eventMaskInsertOffset,
+                preservedFlagBits: unknownBits(flags, WINDOW_FLAGS),
+                preservedEventBits: hasEvent ? unknownBits(eventMask, EVENT_MASK_BITS) : 0,
+            },
+            initial: {
+                flags: bitsSet(flags, WINDOW_FLAGS),
+                eventMaskEnabled: hasEvent,
+                eventMask: hasEvent ? bitsSet(eventMask, EVENT_MASK_BITS) : [],
+                title: addWindowTitleArg(info.args),
+            },
+        };
+    },
 } as const;
 
 /** Register every composer request on the LSP connection. Call once during server startup. */
