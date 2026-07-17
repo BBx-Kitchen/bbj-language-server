@@ -14,6 +14,7 @@ import {
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
 import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
+import { isLineNumberedSource } from './line-numbering.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -531,6 +532,42 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined): Promise<void> 
     }
 }
 
+// Tracks documents we've already prompted about this session, so switching
+// back to a line-numbered editor doesn't nag the user again.
+const promptedLineNumberedDocs = new Set<string>();
+
+/**
+ * When a line-numbered BBj program is opened, ask whether to denumber it
+ * (replacing the file with editable source) or open it read-only (issue #64).
+ */
+async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): Promise<void> {
+    if (!editor) return;
+    const doc = editor.document;
+    if (doc.languageId !== 'bbj' || doc.uri.scheme !== 'file') return;
+    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('denumber.promptOnOpen', true)) return;
+
+    const key = doc.uri.toString();
+    if (promptedLineNumberedDocs.has(key)) return;
+    if (!isLineNumberedSource(doc.getText())) return;
+    promptedLineNumberedDocs.add(key);
+
+    const denumberAction = 'Denumber & Replace';
+    const readOnlyAction = 'Open Read-only';
+    const choice = await vscode.window.showInformationMessage(
+        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
+        denumberAction, readOnlyAction
+    );
+    if (choice === denumberAction) {
+        // bbj.denumber runs bbjlst and replaces the file in place with denumbered source.
+        vscode.commands.executeCommand('bbj.denumber', doc.uri);
+    } else if (choice === readOnlyAction) {
+        // Make sure our editor is the active one before flipping it read-only in-session,
+        // in case the user navigated away while the prompt was open.
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+    }
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
@@ -715,6 +752,13 @@ export function activate(context: vscode.ExtensionContext): void {
             void maybePromptTokenized(uriFromTab(tab));
         }
     }
+
+    // Offer to denumber (or open read-only) when a line-numbered BBj program is opened.
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => { void maybePromptLineNumbered(editor); })
+    );
+    // Handle the editor that is already active when the extension activates.
+    void maybePromptLineNumbered(vscode.window.activeTextEditor);
 
     // Diagnostic suppression status bar indicator
     const suppressionStatusBar = vscode.window.createStatusBarItem(
