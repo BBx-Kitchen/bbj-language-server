@@ -1,7 +1,7 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
 import { getClass, getClassRef } from '../bbj-nodedescription-provider.js';
-import { BBjAstType, BbjClass, isBbjClass, isMethodReturnStatement, MethodDecl, QualifiedClass } from '../generated/ast.js';
+import { BBjAstType, BbjClass, isBbjClass, isMethodReturnStatement, isNumberLiteral, isStringLiteral, MethodDecl, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
     const validator = new ClassValidator();
@@ -129,24 +129,74 @@ class ClassValidator {
         }
     }
 
+    // BBj scalar return types whose value kind can be checked against returned literals without
+    // needing type resolution. Names are compared case-insensitively (BBj is case-insensitive).
+    private static readonly STRING_RETURN_TYPES = new Set(['bbjstring']);
+    private static readonly NUMERIC_RETURN_TYPES = new Set(['bbjnumber']);
+
     /**
-     * A method that declares a non-void return type must return a value via `METHODRET <expr>`.
-     * Interface methods (no body, hence no `endTag`) share the rule but are declared elsewhere,
-     * so they are excluded here. See issue #372.
+     * Two related checks on a method that declares a non-void return type and has a body.
+     * Interface methods (no body, hence no `endTag`) are declared elsewhere and excluded.
+     * See issues #372 (missing METHODRET) and the return-type follow-up.
      */
     public checkMethodReturn(meth: MethodDecl, accept: ValidationAcceptor): void {
         // Only methods with an explicit non-void return type and a body need to return a value.
         if (meth.voidReturn || !meth.returnType || !meth.endTag) {
             return;
         }
-        const returnsValue = AstUtils.streamAllContents(meth)
-            .some(node => isMethodReturnStatement(node) && node.return !== undefined);
-        if (!returnsValue) {
+        const valueReturns = AstUtils.streamAllContents(meth)
+            .filter(isMethodReturnStatement)
+            .filter(ret => ret.return !== undefined)
+            .toArray();
+
+        // #372: a non-void method with no value-returning METHODRET is an error.
+        if (valueReturns.length === 0) {
             accept('error', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
                 node: meth,
                 property: 'name'
             });
+            return;
         }
+
+        // Return-type check (conservative): for the well-known BBj scalar return types we can flag a
+        // returned literal whose kind plainly contradicts the declaration, without resolving types.
+        // Array return types and all other/unresolved types are left untouched to avoid false
+        // positives on BBj's loose typing.
+        if (meth.array) {
+            return;
+        }
+        const typeName = this.returnTypeName(meth.returnType);
+        if (!typeName) {
+            return;
+        }
+        const expectsNumber = ClassValidator.NUMERIC_RETURN_TYPES.has(typeName.toLowerCase());
+        const expectsString = ClassValidator.STRING_RETURN_TYPES.has(typeName.toLowerCase());
+        if (!expectsNumber && !expectsString) {
+            return;
+        }
+        for (const ret of valueReturns) {
+            const value = ret.return!;
+            if (expectsNumber && isStringLiteral(value)) {
+                accept('error', `Method '${meth.name}' declares return type '${typeName}' but returns a string.`, {
+                    node: ret,
+                    property: 'return'
+                });
+            } else if (expectsString && isNumberLiteral(value)) {
+                accept('error', `Method '${meth.name}' declares return type '${typeName}' but returns a number.`, {
+                    node: ret,
+                    property: 'return'
+                });
+            }
+        }
+    }
+
+    /** Simple (unqualified) name of a declared return type, taken from its source text. */
+    private returnTypeName(returnType: QualifiedClass): string | undefined {
+        const text = returnType.$cstNode?.text?.trim();
+        if (!text) {
+            return undefined;
+        }
+        return text.substring(text.lastIndexOf('.') + 1);
     }
 
     public checkCyclicInheritance(klass: BbjClass, accept: ValidationAcceptor): void {
