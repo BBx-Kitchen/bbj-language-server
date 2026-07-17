@@ -4,7 +4,7 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
-import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast.js";
+import { Classpath, JavaClass, JavaField, JavaMethod } from "../src/language/generated/ast.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
 
@@ -161,6 +161,28 @@ function createJavaLangStringClass(container: Classpath): JavaClass {
         classes: [],
         methods: []
     }
+    fakeStringClass.fields = [
+        {
+            // static field: accessible via class reference `String.CASE_INSENSITIVE_ORDER` (#440)
+            name: 'CASE_INSENSITIVE_ORDER',
+            $containerProperty: 'fields',
+            $container: fakeStringClass,
+            type: 'java.util.Comparator',
+            isStatic: true,
+            deprecated: false,
+            $type: JavaField
+        },
+        {
+            // instance field: must NOT be reachable through a class reference
+            name: 'someInstanceField',
+            $containerProperty: 'fields',
+            $container: fakeStringClass,
+            type: 'int',
+            isStatic: false,
+            deprecated: false,
+            $type: JavaField
+        }
+    ]
     fakeStringClass.methods = [
         {
             name: 'charAt',
