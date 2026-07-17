@@ -215,20 +215,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return EMPTY_SCOPE;
         } else if (isSymbolRef(context.container)) {
-            var membersStream = EMPTY_STREAM;
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
-            if (bbjType) {
-                // Instance access is either flagged on the SymbolRef itself (e.g. `#field!`
-                // in expression position) or, on an assignment LHS like `#field! = value`,
-                // consumed by the enclosing Assignment's `instanceAccess` (the grammar binds
-                // the `#` to the Assignment rule, not the inner SymbolRef).
-                if (context.container.instanceAccess || isInstanceAccessAssignment(context.container)) {
-                    membersStream = this.createBBjClassMemberScope(bbjType, false, new Set()).getAllElements()
-                }
+            // Instance access is either flagged on the SymbolRef itself (e.g. `#field!`
+            // in expression position) or, on an assignment LHS like `#field! = value`,
+            // consumed by the enclosing Assignment's `instanceAccess` (the grammar binds
+            // the `#` to the Assignment rule, not the inner SymbolRef).
+            if (bbjType && (context.container.instanceAccess || isInstanceAccessAssignment(context.container))) {
+                // `#name` explicitly addresses an instance member of the enclosing BBj class
+                // (fields, methods, this!/super! and inherited members — all provided by
+                // createBBjClassMemberScope). It must NOT fall back to the lexical scope,
+                // otherwise a same-named method parameter or local variable would satisfy a
+                // reference to an undefined field, hiding the error (#80).
+                return this.createBBjClassMemberScope(bbjType, false, new Set())
             }
             const program = AstUtils.getContainerOfType(context.container, isProgram);
             const memberAndImports = new StreamScopeWithPredicate(
-                membersStream.concat(this.importedBBjClasses(program)),
+                stream(this.importedBBjClasses(program)),
                 this.superGetScope(context)
             );
 
@@ -490,7 +492,7 @@ export class BbjNameProvider extends DefaultNameProvider {
  * rather than the inner `SymbolRef`, so the SymbolRef's own `instanceAccess`
  * flag is false and must be recovered from the enclosing Assignment.
  */
-function isInstanceAccessAssignment(node: AstNode): boolean {
+export function isInstanceAccessAssignment(node: AstNode): boolean {
     // Walk up any `receiver` chain (e.g. `#a!.b! = v` links from the `a!` receiver).
     let current: AstNode = node;
     while (isMemberCall(current.$container) && current.$containerProperty === 'receiver') {
