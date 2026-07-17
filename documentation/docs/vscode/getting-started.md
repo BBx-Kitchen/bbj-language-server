@@ -76,6 +76,11 @@ To enable Java class completions, configure the classpath:
 
 The extension will automatically detect classpath entries from your BBj installation. Run the command "BBj: Show Available Classpath Entries" to see all available options.
 
+To override the classpath and PREFIX directories for a single project, add a
+`project.properties` file to your workspace root. See
+[project.properties](./configuration.md#projectproperties) in the Configuration
+guide for details.
+
 ## Testing Your Setup
 
 1. Create a new file with a `.bbj` extension
