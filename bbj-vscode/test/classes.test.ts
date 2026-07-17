@@ -598,4 +598,58 @@ describe("Cyclic inheritance detection", () => {
         expect(missing).toHaveLength(1);   // getA has no methodret
         expect(mismatched).toHaveLength(1); // getB returns "2" for a BBjNumber
     });
+
+    // A void method must not return a value.
+    test("Flags value returned from a void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void TTT1()
+                    methodret ""
+                methodend
+            classend
+        `);
+        const voidErrors = diagnostics.filter(d => d.message.includes('declared void and must not return a value'));
+        expect(voidErrors).toHaveLength(1);
+    });
+
+    test("Bare methodret (no value) is valid in a void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void doWork()
+                    methodret
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.toLowerCase().includes('return'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    // A literal is never an instance of a user-defined BBj class.
+    test("Flags literal returned where a BBj class type is declared", async () => {
+        const { diagnostics } = await validate(`
+            class public Foo
+            classend
+            class public ClassA
+                method public Foo getFoo()
+                    methodret ""
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes("declares return type 'Foo' but returns a string"));
+        expect(typeErrors).toHaveLength(1);
+    });
+
+    test("No error returning an instance for a BBj class type", async () => {
+        const { diagnostics } = await validate(`
+            class public Foo
+            classend
+            class public ClassA
+                method public Foo getFoo()
+                    methodret new Foo()
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        expect(typeErrors).toHaveLength(0);
+    });
 });

@@ -135,19 +135,37 @@ class ClassValidator {
     private static readonly NUMERIC_RETURN_TYPES = new Set(['bbjnumber']);
 
     /**
-     * Two related checks on a method that declares a non-void return type and has a body.
-     * Interface methods (no body, hence no `endTag`) are declared elsewhere and excluded.
-     * See issues #372 (missing METHODRET) and the return-type follow-up.
+     * Checks on a method's METHODRET statements against its declared return type. Interface methods
+     * (no body, hence no `endTag`) are declared elsewhere and excluded. Covers:
+     *  - void method must not return a value;
+     *  - non-void method with a body must return a value (issue #372);
+     *  - a returned literal whose kind contradicts a BBj scalar return type or a resolvable class.
+     * Java-class and unresolved return types are checked only where it is safe without full
+     * java-interop-backed type inference, to avoid false positives on BBj's loose typing.
      */
     public checkMethodReturn(meth: MethodDecl, accept: ValidationAcceptor): void {
-        // Only methods with an explicit non-void return type and a body need to return a value.
-        if (meth.voidReturn || !meth.returnType || !meth.endTag) {
-            return;
+        if (!meth.endTag) {
+            return; // no body (interface method) — nothing to check
         }
         const valueReturns = AstUtils.streamAllContents(meth)
             .filter(isMethodReturnStatement)
             .filter(ret => ret.return !== undefined)
             .toArray();
+
+        // A void method must not return a value.
+        if (meth.voidReturn) {
+            for (const ret of valueReturns) {
+                accept('error', `Method '${meth.name}' is declared void and must not return a value.`, {
+                    node: ret,
+                    property: 'return'
+                });
+            }
+            return;
+        }
+
+        if (!meth.returnType) {
+            return; // neither void nor an explicit return type — nothing required
+        }
 
         // #372: a non-void method with no value-returning METHODRET is an error.
         if (valueReturns.length === 0) {
@@ -158,10 +176,7 @@ class ClassValidator {
             return;
         }
 
-        // Return-type check (conservative): for the well-known BBj scalar return types we can flag a
-        // returned literal whose kind plainly contradicts the declaration, without resolving types.
-        // Array return types and all other/unresolved types are left untouched to avoid false
-        // positives on BBj's loose typing.
+        // Conservative return-type check on returned literals. Array return types are skipped.
         if (meth.array) {
             return;
         }
@@ -169,20 +184,23 @@ class ClassValidator {
         if (!typeName) {
             return;
         }
-        const expectsNumber = ClassValidator.NUMERIC_RETURN_TYPES.has(typeName.toLowerCase());
-        const expectsString = ClassValidator.STRING_RETURN_TYPES.has(typeName.toLowerCase());
-        if (!expectsNumber && !expectsString) {
-            return;
-        }
+        const lower = typeName.toLowerCase();
+        const expectsNumber = ClassValidator.NUMERIC_RETURN_TYPES.has(lower);
+        const expectsString = ClassValidator.STRING_RETURN_TYPES.has(lower);
+        // A literal is never an instance of a user-defined BBj class/interface, so any literal
+        // returned for a resolvable BBj class is a mismatch.
+        const declaredBBjClass = !expectsNumber && !expectsString && isBbjClass(getClass(meth.returnType));
+
         for (const ret of valueReturns) {
             const value = ret.return!;
-            if (expectsNumber && isStringLiteral(value)) {
-                accept('error', `Method '${meth.name}' declares return type '${typeName}' but returns a string.`, {
-                    node: ret,
-                    property: 'return'
-                });
-            } else if (expectsString && isNumberLiteral(value)) {
-                accept('error', `Method '${meth.name}' declares return type '${typeName}' but returns a number.`, {
+            const returnsString = isStringLiteral(value);
+            const returnsNumber = isNumberLiteral(value);
+            if (!returnsString && !returnsNumber) {
+                continue; // non-literal: needs deeper type inference, left untouched
+            }
+            const returnedKind = returnsString ? 'string' : 'number';
+            if ((expectsNumber && returnsString) || (expectsString && returnsNumber) || declaredBBjClass) {
+                accept('error', `Method '${meth.name}' declares return type '${typeName}' but returns a ${returnedKind}.`, {
                     node: ret,
                     property: 'return'
                 });
