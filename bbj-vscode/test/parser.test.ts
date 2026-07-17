@@ -2642,4 +2642,26 @@ classend
         expectNoParserLexerErrors(result);
     });
 
+    test('Issue #379 initialized object-suffix (!) field does not break class parsing', async () => {
+        // A `field ... name! = <expr>` initializer followed by a static method must parse
+        // cleanly. Previously this produced a parser error at the `=` and cascaded into the
+        // whole CLASS..CLASSEND being misparsed as loose statements.
+        const result = await parse(`
+                CLASS PUBLIC BBjString
+                CLASSEND
+
+                class public ClassA
+
+                    field protected BBjString releaseVersion! = "Release 15 build of October 2019, change-level: 15.000"
+
+                    method public static void doSomething()
+                    methodend
+                classend
+
+                releaseVersion$ = "TEST"
+        `, { validation: true });
+        expectNoParserLexerErrors(result);
+        expectNoValidationErrors(result);
+    });
+
 });

@@ -391,6 +391,15 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
 
+        test('.class pseudo-member resolves on a Java object - issue #373', async () => {
+            const document = await validate(`
+                hm! = new java.util.HashMap()
+                PRINT hm!.class
+                PRINT hm!.getClass()
+            `)
+            expectNoErrors(document)
+        });
+
         test('Package scope as most outer scope', async () => {
             const document = await validate(`
                 declare java.lang.String com

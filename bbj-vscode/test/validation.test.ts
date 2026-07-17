@@ -414,6 +414,17 @@ describe('BBj validation', async () => {
         expectNoIssues(validationResult);
     });
 
+    test('ELSE after semicolon on single line does not require a new line', async () => {
+        // Issue #388: `if (cond) stmt; else if (cond) stmt` (no THEN keyword, chained via `;`)
+        // wrongly reported "This statement needs to start in a new line" for `else` and the
+        // following `if`, because previousStatement() could not traverse a CompoundStatement.
+        const validationResult = await validate(`
+        red = -8
+        if (red < 0) red = 0; else if (red > 255) red = 255
+        `);
+        expectNoIssues(validationResult);
+    });
+
     test('IF as last child of a compound statement', async () => {
         const validationResult = await validate(`
         debug = 1
