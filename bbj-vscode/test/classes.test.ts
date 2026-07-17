@@ -474,4 +474,182 @@ describe("Cyclic inheritance detection", () => {
         const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic'));
         expect(cyclicErrors).toHaveLength(0);
     });
+
+    // Issue #372: a non-void method must return a value via METHODRET.
+    test("Flags non-void method missing METHODRET", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjString getA()
+                methodend
+                method public BBjNumber getB()
+                methodend
+                method public void doSomething()
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(2);
+        expect(returnErrors.every(d => d.severity === 1 /* Error */)).toBe(true);
+    });
+
+    test("No METHODRET error when method returns a value", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    methodret 42
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    test("No METHODRET error for void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void doSomething()
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    test("No METHODRET error for interface methods (no body)", async () => {
+        const { diagnostics } = await validate(`
+            interface public MyInterface
+                method public BBjString getName()
+            interfaceend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    // Issue #372 follow-up: returned literal kind must not contradict a BBj scalar return type.
+    test("Flags string literal returned from a BBjNumber method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    methodret "2"
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes("but returns a string"));
+        expect(typeErrors).toHaveLength(1);
+        expect(typeErrors[0].message).toContain("'BBjNumber'");
+    });
+
+    test("Flags number literal returned from a BBjString method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjString getA()
+                    methodret 42
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes("but returns a number"));
+        expect(typeErrors).toHaveLength(1);
+        expect(typeErrors[0].message).toContain("'BBjString'");
+    });
+
+    test("No type-mismatch error when literal matches scalar return type", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    methodret 2
+                methodend
+                method public BBjString getA()
+                    methodret "hello"
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        expect(typeErrors).toHaveLength(0);
+    });
+
+    test("No type-mismatch error for non-literal returns (avoids false positives)", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    declare BBjNumber n!
+                    methodret n!
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        expect(typeErrors).toHaveLength(0);
+    });
+
+    // Combined: the issue's original example — two non-void methods missing METHODRET, one void ok.
+    test("Issue #372 example: two missing-METHODRET errors, void method unaffected", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjString getA()
+                methodend
+                method public BBjNumber getB()
+                    methodret "2"
+                methodend
+                method public void doSomething()
+                methodend
+            classend
+        `);
+        const missing = diagnostics.filter(d => d.message.includes('has no METHODRET'));
+        const mismatched = diagnostics.filter(d => d.message.includes('but returns a string'));
+        expect(missing).toHaveLength(1);   // getA has no methodret
+        expect(mismatched).toHaveLength(1); // getB returns "2" for a BBjNumber
+    });
+
+    // A void method must not return a value.
+    test("Flags value returned from a void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void TTT1()
+                    methodret ""
+                methodend
+            classend
+        `);
+        const voidErrors = diagnostics.filter(d => d.message.includes('declared void and must not return a value'));
+        expect(voidErrors).toHaveLength(1);
+    });
+
+    test("Bare methodret (no value) is valid in a void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void doWork()
+                    methodret
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.toLowerCase().includes('return'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    // A literal is never an instance of a user-defined BBj class.
+    test("Flags literal returned where a BBj class type is declared", async () => {
+        const { diagnostics } = await validate(`
+            class public Foo
+            classend
+            class public ClassA
+                method public Foo getFoo()
+                    methodret ""
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes("declares return type 'Foo' but returns a string"));
+        expect(typeErrors).toHaveLength(1);
+    });
+
+    test("No error returning an instance for a BBj class type", async () => {
+        const { diagnostics } = await validate(`
+            class public Foo
+            classend
+            class public ClassA
+                method public Foo getFoo()
+                    methodret new Foo()
+                methodend
+            classend
+        `);
+        const typeErrors = diagnostics.filter(d => d.message.includes('but returns a'));
+        expect(typeErrors).toHaveLength(0);
+    });
 });

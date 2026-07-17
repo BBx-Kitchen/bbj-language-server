@@ -63,6 +63,7 @@ describe('DocumentSymbol Tests', async () => {
                     mySales = remmedOutStuff!
                     remainingSeconds = 18
                     print "Seconds: ", remainingSeconds
+                    methodret ""
                 methodend
             classend
 
