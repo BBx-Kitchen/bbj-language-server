@@ -178,9 +178,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     ? this.descriptions.createDescription(javaLangClass, 'class')
                     : undefined;
                 if (isClassRef) {
-                    // Class reference access — static methods only (no fields per user decision)
+                    // Class reference access — static members only. Static fields cover the BBj
+                    // event constants (e.g. `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`, #440), which
+                    // java-interop exposes as inherited `public static final int` fields, matching
+                    // Java semantics for `ClassName.STATIC_FIELD`.
                     const staticMethods = receiverType.methods.filter(m => m.isStatic);
-                    const scope = this.createScopeForNodes(stream(staticMethods));
+                    const staticFields = receiverType.fields.filter(f => f.isStatic);
+                    const scope = this.createScopeForNodes(stream(staticFields).concat(staticMethods));
                     if (classDesc) {
                         return new StreamScopeWithPredicate(stream([classDesc]), scope);
                     }

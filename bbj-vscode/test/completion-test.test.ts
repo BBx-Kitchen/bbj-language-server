@@ -236,4 +236,25 @@ foo!.<|>
             }
         });
     });
+
+    test('static field (event constant) is offered on a Java class reference - issue #440', async () => {
+        // A class-reference receiver (`String.`) offers static members only. Static fields
+        // cover BBj event constants like `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`; the fake String
+        // class carries a static `CASE_INSENSITIVE_ORDER` and an instance `someInstanceField`.
+        const text = `
+        use java.lang.String
+        String.<|>
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const labels = completions.items.map(i => i.label);
+                // static field present
+                expect(labels).toContain('CASE_INSENSITIVE_ORDER');
+                // instance-only members must NOT leak onto a class reference
+                expect(labels).not.toContain('someInstanceField');
+            }
+        });
+    });
 });
