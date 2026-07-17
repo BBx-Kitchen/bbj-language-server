@@ -598,6 +598,8 @@
     "shx": "^0.4.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.64.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2"
   }
 }
