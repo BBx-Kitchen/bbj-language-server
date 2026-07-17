@@ -870,7 +870,10 @@ QualifiedBBjClassName returns string:
     BBjFilePath ID;
 
 FeatureName returns string:
-    ID | ID_WITH_SUFFIX;
+    // 'void' is a keyword only for a method's void-return marker (MethodDeclStart), which uses
+    // ValidName for the method name — so it never conflicts here. Allowing it as a FeatureName
+    // lets `void` be used as an ordinary (numeric) variable/field/member name (#439).
+    ID | ID_WITH_SUFFIX | 'void';
 
 ValidName returns string:
     ID
