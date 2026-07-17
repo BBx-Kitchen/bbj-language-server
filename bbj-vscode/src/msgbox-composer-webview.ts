@@ -14,7 +14,7 @@
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
-    encode, describe, composeStatement, stateFromSelection, validateBbjExpression,
+    encode, describe, composeStatement, stateFromSelection, validateStringField,
     buttonLabels, expressionDisplayText,
 } from './msgbox-composer.js';
 
@@ -81,10 +81,10 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
         const cleanCustom = (sel.customButtons ?? []).map(s => s.trim()).filter(s => s !== '');
         const expr = encode(state);
 
-        const msgV = validateBbjExpression(sel.message, { required: true });
-        const titleV = validateBbjExpression(sel.title, { required: false });
-        const customValid = cleanCustom.every(b => validateBbjExpression(b).ok);
-        const customOk = !isCustom || (cleanCustom.length > 0 && customValid);
+        const msgV = validateStringField(sel.message, { required: true });
+        const titleV = validateStringField(sel.title, { required: false });
+        const firstBadButton = cleanCustom.map(b => validateStringField(b)).find(v => !v.ok);
+        const customOk = !isCustom || (cleanCustom.length > 0 && !firstBadButton);
 
         const statement = composeStatement({
             message: sel.message || '""',
@@ -101,7 +101,7 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
             expr, statement, summary: describe(expr),
             messageError: msgV.ok ? undefined : msgV.message,
             titleError: titleV.ok ? undefined : titleV.message,
-            customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : 'Invalid button expression'),
+            customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : (firstBadButton?.message ?? 'Invalid button expression')),
             valid: msgV.ok && titleV.ok && customOk,
             render: {
                 title: expressionDisplayText(sel.title),

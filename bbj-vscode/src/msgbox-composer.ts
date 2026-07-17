@@ -169,9 +169,9 @@ export function flagsFromState(s: MsgboxState): number[] {
 /**
  * Lightweight lexical check that a message/title entry is a well-formed BBj expression: not
  * empty (when required), with balanced `"` string literals (`""` escapes) and parentheses.
- * It intentionally does NOT require a string *literal* — `msg$`, `a$+b$`, `getText()` are all
- * valid string expressions — it only flags obvious errors like `"TEST` (no closing quote).
- * Deeper "resolves to a String" checking would need the language server's type inference.
+ * It only flags structural errors like `"TEST` (no closing quote) — it does NOT check the
+ * expression's *type*. Use {@link validateStringField} for the message/title/button inputs,
+ * which additionally requires the expression to resolve to a String.
  */
 export function validateBbjExpression(text: string, opts: { required?: boolean } = {}): { ok: boolean; message?: string } {
     const t = text.trim();
@@ -195,6 +195,112 @@ export function validateBbjExpression(text: string, opts: { required?: boolean }
     }
     if (inStr) return { ok: false, message: 'Unterminated string literal' };
     if (depth !== 0) return { ok: false, message: 'Unbalanced parentheses' };
+    return { ok: true };
+}
+
+/** Wrap arbitrary text as a BBj string literal, doubling any embedded `"` (the BBj `""` escape). */
+export function quoteAsStringLiteral(text: string): string {
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
+/** True when `t` is a single, whole-length `"..."` string literal (with `""` escapes). */
+function isStringLiteral(t: string): boolean {
+    return /^"([^"]|"")*"$/.test(t);
+}
+
+/** True when `t` starts with `(` and its matching `)` is the final character. */
+function wrappedInParens(t: string): boolean {
+    if (!t.startsWith('(') || !t.endsWith(')')) return false;
+    let depth = 0, inStr = false;
+    for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (inStr) {
+            if (c === '"') { if (t[i + 1] === '"') { i++; continue; } inStr = false; }
+            continue;
+        }
+        if (c === '"') inStr = true;
+        else if (c === '(') depth++;
+        else if (c === ')') { depth--; if (depth === 0 && i !== t.length - 1) return false; }
+    }
+    return depth === 0;
+}
+
+/**
+ * Split a BBj expression on its top-level `+` (concatenation) operators, ignoring `+` inside
+ * string literals, parentheses, or `[...]` subscripts. Returns `null` when the top level uses a
+ * numeric operator (`-`, `*`, `/`) — such an expression is arithmetic, i.e. NOT a String.
+ */
+function splitTopLevelPlus(t: string): string[] | null {
+    const parts: string[] = [];
+    let depth = 0, inStr = false, start = 0;
+    for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (inStr) {
+            if (c === '"') { if (t[i + 1] === '"') { i++; continue; } inStr = false; }
+            continue;
+        }
+        if (c === '"') inStr = true;
+        else if (c === '(' || c === '[') depth++;
+        else if (c === ')' || c === ']') depth--;
+        else if (depth === 0) {
+            if (c === '+') { parts.push(t.slice(start, i)); start = i + 1; }
+            else if (c === '-' || c === '*' || c === '/') return null; // arithmetic ⇒ numeric
+        }
+    }
+    parts.push(t.slice(start));
+    return parts;
+}
+
+/** Whether a single `+`-free operand is String-typed by its lexical form. */
+function operandIsString(op: string): boolean {
+    const t = op.trim();
+    if (t === '') return false;
+    if (wrappedInParens(t)) return resolvesToString(t.slice(1, -1));
+    if (isStringLiteral(t)) return true;
+    // A function/method call may return a String (STR(), CVS(), obj!.getText(), a$(...)); accept it.
+    if (t.endsWith(')')) return true;
+    // A reference whose name ends in `$` (string) or `!` (object), allowing a trailing subscript.
+    const bare = t.replace(/(\[[^\]]*\])+$/, '');
+    return /[$!]$/.test(bare);
+}
+
+/**
+ * Best-effort lexical check that a BBj expression resolves to a String — the constraint for the
+ * MSGBOX message/title/button arguments. Without the language server's type inference this cannot
+ * be exact, but it reliably distinguishes the forms that matter here:
+ *   - String literals (`"Caption"`), string vars (`caption$`), object vars (`caption!`),
+ *     function/method calls, and `+`-concatenations of those  → String (accepted).
+ *   - A bare numeric variable (`caption`), an integer var (`n%`), or a number → NOT a String.
+ * The last case is the reported bug: `caption` lands verbatim as a numeric reference and breaks
+ * the generated statement; the caller should quote it (`"caption"`) or add a `$`/`!` suffix.
+ */
+export function resolvesToString(text: string): boolean {
+    const t = text.trim();
+    if (t === '') return false;
+    const operands = splitTopLevelPlus(t);
+    if (operands === null) return false; // top-level arithmetic ⇒ numeric
+    return operands.every(operandIsString);
+}
+
+/**
+ * Validate a string-typed field (message / title / custom button). Layers three checks: presence
+ * (when `required`), structural well-formedness ({@link validateBbjExpression}), and String typing
+ * ({@link resolvesToString}). The typing message tells the user how to fix a bare value.
+ */
+export function validateStringField(text: string, opts: { required?: boolean } = {}): { ok: boolean; message?: string } {
+    const t = text.trim();
+    if (t === '') {
+        return opts.required ? { ok: false, message: 'Required' } : { ok: true };
+    }
+    const structural = validateBbjExpression(t);
+    if (!structural.ok) return structural;
+    if (!resolvesToString(t)) {
+        // Suggest a `$`/`!` suffix only when the value is a plain identifier (a valid var name);
+        // for anything else (prose, numbers) the only sensible fix is to quote it.
+        const isIdentifier = /^[A-Za-z_][A-Za-z0-9_]*$/.test(t);
+        const suffixHint = isIdentifier ? `, or a string variable (${t}$ / ${t}!)` : '';
+        return { ok: false, message: `Not a string — quote it as ${quoteAsStringLiteral(t)}${suffixHint}` };
+    }
     return { ok: true };
 }
 
