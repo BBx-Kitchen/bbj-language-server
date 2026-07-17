@@ -10,8 +10,10 @@
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
-    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt,
+    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt, flagsFromState,
+    splitButtonsAndTrailing,
 } from './msgbox-composer.js';
+import { openMsgboxComposerPanel, MsgboxPanelArg } from './msgbox-composer-webview.js';
 
 interface ComposeArg {
     /** Reconfigure an existing numeric `expr` in place (call already has options). */
@@ -23,6 +25,7 @@ interface ComposeArg {
 export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: ComposeArg) => runComposer(arg)),
+        vscode.commands.registerCommand('bbj.composeMsgboxVisual', (arg?: MsgboxPanelArg) => openMsgboxComposerPanel(context, arg)),
         vscode.languages.registerCodeActionsProvider(
             { language: 'bbj' },
             new MsgboxCodeActionProvider(),
@@ -40,31 +43,45 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
         if (!info) {
             return [];
         }
-        // Existing numeric options -> reconfigure in place.
+        const callSpan = { uri: document.uri.toString(), line: lineNo, callStart: info.callStart, callEnd: info.callEnd };
+
+        // Existing numeric options -> open the visual editor prefilled from the current call.
         if (info.exprRange && info.exprValue !== undefined) {
-            const action = new vscode.CodeAction(
-                `Configure MSGBOX options (${describe(info.exprValue)})`,
-                vscode.CodeActionKind.RefactorRewrite,
-            );
-            action.command = {
-                command: 'bbj.composeMsgbox',
-                title: 'Configure MSGBOX options',
-                arguments: [{ edit: { line: lineNo, exprRange: info.exprRange, current: info.exprValue } } satisfies ComposeArg],
+            const st = decode(info.exprValue);
+            // Split args past the title into custom button labels vs. args to preserve verbatim.
+            const { buttons, trailing } = splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7);
+            const arg: MsgboxPanelArg = {
+                target: { ...callSpan, trailingArgs: trailing },
+                initial: {
+                    message: info.args[0] ?? '""',
+                    title: info.args[2] ?? '',
+                    buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
+                    flags: flagsFromState(st),
+                    customButtons: buttons,
+                },
             };
-            return [action];
+            return [visualAction(`Configure MSGBOX options (${describe(info.exprValue)})`, arg)];
         }
-        // Bare MSGBOX("...") with no options yet -> add options.
+        // Bare MSGBOX("...") with no options yet -> open the visual editor to add them.
         if (info.optionInsertOffset !== undefined) {
-            const action = new vscode.CodeAction('Add MSGBOX options…', vscode.CodeActionKind.RefactorRewrite);
-            action.command = {
-                command: 'bbj.composeMsgbox',
-                title: 'Add MSGBOX options',
-                arguments: [{ insert: { line: lineNo, character: info.optionInsertOffset } } satisfies ComposeArg],
+            const arg: MsgboxPanelArg = {
+                target: { ...callSpan, trailingArgs: [] },
+                initial: {
+                    message: info.args[0] ?? '""',
+                    title: '',
+                    buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
+                },
             };
-            return [action];
+            return [visualAction('Add MSGBOX options…', arg)];
         }
         return [];
     }
+}
+
+function visualAction(title: string, arg: MsgboxPanelArg): vscode.CodeAction {
+    const action = new vscode.CodeAction(title, vscode.CodeActionKind.RefactorRewrite);
+    action.command = { command: 'bbj.composeMsgboxVisual', title, arguments: [arg] };
+    return action;
 }
 
 async function runComposer(arg?: ComposeArg): Promise<void> {

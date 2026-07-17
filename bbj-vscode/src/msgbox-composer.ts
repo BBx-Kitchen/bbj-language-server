@@ -69,6 +69,23 @@ export const DEFAULT_STATE: MsgboxState = {
     buttonSet: 0, icon: 0, defaultButton: 0, noEnter: false, disableHtml: false, mdi: false,
 };
 
+/**
+ * Build a MsgboxState from a flat UI selection (button/icon/default values + a list of flag
+ * values). Keeps the flag-value -> boolean mapping in one place so UIs (QuickPick, webview,
+ * a future IntelliJ dialog) only pass raw selections.
+ */
+export function stateFromSelection(sel: { buttonSet?: number; icon?: number; defaultButton?: number; flags?: number[] }): MsgboxState {
+    const flags = new Set(sel.flags ?? []);
+    return {
+        buttonSet: sel.buttonSet ?? 0,
+        icon: sel.icon ?? 0,
+        defaultButton: sel.defaultButton ?? 0,
+        noEnter: flags.has(65536),
+        disableHtml: flags.has(32768),
+        mdi: flags.has(131072),
+    };
+}
+
 /** Compose the additive `expr` number from a selection. */
 export function encode(s: MsgboxState): number {
     return (s.buttonSet & BUTTON_MASK)
@@ -115,23 +132,114 @@ export interface ComposeInput {
     title?: string;
     /** Custom button label expressions (only meaningful with the "Custom" button set). */
     buttons?: string[];
+    /**
+     * Verbatim args appended after the title — used when rewriting an existing call to preserve
+     * anything past the title we don't model (custom buttons, `MODE=`/`TIM=`/`ERR=`).
+     */
+    trailingArgs?: string[];
     /** Optional assignment target, e.g. `ret!` -> `ret! = MSGBOX(...)`. */
     assignTo?: string;
 }
 
 /** Build a `MSGBOX(...)` statement, including only the positional args that are needed. */
 export function composeStatement(input: ComposeInput): string {
-    const hasButtons = !!input.buttons && input.buttons.length > 0;
-    const needTitle = (input.title !== undefined && input.title !== '') || hasButtons;
+    const extras = [...(input.buttons ?? []), ...(input.trailingArgs ?? [])];
+    const hasExtras = extras.length > 0;
+    const needTitle = (input.title !== undefined && input.title !== '') || hasExtras;
     const needExpr = input.expr !== 0 || needTitle;
 
     const args: string[] = [input.message];
     if (needExpr) args.push(String(input.expr));
-    if (needTitle) args.push(input.title ?? '""');
-    if (hasButtons) args.push(...input.buttons!);
+    if (needTitle) args.push(input.title || '""');
+    if (hasExtras) args.push(...extras);
 
     const call = `MSGBOX(${args.join(', ')})`;
     return input.assignTo ? `${input.assignTo} = ${call}` : call;
+}
+
+/** The flag values (65536/32768/131072) set on a state — inverse of the flag part of stateFromSelection. */
+export function flagsFromState(s: MsgboxState): number[] {
+    const flags: number[] = [];
+    if (s.noEnter) flags.push(65536);
+    if (s.disableHtml) flags.push(32768);
+    if (s.mdi) flags.push(131072);
+    return flags;
+}
+
+/**
+ * Lightweight lexical check that a message/title entry is a well-formed BBj expression: not
+ * empty (when required), with balanced `"` string literals (`""` escapes) and parentheses.
+ * It intentionally does NOT require a string *literal* — `msg$`, `a$+b$`, `getText()` are all
+ * valid string expressions — it only flags obvious errors like `"TEST` (no closing quote).
+ * Deeper "resolves to a String" checking would need the language server's type inference.
+ */
+export function validateBbjExpression(text: string, opts: { required?: boolean } = {}): { ok: boolean; message?: string } {
+    const t = text.trim();
+    if (t === '') {
+        return opts.required ? { ok: false, message: 'Required' } : { ok: true };
+    }
+    let inStr = false;
+    let depth = 0;
+    for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (inStr) {
+            if (c === '"') {
+                if (t[i + 1] === '"') { i++; continue; } // "" escape
+                inStr = false;
+            }
+            continue;
+        }
+        if (c === '"') { inStr = true; }
+        else if (c === '(') { depth++; }
+        else if (c === ')') { if (--depth < 0) return { ok: false, message: 'Unbalanced parentheses' }; }
+    }
+    if (inStr) return { ok: false, message: 'Unterminated string literal' };
+    if (depth !== 0) return { ok: false, message: 'Unbalanced parentheses' };
+    return { ok: true };
+}
+
+/** Human display text for an expression: a `"..."` literal becomes its content, anything else is shown as-is. */
+export function expressionDisplayText(expr: string): string {
+    const t = (expr ?? '').trim();
+    if (/^"([^"]|"")*"$/.test(t)) {
+        return t.slice(1, -1).replace(/""/g, '"');
+    }
+    return t;
+}
+
+const STANDARD_BUTTON_LABELS: Record<number, string[]> = {
+    0: ['OK'],
+    1: ['OK', 'Cancel'],
+    2: ['Abort', 'Retry', 'Ignore'],
+    3: ['Yes', 'No', 'Cancel'],
+    4: ['Yes', 'No'],
+    5: ['Retry', 'Cancel'],
+};
+
+/** Display labels for the schematic preview: standard set labels, or the custom button expressions. */
+export function buttonLabels(buttonSet: number, customButtons: string[] = []): string[] {
+    if (buttonSet === 7) {
+        const labels = customButtons.map(expressionDisplayText).filter(s => s.trim() !== '');
+        return labels.length ? labels : ['Button 1'];
+    }
+    return STANDARD_BUTTON_LABELS[buttonSet] ?? ['OK'];
+}
+
+/**
+ * Split the args past the title (args[3..]) into custom button labels and the remaining trailing
+ * args to preserve verbatim. Positional buttons only apply to the "Custom" set (7) and stop at the
+ * first `MODE=`/`TIM=`/`ERR=` keyword arg.
+ */
+export function splitButtonsAndTrailing(rest: string[], isCustom: boolean): { buttons: string[]; trailing: string[] } {
+    if (!isCustom) return { buttons: [], trailing: rest };
+    const keyword = /^(MODE|TIM|ERR)\b\s*=/i;
+    const buttons: string[] = [];
+    let i = 0;
+    while (i < rest.length && buttons.length < 3 && !keyword.test(rest[i])) {
+        buttons.push(rest[i]);
+        i++;
+    }
+    return { buttons, trailing: rest.slice(i) };
 }
 
 export interface MsgboxCallInfo {

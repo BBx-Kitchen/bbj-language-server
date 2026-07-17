@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
-    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt, DEFAULT_STATE,
+    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
+    stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
+    splitButtonsAndTrailing, DEFAULT_STATE,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -9,6 +11,13 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(encode({ ...DEFAULT_STATE, buttonSet: 4, icon: 48 })).toBe(52); // Yes/No + Exclamation
         expect(encode({ ...DEFAULT_STATE, buttonSet: 1, icon: 64, defaultButton: 256 })).toBe(1 + 64 + 256);
         expect(encode({ ...DEFAULT_STATE, buttonSet: 3, icon: 32, noEnter: true })).toBe(3 + 32 + 65536);
+    });
+
+    test('stateFromSelection maps flat UI selection (flags list) to state', () => {
+        expect(encode(stateFromSelection({ buttonSet: 4, icon: 32, flags: [65536] }))).toBe(4 + 32 + 65536);
+        expect(encode(stateFromSelection({ buttonSet: 3, icon: 48, defaultButton: 256, flags: [32768, 131072] })))
+            .toBe(3 + 48 + 256 + 32768 + 131072);
+        expect(encode(stateFromSelection({}))).toBe(0);
     });
 
     test('decode is the inverse of encode', () => {
@@ -39,6 +48,50 @@ describe('MSGBOX composer logic (#426)', () => {
             .toBe('ret! = MSGBOX("Hi", 36, "C")');
         expect(composeStatement({ message: '"Q"', expr: 7, buttons: ['"Left"', '"Right"'] }))
             .toBe('MSGBOX("Q", 7, "", "Left", "Right")');
+    });
+
+    test('composeStatement preserves trailing args (buttons / MODE / ERR) when rewriting', () => {
+        expect(composeStatement({ message: '"m"', expr: 36, title: '"t"', trailingArgs: ['MODE="theme=primary"', 'ERR=*NEXT'] }))
+            .toBe('MSGBOX("m", 36, "t", MODE="theme=primary", ERR=*NEXT)');
+        // trailing args force a (possibly empty) title slot to keep positions valid
+        expect(composeStatement({ message: '"m"', expr: 0, title: '', trailingArgs: ['TIM=5'] }))
+            .toBe('MSGBOX("m", 0, "", TIM=5)');
+    });
+
+    test('flagsFromState is the inverse of the flag part of stateFromSelection', () => {
+        expect(flagsFromState(stateFromSelection({ flags: [65536, 131072] })).sort()).toEqual([65536, 131072].sort());
+        expect(flagsFromState(stateFromSelection({}))).toEqual([]);
+    });
+
+    test('validateBbjExpression flags unterminated strings / unbalanced parens, allows real expressions', () => {
+        expect(validateBbjExpression('"TEST').ok).toBe(false);                 // no closing quote
+        expect(validateBbjExpression('"TEST"').ok).toBe(true);
+        expect(validateBbjExpression('"say ""hi"""').ok).toBe(true);           // "" escapes
+        expect(validateBbjExpression('msg$').ok).toBe(true);                   // a variable is fine
+        expect(validateBbjExpression('a$ + "!"').ok).toBe(true);              // concatenation
+        expect(validateBbjExpression('getText(1').ok).toBe(false);            // unbalanced paren
+        expect(validateBbjExpression('', { required: true }).ok).toBe(false); // required + empty
+        expect(validateBbjExpression('', {}).ok).toBe(true);                   // optional + empty
+    });
+
+    test('expressionDisplayText unquotes string literals, passes expressions through', () => {
+        expect(expressionDisplayText('"Hello World!"')).toBe('Hello World!');
+        expect(expressionDisplayText('"say ""hi"""')).toBe('say "hi"');
+        expect(expressionDisplayText('msg$')).toBe('msg$');
+        expect(expressionDisplayText('a$ + "!"')).toBe('a$ + "!"'); // not a single literal -> as-is
+    });
+
+    test('buttonLabels returns standard labels or custom expressions', () => {
+        expect(buttonLabels(4)).toEqual(['Yes', 'No']);
+        expect(buttonLabels(0)).toEqual(['OK']);
+        expect(buttonLabels(7, ['"Left"', '"Right"'])).toEqual(['Left', 'Right']);
+        expect(buttonLabels(7, [])).toEqual(['Button 1']); // fallback when custom set has no labels
+    });
+
+    test('splitButtonsAndTrailing separates custom buttons from MODE/TIM/ERR', () => {
+        expect(splitButtonsAndTrailing(['"Left"', '"Right"'], true)).toEqual({ buttons: ['"Left"', '"Right"'], trailing: [] });
+        expect(splitButtonsAndTrailing(['"Left"', 'MODE="x"'], true)).toEqual({ buttons: ['"Left"'], trailing: ['MODE="x"'] });
+        expect(splitButtonsAndTrailing(['MODE="x"'], false)).toEqual({ buttons: [], trailing: ['MODE="x"'] });
     });
 
     test('parseMsgboxCallOnLine finds a numeric expr and its range', () => {
