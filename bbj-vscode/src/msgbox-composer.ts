@@ -132,23 +132,70 @@ export interface ComposeInput {
     title?: string;
     /** Custom button label expressions (only meaningful with the "Custom" button set). */
     buttons?: string[];
+    /**
+     * Verbatim args appended after the title — used when rewriting an existing call to preserve
+     * anything past the title we don't model (custom buttons, `MODE=`/`TIM=`/`ERR=`).
+     */
+    trailingArgs?: string[];
     /** Optional assignment target, e.g. `ret!` -> `ret! = MSGBOX(...)`. */
     assignTo?: string;
 }
 
 /** Build a `MSGBOX(...)` statement, including only the positional args that are needed. */
 export function composeStatement(input: ComposeInput): string {
-    const hasButtons = !!input.buttons && input.buttons.length > 0;
-    const needTitle = (input.title !== undefined && input.title !== '') || hasButtons;
+    const extras = [...(input.buttons ?? []), ...(input.trailingArgs ?? [])];
+    const hasExtras = extras.length > 0;
+    const needTitle = (input.title !== undefined && input.title !== '') || hasExtras;
     const needExpr = input.expr !== 0 || needTitle;
 
     const args: string[] = [input.message];
     if (needExpr) args.push(String(input.expr));
-    if (needTitle) args.push(input.title ?? '""');
-    if (hasButtons) args.push(...input.buttons!);
+    if (needTitle) args.push(input.title || '""');
+    if (hasExtras) args.push(...extras);
 
     const call = `MSGBOX(${args.join(', ')})`;
     return input.assignTo ? `${input.assignTo} = ${call}` : call;
+}
+
+/** The flag values (65536/32768/131072) set on a state — inverse of the flag part of stateFromSelection. */
+export function flagsFromState(s: MsgboxState): number[] {
+    const flags: number[] = [];
+    if (s.noEnter) flags.push(65536);
+    if (s.disableHtml) flags.push(32768);
+    if (s.mdi) flags.push(131072);
+    return flags;
+}
+
+/**
+ * Lightweight lexical check that a message/title entry is a well-formed BBj expression: not
+ * empty (when required), with balanced `"` string literals (`""` escapes) and parentheses.
+ * It intentionally does NOT require a string *literal* — `msg$`, `a$+b$`, `getText()` are all
+ * valid string expressions — it only flags obvious errors like `"TEST` (no closing quote).
+ * Deeper "resolves to a String" checking would need the language server's type inference.
+ */
+export function validateBbjExpression(text: string, opts: { required?: boolean } = {}): { ok: boolean; message?: string } {
+    const t = text.trim();
+    if (t === '') {
+        return opts.required ? { ok: false, message: 'Required' } : { ok: true };
+    }
+    let inStr = false;
+    let depth = 0;
+    for (let i = 0; i < t.length; i++) {
+        const c = t[i];
+        if (inStr) {
+            if (c === '"') {
+                if (t[i + 1] === '"') { i++; continue; } // "" escape
+                inStr = false;
+            }
+            continue;
+        }
+        if (c === '"') { inStr = true; }
+        else if (c === '(') { depth++; }
+        else if (c === ')') { if (--depth < 0) return { ok: false, message: 'Unbalanced parentheses' }; }
+    }
+    if (inStr) return { ok: false, message: 'Unterminated string literal' };
+    if (depth !== 0) return { ok: false, message: 'Unbalanced parentheses' };
+    return { ok: true };
 }
 
 export interface MsgboxCallInfo {

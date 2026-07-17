@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
-    stateFromSelection, DEFAULT_STATE,
+    stateFromSelection, flagsFromState, validateBbjExpression, DEFAULT_STATE,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -47,6 +47,30 @@ describe('MSGBOX composer logic (#426)', () => {
             .toBe('ret! = MSGBOX("Hi", 36, "C")');
         expect(composeStatement({ message: '"Q"', expr: 7, buttons: ['"Left"', '"Right"'] }))
             .toBe('MSGBOX("Q", 7, "", "Left", "Right")');
+    });
+
+    test('composeStatement preserves trailing args (buttons / MODE / ERR) when rewriting', () => {
+        expect(composeStatement({ message: '"m"', expr: 36, title: '"t"', trailingArgs: ['MODE="theme=primary"', 'ERR=*NEXT'] }))
+            .toBe('MSGBOX("m", 36, "t", MODE="theme=primary", ERR=*NEXT)');
+        // trailing args force a (possibly empty) title slot to keep positions valid
+        expect(composeStatement({ message: '"m"', expr: 0, title: '', trailingArgs: ['TIM=5'] }))
+            .toBe('MSGBOX("m", 0, "", TIM=5)');
+    });
+
+    test('flagsFromState is the inverse of the flag part of stateFromSelection', () => {
+        expect(flagsFromState(stateFromSelection({ flags: [65536, 131072] })).sort()).toEqual([65536, 131072].sort());
+        expect(flagsFromState(stateFromSelection({}))).toEqual([]);
+    });
+
+    test('validateBbjExpression flags unterminated strings / unbalanced parens, allows real expressions', () => {
+        expect(validateBbjExpression('"TEST').ok).toBe(false);                 // no closing quote
+        expect(validateBbjExpression('"TEST"').ok).toBe(true);
+        expect(validateBbjExpression('"say ""hi"""').ok).toBe(true);           // "" escapes
+        expect(validateBbjExpression('msg$').ok).toBe(true);                   // a variable is fine
+        expect(validateBbjExpression('a$ + "!"').ok).toBe(true);              // concatenation
+        expect(validateBbjExpression('getText(1').ok).toBe(false);            // unbalanced paren
+        expect(validateBbjExpression('', { required: true }).ok).toBe(false); // required + empty
+        expect(validateBbjExpression('', {}).ok).toBe(true);                   // optional + empty
     });
 
     test('parseMsgboxCallOnLine finds a numeric expr and its range', () => {
