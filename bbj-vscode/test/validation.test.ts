@@ -583,6 +583,84 @@ describe('BBj validation', async () => {
         `, { validation: true });
         expectError(result, "'0' must be symbol reference or array access with ALL", {});
     });
+
+    // Issue #206: CASE is only allowed inside a SWITCH ... SWEND block.
+    test('CASE inside SWITCH is valid (multi-line)', async () => {
+        const result = await validate(`
+        LVL = 3
+        SWITCH LVL
+            CASE 0
+            CASE 1; PRINT "Easy"; BREAK
+            CASE DEFAULT; PRINT "Hard"; BREAK
+        SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('CASE inside SWITCH is valid (single line)', async () => {
+        const result = await validate(`
+        LET t = 123
+        SWITCH t; CASE 1; PRINT "1"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('CASE outside SWITCH is flagged', async () => {
+        const result = await validate(`
+        CASE 1
+        `, { validation: true });
+        expectError(result, "'CASE' is only allowed inside a SWITCH block.", {});
+    });
+
+    test('CASE after SWEND (switch already closed) is flagged', async () => {
+        const result = await validate(`
+        SWITCH x
+            CASE 1; BREAK
+        SWEND
+        CASE 2
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(1);
+        expect(caseErrors[0].message).toBe("'CASE' is only allowed inside a SWITCH block.");
+    });
+
+    test('CASE DEFAULT outside SWITCH is flagged', async () => {
+        const result = await validate(`
+        CASE DEFAULT
+        `, { validation: true });
+        expectError(result, "'CASE DEFAULT' is only allowed inside a SWITCH block.", {});
+    });
+
+    test('CASE inside SWITCH within a method body is valid', async () => {
+        const result = await validate(`
+        class public Foo
+            method public void bar(BBjNumber n!)
+                SWITCH n!
+                    CASE 1; BREAK
+                    CASE DEFAULT; BREAK
+                SWEND
+            methodend
+        classend
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('Nested SWITCH blocks resolve CASE correctly', async () => {
+        const result = await validate(`
+        SWITCH a
+            CASE 1
+                SWITCH b
+                    CASE 2; BREAK
+                SWEND
+                CASE 3; BREAK
+        SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
 });
 
 export function findAll<T extends AstNode = AstNode>(document: LangiumDocument, filter: (item: unknown) => item is T, streamAll: boolean = false): T[] {

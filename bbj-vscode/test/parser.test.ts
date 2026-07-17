@@ -605,8 +605,9 @@ describe('Parser Tests', () => {
         CLASS public MyClass
 
             METHOD public MyClass open()
+                METHODRET new MyClass()
             METHODEND
-      
+
         classend
         `, { validation: true });
         expectNoParserLexerErrors(result);

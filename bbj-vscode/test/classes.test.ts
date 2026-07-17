@@ -474,4 +474,54 @@ describe("Cyclic inheritance detection", () => {
         const cyclicErrors = diagnostics.filter(d => d.message.toLowerCase().includes('cyclic'));
         expect(cyclicErrors).toHaveLength(0);
     });
+
+    // Issue #372: a non-void method must return a value via METHODRET.
+    test("Flags non-void method missing METHODRET", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjString getA()
+                methodend
+                method public BBjNumber getB()
+                methodend
+                method public void doSomething()
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(2);
+        expect(returnErrors.every(d => d.severity === 1 /* Error */)).toBe(true);
+    });
+
+    test("No METHODRET error when method returns a value", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public BBjNumber getB()
+                    methodret 42
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    test("No METHODRET error for void method", async () => {
+        const { diagnostics } = await validate(`
+            class public ClassA
+                method public void doSomething()
+                methodend
+            classend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
+
+    test("No METHODRET error for interface methods (no body)", async () => {
+        const { diagnostics } = await validate(`
+            interface public MyInterface
+                method public BBjString getName()
+            interfaceend
+        `);
+        const returnErrors = diagnostics.filter(d => d.message.includes('METHODRET'));
+        expect(returnErrors).toHaveLength(0);
+    });
 });

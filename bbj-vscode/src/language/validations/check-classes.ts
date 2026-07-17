@@ -1,7 +1,7 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
 import { getClass, getClassRef } from '../bbj-nodedescription-provider.js';
-import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
+import { BBjAstType, BbjClass, isBbjClass, isMethodReturnStatement, MethodDecl, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
     const validator = new ClassValidator();
@@ -52,10 +52,13 @@ export function registerClassChecks(registry: ValidationRegistry) {
             node: call,
             property: 'klass'
         }),
-        MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType, {
-            node: meth,
-            property: 'returnType'
-        }),
+        MethodDecl: (meth, accept) => {
+            validator.checkClassReference(accept, meth.returnType, {
+                node: meth,
+                property: 'returnType'
+            });
+            validator.checkMethodReturn(meth, accept);
+        },
         ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type, {
             node: param,
             property: 'type'
@@ -123,6 +126,26 @@ class ClassValidator {
                     accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) is not visible from this file.`, info);
                 }
                 break;
+        }
+    }
+
+    /**
+     * A method that declares a non-void return type must return a value via `METHODRET <expr>`.
+     * Interface methods (no body, hence no `endTag`) share the rule but are declared elsewhere,
+     * so they are excluded here. See issue #372.
+     */
+    public checkMethodReturn(meth: MethodDecl, accept: ValidationAcceptor): void {
+        // Only methods with an explicit non-void return type and a body need to return a value.
+        if (meth.voidReturn || !meth.returnType || !meth.endTag) {
+            return;
+        }
+        const returnsValue = AstUtils.streamAllContents(meth)
+            .some(node => isMethodReturnStatement(node) && node.return !== undefined);
+        if (!returnsValue) {
+            accept('error', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
+                node: meth,
+                property: 'name'
+            });
         }
     }
 
