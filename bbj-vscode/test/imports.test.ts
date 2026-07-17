@@ -57,6 +57,22 @@ describe('Import tests', async () => {
         expectNoValidationErrors(document);
     });
 
+    test('Static method resolves on an instance variable after USE (#374)', async () => {
+        // Regression for #374: a static method called via an instance (`imp!.zero()`),
+        // not just via the class name (`ImportMe.zero()`), must resolve after `use`.
+        // Previously this produced "Could not resolve reference to Class named 'ImportMe'"
+        // on the constructor and an unresolved member on the instance call.
+        const document = await parse(`
+            use ::importMe.bbj::ImportMe
+            imp! = new ImportMe()
+            num = imp!.zero()
+            num2 = imp!.identity(num)
+            val = imp!.field
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
     test('No import, use full-qualified constructor afterwards', async () => {
         const document = await parse(`
             let imp = new ::./importMe.bbj::ImportMe()
