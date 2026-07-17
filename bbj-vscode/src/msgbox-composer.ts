@@ -331,6 +331,77 @@ export function buttonLabels(buttonSet: number, customButtons: string[] = []): s
     return STANDARD_BUTTON_LABELS[buttonSet] ?? ['OK'];
 }
 
+/** Flat UI selection for a MSGBOX preview (message/title/options), shared by every client. */
+export interface MsgboxPreviewInput {
+    message: string;
+    title: string;
+    assignTo?: string;
+    buttonSet: number;
+    icon: number;
+    defaultButton: number;
+    flags: number[];
+    customButtons: string[];
+    /** Verbatim args past the title to preserve when rewriting an existing call. */
+    trailingArgs?: string[];
+    /** In edit mode the assignment prefix already exists in the source, so it is omitted. */
+    editMode?: boolean;
+}
+
+/** Everything a composer UI needs to render one state: the statement, validation, and a schematic. */
+export interface MsgboxPreview {
+    expr: number;
+    statement: string;
+    summary: string;
+    messageError?: string;
+    titleError?: string;
+    customError?: string;
+    valid: boolean;
+    render: { title: string; message: string; icon: number; buttons: string[]; defaultIndex: number };
+}
+
+/**
+ * Compute the full preview payload for a MSGBOX selection — the single entry point every UI (the
+ * VS Code webview and the IntelliJ dialog, via the LS) uses so the compose/validate/render logic
+ * lives in exactly one place.
+ */
+export function msgboxPreview(input: MsgboxPreviewInput): MsgboxPreview {
+    const state = stateFromSelection(input);
+    const isCustom = state.buttonSet === 7;
+    const cleanCustom = (input.customButtons ?? []).map(s => s.trim()).filter(s => s !== '');
+    const expr = encode(state);
+
+    const msgV = validateStringField(input.message, { required: true });
+    const titleV = validateStringField(input.title, { required: false });
+    const firstBadButton = cleanCustom.map(b => validateStringField(b)).find(v => !v.ok);
+    const customOk = !isCustom || (cleanCustom.length > 0 && !firstBadButton);
+
+    const statement = composeStatement({
+        message: input.message || '""',
+        expr,
+        title: input.title || undefined,
+        buttons: isCustom ? cleanCustom : undefined,
+        trailingArgs: input.trailingArgs,
+        assignTo: input.editMode ? undefined : (input.assignTo || undefined),
+    });
+
+    const labels = buttonLabels(state.buttonSet, input.customButtons);
+    const defaultIndex = state.defaultButton === 256 ? 1 : state.defaultButton === 512 ? 2 : 0;
+    return {
+        expr, statement, summary: describe(expr),
+        messageError: msgV.ok ? undefined : msgV.message,
+        titleError: titleV.ok ? undefined : titleV.message,
+        customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : (firstBadButton?.message ?? 'Invalid button expression')),
+        valid: msgV.ok && titleV.ok && customOk,
+        render: {
+            title: expressionDisplayText(input.title),
+            message: expressionDisplayText(input.message),
+            icon: state.icon,
+            buttons: labels,
+            defaultIndex: Math.max(0, Math.min(defaultIndex, labels.length - 1)),
+        },
+    };
+}
+
 /**
  * Split the args past the title (args[3..]) into custom button labels and the remaining trailing
  * args to preserve verbatim. Positional buttons only apply to the "Custom" set (7) and stop at the

@@ -30,6 +30,25 @@ describe('composer LS command layer (#433)', () => {
         expect((call('bbj/composer/msgbox/validateString', { text: '"Caption"' }) as any).ok).toBe(true);
     });
 
+    test('msgbox/preview returns the full aggregate UI payload in one call', () => {
+        const p = call('bbj/composer/msgbox/preview', {
+            input: { message: '"Hi"', title: '', buttonSet: 4, icon: 32, defaultButton: 0, flags: [], customButtons: [] },
+        }) as any;
+        expect(p.expr).toBe(36);
+        expect(p.statement).toBe('MSGBOX("Hi", 36)');
+        expect(p.valid).toBe(true);
+        expect(p.render.buttons).toEqual(['Yes', 'No']);
+    });
+
+    test('addwindow/preview returns hex + statement + schematic in one call', () => {
+        const p = call('bbj/composer/addwindow/preview', {
+            input: { flags: [0x1, 0x2], eventMaskEnabled: false, eventMask: [], receiver: 'w!', sysgui: 'g!', x: '0', y: '0', width: '9', height: '9', title: '"T"' },
+        }) as any;
+        expect(p.flagsHex).toBe('$00000003$');
+        expect(p.statement).toBe('w! = g!.addWindow(0, 0, 9, 9, "T", $00000003$)');
+        expect(p.render.closeBox).toBe(true);
+    });
+
     test('msgbox parseLine finds the call (first, or the one at the cursor)', () => {
         const first = call('bbj/composer/msgbox/parseLine', { line: 'x = MSGBOX("a", 36)' }) as any;
         expect(first.call.exprValue).toBe(36);

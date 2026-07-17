@@ -3,6 +3,7 @@ import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
     stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
     splitButtonsAndTrailing, DEFAULT_STATE, resolvesToString, validateStringField, quoteAsStringLiteral,
+    msgboxPreview,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -120,6 +121,27 @@ describe('MSGBOX composer logic (#426)', () => {
 
         // structural errors still win over the typing check
         expect(validateStringField('"TEST').ok).toBe(false); // unterminated literal
+    });
+
+    test('msgboxPreview aggregates encode + compose + validate + render for a UI', () => {
+        const p = msgboxPreview({
+            message: '"Are you sure?"', title: '"Confirm"', assignTo: 'ret!',
+            buttonSet: 4, icon: 32, defaultButton: 256, flags: [65536], customButtons: [],
+        });
+        expect(p.expr).toBe(4 + 32 + 256 + 65536);
+        expect(p.statement).toBe('ret! = MSGBOX("Are you sure?", 65828, "Confirm")');
+        expect(p.summary).toContain('Yes, No');
+        expect(p.valid).toBe(true);
+        expect(p.render).toEqual({ title: 'Confirm', message: 'Are you sure?', icon: 32, buttons: ['Yes', 'No'], defaultIndex: 1 });
+    });
+
+    test('msgboxPreview surfaces a bare-string error and drops the assignment in edit mode', () => {
+        const bad = msgboxPreview({ message: 'Caption', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] });
+        expect(bad.valid).toBe(false);
+        expect(bad.messageError).toContain('"Caption"');
+
+        const edit = msgboxPreview({ message: '"Hi"', title: '', assignTo: 'ret!', editMode: true, buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] });
+        expect(edit.statement).toBe('MSGBOX("Hi")'); // no `ret! =` prefix in edit mode
     });
 
     test('expressionDisplayText unquotes string literals, passes expressions through', () => {

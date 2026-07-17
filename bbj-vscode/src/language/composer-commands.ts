@@ -15,15 +15,15 @@ import type { Connection } from 'vscode-languageserver';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     encode, decode, describe as describeMsgbox, composeStatement, stateFromSelection, flagsFromState,
-    validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine,
-    type ComposeInput,
+    validateStringField, findMsgboxCallAt, parseMsgboxCallOnLine, msgboxPreview,
+    type ComposeInput, type MsgboxPreviewInput,
 } from '../msgbox-composer.js';
 import {
     WINDOW_FLAGS, EVENT_MASK_BITS,
     encodeBits, bitsSet, unknownBits, formatHex, parseHexLiteral,
-    describeFlags, describeEventMask, windowSchematic, composeAddWindow,
+    describeFlags, describeEventMask, windowSchematic, composeAddWindow, addwindowPreview,
     findAddWindowCallAt, parseAddWindowCallOnLine,
-    type AddWindowInput,
+    type AddWindowInput, type AddWindowPreviewInput,
 } from '../addwindow-composer.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
@@ -49,6 +49,8 @@ export const composerHandlers = {
         const s = decode(p.expr);
         return { buttonSet: s.buttonSet, icon: s.icon, defaultButton: s.defaultButton, flags: flagsFromState(s) };
     },
+    /** Aggregate: full UI payload (statement + validation + render) for one selection in a single call. */
+    'bbj/composer/msgbox/preview': (p: { input: MsgboxPreviewInput }) => msgboxPreview(p.input),
     'bbj/composer/msgbox/compose': (p: { input: ComposeInput }) => ({ statement: composeStatement(p.input) }),
     'bbj/composer/msgbox/describe': (p: { expr: number }) => ({ text: describeMsgbox(p.expr) }),
     /** Validate a string-typed field (message/title/button) — resolves-to-String + structural. */
@@ -80,6 +82,8 @@ export const composerHandlers = {
         unknownBits: unknownBits(p.mask, EVENT_MASK_BITS),
         text: describeEventMask(p.mask),
     }),
+    /** Aggregate: full UI payload (statement + flags/event hex + summaries + schematic) in one call. */
+    'bbj/composer/addwindow/preview': (p: { input: AddWindowPreviewInput }) => addwindowPreview(p.input),
     'bbj/composer/addwindow/compose': (p: { input: AddWindowInput }) => ({ statement: composeAddWindow(p.input) }),
     'bbj/composer/addwindow/schematic': (p: { mask: number }) => windowSchematic(p.mask),
     /** Parse a `$HHHHHHHH$` hex literal to an unsigned number (or undefined). */
