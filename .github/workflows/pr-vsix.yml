@@ -1,0 +1,106 @@
+# .github/workflows/pr-vsix.yml
+#
+# Builds an installable VS Code extension (.vsix) for each PR so a branch can be tested
+# in a real editor WITHOUT publishing a preview to the Marketplace or touching main.
+# The artifact is named with the PR number + head SHA, and a sticky comment links it
+# with copy-paste install instructions.
+#
+# Note: for `pull_request`, GitHub runs the workflow definition from the BASE branch, so
+# this file only takes effect for PRs opened AFTER it is merged to main.
+name: PR VSIX
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'bbj-vscode/**'
+      - '.github/workflows/pr-vsix.yml'
+
+# Cancel superseded runs when a PR gets new commits.
+concurrency:
+  group: pr-vsix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+# Least privilege: read the code, write the PR comment. (For fork PRs GitHub forces a
+# read-only token, so the comment step below is gated to same-repo PRs.)
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  vsix:
+    name: Build test VSIX
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # langium 4.x toolchain requires Node 22+
+
+      - name: Install, build and test
+        working-directory: bbj-vscode
+        run: |
+          npm ci
+          npm run build   # produces out/extension.cjs (the packaged `main`)
+          npm run test
+
+      - name: Package VSIX
+        id: pkg
+        working-directory: bbj-vscode
+        run: |
+          npm i -g @vscode/vsce@^2.32
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          SHA=$(git rev-parse --short HEAD)
+          OUT="${NAME}-${VERSION}-pr${{ github.event.pull_request.number }}-${SHA}.vsix"
+          vsce package --out "$OUT"
+          echo "vsix=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Upload VSIX artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-pr${{ github.event.pull_request.number }}
+          path: bbj-vscode/${{ steps.pkg.outputs.vsix }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Comment on PR with install instructions
+        # Fork PRs get a read-only token and cannot comment; skip them (artifact still builds).
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const vsix = ${{ toJSON(steps.pkg.outputs.vsix) }};
+            const sha = ${{ toJSON(steps.pkg.outputs.sha) }};
+            const artifactUrl = ${{ toJSON(steps.upload.outputs.artifact-url) }};
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const marker = '<!-- pr-vsix -->';
+            const body = [
+              marker,
+              `### 📦 Test build ready — \`${vsix}\``,
+              '',
+              `Built from \`${sha}\`. Install it to try this PR without touching your Marketplace/preview build:`,
+              '',
+              `1. Download the **[VSIX artifact](${artifactUrl})** (a zip) and unzip it.`,
+              `2. \`code --install-extension ${vsix}\` — or Command Palette → **Extensions: Install from VSIX…**`,
+              `3. Reload. To revert, uninstall it and reinstall the preview build.`,
+              '',
+              `<sub>Artifact expires in 14 days · <a href="${runUrl}">workflow run</a></sub>`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
