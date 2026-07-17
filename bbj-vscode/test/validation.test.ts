@@ -414,6 +414,75 @@ describe('BBj validation', async () => {
         expectNoIssues(validationResult);
     });
 
+    test('ELSE after semicolon on single line does not require a new line', async () => {
+        // Issue #388: `if (cond) stmt; else if (cond) stmt` (no THEN keyword, chained via `;`)
+        // wrongly reported "This statement needs to start in a new line" for `else` and the
+        // following `if`, because previousStatement() could not traverse a CompoundStatement.
+        // The `else` lives in the `red = 0; else` CompoundStatement; resolving its line-break
+        // mask must walk back through the compound's first element (`red = 0`) and out to the
+        // leading `if (red < 0)` on the same line.
+        const validationResult = await validate(`
+        red = -8
+        if (red < 0) red = 0; else if (red > 255) red = 255
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('ELSE as a later element of a multi-statement compound walks back to the leading IF', async () => {
+        // Issue #388, deeper case: here `else` is the 3rd element of the compound
+        // `red = 0; red = 1; else`. Resolving it exercises previousStatement() twice through
+        // non-first elements (index > 0 branch) AND once through the first element (`red = 0`,
+        // index === 0 branch that recurses out of the compound) before reaching the governing
+        // `if (red < 0)`. All of them must be reachable or the false "new line" errors return.
+        const validationResult = await validate(`
+        red = -8
+        if (red < 0) red = 0; red = 1; else if (red > 255) red = 255
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('Compound statement at program start does not crash the backward walk', async () => {
+        // Guards the termination case: a compound (`red = 0; red = 1`) that is itself the first
+        // statement in the program. Walking back from its first element must resolve to
+        // `undefined` (nothing precedes it) rather than looping or throwing.
+        const validationResult = await validate(`
+        red = 0; red = 1
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('Single-line IF ... FI followed by `;`-chained statement is accepted', async () => {
+        // `fi` becomes the last element of a compound wrapping the single-line IF, and the
+        // trailing `print x` is chained after it. The governing `if x then` sits on the same
+        // line, so no line-break error should be raised for `fi`.
+        const validationResult = await validate(`
+        x = 0
+        if x then x = 1 fi; print x
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('ELSE with no governing IF on the line is still flagged', async () => {
+        // Negative guard: the fix must not over-suppress. With no `if` preceding `else` on the
+        // same line, the backward walk terminates without finding one, so `else` (and the
+        // trailing statement) must still get "new line" / "line break" diagnostics.
+        const validationResult = await validate(`
+        red = 0; else red = 1
+        `);
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        expect(lineBreakErrors.length).toBeGreaterThan(0);
+    });
+
+    test('ENDIF with no governing IF on the line is still flagged', async () => {
+        // Negative guard, endif variant: `fi` chained after `red = 0` with no matching `if`
+        // must still be reported as needing to start on a new line.
+        const validationResult = await validate(`
+        red = 0; fi
+        `);
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        expect(lineBreakErrors.length).toBeGreaterThan(0);
+    });
+
     test('IF as last child of a compound statement', async () => {
         const validationResult = await validate(`
         debug = 1
