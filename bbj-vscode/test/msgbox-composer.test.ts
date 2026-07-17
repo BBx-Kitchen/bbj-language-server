@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
-    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, DEFAULT_STATE,
+    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt, DEFAULT_STATE,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -90,5 +90,22 @@ describe('MSGBOX composer logic (#426)', () => {
 
     test('non-MSGBOX line returns undefined', () => {
         expect(parseMsgboxCallOnLine('x = foo(1, 2)')).toBeUndefined();
+    });
+
+    test('findMsgboxCallAt targets the call the cursor is inside (two calls on one line)', () => {
+        const line = 'if c then a! = MSGBOX("A", 16) else b! = MSGBOX("B")';
+        // cursor inside the first call -> reconfigure (expr 16)
+        const first = findMsgboxCallAt(line, line.indexOf('"A"'))!;
+        expect(first.exprValue).toBe(16);
+        // cursor inside the second call -> add options (bare call)
+        const second = findMsgboxCallAt(line, line.indexOf('"B"'))!;
+        expect(second.exprValue).toBeUndefined();
+        expect(second.optionInsertOffset).toBeDefined();
+        // the two lookups resolve to different calls
+        expect(first.callStart).not.toBe(second.callStart);
+        // cursor between the calls (on ` else `) -> no call
+        expect(findMsgboxCallAt(line, line.indexOf(' else ') + 3)).toBeUndefined();
+        // cursor before the first call (on the IF) -> no call
+        expect(findMsgboxCallAt(line, 0)).toBeUndefined();
     });
 });

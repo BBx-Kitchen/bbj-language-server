@@ -137,6 +137,8 @@ export function composeStatement(input: ComposeInput): string {
 export interface MsgboxCallInfo {
     /** Index of `MSGBOX` within the line. */
     callStart: number;
+    /** Index just past the closing `)` (or the line end if the call is unterminated). */
+    callEnd: number;
     /** Trimmed top-level argument texts. */
     args: string[];
     /** [start, end) of the numeric `expr` token within the line, if arg #2 is an integer literal. */
@@ -150,22 +152,18 @@ export interface MsgboxCallInfo {
 }
 
 /**
- * Locate a `MSGBOX(...)` call on a single line and, when the 2nd argument is a plain integer
- * literal, report its range so it can be decoded/replaced in place. Handles nested parens and
- * string literals (with `""` escapes) when finding top-level argument commas. Best-effort — a
- * non-literal `expr` (e.g. `32+4` or a variable) yields no exprRange.
+ * Scan the top-level arguments of a call, starting just after its `(`. Handles nested parens
+ * and string literals (with `""` escapes) so commas inside them don't split arguments. Returns
+ * the argument ranges and `callEnd` (index just past the closing `)`, or the line end).
  */
-export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined {
-    const m = /msgbox\s*\(/i.exec(line);
-    if (!m) return undefined;
-    const start = m.index + m[0].length;
-
+function scanArgs(line: string, open: number): { argRanges: Array<[number, number]>; callEnd: number } {
     const argRanges: Array<[number, number]> = [];
     let depth = 0;
     let inStr = false;
-    let argStart = start;
+    let argStart = open;
+    let i = open;
     let ended = false;
-    for (let i = start; i < line.length; i++) {
+    for (; i < line.length; i++) {
         const c = line[i];
         if (inStr) {
             if (c === '"') {
@@ -177,7 +175,7 @@ export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined 
         if (c === '"') { inStr = true; }
         else if (c === '(') { depth++; }
         else if (c === ')') {
-            if (depth === 0) { argRanges.push([argStart, i]); ended = true; break; }
+            if (depth === 0) { argRanges.push([argStart, i]); i++; ended = true; break; }
             depth--;
         } else if (c === ',' && depth === 0) {
             argRanges.push([argStart, i]);
@@ -185,26 +183,57 @@ export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined 
         }
     }
     if (!ended) argRanges.push([argStart, line.length]);
+    return { argRanges, callEnd: i };
+}
 
+function buildCallInfo(line: string, callStart: number, open: number): MsgboxCallInfo {
+    const { argRanges, callEnd } = scanArgs(line, open);
     const info: MsgboxCallInfo = {
-        callStart: m.index,
+        callStart,
+        callEnd,
         args: argRanges.map(([a, b]) => line.slice(a, b).trim()),
     };
     if (argRanges.length > 1) {
+        // 2nd arg is a plain integer literal -> reconfigurable expr.
         const [a, b] = argRanges[1];
-        const raw = line.slice(a, b);
-        const numMatch = /^(\s*)(\d+)\s*$/.exec(raw);
+        const numMatch = /^(\s*)(\d+)\s*$/.exec(line.slice(a, b));
         if (numMatch) {
             const exprStart = a + numMatch[1].length;
             info.exprRange = [exprStart, exprStart + numMatch[2].length];
             info.exprValue = parseInt(numMatch[2], 10);
         }
     } else if (argRanges.length === 1 && info.args[0] !== '') {
-        // Only a message, no options yet: report where `, <expr>` would be inserted
-        // (right after the message argument's last non-space char).
+        // Only a message, no options yet: where `, <expr>` would be inserted.
         const [a, b] = argRanges[0];
-        const trimmedEnd = a + line.slice(a, b).replace(/\s+$/, '').length;
-        info.optionInsertOffset = trimmedEnd;
+        info.optionInsertOffset = a + line.slice(a, b).replace(/\s+$/, '').length;
     }
     return info;
+}
+
+/** Every `MSGBOX(...)` call on the line, in source order. */
+export function findMsgboxCalls(line: string): MsgboxCallInfo[] {
+    const re = /msgbox\s*\(/gi;
+    const calls: MsgboxCallInfo[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(line)) !== null) {
+        calls.push(buildCallInfo(line, m.index, m.index + m[0].length));
+    }
+    return calls;
+}
+
+/** First `MSGBOX(...)` call on the line (convenience). */
+export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined {
+    return findMsgboxCalls(line)[0];
+}
+
+/**
+ * The `MSGBOX(...)` call the cursor is inside, if any. When calls are nested, the innermost
+ * (smallest span) containing the cursor wins. Returns undefined when the cursor is on the line
+ * but outside every call — so a line with two calls (e.g. `IF..THEN MSGBOX(..) ELSE MSGBOX(..)`)
+ * only offers the action for the one in focus.
+ */
+export function findMsgboxCallAt(line: string, character: number): MsgboxCallInfo | undefined {
+    const containing = findMsgboxCalls(line).filter(c => character >= c.callStart && character <= c.callEnd);
+    if (containing.length === 0) return undefined;
+    return containing.reduce((best, c) => (c.callEnd - c.callStart < best.callEnd - best.callStart ? c : best));
 }

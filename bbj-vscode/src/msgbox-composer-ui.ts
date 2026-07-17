@@ -10,7 +10,7 @@
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
-    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, parseMsgboxCallOnLine,
+    MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt,
 } from './msgbox-composer.js';
 
 interface ComposeArg {
@@ -34,7 +34,9 @@ export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
 class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] {
         const lineNo = range.start.line;
-        const info = parseMsgboxCallOnLine(document.lineAt(lineNo).text);
+        // Only the MSGBOX call the cursor is inside — so a line with several calls
+        // (e.g. IF..THEN MSGBOX(..) ELSE MSGBOX(..)) offers the action for the right one.
+        const info = findMsgboxCallAt(document.lineAt(lineNo).text, range.start.character);
         if (!info) {
             return [];
         }
