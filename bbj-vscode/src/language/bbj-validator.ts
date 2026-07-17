@@ -274,11 +274,14 @@ export class BBjValidator {
                 const cleanPath = match[1];
                 const currentDocUri = AstUtils.getDocument(use).uri;
                 const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
+                const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
                 const adjustedFileUris = [
                     UriUtils.resolvePath(UriUtils.dirname(currentDocUri), cleanPath)
-                ].concat(
-                    prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
-                );
+                ]
+                    // Also resolve relative to each workspace/project root (#378), matching
+                    // the scope provider so the diagnostic agrees with actual resolution.
+                    .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, cleanPath)))
+                    .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath))));
                 // Check if a document exists at any candidate URI. We check document
                 // existence rather than BbjClass index entries because external files
                 // may have parser errors that prevent BbjClass nodes from being created,

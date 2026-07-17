@@ -270,9 +270,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     private getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean) {
         const currentDocUri = AstUtils.getDocument(container).uri;
         const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
-        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)].concat(
-            prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath)))
-        );
+        const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
+        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)]
+            // Resolve relative to each workspace/project root too (#378), so a USE from a
+            // subfolder can reference files by their project-root-relative path.
+            .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, bbjFilePath)))
+            .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath))));
         let bbjClasses = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
             return adjustedFileUris.some(adjustedFileUri => normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase());
         })
