@@ -152,6 +152,11 @@
         "category": "BBj",
         "command": "bbj.composeMsgbox",
         "title": "Compose MSGBOX…"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeMsgboxVisual",
+        "title": "Compose MSGBOX (visual)…"
       }
     ],
     "keybindings": [
@@ -205,6 +210,11 @@
         },
         {
           "command": "bbj.composeMsgbox",
+          "when": "editorLangId == bbj",
+          "group": "1_modification"
+        },
+        {
+          "command": "bbj.composeMsgboxVisual",
           "when": "editorLangId == bbj",
           "group": "1_modification"
         }

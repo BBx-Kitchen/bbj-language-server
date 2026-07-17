@@ -69,6 +69,23 @@ export const DEFAULT_STATE: MsgboxState = {
     buttonSet: 0, icon: 0, defaultButton: 0, noEnter: false, disableHtml: false, mdi: false,
 };
 
+/**
+ * Build a MsgboxState from a flat UI selection (button/icon/default values + a list of flag
+ * values). Keeps the flag-value -> boolean mapping in one place so UIs (QuickPick, webview,
+ * a future IntelliJ dialog) only pass raw selections.
+ */
+export function stateFromSelection(sel: { buttonSet?: number; icon?: number; defaultButton?: number; flags?: number[] }): MsgboxState {
+    const flags = new Set(sel.flags ?? []);
+    return {
+        buttonSet: sel.buttonSet ?? 0,
+        icon: sel.icon ?? 0,
+        defaultButton: sel.defaultButton ?? 0,
+        noEnter: flags.has(65536),
+        disableHtml: flags.has(32768),
+        mdi: flags.has(131072),
+    };
+}
+
 /** Compose the additive `expr` number from a selection. */
 export function encode(s: MsgboxState): number {
     return (s.buttonSet & BUTTON_MASK)

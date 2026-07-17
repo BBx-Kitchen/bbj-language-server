@@ -12,6 +12,7 @@ import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
     MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt,
 } from './msgbox-composer.js';
+import { openMsgboxComposerPanel } from './msgbox-composer-webview.js';
 
 interface ComposeArg {
     /** Reconfigure an existing numeric `expr` in place (call already has options). */
@@ -23,6 +24,7 @@ interface ComposeArg {
 export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: ComposeArg) => runComposer(arg)),
+        vscode.commands.registerCommand('bbj.composeMsgboxVisual', () => openMsgboxComposerPanel(context)),
         vscode.languages.registerCodeActionsProvider(
             { language: 'bbj' },
             new MsgboxCodeActionProvider(),

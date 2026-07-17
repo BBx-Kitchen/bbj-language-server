@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
-    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt, DEFAULT_STATE,
+    encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
+    stateFromSelection, DEFAULT_STATE,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -9,6 +10,13 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(encode({ ...DEFAULT_STATE, buttonSet: 4, icon: 48 })).toBe(52); // Yes/No + Exclamation
         expect(encode({ ...DEFAULT_STATE, buttonSet: 1, icon: 64, defaultButton: 256 })).toBe(1 + 64 + 256);
         expect(encode({ ...DEFAULT_STATE, buttonSet: 3, icon: 32, noEnter: true })).toBe(3 + 32 + 65536);
+    });
+
+    test('stateFromSelection maps flat UI selection (flags list) to state', () => {
+        expect(encode(stateFromSelection({ buttonSet: 4, icon: 32, flags: [65536] }))).toBe(4 + 32 + 65536);
+        expect(encode(stateFromSelection({ buttonSet: 3, icon: 48, defaultButton: 256, flags: [32768, 131072] })))
+            .toBe(3 + 48 + 256 + 32768 + 131072);
+        expect(encode(stateFromSelection({}))).toBe(0);
     });
 
     test('decode is the inverse of encode', () => {
