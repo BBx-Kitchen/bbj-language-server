@@ -492,7 +492,7 @@ export class BbjNameProvider extends DefaultNameProvider {
  * rather than the inner `SymbolRef`, so the SymbolRef's own `instanceAccess`
  * flag is false and must be recovered from the enclosing Assignment.
  */
-function isInstanceAccessAssignment(node: AstNode): boolean {
+export function isInstanceAccessAssignment(node: AstNode): boolean {
     // Walk up any `receiver` chain (e.g. `#a!.b! = v` links from the `a!` receiver).
     let current: AstNode = node;
     while (isMemberCall(current.$container) && current.$containerProperty === 'receiver') {

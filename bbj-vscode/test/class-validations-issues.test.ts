@@ -63,6 +63,26 @@ classend
             expect(messages.some(m => /Could not resolve reference to NamedElement named 'window!'/.test(m))).toBe(true);
         });
 
+        test('a dangling #member reference is a hard error, not a warning', async () => {
+            const result = await validate(`
+class public Test
+  method public void run(BBjWindow window!)
+    ? #window!
+  methodend
+classend
+`);
+            const dangling = (result.diagnostics ?? []).find(d => /named 'window!'/.test(d.message));
+            expect(dangling).toBeDefined();
+            expect(dangling!.severity).toBe(1 /* DiagnosticSeverity.Error */);
+        });
+
+        test('an ordinary unresolved variable reference stays a warning', async () => {
+            const result = await validate(`print undefinedVar\n`);
+            const dangling = (result.diagnostics ?? []).find(d => /named 'undefinedVar'/.test(d.message));
+            expect(dangling).toBeDefined();
+            expect(dangling!.severity).toBe(2 /* DiagnosticSeverity.Warning */);
+        });
+
         test('valid instance member access (#this!, own field) still resolves', async () => {
             const messages = await messagesOf(`
 class public Test

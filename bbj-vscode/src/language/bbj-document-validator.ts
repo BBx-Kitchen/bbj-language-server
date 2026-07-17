@@ -2,11 +2,19 @@
 
 import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, DocumentValidator, getDiagnosticRange, LangiumDocument, toDiagnosticSeverity } from "langium";
 import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
+import { isSymbolRef } from "./generated/ast.js";
+import { isInstanceAccessAssignment } from "./bbj-scope.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
     property: string;
     refText: string;
+    /**
+     * True when the unresolved reference is an explicit instance-member access (`#member`).
+     * Such a reference can only denote an instance member of the enclosing class, so a dangling
+     * one is a definite bug and stays at Error severity rather than being downgraded to a warning.
+     */
+    instanceMemberAccess?: boolean;
 }
 
 interface ValidationOptions {
@@ -164,16 +172,20 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         for (const reference of document.references) {
             const linkingError = reference.error;
             if (linkingError) {
+                const container = linkingError.info.container;
+                const instanceMemberAccess = (isSymbolRef(container) && container.instanceAccess)
+                    || isInstanceAccessAssignment(container);
                 const info: DiagnosticInfo<AstNode, string> = {
-                    node: linkingError.info.container,
+                    node: container,
                     range: reference.$refNode?.range,
                     property: linkingError.info.property,
                     index: linkingError.info.index,
                     data: {
                         code: DocumentValidator.LinkingError,
-                        containerType: linkingError.info.container.$type,
+                        containerType: container.$type,
                         property: linkingError.info.property,
-                        refText: linkingError.info.reference.$refText
+                        refText: linkingError.info.reference.$refText,
+                        instanceMemberAccess
                     } satisfies LinkingErrorData
                 };
 
@@ -233,8 +245,10 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
         let diagnosticSeverity: DiagnosticSeverity;
 
         if ((info.data as DiagnosticData)?.code === DocumentValidator.LinkingError) {
-            // Cyclic reference errors stay as Error severity; other linking errors downgrade to Warning
-            diagnosticSeverity = message.includes('Cyclic reference')
+            // Cyclic references and dangling instance-member (`#member`) references stay at Error
+            // severity; other linking errors downgrade to Warning.
+            const linkingData = info.data as LinkingErrorData;
+            diagnosticSeverity = (message.includes('Cyclic reference') || linkingData.instanceMemberAccess)
                 ? DiagnosticSeverity.Error
                 : DiagnosticSeverity.Warning;
         } else {
