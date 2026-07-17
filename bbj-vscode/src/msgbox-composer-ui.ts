@@ -11,7 +11,7 @@ import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
     MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt, flagsFromState,
-    splitButtonsAndTrailing,
+    splitButtonsAndTrailing, validateStringField,
 } from './msgbox-composer.js';
 import { openMsgboxComposerPanel, MsgboxPanelArg } from './msgbox-composer-webview.js';
 
@@ -111,11 +111,13 @@ async function runComposer(arg?: ComposeArg): Promise<void> {
         const message = await vscode.window.showInputBox({
             title: 'MSGBOX — message', prompt: 'BBj expression for the message',
             value: '"Message"', ignoreFocusOut: true,
+            validateInput: v => validateStringField(v, { required: true }).message,
         });
         if (message === undefined) return;
         const title = await vscode.window.showInputBox({
             title: 'MSGBOX — title (optional)', prompt: 'BBj expression for the title, or leave empty',
             value: '', ignoreFocusOut: true,
+            validateInput: v => validateStringField(v, { required: false }).message,
         });
         if (title === undefined) return;
 

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
     stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
-    splitButtonsAndTrailing, DEFAULT_STATE,
+    splitButtonsAndTrailing, DEFAULT_STATE, resolvesToString, validateStringField, quoteAsStringLiteral,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -72,6 +72,54 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(validateBbjExpression('getText(1').ok).toBe(false);            // unbalanced paren
         expect(validateBbjExpression('', { required: true }).ok).toBe(false); // required + empty
         expect(validateBbjExpression('', {}).ok).toBe(true);                   // optional + empty
+    });
+
+    test('quoteAsStringLiteral wraps text and doubles embedded quotes', () => {
+        expect(quoteAsStringLiteral('Caption')).toBe('"Caption"');
+        expect(quoteAsStringLiteral('Are you sure?')).toBe('"Are you sure?"');
+        expect(quoteAsStringLiteral('say "hi"')).toBe('"say ""hi"""');
+    });
+
+    test('resolvesToString accepts literals / $ / ! vars, function calls, and string concatenations', () => {
+        expect(resolvesToString('"Caption"')).toBe(true);
+        expect(resolvesToString('caption$')).toBe(true);          // string variable
+        expect(resolvesToString('caption!')).toBe(true);          // object variable
+        expect(resolvesToString('arr$[1]')).toBe(true);           // string array element
+        expect(resolvesToString('obj!.getText()')).toBe(true);    // method call
+        expect(resolvesToString('STR(n)')).toBe(true);            // string function
+        expect(resolvesToString('a$ + "!"')).toBe(true);          // concatenation
+        expect(resolvesToString('"n=" + STR(n)')).toBe(true);
+        expect(resolvesToString('("wrapped" + a$)')).toBe(true);  // parenthesised
+    });
+
+    test('resolvesToString rejects bare numeric refs, numbers, %-vars, and arithmetic', () => {
+        expect(resolvesToString('Caption')).toBe(false);          // the reported bug: numeric variable
+        expect(resolvesToString('Are you sure?')).toBe(false);    // unquoted prose
+        expect(resolvesToString('42')).toBe(false);
+        expect(resolvesToString('count%')).toBe(false);           // integer variable
+        expect(resolvesToString('"x" + count')).toBe(false);      // numeric operand in concat
+        expect(resolvesToString('a$ - b$')).toBe(false);          // arithmetic operator ⇒ numeric
+        expect(resolvesToString('')).toBe(false);
+    });
+
+    test('validateStringField requires a String and suggests how to fix a bare value', () => {
+        expect(validateStringField('"Caption"', { required: true }).ok).toBe(true);
+        expect(validateStringField('caption$').ok).toBe(true);
+        expect(validateStringField('', { required: false }).ok).toBe(true);   // optional + empty
+        expect(validateStringField('', { required: true }).ok).toBe(false);   // required + empty
+
+        const bareId = validateStringField('Caption', { required: true });
+        expect(bareId.ok).toBe(false);
+        expect(bareId.message).toContain('"Caption"');       // suggests quoting
+        expect(bareId.message).toContain('Caption$');        // and the $/! variable form
+
+        const prose = validateStringField('Are you sure?', { required: true });
+        expect(prose.ok).toBe(false);
+        expect(prose.message).toContain('"Are you sure?"');  // quote suggestion
+        expect(prose.message).not.toContain('$');            // no nonsensical `prose$` hint
+
+        // structural errors still win over the typing check
+        expect(validateStringField('"TEST').ok).toBe(false); // unterminated literal
     });
 
     test('expressionDisplayText unquotes string literals, passes expressions through', () => {
