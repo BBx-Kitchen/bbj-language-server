@@ -1,10 +1,10 @@
 
-import { EmptyFileSystem } from 'langium';
+import { AstUtils, EMPTY_SCOPE, EmptyFileSystem } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
 import { CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
-import { Model } from '../src/language/generated/ast.js';
+import { isSymbolRef, Model } from '../src/language/generated/ast.js';
 
 describe('BBJ completion provider', async () => {
 
@@ -272,5 +272,23 @@ foo!.`;
         expect(completions).toBeDefined();
         const methodItems = completions!.items.filter(i => i.label.startsWith('doWork'));
         expect(methodItems.length).toBeGreaterThanOrEqual(1);
+    });
+
+    test("getScope on a non-reference property returns EMPTY_SCOPE instead of throwing (issue #76)", async () => {
+        // While completing `x.`, Langium reuses the parsed receiver (a SymbolRef) as the scope
+        // container but asks for the MemberCall `member` feature — which is not a cross-reference
+        // on SymbolRef. This used to throw "Property member of type SymbolRef is not a reference."
+        // and spam the LSP error log on every dot. getScope must degrade to EMPTY_SCOPE.
+        const parse = parseHelper<Model>(bbjServices);
+        const doc = await parse(`x = 5\nprint x`, { documentUri: 'file:///test/non-ref-scope.bbj' });
+        const symbolRef = AstUtils.streamAllContents(doc.parseResult.value).find(isSymbolRef);
+        expect(symbolRef).toBeDefined();
+
+        const scope = bbjServices.references.ScopeProvider.getScope({
+            container: symbolRef!,
+            property: 'member',
+            reference: { $refText: '', ref: undefined } as any
+        });
+        expect(scope).toBe(EMPTY_SCOPE);
     });
 });

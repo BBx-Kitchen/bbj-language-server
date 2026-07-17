@@ -76,6 +76,15 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     override getScope(context: ReferenceInfo): Scope {
+        if (!this.isReferenceProperty(context)) {
+            // Completion (e.g. after typing `x.`) can request a scope for a property that is not
+            // a cross-reference on the container's type — Langium reuses the parsed receiver node
+            // (a SymbolRef, MethodCall, ...) as the container while completing the MemberCall
+            // `member` feature. There is no scope to resolve for such a mismatch, and letting it
+            // fall through would either throw or yield spurious suggestions (e.g. imported class
+            // names). The real member scope is contributed by the MemberCall-container candidate.
+            return EMPTY_SCOPE;
+        }
         const container = context.container as AstNodeTypesWithCrossReferences<BBjAstType>;
         switch (container.$type) {
             case 'SimpleTypeRef': {
@@ -315,7 +324,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
 
     private superGetScope(context: ReferenceInfo) {
         // Extracted one point access to super impl for performance and debugging purposes
+        if (!this.isReferenceProperty(context)) {
+            // During completion Langium builds a synthetic ReferenceInfo whose container is the
+            // parsed receiver node (e.g. a SymbolRef or MethodCall from `x.` / `x.foo().`) while
+            // the feature being completed is `member` from the MemberCall rule. That property is
+            // not a cross-reference on the receiver's type, so super.getScope would throw
+            // "Property member of type <T> is not a reference." The real member scope is
+            // contributed by the MemberCall-container completion candidate; return EMPTY_SCOPE.
+            return EMPTY_SCOPE;
+        }
         return super.getScope(context)
+    }
+
+    /** True if `context.property` is an actual cross-reference on `context.container`'s type. */
+    private isReferenceProperty(context: ReferenceInfo): boolean {
+        return this.astReflection.getTypeMetaData(context.container.$type)
+            .properties[context.property]?.referenceType !== undefined;
     }
 
     protected override createScope(elements: Stream<AstNodeDescription>, outerScope: Scope): Scope {
