@@ -1,9 +1,10 @@
 /**
- * Visual MSGBOX composer — a webview panel with a live preview of the generated statement (#426).
+ * Visual MSGBOX composer — a webview panel with a schematic dialog preview + generated statement (#426).
  *
  * The panel is pure presentation: it renders a form from the option catalog and sends the raw
- * selection back to the extension, which computes `expr`/statement text and validates the
- * message/title with the shared ./msgbox-composer logic (no flag math is duplicated here).
+ * selection back to the extension, which computes `expr`/statement text, validates the
+ * message/title, and produces the schematic render with the shared ./msgbox-composer logic
+ * (no flag math / button labels are duplicated here).
  *
  * Two modes:
  *   - NEW (no arg): compose a fresh `ret! = MSGBOX(...)` and insert it at the cursor.
@@ -14,6 +15,7 @@ import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
     encode, describe, composeStatement, stateFromSelection, validateBbjExpression,
+    buttonLabels, expressionDisplayText,
 } from './msgbox-composer.js';
 
 export interface MsgboxPanelArg {
@@ -28,6 +30,7 @@ export interface MsgboxPanelArg {
         icon: number;
         defaultButton: number;
         flags: number[];
+        customButtons: string[];
     };
 }
 
@@ -36,6 +39,7 @@ interface Selection {
     icon: number;
     defaultButton: number;
     flags: number[];
+    customButtons: string[];
     message: string;
     title: string;
     assignTo: string;
@@ -59,7 +63,7 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
 
     const initial = arg?.initial ?? {
         message: '"Message"', title: '', assignTo: 'ret!',
-        buttonSet: 0, icon: 0, defaultButton: 0, flags: [],
+        buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
     };
     const trailingArgs = arg?.target?.trailingArgs ?? [];
 
@@ -72,21 +76,40 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
     panel.webview.html = getHtml(panel.webview);
 
     function build(sel: Selection) {
-        const expr = encode(stateFromSelection(sel));
+        const state = stateFromSelection(sel);
+        const isCustom = state.buttonSet === 7;
+        const cleanCustom = (sel.customButtons ?? []).map(s => s.trim()).filter(s => s !== '');
+        const expr = encode(state);
+
         const msgV = validateBbjExpression(sel.message, { required: true });
         const titleV = validateBbjExpression(sel.title, { required: false });
+        const customValid = cleanCustom.every(b => validateBbjExpression(b).ok);
+        const customOk = !isCustom || (cleanCustom.length > 0 && customValid);
+
         const statement = composeStatement({
             message: sel.message || '""',
             expr,
             title: sel.title || undefined,
+            buttons: isCustom ? cleanCustom : undefined,
             trailingArgs,
             assignTo: editMode ? undefined : (sel.assignTo || undefined),
         });
+
+        const labels = buttonLabels(state.buttonSet, sel.customButtons);
+        const defaultIndex = state.defaultButton === 256 ? 1 : state.defaultButton === 512 ? 2 : 0;
         return {
             expr, statement, summary: describe(expr),
             messageError: msgV.ok ? undefined : msgV.message,
             titleError: titleV.ok ? undefined : titleV.message,
-            valid: msgV.ok && titleV.ok,
+            customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : 'Invalid button expression'),
+            valid: msgV.ok && titleV.ok && customOk,
+            render: {
+                title: expressionDisplayText(sel.title),
+                message: expressionDisplayText(sel.message),
+                icon: state.icon,
+                buttons: labels,
+                defaultIndex: Math.max(0, Math.min(defaultIndex, labels.length - 1)),
+            },
         };
     }
 
@@ -158,6 +181,34 @@ function getHtml(webview: vscode.Webview): string {
   fieldset { border: 1px solid var(--vscode-input-border, var(--vscode-panel-border)); border-radius: 3px; margin: 0 0 12px; padding: 8px 10px; }
   legend { font-size: 0.82em; opacity: 0.85; padding: 0 4px; }
   .check { display: flex; align-items: center; gap: 6px; font-size: 0.9em; margin: 3px 0; }
+  #customButtons input { margin-bottom: 6px; width: 100%; box-sizing: border-box; }
+
+  .mock-wrap { margin: 6px 0 12px; }
+  .mock {
+    border: 1px solid var(--vscode-widget-border, var(--vscode-panel-border));
+    border-radius: 4px; overflow: hidden; max-width: 340px;
+    background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .mock-title {
+    background: var(--vscode-titleBar-activeBackground, var(--vscode-editorGroupHeader-tabsBackground));
+    color: var(--vscode-titleBar-activeForeground, var(--vscode-foreground));
+    padding: 5px 10px; font-size: 0.85em; font-weight: 600;
+  }
+  .mock-body { display: flex; align-items: flex-start; gap: 10px; padding: 14px 12px; }
+  .mock-icon { font-size: 1.6em; line-height: 1; }
+  .mock-msg { font-size: 0.92em; white-space: pre-wrap; word-break: break-word; }
+  .mock-buttons { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; }
+  .mock-btn {
+    border: 1px solid var(--vscode-button-border, var(--vscode-contrastBorder, transparent));
+    background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground);
+    padding: 3px 12px; border-radius: 2px; font-size: 0.85em; min-width: 54px; text-align: center;
+  }
+  .mock-btn.default {
+    background: var(--vscode-button-background); color: var(--vscode-button-foreground);
+    outline: 2px solid var(--vscode-focusBorder); outline-offset: 1px; font-weight: 600;
+  }
+
   .preview { margin: 8px 0 4px; }
   pre {
     background: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-panel-border);
@@ -177,6 +228,14 @@ function getHtml(webview: vscode.Webview): string {
 </head>
 <body>
   <h2 id="heading">MSGBOX Composer</h2>
+
+  <div class="mock-wrap">
+    <div class="mock">
+      <div class="mock-title" id="mock-title"></div>
+      <div class="mock-body"><span class="mock-icon" id="mock-icon"></span><span class="mock-msg" id="mock-msg"></span></div>
+      <div class="mock-buttons" id="mock-buttons"></div>
+    </div>
+  </div>
 
   <div class="row">
     <label for="message">Message expression</label>
@@ -201,6 +260,15 @@ function getHtml(webview: vscode.Webview): string {
     <label for="buttonSet">Buttons</label>
     <select id="buttonSet"></select>
   </div>
+
+  <fieldset id="customButtons" class="hidden">
+    <legend>Custom button labels</legend>
+    <input type="text" id="customBtn0" placeholder='e.g. "Left"'>
+    <input type="text" id="customBtn1" placeholder='e.g. "Right"'>
+    <input type="text" id="customBtn2" placeholder="(optional)">
+    <div class="error" id="custom-error"></div>
+  </fieldset>
+
   <div class="row">
     <label for="defaultButton">Default button</label>
     <select id="defaultButton"></select>
@@ -209,7 +277,7 @@ function getHtml(webview: vscode.Webview): string {
   <fieldset id="flags"><legend>Extra options</legend></fieldset>
 
   <div class="preview">
-    <label>Preview</label>
+    <label>Generated statement</label>
     <pre id="preview">—</pre>
     <div class="summary" id="summary"></div>
   </div>
@@ -222,6 +290,7 @@ function getHtml(webview: vscode.Webview): string {
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
+  const ICON_GLYPH = { 16: '🛑', 32: '❓', 48: '⚠️', 64: 'ℹ️' };
 
   function fillSelect(sel, items, value) {
     sel.innerHTML = '';
@@ -234,6 +303,10 @@ function getHtml(webview: vscode.Webview): string {
     }
   }
 
+  function toggleCustom() {
+    $('customButtons').classList.toggle('hidden', Number($('buttonSet').value) !== 7);
+  }
+
   function readForm() {
     const flags = Array.from(document.querySelectorAll('#flags input:checked')).map(c => Number(c.value));
     return {
@@ -241,13 +314,14 @@ function getHtml(webview: vscode.Webview): string {
       icon: Number($('icon').value || 0),
       defaultButton: Number($('defaultButton').value || 0),
       flags,
+      customButtons: [$('customBtn0').value, $('customBtn1').value, $('customBtn2').value],
       message: $('message').value,
       title: $('title').value,
       assignTo: $('assignTo').value,
     };
   }
 
-  function change() { vscode.postMessage({ type: 'change', payload: readForm() }); }
+  function change() { toggleCustom(); vscode.postMessage({ type: 'change', payload: readForm() }); }
 
   window.addEventListener('message', (e) => {
     const m = e.data;
@@ -258,6 +332,9 @@ function getHtml(webview: vscode.Webview): string {
       $('title').value = init.title;
       $('assignTo').value = init.assignTo || '';
       if (m.editMode) $('assignTo-row').classList.add('hidden');
+      $('customBtn0').value = init.customButtons[0] || '';
+      $('customBtn1').value = init.customButtons[1] || '';
+      $('customBtn2').value = init.customButtons[2] || '';
       fillSelect($('icon'), m.catalogs.icons, init.icon);
       fillSelect($('buttonSet'), m.catalogs.buttonSets, init.buttonSet);
       fillSelect($('defaultButton'), m.catalogs.defaultButtons, init.defaultButton);
@@ -273,19 +350,33 @@ function getHtml(webview: vscode.Webview): string {
         span.textContent = f.label;
         wrap.appendChild(cb); wrap.appendChild(span); fs.appendChild(wrap);
       }
+      toggleCustom();
       change();
     } else if (m.type === 'preview') {
       $('preview').textContent = m.statement;
       $('summary').textContent = 'expr = ' + m.expr + '  ·  ' + m.summary;
       $('message-error').textContent = m.messageError || '';
       $('title-error').textContent = m.titleError || '';
+      $('custom-error').textContent = m.customError || '';
       $('message').classList.toggle('invalid', !!m.messageError);
       $('title').classList.toggle('invalid', !!m.titleError);
       $('insert').disabled = !m.valid;
+      // schematic dialog
+      const r = m.render;
+      $('mock-title').textContent = r.title || '(no title)';
+      $('mock-icon').textContent = ICON_GLYPH[r.icon] || '';
+      $('mock-msg').textContent = r.message || '';
+      const mb = $('mock-buttons'); mb.innerHTML = '';
+      r.buttons.forEach((b, i) => {
+        const el = document.createElement('span');
+        el.className = 'mock-btn' + (i === r.defaultIndex ? ' default' : '');
+        el.textContent = b;
+        mb.appendChild(el);
+      });
     }
   });
 
-  for (const id of ['message', 'title', 'assignTo', 'icon', 'buttonSet', 'defaultButton']) {
+  for (const id of ['message', 'title', 'assignTo', 'icon', 'buttonSet', 'defaultButton', 'customBtn0', 'customBtn1', 'customBtn2']) {
     $(id).addEventListener('input', change);
     $(id).addEventListener('change', change);
   }

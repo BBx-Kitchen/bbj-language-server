@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS, CatalogItem,
     MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, findMsgboxCallAt, flagsFromState,
+    splitButtonsAndTrailing,
 } from './msgbox-composer.js';
 import { openMsgboxComposerPanel, MsgboxPanelArg } from './msgbox-composer-webview.js';
 
@@ -42,25 +43,21 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
         if (!info) {
             return [];
         }
-        // The span of the whole MSGBOX(...) call and any args past the title we preserve verbatim.
-        const target = {
-            uri: document.uri.toString(),
-            line: lineNo,
-            callStart: info.callStart,
-            callEnd: info.callEnd,
-            trailingArgs: info.args.slice(3),
-        };
+        const callSpan = { uri: document.uri.toString(), line: lineNo, callStart: info.callStart, callEnd: info.callEnd };
 
         // Existing numeric options -> open the visual editor prefilled from the current call.
         if (info.exprRange && info.exprValue !== undefined) {
             const st = decode(info.exprValue);
+            // Split args past the title into custom button labels vs. args to preserve verbatim.
+            const { buttons, trailing } = splitButtonsAndTrailing(info.args.slice(3), st.buttonSet === 7);
             const arg: MsgboxPanelArg = {
-                target,
+                target: { ...callSpan, trailingArgs: trailing },
                 initial: {
                     message: info.args[0] ?? '""',
                     title: info.args[2] ?? '',
                     buttonSet: st.buttonSet, icon: st.icon, defaultButton: st.defaultButton,
                     flags: flagsFromState(st),
+                    customButtons: buttons,
                 },
             };
             return [visualAction(`Configure MSGBOX options (${describe(info.exprValue)})`, arg)];
@@ -68,11 +65,11 @@ class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
         // Bare MSGBOX("...") with no options yet -> open the visual editor to add them.
         if (info.optionInsertOffset !== undefined) {
             const arg: MsgboxPanelArg = {
-                target: { ...target, trailingArgs: [] },
+                target: { ...callSpan, trailingArgs: [] },
                 initial: {
                     message: info.args[0] ?? '""',
                     title: '',
-                    buttonSet: 0, icon: 0, defaultButton: 0, flags: [],
+                    buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [],
                 },
             };
             return [visualAction('Add MSGBOX options…', arg)];

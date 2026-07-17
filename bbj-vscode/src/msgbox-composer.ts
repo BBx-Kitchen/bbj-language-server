@@ -198,6 +198,50 @@ export function validateBbjExpression(text: string, opts: { required?: boolean }
     return { ok: true };
 }
 
+/** Human display text for an expression: a `"..."` literal becomes its content, anything else is shown as-is. */
+export function expressionDisplayText(expr: string): string {
+    const t = (expr ?? '').trim();
+    if (/^"([^"]|"")*"$/.test(t)) {
+        return t.slice(1, -1).replace(/""/g, '"');
+    }
+    return t;
+}
+
+const STANDARD_BUTTON_LABELS: Record<number, string[]> = {
+    0: ['OK'],
+    1: ['OK', 'Cancel'],
+    2: ['Abort', 'Retry', 'Ignore'],
+    3: ['Yes', 'No', 'Cancel'],
+    4: ['Yes', 'No'],
+    5: ['Retry', 'Cancel'],
+};
+
+/** Display labels for the schematic preview: standard set labels, or the custom button expressions. */
+export function buttonLabels(buttonSet: number, customButtons: string[] = []): string[] {
+    if (buttonSet === 7) {
+        const labels = customButtons.map(expressionDisplayText).filter(s => s.trim() !== '');
+        return labels.length ? labels : ['Button 1'];
+    }
+    return STANDARD_BUTTON_LABELS[buttonSet] ?? ['OK'];
+}
+
+/**
+ * Split the args past the title (args[3..]) into custom button labels and the remaining trailing
+ * args to preserve verbatim. Positional buttons only apply to the "Custom" set (7) and stop at the
+ * first `MODE=`/`TIM=`/`ERR=` keyword arg.
+ */
+export function splitButtonsAndTrailing(rest: string[], isCustom: boolean): { buttons: string[]; trailing: string[] } {
+    if (!isCustom) return { buttons: [], trailing: rest };
+    const keyword = /^(MODE|TIM|ERR)\b\s*=/i;
+    const buttons: string[] = [];
+    let i = 0;
+    while (i < rest.length && buttons.length < 3 && !keyword.test(rest[i])) {
+        buttons.push(rest[i]);
+        i++;
+    }
+    return { buttons, trailing: rest.slice(i) };
+}
+
 export interface MsgboxCallInfo {
     /** Index of `MSGBOX` within the line. */
     callStart: number;

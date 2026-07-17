@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
-    stateFromSelection, flagsFromState, validateBbjExpression, DEFAULT_STATE,
+    stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
+    splitButtonsAndTrailing, DEFAULT_STATE,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -71,6 +72,26 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(validateBbjExpression('getText(1').ok).toBe(false);            // unbalanced paren
         expect(validateBbjExpression('', { required: true }).ok).toBe(false); // required + empty
         expect(validateBbjExpression('', {}).ok).toBe(true);                   // optional + empty
+    });
+
+    test('expressionDisplayText unquotes string literals, passes expressions through', () => {
+        expect(expressionDisplayText('"Hello World!"')).toBe('Hello World!');
+        expect(expressionDisplayText('"say ""hi"""')).toBe('say "hi"');
+        expect(expressionDisplayText('msg$')).toBe('msg$');
+        expect(expressionDisplayText('a$ + "!"')).toBe('a$ + "!"'); // not a single literal -> as-is
+    });
+
+    test('buttonLabels returns standard labels or custom expressions', () => {
+        expect(buttonLabels(4)).toEqual(['Yes', 'No']);
+        expect(buttonLabels(0)).toEqual(['OK']);
+        expect(buttonLabels(7, ['"Left"', '"Right"'])).toEqual(['Left', 'Right']);
+        expect(buttonLabels(7, [])).toEqual(['Button 1']); // fallback when custom set has no labels
+    });
+
+    test('splitButtonsAndTrailing separates custom buttons from MODE/TIM/ERR', () => {
+        expect(splitButtonsAndTrailing(['"Left"', '"Right"'], true)).toEqual({ buttons: ['"Left"', '"Right"'], trailing: [] });
+        expect(splitButtonsAndTrailing(['"Left"', 'MODE="x"'], true)).toEqual({ buttons: ['"Left"'], trailing: ['MODE="x"'] });
+        expect(splitButtonsAndTrailing(['MODE="x"'], false)).toEqual({ buttons: [], trailing: ['MODE="x"'] });
     });
 
     test('parseMsgboxCallOnLine finds a numeric expr and its range', () => {
