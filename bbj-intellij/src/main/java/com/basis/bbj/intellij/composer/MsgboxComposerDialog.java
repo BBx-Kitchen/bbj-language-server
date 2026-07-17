@@ -28,6 +28,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -62,6 +63,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     private final JBTextField[] customButtons = { new JBTextField(), new JBTextField(), new JBTextField() };
     private JPanel customPanel;
 
+    private final MsgboxSchematicPanel schematic = new MsgboxSchematicPanel();
     private final JBTextField statementField = new JBTextField();
     private final JBLabel summary = new JBLabel();
     private final JBLabel messageError = errorLabel();
@@ -91,6 +93,10 @@ public final class MsgboxComposerDialog extends DialogWrapper {
     protected @Nullable JComponent createCenterPanel() {
         JPanel root = new JPanel();
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
+
+        JPanel preview = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        preview.add(schematic);
+        root.add(preview);
 
         statementField.setEditable(false);
         root.add(labeled("Generated statement", statementField));
@@ -211,6 +217,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         messageError.setText(p.messageError == null ? " " : p.messageError);
         titleError.setText(p.titleError == null ? " " : p.titleError);
         customError.setText(p.customError == null ? " " : p.customError);
+        schematic.setRender(p.render);
         setOKActionEnabled(p.valid);
     }
 
