@@ -132,16 +132,17 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
                 if (!msg.payload) break;
                 const r = build(msg.payload);
                 if (!r.valid) break; // guard; the webview also disables the button
+                // Apply via a WorkspaceEdit so the change lands in the existing editor tab
+                // without opening the document again in the webview's (Beside) column.
+                const edit = new vscode.WorkspaceEdit();
                 if (editMode && arg?.target) {
-                    const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(arg.target.uri));
-                    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false });
+                    const uri = vscode.Uri.parse(arg.target.uri);
                     const range = new vscode.Range(arg.target.line, arg.target.callStart, arg.target.line, arg.target.callEnd);
-                    await ed.edit(b => b.replace(range, r.statement));
+                    edit.replace(uri, range, r.statement);
                 } else if (insertUri && insertPosition) {
-                    const doc = await vscode.workspace.openTextDocument(insertUri);
-                    const ed = await vscode.window.showTextDocument(doc, { preserveFocus: false });
-                    await ed.edit(b => b.insert(insertPosition!, r.statement));
+                    edit.insert(insertUri, insertPosition, r.statement);
                 }
+                await vscode.workspace.applyEdit(edit);
                 panel.dispose();
                 break;
             }
