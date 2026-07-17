@@ -142,6 +142,11 @@ export interface MsgboxCallInfo {
     /** [start, end) of the numeric `expr` token within the line, if arg #2 is an integer literal. */
     exprRange?: [number, number];
     exprValue?: number;
+    /**
+     * Line-relative offset at which to insert `, <expr>` when the call has ONLY a message and
+     * no options argument yet (so the composer can *add* options to a bare `MSGBOX("...")`).
+     */
+    optionInsertOffset?: number;
 }
 
 /**
@@ -194,6 +199,12 @@ export function parseMsgboxCallOnLine(line: string): MsgboxCallInfo | undefined 
             info.exprRange = [exprStart, exprStart + numMatch[2].length];
             info.exprValue = parseInt(numMatch[2], 10);
         }
+    } else if (argRanges.length === 1 && info.args[0] !== '') {
+        // Only a message, no options yet: report where `, <expr>` would be inserted
+        // (right after the message argument's last non-space char).
+        const [a, b] = argRanges[0];
+        const trimmedEnd = a + line.slice(a, b).replace(/\s+$/, '').length;
+        info.optionInsertOffset = trimmedEnd;
     }
     return info;
 }

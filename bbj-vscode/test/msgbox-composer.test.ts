@@ -64,6 +64,23 @@ describe('MSGBOX composer logic (#426)', () => {
         expect(info.args[0]).toBe('"say ""hi"""');
     });
 
+    test('parse reports an option-insert offset for a bare MSGBOX (no options yet)', () => {
+        const line = 'a! = msgbox("Hello World!")';
+        const info = parseMsgboxCallOnLine(line)!;
+        expect(info.exprValue).toBeUndefined();
+        expect(info.optionInsertOffset).toBeDefined();
+        const off = info.optionInsertOffset!;
+        expect(line.slice(0, off) + ', 36' + line.slice(off)).toBe('a! = msgbox("Hello World!", 36)');
+    });
+
+    test('no insert offset when options already present or arg#2 is non-numeric', () => {
+        expect(parseMsgboxCallOnLine('MSGBOX("m", 36)')!.optionInsertOffset).toBeUndefined();
+        const nonNumeric = parseMsgboxCallOnLine('MSGBOX("m", foo)')!;
+        expect(nonNumeric.optionInsertOffset).toBeUndefined();
+        expect(nonNumeric.exprValue).toBeUndefined();
+        expect(parseMsgboxCallOnLine('MSGBOX()')!.optionInsertOffset).toBeUndefined();
+    });
+
     test('parse yields no exprRange for a non-literal expr', () => {
         const info = parseMsgboxCallOnLine('MSGBOX("hi", 32+4)')!;
         expect(info).toBeDefined();

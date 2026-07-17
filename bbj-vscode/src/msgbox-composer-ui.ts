@@ -13,14 +13,16 @@ import {
     MsgboxState, DEFAULT_STATE, encode, decode, describe, composeStatement, parseMsgboxCallOnLine,
 } from './msgbox-composer.js';
 
-interface EditExprArg {
-    /** Present when invoked from the Code Action to edit an existing call in place. */
-    edit: { line: number; exprRange: [number, number]; current: number };
+interface ComposeArg {
+    /** Reconfigure an existing numeric `expr` in place (call already has options). */
+    edit?: { line: number; exprRange: [number, number]; current: number };
+    /** Add options to a bare `MSGBOX("...")` by inserting `, <expr>` at this position. */
+    insert?: { line: number; character: number };
 }
 
 export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: EditExprArg) => runComposer(arg)),
+        vscode.commands.registerCommand('bbj.composeMsgbox', (arg?: ComposeArg) => runComposer(arg)),
         vscode.languages.registerCodeActionsProvider(
             { language: 'bbj' },
             new MsgboxCodeActionProvider(),
@@ -31,31 +33,44 @@ export function registerMsgboxComposer(context: vscode.ExtensionContext): void {
 
 class MsgboxCodeActionProvider implements vscode.CodeActionProvider {
     provideCodeActions(document: vscode.TextDocument, range: vscode.Range | vscode.Selection): vscode.CodeAction[] {
-        const line = document.lineAt(range.start.line).text;
-        const info = parseMsgboxCallOnLine(line);
-        // Offer the reconfigure action only when we can round-trip the numeric expr.
-        if (!info || !info.exprRange || info.exprValue === undefined) {
+        const lineNo = range.start.line;
+        const info = parseMsgboxCallOnLine(document.lineAt(lineNo).text);
+        if (!info) {
             return [];
         }
-        const action = new vscode.CodeAction(
-            `Configure MSGBOX options (${describe(info.exprValue)})`,
-            vscode.CodeActionKind.RefactorRewrite,
-        );
-        action.command = {
-            command: 'bbj.composeMsgbox',
-            title: 'Configure MSGBOX options',
-            arguments: [{ edit: { line: range.start.line, exprRange: info.exprRange, current: info.exprValue } } satisfies EditExprArg],
-        };
-        return [action];
+        // Existing numeric options -> reconfigure in place.
+        if (info.exprRange && info.exprValue !== undefined) {
+            const action = new vscode.CodeAction(
+                `Configure MSGBOX options (${describe(info.exprValue)})`,
+                vscode.CodeActionKind.RefactorRewrite,
+            );
+            action.command = {
+                command: 'bbj.composeMsgbox',
+                title: 'Configure MSGBOX options',
+                arguments: [{ edit: { line: lineNo, exprRange: info.exprRange, current: info.exprValue } } satisfies ComposeArg],
+            };
+            return [action];
+        }
+        // Bare MSGBOX("...") with no options yet -> add options.
+        if (info.optionInsertOffset !== undefined) {
+            const action = new vscode.CodeAction('Add MSGBOX options…', vscode.CodeActionKind.RefactorRewrite);
+            action.command = {
+                command: 'bbj.composeMsgbox',
+                title: 'Add MSGBOX options',
+                arguments: [{ insert: { line: lineNo, character: info.optionInsertOffset } } satisfies ComposeArg],
+            };
+            return [action];
+        }
+        return [];
     }
 }
 
-async function runComposer(arg?: EditExprArg): Promise<void> {
+async function runComposer(arg?: ComposeArg): Promise<void> {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         return;
     }
-    const initial = arg ? decode(arg.edit.current) : DEFAULT_STATE;
+    const initial = arg?.edit ? decode(arg.edit.current) : DEFAULT_STATE;
 
     const state = await runWizard(initial);
     if (!state) {
@@ -63,11 +78,15 @@ async function runComposer(arg?: EditExprArg): Promise<void> {
     }
     const expr = encode(state);
 
-    if (arg) {
+    if (arg?.edit) {
         // Reconfigure: replace just the numeric expr token.
         const { line, exprRange } = arg.edit;
         const range = new vscode.Range(line, exprRange[0], line, exprRange[1]);
         await editor.edit(b => b.replace(range, String(expr)));
+    } else if (arg?.insert) {
+        // Add options to a bare MSGBOX("..."): insert `, <expr>` after the message.
+        const pos = new vscode.Position(arg.insert.line, arg.insert.character);
+        await editor.edit(b => b.insert(pos, `, ${expr}`));
     } else {
         // New statement: ask for message/title, insert at cursor.
         const message = await vscode.window.showInputBox({
