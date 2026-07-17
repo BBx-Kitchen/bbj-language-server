@@ -130,6 +130,62 @@ export function describeMask(mask: number, catalog: FlagItem[]): string {
 export const describeFlags = (mask: number): string => describeMask(mask, WINDOW_FLAGS);
 export const describeEventMask = (mask: number): string => describeMask(mask, EVENT_MASK_BITS);
 
+/** Named window-flag bits — for readable render/preview code without scattering magic hex. */
+export const WINDOW_FLAG = {
+    RESIZABLE: 0x00000001,
+    CLOSE_BOX: 0x00000002,
+    HSCROLL: 0x00000004,
+    VSCROLL: 0x00000008,
+    INVISIBLE: 0x00000010,
+    DISABLED: 0x00000020,
+    MAXIMIZABLE: 0x00000080,
+    MINIMIZED: 0x00000100,
+    MENU_BAR: 0x00000800,
+    MAXIMIZED: 0x00001000,
+    NO_TITLE_BAR: 0x01000000,
+    BORDER: 0x00040000,
+} as const;
+
+/** Bits the schematic mock draws directly; every other set flag is surfaced as a text badge. */
+const VISUALIZED = Object.values(WINDOW_FLAG).reduce((m, v) => (m | v) >>> 0, 0);
+
+export interface WindowSchematic {
+    titleBar: boolean;
+    closeBox: boolean;
+    minMax: boolean;
+    menuBar: boolean;
+    hScroll: boolean;
+    vScroll: boolean;
+    border: boolean;
+    resizable: boolean;
+    disabled: boolean;
+    invisible: boolean;
+    minimized: boolean;
+    maximized: boolean;
+    /** Labels for set flags with no direct visual (Dialog, Always on top, MDI modal, …). */
+    badges: string[];
+}
+
+/** Derive a schematic description of the window a flag mask produces (drives the live preview). */
+export function windowSchematic(mask: number): WindowSchematic {
+    const on = (bit: number) => (mask & bit) !== 0;
+    return {
+        titleBar: !on(WINDOW_FLAG.NO_TITLE_BAR),
+        closeBox: on(WINDOW_FLAG.CLOSE_BOX),
+        minMax: on(WINDOW_FLAG.MAXIMIZABLE),
+        menuBar: on(WINDOW_FLAG.MENU_BAR),
+        hScroll: on(WINDOW_FLAG.HSCROLL),
+        vScroll: on(WINDOW_FLAG.VSCROLL),
+        border: on(WINDOW_FLAG.BORDER),
+        resizable: on(WINDOW_FLAG.RESIZABLE),
+        disabled: on(WINDOW_FLAG.DISABLED),
+        invisible: on(WINDOW_FLAG.INVISIBLE),
+        minimized: on(WINDOW_FLAG.MINIMIZED),
+        maximized: on(WINDOW_FLAG.MAXIMIZED),
+        badges: WINDOW_FLAGS.filter(f => (mask & f.value) !== 0 && (VISUALIZED & f.value) === 0).map(f => f.label),
+    };
+}
+
 // ---------------------------------------------------------------------------------------------
 // Statement composition
 // ---------------------------------------------------------------------------------------------

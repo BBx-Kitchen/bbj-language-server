@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
     WINDOW_FLAGS, EVENT_MASK_BITS, encodeBits, bitsSet, unknownBits, knownMask,
     formatHex, parseHexLiteral, describeMask, describeFlags, describeEventMask,
-    composeAddWindow, parseAddWindowCallOnLine, findAddWindowCallAt,
+    composeAddWindow, parseAddWindowCallOnLine, findAddWindowCallAt, windowSchematic, WINDOW_FLAG,
 } from '../src/addwindow-composer';
 
 describe('addWindow composer logic (#430)', () => {
@@ -67,6 +67,24 @@ describe('addWindow composer logic (#430)', () => {
         expect(describeMask(0, WINDOW_FLAGS)).toBe('(none)');
         expect(describeEventMask(0x00000040 | 0x00000400)).toContain('Mouse button down');
         expect(describeEventMask(0x00000040 | 0x00000400)).toContain('Key pressed');
+    });
+
+    test('windowSchematic maps flag bits to a drawable preview + badges', () => {
+        const s = windowSchematic(WINDOW_FLAG.RESIZABLE | WINDOW_FLAG.CLOSE_BOX | WINDOW_FLAG.MENU_BAR);
+        expect(s.titleBar).toBe(true);   // no "No title bar" flag
+        expect(s.closeBox).toBe(true);
+        expect(s.menuBar).toBe(true);
+        expect(s.resizable).toBe(true);
+        expect(s.minMax).toBe(false);
+        expect(s.badges).toEqual([]);    // all set bits are visualized
+
+        const noTitle = windowSchematic(WINDOW_FLAG.NO_TITLE_BAR);
+        expect(noTitle.titleBar).toBe(false);
+
+        // A non-visual flag (Dialog) surfaces as a badge, not a drawn element
+        const dialog = windowSchematic(0x00080000 | 0x00020000); // Dialog + Always on top
+        expect(dialog.badges).toContain('Dialog');
+        expect(dialog.badges).toContain('Always on top');
     });
 
     test('composeAddWindow renders the call and omits event_mask when unset', () => {

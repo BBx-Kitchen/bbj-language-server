@@ -16,6 +16,7 @@ import { DocumentFormatter } from './document-formatter.js';
 import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
 import { isLineNumberedSource } from './line-numbering.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
+import { registerAddWindowComposer } from './addwindow-composer-ui.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -579,6 +580,7 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): P
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     registerMsgboxComposer(context); // spike: visual MSGBOX composer (#426)
+    registerAddWindowComposer(context); // spike: visual addWindow flags/event-mask composer (#430)
     secretStorage = context.secrets;
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;
