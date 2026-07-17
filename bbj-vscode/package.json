@@ -157,6 +157,11 @@
         "category": "BBj",
         "command": "bbj.composeMsgboxVisual",
         "title": "Compose MSGBOX (visual)…"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeAddWindow",
+        "title": "Compose addWindow (visual)…"
       }
     ],
     "keybindings": [
@@ -215,6 +220,11 @@
         },
         {
           "command": "bbj.composeMsgboxVisual",
+          "when": "editorLangId == bbj",
+          "group": "1_modification"
+        },
+        {
+          "command": "bbj.composeAddWindow",
           "when": "editorLangId == bbj",
           "group": "1_modification"
         }
@@ -579,7 +589,8 @@
     "onCommand:bbj.decompile",
     "onCommand:bbj.decompileReadonly",
     "onCommand:bbj.composeMsgbox",
-    "onCommand:bbj.composeMsgboxVisual"
+    "onCommand:bbj.composeMsgboxVisual",
+    "onCommand:bbj.composeAddWindow"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
