@@ -1,8 +1,10 @@
 
 import { EmptyFileSystem } from 'langium';
-import { expectCompletion } from 'langium/test';
+import { expectCompletion, parseHelper } from 'langium/test';
+import { CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
+import { Model } from '../src/language/generated/ast.js';
 
 describe('BBJ completion provider', async () => {
 
@@ -235,5 +237,40 @@ foo!.<|>
                 expect(methodItems.length).toBeGreaterThanOrEqual(1);
             }
         });
+    });
+
+    test("'.' is registered as a completion trigger character (issue #76)", () => {
+        const provider = bbjServices.lsp.CompletionProvider;
+        expect(provider?.completionOptions?.triggerCharacters).toContain('.');
+    });
+
+    test("typing '.' auto-triggers member completion (issue #76)", async () => {
+        // expectCompletion only simulates Ctrl+Space (no trigger character), so drive the
+        // provider directly with a '.' trigger context to cover the auto-trigger path.
+        const parse = parseHelper<Model>(bbjServices);
+        const text = `
+class public MyClass
+    method public void doWork()
+    methodend
+classend
+declare MyClass foo!
+foo!.`;
+        const doc = await parse(text, { documentUri: 'file:///test/dot-trigger.bbj' });
+
+        const provider = bbjServices.lsp.CompletionProvider;
+        if (!provider) {
+            throw new Error('CompletionProvider not registered');
+        }
+
+        const offset = doc.textDocument.getText().length; // cursor right after the '.'
+        const completions = await provider.getCompletion(doc, {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '.' }
+        });
+
+        expect(completions).toBeDefined();
+        const methodItems = completions!.items.filter(i => i.label.startsWith('doWork'));
+        expect(methodItems.length).toBeGreaterThanOrEqual(1);
     });
 });

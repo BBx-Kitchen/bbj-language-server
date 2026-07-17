@@ -11,7 +11,7 @@ import { findLeafNodeAtOffset } from "./bbj-validator.js";
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     override readonly completionOptions = {
-        triggerCharacters: ['#', '(']
+        triggerCharacters: ['#', '(', '.']
     };
 
     constructor(services: LangiumServices) {
@@ -26,6 +26,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             // '(' auto-trigger: return constructor items or an empty list — NEVER fall through
             // to the slow default provider, which would produce irrelevant keyword suggestions.
             return this.getConstructorCompletion(document, params) ?? { items: [], isIncomplete: false };
+        }
+        if (params.context?.triggerCharacter === '.') {
+            // '.' is the member-access operator (MemberCall). After it the grammar only
+            // expects a member cross-reference, so the default provider yields the receiver's
+            // members (and no keyword noise) — the same result as Ctrl+Space in this position.
+            return super.getCompletion(document, params, cancelToken);
         }
         // Non-trigger completion (Ctrl+Space) — try constructor first, then fall through to default
         const constructorCompletion = this.getConstructorCompletion(document, params);
