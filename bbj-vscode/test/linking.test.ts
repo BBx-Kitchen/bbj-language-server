@@ -400,6 +400,26 @@ describe('Linking Tests', async () => {
             expectNoErrors(document)
         });
 
+        test('Static field resolves on a Java class reference - issue #440', async () => {
+            // Event constants like `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD` are `public static final int`
+            // fields; accessing them via the class name must resolve without a linking error.
+            const document = await validate(`
+                use java.lang.String
+                x! = String.CASE_INSENSITIVE_ORDER
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Instance field does NOT resolve on a Java class reference - issue #440', async () => {
+            const document = await validate(`
+                use java.lang.String
+                x! = String.someInstanceField
+            `)
+            const linkingErr = findLinkingErrors(document)
+            expect(linkingErr.length).toBe(1)
+            expect(linkingErr[0].message).toContain("someInstanceField")
+        });
+
         test('Package scope as most outer scope', async () => {
             const document = await validate(`
                 declare java.lang.String com
