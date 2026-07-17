@@ -514,10 +514,16 @@ async function maybePromptTokenized(uri: vscode.Uri | undefined): Promise<void> 
 
     const key = uri.toString();
     if (promptedTokenizedFiles.has(key)) return;
+    // Reserve synchronously: the same file can surface from both the tab-change
+    // event and the activation scan, and we must not prompt (or decompile) twice.
+    promptedTokenizedFiles.add(key);
 
     const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
-    if (!bytes || !isTokenizedBBjHeader(bytes)) return;
-    promptedTokenizedFiles.add(key);
+    if (!bytes || !isTokenizedBBjHeader(bytes)) {
+        // Not tokenized after all — allow a later check (e.g. if the file changes).
+        promptedTokenizedFiles.delete(key);
+        return;
+    }
 
     const decompileAction = 'Decompile & Replace';
     const readOnlyAction = 'Open Read-only';
