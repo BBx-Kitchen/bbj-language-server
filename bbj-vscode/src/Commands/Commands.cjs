@@ -40,6 +40,8 @@ const execWithProgress = (cmd) => {
   });
 };
 
+const { isTokenizedFile, waitForDecompileOutput } = require("../decompile-io");
+
 const getBBjHome = () => {
   const home = vscode.workspace.getConfiguration("bbj").home;
 
@@ -172,29 +174,23 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
     cancellable: false
   }, async () => {
     try {
+      // Capture up-front whether the input is tokenized: only then can bbjlst
+      // legitimately rewrite it in place (denumbering plain text always emits `.lst`).
+      const wasTokenized = await isTokenizedFile(resolvedFileName);
       await execWithProgress(cmd);
 
-      if (!options.denumber) {
-        await new Promise((resolve, reject) => {
-          fs.unlink(resolvedFileName, (unlinkErr) => {
-            if (unlinkErr) {
-              reject(unlinkErr);
-            } else {
-              resolve();
-            }
-          });
-        });
-      }
+      // bbjlst may return before its output is on disk, and may either produce
+      // `<input>.lst` or rewrite the input in place — wait for whichever happens.
+      const { inPlace } = await waitForDecompileOutput(resolvedFileName, { canRewriteInPlace: wasTokenized });
 
-      await new Promise((resolve, reject) => {
-        fs.rename(resolvedLstFileName, newFileName, (renameErr) => {
-          if (renameErr) {
-            reject(renameErr);
-          } else {
-            resolve();
-          }
-        });
-      });
+      if (!inPlace) {
+        if (!options.denumber && resolvedFileName !== newFileName) {
+          await fs.promises.unlink(resolvedFileName).catch(() => { });
+        }
+        await fs.promises.rename(resolvedLstFileName, newFileName);
+      }
+      // When inPlace, bbjlst already wrote the source into `resolvedFileName`
+      // (=== newFileName for denumber), so there is nothing to move.
 
       const uri = vscode.Uri.file(newFileName);
       const doc = await vscode.workspace.openTextDocument(uri);
@@ -368,8 +364,6 @@ const Commands = {
     const fileName = resolveTargetFileName(params);
     if (!fileName) return;
     const resolvedFileName = path.resolve(fileName);
-    const lstFile = resolvedFileName + '.lst';
-    const cmd = `${bbjlstBin(home)} -l "${resolvedFileName}"`;
 
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -377,15 +371,24 @@ const Commands = {
       cancellable: false
     }, async () => {
       try {
-        await execWithProgress(cmd);
-        // Move the generated listing into a temp file so the original binary is
-        // left intact; open that copy read-only. copyFile+unlink avoids EXDEV
-        // when the temp dir is on a different filesystem than the source.
+        // Run bbjlst against a private copy in a temp dir, so the original binary
+        // is never touched — regardless of whether bbjlst emits `<input>.lst` or
+        // rewrites its input in place.
         const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-decompiled-'));
         const base = path.basename(resolvedFileName).replace(/\.[^.]*$/, '') || 'program';
+        const tmpInput = path.join(tmpDir, base + path.extname(resolvedFileName));
+        await fs.promises.copyFile(resolvedFileName, tmpInput);
+
+        const wasTokenized = await isTokenizedFile(tmpInput);
+        await execWithProgress(`${bbjlstBin(home)} -l "${tmpInput}"`);
+
+        // Wait for the output, then normalise it to a `.bbj` file so the editor
+        // opens it with BBj language support.
+        const { sourcePath } = await waitForDecompileOutput(tmpInput, { canRewriteInPlace: wasTokenized });
         const tmpFile = path.join(tmpDir, base + '.bbj');
-        await fs.promises.copyFile(lstFile, tmpFile);
-        await fs.promises.unlink(lstFile).catch(() => { });
+        if (sourcePath !== tmpFile) {
+          await fs.promises.rename(sourcePath, tmpFile);
+        }
 
         const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(tmpFile));
         await vscode.window.showTextDocument(doc, { preview: false });
