@@ -577,7 +577,9 @@
     "onCommand:bbj.configureCompileOptions",
     "onCommand:bbj.denumber",
     "onCommand:bbj.decompile",
-    "onCommand:bbj.decompileReadonly"
+    "onCommand:bbj.decompileReadonly",
+    "onCommand:bbj.composeMsgbox",
+    "onCommand:bbj.composeMsgboxVisual"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
