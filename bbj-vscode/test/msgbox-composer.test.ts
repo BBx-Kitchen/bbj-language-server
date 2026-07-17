@@ -3,6 +3,7 @@ import {
     encode, decode, describe as describeExpr, composeStatement, parseMsgboxCallOnLine, findMsgboxCallAt,
     stateFromSelection, flagsFromState, validateBbjExpression, expressionDisplayText, buttonLabels,
     splitButtonsAndTrailing, DEFAULT_STATE, resolvesToString, validateStringField, quoteAsStringLiteral,
+    msgboxPreview, msgboxConstantsExpr,
 } from '../src/msgbox-composer';
 
 describe('MSGBOX composer logic (#426)', () => {
@@ -120,6 +121,49 @@ describe('MSGBOX composer logic (#426)', () => {
 
         // structural errors still win over the typing check
         expect(validateStringField('"TEST').ok).toBe(false); // unterminated literal
+    });
+
+    test('msgboxPreview aggregates encode + compose + validate + render for a UI', () => {
+        const p = msgboxPreview({
+            message: '"Are you sure?"', title: '"Confirm"', assignTo: 'ret!',
+            buttonSet: 4, icon: 32, defaultButton: 256, flags: [65536], customButtons: [],
+        });
+        expect(p.expr).toBe(4 + 32 + 256 + 65536);
+        expect(p.statement).toBe('ret! = MSGBOX("Are you sure?", 65828, "Confirm")');
+        expect(p.summary).toContain('Yes, No');
+        expect(p.valid).toBe(true);
+        expect(p.render).toEqual({ title: 'Confirm', message: 'Are you sure?', icon: 32, buttons: ['Yes', 'No'], defaultIndex: 1 });
+    });
+
+    test('msgboxConstantsExpr renders the readable BBjMsgBox.* form', () => {
+        // Yes/No + Question + Second-button (the example from the issue)
+        expect(msgboxConstantsExpr(stateFromSelection({ buttonSet: 1, icon: 32, defaultButton: 256 })))
+            .toBe('BBjMsgBox.MSGBOX_BUTTONS_OK_CANCEL+BBjMsgBox.MSGBOX_ICON_QUESTION+BBjMsgBox.MSGBOX_DEFAULT_SECOND');
+        // Plain OK -> just the base button constant (icon None / default First are omitted)
+        expect(msgboxConstantsExpr(stateFromSelection({}))).toBe('BBjMsgBox.MSGBOX_BUTTONS_OK');
+        // Flags map to their constants too
+        expect(msgboxConstantsExpr(stateFromSelection({ buttonSet: 4, flags: [32768, 131072] })))
+            .toBe('BBjMsgBox.MSGBOX_BUTTONS_YES_NO+BBjMsgBox.MSGBOX_RAW_TEXT+BBjMsgBox.MSGBOX_MDI_DESKTOP');
+    });
+
+    test('msgboxPreview emits the constants form when useConstants is set', () => {
+        const numeric = msgboxPreview({ message: '"test"', title: '"Title String"', buttonSet: 1, icon: 32, defaultButton: 256, flags: [], customButtons: [] });
+        expect(numeric.statement).toBe('MSGBOX("test", 289, "Title String")');
+        expect(numeric.exprText).toBeUndefined();
+
+        const constants = msgboxPreview({ message: '"test"', title: '"Title String"', buttonSet: 1, icon: 32, defaultButton: 256, flags: [], customButtons: [], useConstants: true });
+        expect(constants.exprText).toBe('BBjMsgBox.MSGBOX_BUTTONS_OK_CANCEL+BBjMsgBox.MSGBOX_ICON_QUESTION+BBjMsgBox.MSGBOX_DEFAULT_SECOND');
+        expect(constants.statement).toBe('MSGBOX("test", BBjMsgBox.MSGBOX_BUTTONS_OK_CANCEL+BBjMsgBox.MSGBOX_ICON_QUESTION+BBjMsgBox.MSGBOX_DEFAULT_SECOND, "Title String")');
+        expect(constants.expr).toBe(289); // numeric value still reported for the summary
+    });
+
+    test('msgboxPreview surfaces a bare-string error and drops the assignment in edit mode', () => {
+        const bad = msgboxPreview({ message: 'Caption', title: '', buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] });
+        expect(bad.valid).toBe(false);
+        expect(bad.messageError).toContain('"Caption"');
+
+        const edit = msgboxPreview({ message: '"Hi"', title: '', assignTo: 'ret!', editMode: true, buttonSet: 0, icon: 0, defaultButton: 0, flags: [], customButtons: [] });
+        expect(edit.statement).toBe('MSGBOX("Hi")'); // no `ret! =` prefix in edit mode
     });
 
     test('expressionDisplayText unquotes string literals, passes expressions through', () => {

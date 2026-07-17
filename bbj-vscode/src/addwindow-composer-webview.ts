@@ -14,11 +14,8 @@
  */
 import * as vscode from 'vscode';
 import {
-    WINDOW_FLAGS, EVENT_MASK_BITS, encodeBits, formatHex, describeFlags,
-    describeEventMask, windowSchematic, composeAddWindow,
+    WINDOW_FLAGS, EVENT_MASK_BITS, addwindowPreview,
 } from './addwindow-composer.js';
-// Reuse the small display-text helper from the MSGBOX composer scaffolding (#426).
-import { expressionDisplayText } from './msgbox-composer.js';
 
 /** Where/how to apply an EDIT: token ranges to replace, or offsets to insert at. */
 export interface AddWindowEditTarget {
@@ -100,27 +97,13 @@ export function openAddWindowComposerPanel(context: vscode.ExtensionContext, arg
     );
     panel.webview.html = getHtml(panel.webview);
 
-    function build(sel: Selection) {
-        const flags = encodeBits(sel.flags);
-        const eventMask = sel.eventMaskEnabled ? encodeBits(sel.eventMask) : null;
-        const flagsHex = formatHex(flags | (target?.preservedFlagBits ?? 0));
-        const eventHex = eventMask === null ? null : formatHex(eventMask | (target?.preservedEventBits ?? 0));
-
-        const statement = composeAddWindow({
-            receiver: editMode ? undefined : (sel.receiver || undefined),
-            sysgui: sel.sysgui || 'sysgui!',
-            x: sel.x || '0', y: sel.y || '0', width: sel.width || '0', height: sel.height || '0',
-            title: sel.title || '""',
-            flags, eventMask,
-        });
-
-        return {
-            flagsHex, eventHex, statement,
-            flagsSummary: describeFlags(flags),
-            eventSummary: eventMask === null ? '(default)' : describeEventMask(eventMask),
-            render: { ...windowSchematic(flags), title: expressionDisplayText(sel.title) },
-        };
-    }
+    // Single source of truth: the hex/compose/schematic logic lives in the shared pure module,
+    // which the IntelliJ client reaches over the LS (#433).
+    const build = (sel: Selection) => addwindowPreview({
+        ...sel, editMode,
+        preservedFlagBits: target?.preservedFlagBits ?? 0,
+        preservedEventBits: target?.preservedEventBits ?? 0,
+    });
 
     panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: Selection }) => {
         switch (msg.type) {

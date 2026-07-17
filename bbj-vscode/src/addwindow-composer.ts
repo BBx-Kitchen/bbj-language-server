@@ -13,6 +13,8 @@
  * This module owns the two catalogs and the mask <-> hex <-> statement conversions with NO
  * `vscode` dependency, so it is unit-testable and reusable by the IntelliJ client later.
  */
+// Reuse the shared BBj display-text helper from the MSGBOX composer scaffolding (#426).
+import { expressionDisplayText } from './msgbox-composer.js';
 
 export interface FlagItem {
     /** The single bit this toggle sets, e.g. 0x00000002. */
@@ -205,6 +207,68 @@ export interface AddWindowInput {
     flags: number;
     /** Event mask bitmask, or null/undefined to leave it unset (omit the argument = window default). */
     eventMask?: number | null;
+}
+
+/** Flat UI selection for an addWindow preview — shared by the VS Code webview and IntelliJ. */
+export interface AddWindowPreviewInput {
+    /** Chosen window-flag bit values. */
+    flags: number[];
+    /** When false the event_mask argument is omitted entirely (window default). */
+    eventMaskEnabled: boolean;
+    /** Chosen event-mask bit values (only meaningful when enabled). */
+    eventMask: number[];
+    receiver?: string;
+    sysgui: string;
+    x: string;
+    y: string;
+    width: string;
+    height: string;
+    title: string;
+    /** In edit mode the assignment/geometry live in the source; only the hex tokens are rewritten. */
+    editMode?: boolean;
+    /** Undocumented bits to OR back into the flags/event mask so a round-trip preserves them. */
+    preservedFlagBits?: number;
+    preservedEventBits?: number;
+}
+
+export interface AddWindowPreview {
+    flags: number;
+    eventMask: number | null;
+    flagsHex: string;
+    eventHex: string | null;
+    statement: string;
+    flagsSummary: string;
+    eventSummary: string;
+    render: WindowSchematic & { title: string };
+}
+
+/**
+ * Compute the full preview payload for an addWindow selection — the single entry point every UI
+ * uses, so the hex/compose/schematic logic lives in exactly one place.
+ */
+export function addwindowPreview(input: AddWindowPreviewInput): AddWindowPreview {
+    const flags = encodeBits(input.flags);
+    const eventMask = input.eventMaskEnabled ? encodeBits(input.eventMask) : null;
+    // The hex and the composed statement both carry the preserved (undocumented) bits, so they
+    // stay coherent; the summaries/schematic use the catalog-only mask (preserved bits are unlabeled).
+    const flagsFull = (flags | (input.preservedFlagBits ?? 0)) >>> 0;
+    const eventFull = eventMask === null ? null : (eventMask | (input.preservedEventBits ?? 0)) >>> 0;
+
+    const statement = composeAddWindow({
+        receiver: input.editMode ? undefined : (input.receiver || undefined),
+        sysgui: input.sysgui || 'sysgui!',
+        x: input.x || '0', y: input.y || '0', width: input.width || '0', height: input.height || '0',
+        title: input.title || '""',
+        flags: flagsFull, eventMask: eventFull,
+    });
+
+    return {
+        flags, eventMask, flagsHex: formatHex(flagsFull), eventHex: eventFull === null ? null : formatHex(eventFull),
+        statement,
+        flagsSummary: describeFlags(flags),
+        eventSummary: eventMask === null ? '(default)' : describeEventMask(eventMask),
+        render: { ...windowSchematic(flags), title: expressionDisplayText(input.title) },
+    };
 }
 
 /** Build an `addWindow(...)` statement, emitting the event_mask argument only when it is set. */

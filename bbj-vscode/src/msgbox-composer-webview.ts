@@ -14,8 +14,7 @@
 import * as vscode from 'vscode';
 import {
     BUTTON_SETS, ICONS, DEFAULT_BUTTONS, FLAGS,
-    encode, describe, composeStatement, stateFromSelection, validateStringField,
-    buttonLabels, expressionDisplayText,
+    msgboxPreview,
 } from './msgbox-composer.js';
 
 export interface MsgboxPanelArg {
@@ -43,6 +42,7 @@ interface Selection {
     message: string;
     title: string;
     assignTo: string;
+    useConstants: boolean;
 }
 
 export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: MsgboxPanelArg): void {
@@ -75,43 +75,9 @@ export function openMsgboxComposerPanel(context: vscode.ExtensionContext, arg?: 
     );
     panel.webview.html = getHtml(panel.webview);
 
-    function build(sel: Selection) {
-        const state = stateFromSelection(sel);
-        const isCustom = state.buttonSet === 7;
-        const cleanCustom = (sel.customButtons ?? []).map(s => s.trim()).filter(s => s !== '');
-        const expr = encode(state);
-
-        const msgV = validateStringField(sel.message, { required: true });
-        const titleV = validateStringField(sel.title, { required: false });
-        const firstBadButton = cleanCustom.map(b => validateStringField(b)).find(v => !v.ok);
-        const customOk = !isCustom || (cleanCustom.length > 0 && !firstBadButton);
-
-        const statement = composeStatement({
-            message: sel.message || '""',
-            expr,
-            title: sel.title || undefined,
-            buttons: isCustom ? cleanCustom : undefined,
-            trailingArgs,
-            assignTo: editMode ? undefined : (sel.assignTo || undefined),
-        });
-
-        const labels = buttonLabels(state.buttonSet, sel.customButtons);
-        const defaultIndex = state.defaultButton === 256 ? 1 : state.defaultButton === 512 ? 2 : 0;
-        return {
-            expr, statement, summary: describe(expr),
-            messageError: msgV.ok ? undefined : msgV.message,
-            titleError: titleV.ok ? undefined : titleV.message,
-            customError: customOk ? undefined : (cleanCustom.length === 0 ? 'Add at least one button label' : (firstBadButton?.message ?? 'Invalid button expression')),
-            valid: msgV.ok && titleV.ok && customOk,
-            render: {
-                title: expressionDisplayText(sel.title),
-                message: expressionDisplayText(sel.message),
-                icon: state.icon,
-                buttons: labels,
-                defaultIndex: Math.max(0, Math.min(defaultIndex, labels.length - 1)),
-            },
-        };
-    }
+    // Single source of truth: the compose/validate/render logic lives in the shared pure module,
+    // which the IntelliJ client reaches over the LS (#433).
+    const build = (sel: Selection) => msgboxPreview({ ...sel, trailingArgs, editMode });
 
     panel.webview.onDidReceiveMessage(async (msg: { type: string; payload?: Selection }) => {
         switch (msg.type) {
@@ -277,6 +243,11 @@ function getHtml(webview: vscode.Webview): string {
 
   <fieldset id="flags"><legend>Extra options</legend></fieldset>
 
+  <div class="check" style="margin: 4px 0 10px;">
+    <input type="checkbox" id="useConstants">
+    <label for="useConstants" style="opacity:1;">Use named constants (<code>BBjMsgBox.*</code>) instead of a numeric code</label>
+  </div>
+
   <div class="preview">
     <label>Generated statement</label>
     <pre id="preview">—</pre>
@@ -319,6 +290,7 @@ function getHtml(webview: vscode.Webview): string {
       message: $('message').value,
       title: $('title').value,
       assignTo: $('assignTo').value,
+      useConstants: $('useConstants').checked,
     };
   }
 
@@ -381,6 +353,7 @@ function getHtml(webview: vscode.Webview): string {
     $(id).addEventListener('input', change);
     $(id).addEventListener('change', change);
   }
+  $('useConstants').addEventListener('change', change);
   $('insert').addEventListener('click', () => vscode.postMessage({ type: 'insert', payload: readForm() }));
   $('cancel').addEventListener('click', () => vscode.postMessage({ type: 'cancel' }));
 

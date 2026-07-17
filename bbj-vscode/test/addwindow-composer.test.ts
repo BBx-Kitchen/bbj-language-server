@@ -3,6 +3,7 @@ import {
     WINDOW_FLAGS, EVENT_MASK_BITS, encodeBits, bitsSet, unknownBits, knownMask,
     formatHex, parseHexLiteral, describeMask, describeFlags, describeEventMask,
     composeAddWindow, parseAddWindowCallOnLine, findAddWindowCallAt, windowSchematic, WINDOW_FLAG,
+    addwindowPreview,
 } from '../src/addwindow-composer';
 
 describe('addWindow composer logic (#430)', () => {
@@ -85,6 +86,30 @@ describe('addWindow composer logic (#430)', () => {
         const dialog = windowSchematic(0x00080000 | 0x00020000); // Dialog + Always on top
         expect(dialog.badges).toContain('Dialog');
         expect(dialog.badges).toContain('Always on top');
+    });
+
+    test('addwindowPreview aggregates hex + compose + summaries + schematic', () => {
+        const p = addwindowPreview({
+            flags: [WINDOW_FLAG.RESIZABLE, WINDOW_FLAG.CLOSE_BOX], eventMaskEnabled: false, eventMask: [],
+            receiver: 'window!', sysgui: 'sysgui!', x: '10', y: '10', width: '400', height: '300', title: '"Win"',
+        });
+        expect(p.flagsHex).toBe('$00000003$');
+        expect(p.eventHex).toBeNull();
+        expect(p.eventSummary).toBe('(default)');
+        expect(p.statement).toBe('window! = sysgui!.addWindow(10, 10, 400, 300, "Win", $00000003$)');
+        expect(p.render.title).toBe('Win');
+        expect(p.render.closeBox).toBe(true);
+    });
+
+    test('addwindowPreview enables event mask + preserves unknown bits, drops receiver in edit mode', () => {
+        const p = addwindowPreview({
+            flags: [WINDOW_FLAG.RESIZABLE], eventMaskEnabled: true, eventMask: [0x00000040],
+            sysgui: 'g!', x: '0', y: '0', width: '9', height: '9', title: '"T"',
+            editMode: true, preservedFlagBits: 0x00004000,
+        });
+        expect(p.flagsHex).toBe('$00004001$');           // reserved bit OR-ed back in
+        expect(p.eventHex).toBe('$00000040$');
+        expect(p.statement).toBe('g!.addWindow(0, 0, 9, 9, "T", $00004001$, $00000040$)'); // no receiver
     });
 
     test('composeAddWindow renders the call and omits event_mask when unset', () => {
