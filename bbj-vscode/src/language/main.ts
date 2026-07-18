@@ -12,6 +12,7 @@ import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
+import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
 import { initNotifications } from './bbj-notifications.js';
 import { registerComposerRequests } from './composer-commands.js';
 
@@ -58,6 +59,7 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
         if (docUris.length > 0) {
             await shared.workspace.DocumentBuilder.update(docUris, []);
         }
+        refreshInlayHints();
 
         // Step 5: Send notification
         connection.window.showInformationMessage('Java classes refreshed');
@@ -73,11 +75,18 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // Start the language server with the shared services
 startLanguageServer(shared);
 
+// Ask the client to re-request inlay hints, e.g. after Java classes (and the Javadoc-based
+// parameter names) arrived asynchronously. Clients without refresh support just ignore us.
+function refreshInlayHints() {
+    connection.languages.inlayHint.refresh().catch(() => { /* client does not support refresh */ });
+}
+
 // Guard: skip Java class reload until initial workspace build is complete
 let workspaceInitialized = false;
 shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
     if (!workspaceInitialized) {
         workspaceInitialized = true;
+        refreshInlayHints();
     }
 });
 
@@ -119,6 +128,12 @@ connection.onDidChangeConfiguration(async (change) => {
         if (trigger === 'debounced' || trigger === 'on-save' || trigger === 'off') {
             setCompilerTrigger(trigger);
         }
+    }
+
+    // Apply inlay hint mode (no startup gate — apply immediately) and repaint open editors
+    if (config.inlayHints?.parameterNames?.enabled !== undefined) {
+        setParameterHintMode(config.inlayHints.parameterNames.enabled);
+        refreshInlayHints();
     }
 
     // Skip Java class reload during initial startup — initializeWorkspace handles it
@@ -165,6 +180,7 @@ connection.onDidChangeConfiguration(async (change) => {
         if (docUris.length > 0) {
             await shared.workspace.DocumentBuilder.update(docUris, []);
         }
+        refreshInlayHints();
 
         connection.window.showInformationMessage('Java classes refreshed');
     } catch (error) {

@@ -20,6 +20,7 @@ import * as path from 'path';
 import { builtinEvents } from "./lib/events.js";
 import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
+import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -92,6 +93,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 } else {
                     setCompilerTrigger('debounced');
                 }
+
+                // Set parameter name inlay hint mode (invalid/missing values keep the default)
+                setParameterHintMode(params.initializationOptions.inlayHintsParameterNames);
             }
         });
         this.documentFactory = services.workspace.LangiumDocumentFactory;

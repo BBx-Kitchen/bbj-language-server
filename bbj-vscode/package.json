@@ -552,6 +552,17 @@
           "description": "Path to config.bbx file. When not set, defaults to {bbj.home}/cfg/config.bbx. Set this to use a custom config.bbx location for PREFIX resolution.",
           "scope": "window"
         },
+        "bbj.inlayHints.parameterNames.enabled": {
+          "type": "string",
+          "enum": [
+            "none",
+            "literals",
+            "all"
+          ],
+          "default": "literals",
+          "description": "Show parameter name inlay hints at call sites. 'literals' (default) shows hints only for literal arguments like msgbox(\"Hi\"), 'all' shows them for every argument, 'none' disables them.",
+          "scope": "window"
+        },
         "bbj.interop.host": {
           "type": "string",
           "default": "localhost",

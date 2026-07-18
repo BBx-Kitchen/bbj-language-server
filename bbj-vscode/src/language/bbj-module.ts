@@ -23,6 +23,7 @@ import { BBjDocumentSymbolProvider } from './bbj-document-symbol-provider.js';
 import { BBjDocumentValidator } from './bbj-document-validator.js';
 import { BBjHoverProvider } from './bbj-hover.js';
 import { BBjIndexManager } from './bbj-index-manager.js';
+import { BBjInlayHintProvider } from './bbj-inlay-hint-provider.js';
 import { BbjLexer } from './bbj-lexer.js';
 import { BbjLinker } from './bbj-linker.js';
 import { BBjNodeKindProvider } from './bbj-node-kind.js';
@@ -101,6 +102,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
         SignatureHelp: () => new BBjSignatureHelpProvider(),
+        InlayHintProvider: () => new BBjInlayHintProvider(),
         CodeActionProvider: (services) => new BBjCodeActionProvider(services),
     },
     parser: {
