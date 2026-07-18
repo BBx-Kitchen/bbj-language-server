@@ -1,11 +1,12 @@
-import { AstUtils, DocumentValidator } from 'langium';
+import { DocumentValidator } from 'langium';
 import type { LangiumDocument } from 'langium';
 import { CodeActionProvider } from 'langium/lsp';
-import { CodeAction, CodeActionKind, CodeActionParams, Command, Diagnostic, Position, TextEdit } from 'vscode-languageserver';
+import { CodeAction, CodeActionKind, CodeActionParams, Command, Diagnostic, TextEdit } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { JavaInteropService } from './java-interop.js';
-import { isBBjTypeRef, isJavaTypeRef, isSimpleTypeRef, isUse } from './generated/ast.js';
+import { isBBjTypeRef, isJavaTypeRef, isSimpleTypeRef } from './generated/ast.js';
 import { findLeafNodeAtOffset } from './bbj-validator.js';
+import { useInsertPosition } from './bbj-use-insert.js';
 
 /**
  * Offers "Add 'use <fqn>'" quick-fixes for an unresolved Java class reference (issue #447),
@@ -75,7 +76,7 @@ export class BBjCodeActionProvider implements CodeActionProvider {
     }
 
     protected createUseAction(document: LangiumDocument, diagnostic: Diagnostic, fqn: string, preferred: boolean): CodeAction {
-        const edit = TextEdit.insert(this.useInsertPosition(document), `use ${fqn}\n`);
+        const edit = TextEdit.insert(useInsertPosition(document), `use ${fqn}\n`);
         return {
             title: `Add 'use ${fqn}'`,
             kind: CodeActionKind.QuickFix,
@@ -87,17 +88,6 @@ export class BBjCodeActionProvider implements CodeActionProvider {
                 }
             }
         };
-    }
-
-    /** Insert new `use` statements right after the last existing one, or at the top of the file. */
-    protected useInsertPosition(document: LangiumDocument): Position {
-        let line = 0;
-        for (const use of AstUtils.streamAllContents(document.parseResult.value)) {
-            if (isUse(use) && use.$cstNode) {
-                line = Math.max(line, use.$cstNode.range.end.line + 1);
-            }
-        }
-        return Position.create(line, 0);
     }
 }
 

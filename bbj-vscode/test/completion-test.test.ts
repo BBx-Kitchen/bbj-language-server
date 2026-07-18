@@ -472,4 +472,39 @@ y = 2
         const list = await fieldCompletion(text);
         expect(list?.items ?? []).toHaveLength(0);
     });
+
+    const interopSeam = bbjServices.java.JavaInteropService as unknown as {
+        seedCompleteClassIndex(f: string[]): void; resetCompleteClassIndex(): void;
+    };
+
+    test('auto-import completion offers an unimported class with a use edit (augmented server) - issue #447', async () => {
+        interopSeam.seedCompleteClassIndex(['java.util.TreeMap']);
+        try {
+            await completion({
+                text: `x! = new TreeM<|>`,
+                index: 0,
+                assert: (completions) => {
+                    const item = completions.items.find(i => i.label === 'TreeMap');
+                    expect(item).toBeDefined();
+                    expect(item!.kind).toBe(7); // CompletionItemKind.Class
+                    expect(item!.additionalTextEdits?.[0].newText).toBe('use java.util.TreeMap\n');
+                }
+            });
+        } finally {
+            interopSeam.resetCompleteClassIndex();
+        }
+    });
+
+    test('auto-import completion falls back to already-resolved classes (old server) - issue #447', async () => {
+        // No complete index seeded: HashMap is in the fake classpath, so the fallback still offers it.
+        await completion({
+            text: `x! = new HashM<|>`,
+            index: 0,
+            assert: (completions) => {
+                const item = completions.items.find(i => i.label === 'HashMap' && i.additionalTextEdits);
+                expect(item).toBeDefined();
+                expect(item!.additionalTextEdits?.[0].newText).toBe('use java.util.HashMap\n');
+            }
+        });
+    });
 });
