@@ -14,6 +14,7 @@ import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { registerClassChecks } from './validations/check-classes.js';
 import { registerVariableScopingChecks } from './validations/check-variable-scoping.js';
+import { registerFunctionCallChecks } from './validations/check-function-calls.js';
 import { checkLineBreaks, getPreviousNode } from './validations/line-break-validation.js';
 import { NegativeLabelIdList } from './constants.js';
 import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
@@ -57,6 +58,7 @@ export function registerValidationChecks(services: BBjServices) {
     registry.register(checks, validator);
     registerClassChecks(registry);
     registerVariableScopingChecks(registry);
+    registerFunctionCallChecks(registry);
 }
 
 
