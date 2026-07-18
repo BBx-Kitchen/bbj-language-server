@@ -33,8 +33,13 @@ describe('Issue #447 - suggest missing use statements (real interop)', async () 
         return document.diagnostics?.filter(err => err.data?.code === DocumentValidator.LinkingError) ?? [];
     }
 
-    test.runIf(run)('probe resolves HashMap to java.util.HashMap from the real classpath', async () => {
-        const candidates = await services.BBj.java.JavaInteropService.resolveClassCandidatesBySimpleName('HashMap');
+    test.runIf(run)('capability detection: current server lacks getAllClassNames and degrades gracefully', async () => {
+        const interop = services.BBj.java.JavaInteropService;
+        // The deployed server predates the augmented endpoint, so no complete index is built...
+        expect(await interop.ensureCompleteClassIndex()).toBe(false);
+        expect(interop.hasCompleteClassIndex()).toBe(false);
+        // ...yet suggestions still work via the fallback probe.
+        const candidates = await interop.resolveClassCandidatesBySimpleName('HashMap');
         expect(candidates).toContain('java.util.HashMap');
     }, 60000);
 

@@ -64,6 +64,23 @@ describe('BBj code actions — missing use statements (#447)', () => {
         expect(actions).toHaveLength(0);
     });
 
+    test('uses the complete index (augmented server) to suggest a class not otherwise loaded', async () => {
+        // Simulate an augmented bbj-ls that provides the full class list; TreeMap is not in the
+        // fake classpath, so this only works via the seeded complete index.
+        const interop = bbj.java.JavaInteropService as unknown as {
+            seedCompleteClassIndex(f: string[]): void; resetCompleteClassIndex(): void;
+        };
+        interop.seedCompleteClassIndex(['java.util.TreeMap', 'java.util.HashMap']);
+        try {
+            expect(await bbj.java.JavaInteropService.resolveClassCandidatesBySimpleName('TreeMap'))
+                .toEqual(['java.util.TreeMap']);
+            const { actions } = await codeActionsFor('tm! = new TreeMap()\n');
+            expect(actions.map(a => a.title)).toContain("Add 'use java.util.TreeMap'");
+        } finally {
+            interop.resetCompleteClassIndex(); // restore default (old-server) behaviour for later tests
+        }
+    });
+
     test('offers nothing when there are no linking diagnostics', async () => {
         const doc = await parse('use java.util.HashMap\nhm! = new HashMap()\n', { documentUri: 'file:///ca-clean.bbj', validation: true });
         const params: CodeActionParams = {

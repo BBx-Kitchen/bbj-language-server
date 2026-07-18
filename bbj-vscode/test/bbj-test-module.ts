@@ -68,9 +68,31 @@ class JavaInteropTestService extends JavaInteropService {
         }
     }
 
-    // The fake service preloads all classes it needs; resolve auto-import candidates only
-    // from the in-memory index so tests never reach the real Java interop socket (:5008).
-    public override async resolveClassCandidatesBySimpleName(simpleName: string): Promise<string[]> {
+    // The fake service must never reach the real Java interop socket (:5008). By default it
+    // behaves like an OLD server with no getAllClassNames endpoint, so ensureCompleteClassIndex
+    // reports "unavailable" and callers exercise the fallback path. Tests can opt into the
+    // augmented-server behaviour with seedCompleteClassIndex().
+    public override async ensureCompleteClassIndex(): Promise<boolean> {
+        return this.hasCompleteClassIndex();
+    }
+
+    /** Test seam: simulate an augmented bbj-ls by seeding the complete class index. */
+    public seedCompleteClassIndex(fqns: string[]): void {
+        this.buildCompleteClassIndex(fqns);
+    }
+
+    /** Test seam: revert to the default old-server behaviour (no complete index). */
+    public resetCompleteClassIndex(): void {
+        this.clearCompleteClassIndex();
+    }
+
+    // Avoid the base class's on-demand package probe (which would resolve uncached FQNs and
+    // reach the interop socket). With a seeded index, defer to the base (index-only) path;
+    // otherwise resolve candidates from the in-memory index alone.
+    public override async resolveClassCandidatesBySimpleName(simpleName: string, token?: CancellationToken): Promise<string[]> {
+        if (this.hasCompleteClassIndex()) {
+            return super.resolveClassCandidatesBySimpleName(simpleName, token);
+        }
         return this.findClassCandidatesBySimpleName(simpleName);
     }
 }
