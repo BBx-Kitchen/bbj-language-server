@@ -3,9 +3,9 @@ export const builtinFunctions = `
 library
 
 /@@
-AND(left:string, right:string, ERR?:lineref): string
+AND(left:string, right:string, ERR?!:lineref): string
 @/
-AND(left:string, right:string, ERR?:lineref): string
+AND(left:string, right:string, ERR?!:lineref): string
 
 /@@
 #### Syntax
@@ -15,19 +15,19 @@ AND(left:string, right:string, ERR?:lineref): string
 
 The **ASC()** function returns the ASCII numeric value of the first character in a string.
 @/
-ASC(param:string, ERR?:lineref): int
+ASC(str:string, ERR?!:lineref): int
 
 /@@
 \`CHR(int{,ERR:lineref})\`
 
 The CHR() function returns the ASCII value of an integer.
 @/
-CHR(param:int, ERR?:lineref): string
+CHR(num:int, ERR?!:lineref): string
 
 /@@
 The NULL() function returns a Java null value. It is typically used to check for a null value returned from a Java function.
 @/
-NULL():null
+NULL(): object
 
 /@@
 \`STR(objexpr{:mask}{,ERR:lineref})\`
@@ -35,133 +35,133 @@ NULL():null
 In BBj, the STR() function accepts arguments of any type. If the argument evaluates to a number, STR(num) is used, otherwise STR(str) is used.
 BBj STR() function supports the 'U' mask character.
 @/
-STR(objexpr:string, ERR?:lineref): string
+STR(objexpr:any, mask?:string, ERR?!:lineref): string
 
 /@@
 \`ABS(num{, ERR:lineref})\`
 
 The ABS() function returns the absolute value of its numeric argument.
 @/
-ABS(param:num, ERR?:lineref): num
+ABS(num:num, ERR?!:lineref): num
 
 /@@
 \`ADJN(val{, ERR:lineref})\`
 
 The ADJN() function returns an 8-byte binary string suitable for string comparisons of numeric values.
 @/
-ADJN():string
+ADJN(val:num, ERR?!:lineref): string
 
 /@@
 \`ARGV(int{, ERR: lineref})\`
 
 The ARGV() function returns the arguments passed to PRO/5 when invoked. ARGC returns the number of arguments passed on the command line. ARGV(0) always returns the fully qualified name of the PRO/5 executable. User-defined arguments are returned in ARGV(1), ARGV(2), etc., up to ARGV(ARGC-1). If there are no user-defined arguments, then ARGC is 1.
 @/
-ARGV(param:int, ERR?:lineref): string
+ARGV(num:int, ERR?!:lineref): string
 
 /@@
 \`ATH(string{, ERR: lineref})\`
 
 The ATH() function converts a human-readable hexadecimal string to the internal form.
 @/
-ATH(param:string, ERR?:lineref): string
+ATH(str:string, ERR?!:lineref): string
 
 /@@
 \`ATN(num{, precis}{, ERR:lineref})\`
 
 The ATN() function returns the arctangent of num. The result is in radians and is in the range -pi/2 to pi/2.
 @/
-ATN(param:num, param: num, ERR?:lineref): num
+ATN(num:num, precis?:int, ERR?!:lineref): num
 
 /@@
 \`BIN(intA, intB{, ERR:lineref})\`
 
 The BIN() function converts a decimal into a binary string.
 @/
-BIN(param:int, param: int, ERR?:lineref): string
+BIN(intA:int, intB:int, ERR?!:lineref): string
 
 /@@
 \`BSZ(int{, ERR:lineref})\`
 
 The BSZ() function() prevents an ERROR message from being issued and always returns a 0
 @/
-BSZ(param: int, ERR?:lineref): int
+BSZ(num:int, ERR?!:lineref): int
 
 /@@
 \`CAST(type, object{, ERR:lineref})\`
 
 In BBj 6.0 and higher, the CAST() function takes a type name and an object and returns an object of the provided type.
 @/
-CAST(param:object, param: object, ERR?:lineref): object
+CAST(type:object, obj:object, ERR?!:lineref): object
 
 /@@
 \`CHANOPT(channelno{, ERR:lineref})\`
 
 The CHANOPT() function returns the current settings that are accessible using the CHANOPT verb for the specified channel.
 @/
-CHANOPT(param:int, ERR?:lineref): object
+CHANOPT(channelno:int, ERR?!:lineref): string
 
 /@@
 \`CLIENTENV(str{,IND=int}{,ERR:lineref})\`
 
 In BBj 4.0 and higher, the CLIENTENV() function returns the value of a specified operating system environment variable from the client side of a thin client session.
 @/
-CLIENTENV(param: string, param: int, ERR?:lineref): int
+CLIENTENV(str:string, IND?!:int, ERR?!:lineref): string
 
 /@@
 \`CLIPISFORMAT({fmt[, ERR=lineref]})\`
 
 The CLIPISFORMAT() function checks the availability of clipboard formats for data to be copied to the application.
 @/
-CLIPISFORMAT(param: int, ERR?:lineref): int
+CLIPISFORMAT(fmt?:int, ERR?!:lineref): int
 
 /@@
 \`CLIPREGFORMAT(name$[, ERR:lineref])\`
 
 The CLIPREGFORMAT() function is used to register clipboard formats, which must be defined before data can be placed on the clipboard.
 @/
-CLIPREGFORMAT(param: string, ERR?:lineref): int
+CLIPREGFORMAT(name:string, ERR?!:lineref): int
 
 /@@
 \`CLIPTOSTR(fmt[,ERR:lineref])\`
 
 The CLIPTOSTR() function returns a string in an fmt-parameter-specified clipboard format that can be processed by the application.
 @/
-CLIPTOSTR(param: int, ERR?:lineref): string
+CLIPTOSTR(fmt:int, ERR?!:lineref): string
 
 /@@
 \`COS(num{,precis{,ERR:lineref}})\`
 
 The COS() function returns the cosine of the specified value. The result will be in the range -1 to 1.
 @/
-COS(param: num, param: int, ERR?:lineref): num
+COS(num:num, precis?:int, ERR?!:lineref): num
 
 /@@
 \`CPL(stringA{,stringB{,ERR:lineref}})\`
 
 The CPL() function returns a string containing the internal compiled format of the supplied command line.
 @/
-CPL(param: string, param: string, ERR?:lineref): string
+CPL(stringA:string, stringB?:string, ERR?!:lineref): string
 
 /@@
 \`CRC(stringA{,stringB}{,ERR=lineref})\`
 
 The CRC() function returns a 2-byte string containing a special checksum of stringA. If stringB is given, it must be 2 bytes long and provide a "seed" for the checksum
 @/
-CRC(param: string, param: string, ERR?:lineref): string
+CRC(stringA:string, stringB?:string, ERR?!:lineref): string
 
 /@@
 \`CRC16(str,seed{,ERR=lineref})\`
 
 The CRC16() function implements the CCITT CRC-16 function. See the CRC() function for additional information.
 @/
-CRC16(param: string, param: string, ERR?:lineref): string
+CRC16(str:string, seed:string, ERR?!:lineref): string
 
 /@@
 \`CTRL(chan{,control_id{,function{,context_id}}}{,ERR=lineref})\`
 
 The CTRL() function reports on the status of selected items on a GUI device and returns a string value.
 @/
-CTRL(param: int, param: int, param: int, param: int, ERR?:lineref): string
+CTRL(chan:int, control_id?:int, func?:int, context_id?:int, ERR?!:lineref): string
 
 /@@
 \`CVS(string,int{,chars}{,ERR=lineref})\`
@@ -189,28 +189,28 @@ If the optional char parameter was specified, use it instead of space.
 Documentation: https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/cvs_function_bbj.htm
 
 @/
-CVS(param: string, param: int, ERR?:lineref): string
+CVS(str:string, num:int, ERR?!:lineref): string
 
 /@@
 \`CVT(unit_value,conversion_type{,ERR=lineref})\`
 
 The CVT() function converts units between pixel, character, and semicharacter formats.
 @/
-CVT(param: int, param: int, ERR?:lineref): char
+CVT(unit_value:num, conversion_type:int, ERR?!:lineref): num
 
 /@@
 \`DATE(num1{,num2}{:str}{,ERR=lineref})\`
 
 The DATE() function takes a Julian date and the optional time-of-day and formats it into a more familiar calendar date and time string.
 @/
-DATE(param: num, param: num, param: string): string
+DATE(num1: num, num2?: num, str?: string, ERR?!: lineref): string
 
 /@@
 \`DEC(string{,ERR=lineref})\`
 
 The DEC() function converts a binary string argument into a numeric value. The string argument is treated as a signed binary integer.
 @/
-DEC(param: string, ERR?:lineref): num
+DEC(str: string, ERR?!: lineref): num
 
 /@@
 \`DECRYPT(string{,password}{,MODE=string}{,ERR=lineref})\`
@@ -218,28 +218,28 @@ DEC(param: string, ERR?:lineref): num
 In PRO/5 5.0 and BBj 4.0 and higher, DECRYPT() decrypts the specified string that was encrypted with ENCRYPT(). 
 Attempting to decrypt with the wrong key or algorithm will usually cause meaningless data to be returned
 @/
-DECRYPT(param: string, param: param, ERR?:lineref): string
+DECRYPT(str: string, password?: string, MODE?!: string, ERR?!: lineref): string
 
 /@@
 \`DIMS(arrayname{,ERR=lineref})\`
 
 The DIMS() function returns the dimensions of an array.
 @/
-DIMS(param: string, ERR?:lineref): string
+DIMS(arrayname: string, ERR?!: lineref): string
 
 /@@
 \`DIR(disk{,ERR=lineref})\`
 
 The DIR() function returns the default directory for the specified disk.
 @/
-DIR(param: string, ERR?:lineref): string
+DIR(disk: string, ERR?!: lineref): string
 
 /@@
 \`DSK(disk{,ERR=lineref})\`
 
 The DSK() function determines the current default disk drive as well as which drives are configured.
 @/
-DSK(param: string, ERR?:lineref): string
+DSK(disk: string, ERR?!: lineref): string
 
 /@@
 \`ENCRYPT(string{,password}(,MODE=string){,ERR=lineref})\`
@@ -247,21 +247,21 @@ DSK(param: string, ERR?:lineref): string
 In PRO/5 5.0 and BBj 4.0 and higher, the ENCRYPT() encrypts the specified string and returns an encrypted string. 
 Note that the encrypted string may be longer than the specified string.
 @/
-ENCRYPT(param: string, param: string, ERR?:lineref): string
+ENCRYPT(str: string, password?: string, MODE?!: string, ERR?!: lineref): string
 
 /@@
 \`ENV(str{,IND=int}{,ERR=lineref})\`
 
 In BBj 4.0 and higher, the ENV() function returns the value of a specified operating system environment variable
 @/
-ENV(param: string, param: int, ERR?:lineref): string
+ENV(str: string, IND?!: int, ERR?!: lineref): string
 
 /@@
 \`EPT(num{,ERR=lineref})\`
 
 The EPT() function returns the order of magnitude of num (the exponent of 10).
 @/
-EPT(param: num, ERR?:lineref): num
+EPT(num: num, ERR?!: lineref): num
 
 /@@
 \`ERR(int{,int...})\`
@@ -270,14 +270,14 @@ The ERR() function does one of the following:
 1-Returns the most recent error value as an integer in the 0 to 255 range.
 2-Uses an argument list to return a position with the same value as the error value.
 @/
-ERR(param: int): int
+ERR(code: int): int
 
 /@@
 \`ERRMES(int{,str}{,ERR=lineref})\`
 
 The ERRMES() function returns the error message associated with a given error code provided by the int parameter.
 @/
-ERRMES(param: int, param: string, ERR?:lineref): string
+ERRMES(code: int, str?: string, ERR?!: lineref): string
 
 /@@
 \`
@@ -294,21 +294,21 @@ ERRMES(param: int, param: string, ERR?:lineref): string
 (3)-Returns the value of a user-defined attribute of a specified field name in the defined string template.
 (4)-Returns encoded information about a specified field in the defined string template.
 @/
-FATTR(param: string, param: string, param: string, ERR?:lineref): string
+FATTR(str: string, field_name?: string, attribute_name?: string, ERR?!: lineref): string
 
 /@@
 \`FBIN(numeric{,ERR=lineref})\`
 
 The FBIN() function returns an 8-byte string containing the equivalent of the numeric argument in IEEE standard, 64-bit, floating point format.
 @/
-FBIN(param: num, ERR?:lineref): string
+FBIN(num: num, ERR?!: lineref): string
 
 /@@
 \`FDEC(string{,ERR=lineref})\`
 
 The FDEC() function accepts an 8-byte floating point format and returns its decimal numeric equivalent.
 @/
-FDEC(param: string, ERR?:lineref): num
+FDEC(str: string, ERR?!: lineref): num
 
 /@@
 \`FID(channelno{,ERR=lineref})\`
@@ -316,7 +316,7 @@ FDEC(param: string, ERR?:lineref): num
 The FID() function returns a string describing the attributes of the file currently OPENed on channelno. 
 If channelno was OPENed with an alias and resulted in opening a PRO/5 device, FID() returns only the alias name and may be a string from one to six characters long.
 @/
-FID(param: int, ERR?:lineref): string
+FID(channelno: int, ERR?!: lineref): string
 
 /@@
 \`
@@ -327,7 +327,14 @@ FIELD(strname{,ERR=lineref})
 
 The FIELD() and NFIELD() functions allow access to data stored in a string template. To access character (string) data, use FIELD(). To access numeric data, use NFIELD().
 @/
-FIELD(param: string, param: string, param: int, ERR?:lineref): string
+FIELD(strname: string, str: string, occurrence?: int, ERR?!: lineref): string
+
+/@@
+\`NFIELD(strname,str{,int}{,ERR=lineref})\`
+
+The NFIELD() function accesses numeric data stored in a string template. Use NFIELD() to access numeric data and FIELD() to access character (string) data.
+@/
+NFIELD(strname: string, str: string, occurrence?: int, ERR?!: lineref): num
 
 /@@
 \`FILEOPEN(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,EXISTS=option,RESOLVE=option,STYLE=name"]]])\`
@@ -341,7 +348,7 @@ FILEOPEN(prompt: string, path: string, name: string, ext: string, filters?: stri
 
 The FILEOPT() function returns the settings given in the FILEOPT verb.
 @/
-FILEOPT(param: string, ERR?:lineref): string
+FILEOPT(str: string, ERR?!: lineref): string
 
 /@@
 \`FILESAVE(prompt,path,name,ext[,filters[,mode[,MODE="CLIENT,STYLE=name,EXISTS=option"]]])\`
@@ -355,14 +362,14 @@ FILESAVE(prompt: string, path: string, name: string, ext: string, filters?: stri
 
 The FILL() function generates repeating strings on the fly without the need for a DIM statement.
 @/
-FILL(param: int, param: string, ERR?:lineref): string
+FILL(count: int, str?: string, ERR?!: lineref): string
 
 /@@
 \`FIN(channelno{,ERR=lineref})\`
 
 The FIN() function returns file information associated with specified channel and the current status and system-specific information.
 @/
-FIN(param: int, ERR?:lineref): int
+FIN(channelno: int, ERR?!: lineref): string
 
 /@@
 \`
@@ -373,86 +380,86 @@ FNobjname(expr,...)
 
 Used with the DEF verb, the FN() function executes functions defined by the user.
 @/
-FNnum(param: num): string
-FNstring(param: string): string
-FNobject(param: object): string
+FNnum(expr: num): num
+FNstring(expr: string): string
+FNobject(expr: object): object
 
 /@@
 \`FPT(num{,ERR=lineref})\`
 
 The FPT() function returns the fractional part of the numeric expression. The result has the same sign as the argument.
 @/
-FPT(param: num, ERR?:lineref): num
+FPT(num: num, ERR?!:lineref): num
 
 /@@
 \`GAP(string{,ERR=lineref})\`
 
 The GAP() function returns its string argument with each byte in odd parity by complementing the high-order bit of any byte containing an even number of 1 bits.
 @/
-GAP(param: string, ERR?:lineref): string
+GAP(str: string, ERR?!:lineref): string
 
 /@@
 \`HSA(disk{,ERR=lineref})\`
 
 The HSA() function returns an integer that identifies the highest sector addressable for a disk.
 @/
-HSA(param: string, ERR?:lineref): int
+HSA(disk: string, ERR?!:lineref): int
 
 /@@
 \`HSH(stringA{,stringB}{,ERR=lineref})\`
 
 The HSH() function is similar to the CRC() function, except with a different algorithm (see the CRC() function).
 @/
-HSH(param: string, param: string, ERR?:lineref): string
+HSH(stringA: string, stringB?: string, ERR?!:lineref): string
 
 /@@
 \`HTA(string{,ERR=lineref})\`
 
 The HTA() function converts a hexadecimal string to a human-readable ASCII string. The result is always twice the length of the argument.
 @/
-HTA(param: string, ERR?:lineref): string
+HTA(str: string, ERR?!:lineref): string
 
 /@@
 \`IFF(num_expr,true_expr,false_expr)\`
 
 The IFF() function tests a specified numeric expression and returns one of two things, based on whether the expression evaluates as true (non-zero) or false (zero).
 @/
-IFF(param: num, param: any, param: any): any
+IFF(num_expr: num, true_expr: any, false_expr: any): any
 
 /@@
 \`IND(channelno{,ERR=lineref}{,END=lineref})\`
 
 The IND() function returns the pointer of the current record on channelno.
 @/
-IND(param: int, ERR?:lineref, END?:lineref): int
+IND(channelno: int, ERR?!:lineref, END?!:lineref): int
 
 /@@
 \`INFO(int,int{,ERR=lineref})\`
 
 The INFO() function returns system information strings.
 @/
-INFO(param: int, param: int, ERR?:lineref): string
+INFO(int1: int, int2: int, ERR?!:lineref): string
 
 /@@
 \`INT(num{,ERR=lineref})\`
 
 The INT() function converts a numeric argument, removing any fractional digits and truncating all digits to the right of the decimal point.
 @/
-INT(param: num, ERR?:lineref): int
+INT(num: num, ERR?!:lineref): int
 
 /@@
 \`IOR(string,string{,ERR=lineref})\`
 
 The IOR() function inclusive ORs the bits of the two string arguments and returns a string. Both string arguments must be the same length.
 @/
-IOR(param: string, param: string, ERR?:lineref): string
+IOR(string1: string, string2: string, ERR?!:lineref): string
 
 /@@
 \`JUL(year,month,day{,ERR=lineref})\`
 
 The JUL() function returns the Julian day number for a given date.
 @/
-JUL(param: int, param: int, param: int, ERR?:lineref): int
+JUL(year: int, month: int, day: int, ERR?!:lineref): int
 
 /@@
 \`
@@ -469,25 +476,25 @@ JUL(param: int, param: int, param: int, ERR?:lineref): int
 4-KEYN() returns the key following the current key (next key).
 5-KEYP() returns the key prior to the current key.
 @/
-KEY(param: int, ERR?:lineref, END?:lineref, param: int, param: int): string
-KEYF(param: int, ERR?:lineref, END?:lineref, param: int): string
-KEYL(param: int, ERR?:lineref, END?:lineref, param: int): string
-KEYN(param: int, ERR?:lineref, END?:lineref, param: int): string
-KEYP(param: int, ERR?:lineref, END?:lineref, param: int): string
+KEY(channelno: int, ERR?!:lineref, END?!:lineref, IND?!:int, KNUM?!:int): string
+KEYF(channelno: int, ERR?!:lineref, END?!:lineref, IND?!:int): string
+KEYL(channelno: int, ERR?!:lineref, END?!:lineref, IND?!:int): string
+KEYN(channelno: int, ERR?!:lineref, END?!:lineref, IND?!:int): string
+KEYP(channelno: int, ERR?!:lineref, END?!:lineref, IND?!:int): string
 
 /@@
 \`KEYR(channelno{,ERR=lineref}{,DOM=lineref})\`
 
 In BBj 15.00 and higher, the KEYR() function returns the most recent value passed in a KEY= option for any I/O verb on the specified file channel.
 @/
-KEYR(param: int, ERR?:lineref, DOM?:lineref): string
+KEYR(channelno: int, ERR?!:lineref, DOM?!:lineref): string
 
 /@@
 \`KGEN(str1,str2,int{,ERR=lineref})\`
 
 The KGEN() function derives the value of a key contained within a record.
 @/
-KGEN(param: string, param: string, param: int, ERR?:lineref): string
+KGEN(str1: string, str2: string, keynum: int, ERR?!:lineref): string
 
 /@@
 \`LCHECKOUT(feature,version {,nagOnFailure} {,ERR?=lineref})\`
@@ -497,21 +504,21 @@ The version is a string that contains a number that can be less than or equal to
 An attempt to checkout a license for a version that is greater than the version that is available will fail. 
 In BBj 9.0 and higher, the optional numeric parameter nagOnFailure is available.
 @/
-LCHECKOUT(param: string, param: string, param: int, ERR?:lineref): string
+LCHECKOUT(feature: string, version: string, nagOnFailure?: num, ERR?!:lineref): int
 
 /@@
 \`LEN(string{,ERR?=lineref})\`
 
 The LEN() function returns the length of string.
 @/
-LEN(param: string, ERR?:lineref): int
+LEN(str: string, ERR?!: lineref): int
 
 /@@
 \`LEVENSHTEIN(str1,str2{,ERR?=lineref})\`
 
 In BBj 18.00 and higher, the LEVENSHTEIN() function returns the Levenshtein distance between two strings.
 @/
-LEVENSHTEIN(param: string, param: string, ERR?:lineref): int
+LEVENSHTEIN(str1: string, str2: string, ERR?!: lineref): int
 
 /@@
 \`LINFO(handle,int,int{,ERR?=lineref})\`
@@ -519,21 +526,21 @@ LEVENSHTEIN(param: string, param: string, ERR?:lineref): int
 In PRO/5 Rev. 3.10 and higher, the LINFO() function returns license information strings (FLEXlm/FLEXnet Application Licensing) int 
 is an argument used by LINFO() to determine which string is desired.
 @/
-LINFO(param: string, param: int, param: int, ERR?:lineref): string
+LINFO(handle: int, num1: int, num2: int, ERR?!: lineref): string
 
 /@@
 \`LOG(num{,precis}{,ERR=?lineref})\`
 
 The LOG() function returns the common logarithm (base 10) of its argument.
 @/
-LOG(param: num, param: int, ERR?: lineref): void
+LOG(num1: num, precis?: int, ERR?!: lineref): num
 
 /@@
 \`LRC(string{,ERR=lineref})\`
 
 The LRC() function returns a 1-byte string that is the result of exclusive ORing of all the bytes of its argument string. 
 @/
-LRC(param: string, ERR?:lineref): string
+LRC(str: string, ERR?!: lineref): string
 
 /@@
 \`LST(stringA{,stringB}{,ERR=lineref})\`
@@ -541,35 +548,35 @@ LRC(param: string, ERR?:lineref): string
 The LST() function returns the listed form of a compiled PRO/5 command line.
 LST() is for utility purposes only and should never be used in application programs.
 @/
-LST(param: string, param: string, ERR?:lineref): string
+LST(str1: string, str2?: string, ERR?!: lineref): string
 
 /@@
 \`MASK(str1{,str2}{,ERR=lineref})\`
 
 The MASK() function scans a string for a matching substring. 
 @/
-MASK(param: string, param: string, ERR?:lineref): int
+MASK(str1: string, str2?: string, ERR?!: lineref): int
 
 /@@
 \`MAX(num{,num...})\`
 
 The MAX() function takes any number of numeric arguments and returns the value of the greatest argument.
 @/
-MAX(param: num): num
+MAX(num1: num): num
 
 /@@
 \`MENUINFO(sysgui,contextid{,ERR=lineref}{,END=lineref})\`
 
 The MENUINFO() function retrieves a string that contains the structure of a menu.
 @/
-MENUINFO(param: sysgui, param: int, ERR?:lineref, END?:lineref): string
+MENUINFO(sysguichan: sysgui, contextid: int, ERR?!: lineref, END?!: lineref): string
 
 /@@
 \`MIN(num{,num...})\`
 
 The MIN() function takes any number of numeric arguments and returns the value of the least argument.
 @/
-MIN(param: num): num
+MIN(num1: num): num
 
 /@@
 \`MOD(numA,numB{,ERR=lineref})\`
@@ -578,35 +585,35 @@ The MOD() function returns the modulo (remainder) result using the following rul
 1-If numB is 0, numA is returned.
 2-If numB is not 0, numA - numB*floor(numA/numB) is returned, where floor returns the largest integer less than or equal to its argument.
 @/
-MOD(param: num, param: num, ERR?:lineref) : num
+MOD(numA: num, numB: num, ERR?!: lineref): num
 
 /@@
 \`MSGBOX(str1{,expr{,str2{,button1{,button2{,button3}}}}}{,MODE="options"}{,TIM=int}{,ERR=lineref})\`
 
 The MSGBOX() function creates a message dialog box and returns a value that identifies the user-selected button.
 @/
-MSGBOX(str1: string, expr?: number, str2?: string, button1?: string, button2?: string, button3?: string, MODE?!: string, TIM?!: number, ERR?!: lineref): string
+MSGBOX(str1: string, expr?: num, str2?: string, button1?: string, button2?: string, button3?: string, MODE?!: string, TIM?!: int, ERR?!: lineref): string
 
 /@@
 \`NEVAL(str{,ERR=lineref})\`
 
 The NEVAL() function is intended to replace the use of EXECUTE for the purpose of evaluating numeric expressions in public programs.
 @/
-NEVAL(param: string, ERR?:lineref): num
+NEVAL(str: string, ERR?!: lineref): num
 
 /@@
 \`NOT(string{,ERR=lineref})\`
 
 The NOT() function toggles the bits of its string argument and returns the result.
 @/
-NOT(param: string, ERR?:lineref): string
+NOT(str: string, ERR?!: lineref): string
 
 /@@
 \`NOTICE(sysgui,nfyid{,ERR=lineref})\`
 
 The NOTICE() function uses the passed Notify ID and retrieves the Notice string from the SYSGUI channel.
 @/
-NOTICE(param: sysgui, param: int, ERR?:lineref): string
+NOTICE(sysguichan: sysgui, nfyid: int, ERR?!: lineref): string
 
 /@@
 \`NOTICETPL(objtype,code{,ERR=lineref})\`
@@ -639,28 +646,28 @@ objtype values:
 107: grid control.
 
 @/
-NOTICETPL(param: int, param: int, ERR?:lineref): string
+NOTICETPL(objtype: int, code: int, ERR?!: lineref): string
 
 /@@
 \`NUM(string{,ERR=lineref})\`
 
 The NUM() function converts a string argument to a numeric equivalent.
 @/
-NUM(param: string, ERR?:lineref): num
+NUM(str: string, ERR?!: lineref): num
 
 /@@
 \`PAD(str,len{,padtype{,padchr}}{,ERR=lineref})\`
 
 The PAD() function pads a specified string.
 @/
-PAD(param: string, param: int, param: char, param: char, ERR?:lineref): string
+PAD(str: string, len: int, padtype?: int, padchr?: char, ERR?!: lineref): string
 
 /@@
 \`PCK(num1,num2{,ERR=lineref})\`
 
 The PCK() function has been added for compatibility with older Business BASICs that support these nonstandard capabilities.
 @/
-PCK(param: num, param: num, ERR?:lineref): string
+PCK(num1: num, num2: num, ERR?!: lineref): string
 
 /@@
 \`PGM(int{,ERR=lineref})\`
@@ -671,7 +678,7 @@ IF int is:
 -2, then current program name is returned.
 65535, then variable table for current workspace program is returned.
 @/
-PGM(param: int, ERR?:lineref): string
+PGM(lineno: int, ERR?!: lineref): string
 
 /@@
 \`POS(stringA relation stringB {{,intA},intB})\`
@@ -679,28 +686,28 @@ PGM(param: int, ERR?:lineref): string
 The POS() function scans stringB for a substring with a specific relationship to stringA.
 StringA: String sought, StringB: String to be scanned.
 @/
-POS(param: boolean, param: int, param: int): int
+POS(expr: any, intA?: int, intB?: int): int
 
 /@@
 \`PROMPT(message{,default{,title{,expr}}}{,MODE="options"}{,TIM=int}{,ERR=lineref})\`
 
 In BBj 22.13 and higher, the PROMPT() function prompts the user to type a value into a dialog box, then returns that string to the application. 
 @/
-PROMPT(param: string, param: string, param: string, param: expression, param: string, param: int, ERR?:lineref): string
+PROMPT(message: string, default?: string, title?: string, expr?: any, MODE?!: string, TIM?!: int, ERR?!: lineref): string
 
 /@@
 \`PUB(int{,ERR=lineref})\`
 
 The PUB() function returns strings describing the public programs currently in memory.
 @/
-PUB(param: int, ERR?:lineref): string
+PUB(mode: int, ERR?!: lineref): string
 
 /@@
 \`RESFIRST(res_handle{,ERR=lineref})\`
 
 The RESFIRST() function retrieves the resource identifier and creates a string that provides resource ID information.
 @/
-RESFIRST(param: res_handle, ERR?:lineref): string
+RESFIRST(handle: res_handle, ERR?!: lineref): string
 
 /@@
 \`RESGET(handle,group,item{,ERR=lineref})\`
@@ -712,28 +719,28 @@ group:
 4:child window
 5:image list
 @/
-RESGET(param: res_handle, param: int, param: int, ERR?:lineref): string
+RESGET(handle: res_handle, group: int, item: int, ERR?!: lineref): string
 
 /@@
 \`RESINFO(res_handle,resource{,ERR=lineref})\`
 
 The RESINFO() function returns a formatted string containing information about the contents of a resource file.
 @/
-RESINFOR(param: res_handle, param: string, ERR?:lineref): string
+RESINFO(handle: res_handle, resource: string, ERR?!: lineref): string
 
 /@@
 \`RESNEXT(res_handle,res_id{,ERR=lineref})\`
 
 The RESNEXT() function returns a string assigning the next valid resource in the resource file to the template defined by RESFIRST().
 @/
-RESNEXT(param: res_handle, param: int, ERR?:lineref): string
+RESNEXT(handle: res_handle, res_id: int, ERR?!: lineref): string
 
 /@@
 \`RESOPEN(filename{,ERR=lineref})\`
 
 The RESOPEN() function opens a resource file and returns an integer handle.
 @/
-RESOPEN(param: string, ERR?:lineref): int
+RESOPEN(filename: string, ERR?!: lineref): int
 
 /@@
 \`RND(int{,ERR=lineref})\`
@@ -742,35 +749,35 @@ The RND() function returns a sequence of random numbers.
 The sequence of values returned is determined by a "seed value." 
 The same sequence results each time a given seed is used.
 @/
-RND(param: int, ERR?:lineref): int
+RND(seed: int, ERR?!: lineref): num
 
 /@@
 \`ROUND(expr{,int}{,ERR=lineref})\`
 
 The ROUND() function rounds a number to a specified number of decimal places or to the current precision value.
 @/
-ROUND(param: int, ERR?:lineref): int
+ROUND(expr: num, decimals?: int, ERR?!: lineref): num
 
 /@@
 \`SCALL(string{,ERR=lineref})\`
 
 The SCALL() function is used in run mode to execute operating system commands in the PRO/5 environment.
 @/
-SCALL(param: string, ERR?:lineref): void
+SCALL(command: string, ERR?!: lineref): int
 
 /@@
 \`SENDMSG(sysgui,id,function,int,string{,context{,ERR=lineref}})\`
 
 The SENDMSG() function sends messages to windows and controls. The meaning of the returned string depends on the type of object the id parameter refers to and the message being sent.
 @/
-SENDMSG(param: sysgui, param: int, param: int, param: int, param: string, param: int, ERR?:lineref): string
+SENDMSG(sysguichan: sysgui, id: int, func: int, value: int, str: string, context?: int, ERR?!: lineref): string
 
 /@@
 \`SERVERENV(str{,IND=int}{,ERR=lineref})\`
 
 In BBj 4.0 and higher, the SERVERENV() function returns the value of the specified operating system's environment variable from the server side of a thin client session.
 @/
-SERVERENV(param: string, param: int, ERR?:lineref): string
+SERVERENV(str: string, IND?!: int, ERR?!: lineref): string
 
 /@@
 \`SEVAL(str{,ERR=lineref})\`
@@ -778,49 +785,49 @@ SERVERENV(param: string, param: int, ERR?:lineref): string
 The SEVAL() function is intended to replace the use of EXECUTE for evaluating string expressions in public programs. 
 SEVAL() returns the value from the string expression in str after compiling and executing the str. 
 @/
-SEVAL(param: string, ERR?:lineref): string
+SEVAL(str: string, ERR?!: lineref): string
 
 /@@
 \`SGN(num{,ERR=lineref})\`
 
 The SGN() function returns a 1, 0, or -1 depending on whether its numeric argument is positive, zero, or negative respectively.
 @/
-SNG(param: int, ERR?:lineref): int
+SGN(num: num, ERR?!: lineref): int
 
 /@@
 \`SIN(num{,precis}{,ERR=lineref})\`
 
 The SIN() function returns the sine of an argument.
 @/
-SIN(param: num, ERR?:lineref): num
+SIN(num: num, precis?: int, ERR?!: lineref): num
 
 /@@
 \`SQLERR(sqlchan{,ERR=lineref})\`
 
 The SQLERR() function returns the text for the most recent error returned by the SQL command being executed.
 @/
-SQLERR(param: sqlchannel, ERR?:lineref): void
+SQLERR(sqlchan: sqlchannel, ERR?!:lineref): string
 
 /@@
 \`SQLFETCH(sqlchan{,IND=1}{,END=lineref}{,ERR=lineref})\`
 
 The SQLFETCH() function returns the next element in the result set from the execution of the SQL command on sqlchan.
 @/
-SQLFETCH(param: sqlchannel, param: int, END?:lineref, ERR?:lineref): any
+SQLFETCH(sqlchan: sqlchannel, IND?!: int, END?!:lineref, ERR?!:lineref): string
 
 /@@
 \`SQLLIST(arg{,ERR=lineref})\`
 
 The SQLLIST() function returns the names of the available databases in the SQL system, with each item terminated by a linefeed.
 @/
-SQLLIST(param: arg, ERR?:lineref): string
+SQLLIST(arg: sqlchannel, ERR?!:lineref): string
 
 /@@
 \`SQLTABLES(sqlchan{,ERR=lineref})\`
 
 The SQLTABLES() function retrieves a list of available tables from a database with each item terminated by a linefeed.
 @/
-SQLTABLES(param: sqlchannel, ERR?:lineref): string
+SQLTABLES(sqlchan: sqlchannel, ERR?!:lineref): string
 
 /@@
 \`SQLTMPL(sqlchan{,IND=1}{,ERR=lineref})\`
@@ -828,21 +835,21 @@ SQLTABLES(param: sqlchannel, ERR?:lineref): string
 The SQLTMPL() function returns the template used to access the data returned in an SQLFETCH() operation. 
 The template returned is dependent on the SQL command given by the SQLPREP verb.
 @/
-SQLTMPL(param: sqlchannel, param: int, ERR?:lineref): template
+SQLTMPL(sqlchan: sqlchannel, IND?!: int, ERR?!:lineref): string
 
 /@@
 \`SQR(num{,ERR=lineref})\`
 
 The SQR() function returns the square root of its numeric argument. The argument may be any positive number.
 @/
-SQL(param: num, ERR?:lineref): num
+SQR(num: num, ERR?!:lineref): num
 
 /@@
 \`SSORT(str1,int1{,str2,int2}{,ERR=lineref})\`
 
 The SSORT() function sorts str1 using int1 as the record size and optionally using the key described using str2 and int2 as a key descriptor pair. 
 @/
-SSORT(param: string, param: int, param: string, param: int, ERR?:lineref): void
+SSORT(str1: string, int1: int, str2?: string, int2?: int, ERR?!:lineref): string
 
 /@@
 \`
@@ -852,15 +859,15 @@ SSZ(int{,ERR=lineref})
 
 The SSZ() function returns the constant 512 and is included only for syntax compatibility with older versions of Business BASIC. string or int must refer to a valid disk drive.
 @/
-SSZ(param: string, ERR?:linefeed): int
-SSZ(param: int, ERR?:linefeed): int
+SSZ(disk: string, ERR?!:lineref): int
+SSZ(disknum: int, ERR?!:lineref): int
 
 /@@
 \`STBL(str1{,str2}{,ERR=lineref})\`
 
 The STBL() function allows the program to maintain strings that are independent of the workspace and cannot be destroyed by CLEAR, BEGIN, or START. 
 @/
-STBL(param: string, param: string, ERR?:lineref): void
+STBL(str1: string, str2?: string, ERR?!:lineref): string
 
 
 /@@
@@ -868,7 +875,7 @@ STBL(param: string, param: string, ERR?:lineref): void
 
 The SWAP() function is used for exchanging data with other software applications that may be using a native mode of data representation on a particular machine.
 @/
-SWAP(param: string, param: string, ERR?:lineref): void
+SWAP(str1: string, str2?: string, ERR?!:lineref): string
 
 /@@
 \`
@@ -880,22 +887,36 @@ The TBL() function performs the string translation described in the TABLE verb. 
 The second argument, which specifies the translation table, may be either another string or a TBL=lineref reference. 
 If the table is in a string, the string must be at least one byte long. If TBL= is used, it must refer to a TABLE statement.
 @/
-TBL(param: string, table: string, ERR?:lineref): void
-TBL(param: string, TBL?:lineref, ERR?:lineref): void
+TBL(str: string, table: string, ERR?!:lineref): string
+TBL(str: string, TBL?!:lineref, ERR?!:lineref): string
 
 /@@
 \`TCB(int{,ERR=lineref})\`
 
 The TCB() function returns information on the current state of the application.
 @/
-TCB(param: int, ERR?:lineref): string
+TCB(funcnum: int, ERR?!:lineref): string
+
+/@@
+\`TIME(str1{,str2}{,str3}{,ERR=lineref})\`
+
+The TIME() function converts a human-readable time string into a time value matching the BBx TIM variable format. str2 is an optional time mask; str3 is an optional locale.
+@/
+TIME(str1: string, str2?: string, str3?: string, ERR?!: lineref): num
+
+/@@
+\`TMPL(chan{,IND=index}{,ERR=lineref})\`
+
+The TMPL() function returns a string template describing the structure of the data from the device or file open on the specified channel.
+@/
+TMPL(chan: int, IND?!: int, ERR?!: lineref): string
 
 /@@
 \`TOPEN(level{,MODE="READONLY"){,ERR=lineref})\`
 
 The TOPEN() function starts a transaction and returns an integer transaction ID.
 @/
-TOPEN(param: int, mode: string, ERR?:lineref): int
+TOPEN(level: int, MODE?!: string, ERR?!:lineref): int
 
 /@@
 \`TSK(int{,ERR=lineref})\`
@@ -903,28 +924,28 @@ TOPEN(param: int, mode: string, ERR?:lineref): int
 The TSK() function returns strings corresponding to the ALIAS entries in the current PRO/5 configuration. 
 TSK(0) returns the first ALIAS, TSK(1) the second, and so on.
 @/
-TSK(param: int, ERR?:lineref): string
+TSK(index: int, ERR?!:lineref): string
 
 /@@
 \`UPK(str{,ERR=lineref})\`
 
 The UPK() function returns a numeric result from the packed data in str. It is assumed that str was created by the PCK() function.
 @/
-UPK(param: string, ERR?:lineref): num
+UPK(str: string, ERR?!:lineref): num
 
 /@@
 \`WINFIRST(sysgui{,ERR=lineref})\`
 
 The WINFIRST() function returns a window context ID that can be used by the WININFO() function to obtain information about the referenced window.
 @/
-WINFIRST(param: sysgui, ERR?:lineref): int
+WINFIRST(sysguichan: sysgui, ERR?!:lineref): int
 
 /@@
 \`WININFO(sysgui,contextid{,ERR=lineref}{,END=lineref})\`
 
 The WININFO() function returns a string that contains information about the contents of a SYSGUI window.
 @/
-WININFOR(param: sysgui, ERR?:lineref): string
+WININFO(sysguichan: sysgui, contextid: int, ERR?!:lineref, END?!:lineref): string
 
 /@@
 \`WINNEXT(sysgui,context{,ERR=lineref})\`
@@ -932,7 +953,7 @@ WININFOR(param: sysgui, ERR?:lineref): string
 The WINNEXT() function returns the next context ID of each of the top-level windows in sequence by way of a templated 
 string obtained either from the WINFIRST() function or from a previous use of the WINNEXT() function.
 @/
-WINNEXT(param: sysgui, param: int, ERR?:lineref): int
+WINNEXT(sysguichan: sysgui, context: int, ERR?!:lineref): int
 
 /@@
 \`XFID(channelno{,ERR=lineref})\`
@@ -940,28 +961,28 @@ WINNEXT(param: sysgui, param: int, ERR?:lineref): int
 The XFID() function returns a string describing the attributes of the file currently OPENed on channelno. 
 If channelno was OPENed with an alias and resulted in opening a BBj device, XFID() returns only the alias name.
 @/
-XFID(param: int, ERR?:lineref): string
+XFID(channelno: int, ERR?!:lineref): string
 
 /@@
 \`XFIN(channelno{,ERR=lineref})\`
 
 The XFIN() function returns an 8-byte file length.
 @/
-XFIN(param: int, ERR?:lineref): double
+XFIN(channelno: int, ERR?!:lineref): num
 
 /@@
 \`XKGEN(str1,str2,int{,ERR=lineref})\`
 
 In BBj 3.0 and higher, the XKGEN() function derives the value of a key contained within a record.
 @/
-XKGEN(param: string, param: string, ERR?:lineref): string
+XKGEN(str1: string, str2: string, keynum: int, ERR?!:lineref): string
 
 /@@
 \`XOR(stringA,stringB{,ERR=lineref})\`
 
 The XOR() function will exclusive OR the bits of the two string arguments and return the result.
 @/
-XOR(param: string, param: string, ERR?:lineref): int
+XOR(stringA: string, stringB: string, ERR?!:lineref): string
 
 /@@
 \`XSSORT(str1,int1{,str2,int2}{,ERR=lineref})\`
@@ -970,6 +991,6 @@ In BBj 3.0 and higher, the XSSORT() function sorts str1 using int1 as the record
 optionally using the key described using str2 and int2 as a key descriptor pair. 
 The key descriptor has the length of the key to sort. The string returned by this function is str1, sorted.
 @/
-XSSORT(param: string, param: int, param: string, param: string, ERR?:lineref): void
+XSSORT(str1: string, int1: int, str2?: string, int2?: int, ERR?!:lineref): string
 
 `.trimLeft();
