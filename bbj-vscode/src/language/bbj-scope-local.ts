@@ -274,7 +274,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (qualifiers.length > 1) {
                 // first part should match one of the known top level packages
                 const rootPackage = this.javaInterop.getChildOf(undefined, qualifiers[0])
-                if (isJavaPackage(rootPackage)) {
+                if (isJavaPackage(rootPackage) && node.member) {
                     const classFqn = qualifiers.concat(node.member.$refText).join('.');
                     if (!this.javaInterop.getResolvedClass(classFqn)) {
                         logger.debug(`Java class ${classFqn}, check it is resolved.`)
@@ -303,7 +303,7 @@ export class BbjScopeComputation extends DefaultScopeComputation {
             if (isMemberCall(currentNode.receiver)) {
                 // Following the Java name convention, prevent match of plain member calls like: `List.class`
                 const memberId = currentNode.receiver.member?.$refText
-                if (memberId?.length > 0 && /^[a-z]/.test(memberId)) {
+                if (memberId && memberId.length > 0 && /^[a-z]/.test(memberId)) {
                     qualifiers.push(memberId)
                     currentNode = currentNode.receiver;
                 } else {
@@ -321,7 +321,10 @@ export class BbjScopeComputation extends DefaultScopeComputation {
     }
 
     private isPotentiallyJavaFqn(node: MemberCall, receiver: MemberCall): boolean {
-        return node.member?.$refText?.length > 0 && /^[A-Z]/.test(node.member.$refText) && receiver.member?.$refText?.length > 0 && /^[a-z]/.test(receiver.member.$refText);
+        const nodeMember = node.member?.$refText;
+        const receiverMember = receiver.member?.$refText;
+        return !!nodeMember && nodeMember.length > 0 && /^[A-Z]/.test(nodeMember)
+            && !!receiverMember && receiverMember.length > 0 && /^[a-z]/.test(receiverMember);
     }
 
     private async tryResolveJavaReference(javaClassName: string, javaInterop: JavaInteropService) {
