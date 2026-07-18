@@ -871,7 +871,8 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008),
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
             maxErrors: vscode.workspace.getConfiguration("bbj").get("diagnostics.maxErrors", 20),
-            compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced")
+            compilerTrigger: vscode.workspace.getConfiguration("bbj").get("compiler.trigger", "debounced"),
+            inlayHintsParameterNames: vscode.workspace.getConfiguration("bbj").get("inlayHints.parameterNames.enabled", "literals")
         }
     };
 

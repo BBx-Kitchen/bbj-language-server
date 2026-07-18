@@ -1,5 +1,5 @@
 import { AstNode, AstNodeDescription, AstUtils, CstNode, DefaultAstNodeDescriptionProvider, LangiumDocument, Reference, assertUnreachable, isAstNodeDescription } from "langium";
-import { Class, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl, QualifiedClass } from "./generated/ast.js";
+import { Class, DefFunction, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl, QualifiedClass } from "./generated/ast.js";
 import { documentationHeader } from "./bbj-hover.js";
 
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
@@ -17,6 +17,7 @@ export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProv
         const descr = super.createDescription(node, name, document);
         switch (node.$type) {
             case MethodDecl.$type: return enhanceFunctionDescription(descr, toMethodData(node as MethodDecl))
+            case DefFunction.$type: return enhanceFunctionDescription(descr, toDefFunctionData(node as DefFunction));
             case LibFunction.$type: return enhanceFunctionDescription(descr, node as LibFunction);
             case JavaMethod.$type: return enhanceFunctionDescription(descr, node as JavaMethod);
             case LibEventType.$type: return { ...descr, docu: documentationHeader(node)! } as AstNodeDescription;
@@ -36,6 +37,24 @@ export function toMethodData(methDecl: MethodDecl): MethodData {
         name: methDecl.name,
         parameters: methDecl.params.map(p => { return { name: p.name, type: getFQNFullname(p.type) } }),
         returnType: getFQNFullname(methDecl.returnType)
+    }
+}
+
+export function toDefFunctionData(def: DefFunction): MethodData {
+    return {
+        name: def.name,
+        parameters: def.parameters.map(p => { return { name: p.name, type: suffixType(p.name) } }),
+        returnType: suffixType(def.name)
+    }
+}
+
+/** DEF FN parameters and names are untyped; the BBj name suffix defines the type. */
+function suffixType(name: string): string {
+    switch (name?.charAt(name.length - 1)) {
+        case '$': return 'string';
+        case '!': return 'object';
+        case '%': return 'int';
+        default: return 'num';
     }
 }
 
