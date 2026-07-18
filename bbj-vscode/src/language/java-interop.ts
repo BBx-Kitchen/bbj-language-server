@@ -19,6 +19,15 @@ import { assertType } from './utils.js';
 
 const implicitJavaImports = ['java.lang', 'com.basis.startup.type', 'com.basis.bbj.proxies', 'com.basis.bbj.proxies.sysgui', 'com.basis.bbj.proxies.event', 'com.basis.startup.type.sysgui', 'com.basis.bbj.proxies.servlet']
 
+/**
+ * Packages probed (as `pkg.SimpleName`) when suggesting a `use` statement for an unresolved
+ * class reference (issue #447). Unlike {@link implicitJavaImports}, these are NOT auto-imported;
+ * they are only tried on demand to discover the FQN of a specific simple name. Kept to common
+ * standard-library packages; broader/customer-jar coverage would need a dedicated server-side
+ * lookup (deliberately avoided here so no BBj-side rebuild is required).
+ */
+const autoImportCandidatePackages = ['java.util', 'java.util.concurrent', 'java.util.function', 'java.util.stream', 'java.io', 'java.nio.file', 'java.time', 'java.math', 'java.net', 'java.text']
+
 export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
@@ -254,6 +263,52 @@ export class JavaInteropService {
             console.error(e)
             return false;
         }
+    }
+
+    /**
+     * Suggests fully-qualified names for an unresolved simple class name, to power missing-`use`
+     * quick-fixes (issue #447). Combines classes already in the index with a cheap, targeted probe
+     * of the curated {@link autoImportCandidatePackages}: it tries to resolve `pkg.SimpleName` for
+     * each candidate package (a handful of on-demand lookups — no full-package enumeration and no
+     * new server capability). Probe failures are ignored. Results are de-duplicated and sorted.
+     */
+    public async resolveClassCandidatesBySimpleName(simpleName: string, token?: CancellationToken): Promise<string[]> {
+        const found = new Set<string>(this.findClassCandidatesBySimpleName(simpleName));
+        await Promise.all(autoImportCandidatePackages.map(async pack => {
+            const fqn = `${pack}.${simpleName}`;
+            try {
+                const resolved = await this.resolveClassByName(fqn, token);
+                if (resolved && !resolved.error) {
+                    found.add(fqn);
+                }
+            } catch (e) {
+                logger.debug(() => `Auto-import probe for ${fqn} failed: ` + (e instanceof Error ? e.message : String(e)));
+            }
+        }));
+        return [...found].sort();
+    }
+
+    /**
+     * Returns fully-qualified names of already-resolved Java classes whose simple name matches
+     * `simpleName` (case-insensitive), used to suggest missing `use` statements (issue #447).
+     * Only classes present in the index are considered; {@link resolveClassCandidatesBySimpleName}
+     * additionally probes common packages. Inner classes and classes without a package (nothing to
+     * `use`) are skipped. Results are de-duplicated and sorted.
+     */
+    public findClassCandidatesBySimpleName(simpleName: string): string[] {
+        const target = simpleName.toLowerCase();
+        const matches = new Set<string>();
+        for (const javaClass of this.resolvedClasses.values()) {
+            if (javaClass.error || !javaClass.packageName) {
+                continue;
+            }
+            const simple = javaClass.name.substring(javaClass.name.lastIndexOf('.') + 1);
+            if (simple.includes('$') || simple.toLowerCase() !== target) {
+                continue;
+            }
+            matches.add(`${javaClass.packageName}.${simple}`);
+        }
+        return [...matches].sort();
     }
 
     /**

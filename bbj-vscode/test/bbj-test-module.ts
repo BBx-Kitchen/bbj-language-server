@@ -67,6 +67,12 @@ class JavaInteropTestService extends JavaInteropService {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
     }
+
+    // The fake service preloads all classes it needs; resolve auto-import candidates only
+    // from the in-memory index so tests never reach the real Java interop socket (:5008).
+    public override async resolveClassCandidatesBySimpleName(simpleName: string): Promise<string[]> {
+        return this.findClassCandidatesBySimpleName(simpleName);
+    }
 }
 
 function createBBjApiClass(container: Classpath) {
