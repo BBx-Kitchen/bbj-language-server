@@ -1,0 +1,11 @@
+# Minimal BBj configuration (config.min) — same syntax as config.bbx
+ALIASES=15
+FCBS=128
+CIBS=128
+STBLEN=4096
+SETOPTS 08004020000000
+ALIAS X0 SYSGUI
+ALIAS T0 SYSWINDOW
+ALIAS LP SYSPRINT "" FONT="Courier",COLS=80,ROWS=62
+ALIAS N0 TCP "" NODELAY
+PREFIX "/usr/basis/bbj/utils/"

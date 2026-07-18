@@ -1,73 +1,179 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "BBx",
+  "name": "BBx Config",
   "scopeName": "source.bbx",
   "patterns": [
     {
-      "include": "#keywords"
+      "include": "#comments"
     },
     {
-      "include": "#comments"
+      "include": "#alias-directive"
+    },
+    {
+      "include": "#setopts-directive"
+    },
+    {
+      "include": "#dsksyn-directive"
+    },
+    {
+      "include": "#use-directive"
+    },
+    {
+      "include": "#directives"
+    },
+    {
+      "include": "#limit-setting"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#option-flags"
+    },
+    {
+      "include": "#option-assignment"
+    },
+    {
+      "include": "#java-class"
     },
     {
       "include": "#numbers"
     },
     {
-      "include": "#strings"
+      "include": "#generic-setting"
     }
   ],
   "repository": {
-    "keywords": {
-      "patterns": [
-        {
-          "name": "keyword.operator.new",
-          "match": "(?i)(?<=\\s|^|=|\\()(new)(?=\\s)"
-        },
-        {
-          "name": "keyword.bbj",
-          "match": "(?i)(?<=\\s|^|,|\\(|\\)|\\+)(set|alias|dsksyn|setopts|prefix)(?=\\(|\\s|$)"
-        }
-      ]
-    },
     "comments": {
       "patterns": [
         {
-          "name": "comment.line.bbj",
-          "match": "(?i)(?<=^|\\s)(#|;)(?=\\s).*"
+          "name": "comment.line.number-sign.bbx",
+          "match": "(?:^|\\s)#.*$"
+        },
+        {
+          "name": "comment.line.semicolon.bbx",
+          "match": "(?:^|\\s);.*$"
+        },
+        {
+          "name": "comment.line.rem.bbx",
+          "match": "(?i)^\\s*REM(\\s.*)?$"
         }
       ]
     },
-    "numbers": {
-      "patterns": [
-        {
-          "match": "(?x)\n\\b(?<!\\$)\n0(x|X)\n(\n  (?<!\\.)[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?[Ll]?(?!\\.)\n  |\n  (\n    [0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\\.?\n    |\n    ([0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?)?\\.[0-9a-fA-F]([0-9a-fA-F_]*[0-9a-fA-F])?\n  )\n  [Pp][+-]?[0-9]([0-9_]*[0-9])?[FfDd]?\n)\n\\b(?!\\$)",
-          "name": "constant.numeric.hex.bbj"
+    "alias-directive": {
+      "comment": "ALIAS <name> <device | java.class.Name> [\"description\"] [options]",
+      "match": "(?i)^\\s*(ALIAS)\\s+(\\S+)(?:\\s+(SYSGUI|SYSWINDOW|SYSPRINT|SYSPLOT|SYSMEM|SYSCLIP|MINI|NIO|TCP|SSL|UDP|COM\\d+|LPT\\d+))?",
+      "captures": {
+        "1": {
+          "name": "keyword.control.directive.alias.bbx"
         },
-        {
-          "match": "\\b(?<!\\$)0(b|B)[01]([01_]*[01])?[Ll]?\\b(?!\\$)",
-          "name": "constant.numeric.binary.bbj"
+        "2": {
+          "name": "entity.name.function.alias.bbx"
         },
-        {
-          "match": "\\b(?<!\\$)0[0-7]([0-7_]*[0-7])?[Ll]?\\b(?!\\$)",
-          "name": "constant.numeric.octal.bbj"
-        },
-        {
-          "match": "(?x)\n(?<!\\$)\n(\n  \\b[0-9]([0-9_]*[0-9])?\\.\\B(?!\\.)\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?\\.([0-9]([0-9_]*[0-9])?)([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  (?<!\\.)\\B\\.[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)[FfDd]?\\b\n  |\n  \\b[0-9]([0-9_]*[0-9])?([Ee][+-]?[0-9]([0-9_]*[0-9])?)?[FfDd]\\b\n  |\n  \\b(0|[1-9]([0-9_]*[0-9])?)(?!\\.)[Ll]?\\b\n)\n(?!\\$)",
-          "name": "constant.numeric.decimal.bbj"
+        "3": {
+          "name": "support.class.device.bbx"
         }
-      ]
+      }
+    },
+    "setopts-directive": {
+      "comment": "SETOPTS <hex byte string>",
+      "match": "(?i)^\\s*(SETOPTS)\\s+([0-9A-Fa-f]+)\\s*$",
+      "captures": {
+        "1": {
+          "name": "keyword.control.directive.bbx"
+        },
+        "2": {
+          "name": "constant.numeric.hex.bbx"
+        }
+      }
+    },
+    "dsksyn-directive": {
+      "comment": "DSKSYN A: — disk drive synonym",
+      "match": "(?i)^\\s*(DSKSYN)\\s+([A-Za-z]:?)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.directive.bbx"
+        },
+        "2": {
+          "name": "constant.other.drive.bbx"
+        }
+      }
+    },
+    "use-directive": {
+      "comment": "USE java.class.Name or USE ::file.bbj::ClassName (BBj 17+)",
+      "match": "(?i)^\\s*(USE)\\s+((?:::[^:]+::\\S+)|\\S+)",
+      "captures": {
+        "1": {
+          "name": "keyword.control.directive.bbx"
+        },
+        "2": {
+          "name": "entity.name.type.class.bbx"
+        }
+      }
+    },
+    "directives": {
+      "comment": "Structured directives at line start",
+      "match": "(?i)^\\s*(ALIAS|PREFIX|DSKSYN|SET|SETOPTS|SETDEV|SETDAY|SETTIME|SETTRACE|USE|KEYMAP|CHARMAP)\\b",
+      "name": "keyword.control.directive.bbx"
+    },
+    "limit-setting": {
+      "comment": "Generic OPTION[=]value limit/function settings at line start, e.g. FCBS=128, PRECISION=2, SQL=/path",
+      "match": "(?i)^\\s*([A-Z][A-Z0-9_]*)\\s*(=)",
+      "captures": {
+        "1": {
+          "name": "keyword.other.setting.bbx"
+        },
+        "2": {
+          "name": "keyword.operator.assignment.bbx"
+        }
+      }
     },
     "strings": {
       "patterns": [
         {
-          "name": "string.quoted.single.bbj",
-          "match": "(?i)'([^'])*'"
+          "name": "string.quoted.double.bbx",
+          "match": "\"[^\"]*\""
         },
         {
-          "name": "string.quoted.double.bbj",
-          "match": "(?i)\\\"([^\"])*\\\""
+          "name": "string.quoted.single.bbx",
+          "match": "'[^']*'"
         }
       ]
+    },
+    "option-flags": {
+      "comment": "Bare option flags in ALIAS/device lines (with optional leading - to negate)",
+      "match": "(?i)(?<=[\\s,])-?(VISIBLE|INVISIBLE|FLOAT|PREVIEW|NODELAY|XON/XOFF|XON|XOFF|DSR|CTS|TERM)\\b",
+      "name": "entity.other.attribute-name.flag.bbx"
+    },
+    "option-assignment": {
+      "comment": "key=value options within a line, e.g. TITLE=, FONT=, ROWS=, BAUD=, MODE=, !COMPAT=",
+      "match": "(?i)(?<=[\\s,])(!?[A-Z_][A-Z0-9_]*)(=)",
+      "captures": {
+        "1": {
+          "name": "entity.other.attribute-name.option.bbx"
+        },
+        "2": {
+          "name": "keyword.operator.assignment.bbx"
+        }
+      }
+    },
+    "java-class": {
+      "comment": "Fully qualified Java class names, e.g. in ALIAS plugin definitions",
+      "match": "\\b(?:[a-z][a-zA-Z0-9_]*\\.){2,}[A-Z][A-Za-z0-9_$]*\\b",
+      "name": "entity.name.type.class.bbx"
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.decimal.bbx",
+          "match": "\\b\\d+\\b"
+        }
+      ]
+    },
+    "generic-setting": {
+      "comment": "Fallback: any OPTION at line start (settings allow the = to be omitted, e.g. PRECISION 2,16)",
+      "match": "(?i)^\\s*([A-Z][A-Z0-9_]*)\\b",
+      "name": "keyword.other.setting.bbx"
     }
   }
 }
