@@ -60,7 +60,7 @@ export function registerValidationChecks(services: BBjServices) {
         SwitchCase: validator.checkSwitchCaseInSwitch,
     };
     registry.register(checks, validator);
-    registerClassChecks(registry, services.java.JavaInteropService);
+    registerClassChecks(registry, services);
     registerVariableScopingChecks(registry);
     registerFunctionCallChecks(registry);
 }

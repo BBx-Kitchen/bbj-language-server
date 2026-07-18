@@ -1,12 +1,14 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
-import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
-import { BBjAstType, BbjClass, ConstructorCall, Expression, FieldDecl, isBbjClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, MethodDecl, QualifiedClass } from '../generated/ast.js';
+import type { BBjServices } from '../bbj-module.js';
+import { TypeInferer } from '../bbj-type-inferer.js';
 import { JavaInteropService } from '../java-interop.js';
 import { isTypeResolutionWarningsEnabled } from '../bbj-validator.js';
+import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
+import { BBjAstType, BbjClass, Class, ConstructorCall, Expression, FieldDecl, isBbjClass, isClass, isJavaClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, JavaClass, MethodDecl, QualifiedClass } from '../generated/ast.js';
 
-export function registerClassChecks(registry: ValidationRegistry, javaInterop?: JavaInteropService) {
-    const validator = new ClassValidator(javaInterop);
+export function registerClassChecks(registry: ValidationRegistry, services: BBjServices) {
+    const validator = new ClassValidator(services.types.Inferer, services.java.JavaInteropService);
     const classChecks: ValidationChecks<BBjAstType> = {
         Use: (use, accept) => {
             if(!use.bbjClass) {
@@ -96,7 +98,7 @@ class ClassValidator {
      */
     private static readonly KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
 
-    constructor(private readonly javaInterop?: JavaInteropService) {
+    constructor(private readonly inferer: TypeInferer, private readonly javaInterop?: JavaInteropService) {
     }
 
     private isSubFolderOf(folder: string, parentFolder: string) {
@@ -243,8 +245,156 @@ class ClassValidator {
                     node: ret,
                     property: 'return'
                 });
+                continue; // already reported by the literal check — don't double-report
+            }
+            // Deeper check against Java / non-BBj return types via type inference (issue #437).
+            this.checkReturnTypeAssignable(meth, ret.return!, {
+                node: ret,
+                property: 'return'
+            }, accept);
+        }
+    }
+
+    // BBj scalar return types are handled by the literal check above and are otherwise loosely
+    // typed (BBj coerces), so the inference-based Java-type check below skips them to stay
+    // false-positive-free. Compared case-insensitively.
+    private static readonly BBJ_SCALAR_RETURN_TYPES = new Set(['bbjstring', 'bbjnumber', 'bbjint']);
+
+    /**
+     * The complete set of assignable target types for well-known FINAL Java types, keyed by the
+     * returned type's fully-qualified name (all lower-cased). Because these classes are `final`,
+     * their supertype closure is fixed and fully known here — so if the declared return type's FQN
+     * is NOT in the set, the returned value is *provably* not assignable and can be flagged with no
+     * risk of missing a subtype relationship. Non-final Java types are never flagged (see below),
+     * since their hierarchy is not walkable from the AST (a JavaClass carries no supertype info).
+     */
+    private static readonly FINAL_TYPE_ASSIGNABLE_TO: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+        ['java.lang.string', new Set(['java.lang.string', 'java.lang.charsequence', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.integer', new Set(['java.lang.integer', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.long', new Set(['java.lang.long', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.short', new Set(['java.lang.short', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.byte', new Set(['java.lang.byte', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.double', new Set(['java.lang.double', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.float', new Set(['java.lang.float', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.boolean', new Set(['java.lang.boolean', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.lang.character', new Set(['java.lang.character', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.math.bigdecimal', new Set(['java.math.bigdecimal', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])],
+        ['java.math.biginteger', new Set(['java.math.biginteger', 'java.lang.number', 'java.lang.comparable', 'java.io.serializable', 'java.lang.object'])]
+    ]);
+
+    /**
+     * Validates a single returned expression against a method's declared (Java / non-BBj) return
+     * type using type inference (issue #437, follow-up to #372/#436). Gated behind the
+     * `typeResolutionWarnings` flag, exactly like the CAST-resolvability check.
+     *
+     * Deliberately conservative to avoid false positives on BBj's loose typing:
+     *  - fires ONLY when both the declared and the inferred returned type FULLY resolve to a Class;
+     *  - skips BBj scalar declared types (owned by the literal check, and loosely coerced);
+     *  - `java.lang.Object` (the top type) is always assignable;
+     *  - only reports when the returned value's type is *provably* not assignable — currently when
+     *    the returned type is a well-known FINAL Java type whose complete supertype set is known and
+     *    does not contain the declared type. Non-final returned types and BBj-class returns are left
+     *    unflagged because the Java class hierarchy is not walkable from the AST here.
+     */
+    private checkReturnTypeAssignable<N extends AstNode>(meth: MethodDecl, returned: Expression, info: DiagnosticInfo<N>, accept: ValidationAcceptor): void {
+        if (!isTypeResolutionWarningsEnabled() || meth.array) {
+            return;
+        }
+        // BBj scalar declared types are handled elsewhere / loosely typed — never flag them here.
+        const declaredName = this.simpleTypeName(meth.returnType!);
+        if (declaredName && ClassValidator.BBJ_SCALAR_RETURN_TYPES.has(declaredName.toLowerCase())) {
+            return;
+        }
+        const declaredClass = getClass(meth.returnType);
+        if (!declaredClass) {
+            return; // declared type does not fully resolve — skip silently
+        }
+        const inferred = this.inferer.getType(returned);
+        if (!inferred || !isClass(inferred)) {
+            return; // returned type does not resolve to a Class — skip silently
+        }
+        if (this.isAssignable(declaredClass, inferred) === false) {
+            accept('error', `Method '${meth.name}' declares return type '${this.classDisplayName(declaredClass)}' but returns a value of incompatible type '${this.classDisplayName(inferred)}'.`, info);
+        }
+    }
+
+    /**
+     * Three-valued assignability of a returned value of type `returned` to the declared type
+     * `declared`: `true` = provably assignable, `false` = provably NOT assignable, `undefined` =
+     * unknown (must be treated as assignable, i.e. not flagged). Only definitive answers are used
+     * to emit a diagnostic.
+     */
+    private isAssignable(declared: Class, returned: Class): boolean | undefined {
+        if (declared === returned) {
+            return true;
+        }
+        const declaredFqn = this.classFqn(declared).toLowerCase();
+        const returnedFqn = this.classFqn(returned).toLowerCase();
+        if (declaredFqn === returnedFqn) {
+            return true;
+        }
+        // java.lang.Object is the top type: every reference type is assignable to it.
+        if (declaredFqn === 'java.lang.object') {
+            return true;
+        }
+        // A returned BBj class whose resolvable supertype chain reaches the declared class is
+        // assignable; otherwise we cannot be certain (the chain may reach Java types we cannot
+        // walk), so we defer rather than risk a false positive.
+        if (isBbjClass(returned)) {
+            return this.bbjSupertypesReach(returned, declared) ? true : undefined;
+        }
+        // A returned well-known FINAL Java type has a fully-known supertype set: decide definitively.
+        if (isJavaClass(returned)) {
+            const assignableTo = ClassValidator.FINAL_TYPE_ASSIGNABLE_TO.get(returnedFqn);
+            if (assignableTo) {
+                return assignableTo.has(declaredFqn);
             }
         }
+        return undefined; // hierarchy not walkable / unknown — do not flag
+    }
+
+    /** True if walking the BBj class's resolvable extends/implements chain reaches `target`. */
+    private bbjSupertypesReach(klass: BbjClass, target: Class): boolean {
+        const visited = new Set<Class>();
+        const queue: BbjClass[] = [klass];
+        while (queue.length > 0) {
+            const current = queue.pop()!;
+            if (visited.has(current)) {
+                continue;
+            }
+            visited.add(current);
+            for (const ref of [...current.extends, ...current.implements]) {
+                const superType = getClass(ref);
+                if (!superType) {
+                    continue;
+                }
+                if (superType === target) {
+                    return true;
+                }
+                if (isBbjClass(superType)) {
+                    queue.push(superType);
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Fully-qualified name of a resolved class (JavaClass carries a package; BBj classes do not). */
+    private classFqn(klass: Class): string {
+        if (isJavaClass(klass)) {
+            const name = (klass as JavaClass).name;
+            if (name.includes('.')) {
+                return name;
+            }
+            const pkg = (klass as JavaClass).packageName;
+            return pkg ? `${pkg}.${name}` : name;
+        }
+        return klass.name;
+    }
+
+    /** Human-readable class name for diagnostics (FQN for Java types, simple name for BBj types). */
+    private classDisplayName(klass: Class): string {
+        return isJavaClass(klass) ? this.classFqn(klass) : klass.name;
     }
 
     /**
