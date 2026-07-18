@@ -675,5 +675,16 @@
 			"WEND"
 		],
 		"description": "While Statement"
+	},
+	"RepeatUntil": {
+		"prefix": [
+			"repeat-until"
+		],
+		"body": [
+			"REPEAT",
+			"\t$0",
+			"UNTIL ${1:condition}"
+		],
+		"description": "REPEAT .. UNTIL loop"
 	}
 }
