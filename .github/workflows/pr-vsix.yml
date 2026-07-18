@@ -54,12 +54,11 @@ jobs:
         id: pkg
         working-directory: bbj-vscode
         run: |
-          npm i -g @vscode/vsce@^2.32
           NAME=$(node -p "require('./package.json').name")
           VERSION=$(node -p "require('./package.json').version")
           SHA=$(git rev-parse --short HEAD)
           OUT="${NAME}-${VERSION}-pr${{ github.event.pull_request.number }}-${SHA}.vsix"
-          vsce package --out "$OUT"
+          npx vsce package --out "$OUT"
           echo "vsix=$OUT" >> "$GITHUB_OUTPUT"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
