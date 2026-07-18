@@ -601,10 +601,6 @@
       }
     },
     "configurationDefaults": {
-      "files.associations": {
-        "config.bbx": "plaintext",
-        "config.min": "plaintext"
-      },
       "[bbj]": {
         "editor.wordSeparators": "`~^&*()-=+[{]}\\|;:'\",.<>/?"
       }
