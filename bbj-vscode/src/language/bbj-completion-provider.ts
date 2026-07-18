@@ -195,11 +195,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     /**
-     * File-path completion inside the `::...::` segment of a `use`/`declare` statement (issue #456).
-     * Returns subdirectory (drill-down) and `.bbj` file items reachable from the current file's
-     * directory, the workspace folder(s) and every configured PREFIX path; returns undefined when
-     * the cursor is not inside an unclosed `::...::` path segment (so completion falls through to
-     * the default provider — e.g. class completion after the closing `::`).
+     * File-path completion inside the `::...::` segment of a `use`/`declare` statement, and inside
+     * the file-name string literal of a `RUN`/`CALL` statement (issue #456). Returns subdirectory
+     * (drill-down) and `.bbj` file items reachable from the current file's directory, the workspace
+     * folder(s) and every configured PREFIX path; returns undefined when the cursor is not in such a
+     * path position (so completion falls through to the default provider — e.g. class completion
+     * after the closing `::`).
      *
      * Fail-safe: any file-system/resolution error yields an empty list rather than a thrown
      * exception, so a broken prefix never breaks completion.
@@ -213,7 +214,8 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             lineEndOffset = text.length;
         }
         const lineText = text.substring(lineStartOffset, lineEndOffset);
-        const pathContext = parseFilePathCompletionContext(lineText, params.position.character);
+        const pathContext = parseFilePathCompletionContext(lineText, params.position.character)
+            ?? parseRunCallFilePathContext(lineText, params.position.character);
         if (!pathContext) {
             return undefined;
         }
@@ -636,9 +638,58 @@ export function parseFilePathCompletionContext(lineText: string, cursorColumn: n
     if (afterOpen.includes('::')) {
         return undefined;
     }
-    const typed = afterOpen;
+    return splitTypedPath(afterOpen);
+}
+
+/**
+ * Splits a partial path into the already-typed directory portion (with trailing slash) and the leaf
+ * prefix to filter directory entries by. Shared by the USE/DECLARE `::...::` and RUN/CALL `"..."`
+ * detectors so both produce the same {@link FilePathCompletionContext}.
+ */
+function splitTypedPath(typed: string): FilePathCompletionContext {
     const slashIdx = Math.max(typed.lastIndexOf('/'), typed.lastIndexOf('\\'));
     const dir = slashIdx === -1 ? '' : typed.substring(0, slashIdx + 1);
     const prefix = slashIdx === -1 ? typed : typed.substring(slashIdx + 1);
     return { typed, dir, prefix };
+}
+
+/**
+ * Detects whether the cursor sits inside the file-name string literal of a `RUN` or `CALL` statement
+ * (`RUN "prog"`, `CALL "prog"`) and, if so, splits the partial path already typed into a directory
+ * portion plus a leaf prefix — the same shape used for the `::...::` path of USE/DECLARE (issue #456,
+ * extended per the issue comment: RUN/CALL also accept a string-literal file name).
+ *
+ * Returns undefined when: the line is not a RUN/CALL statement, the cursor is not inside a string
+ * literal, the string is a later `CALL` argument (a comma precedes its opening quote — only the first
+ * operand is the file id), or the cursor is past a `program::label` separator (only the program part
+ * is a path). Pure string logic (unit-tested directly). BBj is case-insensitive.
+ *
+ * @param lineText     full text of the current line
+ * @param cursorColumn 0-based column of the cursor within the line
+ */
+export function parseRunCallFilePathContext(lineText: string, cursorColumn: number): FilePathCompletionContext | undefined {
+    const beforeCursor = lineText.substring(0, cursorColumn);
+    // Anchor the RUN/CALL verb at statement start (leading whitespace allowed) and require a space or
+    // quote after it, so an assignment to a `run$`/`call$` variable is not mistaken for the verb.
+    const kwMatch = /^\s*(run|call)(?=\s|")/i.exec(beforeCursor);
+    if (!kwMatch) {
+        return undefined;
+    }
+    const afterKw = beforeCursor.substring(kwMatch.index + kwMatch[0].length);
+    // Inside a string literal iff an odd number of quotes precede the cursor.
+    if (((afterKw.match(/"/g) ?? []).length) % 2 === 0) {
+        return undefined;
+    }
+    const openQuoteIdx = afterKw.lastIndexOf('"');
+    // A comma before the opening quote means this string is a later CALL argument, not the file id.
+    if (afterKw.substring(0, openQuoteIdx).includes(',')) {
+        return undefined;
+    }
+    const typed = afterKw.substring(openQuoteIdx + 1);
+    // `CALL "program::label"` — only the part before `::` is a file path; once the cursor is past the
+    // separator it is in the label, not the file name.
+    if (typed.includes('::')) {
+        return undefined;
+    }
+    return splitTypedPath(typed);
 }

@@ -4,7 +4,7 @@ import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { describe, expect, test, vi, afterEach } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
-import { parseFilePathCompletionContext } from '../src/language/bbj-completion-provider.js';
+import { parseFilePathCompletionContext, parseRunCallFilePathContext } from '../src/language/bbj-completion-provider.js';
 import { Model } from '../src/language/generated/ast.js';
 
 describe('parseFilePathCompletionContext (issue #456)', () => {
@@ -69,6 +69,64 @@ describe('parseFilePathCompletionContext (issue #456)', () => {
 
     test('does not treat a java-type use as a path position', () => {
         expect(ctx('use java.util.HashMap|')).toBeUndefined();
+    });
+});
+
+describe('parseRunCallFilePathContext (issue #456)', () => {
+
+    // Convenience: place the cursor at the `|` marker in the given line.
+    function ctx(lineWithCaret: string) {
+        const col = lineWithCaret.indexOf('|');
+        return parseRunCallFilePathContext(lineWithCaret.replace('|', ''), col);
+    }
+
+    test('detects empty path right after the opening quote of a RUN', () => {
+        expect(ctx('RUN "|')).toEqual({ typed: '', dir: '', prefix: '' });
+    });
+
+    test('splits a bare leaf prefix (no directory)', () => {
+        expect(ctx('RUN "uti|')).toEqual({ typed: 'uti', dir: '', prefix: 'uti' });
+    });
+
+    test('splits a directory portion from the leaf prefix', () => {
+        expect(ctx('RUN "util/foo|')).toEqual({ typed: 'util/foo', dir: 'util/', prefix: 'foo' });
+    });
+
+    test('matches CALL as well as RUN', () => {
+        expect(ctx('CALL "prog|')).toEqual({ typed: 'prog', dir: '', prefix: 'prog' });
+    });
+
+    test('is case-insensitive on the leading verb', () => {
+        expect(ctx('run "x|')).toEqual({ typed: 'x', dir: '', prefix: 'x' });
+        expect(ctx('Call "x|')).toEqual({ typed: 'x', dir: '', prefix: 'x' });
+    });
+
+    test('allows leading indentation before the verb', () => {
+        expect(ctx('    run "x|')).toEqual({ typed: 'x', dir: '', prefix: 'x' });
+    });
+
+    test('returns undefined when not inside a string', () => {
+        // No opening quote at all.
+        expect(ctx('RUN |')).toBeUndefined();
+        // The string is already closed.
+        expect(ctx('RUN "a.bbj" |')).toBeUndefined();
+    });
+
+    test('returns undefined for a later CALL argument string (comma before the open quote)', () => {
+        expect(ctx('CALL "a.bbj", "|')).toBeUndefined();
+    });
+
+    test('returns undefined once the cursor is past a program::label separator', () => {
+        expect(ctx('CALL "prog::la|')).toBeUndefined();
+    });
+
+    test('returns undefined on non-RUN/CALL lines', () => {
+        expect(ctx('PRINT "x|')).toBeUndefined();
+    });
+
+    test('does not treat a run$/call$ variable assignment as the verb', () => {
+        expect(ctx('run$="x|')).toBeUndefined();
+        expect(ctx('call$ = "x|')).toBeUndefined();
     });
 });
 
@@ -162,6 +220,31 @@ describe('file-path completion integration (issue #456)', () => {
         const labels = (await complete('declare ::<|> x!')).map(i => i.label);
         expect(labels).toContain('foo.bbj');
         expect(labels).toContain('util/');
+    });
+
+    test('offers .bbj files and subdirectories inside a RUN string literal', async () => {
+        mockFs();
+        const items = await complete('run "<|>');
+        const labels = items.map(i => i.label);
+        expect(labels).toContain('util/');
+        expect(labels).toContain('foo.bbj');
+        expect(labels).toContain('bar.bbj');
+        expect(labels).not.toContain('readme.txt');
+        expect(items.find(i => i.label === 'util/')!.kind).toBe(19);
+        expect(items.find(i => i.label === 'foo.bbj')!.kind).toBe(17);
+    });
+
+    test('offers the same enumeration inside a CALL string literal', async () => {
+        mockFs();
+        const labels = (await complete('call "<|>')).map(i => i.label);
+        expect(labels).toContain('foo.bbj');
+        expect(labels).toContain('util/');
+    });
+
+    test('does not fire for a second CALL argument string', async () => {
+        const spy = vi.spyOn(fsProvider, 'readDirectory');
+        await complete('call "a.bbj", "<|>');
+        expect(spy).not.toHaveBeenCalled();
     });
 
     test('resolves relative to configured PREFIX paths', async () => {
