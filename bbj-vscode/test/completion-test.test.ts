@@ -182,6 +182,31 @@ w! = new MyWidget(<|>)
         });
     });
 
+    test('no-arg constructor completion inserts nothing, not the label - issue #447', async () => {
+        // Regression: a no-arg constructor item had an empty insertText, which is falsy, so the
+        // client falls back to the label `MyWidget()` and nests it as `new MyWidget(MyWidget())`.
+        // It must use a textEdit that inserts nothing instead.
+        const text = `
+class public MyWidget
+    method public void create()
+    methodend
+classend
+declare MyWidget w!
+w! = new MyWidget(<|>)
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const ctor = completions.items.find(i => i.kind === 4 && i.label === 'MyWidget()');
+                expect(ctor).toBeDefined();
+                expect(ctor!.insertText).toBeUndefined();
+                expect(ctor!.textEdit).toBeDefined();
+                expect((ctor!.textEdit as { newText: string }).newText).toBe('');
+            }
+        });
+    });
+
     test('class-reference completion after `new` does not crash (issue: Langium 4.3 synthetic node)', async () => {
         // Regression: getScope read container.simpleClass.$refText on a synthetic
         // completion node where simpleClass is undefined, throwing a TypeError that
@@ -471,5 +496,64 @@ y = 2
 `;
         const list = await fieldCompletion(text);
         expect(list?.items ?? []).toHaveLength(0);
+    });
+
+    const interopSeam = bbjServices.java.JavaInteropService as unknown as {
+        seedCompleteClassIndex(f: string[]): void; resetCompleteClassIndex(): void;
+    };
+
+    test('auto-import completion offers an unimported class with a use edit (augmented server) - issue #447', async () => {
+        interopSeam.seedCompleteClassIndex(['java.util.TreeMap']);
+        try {
+            await completion({
+                text: `x! = new TreeM<|>`,
+                index: 0,
+                assert: (completions) => {
+                    const item = completions.items.find(i => i.label === 'TreeMap');
+                    expect(item).toBeDefined();
+                    expect(item!.kind).toBe(7); // CompletionItemKind.Class
+                    expect(item!.additionalTextEdits?.[0].newText).toBe('use java.util.TreeMap\n');
+                }
+            });
+        } finally {
+            interopSeam.resetCompleteClassIndex();
+        }
+    });
+
+    test('auto-import completion falls back to already-resolved classes (old server) - issue #447', async () => {
+        // No complete index seeded: HashMap is in the fake classpath, so the fallback still offers it.
+        await completion({
+            text: `x! = new HashM<|>`,
+            index: 0,
+            assert: (completions) => {
+                const item = completions.items.find(i => i.label === 'HashMap' && i.additionalTextEdits);
+                expect(item).toBeDefined();
+                expect(item!.additionalTextEdits?.[0].newText).toBe('use java.util.HashMap\n');
+            }
+        });
+    });
+
+    describe('auto-import only fires in type positions - issue #447', () => {
+        const hasAutoImport = (completions: { items: { label: string, additionalTextEdits?: unknown }[] }) =>
+            completions.items.some(i => i.label === 'TreeMap' && i.additionalTextEdits);
+
+        function autoImportCase(name: string, text: string, expected: boolean) {
+            test(name, async () => {
+                interopSeam.seedCompleteClassIndex(['java.util.TreeMap']);
+                try {
+                    await completion({ text, index: 0, assert: (c) => expect(hasAutoImport(c)).toBe(expected) });
+                } finally {
+                    interopSeam.resetCompleteClassIndex();
+                }
+            });
+        }
+
+        // Type positions — auto-import is helpful.
+        autoImportCase('after new', `x! = new TreeM<|>`, true);
+        autoImportCase('declared type', `declare TreeM<|> x!`, true);
+        // Expression positions — offering a bare class would nest a class where a value is expected
+        // (e.g. accepting here then typing '(' yields `new TreeMap(TreeMap())`).
+        autoImportCase('constructor argument', `tm! = new HashMap(Tree<|>)`, false);
+        autoImportCase('assignment value', `x! = Tree<|>`, false);
     });
 });

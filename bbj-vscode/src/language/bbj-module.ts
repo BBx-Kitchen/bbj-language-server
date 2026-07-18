@@ -14,6 +14,7 @@ import {
     prepareLangiumParser
 } from 'langium';
 import { LangiumSharedServices, LangiumServices, PartialLangiumServices, createDefaultSharedModule, createDefaultModule, DefaultSharedModuleContext } from 'langium/lsp';
+import { BBjCodeActionProvider } from './bbj-code-action-provider.js';
 import { BBjCommentProvider } from './bbj-comment-provider.js';
 import { BBjCompletionProvider } from './bbj-completion-provider.js';
 import { BBjDefinitionProvider } from './bbj-definition-provider.js';
@@ -100,6 +101,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
         SignatureHelp: () => new BBjSignatureHelpProvider(),
+        CodeActionProvider: (services) => new BBjCodeActionProvider(services),
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),

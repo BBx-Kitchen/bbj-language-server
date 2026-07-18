@@ -1,14 +1,20 @@
 import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
 import type { LangiumDocument, LangiumDocumentFactory } from "langium";
-import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, NextFeature } from "langium/lsp";
-import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams } from "vscode-languageserver";
+import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, NextFeature } from "langium/lsp";
+import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams, TextEdit } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
+import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isJavaTypeRef, isMethodDecl, isSimpleTypeRef, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
+import { BBjServices } from "./bbj-module.js";
+import { JavaInteropService } from "./java-interop.js";
+import { useInsertPosition } from "./bbj-use-insert.js";
 
 
 export class BBjCompletionProvider extends DefaultCompletionProvider {
+
+    /** Minimum typed prefix before offering (potentially many) auto-import class suggestions. */
+    protected static readonly AUTO_IMPORT_MIN_PREFIX = 2;
 
     override readonly completionOptions = {
         triggerCharacters: ['#', '(', '.']
@@ -22,10 +28,83 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     protected dotTriggerActive = false;
 
     protected readonly documentFactory: LangiumDocumentFactory;
+    protected readonly javaInterop: JavaInteropService;
 
-    constructor(services: LangiumServices) {
+    constructor(services: BBjServices) {
         super(services);
         this.documentFactory = services.shared.workspace.LangiumDocumentFactory;
+        this.javaInterop = services.java.JavaInteropService;
+    }
+
+    protected override async completionForCrossReference(context: CompletionContext, next: NextFeature<GrammarAST.CrossReference>, acceptor: CompletionAcceptor): Promise<void> {
+        // Record the simple names the default (in-scope) completion already offers, so an
+        // auto-import suggestion is not duplicated for a class that is already imported.
+        const offered = new Set<string>();
+        const recording: CompletionAcceptor = (ctx, item) => { if (item.label) { offered.add(item.label); } acceptor(ctx, item); };
+        await super.completionForCrossReference(context, next, recording);
+
+        if (!this.dotTriggerActive && this.isClassCrossReference(next.feature) && this.isTypeReferencePosition(context)) {
+            await this.completeAutoImportClasses(context, offered, acceptor);
+        }
+    }
+
+    /** True if the cross-reference being completed targets a `Class` (BBj or Java type reference). */
+    protected isClassCrossReference(feature: GrammarAST.AbstractElement): boolean {
+        if (!GrammarAST.isCrossReference(feature)) {
+            return false;
+        }
+        return (feature.type.ref?.name ?? feature.type.$refText) === 'Class';
+    }
+
+    /**
+     * True only where inserting a class name makes sense as a *type*: a declared/cast/extends type
+     * reference node, or a constructor class right after `new`. A bare class name is also grammatically
+     * a valid expression, so without this guard auto-import would fire in argument/assignment
+     * positions (e.g. `new TreeMap(Tree|)`) and nest a class where a value is expected.
+     */
+    protected isTypeReferencePosition(context: CompletionContext): boolean {
+        const node = context.node;
+        if (node && (isSimpleTypeRef(node) || isBBjTypeRef(node) || isJavaTypeRef(node))) {
+            return true;
+        }
+        // A not-yet-completed `new X` does not parse as a ConstructorCall, so detect it from the
+        // preceding `new` keyword (BBj is case-insensitive).
+        const textBefore = context.textDocument.getText().substring(0, context.tokenOffset);
+        return /\bnew\s+$/i.test(textBefore);
+    }
+
+    /**
+     * Offers Java classes whose simple name matches the typed prefix but which are not yet
+     * imported, inserting the class name and the corresponding `use` statement in one step
+     * (issue #447). Coverage depends on the class index (complete when the augmented bbj-ls is
+     * present, otherwise classes already resolved this session).
+     */
+    protected async completeAutoImportClasses(context: CompletionContext, alreadyOffered: Set<string>, acceptor: CompletionAcceptor): Promise<void> {
+        const prefix = context.textDocument.getText().substring(context.tokenOffset, context.offset);
+        if (prefix.length < BBjCompletionProvider.AUTO_IMPORT_MIN_PREFIX) {
+            return;
+        }
+        const fqns = await this.javaInterop.findClassCandidatesByPrefix(prefix);
+        if (fqns.length === 0) {
+            return;
+        }
+        const insertPosition = useInsertPosition(context.document);
+        for (const fqn of fqns) {
+            const simple = fqn.substring(fqn.lastIndexOf('.') + 1);
+            if (alreadyOffered.has(simple)) {
+                continue; // already reachable in scope — no `use` needed
+            }
+            alreadyOffered.add(simple);
+            acceptor(context, {
+                label: simple,
+                kind: CompletionItemKind.Class,
+                detail: `Auto-import ${fqn}`,
+                labelDetails: { description: fqn },
+                sortText: `zzzz${simple}`, // rank below in-scope suggestions
+                additionalTextEdits: [TextEdit.insert(insertPosition, `use ${fqn}\n`)],
+                documentation: { kind: 'markdown', value: `Adds \`use ${fqn}\`` }
+            });
+        }
     }
 
     protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
@@ -75,7 +154,30 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         if (constructorCompletion) {
             return constructorCompletion;
         }
-        return super.getCompletion(document, params, cancelToken);
+        const completion = await super.getCompletion(document, params, cancelToken);
+        return completion ? this.dedupeAutoImportItems(completion) : completion;
+    }
+
+    /**
+     * Drops auto-import suggestions that duplicate a class already offered in scope (which needs no
+     * `use`), or that another grammar feature already produced. Cross-reference completion runs
+     * per grammar feature, so this cross-feature pass is where such duplicates are removed.
+     */
+    protected dedupeAutoImportItems(list: CompletionList): CompletionList {
+        const isAutoImport = (item: CompletionItem) => item.detail?.startsWith('Auto-import ') ?? false;
+        const inScopeLabels = new Set(list.items.filter(item => !isAutoImport(item)).map(item => item.label));
+        const seenAutoImport = new Set<string>();
+        list.items = list.items.filter(item => {
+            if (!isAutoImport(item)) {
+                return true;
+            }
+            if (inScopeLabels.has(item.label) || seenAutoImport.has(item.label)) {
+                return false;
+            }
+            seenAutoImport.add(item.label);
+            return true;
+        });
+        return list;
     }
 
     protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
@@ -199,9 +301,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     label: `${className}(${paramList})`,
                     kind: CompletionItemKind.Constructor,
                     detail: `new ${className}(${paramList})`,
-                    insertText: ctor.parameters.map((p, i) =>
+                    // Use a textEdit (not insertText): the cursor is between the just-typed `()`, so
+                    // a no-arg constructor must insert nothing. An empty insertText is falsy and the
+                    // client would fall back to the label `Type()`, nesting it as `new Type(Type())`.
+                    textEdit: TextEdit.insert(params.position, ctor.parameters.map((p, i) =>
                         '${' + (i + 1) + ':' + (p.realName ?? p.name) + '}'
-                    ).join(', '),
+                    ).join(', ')),
                     insertTextFormat: 2, // SnippetString
                     tags: ctor.deprecated ? [CompletionItemTag.Deprecated] : undefined,
                 });
@@ -218,9 +323,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     label: `${klass.name}(${paramList})`,
                     kind: CompletionItemKind.Constructor,
                     detail: `new ${klass.name}(${paramList})`,
-                    insertText: method.params.map((p, i) =>
+                    // textEdit (not insertText) so a no-arg `create` inserts nothing rather than
+                    // falling back to the label — see the Java-class branch above.
+                    textEdit: TextEdit.insert(params.position, method.params.map((p, i) =>
                         '${' + (i + 1) + ':' + p.name + '}'
-                    ).join(', '),
+                    ).join(', ')),
                     insertTextFormat: 2,
                 });
             }

@@ -105,7 +105,11 @@ describe('LSP Feature Verification Tests', async () => {
                     Hash<|>
                 `,
                 index: 0,
-                expectedItems: ['HashMap']
+                // The imported class is proposed; auto-import (#447) may add further unimported
+                // `Hash*` classes with a `use` edit, so assert presence rather than an exact set.
+                assert: (completions) => {
+                    expect(completions.items.map(i => i.label)).toContain('HashMap');
+                }
             });
         });
     });

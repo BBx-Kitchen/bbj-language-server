@@ -5,6 +5,7 @@ import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/ge
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
 import { Classpath, JavaClass, JavaField, JavaMethod } from "../src/language/generated/ast.js";
+import { CancellationToken, MessageConnection } from "vscode-jsonrpc/node.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
 
@@ -66,6 +67,72 @@ class JavaInteropTestService extends JavaInteropService {
         if (!this.langiumDocuments.hasDocument(this.classpathDocument.uri)) {
             this.langiumDocuments.addDocument(this.classpathDocument);
         }
+    }
+
+    // The fake service must never reach the real Java interop socket (:5008). By default it
+    // behaves like an OLD server with no getAllClassNames endpoint, so ensureCompleteClassIndex
+    // reports "unavailable" and callers exercise the fallback path. Tests can opt into the
+    // augmented-server behaviour with seedCompleteClassIndex().
+    public override async ensureCompleteClassIndex(): Promise<boolean> {
+        return this.hasCompleteClassIndex();
+    }
+
+    /** Test seam: simulate an augmented bbj-ls by seeding the complete class index. */
+    public seedCompleteClassIndex(fqns: string[]): void {
+        this.buildCompleteClassIndex(fqns);
+    }
+
+    /** Test seam: revert to the default old-server behaviour (no complete index). */
+    public resetCompleteClassIndex(): void {
+        this.clearCompleteClassIndex();
+    }
+
+    // Avoid the base class's on-demand package probe (which would resolve uncached FQNs and
+    // reach the interop socket). With a seeded index, defer to the base (index-only) path;
+    // otherwise resolve candidates from the in-memory index alone.
+    public override async resolveClassCandidatesBySimpleName(simpleName: string, token?: CancellationToken): Promise<string[]> {
+        if (this.hasCompleteClassIndex()) {
+            return super.resolveClassCandidatesBySimpleName(simpleName, token);
+        }
+        return this.findClassCandidatesBySimpleName(simpleName);
+    }
+
+    // --- Hermetic: the test double must never open a real socket to the interop service. ---
+    // On CI there is no service on :5008, so real connection attempts reject asynchronously and
+    // log via console.*. A late log arriving while a vitest worker closes its RPC channel throws
+    // "EnvironmentTeardownError: Closing rpc while onUserConsoleLog was pending" and fails the whole
+    // run nondeterministically (green on rerun). The double preloads the classes it needs, so every
+    // network path below is a silent no-op instead.
+
+    protected override connect(): Promise<MessageConnection> {
+        return Promise.reject(new Error('Java interop is disabled in the test double'));
+    }
+
+    public override async loadClasspath(): Promise<boolean> {
+        return false;
+    }
+
+    public override async loadImplicitImports(): Promise<boolean> {
+        return false;
+    }
+
+    public override async resolveClassByName(className: string): Promise<JavaClass> {
+        // A preloaded class, or a silent stub for anything else — never a socket, never a log.
+        return this.getResolvedClass(className) ?? this.stubClass(className);
+    }
+
+    private stubClass(className: string): JavaClass {
+        const dot = className.lastIndexOf('.');
+        return {
+            $type: JavaClass.$type,
+            name: className,
+            packageName: dot >= 0 ? className.substring(0, dot) : '',
+            $container: this.classpath,
+            $containerProperty: 'classes',
+            classes: [], fields: [], methods: [], constructors: [],
+            deprecated: false,
+            error: 'not resolved (test double)'
+        } as unknown as JavaClass;
     }
 }
 
