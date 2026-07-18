@@ -266,6 +266,43 @@ The BBj properties file is located at:
 
 Access it using the **BBj: Show BBj.properties** command.
 
+### project.properties
+
+`project.properties` is an optional per-project file that lets you override the
+classpath and PREFIX directories for a single workspace, without touching your
+global BBj configuration or VS Code settings.
+
+**Location:** the workspace root (the top-level folder you opened in VS Code). If
+the file is not present, the extension falls back to the `bbj.classpath` setting
+and the PREFIX defined in `config.bbx`.
+
+**Format:** a standard Java properties file (`key=value`, one entry per line).
+Only two keys are recognized; any other lines are ignored:
+
+| Key | Description |
+|-----|-------------|
+| `classpath` | A delimiter-separated list of JAR files and/or directories used for Java class resolution. Entries are separated by `:` on Linux/macOS and `;` on Windows. A leading `~` expands to your home directory. When set, this **takes precedence over** the `bbj.classpath` setting. |
+| `PREFIX` | A space-separated list of double-quoted directory paths that are treated as external library locations (the same meaning as the `PREFIX` line in `config.bbx`). A leading `~` in each path expands to your home directory. When set, this **overrides** the PREFIX read from `config.bbx`. |
+
+**Example `project.properties`:**
+
+```properties
+classpath=~/BBJ/lib/*
+PREFIX="~/BBJ/utils/" "~/BBJ/plugins/"
+```
+
+On Windows, use `;` to separate multiple classpath entries:
+
+```properties
+classpath=C:\BBJ\lib\myapp.jar;C:\BBJ\lib\vendor.jar
+```
+
+:::note
+Changes to `project.properties` are picked up when the workspace is
+initialized. Reload the window (**Developer: Reload Window**) after editing it
+so the language server re-reads the classpath and PREFIX values.
+:::
+
 ## Enterprise Manager Authentication
 
 BUI and DWC run commands require authentication with Enterprise Manager.

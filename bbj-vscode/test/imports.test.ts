@@ -5,6 +5,7 @@ import { createBBjServices } from '../src/language/bbj-module';
 import { EmptyFileSystem, LangiumDocument, URI } from 'langium';
 
 import { isBbjDocument } from '../src/language/bbj-scope-local';
+import { shouldRunBBjTests } from './test-helper.js';
 
 function expectNoParserLexerErrors(document: LangiumDocument) {
     expect(document.parseResult.lexerErrors.join('\n')).toBe('')
@@ -15,7 +16,10 @@ function expectNoValidationErrors(document: LangiumDocument) {
     expect(document.diagnostics?.map(d => d.message).join('\n')).toBe('')
 }
 
-describe('Import tests', () => {
+describe('Import tests', async () => {
+    // The "USE ... java.util.List" case below needs Java classpath resolution from the
+    // BBj interop side, so it only runs when BBj tests are explicitly enabled/reachable.
+    const runBBjTests = await shouldRunBBjTests();
     const services = createBBjServices(EmptyFileSystem);
     let parse: ReturnType<typeof parseHelper>;
 
@@ -48,6 +52,22 @@ describe('Import tests', () => {
             let num1 = ImportMe.field
             let num2 = ImportMe.zero()
             let num3 = ImportMe.identity(num2)
+        `, { validation: true });
+        expectNoParserLexerErrors(document);
+        expectNoValidationErrors(document);
+    });
+
+    test('Static method resolves on an instance variable after USE (#374)', async () => {
+        // Regression for #374: a static method called via an instance (`imp!.zero()`),
+        // not just via the class name (`ImportMe.zero()`), must resolve after `use`.
+        // Previously this produced "Could not resolve reference to Class named 'ImportMe'"
+        // on the constructor and an unresolved member on the instance call.
+        const document = await parse(`
+            use ::importMe.bbj::ImportMe
+            imp! = new ImportMe()
+            num = imp!.zero()
+            num2 = imp!.identity(num)
+            val = imp!.field
         `, { validation: true });
         expectNoParserLexerErrors(document);
         expectNoValidationErrors(document);
@@ -162,7 +182,7 @@ describe('Import tests', () => {
         expectNoValidationErrors(document);
     });
 
-    test('USE statements are cached after scope computation', async () => {
+    test.runIf(runBBjTests)('USE statements are cached after scope computation', async () => {
         const document = await parse(`
             use ::importMe.bbj::ImportMe
             use java.util.List

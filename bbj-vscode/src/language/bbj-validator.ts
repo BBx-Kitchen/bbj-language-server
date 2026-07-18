@@ -8,7 +8,7 @@ import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, IndexMana
 import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
-import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
+import { BBjAstType, BbjClass, BeginStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isSwitchStatement, isSymbolRef } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
 import { BBjPathPattern } from './bbj-scope.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
@@ -50,6 +50,7 @@ export function registerValidationChecks(services: BBjServices) {
 
         BeginStatement: validator.checkExceptClause,
         VariableDecl: validator.checkDeclareNotInClassBody,
+        SwitchCase: validator.checkSwitchCaseInSwitch,
     };
     registry.register(checks, validator);
     registerClassChecks(registry);
@@ -73,6 +74,64 @@ export class BBjValidator {
                 node: except
             });
         }
+    }
+
+    /**
+     * `CASE`/`CASE DEFAULT` is only valid inside a `SWITCH`...`SWEND` block. SWITCH, CASE and
+     * SWEND are modeled as flat sibling statements, so a stray CASE parses without error. Scan the
+     * preceding siblings, matching each SWEND to an inner SWITCH; if an unmatched open SWITCH is
+     * found, the CASE is enclosed and valid. See issue #206.
+     */
+    checkSwitchCaseInSwitch(node: SwitchCase, accept: ValidationAcceptor): void {
+        // LabelDecl is a subtype of SwitchCase (the grammar rule starts with an optional label),
+        // so this check also fires on plain labels — only real CASE nodes are relevant here.
+        if (node.$type !== 'SwitchCase') return;
+
+        // SWITCH, CASE and SWEND are flat sibling statements within a block (Program / method /
+        // DEF function body). A one-line `SWITCH x; CASE 1; ... SWEND` nests them one level deep
+        // inside a CompoundStatement, so resolve the enclosing block and flatten compounds to get
+        // the switch markers in document order.
+        let block: AstNode = node.$container;
+        let blockProperty = node.$containerProperty;
+        if (isCompoundStatement(block)) {
+            blockProperty = block.$containerProperty;
+            block = block.$container;
+        }
+        const statements = blockProperty ? (block as unknown as Record<string, unknown>)[blockProperty] : undefined;
+        if (!Array.isArray(statements)) {
+            return;
+        }
+        const flat: AstNode[] = [];
+        for (const statement of statements) {
+            if (isCompoundStatement(statement)) {
+                flat.push(...statement.statements);
+            } else {
+                flat.push(statement);
+            }
+        }
+        const index = flat.indexOf(node);
+        if (index < 0) {
+            return;
+        }
+        let pendingSwends = 0;
+        for (let i = index - 1; i >= 0; i--) {
+            const sibling = flat[i];
+            if (isSwitchStatement(sibling)) {
+                if (sibling.end) {
+                    // A SWEND closes an inner SWITCH nested below this CASE.
+                    pendingSwends++;
+                } else if (pendingSwends > 0) {
+                    // This SWITCH opens the inner block closed above.
+                    pendingSwends--;
+                } else {
+                    // An unmatched open SWITCH encloses this CASE: it is valid.
+                    return;
+                }
+            }
+        }
+        accept('error', `'${node.default ? 'CASE DEFAULT' : 'CASE'}' is only allowed inside a SWITCH block.`, {
+            node
+        });
     }
 
     checkDeclareNotInClassBody(node: VariableDecl, accept: ValidationAcceptor): void {
@@ -274,11 +333,14 @@ export class BBjValidator {
                 const cleanPath = match[1];
                 const currentDocUri = AstUtils.getDocument(use).uri;
                 const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
+                const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
                 const adjustedFileUris = [
                     UriUtils.resolvePath(UriUtils.dirname(currentDocUri), cleanPath)
-                ].concat(
-                    prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
-                );
+                ]
+                    // Also resolve relative to each workspace/project root (#378), matching
+                    // the scope provider so the diagnostic agrees with actual resolution.
+                    .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, cleanPath)))
+                    .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath))));
                 // Check if a document exists at any candidate URI. We check document
                 // existence rather than BbjClass index entries because external files
                 // may have parser errors that prevent BbjClass nodes from being created,

@@ -1,7 +1,7 @@
 import { AstNode } from "langium";
 import { BBjServices } from "./bbj-module.js";
 import { getClass } from "./bbj-nodedescription-provider.js";
-import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isCastExpression, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isMemberCall, isMethodDecl, isSimpleTypeRef, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
+import { Assignment, Class, Expression, isArrayDecl, isAssignment, isBBjTypeRef, isCastExpression, isClass, isConstructorCall, isFieldDecl, isJavaField, isJavaMethod, isJavaPackage, isMemberCall, isMethodCall, isMethodDecl, isSimpleTypeRef, isStringLiteral, isSymbolRef, isVariableDecl, JavaPackage } from "./generated/ast.js";
 import { JavaInteropService } from "./java-interop.js";
 
 export interface TypeInferer {
@@ -90,6 +90,11 @@ export class BBjTypeInferer implements TypeInferer {
             return undefined;
         } else if (isStringLiteral(expression)) {
             return this.javaInterop.getResolvedClass('java.lang.String')
+        } else if (isMethodCall(expression)) {
+            // A call expression (e.g. BBjAPI(), obj.foo()) has the type of the
+            // thing being called: for BBjAPI() the method symbol resolves to the
+            // BBjAPI class, for obj.foo() the receiver member yields its return type.
+            return this.getType(expression.method);
         } else if(isBBjTypeRef(expression)) {
             return expression.klass.ref;
         }

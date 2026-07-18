@@ -19,7 +19,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20  # Updated from 18 to 20
+          node-version: 22  # langium 4.3 toolchain requires Node 22+
 
       - name: Install CLI Tools
         run: |
@@ -93,16 +93,17 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Build IntelliJ plugin
+      - name: Publish IntelliJ preview to JetBrains Marketplace
         working-directory: bbj-intellij
-        run: ./gradlew buildPlugin -Pversion=${{ needs.publish-preview.outputs.version }}
-
-      - name: Extract plugin for upload
-        run: unzip -o bbj-intellij/build/distributions/bbj-intellij-*.zip -d bbj-intellij/build/distributions/extracted
+        run: >-
+          ./gradlew publishPlugin
+          -Pversion=${{ needs.publish-preview.outputs.version }}
+          -PintellijChannel=preview
+          -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
         with:
           name: bbj-intellij-${{ needs.publish-preview.outputs.version }}
-          path: bbj-intellij/build/distributions/extracted/*
+          path: bbj-intellij/build/distributions/bbj-intellij-*.zip
           retention-days: 7

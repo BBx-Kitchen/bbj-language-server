@@ -231,8 +231,7 @@ public abstract class BbjRunActionBase extends AnAction {
     @Nullable
     protected String getWebBbjPath() {
         try {
-            com.intellij.ide.plugins.PluginManagerCore pluginManagerCore = com.intellij.ide.plugins.PluginManagerCore.INSTANCE;
-            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = pluginManagerCore.getPlugin(
+            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManager.getInstance().findEnabledPlugin(
                 com.intellij.openapi.extensions.PluginId.getId("com.basis.bbj")
             );
             if (plugin == null) {
@@ -261,7 +260,7 @@ public abstract class BbjRunActionBase extends AnAction {
             if (pluginId == null) {
                 return null;
             }
-            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManagerCore.getPlugin(pluginId);
+            com.intellij.ide.plugins.IdeaPluginDescriptor plugin = com.intellij.ide.plugins.PluginManager.getInstance().findEnabledPlugin(pluginId);
             if (plugin == null) {
                 return null;
             }
@@ -340,15 +339,27 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Returns the config.bbx path from settings.
+     * Returns the config.bbx path from settings, falling back to the
+     * installation default ({bbjHome}/cfg/config.bbx) when not configured.
      *
-     * @return config path string, or empty string if not configured
+     * The web.bbj registration stub writes this into the EM app's config file,
+     * so it must be a real path: leaving it empty makes BBj report the "--"
+     * sentinel, which registers an unusable config (issue #382).
+     *
+     * @return config path string, or empty string if neither is available
      */
     @NotNull
     protected String getConfigPath() {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String configPath = state.configPath;
-        return (configPath != null) ? configPath : "";
+        if (configPath != null && !configPath.isEmpty()) {
+            return configPath;
+        }
+        String bbjHome = state.bbjHomePath;
+        if (bbjHome != null && !bbjHome.isEmpty()) {
+            return Paths.get(bbjHome, "cfg", "config.bbx").toString();
+        }
+        return "";
     }
 
     /**

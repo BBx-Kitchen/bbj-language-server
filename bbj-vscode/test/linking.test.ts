@@ -5,14 +5,14 @@ import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
-import { isPortOpen } from './test-helper.js';
+import { shouldRunBBjTests } from './test-helper.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
 
 const services = createBBjTestServices(EmptyFileSystem);
 const validate = (content: string) => parseHelper<Model>(services.BBj)(content, { validation: true });
 
 describe('Linking Tests', async () => {
-    let isInteropRunning: boolean = await isPortOpen(5008);
+    let isInteropRunning: boolean = await shouldRunBBjTests();
 
     beforeAll(async () => {
         await initializeWorkspace(services.shared);
@@ -269,6 +269,29 @@ describe('Linking Tests', async () => {
         expectNoErrors(document)
     })
 
+    test('Instance access (#field!) to super class field on assignment LHS - issue #240', async () => {
+        // The leading `#` of an assignment LHS is consumed by the Assignment rule,
+        // not the inner SymbolRef, so instance access must still resolve inherited fields.
+        const document = await validate(`
+            class public SuperParent
+            classend
+
+            class public Parent extends SuperParent
+                field public Parent someField!
+            classend
+
+            class public Child extends Parent
+                method public void someMethod()
+                    #someField! = new Parent()  REM <== inherited field, instance access on LHS
+                methodend
+            classend
+
+            c! = new Child()
+            c!.someMethod()
+        `)
+        expectNoErrors(document)
+    })
+
     describe.runIf(isInteropRunning)("Interop related tests", () => {
         test('All BBj classes extends Object', async () => {
             const document = await validate(`
@@ -366,6 +389,35 @@ describe('Linking Tests', async () => {
                 let list! = new java.util.LinkedList()
             `)
             expectNoErrors(document)
+        });
+
+        test('.class pseudo-member resolves on a Java object - issue #373', async () => {
+            const document = await validate(`
+                hm! = new java.util.HashMap()
+                PRINT hm!.class
+                PRINT hm!.getClass()
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Static field resolves on a Java class reference - issue #440', async () => {
+            // Event constants like `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD` are `public static final int`
+            // fields; accessing them via the class name must resolve without a linking error.
+            const document = await validate(`
+                use java.lang.String
+                x! = String.CASE_INSENSITIVE_ORDER
+            `)
+            expectNoErrors(document)
+        });
+
+        test('Instance field does NOT resolve on a Java class reference - issue #440', async () => {
+            const document = await validate(`
+                use java.lang.String
+                x! = String.someInstanceField
+            `)
+            const linkingErr = findLinkingErrors(document)
+            expect(linkingErr.length).toBe(1)
+            expect(linkingErr[0].message).toContain("someInstanceField")
         });
 
         test('Package scope as most outer scope', async () => {

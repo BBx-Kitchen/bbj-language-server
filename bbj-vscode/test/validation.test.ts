@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { expectError, expectNoIssues, validationHelper } from 'langium/test';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isBinaryExpression, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
+import { Program, isBinaryExpression, isDefFunction, isEraseStatement, isInitFileStatement, isKeyedFileStatement, isKeywordStatement, isSymbolicLabelRef, isMemberCall, BbjClass, FieldDecl, MethodDecl, isLabelDecl } from '../src/language/generated/ast.js';
 import { findByIndex, findFirst, initializeWorkspace } from './test-helper.js';
 
 describe('BBj validation', async () => {
@@ -214,13 +214,11 @@ describe('BBj validation', async () => {
         });
     });
 
-    test.skip('Single-line DEF FN inside class method has no line-break errors', async () => {
-        // SKIP: This test reveals a parser bug where single-line DEF FN inside methods
-        // is not being parsed as DefFunction by the validate helper, even though it works
-        // in the parser.test.ts (which uses parseHelper with validation:false).
-        // The validation fix (isDefFunction in isStandaloneStatement) IS correct and would
-        // prevent line-break errors IF the parser correctly identified the DefFunction node.
-        // Multi-line DEF FN works correctly, proving the validation fix is effective.
+    test('Single-line DEF FN inside class method has no line-break errors (#226)', async () => {
+        // Regression for #226: single-line `DEF FN(...)=expr` inside a method must be parsed
+        // as a DefFunction. Because the DEF keyword is also in the ID category, the parser used
+        // to prefer the `Statement` alternative and split the line into `def` + `FNSquare(X)=X*X`,
+        // producing spurious line-break errors. The method-body rule now tries DefFunction first.
         const validationResult = await validate(`
             class public MathHelper
                 method public doMath()
@@ -230,8 +228,25 @@ describe('BBj validation', async () => {
                 methodend
             classend
         `);
+        // The single-line DEF FN must actually be parsed as a DefFunction node...
+        expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
+        // ...and produce no line-break errors.
         const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
-        expect(lineBreakErrors.length).toBe(0);
+        expect(lineBreakErrors.map(d => d.message)).toEqual([]);
+    });
+
+    test('Single-line DEF FN with nested call inside class method (#226)', async () => {
+        // The exact reproducer from issue #226.
+        const validationResult = await validate(`
+            class public BBDialog
+                method public void get_active_func(BBjNamespaceEvent pEvent!)
+                    def fnstr_pos(tmp0$,tmp1$,tmp0)=int((pos(tmp0$=tmp1$,tmp0)+tmp0-1)/tmp0)
+                methodend
+            classend
+        `);
+        expect(findFirst(validationResult.document, isDefFunction, true)).toBeDefined();
+        const lineBreakErrors = validationResult.diagnostics.filter(d => d.message.includes('line break'));
+        expect(lineBreakErrors.map(d => d.message)).toEqual([]);
     });
 
     test('Multi-line DEF FN inside class method still works', async () => {
@@ -399,6 +414,75 @@ describe('BBj validation', async () => {
         expectNoIssues(validationResult);
     });
 
+    test('ELSE after semicolon on single line does not require a new line', async () => {
+        // Issue #388: `if (cond) stmt; else if (cond) stmt` (no THEN keyword, chained via `;`)
+        // wrongly reported "This statement needs to start in a new line" for `else` and the
+        // following `if`, because previousStatement() could not traverse a CompoundStatement.
+        // The `else` lives in the `red = 0; else` CompoundStatement; resolving its line-break
+        // mask must walk back through the compound's first element (`red = 0`) and out to the
+        // leading `if (red < 0)` on the same line.
+        const validationResult = await validate(`
+        red = -8
+        if (red < 0) red = 0; else if (red > 255) red = 255
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('ELSE as a later element of a multi-statement compound walks back to the leading IF', async () => {
+        // Issue #388, deeper case: here `else` is the 3rd element of the compound
+        // `red = 0; red = 1; else`. Resolving it exercises previousStatement() twice through
+        // non-first elements (index > 0 branch) AND once through the first element (`red = 0`,
+        // index === 0 branch that recurses out of the compound) before reaching the governing
+        // `if (red < 0)`. All of them must be reachable or the false "new line" errors return.
+        const validationResult = await validate(`
+        red = -8
+        if (red < 0) red = 0; red = 1; else if (red > 255) red = 255
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('Compound statement at program start does not crash the backward walk', async () => {
+        // Guards the termination case: a compound (`red = 0; red = 1`) that is itself the first
+        // statement in the program. Walking back from its first element must resolve to
+        // `undefined` (nothing precedes it) rather than looping or throwing.
+        const validationResult = await validate(`
+        red = 0; red = 1
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('Single-line IF ... FI followed by `;`-chained statement is accepted', async () => {
+        // `fi` becomes the last element of a compound wrapping the single-line IF, and the
+        // trailing `print x` is chained after it. The governing `if x then` sits on the same
+        // line, so no line-break error should be raised for `fi`.
+        const validationResult = await validate(`
+        x = 0
+        if x then x = 1 fi; print x
+        `);
+        expectNoIssues(validationResult);
+    });
+
+    test('ELSE with no governing IF on the line is still flagged', async () => {
+        // Negative guard: the fix must not over-suppress. With no `if` preceding `else` on the
+        // same line, the backward walk terminates without finding one, so `else` (and the
+        // trailing statement) must still get "new line" / "line break" diagnostics.
+        const validationResult = await validate(`
+        red = 0; else red = 1
+        `);
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        expect(lineBreakErrors.length).toBeGreaterThan(0);
+    });
+
+    test('ENDIF with no governing IF on the line is still flagged', async () => {
+        // Negative guard, endif variant: `fi` chained after `red = 0` with no matching `if`
+        // must still be reported as needing to start on a new line.
+        const validationResult = await validate(`
+        red = 0; fi
+        `);
+        const lineBreakErrors = validationResult.diagnostics.filter(d => /new line|line break/.test(d.message));
+        expect(lineBreakErrors.length).toBeGreaterThan(0);
+    });
+
     test('IF as last child of a compound statement', async () => {
         const validationResult = await validate(`
         debug = 1
@@ -498,6 +582,84 @@ describe('BBj validation', async () => {
         BEGIN EXCEPT 0
         `, { validation: true });
         expectError(result, "'0' must be symbol reference or array access with ALL", {});
+    });
+
+    // Issue #206: CASE is only allowed inside a SWITCH ... SWEND block.
+    test('CASE inside SWITCH is valid (multi-line)', async () => {
+        const result = await validate(`
+        LVL = 3
+        SWITCH LVL
+            CASE 0
+            CASE 1; PRINT "Easy"; BREAK
+            CASE DEFAULT; PRINT "Hard"; BREAK
+        SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('CASE inside SWITCH is valid (single line)', async () => {
+        const result = await validate(`
+        LET t = 123
+        SWITCH t; CASE 1; PRINT "1"; BREAK; CASE DEFAULT; PRINT "default"; SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('CASE outside SWITCH is flagged', async () => {
+        const result = await validate(`
+        CASE 1
+        `, { validation: true });
+        expectError(result, "'CASE' is only allowed inside a SWITCH block.", {});
+    });
+
+    test('CASE after SWEND (switch already closed) is flagged', async () => {
+        const result = await validate(`
+        SWITCH x
+            CASE 1; BREAK
+        SWEND
+        CASE 2
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(1);
+        expect(caseErrors[0].message).toBe("'CASE' is only allowed inside a SWITCH block.");
+    });
+
+    test('CASE DEFAULT outside SWITCH is flagged', async () => {
+        const result = await validate(`
+        CASE DEFAULT
+        `, { validation: true });
+        expectError(result, "'CASE DEFAULT' is only allowed inside a SWITCH block.", {});
+    });
+
+    test('CASE inside SWITCH within a method body is valid', async () => {
+        const result = await validate(`
+        class public Foo
+            method public void bar(BBjNumber n!)
+                SWITCH n!
+                    CASE 1; BREAK
+                    CASE DEFAULT; BREAK
+                SWEND
+            methodend
+        classend
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
+    });
+
+    test('Nested SWITCH blocks resolve CASE correctly', async () => {
+        const result = await validate(`
+        SWITCH a
+            CASE 1
+                SWITCH b
+                    CASE 2; BREAK
+                SWEND
+                CASE 3; BREAK
+        SWEND
+        `, { validation: true });
+        const caseErrors = result.diagnostics.filter(d => d.message.includes('only allowed inside a SWITCH'));
+        expect(caseErrors).toHaveLength(0);
     });
 });
 

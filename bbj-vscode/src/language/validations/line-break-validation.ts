@@ -255,6 +255,11 @@ function getSiblings(container: AstNode | undefined): AstNode[] {
         return container.statements;
     } else if (isMethodDecl(container) || isDefFunction(container)) {
         return container.body;
+    } else if (isCompoundStatement(container)) {
+        // Statements chained by `;` on one line (e.g. `red = 0; else ...`) live in a
+        // CompoundStatement. Without this, previousStatement() can't walk in/out of the
+        // compound and single-line IF/ELSE constructs get spurious "new line" errors (#388).
+        return container.statements;
     }
     return [];
 }

@@ -6,19 +6,24 @@
 
 import { startLanguageServer } from 'langium/lsp';
 import { NodeFileSystem } from 'langium/node';
-import { createConnection, ProposedFeatures } from 'vscode-languageserver/node.js';
+import { createConnection, ProposedFeatures } from 'vscode-languageserver/node';
 import { DocumentState } from 'langium';
 import { createBBjServices } from './bbj-module.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
 import { initNotifications } from './bbj-notifications.js';
+import { registerComposerRequests } from './composer-commands.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
 
 // Wire the notification module with the LSP connection (before any notifications can fire)
 initNotifications(connection);
+
+// Expose the visual-composer domain logic (#426/#430) as bbj/composer/* requests so both the
+// VS Code and IntelliJ clients drive one implementation (#433).
+registerComposerRequests(connection);
 
 // Inject the shared services and language-specific services
 const { shared, BBj } = createBBjServices({ connection, ...NodeFileSystem });

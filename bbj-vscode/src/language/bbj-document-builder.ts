@@ -316,9 +316,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     // Could not load from any PREFIX directory; will be reported as a diagnostic
                 }
                 if (docFileData) {
-                    // Skip binary/tokenized BBj files that can't be parsed
+                    // Skip binary/tokenized BBj files that can't be parsed.
+                    // Routine/expected — log at debug so it doesn't surface as an
+                    // error in the output channel for workspaces with tokenized files.
                     if (docFileData.text.startsWith('<<bbj>>')) {
-                        logger.warn(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
+                        logger.debug(`Skipping binary/tokenized file: ${docFileData.uri.fsPath}`);
                         continue;
                     }
                     const document = documentFactory.fromString(docFileData.text, docFileData.uri);
@@ -367,14 +369,17 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
             const originalLength = document.diagnostics.length;
             document.diagnostics = document.diagnostics.filter(diag => {
+                // LSP 3.18 widened Diagnostic.message to `string | MarkupContent`; our
+                // diagnostics use plain string messages, so read the string form.
+                const message = typeof diag.message === 'string' ? diag.message : diag.message.value;
                 // Only re-check our specific USE file-path diagnostics
-                if (!diag.message.startsWith(USE_FILE_NOT_RESOLVED_PREFIX)) {
+                if (!message.startsWith(USE_FILE_NOT_RESOLVED_PREFIX)) {
                     return true; // keep all other diagnostics
                 }
 
                 // Extract the clean path from the diagnostic message
                 // Message format: "File 'some/path.bbj' could not be resolved..."
-                const pathMatch = diag.message.match(/^File '([^']+)'/);
+                const pathMatch = message.match(/^File '([^']+)'/);
                 if (!pathMatch) {
                     return true; // keep if we can't parse
                 }

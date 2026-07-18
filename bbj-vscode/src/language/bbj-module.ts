@@ -6,8 +6,10 @@
 
 import {
     DeepPartial,
+    LangiumCompletionParser,
     LangiumParser,
     Module,
+    createParser,
     inject,
     prepareLangiumParser
 } from 'langium';
@@ -101,6 +103,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
     },
     parser: {
         LangiumParser: (services) => createBBjParser(services),
+        CompletionParser: (services) => createBBjCompletionParser(services),
         ValueConverter: () => new BBjValueConverter(),
         TokenBuilder: () => new BBjTokenBuilder(),
         Lexer: services => new BbjLexer(services)
@@ -112,10 +115,14 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
 
 let ambiguitiesReported = false;
 
-function createBBjParser(services: LangiumServices): LangiumParser {
-    const parser = prepareLangiumParser(services);
-    // Customize ambiguity logging
-    const lookaheadStrategy = (parser as any).wrapper.lookaheadStrategy
+/**
+ * Reroute Chevrotain's ambiguity logging (from chevrotain-allstar's LLStar
+ * lookahead strategy) so it doesn't spam the LS output channel. The strategy
+ * captures `this.logging` into its per-alternation prediction closures during
+ * `finalize()`, so this MUST run before `finalize()` to take effect at runtime.
+ */
+function overrideAmbiguityLogging(parser: LangiumParser | LangiumCompletionParser): void {
+    const lookaheadStrategy = (parser as any).wrapper?.lookaheadStrategy;
     if (lookaheadStrategy) {
         lookaheadStrategy.logging = (message: string) => {
             if (logger.isDebug()) {
@@ -126,6 +133,27 @@ function createBBjParser(services: LangiumServices): LangiumParser {
             }
         }
     }
+}
+
+function createBBjParser(services: LangiumServices): LangiumParser {
+    const parser = prepareLangiumParser(services);
+    overrideAmbiguityLogging(parser);
+    parser.finalize();
+    return parser;
+}
+
+/**
+ * Mirror of Langium's createCompletionParser, but overriding ambiguity logging
+ * before finalize(). Without a custom CompletionParser the default one keeps
+ * chevrotain's console.log logging, leaking "Ambiguous Alternatives Detected"
+ * noise during completion (the main LangiumParser is already handled above).
+ */
+function createBBjCompletionParser(services: LangiumServices): LangiumCompletionParser {
+    const grammar = services.Grammar;
+    const lexer = services.parser.Lexer;
+    const parser = new LangiumCompletionParser(services);
+    createParser(grammar, parser, lexer.definition);
+    overrideAmbiguityLogging(parser);
     parser.finalize();
     return parser;
 }

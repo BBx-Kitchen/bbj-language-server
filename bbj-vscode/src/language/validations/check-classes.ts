@@ -1,7 +1,7 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
 import { getClass, getClassRef } from '../bbj-nodedescription-provider.js';
-import { BBjAstType, BbjClass, isBbjClass, QualifiedClass } from '../generated/ast.js';
+import { BBjAstType, BbjClass, ConstructorCall, Expression, FieldDecl, isBbjClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, MethodDecl, QualifiedClass } from '../generated/ast.js';
 
 export function registerClassChecks(registry: ValidationRegistry) {
     const validator = new ClassValidator();
@@ -48,14 +48,22 @@ export function registerClassChecks(registry: ValidationRegistry) {
                 validator.checkCyclicInheritance(decl, accept);
             }
         },
-        ConstructorCall: (call, accept) => validator.checkClassReference(accept, call.klass, {
-            node: call,
-            property: 'klass'
-        }),
-        MethodDecl: (meth, accept) => validator.checkClassReference(accept, meth.returnType, {
-            node: meth,
-            property: 'returnType'
-        }),
+        ConstructorCall: (call, accept) => {
+            validator.checkClassReference(accept, call.klass, {
+                node: call,
+                property: 'klass'
+            });
+            validator.checkInstantiable(call, accept);
+            validator.checkConstructorArguments(call, accept);
+        },
+        MethodDecl: (meth, accept) => {
+            validator.checkClassReference(accept, meth.returnType, {
+                node: meth,
+                property: 'returnType'
+            });
+            validator.checkMethodReturn(meth, accept);
+        },
+        FieldDecl: (field, accept) => validator.checkFieldInit(field, accept),
         ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type, {
             node: param,
             property: 'type'
@@ -124,6 +132,191 @@ class ClassValidator {
                 }
                 break;
         }
+    }
+
+    // BBj scalar return types whose value kind can be checked against returned literals without
+    // needing type resolution. Names are compared case-insensitively (BBj is case-insensitive).
+    private static readonly STRING_RETURN_TYPES = new Set(['bbjstring']);
+    private static readonly NUMERIC_RETURN_TYPES = new Set(['bbjnumber']);
+
+    /**
+     * Checks on a method's METHODRET statements against its declared return type. Interface methods
+     * (no body, hence no `endTag`) are declared elsewhere and excluded. Covers:
+     *  - void method must not return a value;
+     *  - non-void method with a body must return a value (issue #372);
+     *  - a returned literal whose kind contradicts a BBj scalar return type or a resolvable class.
+     * Java-class and unresolved return types are checked only where it is safe without full
+     * java-interop-backed type inference, to avoid false positives on BBj's loose typing.
+     */
+    public checkMethodReturn(meth: MethodDecl, accept: ValidationAcceptor): void {
+        if (!meth.endTag) {
+            return; // no body (interface method) — nothing to check
+        }
+        const valueReturns = AstUtils.streamAllContents(meth)
+            .filter(isMethodReturnStatement)
+            .filter(ret => ret.return !== undefined)
+            .toArray();
+
+        // A void method must not return a value.
+        if (meth.voidReturn) {
+            for (const ret of valueReturns) {
+                accept('error', `Method '${meth.name}' is declared void and must not return a value.`, {
+                    node: ret,
+                    property: 'return'
+                });
+            }
+            return;
+        }
+
+        if (!meth.returnType) {
+            return; // neither void nor an explicit return type — nothing required
+        }
+
+        // #372: a non-void method with no value-returning METHODRET is an error.
+        if (valueReturns.length === 0) {
+            accept('error', `Method '${meth.name}' declares a return type but has no METHODRET returning a value.`, {
+                node: meth,
+                property: 'name'
+            });
+            return;
+        }
+
+        // Conservative return-type check on returned literals. Array return types are skipped.
+        if (meth.array) {
+            return;
+        }
+        for (const ret of valueReturns) {
+            const mismatch = this.literalTypeMismatch(meth.returnType, ret.return!);
+            if (mismatch) {
+                accept('error', `Method '${meth.name}' declares return type '${mismatch.typeName}' but returns a ${mismatch.valueKind}.`, {
+                    node: ret,
+                    property: 'return'
+                });
+            }
+        }
+    }
+
+    /**
+     * Validates a field's literal initializer against its declared type (#79), e.g.
+     * `field public BBjNumber n! = "text"`. Reuses the same conservative, java-interop-free
+     * literal check as method return types.
+     */
+    public checkFieldInit(field: FieldDecl, accept: ValidationAcceptor): void {
+        if (!field.init || field.array) {
+            return; // no initializer, or an array field — nothing to check here
+        }
+        const mismatch = this.literalTypeMismatch(field.type, field.init);
+        if (mismatch) {
+            accept('error', `Field '${field.name}' is declared '${mismatch.typeName}' but is initialized with a ${mismatch.valueKind}.`, {
+                node: field,
+                property: 'init'
+            });
+        }
+    }
+
+    /**
+     * If `value` is a literal whose kind contradicts the declared scalar/class `type`, returns the
+     * expected type name and the literal kind; otherwise undefined. Only cases that are safe
+     * without java-interop-backed type inference are reported, matching BBj's loose typing:
+     * a BBjNumber assigned a string literal, a BBjString assigned a number literal, or any literal
+     * assigned to a resolvable user-defined BBj class/interface.
+     */
+    private literalTypeMismatch(type: QualifiedClass | undefined, value: Expression): { typeName: string, valueKind: string } | undefined {
+        if (!type) {
+            return undefined;
+        }
+        const returnsString = isStringLiteral(value);
+        const returnsNumber = isNumberLiteral(value);
+        if (!returnsString && !returnsNumber) {
+            return undefined; // non-literal: needs deeper type inference, left untouched
+        }
+        const typeName = this.simpleTypeName(type);
+        if (!typeName) {
+            return undefined;
+        }
+        const lower = typeName.toLowerCase();
+        const expectsNumber = ClassValidator.NUMERIC_RETURN_TYPES.has(lower);
+        const expectsString = ClassValidator.STRING_RETURN_TYPES.has(lower);
+        // A literal is never an instance of a user-defined BBj class/interface, so any literal
+        // assigned to a resolvable BBj class is a mismatch.
+        const declaredBBjClass = !expectsNumber && !expectsString && isBbjClass(getClass(type));
+        if ((expectsNumber && returnsString) || (expectsString && returnsNumber) || declaredBBjClass) {
+            return { typeName, valueKind: returnsString ? 'string' : 'number' };
+        }
+        return undefined;
+    }
+
+    /** Simple (unqualified) name of a declared type, taken from its source text. */
+    private simpleTypeName(type: QualifiedClass): string | undefined {
+        const text = type.$cstNode?.text?.trim();
+        if (!text) {
+            return undefined;
+        }
+        return text.substring(text.lastIndexOf('.') + 1);
+    }
+
+    /**
+     * An interface cannot be instantiated with `new` (#86). Array allocation `new X[n]` is not an
+     * instantiation of `X` (it creates an array whose element type is `X`) and is left alone.
+     */
+    public checkInstantiable(call: ConstructorCall, accept: ValidationAcceptor): void {
+        if (this.isArrayConstruction(call)) {
+            return;
+        }
+        const klass = getClass(call.klass);
+        if (isBbjClass(klass) && klass.interface) {
+            accept('error', `Interface '${klass.name}' cannot be instantiated.`, {
+                node: call,
+                property: 'klass'
+            });
+        }
+    }
+
+    /**
+     * Validates the argument count of a `new` call against the declared constructors of a BBj class
+     * (#87). BBj constructors are methods whose name matches the class name (case-insensitive), and
+     * a class may declare several overloads. Only checked when the class declares at least one
+     * constructor and the class resolves to a BBj class — Java classes (constructors resolved via
+     * java-interop) and array allocations are left alone. Argument *types* are not checked here, to
+     * avoid false positives without java-interop-backed inference.
+     */
+    public checkConstructorArguments(call: ConstructorCall, accept: ValidationAcceptor): void {
+        if (this.isArrayConstruction(call)) {
+            return;
+        }
+        const klass = getClass(call.klass);
+        if (!isBbjClass(klass) || klass.interface) {
+            return;
+        }
+        const constructors = klass.members.filter(
+            (m): m is MethodDecl => isMethodDecl(m) && m.name.toLowerCase() === klass.name.toLowerCase()
+        );
+        if (constructors.length === 0) {
+            return; // no explicit constructor declared — nothing to check against
+        }
+        const argCount = call.args.length;
+        if (!constructors.some(ctor => ctor.params.length === argCount)) {
+            const counts = [...new Set(constructors.map(c => c.params.length))].sort((a, b) => a - b).join(' or ');
+            accept('error', `No constructor of '${klass.name}' takes ${argCount} argument(s) (expected ${counts}).`, {
+                node: call,
+                property: 'klass'
+            });
+        }
+    }
+
+    /**
+     * Distinguishes array allocation `new X[...]` from object instantiation `new X(...)`. The AST
+     * models both with the same `ConstructorCall.args`, so the bracket is recovered from the CST:
+     * the first delimiter after the class name is `[` for an array allocation.
+     */
+    private isArrayConstruction(call: ConstructorCall): boolean {
+        const callNode = call.$cstNode;
+        const klassNode = call.klass.$cstNode;
+        if (!callNode || !klassNode) {
+            return false;
+        }
+        const afterClass = callNode.text.slice(klassNode.end - callNode.offset).trimStart();
+        return afterClass.startsWith('[');
     }
 
     public checkCyclicInheritance(klass: BbjClass, accept: ValidationAcceptor): void {

@@ -27,6 +27,7 @@ import { logger } from './logger.js';
 import {
     BBjAstType,
     BbjClass, BBjTypeRef, Class,
+    isAssignment,
     isBbjClass,
     isBinaryExpression,
     isCallbackStatement,
@@ -80,7 +81,10 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             case 'SimpleTypeRef': {
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'simpleClass') {
-                    return this.resolveClassScopeByName(context, container.simpleClass.$refText);
+                    // Read the reference text from context.reference, not from the container:
+                    // during completion Langium passes a synthetic container whose cross-ref
+                    // property is undefined, so container.simpleClass.$refText would throw.
+                    return this.resolveClassScopeByName(context, context.reference.$refText);
                 }
                 return EMPTY_SCOPE;
             }
@@ -88,7 +92,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 assertType<BBjTypeRef>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'klass') {
-                    return this.resolveClassScopeByName(context, container.klass?.$refText);
+                    return this.resolveClassScopeByName(context, context.reference.$refText);
                 }
                 return EMPTY_SCOPE;
             }
@@ -174,9 +178,13 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     ? this.descriptions.createDescription(javaLangClass, 'class')
                     : undefined;
                 if (isClassRef) {
-                    // Class reference access — static methods only (no fields per user decision)
+                    // Class reference access — static members only. Static fields cover the BBj
+                    // event constants (e.g. `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`, #440), which
+                    // java-interop exposes as inherited `public static final int` fields, matching
+                    // Java semantics for `ClassName.STATIC_FIELD`.
                     const staticMethods = receiverType.methods.filter(m => m.isStatic);
-                    const scope = this.createScopeForNodes(stream(staticMethods));
+                    const staticFields = receiverType.fields.filter(f => f.isStatic);
+                    const scope = this.createScopeForNodes(stream(staticFields).concat(staticMethods));
                     if (classDesc) {
                         return new StreamScopeWithPredicate(stream([classDesc]), scope);
                     }
@@ -211,16 +219,22 @@ export class BbjScopeProvider extends DefaultScopeProvider {
             }
             return EMPTY_SCOPE;
         } else if (isSymbolRef(context.container)) {
-            var membersStream = EMPTY_STREAM;
             const bbjType = AstUtils.getContainerOfType(context.container, isBbjClass)
-            if (bbjType) {
-                if (context.container.instanceAccess) {
-                    membersStream = this.createBBjClassMemberScope(bbjType, false, new Set()).getAllElements()
-                }
+            // Instance access is either flagged on the SymbolRef itself (e.g. `#field!`
+            // in expression position) or, on an assignment LHS like `#field! = value`,
+            // consumed by the enclosing Assignment's `instanceAccess` (the grammar binds
+            // the `#` to the Assignment rule, not the inner SymbolRef).
+            if (bbjType && (context.container.instanceAccess || isInstanceAccessAssignment(context.container))) {
+                // `#name` explicitly addresses an instance member of the enclosing BBj class
+                // (fields, methods, this!/super! and inherited members — all provided by
+                // createBBjClassMemberScope). It must NOT fall back to the lexical scope,
+                // otherwise a same-named method parameter or local variable would satisfy a
+                // reference to an undefined field, hiding the error (#80).
+                return this.createBBjClassMemberScope(bbjType, false, new Set())
             }
             const program = AstUtils.getContainerOfType(context.container, isProgram);
             const memberAndImports = new StreamScopeWithPredicate(
-                membersStream.concat(this.importedBBjClasses(program)),
+                stream(this.importedBBjClasses(program)),
                 this.superGetScope(context)
             );
 
@@ -262,9 +276,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     private getBBjClassesFromFile(container: AstNode, bbjFilePath: string, simpleName: boolean) {
         const currentDocUri = AstUtils.getDocument(container).uri;
         const prefixes = this.workspaceManager.getSettings()?.prefixes ?? [];
-        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)].concat(
-            prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath)))
-        );
+        const workspaceRoots = this.workspaceManager.getWorkspaceFolderUris();
+        const adjustedFileUris = [UriUtils.resolvePath(UriUtils.dirname(currentDocUri), bbjFilePath)]
+            // Resolve relative to each workspace/project root too (#378), so a USE from a
+            // subfolder can reference files by their project-root-relative path.
+            .concat(workspaceRoots.map(root => UriUtils.resolvePath(root, bbjFilePath)))
+            .concat(prefixes.map(prefixPath => URI.file(resolve(prefixPath, bbjFilePath))));
         let bbjClasses = this.indexManager.allElements(BbjClass.$type).filter(bbjClass => {
             return adjustedFileUris.some(adjustedFileUri => normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase());
         })
@@ -471,6 +488,24 @@ export class BbjNameProvider extends DefaultNameProvider {
     }
 }
 
+
+/**
+ * Detects whether `node` is the head symbol of an assignment LHS that carries
+ * instance access, i.e. `#field! = value` or `#field!.member = value`. In the
+ * grammar the leading `#` is consumed by the `Assignment.instanceAccess` slot
+ * rather than the inner `SymbolRef`, so the SymbolRef's own `instanceAccess`
+ * flag is false and must be recovered from the enclosing Assignment.
+ */
+export function isInstanceAccessAssignment(node: AstNode): boolean {
+    // Walk up any `receiver` chain (e.g. `#a!.b! = v` links from the `a!` receiver).
+    let current: AstNode = node;
+    while (isMemberCall(current.$container) && current.$containerProperty === 'receiver') {
+        current = current.$container;
+    }
+    return isAssignment(current.$container)
+        && current.$containerProperty === 'variable'
+        && current.$container.instanceAccess === true;
+}
 
 export function collectAllUseStatements(program: Program): Use[] {
     // Check if USE statements are already cached in the document

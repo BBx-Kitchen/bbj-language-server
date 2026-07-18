@@ -1,7 +1,7 @@
 
 import { EmptyFileSystem } from 'langium';
 import { expectCompletion } from 'langium/test';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
 
 describe('BBJ completion provider', async () => {
@@ -161,6 +161,57 @@ w! = new MyWidget(<|>)
         });
     });
 
+    test('class-reference completion after `new` does not crash (issue: Langium 4.3 synthetic node)', async () => {
+        // Regression: getScope read container.simpleClass.$refText on a synthetic
+        // completion node where simpleClass is undefined, throwing a TypeError that
+        // Langium swallows via console.error inside completionForCrossReference.
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+        try {
+            const text = `
+class public MyClass
+classend
+x! = new <|>
+            `
+            await completion({
+                text,
+                index: 0,
+                assert: () => { }
+            });
+            const refTextCrash = errorSpy.mock.calls.some(args =>
+                args.some(a => a instanceof Error && /\$refText/.test(a.message)));
+            expect(refTextCrash).toBe(false);
+        } finally {
+            errorSpy.mockRestore();
+        }
+    });
+
+    test('member access on a method-call result infers the return type (regression: BBjAPI())', async () => {
+        // A variable assigned from a call expression must take the call's return
+        // type so member completion works on it. This is the same inference path
+        // that `a! = BBjAPI()` relies on; the isMethodCall branch in the type
+        // inferer was removed as "dead code" and broke it. Uses in-document BBj
+        // classes so it resolves without a populated Java index.
+        const text = `
+class public MyClass
+    method public MyClass getSelf()
+    methodend
+    method public void doWork()
+    methodend
+classend
+declare MyClass m!
+y! = m!.getSelf()
+y!.<|>
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const methodItems = completions.items.filter(i => i.label.startsWith('doWork'));
+                expect(methodItems.length).toBeGreaterThanOrEqual(1);
+            }
+        });
+    });
+
     test('class member access on BBj class instance offers methods', async () => {
         // Note: .class completion requires java.lang.Class to be resolved via Java interop.
         // In EmptyFileSystem, Java classes are not available, so .class won't appear.
@@ -182,6 +233,27 @@ foo!.<|>
                 // In EmptyFileSystem, we expect at least the BBj method to appear
                 const methodItems = items.filter(i => i.label.startsWith('doWork'));
                 expect(methodItems.length).toBeGreaterThanOrEqual(1);
+            }
+        });
+    });
+
+    test('static field (event constant) is offered on a Java class reference - issue #440', async () => {
+        // A class-reference receiver (`String.`) offers static members only. Static fields
+        // cover BBj event constants like `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`; the fake String
+        // class carries a static `CASE_INSENSITIVE_ORDER` and an instance `someInstanceField`.
+        const text = `
+        use java.lang.String
+        String.<|>
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const labels = completions.items.map(i => i.label);
+                // static field present
+                expect(labels).toContain('CASE_INSENSITIVE_ORDER');
+                // instance-only members must NOT leak onto a class reference
+                expect(labels).not.toContain('someInstanceField');
             }
         });
     });

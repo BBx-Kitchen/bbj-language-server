@@ -73,6 +73,10 @@ intellijPlatform {
 
     publishing {
         token = providers.gradleProperty("intellijPlatformPublishingToken")
+        // Channel to publish to on JetBrains Marketplace. Defaults to "default" (the
+        // stable channel) so releases are unaffected; preview builds pass
+        // -PintellijChannel=preview to publish snapshots to a separate opt-in channel.
+        channels = listOf(providers.gradleProperty("intellijChannel").getOrElse("default"))
     }
 }
 

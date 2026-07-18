@@ -4,7 +4,7 @@ import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from "../sr
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from "../src/language/generated/module.js";
 import { registerValidationChecks } from "../src/language/bbj-validator.js";
 import { JavaInteropService } from "../src/language/java-interop.js";
-import { Classpath, JavaClass, JavaMethod } from "../src/language/generated/ast.js";
+import { Classpath, JavaClass, JavaField, JavaMethod } from "../src/language/generated/ast.js";
 import { BbjLexer } from "../src/language/bbj-lexer.js";
 import { JavadocProvider } from "../src/language/java-javadoc.js";
 
@@ -55,7 +55,8 @@ class JavaInteropTestService extends JavaInteropService {
         const fakeJavaClasses: JavaClass[] = [
             createBBjApiClass(this.classpath),
             createHashMapClass(this.classpath),
-            createJavaLangStringClass(this.classpath)
+            createJavaLangStringClass(this.classpath),
+            createJavaLangClassClass(this.classpath)
         ]
         fakeJavaClasses.forEach(clazz => {
             this.classpath.classes.push(clazz)
@@ -111,6 +112,39 @@ function createHashMapClass(container: Classpath) {
             returnType: 'java.lang.Object',
             $type: JavaMethod,
             parameters: []
+        },
+        {
+            // inherited from java.lang.Object; needed so `obj!.getClass()` resolves
+            name: 'getClass',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Class',
+            $type: JavaMethod,
+            parameters: []
+        }
+    ]
+    return clazz
+}
+
+function createJavaLangClassClass(container: Classpath): JavaClass {
+    const clazz: JavaClass = {
+        $type: JavaClass,
+        name: 'java.lang.Class',
+        packageName: 'java.lang',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: []
+    }
+    clazz.methods = [
+        {
+            name: 'getName',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.String',
+            $type: JavaMethod,
+            parameters: []
         }
     ]
     return clazz
@@ -127,6 +161,28 @@ function createJavaLangStringClass(container: Classpath): JavaClass {
         classes: [],
         methods: []
     }
+    fakeStringClass.fields = [
+        {
+            // static field: accessible via class reference `String.CASE_INSENSITIVE_ORDER` (#440)
+            name: 'CASE_INSENSITIVE_ORDER',
+            $containerProperty: 'fields',
+            $container: fakeStringClass,
+            type: 'java.util.Comparator',
+            isStatic: true,
+            deprecated: false,
+            $type: JavaField
+        },
+        {
+            // instance field: must NOT be reachable through a class reference
+            name: 'someInstanceField',
+            $containerProperty: 'fields',
+            $container: fakeStringClass,
+            type: 'int',
+            isStatic: false,
+            deprecated: false,
+            $type: JavaField
+        }
+    ]
     fakeStringClass.methods = [
         {
             name: 'charAt',

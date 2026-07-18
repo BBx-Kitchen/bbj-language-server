@@ -10,9 +10,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import {
     LanguageClient, LanguageClientOptions, ServerOptions, TransportKind
-} from 'vscode-languageclient/node.js';
+} from 'vscode-languageclient/node';
 import { BBjLibraryFileSystemProvider } from './language/lib/fs-provider.js';
 import { DocumentFormatter } from './document-formatter.js';
+import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bbj.js';
+import { isLineNumberedSource } from './line-numbering.js';
+import { registerMsgboxComposer } from './msgbox-composer-ui.js';
+import { registerAddWindowComposer } from './addwindow-composer-ui.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -475,9 +479,108 @@ async function ensureValidToken(context: vscode.ExtensionContext): Promise<{user
     return creds;
 }
 
+// Tracks files we've already prompted about this session so re-focusing the tab
+// (or reopening it) doesn't nag the user again.
+const promptedTokenizedFiles = new Set<string>();
+
+/** Read the first `length` bytes of a file, or undefined if it can't be read. */
+async function readLeadingBytes(fsPath: string, length: number): Promise<Uint8Array | undefined> {
+    let handle: fs.promises.FileHandle | undefined;
+    try {
+        handle = await fs.promises.open(fsPath, 'r');
+        const buffer = Buffer.alloc(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, 0);
+        return buffer.subarray(0, bytesRead);
+    } catch {
+        return undefined;
+    } finally {
+        await handle?.close().catch(() => { });
+    }
+}
+
+/** Extract a file URI from any tab whose input carries one (text, custom, notebook…). */
+function uriFromTab(tab: vscode.Tab): vscode.Uri | undefined {
+    const input = tab.input as { uri?: vscode.Uri } | undefined;
+    return input?.uri instanceof vscode.Uri ? input.uri : undefined;
+}
+
+/**
+ * When a tokenized (binary) BBj program is opened, offer to decompile it to
+ * editable source (replacing the file) or open a read-only decompiled copy (#65).
+ * Detection is content-based (magic bytes), so it works regardless of the file's
+ * extension — tokenized programs are often named `.pub`, `.src`, or extensionless.
+ */
+async function maybePromptTokenized(uri: vscode.Uri | undefined): Promise<void> {
+    if (!uri || uri.scheme !== 'file') return;
+    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('decompile.promptOnOpen', true)) return;
+
+    const key = uri.toString();
+    if (promptedTokenizedFiles.has(key)) return;
+    // Reserve synchronously: the same file can surface from both the tab-change
+    // event and the activation scan, and we must not prompt (or decompile) twice.
+    promptedTokenizedFiles.add(key);
+
+    const bytes = await readLeadingBytes(uri.fsPath, TOKENIZED_BBJ_MAGIC_LENGTH);
+    if (!bytes || !isTokenizedBBjHeader(bytes)) {
+        // Not tokenized after all — allow a later check (e.g. if the file changes).
+        promptedTokenizedFiles.delete(key);
+        return;
+    }
+
+    const decompileAction = 'Decompile & Replace';
+    const readOnlyAction = 'Open Read-only';
+    const choice = await vscode.window.showInformationMessage(
+        `"${path.basename(uri.fsPath)}" is a tokenized (binary) BBj program. Decompile it to editable source, or open a read-only copy?`,
+        decompileAction, readOnlyAction
+    );
+    if (choice === decompileAction) {
+        Commands.decompileReplace(uri);
+    } else if (choice === readOnlyAction) {
+        Commands.decompileReadonly(uri);
+    }
+}
+
+// Tracks documents we've already prompted about this session, so switching
+// back to a line-numbered editor doesn't nag the user again.
+const promptedLineNumberedDocs = new Set<string>();
+
+/**
+ * When a line-numbered BBj program is opened, ask whether to denumber it
+ * (replacing the file with editable source) or open it read-only (issue #64).
+ */
+async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): Promise<void> {
+    if (!editor) return;
+    const doc = editor.document;
+    if (doc.languageId !== 'bbj' || doc.uri.scheme !== 'file') return;
+    if (!vscode.workspace.getConfiguration('bbj').get<boolean>('denumber.promptOnOpen', true)) return;
+
+    const key = doc.uri.toString();
+    if (promptedLineNumberedDocs.has(key)) return;
+    if (!isLineNumberedSource(doc.getText())) return;
+    promptedLineNumberedDocs.add(key);
+
+    const denumberAction = 'Denumber & Replace';
+    const readOnlyAction = 'Open Read-only';
+    const choice = await vscode.window.showInformationMessage(
+        `"${path.basename(doc.fileName)}" is a line-numbered BBj program. Denumber it to editable source, or open it read-only?`,
+        denumberAction, readOnlyAction
+    );
+    if (choice === denumberAction) {
+        // bbj.denumber runs bbjlst and replaces the file in place with denumbered source.
+        vscode.commands.executeCommand('bbj.denumber', doc.uri);
+    } else if (choice === readOnlyAction) {
+        // Make sure our editor is the active one before flipping it read-only in-session,
+        // in case the user navigated away while the prompt was open.
+        await vscode.window.showTextDocument(doc, { preview: false });
+        await vscode.commands.executeCommand('workbench.action.files.setActiveEditorReadonlyInSession');
+    }
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
+    registerMsgboxComposer(context); // spike: visual MSGBOX composer (#426)
+    registerAddWindowComposer(context); // spike: visual addWindow flags/event-mask composer (#430)
     secretStorage = context.secrets;
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;
@@ -580,6 +683,8 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     vscode.commands.registerCommand("bbj.compile", Commands.compile);
     vscode.commands.registerCommand("bbj.denumber", Commands.denumber);
+    vscode.commands.registerCommand("bbj.decompile", Commands.decompileReplace);
+    vscode.commands.registerCommand("bbj.decompileReadonly", Commands.decompileReadonly);
     vscode.commands.registerCommand("bbj.configureCompileOptions", configureCompileOptions);
 
     vscode.commands.registerCommand("bbj.refreshJavaClasses", async () => {
@@ -640,6 +745,30 @@ export function activate(context: vscode.ExtensionContext): void {
         "bbj",
         DocumentFormatter
     );
+
+    // Offer to decompile (or open read-only) when a tokenized/binary BBj program is
+    // opened. Tokenized files are binary, so they may open in a non-text editor —
+    // the Tabs API sees them regardless, and detection reads the file's magic bytes.
+    context.subscriptions.push(
+        vscode.window.tabGroups.onDidChangeTabs((event) => {
+            for (const tab of event.opened) {
+                void maybePromptTokenized(uriFromTab(tab));
+            }
+        })
+    );
+    // Inspect tabs already open when the extension activates.
+    for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+            void maybePromptTokenized(uriFromTab(tab));
+        }
+    }
+
+    // Offer to denumber (or open read-only) when a line-numbered BBj program is opened.
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor((editor) => { void maybePromptLineNumbered(editor); })
+    );
+    // Handle the editor that is already active when the extension activates.
+    void maybePromptLineNumbered(vscode.window.activeTextEditor);
 
     // Diagnostic suppression status bar indicator
     const suppressionStatusBar = vscode.window.createStatusBarItem(

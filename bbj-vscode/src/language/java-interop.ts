@@ -38,7 +38,7 @@ export class JavaInteropService {
     /** In-flight resolution promises keyed by class name, preventing duplicate concurrent resolution of the same class. */
     private readonly _pendingResolutions: Map<string, Promise<JavaClass>> = new Map();
     /** Maximum recursion depth for Java class resolution to prevent runaway resolution chains. */
-    private static readonly MAX_RESOLUTION_DEPTH = 20;
+    private static readonly MAX_RESOLUTION_DEPTH = 50;
     /** Maximum time (ms) allowed for a single resolveClassByName call chain before aborting. */
     private static readonly RESOLUTION_TIMEOUT_MS = 30_000;
     private interopHost: string = '127.0.0.1';
@@ -264,21 +264,31 @@ export class JavaInteropService {
      * @returns the resolved JavaClass with all dependencies linked
      */
     async resolveClassByName(className: string, token?: CancellationToken, _depth: number = 0): Promise<JavaClass> {
-        // Safeguard 2: depth limit to prevent runaway recursive resolution chains
-        if (_depth > JavaInteropService.MAX_RESOLUTION_DEPTH) {
-            logger.warn(`Java class resolution depth limit (${JavaInteropService.MAX_RESOLUTION_DEPTH}) exceeded for '${className}', returning partial class`);
-            return this.createStubClass(className);
-        }
-
-        // Fast path: already fully resolved
+        // Fast path: already fully resolved. Checked *before* the depth limit because a
+        // cached class triggers no further recursion — the depth limit is irrelevant to it,
+        // and returning it here avoids re-stubbing already-resolved leaf types (int, void,
+        // java.lang.Object, ...) that are reached deep inside a legitimate type graph.
         if (this.resolvedClasses.has(className)) {
             return this.resolvedClasses.get(className)!;
         }
 
-        // Safeguard 3: deduplicate — if another caller is already resolving this class, wait for it
+        // Safeguard 3: deduplicate — if another caller is already resolving this class, wait for it.
+        // Also checked before the depth limit: the in-flight resolution owns the recursion budget.
         const pending = this._pendingResolutions.get(className);
         if (pending) {
             return pending;
+        }
+
+        // Safeguard 2: depth limit to prevent runaway recursive resolution chains. Only applies
+        // to genuinely new classes we are about to fetch and resolve — cycles among already-seen
+        // classes are broken by the resolvedClasses cache above (resolveClass registers a class
+        // before recursing into its member types).
+        if (_depth > JavaInteropService.MAX_RESOLUTION_DEPTH) {
+            logger.warn(`Java class resolution depth limit (${JavaInteropService.MAX_RESOLUTION_DEPTH}) exceeded for '${className}', returning partial class`);
+            // Do NOT cache this stub: a later, shallower resolution of the same class must still be
+            // able to resolve it fully. Caching here would permanently freeze the class as a
+            // member-less stub for every subsequent reference (via the fast path above).
+            return this.createStubClass(className, false);
         }
 
         const resolutionPromise = this.doResolveClassByName(className, token, _depth);
@@ -324,8 +334,11 @@ export class JavaInteropService {
     /**
      * Creates a minimal stub JavaClass for cases where resolution fails or is aborted.
      * This prevents callers from receiving undefined and allows partial results.
+     * @param cache when true (default), the stub is stored in resolvedClasses so subsequent lookups
+     *   reuse it — appropriate for genuine resolution failures. Pass false for transient stubs (e.g.
+     *   the depth-limit backstop), so a later shallower resolution can still populate the real class.
      */
-    private createStubClass(className: string): JavaClass {
+    private createStubClass(className: string, cache: boolean = true): JavaClass {
         const existing = this.resolvedClasses.get(className);
         if (existing) return existing;
 
@@ -343,7 +356,9 @@ export class JavaInteropService {
             deprecated: false,
             error: `Resolution failed or depth limit exceeded`,
         } as unknown as Mutable<JavaClass>;
-        this.resolvedClasses.set(className, stub);
+        if (cache) {
+            this.resolvedClasses.set(className, stub);
+        }
         return stub;
     }
 

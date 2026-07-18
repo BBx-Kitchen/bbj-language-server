@@ -360,12 +360,12 @@ MethodDecl returns MethodDecl:
     MethodDeclStart
     Comments?
     (
-        (body+=(Statement | DefFunction))*
+        (body+=(DefFunction | Statement))*
         endTag='METHODEND'
     )?
 ;
 
-fragment MethodDeclStart returns MethodDecl:
+fragment MethodDeclStart:
     'METHOD' Visibility Static (voidReturn?='void' | (returnType=QualifiedClass (array?='[' ']')?) )? name=ValidName '(' (params+=ParameterDecl (',' params+=ParameterDecl)*)? RPAREN (';' comments+=CommentStatement)?
 ;
 
@@ -510,7 +510,7 @@ PrintStatement:
     ;
 
 //actual intent: ('('channelno?options?')')? (items(',' items)*)? ','?
-fragment WithChannelAndOptionsAndOutputItems infers WithChannelAndOptionsAndOutputItems:
+fragment WithChannelAndOptionsAndOutputItems:
     '(' channelno=Expression? Options? (
         RPAREN_NL
         | RPAREN_NO_NL items+=OutputItem (',' items+=OutputItem)* ENDLINE_PRINT_COMMA?
@@ -611,7 +611,7 @@ ReadRecordStatement infers ReadStatement:
 ;
 
 //actual intent: ('('channelno?options?')')? (items(','items)*)?
-fragment WithChannelAndOptionsAndInputItems infers WithChannelAndOptionsAndInputItems:
+fragment WithChannelAndOptionsAndInputItems:
     '(' channelno=Expression? Options? (RPAREN_NL | RPAREN_NO_NL items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?)
     | items+=InputItem (','items+=InputItem)* ENDLINE_PRINT_COMMA?
 ;
@@ -870,7 +870,10 @@ QualifiedBBjClassName returns string:
     BBjFilePath ID;
 
 FeatureName returns string:
-    ID | ID_WITH_SUFFIX;
+    // 'void' is a keyword only for a method's void-return marker (MethodDeclStart), which uses
+    // ValidName for the method name — so it never conflicts here. Allowing it as a FeatureName
+    // lets `void` be used as an ordinary (numeric) variable/field/member name (#439).
+    ID | ID_WITH_SUFFIX | 'void';
 
 ValidName returns string:
     ID
@@ -917,7 +920,7 @@ LibEventType returns LibEventType:
 SymbolicLabelName returns string: ASTERISK_EXPRESSION ValidName;
 
 hidden terminal WS: /\s+/;
-terminal COMMENT: /([rR][eE][mM])([ \t][^\n\r]*)?([\n\r]+)?/; // (rEm)(space or tab)(all but linebreak)(optional linebreak)
+terminal COMMENT: /([rR][eE][mM])(?![\w!$%@])([ \t][^\n\r]*)?([\n\r]+)?/; // (rEm)(not an identifier/suffix char, so "rem15"/"remark" stay identifiers)(space or tab)(all but linebreak)(optional linebreak)
 
 terminal KEYWORD_STANDALONE: /_KEYWORD_STANDALONE/;
 terminal PRINT_STANDALONE_NL: /_PRINT_STANDALONE_NL/;
