@@ -182,6 +182,31 @@ w! = new MyWidget(<|>)
         });
     });
 
+    test('no-arg constructor completion inserts nothing, not the label - issue #447', async () => {
+        // Regression: a no-arg constructor item had an empty insertText, which is falsy, so the
+        // client falls back to the label `MyWidget()` and nests it as `new MyWidget(MyWidget())`.
+        // It must use a textEdit that inserts nothing instead.
+        const text = `
+class public MyWidget
+    method public void create()
+    methodend
+classend
+declare MyWidget w!
+w! = new MyWidget(<|>)
+        `
+        await completion({
+            text,
+            index: 0,
+            assert: (completions) => {
+                const ctor = completions.items.find(i => i.kind === 4 && i.label === 'MyWidget()');
+                expect(ctor).toBeDefined();
+                expect(ctor!.insertText).toBeUndefined();
+                expect(ctor!.textEdit).toBeDefined();
+                expect((ctor!.textEdit as { newText: string }).newText).toBe('');
+            }
+        });
+    });
+
     test('class-reference completion after `new` does not crash (issue: Langium 4.3 synthetic node)', async () => {
         // Regression: getScope read container.simpleClass.$refText on a synthetic
         // completion node where simpleClass is undefined, throwing a TypeError that

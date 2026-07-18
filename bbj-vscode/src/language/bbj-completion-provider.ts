@@ -301,9 +301,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     label: `${className}(${paramList})`,
                     kind: CompletionItemKind.Constructor,
                     detail: `new ${className}(${paramList})`,
-                    insertText: ctor.parameters.map((p, i) =>
+                    // Use a textEdit (not insertText): the cursor is between the just-typed `()`, so
+                    // a no-arg constructor must insert nothing. An empty insertText is falsy and the
+                    // client would fall back to the label `Type()`, nesting it as `new Type(Type())`.
+                    textEdit: TextEdit.insert(params.position, ctor.parameters.map((p, i) =>
                         '${' + (i + 1) + ':' + (p.realName ?? p.name) + '}'
-                    ).join(', '),
+                    ).join(', ')),
                     insertTextFormat: 2, // SnippetString
                     tags: ctor.deprecated ? [CompletionItemTag.Deprecated] : undefined,
                 });
@@ -320,9 +323,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                     label: `${klass.name}(${paramList})`,
                     kind: CompletionItemKind.Constructor,
                     detail: `new ${klass.name}(${paramList})`,
-                    insertText: method.params.map((p, i) =>
+                    // textEdit (not insertText) so a no-arg `create` inserts nothing rather than
+                    // falling back to the label — see the Java-class branch above.
+                    textEdit: TextEdit.insert(params.position, method.params.map((p, i) =>
                         '${' + (i + 1) + ':' + p.name + '}'
-                    ).join(', '),
+                    ).join(', ')),
                     insertTextFormat: 2,
                 });
             }
