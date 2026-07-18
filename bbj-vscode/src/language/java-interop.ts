@@ -75,6 +75,17 @@ export class JavaInteropService {
     }
 
     /**
+     * True once the java-interop classpath has actually been populated with at least one resolved
+     * class (via {@link loadImplicitImports}/{@link loadClasspath}, or preloaded in the test double).
+     * Used to gate "type cannot be resolved" diagnostics: when no class is available the interop
+     * service is effectively down (e.g. CI without a running service, or EmptyFileSystem without a
+     * reachable :5008), so an unresolved reference means "interop unavailable", not "invalid type".
+     */
+    public isClasspathAvailable(): boolean {
+        return this._resolvedClasses.size > 0;
+    }
+
+    /**
      * Establishes connection to the Java backend service
      */
     protected async connect(): Promise<MessageConnection> {

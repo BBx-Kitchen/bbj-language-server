@@ -1,10 +1,12 @@
 import { AstNode, AstUtils, DiagnosticInfo, ValidationAcceptor, ValidationChecks, ValidationRegistry } from 'langium';
 import { basename, dirname, isAbsolute, relative } from 'path';
-import { getClass, getClassRef } from '../bbj-nodedescription-provider.js';
+import { getClass, getFQNFullname } from '../bbj-nodedescription-provider.js';
 import { BBjAstType, BbjClass, ConstructorCall, Expression, FieldDecl, isBbjClass, isMethodDecl, isMethodReturnStatement, isNumberLiteral, isStringLiteral, MethodDecl, QualifiedClass } from '../generated/ast.js';
+import { JavaInteropService } from '../java-interop.js';
+import { isTypeResolutionWarningsEnabled } from '../bbj-validator.js';
 
-export function registerClassChecks(registry: ValidationRegistry) {
-    const validator = new ClassValidator();
+export function registerClassChecks(registry: ValidationRegistry, javaInterop?: JavaInteropService) {
+    const validator = new ClassValidator(javaInterop);
     const classChecks: ValidationChecks<BBjAstType> = {
         Use: (use, accept) => {
             if(!use.bbjClass) {
@@ -63,7 +65,13 @@ export function registerClassChecks(registry: ValidationRegistry) {
             });
             validator.checkMethodReturn(meth, accept);
         },
-        FieldDecl: (field, accept) => validator.checkFieldInit(field, accept),
+        FieldDecl: (field, accept) => {
+            validator.checkClassReference(accept, field.type, {
+                node: field,
+                property: 'type'
+            });
+            validator.checkFieldInit(field, accept);
+        },
         ParameterDecl: (param, accept) => validator.checkClassReference(accept, param.type, {
             node: param,
             property: 'type'
@@ -77,6 +85,20 @@ export function registerClassChecks(registry: ValidationRegistry) {
 }
 
 class ClassValidator {
+
+    /**
+     * Type names (case-insensitive, simple name) that must never be flagged as unresolvable even
+     * when java-interop has not resolved them. These are BBj's built-in scalar types: they are
+     * backed by real `com.basis.startup.type.*` classes that resolve once the classpath is loaded,
+     * but they are so fundamental to typed FIELD/METHOD/DECLARE declarations that a
+     * partially-loaded classpath (or a test double that does not preload them) must not produce a
+     * false positive.
+     */
+    private static readonly KNOWN_BBJ_SCALAR_TYPES = new Set(['bbjnumber', 'bbjstring', 'bbjint']);
+
+    constructor(private readonly javaInterop?: JavaInteropService) {
+    }
+
     private isSubFolderOf(folder: string, parentFolder: string) {
         if(parentFolder === folder) {
             return true;
@@ -86,19 +108,48 @@ class ClassValidator {
     }
 
     public checkClassReference<N extends AstNode>(accept: ValidationAcceptor, qclass: QualifiedClass|undefined, info: DiagnosticInfo<N>): void {
-        const ref = qclass ? getClassRef(qclass) : undefined;
-        if(!ref) {
+        if(!qclass) {
             return;
         }
-        const uriOfUsage = AstUtils.getDocument(ref.$refNode!.root.astNode).uri.fsPath;
-        if(!ref.ref) {
+        const klass = getClass(qclass);
+        if(!klass) {
+            // The type reference resolved to nothing. Flag it as unresolvable (#438), but only when
+            // it is safe to conclude the name is genuinely invalid rather than "interop is down".
+            this.warnUnresolvableType(accept, qclass, info);
             return;
         }
-        const klass = ref.ref;
-        const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
+        const uriOfUsage = AstUtils.getDocument(qclass).uri.fsPath;
         if(isBbjClass(klass) && klass.visibility) {
+            const uriOfDeclaration = AstUtils.getDocument(klass).uri.fsPath;
             return this.checkBBjClass<N>(klass, uriOfDeclaration, uriOfUsage, accept, info);
         }
+    }
+
+    /**
+     * Emits a warning that a {@link QualifiedClass} type reference cannot be resolved (#438), gated
+     * so it never floods environments where java-interop is unavailable:
+     *  - only when the `typeResolutionWarnings` flag is enabled, and
+     *  - only when the java-interop classpath is actually available (at least one class resolved) —
+     *    otherwise an unresolved reference just means the interop service is down, not that the
+     *    type is invalid; and
+     *  - never for the built-in BBj scalar types (see {@link KNOWN_BBJ_SCALAR_TYPES}).
+     */
+    private warnUnresolvableType<N extends AstNode>(accept: ValidationAcceptor, qclass: QualifiedClass, info: DiagnosticInfo<N>): void {
+        if(!isTypeResolutionWarningsEnabled()) {
+            return;
+        }
+        if(!this.javaInterop?.isClasspathAvailable()) {
+            return;
+        }
+        const name = getFQNFullname(qclass);
+        if(!name) {
+            return;
+        }
+        const simpleName = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+        if(ClassValidator.KNOWN_BBJ_SCALAR_TYPES.has(simpleName)) {
+            return;
+        }
+        accept('warning', `Type '${name}' cannot be resolved.`, info);
     }
 
     public checkBBjClass<N extends AstNode>(klass: BbjClass, uriOfDeclaration: string, uriOfUsage: string, accept: ValidationAcceptor, info: DiagnosticInfo<N>) {
