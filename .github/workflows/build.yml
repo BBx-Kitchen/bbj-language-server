@@ -36,8 +36,7 @@ jobs:
       shell: bash
       run: |
         cd bbj-vscode
-        npm i -g @vscode/vsce@^2.32
-        vsce package
+        npx vsce package
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4 
       with: 

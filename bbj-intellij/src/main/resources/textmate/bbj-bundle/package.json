@@ -6,6 +6,11 @@
         "id": "BBj",
         "extensions": [".bbj", ".bbl", ".bbjt", ".src", ".bbx"],
         "configuration": "./bbj-language-configuration.json"
+      },
+      {
+        "id": "BBx Config",
+        "filenames": ["config.bbx", "Config.bbx", "config.min", "Config.min"],
+        "configuration": "./bbx-language-configuration.json"
       }
     ],
     "grammars": [
@@ -13,6 +18,11 @@
         "language": "BBj",
         "scopeName": "source.bbj",
         "path": "./syntaxes/bbj.tmLanguage.json"
+      },
+      {
+        "language": "BBx Config",
+        "scopeName": "source.bbx",
+        "path": "./syntaxes/bbx.tmLanguage.json"
       }
     ]
   }
