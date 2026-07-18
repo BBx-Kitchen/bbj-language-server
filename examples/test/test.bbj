@@ -1,10 +1,12 @@
-      class public List
-            method public List add()
-            add(err=*break)
+
+      class public List2
+            method public List2 add()
+          
+                  methodret NULL()
             methodend
         classend
         
-        map = new List(err=*next)
-        map.add(err=*BReak)
-        map.add(err=*STOP)
-        map.add(err=*next)
+        map! = new List2(err=*next)
+        map!.add(err=*BReak)
+        map!.add(err=*STOP)
+        map!.add(err=*next)

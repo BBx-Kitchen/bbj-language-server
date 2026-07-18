@@ -1,8 +1,10 @@
 e$="hallo"
 
+
 next
 
-next e$
+for e=0 to 10
+next e
 
 next
 

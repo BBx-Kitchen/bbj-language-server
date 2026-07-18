@@ -1,14 +1,4 @@
-declare Object proc_id$
-class public QVGrid implements BBjControl
-
-    method public void clearProcCallback (BBjNumber eventType)
-        BBjAPI().clearCustomEventCallback(#proc_id$+"_"+str(eventType))
-    methodend
-
-classend
-
-
 api! = BBjAPI()
 api!.clearCustomEventCallback("kj")
-
- BBjAPI().clearCustomEventCallback(proc_id$)
+proc_id$=""
+BBjAPI().clearCustomEventCallback(proc_id$)

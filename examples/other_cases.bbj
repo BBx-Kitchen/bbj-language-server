@@ -1,3 +1,4 @@
+use java.util.List
 PRINT ERR,TCB(5),
 REM this is perfectly valid, a line can end with a comma!
 
@@ -10,7 +11,7 @@ dim array[2]
 REM do I need A$=""? For A$ in ReadStatements a new variable description is created
 READ(1,KEY="TEST",ERR=9500)A$,B$,C$
 REad (0) array[ALL]
-READ RECORD(1,IND=2,ERR=9500)*,A$
+READ RECORD(1,IND=2,ERR=9500)A$
 EXTRACT(2,KEY=Q$,DOM=1300)IOL=Label1
 INPUT (0,ERR=1000)@(5,20),'CE',"ENTER NAME:",N$:("FRED"=Label1,$AAFF00$=Label2,LEN=4,3)
 
@@ -26,19 +27,20 @@ X! = "TEST"+
 : "TEST123"+
 : "jhgjgj"
 
-class public List
-    method public List add()
+class public ListX
+    method public ListX add()
+    methodret NULL()
     methodend
 classend
 
-map = new List(err=*next)
-map.add(err=*BReak)
-map.add(err=*STOP)
-map.add(err=*next)
+map! = new ListX(err=*next)
+map!.add(err=*BReak)
+map!.add(err=*STOP)
+map!.add(err=*next)
 
-declare String database$
-declare String modes$
-declare String select$
+database$=""
+modes$=""
+select$=""
 
 orderDetailRecordSet! = BBjAPI().createSQLRecordSet(database$,modes$,select$,err=*ENDIF)
 if !(orderDetailRecordSet!.isEmpty()) then
@@ -48,10 +50,10 @@ if !(orderDetailRecordSet!.isEmpty()) then
     wend
 endif
 
-OPEN (unt,mode="",tim="",isz="",err=finish)"path/"+"html.png"
+OPEN (unt,mode="",tim=0,isz=1,err=finish)"path/"+"html.png"
 
-declare String serverfile
-bytes = dec(fin(serverfile)(1,4))
+declare String serverfile!
+bytes = dec(fin(serverfile!)(1,4))
 a$=STR(1234)(1,2)
 
 result = msgbox("Message$",1,"Title$","Button1$","Button2$","Button3$",tim=12, mode="mode$",err=*NEXT)
