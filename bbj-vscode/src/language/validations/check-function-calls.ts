@@ -68,16 +68,16 @@ export function checkFunctionCallArguments(call: MethodCall, accept: ValidationA
             { node: call });
     }
 
-    // --- Argument types (literals only) ---
+    // --- Argument types ---
     for (let i = 0; i < positionalArgs.length && i < positionalParams.length; i++) {
-        const literal = literalKind(positionalArgs[i]);
-        if (!literal) {
+        const actual = inferredKind(positionalArgs[i].expression);
+        if (!actual) {
             continue;
         }
         const expected = numericOrString(positionalParams[i].type);
-        if (expected && expected !== literal) {
+        if (expected && expected !== actual) {
             accept('warning',
-                `Argument ${i + 1} of '${fn.name}()' expects a ${expected} value, but a ${literal} literal was given.`,
+                `Argument ${i + 1} of '${fn.name}()' expects a ${expected} value, but a ${actual} value is given.`,
                 { node: positionalArgs[i] });
         }
     }
@@ -100,7 +100,7 @@ export function checkFunctionReturnAssignment(assignment: Assignment, accept: Va
         return;
     }
     const returnKind = numericOrString(fn.returnType);
-    const targetKind = variableKind(assignment.variable);
+    const targetKind = inferredKind(assignment.variable);
     if (returnKind && targetKind && returnKind !== targetKind) {
         const name = isSymbolRef(assignment.variable) ? assignment.variable.symbol.$refText : 'the target';
         accept('warning',
@@ -148,49 +148,48 @@ function numericOrString(type: string): 'numeric' | 'string' | undefined {
     }
 }
 
-/** The bucket of an assignment target from its name suffix, or undefined when not judged. */
-function variableKind(variable: Expression): 'numeric' | 'string' | undefined {
-    if (!isSymbolRef(variable)) {
-        return undefined;
-    }
-    const name = variable.symbol.$refText;
-    if (name.endsWith('$')) {
-        return 'string';
-    }
-    if (name.endsWith('!')) {
-        return undefined; // object variable — not a string/numeric mismatch
-    }
-    // No suffix (or '%') denotes a numeric scalar — unless it resolves to an explicitly
-    // class-typed declaration (a `declare`d/field/param variable), which we don't judge.
-    const ref = safeRef(variable);
-    if (ref && 'type' in ref && (ref as { type?: unknown }).type) {
-        return undefined;
-    }
-    return 'numeric';
-}
-
-function safeRef(variable: Expression): AstNode | undefined {
-    if (!isSymbolRef(variable)) {
-        return undefined;
-    }
-    try {
-        return variable.symbol.ref;
-    } catch {
-        return undefined;
-    }
-}
-
-/** The kind of a plain literal argument, or undefined when the argument is not a literal. */
-function literalKind(arg: ParameterCall): 'numeric' | 'string' | undefined {
-    const expr = arg.expression;
+/**
+ * Infer the string/numeric bucket of an expression, or undefined when it can't be judged
+ * reliably. Only unambiguous sources are used, so there are no false positives:
+ *  - literals (and unary +/- numerics),
+ *  - nested builtin calls, via the callee's declared return type,
+ *  - variables, via their BBj name suffix ($ = string, % = int, none = numeric, ! = object).
+ * Binary expressions, Java/member calls, casts, constructors, etc. return undefined.
+ */
+function inferredKind(expr: Expression): 'numeric' | 'string' | undefined {
     if (isStringLiteral(expr)) {
         return 'string';
     }
     if (isNumberLiteral(expr)) {
         return 'numeric';
     }
-    // signed numeric literal, e.g. -5 or +3
-    if (isPrefixExpression(expr) && (expr.operator === '-' || expr.operator === '+') && isNumberLiteral(expr.expression)) {
+    // unary +/- applies to a numeric operand
+    if (isPrefixExpression(expr) && (expr.operator === '-' || expr.operator === '+')) {
+        return 'numeric';
+    }
+    if (isMethodCall(expr)) {
+        const fn = resolveLibFunction(expr);
+        return fn ? numericOrString(fn.returnType) : undefined;
+    }
+    if (isSymbolRef(expr)) {
+        const name = expr.symbol.$refText;
+        if (name.endsWith('$')) {
+            return 'string';
+        }
+        if (name.endsWith('!')) {
+            return undefined; // object variable
+        }
+        // No suffix (or '%') denotes a numeric scalar — unless it resolves to an explicitly
+        // class-typed declaration (a `declare`d/field/param variable), which we don't judge.
+        let ref: AstNode | undefined;
+        try {
+            ref = expr.symbol.ref;
+        } catch {
+            ref = undefined;
+        }
+        if (ref && 'type' in ref && (ref as { type?: unknown }).type) {
+            return undefined;
+        }
         return 'numeric';
     }
     return undefined;

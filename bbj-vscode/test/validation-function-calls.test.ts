@@ -6,7 +6,7 @@ import { createBBjServices } from '../src/language/bbj-module.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /** Diagnostics produced by the builtin-function call check (#451). */
-const CALL_ISSUE = /but received \d|accepts at most|literal was given|returns a .* value, but/;
+const CALL_ISSUE = /but received \d|accepts at most|value is given|returns a .* value, but/;
 
 describe('builtin function call validation (#451)', () => {
     const services = createBBjServices(EmptyFileSystem);
@@ -79,6 +79,27 @@ describe('builtin function call validation (#451)', () => {
         'X!=NULL()',       // object return -> object target (not judged)
         'A=IFF(1,2,3)',    // any return -> not judged
     ])('accepts return/target: %j', async (code) => {
+        expect(await callIssues(code)).toEqual([]);
+    });
+
+    // Type inference for non-literal arguments: nested builtin calls (return type)
+    // and variables (name suffix).
+    test.each([
+        '? HTA(ABS(4.5))',   // ABS returns numeric -> HTA string parameter
+        '? ABS(HTA("f"))',   // HTA returns string -> ABS numeric parameter
+        'x$="a"\n? ABS(x$)',  // string variable -> ABS numeric parameter
+        'n=5\n? HTA(n)',      // numeric variable -> HTA string parameter
+    ])('flags inferred argument mismatch: %j', async (code) => {
+        expect(await callIssues(code)).not.toEqual([]);
+    });
+
+    test.each([
+        '? ABS(LEN("hi"))',   // LEN returns numeric -> ABS numeric parameter
+        '? HTA(ATH("f"))',    // ATH returns string -> HTA string parameter
+        's$="x"\n? HTA(s$)',   // string variable -> HTA string parameter
+        'n=5\n? ABS(n)',       // numeric variable -> ABS numeric parameter
+        '? STR(n)',            // STR objexpr is `any` -> not judged
+    ])('accepts inferred argument: %j', async (code) => {
         expect(await callIssues(code)).toEqual([]);
     });
 });
