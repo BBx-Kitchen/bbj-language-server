@@ -1,7 +1,7 @@
 
 import { AstUtils, EMPTY_SCOPE, EmptyFileSystem } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
-import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
+import { CompletionItemKind, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
 import { isBbjClass, isSymbolRef, Model } from '../src/language/generated/ast.js';
@@ -496,6 +496,90 @@ y = 2
 `;
         const list = await fieldCompletion(text);
         expect(list?.items ?? []).toHaveLength(0);
+    });
+
+    test('# in a class method offers methods, this! and super! alongside fields - issue #455', async () => {
+        // The '#' trigger must offer the full instance member set, not just fields:
+        // own fields (any visibility), own/inherited methods (public/protected), and
+        // the pseudo-members this! and super!.
+        // A valid symbol (`name!`) follows the cursor so the enclosing class does NOT
+        // collapse (see issue #445): the built document then resolves `extends`, which the
+        // throwaway recovery reparse cannot, so inherited members are available here.
+        const text = `class public Base
+    method public void inheritedPublic()
+    methodend
+    method private void inheritedPrivate()
+    methodend
+classend
+class public Derived extends Base
+    field public String name!
+    field private String secret!
+    method public void doIt()
+    methodend
+    method private void helper()
+    methodend
+    method public void run()
+        #<|>name!
+    methodend
+classend
+`;
+        const list = await fieldCompletion(text);
+        const labels = list?.items.map(i => i.label) ?? [];
+        // own fields, all visibilities
+        expect(labels).toContain('name!');
+        expect(labels).toContain('secret!');
+        // own methods, all visibilities
+        expect(labels).toContain('doIt');
+        expect(labels).toContain('helper');
+        expect(labels).toContain('run');
+        // inherited method: public only
+        expect(labels).toContain('inheritedPublic');
+        expect(labels).not.toContain('inheritedPrivate');
+        // pseudo-members
+        expect(labels).toContain('this!');
+        expect(labels).toContain('super!');
+        // methods must carry the Method kind and insert without the leading #
+        const doIt = list?.items.find(i => i.label === 'doIt');
+        expect(doIt?.kind).toBe(CompletionItemKind.Method);
+        expect(doIt?.insertText).toBe('doIt');
+    });
+
+    test('# in a class method without a superclass omits super! - issue #455', async () => {
+        // super! only exists when the class actually extends a superclass.
+        const text = `class public C
+    field public String name!
+    method public void doIt()
+    methodend
+    method public void run()
+        #<|>
+    methodend
+classend
+`;
+        const list = await fieldCompletion(text);
+        const labels = list?.items.map(i => i.label) ?? [];
+        expect(labels).toContain('name!');
+        expect(labels).toContain('doIt');
+        expect(labels).toContain('this!');
+        expect(labels).not.toContain('super!');
+    });
+
+    test('dangling # recovery also offers methods and this! - issue #455 / #445', async () => {
+        // The collapsed-class recovery path (a bare '#' unwinds the class) must offer
+        // the same member set: methods and this!, not only fields.
+        const text = `class public C
+    field public HashMap map!
+    method public void doIt()
+    methodend
+    method public void m()
+        #<|>
+    methodend
+classend
+`;
+        const list = await fieldCompletion(text);
+        const labels = list?.items.map(i => i.label) ?? [];
+        expect(labels).toContain('map!');
+        expect(labels).toContain('doIt');
+        expect(labels).toContain('this!');
     });
 
     const interopSeam = bbjServices.java.JavaInteropService as unknown as {

@@ -214,23 +214,66 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return undefined;
         }
 
-        // Collect fields from the class and its inheritance hierarchy
-        const fields = this.collectFields(klass);
+        const items = this.buildInstanceMemberItems(klass);
+        return { items, isIncomplete: false };
+    }
 
-        // Convert to completion items
-        const items: CompletionItem[] = fields.map(field => {
-            const fieldClass = getClass(field.type);
-            const fieldType = fieldClass?.name ?? 'Object';
-            return {
+    /**
+     * Builds the completion items offered after a `#` inside a class method (issue #455):
+     * the class's fields and methods (own = all visibilities; inherited = public/protected),
+     * plus the pseudo-members `this!` and `super!`. All insert their bare name without the
+     * leading `#` (which the user has already typed), matching the `#name!` / `#name` syntax.
+     */
+    protected buildInstanceMemberItems(klass: BbjClass): CompletionItem[] {
+        const items: CompletionItem[] = [];
+
+        // Fields (own: all visibilities; inherited: public/protected)
+        for (const field of this.collectFields(klass)) {
+            const fieldType = getClass(field.type)?.name ?? 'Object';
+            items.push({
                 label: field.name,
                 kind: CompletionItemKind.Variable,
                 detail: `${fieldType} field`,
                 insertText: field.name,  // Insert field name without #
                 sortText: field.name
-            };
-        });
+            });
+        }
 
-        return { items, isIncomplete: false };
+        // Methods (own: all visibilities; inherited: public/protected)
+        for (const methodMember of this.collectMethods(klass)) {
+            const paramList = methodMember.params.map(p => p.name).join(', ');
+            const returnType = methodMember.voidReturn || !methodMember.returnType
+                ? 'void'
+                : (getClass(methodMember.returnType)?.name ?? 'Object');
+            items.push({
+                label: methodMember.name,
+                kind: CompletionItemKind.Method,
+                detail: `${methodMember.name}(${paramList}): ${returnType} method`,
+                insertText: methodMember.name,  // Insert method name without #
+                sortText: methodMember.name
+            });
+        }
+
+        // Pseudo-members `this!` and `super!` — valid as `#this!` / `#super!` in BBj.
+        // `super!` only exists when the class actually extends a superclass.
+        items.push({
+            label: 'this!',
+            kind: CompletionItemKind.Keyword,
+            detail: 'Current instance',
+            insertText: 'this!',
+            sortText: 'this!'
+        });
+        if (klass.extends.length > 0) {
+            items.push({
+                label: 'super!',
+                kind: CompletionItemKind.Keyword,
+                detail: 'Superclass instance',
+                insertText: 'super!',
+                sortText: 'super!'
+            });
+        }
+
+        return items;
     }
 
     /**
@@ -385,6 +428,57 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
             // Recursively get superclass hierarchy
             this.collectInheritedFields(superClass, fields, visited, depth + 1, maxDepth);
+        }
+    }
+
+    protected collectMethods(klass: BbjClass): MethodDecl[] {
+        const methods: MethodDecl[] = [];
+        const visited = new Set<BbjClass>();
+        const maxDepth = 20;
+
+        // Add methods from current class (all visibilities)
+        methods.push(...klass.members.filter(isMethodDecl));
+
+        // Add inherited methods (protected and public only)
+        this.collectInheritedMethods(klass, methods, visited, 0, maxDepth);
+
+        return methods;
+    }
+
+    protected collectInheritedMethods(
+        klass: BbjClass,
+        methods: MethodDecl[],
+        visited: Set<BbjClass>,
+        depth: number,
+        maxDepth: number
+    ): void {
+        // Cycle protection
+        if (visited.has(klass) || depth >= maxDepth) {
+            return;
+        }
+        visited.add(klass);
+
+        // Walk superclass chain
+        for (const extendsQualifiedClass of klass.extends) {
+            const superClass = getClass(extendsQualifiedClass);
+
+            // Skip unresolved superclass references or non-BBj classes
+            if (!superClass || !isBbjClass(superClass)) {
+                continue;
+            }
+
+            // Collect inherited methods (protected and public only, not private)
+            const inheritedMethods = superClass.members
+                .filter(isMethodDecl)
+                .filter(m => {
+                    const visibility = m.visibility?.toUpperCase() ?? 'PUBLIC';
+                    return visibility === 'PUBLIC' || visibility === 'PROTECTED';
+                });
+
+            methods.push(...inheritedMethods);
+
+            // Recursively get superclass hierarchy
+            this.collectInheritedMethods(superClass, methods, visited, depth + 1, maxDepth);
         }
     }
 
