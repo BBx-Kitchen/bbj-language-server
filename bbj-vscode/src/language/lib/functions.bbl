@@ -48,7 +48,7 @@ ABS(param:num, ERR?:lineref): num
 
 The ADJN() function returns an 8-byte binary string suitable for string comparisons of numeric values.
 @/
-ADJN():string
+ADJN(param:num, ERR?:lineref): string
 
 /@@
 \`ARGV(int{, ERR: lineref})\`
@@ -217,7 +217,7 @@ DEC(param: string, ERR?:lineref): num
 In PRO/5 5.0 and BBj 4.0 and higher, DECRYPT() decrypts the specified string that was encrypted with ENCRYPT(). 
 Attempting to decrypt with the wrong key or algorithm will usually cause meaningless data to be returned
 @/
-DECRYPT(param: string, param: param, ERR?:lineref): string
+DECRYPT(param: string, param: string, ERR?:lineref): string
 
 /@@
 \`DIMS(arrayname{,ERR=lineref})\`
@@ -372,9 +372,9 @@ FNobjname(expr,...)
 
 Used with the DEF verb, the FN() function executes functions defined by the user.
 @/
-FNnum(param: num): string
+FNnum(param: num): num
 FNstring(param: string): string
-FNobject(param: object): string
+FNobject(param: object): object
 
 /@@
 \`FPT(num{,ERR=lineref})\`
@@ -525,7 +525,7 @@ LINFO(param: string, param: int, param: int, ERR?:lineref): string
 
 The LOG() function returns the common logarithm (base 10) of its argument.
 @/
-LOG(param: num, param: int, ERR?: lineref): void
+LOG(param: num, param: int, ERR?: lineref): num
 
 /@@
 \`LRC(string{,ERR=lineref})\`
@@ -718,7 +718,7 @@ RESGET(param: res_handle, param: int, param: int, ERR?:lineref): string
 
 The RESINFO() function returns a formatted string containing information about the contents of a resource file.
 @/
-RESINFOR(param: res_handle, param: string, ERR?:lineref): string
+RESINFO(param: res_handle, param: string, ERR?:lineref): string
 
 /@@
 \`RESNEXT(res_handle,res_id{,ERR=lineref})\`
@@ -748,14 +748,14 @@ RND(param: int, ERR?:lineref): int
 
 The ROUND() function rounds a number to a specified number of decimal places or to the current precision value.
 @/
-ROUND(param: int, ERR?:lineref): int
+ROUND(param: num, param: int, ERR?:lineref): num
 
 /@@
 \`SCALL(string{,ERR=lineref})\`
 
 The SCALL() function is used in run mode to execute operating system commands in the PRO/5 environment.
 @/
-SCALL(param: string, ERR?:lineref): void
+SCALL(param: string, ERR?:lineref): int
 
 /@@
 \`SENDMSG(sysgui,id,function,int,string{,context{,ERR=lineref}})\`
@@ -784,7 +784,7 @@ SEVAL(param: string, ERR?:lineref): string
 
 The SGN() function returns a 1, 0, or -1 depending on whether its numeric argument is positive, zero, or negative respectively.
 @/
-SNG(param: int, ERR?:lineref): int
+SGN(param: num, ERR?:lineref): int
 
 /@@
 \`SIN(num{,precis}{,ERR=lineref})\`
@@ -798,7 +798,7 @@ SIN(param: num, ERR?:lineref): num
 
 The SQLERR() function returns the text for the most recent error returned by the SQL command being executed.
 @/
-SQLERR(param: sqlchannel, ERR?:lineref): void
+SQLERR(param: sqlchannel, ERR?:lineref): string
 
 /@@
 \`SQLFETCH(sqlchan{,IND=1}{,END=lineref}{,ERR=lineref})\`
@@ -834,7 +834,7 @@ SQLTMPL(param: sqlchannel, param: int, ERR?:lineref): template
 
 The SQR() function returns the square root of its numeric argument. The argument may be any positive number.
 @/
-SQL(param: num, ERR?:lineref): num
+SQR(param: num, ERR?:lineref): num
 
 /@@
 \`SSORT(str1,int1{,str2,int2}{,ERR=lineref})\`
@@ -851,15 +851,15 @@ SSZ(int{,ERR=lineref})
 
 The SSZ() function returns the constant 512 and is included only for syntax compatibility with older versions of Business BASIC. string or int must refer to a valid disk drive.
 @/
-SSZ(param: string, ERR?:linefeed): int
-SSZ(param: int, ERR?:linefeed): int
+SSZ(param: string, ERR?:lineref): int
+SSZ(param: int, ERR?:lineref): int
 
 /@@
 \`STBL(str1{,str2}{,ERR=lineref})\`
 
 The STBL() function allows the program to maintain strings that are independent of the workspace and cannot be destroyed by CLEAR, BEGIN, or START. 
 @/
-STBL(param: string, param: string, ERR?:lineref): void
+STBL(param: string, param: string, ERR?:lineref): string
 
 
 /@@
@@ -867,7 +867,7 @@ STBL(param: string, param: string, ERR?:lineref): void
 
 The SWAP() function is used for exchanging data with other software applications that may be using a native mode of data representation on a particular machine.
 @/
-SWAP(param: string, param: string, ERR?:lineref): void
+SWAP(param: string, param: string, ERR?:lineref): string
 
 /@@
 \`
@@ -879,8 +879,8 @@ The TBL() function performs the string translation described in the TABLE verb. 
 The second argument, which specifies the translation table, may be either another string or a TBL=lineref reference. 
 If the table is in a string, the string must be at least one byte long. If TBL= is used, it must refer to a TABLE statement.
 @/
-TBL(param: string, table: string, ERR?:lineref): void
-TBL(param: string, TBL?:lineref, ERR?:lineref): void
+TBL(param: string, table: string, ERR?:lineref): string
+TBL(param: string, TBL?:lineref, ERR?:lineref): string
 
 /@@
 \`TCB(int{,ERR=lineref})\`
@@ -923,7 +923,7 @@ WINFIRST(param: sysgui, ERR?:lineref): int
 
 The WININFO() function returns a string that contains information about the contents of a SYSGUI window.
 @/
-WININFOR(param: sysgui, ERR?:lineref): string
+WININFO(param: sysgui, param: int, ERR?:lineref, END?:lineref): string
 
 /@@
 \`WINNEXT(sysgui,context{,ERR=lineref})\`
@@ -960,7 +960,7 @@ XKGEN(param: string, param: string, ERR?:lineref): string
 
 The XOR() function will exclusive OR the bits of the two string arguments and return the result.
 @/
-XOR(param: string, param: string, ERR?:lineref): int
+XOR(param: string, param: string, ERR?:lineref): string
 
 /@@
 \`XSSORT(str1,int1{,str2,int2}{,ERR=lineref})\`
