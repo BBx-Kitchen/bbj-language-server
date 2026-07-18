@@ -1,13 +1,15 @@
-import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
-import type { LangiumDocument, LangiumDocumentFactory } from "langium";
+import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo, UriUtils } from "langium";
+import type { FileSystemProvider, LangiumDocument, LangiumDocumentFactory } from "langium";
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, NextFeature } from "langium/lsp";
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams, TextEdit } from "vscode-languageserver";
+import { URI } from "vscode-uri";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
 import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isJavaTypeRef, isMethodDecl, isSimpleTypeRef, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
+import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
 
 
@@ -29,11 +31,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     protected readonly documentFactory: LangiumDocumentFactory;
     protected readonly javaInterop: JavaInteropService;
+    protected readonly fileSystemProvider: FileSystemProvider;
+    protected readonly wsManager: BBjWorkspaceManager;
 
     constructor(services: BBjServices) {
         super(services);
         this.documentFactory = services.shared.workspace.LangiumDocumentFactory;
         this.javaInterop = services.java.JavaInteropService;
+        this.fileSystemProvider = services.shared.workspace.FileSystemProvider;
+        this.wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
     }
 
     protected override async completionForCrossReference(context: CompletionContext, next: NextFeature<GrammarAST.CrossReference>, acceptor: CompletionAcceptor): Promise<void> {
@@ -149,6 +155,14 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 this.dotTriggerActive = false;
             }
         }
+        // Non-trigger completion (Ctrl+Space). `:` is not a trigger character, so inside the
+        // `::...::` file-path segment of a `use`/`declare` only a plain Ctrl+Space reaches here.
+        // Offer reachable `.bbj` files / subdirectories there — the grammar treats the path as a
+        // single opaque terminal, so the default completion engine has nothing to offer.
+        const filePathCompletion = await this.getFilePathCompletion(document, params);
+        if (filePathCompletion) {
+            return filePathCompletion;
+        }
         // Non-trigger completion (Ctrl+Space) — try constructor first, then fall through to default
         const constructorCompletion = this.getConstructorCompletion(document, params);
         if (constructorCompletion) {
@@ -178,6 +192,117 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return true;
         });
         return list;
+    }
+
+    /**
+     * File-path completion inside the `::...::` segment of a `use`/`declare` statement (issue #456).
+     * Returns subdirectory (drill-down) and `.bbj` file items reachable from the current file's
+     * directory, the workspace folder(s) and every configured PREFIX path; returns undefined when
+     * the cursor is not inside an unclosed `::...::` path segment (so completion falls through to
+     * the default provider — e.g. class completion after the closing `::`).
+     *
+     * Fail-safe: any file-system/resolution error yields an empty list rather than a thrown
+     * exception, so a broken prefix never breaks completion.
+     */
+    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+        const text = document.textDocument.getText();
+        const cursorOffset = document.textDocument.offsetAt(params.position);
+        const lineStartOffset = document.textDocument.offsetAt({ line: params.position.line, character: 0 });
+        let lineEndOffset = text.indexOf('\n', cursorOffset);
+        if (lineEndOffset === -1) {
+            lineEndOffset = text.length;
+        }
+        const lineText = text.substring(lineStartOffset, lineEndOffset);
+        const pathContext = parseFilePathCompletionContext(lineText, params.position.character);
+        if (!pathContext) {
+            return undefined;
+        }
+
+        // Range covering only the leaf prefix already typed, so accepting an item replaces just
+        // that prefix (not the whole path) regardless of how the client tokenises `/` and `.`.
+        const prefixStart = document.textDocument.positionAt(cursorOffset - pathContext.prefix.length);
+        const replaceRange = { start: prefixStart, end: params.position };
+
+        const items = await this.collectFilePathItems(document.uri, pathContext, replaceRange);
+        return { items, isIncomplete: false };
+    }
+
+    /**
+     * Enumerates the subdirectories and `.bbj` files of `pathContext.dir` under each base directory
+     * (current file's dir, workspace roots, PREFIX paths), filtered by the leaf prefix. Deduplicated
+     * by name across bases; never throws.
+     */
+    protected async collectFilePathItems(
+        docUri: URI,
+        pathContext: FilePathCompletionContext,
+        replaceRange: { start: { line: number, character: number }, end: { line: number, character: number } }
+    ): Promise<CompletionItem[]> {
+        const baseDirs: URI[] = [UriUtils.dirname(docUri)];
+        try {
+            for (const root of this.wsManager.getWorkspaceFolderUris()) {
+                baseDirs.push(root);
+            }
+            for (const prefix of this.wsManager.getSettings()?.prefixes ?? []) {
+                if (prefix && prefix.length > 0) {
+                    baseDirs.push(URI.file(prefix));
+                }
+            }
+        } catch {
+            // Settings/workspace not available — the current file's directory is still usable.
+        }
+
+        const prefixLower = pathContext.prefix.toLowerCase();
+        const seen = new Set<string>();
+        const items: CompletionItem[] = [];
+        for (const baseDir of baseDirs) {
+            let dirUri: URI;
+            try {
+                dirUri = pathContext.dir ? UriUtils.resolvePath(baseDir, pathContext.dir) : baseDir;
+            } catch {
+                continue;
+            }
+            let entries;
+            try {
+                entries = await this.fileSystemProvider.readDirectory(dirUri);
+            } catch {
+                // Missing/unreadable directory (e.g. an unresolved prefix) — skip this base.
+                continue;
+            }
+            for (const entry of entries) {
+                const name = UriUtils.basename(entry.uri);
+                if (!name || !name.toLowerCase().startsWith(prefixLower)) {
+                    continue;
+                }
+                if (entry.isDirectory) {
+                    const key = 'dir:' + name.toLowerCase();
+                    if (seen.has(key)) {
+                        continue;
+                    }
+                    seen.add(key);
+                    items.push({
+                        label: name + '/',
+                        kind: CompletionItemKind.Folder,
+                        sortText: '0_' + name.toLowerCase(), // directories first (drill-down)
+                        textEdit: TextEdit.replace(replaceRange, name + '/'),
+                        // Re-open completion after the slash so the user can keep drilling down.
+                        command: { title: 'Suggest', command: 'editor.action.triggerSuggest' }
+                    });
+                } else if (entry.isFile && name.toLowerCase().endsWith('.bbj')) {
+                    const key = 'file:' + name.toLowerCase();
+                    if (seen.has(key)) {
+                        continue;
+                    }
+                    seen.add(key);
+                    items.push({
+                        label: name,
+                        kind: CompletionItemKind.File,
+                        sortText: '1_' + name.toLowerCase(),
+                        textEdit: TextEdit.replace(replaceRange, name)
+                    });
+                }
+            }
+        }
+        return items;
     }
 
     protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
@@ -471,4 +596,49 @@ const FIELD_COMPLETION_PROBE_ID = 'a';
 
 function toSimpleName(type: string): string {
     return type.split('.').pop() || type
+}
+
+/** Result of detecting the file-path completion position inside a `::...::` segment. */
+export interface FilePathCompletionContext {
+    /** Full partial path typed between the opening `::` and the cursor (e.g. `util/foo`). */
+    typed: string;
+    /** The already-typed directory portion, with trailing slash, or '' when none (e.g. `util/`). */
+    dir: string;
+    /** The leaf prefix to filter directory entries by, or '' (e.g. `foo`). */
+    prefix: string;
+}
+
+/**
+ * Detects whether the cursor sits inside an unclosed `::...::` file-path segment of a `use` or
+ * `declare` statement, and if so splits the partial path already typed into a directory portion
+ * plus a leaf prefix. Returns undefined otherwise: not a use/declare line, no opening `::` before
+ * the cursor, or the segment is already closed by a second `::` (the class-name portion, which the
+ * scope provider completes on its own).
+ *
+ * Pure string logic (unit-tested directly). BBj is case-insensitive.
+ *
+ * @param lineText     full text of the current line
+ * @param cursorColumn 0-based column of the cursor within the line
+ */
+export function parseFilePathCompletionContext(lineText: string, cursorColumn: number): FilePathCompletionContext | undefined {
+    const beforeCursor = lineText.substring(0, cursorColumn);
+    // Only inside a `use`/`declare` statement (leading whitespace allowed). BBj is case-insensitive.
+    if (!/^\s*(use|declare)\b/i.test(beforeCursor)) {
+        return undefined;
+    }
+    const openIdx = beforeCursor.indexOf('::');
+    if (openIdx === -1) {
+        return undefined;
+    }
+    const afterOpen = beforeCursor.substring(openIdx + 2);
+    // A second `::` before the cursor closes the path segment — the cursor is in the class-name
+    // portion (`::path::Class`), handled by the default class completion, not here.
+    if (afterOpen.includes('::')) {
+        return undefined;
+    }
+    const typed = afterOpen;
+    const slashIdx = Math.max(typed.lastIndexOf('/'), typed.lastIndexOf('\\'));
+    const dir = slashIdx === -1 ? '' : typed.substring(0, slashIdx + 1);
+    const prefix = slashIdx === -1 ? typed : typed.substring(slashIdx + 1);
+    return { typed, dir, prefix };
 }
