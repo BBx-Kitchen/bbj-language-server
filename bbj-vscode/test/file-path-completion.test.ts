@@ -1,6 +1,6 @@
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
+import { CompletionList, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
 import { describe, expect, test, vi, afterEach } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
@@ -244,6 +244,36 @@ describe('file-path completion integration (issue #456)', () => {
     test('does not fire for a second CALL argument string', async () => {
         const spy = vi.spyOn(fsProvider, 'readDirectory');
         await complete('call "a.bbj", "<|>');
+        expect(spy).not.toHaveBeenCalled();
+    });
+
+    // Drive completion via the '"' trigger character (as VS Code does the moment the opening quote
+    // of a RUN/CALL file id is typed), not plain Ctrl+Space.
+    async function completeOnQuoteTrigger(text: string): Promise<CompletionList | undefined> {
+        const offset = text.indexOf('<|>');
+        const clean = text.replace('<|>', '');
+        const doc = await parseHelper<Model>(bbjServices)(
+            clean, { documentUri: `file:///workspace/proj/main-${docCounter++}.bbj` });
+        const params: CompletionParams = {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '"' }
+        };
+        return provider.getCompletion(doc, params);
+    }
+
+    test("'\"' trigger auto-offers file paths for RUN", async () => {
+        mockFs();
+        const list = await completeOnQuoteTrigger('run "<|>');
+        const labels = (list?.items ?? []).map(i => i.label);
+        expect(labels).toContain('foo.bbj');
+        expect(labels).toContain('util/');
+    });
+
+    test("'\"' trigger is a no-op (empty list) for an ordinary string literal", async () => {
+        const spy = vi.spyOn(fsProvider, 'readDirectory');
+        const list = await completeOnQuoteTrigger('x! = "<|>');
+        expect(list?.items ?? []).toEqual([]);
         expect(spy).not.toHaveBeenCalled();
     });
 

@@ -19,7 +19,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     protected static readonly AUTO_IMPORT_MIN_PREFIX = 2;
 
     override readonly completionOptions = {
-        triggerCharacters: ['#', '(', '.']
+        // '"' auto-triggers file-path completion inside a RUN/CALL file id (`RUN "`); it is a no-op
+        // (empty list) for every other string literal — see getCompletion.
+        triggerCharacters: ['#', '(', '.', '"']
     };
 
     /**
@@ -139,6 +141,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             // to the slow default provider, which would produce irrelevant keyword suggestions.
             return this.getConstructorCompletion(document, params) ?? { items: [], isIncomplete: false };
         }
+        if (params.context?.triggerCharacter === '"') {
+            // '"' auto-trigger: the opening quote of a RUN/CALL file id (`RUN "`, `CALL "`). Offer
+            // reachable file paths, or an empty list for any other string literal — NEVER fall
+            // through to the default provider, which would offer irrelevant keywords inside a string.
+            return await this.getFilePathCompletion(document, params) ?? { items: [], isIncomplete: false };
+        }
         if (params.context?.triggerCharacter === '.') {
             // '.' is the member-access operator (MemberCall). The grammar makes the member
             // reference optional so a not-yet-typed member (`receiver.`) doesn't abort the
@@ -226,7 +234,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         const replaceRange = { start: prefixStart, end: params.position };
 
         const items = await this.collectFilePathItems(document.uri, pathContext, replaceRange);
-        return { items, isIncomplete: false };
+        // isIncomplete so the client re-queries as the path is typed further (e.g. crossing into a
+        // subdirectory after a '/'), rather than filtering the first directory's list forever.
+        return { items, isIncomplete: true };
     }
 
     /**
