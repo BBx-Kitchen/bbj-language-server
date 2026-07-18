@@ -4,7 +4,7 @@ import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultComp
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams, TextEdit } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
+import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isJavaTypeRef, isMethodDecl, isSimpleTypeRef, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
@@ -43,7 +43,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         const recording: CompletionAcceptor = (ctx, item) => { if (item.label) { offered.add(item.label); } acceptor(ctx, item); };
         await super.completionForCrossReference(context, next, recording);
 
-        if (!this.dotTriggerActive && this.isClassCrossReference(next.feature)) {
+        if (!this.dotTriggerActive && this.isClassCrossReference(next.feature) && this.isTypeReferencePosition(context)) {
             await this.completeAutoImportClasses(context, offered, acceptor);
         }
     }
@@ -54,6 +54,23 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return false;
         }
         return (feature.type.ref?.name ?? feature.type.$refText) === 'Class';
+    }
+
+    /**
+     * True only where inserting a class name makes sense as a *type*: a declared/cast/extends type
+     * reference node, or a constructor class right after `new`. A bare class name is also grammatically
+     * a valid expression, so without this guard auto-import would fire in argument/assignment
+     * positions (e.g. `new TreeMap(Tree|)`) and nest a class where a value is expected.
+     */
+    protected isTypeReferencePosition(context: CompletionContext): boolean {
+        const node = context.node;
+        if (node && (isSimpleTypeRef(node) || isBBjTypeRef(node) || isJavaTypeRef(node))) {
+            return true;
+        }
+        // A not-yet-completed `new X` does not parse as a ConstructorCall, so detect it from the
+        // preceding `new` keyword (BBj is case-insensitive).
+        const textBefore = context.textDocument.getText().substring(0, context.tokenOffset);
+        return /\bnew\s+$/i.test(textBefore);
     }
 
     /**

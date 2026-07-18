@@ -507,4 +507,28 @@ y = 2
             }
         });
     });
+
+    describe('auto-import only fires in type positions - issue #447', () => {
+        const hasAutoImport = (completions: { items: { label: string, additionalTextEdits?: unknown }[] }) =>
+            completions.items.some(i => i.label === 'TreeMap' && i.additionalTextEdits);
+
+        function autoImportCase(name: string, text: string, expected: boolean) {
+            test(name, async () => {
+                interopSeam.seedCompleteClassIndex(['java.util.TreeMap']);
+                try {
+                    await completion({ text, index: 0, assert: (c) => expect(hasAutoImport(c)).toBe(expected) });
+                } finally {
+                    interopSeam.resetCompleteClassIndex();
+                }
+            });
+        }
+
+        // Type positions — auto-import is helpful.
+        autoImportCase('after new', `x! = new TreeM<|>`, true);
+        autoImportCase('declared type', `declare TreeM<|> x!`, true);
+        // Expression positions — offering a bare class would nest a class where a value is expected
+        // (e.g. accepting here then typing '(' yields `new TreeMap(TreeMap())`).
+        autoImportCase('constructor argument', `tm! = new HashMap(Tree<|>)`, false);
+        autoImportCase('assignment value', `x! = Tree<|>`, false);
+    });
 });
