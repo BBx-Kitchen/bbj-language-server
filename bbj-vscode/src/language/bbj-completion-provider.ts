@@ -1,10 +1,10 @@
 import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
-import type { LangiumDocument } from "langium";
+import type { LangiumDocument, LangiumDocumentFactory } from "langium";
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, NextFeature } from "langium/lsp";
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
-import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl } from "./generated/ast.js";
+import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isMethodDecl, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 
 
@@ -21,8 +21,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      */
     protected dotTriggerActive = false;
 
+    protected readonly documentFactory: LangiumDocumentFactory;
+
     constructor(services: LangiumServices) {
         super(services);
+        this.documentFactory = services.shared.workspace.LangiumDocumentFactory;
     }
 
     protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
@@ -86,13 +89,23 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         }
         const leafNode = findLeafNodeAtOffset(rootNode.$cstNode, offset - 1);
 
-        if (!leafNode) {
-            return undefined;
-        }
+        // Locate the enclosing class method. A dangling `#` (no field name typed yet)
+        // is an unsatisfiable cross-reference: because newlines are hidden whitespace,
+        // the parser scans past the line end and error recovery unwinds the enclosing
+        // class/method out of the AST, so the container lookup below finds nothing.
+        // In that case, recover the class/method by reparsing a copy of the document
+        // with a synthetic identifier inserted after the `#` (issue #445).
+        let method = leafNode ? AstUtils.getContainerOfType(leafNode.astNode, isMethodDecl) : undefined;
+        let klass = leafNode ? AstUtils.getContainerOfType(leafNode.astNode, isBbjClass) : undefined;
 
-        // Check if cursor is inside a class method body
-        const method = AstUtils.getContainerOfType(leafNode.astNode, isMethodDecl);
-        const klass = AstUtils.getContainerOfType(leafNode.astNode, isBbjClass);
+        // Only reparse when the class may have collapsed. A clean parse means the AST is
+        // trustworthy: if it says we are not in a class method (e.g. a channel `#1` at
+        // program scope), we are not, and there is nothing to recover — so skip the cost.
+        if ((!method || !klass) && document.parseResult.parserErrors.length > 0) {
+            const recovered = this.recoverCollapsedClassMethod(document, offset);
+            method = recovered.method;
+            klass = recovered.klass;
+        }
 
         if (!method || !klass) {
             // Not inside a class method — don't provide field completion
@@ -116,6 +129,43 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         });
 
         return { items, isIncomplete: false };
+    }
+
+    /**
+     * Recover the class/method enclosing a dangling `#` when error recovery has
+     * collapsed them out of the AST (issue #445). A dangling `#` has no field name,
+     * so the `SymbolRef.symbol` reference is unsatisfiable; because newlines are hidden
+     * whitespace the parser scans past the line end and unwinds the whole class. This
+     * reparses a throwaway copy of the document with a synthetic identifier inserted
+     * right after the `#`, which keeps the class intact, and reads the enclosing
+     * class/method back from that copy at the same offset.
+     *
+     * The copy is only parsed — never registered, indexed, or built — so it cannot
+     * pollute the workspace and has no side effects; it is discarded when this returns.
+     * The recovered class always yields the class's own fields; inherited fields resolve
+     * on a best-effort basis via the global index in a running server.
+     */
+    protected recoverCollapsedClassMethod(document: LangiumDocument, offset: number): { method?: MethodDecl, klass?: BbjClass } {
+        const text = document.textDocument.getText();
+        // The cursor sits directly after the triggering `#`; bail if that is not the case.
+        if (text.charAt(offset - 1) !== '#') {
+            return {};
+        }
+        const patched = text.slice(0, offset) + FIELD_COMPLETION_PROBE_ID + text.slice(offset);
+        // Keep the `.bbj` extension so the service registry resolves BBj services for the probe.
+        const probeUri = document.uri.with({ path: document.uri.path + '.__field-probe__.bbj' });
+        const probeRoot = this.documentFactory.fromString(patched, probeUri).parseResult.value;
+        if (!probeRoot.$cstNode) {
+            return {};
+        }
+        const probeLeaf = findLeafNodeAtOffset(probeRoot.$cstNode, offset);
+        if (!probeLeaf) {
+            return {};
+        }
+        return {
+            method: AstUtils.getContainerOfType(probeLeaf.astNode, isMethodDecl),
+            klass: AstUtils.getContainerOfType(probeLeaf.astNode, isBbjClass)
+        };
     }
 
     protected getConstructorCompletion(document: LangiumDocument, params: CompletionParams): CompletionList | undefined {
@@ -306,6 +356,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 }
 
+
+// Synthetic identifier inserted after a dangling `#` so the class survives reparse
+// during field-completion recovery (see recoverCollapsedClassMethod). Its value is
+// irrelevant — it is only used to keep the parser from unwinding the class.
+const FIELD_COMPLETION_PROBE_ID = 'a';
 
 function toSimpleName(type: string): string {
     return type.split('.').pop() || type

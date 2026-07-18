@@ -1,7 +1,7 @@
 
 import { AstUtils, EMPTY_SCOPE, EmptyFileSystem } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
-import { CompletionTriggerKind } from 'vscode-languageserver';
+import { CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
 import { isBbjClass, isSymbolRef, Model } from '../src/language/generated/ast.js';
@@ -10,6 +10,25 @@ describe('BBJ completion provider', async () => {
 
     const bbjServices = createBBjTestServices(EmptyFileSystem).BBj;
     const completion = expectCompletion(bbjServices);
+
+    // Drive the completion provider with a '#' trigger context at the '<|>' marker.
+    // expectCompletion() does not let us set a trigger character, and field completion
+    // is only reachable via the '#' trigger, so this drives the request directly. Uses
+    // parseHelper (validation off) like the rest of this file — a full DocumentBuilder
+    // build would run the CPL/interop validation path and reach for the Java service.
+    let fieldCompletionCounter = 0;
+    async function fieldCompletion(text: string) {
+        const offset = text.indexOf('<|>');
+        const clean = text.replace('<|>', '');
+        const doc = await parseHelper<Model>(bbjServices)(
+            clean, { documentUri: `file:///field-completion-${fieldCompletionCounter++}.bbj` });
+        const params: CompletionParams = {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '#' }
+        };
+        return bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+    }
 
     test('Should propose imported java class', async () => {
         const text = `
@@ -396,5 +415,61 @@ classend`, { documentUri: 'file:///test/dot-no-collapse.bbj' });
                 expect(labels).not.toContain('someInstanceField');
             }
         });
+    });
+
+    test('dangling # in a class method body offers own fields - issue #445', async () => {
+        // A '#' with no field name yet is an unsatisfiable cross-reference that, because
+        // newlines are hidden whitespace, makes error recovery unwind the enclosing class
+        // out of the AST. The provider must recover and still offer the class's fields.
+        const text = `class public C
+    field public HashMap map!
+    field private String secret!
+    method public void m()
+        #<|>
+    methodend
+classend
+`;
+        const countC = () => bbjServices.shared.workspace.IndexManager
+            .allElements().filter(d => d.name === 'C').toArray().length;
+        const cBefore = countC();
+        const list = await fieldCompletion(text);
+        const labels = list?.items.map(i => i.label) ?? [];
+        expect(labels).toContain('map!');
+        expect(labels).toContain('secret!');
+        // recovery must not leak keyword/import fallbacks into field completion
+        expect(labels).not.toContain('HashMap');
+        expect(labels).not.toContain('new');
+        // the throwaway reparse must not leak into the workspace or the global index
+        const docUris = bbjServices.shared.workspace.LangiumDocuments.all.map(d => d.uri.toString()).toArray();
+        expect(docUris.some(u => u.includes('__field-probe__'))).toBe(false);
+        // only the real document adds class C to the index; the throwaway probe adds nothing
+        expect(countC() - cBefore).toBe(1);
+    });
+
+    test('dangling # followed by more code still offers fields - issue #445', async () => {
+        // The class also collapses when the '#' is followed by unrelated statements;
+        // recovery must locate the class from the enclosing method.
+        const text = `class public C
+    field public HashMap map!
+    method public void m()
+        #<|>
+        x = 1
+        y = 2
+    methodend
+classend
+`;
+        const list = await fieldCompletion(text);
+        const labels = list?.items.map(i => i.label) ?? [];
+        expect(labels).toContain('map!');
+    });
+
+    test('# outside any class method offers nothing - issue #445', async () => {
+        // Recovery must not fabricate field completion where there is no enclosing class.
+        const text = `x = 1
+#<|>
+y = 2
+`;
+        const list = await fieldCompletion(text);
+        expect(list?.items ?? []).toHaveLength(0);
     });
 });
