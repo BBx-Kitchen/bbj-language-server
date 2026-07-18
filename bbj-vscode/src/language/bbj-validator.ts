@@ -26,6 +26,10 @@ export function setTypeResolutionWarnings(enabled: boolean): void {
     typeResolutionWarningsEnabled = enabled;
 }
 
+export function isTypeResolutionWarningsEnabled(): boolean {
+    return typeResolutionWarningsEnabled;
+}
+
 /** Prefix of the diagnostic message emitted for unresolvable USE file paths. Used by document builder to identify and reconcile these diagnostics after PREFIX docs are loaded. */
 export const USE_FILE_NOT_RESOLVED_PREFIX = "File '";
 
@@ -56,7 +60,7 @@ export function registerValidationChecks(services: BBjServices) {
         SwitchCase: validator.checkSwitchCaseInSwitch,
     };
     registry.register(checks, validator);
-    registerClassChecks(registry);
+    registerClassChecks(registry, services);
     registerVariableScopingChecks(registry);
     registerFunctionCallChecks(registry);
 }
