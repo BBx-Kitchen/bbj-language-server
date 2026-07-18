@@ -6,7 +6,7 @@ import { createBBjServices } from '../src/language/bbj-module.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /** Diagnostics produced by the builtin-function call check (#451). */
-const CALL_ISSUE = /but received \d|accepts at most|literal was given/;
+const CALL_ISSUE = /but received \d|accepts at most|literal was given|returns a .* value, but/;
 
 describe('builtin function call validation (#451)', () => {
     const services = createBBjServices(EmptyFileSystem);
@@ -60,5 +60,25 @@ describe('builtin function call validation (#451)', () => {
 
     test('named ERR= argument is not counted as positional', async () => {
         expect(await callIssues('? ath("8",err=*next)')).toEqual([]);
+    });
+
+    // Return type vs assignment target (variable name suffix: $ = string, none/% = numeric).
+    test.each([
+        'A=HTA("a")',      // HTA returns string -> numeric A
+        'A%=DIR("x")',     // DIR returns string -> numeric A%
+        'B$=ABS(2)',       // ABS returns num -> string B$
+        'N=DSK("0")',      // DSK returns string -> numeric N
+    ])('flags return/target mismatch: %j', async (code) => {
+        expect(await callIssues(code)).not.toEqual([]);
+    });
+
+    test.each([
+        'A$=HTA("a")',     // string return -> string target
+        'A=ABS(2.6)',      // numeric return -> numeric target
+        'N%=LEN("hi")',    // int return -> numeric target
+        'X!=NULL()',       // object return -> object target (not judged)
+        'A=IFF(1,2,3)',    // any return -> not judged
+    ])('accepts return/target: %j', async (code) => {
+        expect(await callIssues(code)).toEqual([]);
     });
 });
