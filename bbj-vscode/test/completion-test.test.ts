@@ -30,6 +30,55 @@ describe('BBJ completion provider', async () => {
         return bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
     }
 
+    // Drive the completion provider with a '.' trigger context at the '<|>' marker.
+    // expectCompletion() does not let us set a trigger character, and USE-path package/class
+    // completion after a dot is only reachable via the '.' trigger, so this drives the request
+    // directly (mirrors fieldCompletion above). Returns the offered item labels.
+    let dotCompletionCounter = 0;
+    async function useDotCompletion(text: string): Promise<string[]> {
+        const offset = text.indexOf('<|>');
+        const clean = text.replace('<|>', '');
+        const doc = await parseHelper<Model>(bbjServices)(
+            clean, { documentUri: `file:///use-dot-completion-${dotCompletionCounter++}.bbj` });
+        const params: CompletionParams = {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '.' }
+        };
+        const list = await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+        return (list?.items ?? []).map(i => i.label);
+    }
+
+    test("'.' after `use java` offers subpackages - issue #453", async () => {
+        const labels = await useDotCompletion('use java.<|>\n');
+        expect(labels).toContain('util');
+        expect(labels).toContain('lang');
+    });
+
+    test("'.' after `use java.util` offers classes - issue #453", async () => {
+        const labels = await useDotCompletion('use java.util.<|>\n');
+        expect(labels).toContain('HashMap');
+    });
+
+    test("'.' after `use java.lang` offers classes - issue #453", async () => {
+        const labels = await useDotCompletion('use java.lang.<|>\n');
+        expect(labels).toContain('String');
+        expect(labels).toContain('Class');
+    });
+
+    test("Ctrl+Space after `use java.` offers subpackages - issue #453", async () => {
+        // The plain (no trigger character) path must also offer package/class suggestions after a dot.
+        await completion({
+            text: 'use java.<|>\n',
+            index: 0,
+            assert: (completions) => {
+                const labels = completions.items.map(i => i.label);
+                expect(labels).toContain('util');
+                expect(labels).toContain('lang');
+            }
+        });
+    });
+
     test('Should propose imported java class', async () => {
         const text = `
         use java.util.HashMap

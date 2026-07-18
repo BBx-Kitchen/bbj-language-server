@@ -108,8 +108,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
-        if (this.dotTriggerActive && !this.isMemberReference(next.feature)) {
-            // Suppress everything except the `member` cross-reference of a MemberCall.
+        if (this.dotTriggerActive && !this.isMemberReference(next.feature) && !this.isJavaSymbolReference(next.feature)) {
+            // Suppress everything except the `member` cross-reference of a MemberCall and the
+            // `symbol` cross-reference of a JavaSymbol (the package/class parts of a `use` path).
             return;
         }
         return super.completionFor(context, next, acceptor);
@@ -122,6 +123,24 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         }
         const assignment = GrammarAST.isAssignment(feature.$container) ? feature.$container : undefined;
         return assignment?.feature === 'member';
+    }
+
+    /**
+     * True if `feature` is the `symbol=[JavaPackageLike:ID]` cross-reference of the JavaSymbol rule,
+     * i.e. a package/class part of a `use` path (`use java.util.HashMap`). Checked so the '.' trigger
+     * still offers package/class suggestions after a dot in a USE statement (issue #453). The rule
+     * check keeps this precise so an unrelated `symbol` assignment cannot slip through.
+     */
+    protected isJavaSymbolReference(feature: GrammarAST.AbstractElement): boolean {
+        if (!GrammarAST.isCrossReference(feature)) {
+            return false;
+        }
+        const assignment = GrammarAST.isAssignment(feature.$container) ? feature.$container : undefined;
+        if (assignment?.feature !== 'symbol') {
+            return false;
+        }
+        const rule = GrammarAST.isParserRule(assignment.$container) ? assignment.$container : undefined;
+        return rule?.name === 'JavaSymbol';
     }
 
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {

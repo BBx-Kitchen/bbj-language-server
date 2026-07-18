@@ -52,7 +52,6 @@ import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { normalize, resolve } from 'path';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
-import { assertTrue } from './assertions.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
@@ -110,11 +109,18 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'symbol') {
                     if (isJavaTypeRef(container.$container)) {
-                        assertTrue(container.$containerIndex !== undefined);
-                        if (container.$containerIndex === 0) {
+                        // During completion after a '.' in a `use` statement (issue #453) Langium
+                        // synthesizes a new JavaSymbol node with no $containerIndex. In that case the
+                        // new part is appended after the last already-parsed part, so treat the last
+                        // existing pathPart as the previous one.
+                        const pathParts = container.$container.pathParts;
+                        const previousIndex = container.$containerIndex !== undefined
+                            ? container.$containerIndex - 1
+                            : pathParts.length - 1;
+                        if (previousIndex < 0) {
                             return this.createScopeForNodes(this.javaInterop.getChildrenOf());
                         } else {
-                            const previousPart = container.$container.pathParts[container.$containerIndex - 1].symbol.ref;
+                            const previousPart = pathParts[previousIndex]?.symbol.ref;
                             if (previousPart) {
                                 let outerScope: Scope | undefined = undefined;
                                 if (isJavaClass(previousPart)) {
