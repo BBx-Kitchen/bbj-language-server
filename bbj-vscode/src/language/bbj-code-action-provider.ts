@@ -39,7 +39,9 @@ export class BBjCodeActionProvider implements CodeActionProvider {
             // such as HashMap, which are not implicit imports, are still suggestable).
             const candidates = rankCandidates(await this.javaInterop.resolveClassCandidatesBySimpleName(simpleName));
             candidates.forEach((fqn, index) => {
-                actions.push(this.createUseAction(document, diagnostic, fqn, index === 0 && candidates.length === 1));
+                // Mark the top-ranked candidate preferred so VS Code's Auto Fix (Ctrl/Cmd+.)
+                // applies it directly without opening the quick-fix menu.
+                actions.push(this.createUseAction(document, diagnostic, fqn, index === 0));
             });
         }
         return actions.length > 0 ? actions : undefined;
