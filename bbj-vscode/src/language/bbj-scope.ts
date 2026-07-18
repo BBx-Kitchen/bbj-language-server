@@ -307,10 +307,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     private resolveClassScopeByName(context: ReferenceInfo, qualifiedClassName: string): Scope {
-        if (!qualifiedClassName) {
-            return EMPTY_SCOPE;
-        }
-        const match = qualifiedClassName.match(BBjClassNamePattern);
+        // `qualifiedClassName` is empty during completion (Ctrl+Space): Langium asks for the scope
+        // with an empty `$refText` and then fuzzy-filters the candidates by the typed prefix itself.
+        // So an empty name must still yield the full class scope (local BBj classes, imports and the
+        // global Java index) — returning EMPTY_SCOPE here left extends/implements/declare completion
+        // with no candidates (#454). Only the `::file::Class` form needs the name up front.
+        const match = qualifiedClassName ? qualifiedClassName.match(BBjClassNamePattern) : null;
         if (match) {
             const relativeFilePath = match[1];
             return this.getBBjClassesFromFile(context.container, relativeFilePath, false);

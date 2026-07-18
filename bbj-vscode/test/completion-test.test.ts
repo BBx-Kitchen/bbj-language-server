@@ -152,6 +152,38 @@ DEF fnIsText(_f$,_t$)=_f$+<|>
         });
     });
 
+    test('completion after EXTENDS offers visible BBj classes - issue #454', async () => {
+        const text = `
+class public Animal
+classend
+class public Dog extends An<|>
+classend
+`
+        await completion({
+            text,
+            index: 0,
+            expectedItems: [
+                'Animal'
+            ]
+        });
+    });
+
+    test('completion after IMPLEMENTS offers visible interfaces - issue #454', async () => {
+        const text = `
+interface public Walker
+interfaceend
+class public Dog implements Wa<|>
+classend
+`
+        await completion({
+            text,
+            index: 0,
+            expectedItems: [
+                'Walker'
+            ]
+        });
+    });
+
     test('BBj class constructor completion returns items or empty list (no crash)', async () => {
         const text = `
 class public MyWidget
