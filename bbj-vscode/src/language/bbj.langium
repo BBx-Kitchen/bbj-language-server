@@ -788,7 +788,7 @@ PrefixExpression infers Expression:
 MemberCall infers Expression:
     PrimaryExpression
     (
-        {infer MemberCall.receiver=current} '.' member=[NamedElement:FeatureName]
+        {infer MemberCall.receiver=current} '.' (member=[NamedElement:FeatureName])?
         | {infer ArrayElement.receiver=current} "[" (all?="ALL" | indices+=Expression (',' indices+=Expression)*) "]"
         | {infer MethodCall.method=current} '(' (args+=ParameterCall (',' args+=ParameterCall)* )? Err? RPAREN
     )*

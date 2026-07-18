@@ -53,6 +53,11 @@ export class BBjTypeInferer implements TypeInferer {
         } else if (isConstructorCall(expression)) {
             return getClass(expression.klass);
         } else if (isMemberCall(expression)) {
+            // A dangling member access (`receiver.` with the member not yet typed) parses to a
+            // MemberCall whose `member` reference is absent — nothing to infer a type from.
+            if (!expression.member) {
+                return undefined;
+            }
             // Check for .class property — resolves to java.lang.Class
             const memberRefText = expression.member.$refText;
             if (memberRefText === 'class') {

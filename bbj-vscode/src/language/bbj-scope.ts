@@ -212,8 +212,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                     ? this.descriptions.createDescription(javaLangClass, 'class')
                     : undefined;
                 const bbjScope = this.createBBjClassMemberScope(receiverType);
-                const outerScope = super.getScope(context);
-                const bbjMemberScope = new StreamScopeWithPredicate(bbjScope.getAllElements(), outerScope);
+                const bbjMemberScope = new StreamScopeWithPredicate(bbjScope.getAllElements());
                 if (classDesc) {
                     return new StreamScopeWithPredicate(stream([classDesc]), bbjMemberScope);
                 }

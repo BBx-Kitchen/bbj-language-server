@@ -1,6 +1,6 @@
 import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
 import type { LangiumDocument } from "langium";
-import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices } from "langium/lsp";
+import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, LangiumServices, NextFeature } from "langium/lsp";
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams } from "vscode-languageserver";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
@@ -14,8 +14,32 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         triggerCharacters: ['#', '(', '.']
     };
 
+    /**
+     * Set while serving a '.' auto-trigger. In that mode we only want the receiver's members,
+     * not the keywords / lexical symbols the parser also predicts because the MemberCall `member`
+     * reference is grammatically optional (see getCompletion).
+     */
+    protected dotTriggerActive = false;
+
     constructor(services: LangiumServices) {
         super(services);
+    }
+
+    protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
+        if (this.dotTriggerActive && !this.isMemberReference(next.feature)) {
+            // Suppress everything except the `member` cross-reference of a MemberCall.
+            return;
+        }
+        return super.completionFor(context, next, acceptor);
+    }
+
+    /** True if `feature` is the cross-reference of the `member=[...]` assignment in the MemberCall rule. */
+    protected isMemberReference(feature: GrammarAST.AbstractElement): boolean {
+        if (!GrammarAST.isCrossReference(feature)) {
+            return false;
+        }
+        const assignment = GrammarAST.isAssignment(feature.$container) ? feature.$container : undefined;
+        return assignment?.feature === 'member';
     }
 
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
@@ -28,10 +52,20 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return this.getConstructorCompletion(document, params) ?? { items: [], isIncomplete: false };
         }
         if (params.context?.triggerCharacter === '.') {
-            // '.' is the member-access operator (MemberCall). After it the grammar only
-            // expects a member cross-reference, so the default provider yields the receiver's
-            // members (and no keyword noise) — the same result as Ctrl+Space in this position.
-            return super.getCompletion(document, params, cancelToken);
+            // '.' is the member-access operator (MemberCall). The grammar makes the member
+            // reference optional so a not-yet-typed member (`receiver.`) doesn't abort the
+            // enclosing class/method rule — otherwise error recovery strips the class from the
+            // AST and the receiver (a field, `this!`/`super!`, ...) can no longer be resolved.
+            // The trade-off is that the parser now also predicts a *following statement* at this
+            // position, so the default provider would offer keywords and every lexically visible
+            // symbol. While the dot trigger is active we restrict completion to the MemberCall
+            // `member` reference (see completionFor), so only the receiver's members are offered.
+            this.dotTriggerActive = true;
+            try {
+                return await super.getCompletion(document, params, cancelToken);
+            } finally {
+                this.dotTriggerActive = false;
+            }
         }
         // Non-trigger completion (Ctrl+Space) — try constructor first, then fall through to default
         const constructorCompletion = this.getConstructorCompletion(document, params);

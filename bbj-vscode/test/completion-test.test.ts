@@ -4,7 +4,7 @@ import { expectCompletion, parseHelper } from 'langium/test';
 import { CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
-import { isSymbolRef, Model } from '../src/language/generated/ast.js';
+import { isBbjClass, isSymbolRef, Model } from '../src/language/generated/ast.js';
 
 describe('BBJ completion provider', async () => {
 
@@ -272,6 +272,91 @@ foo!.`;
         expect(completions).toBeDefined();
         const methodItems = completions!.items.filter(i => i.label.startsWith('doWork'));
         expect(methodItems.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // The cursor sits right after the '.' — i.e. at the end of `prefix` (which must end in '.').
+    // `suffix` is the (optional) rest of the document after the cursor, e.g. the closing
+    // `methodend`/`classend` that would otherwise be consumed by a collapsing parse.
+    async function dotComplete(prefix: string, suffix: string, uri: string): Promise<string[]> {
+        const parse = parseHelper<Model>(bbjServices);
+        const doc = await parse(prefix + suffix, { documentUri: uri });
+        const provider = bbjServices.lsp.CompletionProvider!;
+        const offset = prefix.length; // cursor right after the trailing '.'
+        const completions = await provider.getCompletion(doc, {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '.' }
+        });
+        return (completions?.items ?? []).map(i => i.label);
+    }
+
+    test("'.' completes members of #this!/#super!/#field! inside a method body (issue #76)", async () => {
+        // A dangling member access (`receiver.`) inside a class method body used to abort the
+        // ClassDecl/MethodDecl parse via error recovery (newlines are hidden whitespace, so the
+        // parser reached across the line and consumed `methodend` where the member was expected).
+        // With the class stripped from the AST, the receiver — a field, `this!` or `super!`, which
+        // only resolve as class members — could not be linked and no members were offered.
+        const base = `
+class public Helper
+    method public void help()
+    methodend
+classend
+class public Base
+    field public Helper baseField!
+    method public void baseWork()
+    methodend
+classend
+class public MyClass extends Base
+    field public Helper myField!
+    method public void doWork()
+`;
+        const foot = `
+    methodend
+classend`;
+
+        const onThis = await dotComplete(`${base}        #this!.`, foot, 'file:///test/dot-this.bbj');
+        expect(onThis).toContain('doWork()');
+        expect(onThis).toContain('myField!');
+        expect(onThis).toContain('baseWork()'); // inherited
+
+        const onSuper = await dotComplete(`${base}        #super!.`, foot, 'file:///test/dot-super.bbj');
+        expect(onSuper).toContain('baseWork()');
+
+        // A field receiver (#myField! : Helper) offers the field type's members.
+        const onField = await dotComplete(`${base}        #myField!.`, foot, 'file:///test/dot-field.bbj');
+        expect(onField).toContain('help()');
+    });
+
+    test("'.' member completion inside a method body offers only members, not keywords/locals (issue #76)", async () => {
+        // The member reference is grammatically optional (so the dangling dot doesn't collapse the
+        // class); the '.' trigger must still suppress the keywords and lexically-visible symbols
+        // the parser now also predicts at that position.
+        const text = `
+class public MyClass
+    method public void doWork()
+    methodend
+classend
+class public C
+    field public MyClass mem!
+    method public void m()
+        declare MyClass localVar!
+        #this!.`;
+        const labels = await dotComplete(text, `\n    methodend\nclassend`, 'file:///test/dot-noise.bbj');
+        expect(labels).not.toContain('localVar!'); // local variable — not a member of #this!
+        expect(labels.some(l => l.toLowerCase() === 'declare')).toBe(false); // no keyword noise
+    });
+
+    test("a dangling member access inside a method body keeps the class in the AST (issue #76)", async () => {
+        const parse = parseHelper<Model>(bbjServices);
+        const doc = await parse(`
+class public C
+    field public String s!
+    method public void m()
+        #this!.
+    methodend
+classend`, { documentUri: 'file:///test/dot-no-collapse.bbj' });
+        const hasClass = AstUtils.streamAllContents(doc.parseResult.value).some(isBbjClass);
+        expect(hasClass).toBe(true);
     });
 
     test("getScope on a non-reference property returns EMPTY_SCOPE instead of throwing (issue #76)", async () => {
