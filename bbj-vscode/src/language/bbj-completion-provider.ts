@@ -1,13 +1,15 @@
-import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo } from "langium";
-import type { LangiumDocument, LangiumDocumentFactory } from "langium";
+import { AstNodeDescription, AstUtils, GrammarAST, MaybePromise, ReferenceInfo, UriUtils } from "langium";
+import type { FileSystemProvider, LangiumDocument, LangiumDocumentFactory } from "langium";
 import { CompletionAcceptor, CompletionContext, CompletionValueItem, DefaultCompletionProvider, NextFeature } from "langium/lsp";
 import { CancellationToken, CompletionItem, CompletionItemKind, CompletionItemTag, CompletionList, CompletionParams, TextEdit } from "vscode-languageserver";
+import { URI } from "vscode-uri";
 import { documentationHeader, methodSignature } from "./bbj-hover.js";
 import { isFunctionNodeDescription, type FunctionNodeDescription, getClass } from "./bbj-nodedescription-provider.js";
 import { BbjClass, ConstructorCall, FieldDecl, isBbjClass, isBBjTypeRef, isConstructorCall, isDocumented, isFieldDecl, isJavaClass, isJavaField, isJavaMethod, isJavaTypeRef, isMethodDecl, isSimpleTypeRef, LibEventType, LibSymbolicLabelDecl, MethodDecl } from "./generated/ast.js";
 import { findLeafNodeAtOffset } from "./bbj-validator.js";
 import { BBjServices } from "./bbj-module.js";
 import { JavaInteropService } from "./java-interop.js";
+import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
 
 
@@ -17,7 +19,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     protected static readonly AUTO_IMPORT_MIN_PREFIX = 2;
 
     override readonly completionOptions = {
-        triggerCharacters: ['#', '(', '.']
+        // '"' auto-triggers file-path completion inside a RUN/CALL file id (`RUN "`); it is a no-op
+        // (empty list) for every other string literal — see getCompletion.
+        triggerCharacters: ['#', '(', '.', '"']
     };
 
     /**
@@ -29,11 +33,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     protected readonly documentFactory: LangiumDocumentFactory;
     protected readonly javaInterop: JavaInteropService;
+    protected readonly fileSystemProvider: FileSystemProvider;
+    protected readonly wsManager: BBjWorkspaceManager;
 
     constructor(services: BBjServices) {
         super(services);
         this.documentFactory = services.shared.workspace.LangiumDocumentFactory;
         this.javaInterop = services.java.JavaInteropService;
+        this.fileSystemProvider = services.shared.workspace.FileSystemProvider;
+        this.wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
     }
 
     protected override async completionForCrossReference(context: CompletionContext, next: NextFeature<GrammarAST.CrossReference>, acceptor: CompletionAcceptor): Promise<void> {
@@ -108,8 +116,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
-        if (this.dotTriggerActive && !this.isMemberReference(next.feature)) {
-            // Suppress everything except the `member` cross-reference of a MemberCall.
+        if (this.dotTriggerActive && !this.isMemberReference(next.feature) && !this.isJavaSymbolReference(next.feature)) {
+            // Suppress everything except the `member` cross-reference of a MemberCall and the
+            // `symbol` cross-reference of a JavaSymbol (the package/class parts of a `use` path).
             return;
         }
         return super.completionFor(context, next, acceptor);
@@ -124,6 +133,24 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         return assignment?.feature === 'member';
     }
 
+    /**
+     * True if `feature` is the `symbol=[JavaPackageLike:ID]` cross-reference of the JavaSymbol rule,
+     * i.e. a package/class part of a `use` path (`use java.util.HashMap`). Checked so the '.' trigger
+     * still offers package/class suggestions after a dot in a USE statement (issue #453). The rule
+     * check keeps this precise so an unrelated `symbol` assignment cannot slip through.
+     */
+    protected isJavaSymbolReference(feature: GrammarAST.AbstractElement): boolean {
+        if (!GrammarAST.isCrossReference(feature)) {
+            return false;
+        }
+        const assignment = GrammarAST.isAssignment(feature.$container) ? feature.$container : undefined;
+        if (assignment?.feature !== 'symbol') {
+            return false;
+        }
+        const rule = GrammarAST.isParserRule(assignment.$container) ? assignment.$container : undefined;
+        return rule?.name === 'JavaSymbol';
+    }
+
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
         if (params.context?.triggerCharacter === '#') {
             return this.getFieldCompletion(document, params);
@@ -132,6 +159,12 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             // '(' auto-trigger: return constructor items or an empty list — NEVER fall through
             // to the slow default provider, which would produce irrelevant keyword suggestions.
             return this.getConstructorCompletion(document, params) ?? { items: [], isIncomplete: false };
+        }
+        if (params.context?.triggerCharacter === '"') {
+            // '"' auto-trigger: the opening quote of a RUN/CALL file id (`RUN "`, `CALL "`). Offer
+            // reachable file paths, or an empty list for any other string literal — NEVER fall
+            // through to the default provider, which would offer irrelevant keywords inside a string.
+            return await this.getFilePathCompletion(document, params) ?? { items: [], isIncomplete: false };
         }
         if (params.context?.triggerCharacter === '.') {
             // '.' is the member-access operator (MemberCall). The grammar makes the member
@@ -148,6 +181,14 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             } finally {
                 this.dotTriggerActive = false;
             }
+        }
+        // Non-trigger completion (Ctrl+Space). `:` is not a trigger character, so inside the
+        // `::...::` file-path segment of a `use`/`declare` only a plain Ctrl+Space reaches here.
+        // Offer reachable `.bbj` files / subdirectories there — the grammar treats the path as a
+        // single opaque terminal, so the default completion engine has nothing to offer.
+        const filePathCompletion = await this.getFilePathCompletion(document, params);
+        if (filePathCompletion) {
+            return filePathCompletion;
         }
         // Non-trigger completion (Ctrl+Space) — try constructor first, then fall through to default
         const constructorCompletion = this.getConstructorCompletion(document, params);
@@ -178,6 +219,121 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return true;
         });
         return list;
+    }
+
+    /**
+     * File-path completion inside the `::...::` segment of a `use`/`declare` statement, and inside
+     * the file-name string literal of a `RUN`/`CALL` statement (issue #456). Returns subdirectory
+     * (drill-down) and `.bbj` file items reachable from the current file's directory, the workspace
+     * folder(s) and every configured PREFIX path; returns undefined when the cursor is not in such a
+     * path position (so completion falls through to the default provider — e.g. class completion
+     * after the closing `::`).
+     *
+     * Fail-safe: any file-system/resolution error yields an empty list rather than a thrown
+     * exception, so a broken prefix never breaks completion.
+     */
+    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+        const text = document.textDocument.getText();
+        const cursorOffset = document.textDocument.offsetAt(params.position);
+        const lineStartOffset = document.textDocument.offsetAt({ line: params.position.line, character: 0 });
+        let lineEndOffset = text.indexOf('\n', cursorOffset);
+        if (lineEndOffset === -1) {
+            lineEndOffset = text.length;
+        }
+        const lineText = text.substring(lineStartOffset, lineEndOffset);
+        const pathContext = parseFilePathCompletionContext(lineText, params.position.character)
+            ?? parseRunCallFilePathContext(lineText, params.position.character);
+        if (!pathContext) {
+            return undefined;
+        }
+
+        // Range covering only the leaf prefix already typed, so accepting an item replaces just
+        // that prefix (not the whole path) regardless of how the client tokenises `/` and `.`.
+        const prefixStart = document.textDocument.positionAt(cursorOffset - pathContext.prefix.length);
+        const replaceRange = { start: prefixStart, end: params.position };
+
+        const items = await this.collectFilePathItems(document.uri, pathContext, replaceRange);
+        // isIncomplete so the client re-queries as the path is typed further (e.g. crossing into a
+        // subdirectory after a '/'), rather than filtering the first directory's list forever.
+        return { items, isIncomplete: true };
+    }
+
+    /**
+     * Enumerates the subdirectories and `.bbj` files of `pathContext.dir` under each base directory
+     * (current file's dir, workspace roots, PREFIX paths), filtered by the leaf prefix. Deduplicated
+     * by name across bases; never throws.
+     */
+    protected async collectFilePathItems(
+        docUri: URI,
+        pathContext: FilePathCompletionContext,
+        replaceRange: { start: { line: number, character: number }, end: { line: number, character: number } }
+    ): Promise<CompletionItem[]> {
+        const baseDirs: URI[] = [UriUtils.dirname(docUri)];
+        try {
+            for (const root of this.wsManager.getWorkspaceFolderUris()) {
+                baseDirs.push(root);
+            }
+            for (const prefix of this.wsManager.getSettings()?.prefixes ?? []) {
+                if (prefix && prefix.length > 0) {
+                    baseDirs.push(URI.file(prefix));
+                }
+            }
+        } catch {
+            // Settings/workspace not available — the current file's directory is still usable.
+        }
+
+        const prefixLower = pathContext.prefix.toLowerCase();
+        const seen = new Set<string>();
+        const items: CompletionItem[] = [];
+        for (const baseDir of baseDirs) {
+            let dirUri: URI;
+            try {
+                dirUri = pathContext.dir ? UriUtils.resolvePath(baseDir, pathContext.dir) : baseDir;
+            } catch {
+                continue;
+            }
+            let entries;
+            try {
+                entries = await this.fileSystemProvider.readDirectory(dirUri);
+            } catch {
+                // Missing/unreadable directory (e.g. an unresolved prefix) — skip this base.
+                continue;
+            }
+            for (const entry of entries) {
+                const name = UriUtils.basename(entry.uri);
+                if (!name || !name.toLowerCase().startsWith(prefixLower)) {
+                    continue;
+                }
+                if (entry.isDirectory) {
+                    const key = 'dir:' + name.toLowerCase();
+                    if (seen.has(key)) {
+                        continue;
+                    }
+                    seen.add(key);
+                    items.push({
+                        label: name + '/',
+                        kind: CompletionItemKind.Folder,
+                        sortText: '0_' + name.toLowerCase(), // directories first (drill-down)
+                        textEdit: TextEdit.replace(replaceRange, name + '/'),
+                        // Re-open completion after the slash so the user can keep drilling down.
+                        command: { title: 'Suggest', command: 'editor.action.triggerSuggest' }
+                    });
+                } else if (entry.isFile && name.toLowerCase().endsWith('.bbj')) {
+                    const key = 'file:' + name.toLowerCase();
+                    if (seen.has(key)) {
+                        continue;
+                    }
+                    seen.add(key);
+                    items.push({
+                        label: name,
+                        kind: CompletionItemKind.File,
+                        sortText: '1_' + name.toLowerCase(),
+                        textEdit: TextEdit.replace(replaceRange, name)
+                    });
+                }
+            }
+        }
+        return items;
     }
 
     protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
@@ -214,23 +370,66 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             return undefined;
         }
 
-        // Collect fields from the class and its inheritance hierarchy
-        const fields = this.collectFields(klass);
+        const items = this.buildInstanceMemberItems(klass);
+        return { items, isIncomplete: false };
+    }
 
-        // Convert to completion items
-        const items: CompletionItem[] = fields.map(field => {
-            const fieldClass = getClass(field.type);
-            const fieldType = fieldClass?.name ?? 'Object';
-            return {
+    /**
+     * Builds the completion items offered after a `#` inside a class method (issue #455):
+     * the class's fields and methods (own = all visibilities; inherited = public/protected),
+     * plus the pseudo-members `this!` and `super!`. All insert their bare name without the
+     * leading `#` (which the user has already typed), matching the `#name!` / `#name` syntax.
+     */
+    protected buildInstanceMemberItems(klass: BbjClass): CompletionItem[] {
+        const items: CompletionItem[] = [];
+
+        // Fields (own: all visibilities; inherited: public/protected)
+        for (const field of this.collectFields(klass)) {
+            const fieldType = getClass(field.type)?.name ?? 'Object';
+            items.push({
                 label: field.name,
                 kind: CompletionItemKind.Variable,
                 detail: `${fieldType} field`,
                 insertText: field.name,  // Insert field name without #
                 sortText: field.name
-            };
-        });
+            });
+        }
 
-        return { items, isIncomplete: false };
+        // Methods (own: all visibilities; inherited: public/protected)
+        for (const methodMember of this.collectMethods(klass)) {
+            const paramList = methodMember.params.map(p => p.name).join(', ');
+            const returnType = methodMember.voidReturn || !methodMember.returnType
+                ? 'void'
+                : (getClass(methodMember.returnType)?.name ?? 'Object');
+            items.push({
+                label: methodMember.name,
+                kind: CompletionItemKind.Method,
+                detail: `${methodMember.name}(${paramList}): ${returnType} method`,
+                insertText: methodMember.name,  // Insert method name without #
+                sortText: methodMember.name
+            });
+        }
+
+        // Pseudo-members `this!` and `super!` — valid as `#this!` / `#super!` in BBj.
+        // `super!` only exists when the class actually extends a superclass.
+        items.push({
+            label: 'this!',
+            kind: CompletionItemKind.Keyword,
+            detail: 'Current instance',
+            insertText: 'this!',
+            sortText: 'this!'
+        });
+        if (klass.extends.length > 0) {
+            items.push({
+                label: 'super!',
+                kind: CompletionItemKind.Keyword,
+                detail: 'Superclass instance',
+                insertText: 'super!',
+                sortText: 'super!'
+            });
+        }
+
+        return items;
     }
 
     /**
@@ -388,6 +587,57 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         }
     }
 
+    protected collectMethods(klass: BbjClass): MethodDecl[] {
+        const methods: MethodDecl[] = [];
+        const visited = new Set<BbjClass>();
+        const maxDepth = 20;
+
+        // Add methods from current class (all visibilities)
+        methods.push(...klass.members.filter(isMethodDecl));
+
+        // Add inherited methods (protected and public only)
+        this.collectInheritedMethods(klass, methods, visited, 0, maxDepth);
+
+        return methods;
+    }
+
+    protected collectInheritedMethods(
+        klass: BbjClass,
+        methods: MethodDecl[],
+        visited: Set<BbjClass>,
+        depth: number,
+        maxDepth: number
+    ): void {
+        // Cycle protection
+        if (visited.has(klass) || depth >= maxDepth) {
+            return;
+        }
+        visited.add(klass);
+
+        // Walk superclass chain
+        for (const extendsQualifiedClass of klass.extends) {
+            const superClass = getClass(extendsQualifiedClass);
+
+            // Skip unresolved superclass references or non-BBj classes
+            if (!superClass || !isBbjClass(superClass)) {
+                continue;
+            }
+
+            // Collect inherited methods (protected and public only, not private)
+            const inheritedMethods = superClass.members
+                .filter(isMethodDecl)
+                .filter(m => {
+                    const visibility = m.visibility?.toUpperCase() ?? 'PUBLIC';
+                    return visibility === 'PUBLIC' || visibility === 'PROTECTED';
+                });
+
+            methods.push(...inheritedMethods);
+
+            // Recursively get superclass hierarchy
+            this.collectInheritedMethods(superClass, methods, visited, depth + 1, maxDepth);
+        }
+    }
+
     override createReferenceCompletionItem(nodeDescription: AstNodeDescription | FunctionNodeDescription, _refInfo: ReferenceInfo, _context: CompletionContext): CompletionValueItem {
         const superImpl = super.createReferenceCompletionItem(nodeDescription, _refInfo, _context)
         superImpl.kind = this.nodeKindProvider.getCompletionItemKind(nodeDescription)
@@ -471,4 +721,98 @@ const FIELD_COMPLETION_PROBE_ID = 'a';
 
 function toSimpleName(type: string): string {
     return type.split('.').pop() || type
+}
+
+/** Result of detecting the file-path completion position inside a `::...::` segment. */
+export interface FilePathCompletionContext {
+    /** Full partial path typed between the opening `::` and the cursor (e.g. `util/foo`). */
+    typed: string;
+    /** The already-typed directory portion, with trailing slash, or '' when none (e.g. `util/`). */
+    dir: string;
+    /** The leaf prefix to filter directory entries by, or '' (e.g. `foo`). */
+    prefix: string;
+}
+
+/**
+ * Detects whether the cursor sits inside an unclosed `::...::` file-path segment of a `use` or
+ * `declare` statement, and if so splits the partial path already typed into a directory portion
+ * plus a leaf prefix. Returns undefined otherwise: not a use/declare line, no opening `::` before
+ * the cursor, or the segment is already closed by a second `::` (the class-name portion, which the
+ * scope provider completes on its own).
+ *
+ * Pure string logic (unit-tested directly). BBj is case-insensitive.
+ *
+ * @param lineText     full text of the current line
+ * @param cursorColumn 0-based column of the cursor within the line
+ */
+export function parseFilePathCompletionContext(lineText: string, cursorColumn: number): FilePathCompletionContext | undefined {
+    const beforeCursor = lineText.substring(0, cursorColumn);
+    // Only inside a `use`/`declare` statement (leading whitespace allowed). BBj is case-insensitive.
+    if (!/^\s*(use|declare)\b/i.test(beforeCursor)) {
+        return undefined;
+    }
+    const openIdx = beforeCursor.indexOf('::');
+    if (openIdx === -1) {
+        return undefined;
+    }
+    const afterOpen = beforeCursor.substring(openIdx + 2);
+    // A second `::` before the cursor closes the path segment — the cursor is in the class-name
+    // portion (`::path::Class`), handled by the default class completion, not here.
+    if (afterOpen.includes('::')) {
+        return undefined;
+    }
+    return splitTypedPath(afterOpen);
+}
+
+/**
+ * Splits a partial path into the already-typed directory portion (with trailing slash) and the leaf
+ * prefix to filter directory entries by. Shared by the USE/DECLARE `::...::` and RUN/CALL `"..."`
+ * detectors so both produce the same {@link FilePathCompletionContext}.
+ */
+function splitTypedPath(typed: string): FilePathCompletionContext {
+    const slashIdx = Math.max(typed.lastIndexOf('/'), typed.lastIndexOf('\\'));
+    const dir = slashIdx === -1 ? '' : typed.substring(0, slashIdx + 1);
+    const prefix = slashIdx === -1 ? typed : typed.substring(slashIdx + 1);
+    return { typed, dir, prefix };
+}
+
+/**
+ * Detects whether the cursor sits inside the file-name string literal of a `RUN` or `CALL` statement
+ * (`RUN "prog"`, `CALL "prog"`) and, if so, splits the partial path already typed into a directory
+ * portion plus a leaf prefix — the same shape used for the `::...::` path of USE/DECLARE (issue #456,
+ * extended per the issue comment: RUN/CALL also accept a string-literal file name).
+ *
+ * Returns undefined when: the line is not a RUN/CALL statement, the cursor is not inside a string
+ * literal, the string is a later `CALL` argument (a comma precedes its opening quote — only the first
+ * operand is the file id), or the cursor is past a `program::label` separator (only the program part
+ * is a path). Pure string logic (unit-tested directly). BBj is case-insensitive.
+ *
+ * @param lineText     full text of the current line
+ * @param cursorColumn 0-based column of the cursor within the line
+ */
+export function parseRunCallFilePathContext(lineText: string, cursorColumn: number): FilePathCompletionContext | undefined {
+    const beforeCursor = lineText.substring(0, cursorColumn);
+    // Anchor the RUN/CALL verb at statement start (leading whitespace allowed) and require a space or
+    // quote after it, so an assignment to a `run$`/`call$` variable is not mistaken for the verb.
+    const kwMatch = /^\s*(run|call)(?=\s|")/i.exec(beforeCursor);
+    if (!kwMatch) {
+        return undefined;
+    }
+    const afterKw = beforeCursor.substring(kwMatch.index + kwMatch[0].length);
+    // Inside a string literal iff an odd number of quotes precede the cursor.
+    if (((afterKw.match(/"/g) ?? []).length) % 2 === 0) {
+        return undefined;
+    }
+    const openQuoteIdx = afterKw.lastIndexOf('"');
+    // A comma before the opening quote means this string is a later CALL argument, not the file id.
+    if (afterKw.substring(0, openQuoteIdx).includes(',')) {
+        return undefined;
+    }
+    const typed = afterKw.substring(openQuoteIdx + 1);
+    // `CALL "program::label"` — only the part before `::` is a file path; once the cursor is past the
+    // separator it is in the label, not the file name.
+    if (typed.includes('::')) {
+        return undefined;
+    }
+    return splitTypedPath(typed);
 }

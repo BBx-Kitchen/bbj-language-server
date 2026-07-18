@@ -34,7 +34,9 @@ import {
     isClasspath, isCompoundStatement,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isJavaPackage,
+    isJavaSymbol,
     isJavaTypeRef,
+    JavaTypeRef,
     isLibFunction,
     isMemberCall,
     isMethodCall,
@@ -52,7 +54,6 @@ import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { normalize, resolve } from 'path';
 import { assertType } from './utils.js';
 import { getClass } from './bbj-nodedescription-provider.js';
-import { assertTrue } from './assertions.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
@@ -109,12 +110,35 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 assertType<JavaSymbol>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'symbol') {
-                    if (isJavaTypeRef(container.$container)) {
-                        assertTrue(container.$containerIndex !== undefined);
-                        if (container.$containerIndex === 0) {
+                    // Resolve which JavaTypeRef path we are in and the index of the segment being
+                    // completed, across the three shapes the scope is queried with (issue #453):
+                    //  1. linking / a real parsed part:  container.$container is the JavaTypeRef and
+                    //     container.$containerIndex is the part's position;
+                    //  2. completion right after a '.':  Langium synthesizes a new JavaSymbol whose
+                    //     $container is the JavaTypeRef and whose $containerIndex is undefined — a new
+                    //     part appended after the last parsed one (`use java.|`);
+                    //  3. completion on a partially-typed part (`use java.ut|`): the synthetic
+                    //     JavaSymbol's $container is the EXISTING part node, so the JavaTypeRef is one
+                    //     level up and the completed part's index is that existing node's index.
+                    // Typed as AstNode: the generated AST fixes JavaSymbol.$container to JavaTypeRef,
+                    // but Langium's synthetic completion node (case 3) makes it a JavaSymbol at runtime.
+                    const parent = container.$container as AstNode | undefined;
+                    let typeRef: JavaTypeRef | undefined = undefined;
+                    let completingIndex = -1;
+                    if (isJavaTypeRef(parent)) {
+                        typeRef = parent;
+                        completingIndex = container.$containerIndex ?? typeRef.pathParts.length;
+                    } else if (isJavaSymbol(parent) && isJavaTypeRef(parent.$container)) {
+                        typeRef = parent.$container;
+                        completingIndex = parent.$containerIndex ?? typeRef.pathParts.length;
+                    }
+                    if (typeRef) {
+                        const pathParts = typeRef.pathParts;
+                        const previousIndex = completingIndex - 1;
+                        if (previousIndex < 0) {
                             return this.createScopeForNodes(this.javaInterop.getChildrenOf());
                         } else {
-                            const previousPart = container.$container.pathParts[container.$containerIndex - 1].symbol.ref;
+                            const previousPart = pathParts[previousIndex]?.symbol.ref;
                             if (previousPart) {
                                 let outerScope: Scope | undefined = undefined;
                                 if (isJavaClass(previousPart)) {
@@ -307,10 +331,12 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     }
 
     private resolveClassScopeByName(context: ReferenceInfo, qualifiedClassName: string): Scope {
-        if (!qualifiedClassName) {
-            return EMPTY_SCOPE;
-        }
-        const match = qualifiedClassName.match(BBjClassNamePattern);
+        // `qualifiedClassName` is empty during completion (Ctrl+Space): Langium asks for the scope
+        // with an empty `$refText` and then fuzzy-filters the candidates by the typed prefix itself.
+        // So an empty name must still yield the full class scope (local BBj classes, imports and the
+        // global Java index) — returning EMPTY_SCOPE here left extends/implements/declare completion
+        // with no candidates (#454). Only the `::file::Class` form needs the name up front.
+        const match = qualifiedClassName ? qualifiedClassName.match(BBjClassNamePattern) : null;
         if (match) {
             const relativeFilePath = match[1];
             return this.getBBjClassesFromFile(context.container, relativeFilePath, false);
