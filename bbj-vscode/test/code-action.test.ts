@@ -81,6 +81,21 @@ describe('BBj code actions — missing use statements (#447)', () => {
         }
     });
 
+    test('offers a use for an unresolved factory-method receiver (DataRow.fromJson) - issue #447', async () => {
+        const interop = bbj.java.JavaInteropService as unknown as {
+            seedCompleteClassIndex(f: string[]): void; resetCompleteClassIndex(): void;
+        };
+        interop.seedCompleteClassIndex(['com.example.DataRow']);
+        try {
+            // `DataRow` is a static/factory receiver (a SymbolRef, not a type reference); the
+            // quick-fix must still offer to import it.
+            const { actions } = await codeActionsFor('dr! = DataRow.fromJson("x")\n');
+            expect(actions.map(a => a.title)).toContain("Add 'use com.example.DataRow'");
+        } finally {
+            interop.resetCompleteClassIndex();
+        }
+    });
+
     test('offers nothing when there are no linking diagnostics', async () => {
         const doc = await parse('use java.util.HashMap\nhm! = new HashMap()\n', { documentUri: 'file:///ca-clean.bbj', validation: true });
         const params: CodeActionParams = {

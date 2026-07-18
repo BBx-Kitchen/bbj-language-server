@@ -4,7 +4,7 @@ import { CodeActionProvider } from 'langium/lsp';
 import { CodeAction, CodeActionKind, CodeActionParams, Command, Diagnostic, TextEdit } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { JavaInteropService } from './java-interop.js';
-import { isBBjTypeRef, isJavaTypeRef, isSimpleTypeRef } from './generated/ast.js';
+import { isBBjTypeRef, isJavaTypeRef, isMemberCall, isSimpleTypeRef, isSymbolRef } from './generated/ast.js';
 import { findLeafNodeAtOffset } from './bbj-validator.js';
 import { useInsertPosition } from './bbj-use-insert.js';
 
@@ -62,9 +62,13 @@ export class BBjCodeActionProvider implements CodeActionProvider {
         if (!node) {
             return undefined;
         }
-        // Only class-type references can be fixed with a `use` statement.
+        // A `use` statement can fix an unresolved class-type reference, or an unresolved receiver
+        // of a member access — `DataRow.fromJson(...)`, i.e. a static/factory call on a class that
+        // just needs importing. Other unresolved references (plain variables, methods) are ignored.
         const isClassRef = (n = node) => isBBjTypeRef(n) || isSimpleTypeRef(n) || isJavaTypeRef(n);
-        if (!isClassRef() && !(node.$container && isClassRef(node.$container))) {
+        const isMemberAccessReceiver = isSymbolRef(node)
+            && node.$containerProperty === 'receiver' && isMemberCall(node.$container);
+        if (!isClassRef() && !(node.$container && isClassRef(node.$container)) && !isMemberAccessReceiver) {
             return undefined;
         }
         const text = document.textDocument.getText(diagnostic.range).trim();
