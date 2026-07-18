@@ -68,6 +68,9 @@ describe('builtin function call validation (#451)', () => {
         'A%=DIR("x")',     // DIR returns string -> numeric A%
         'B$=ABS(2)',       // ABS returns num -> string B$
         'N=DSK("0")',      // DSK returns string -> numeric N
+        'B$=MSGBOX("hi")', // MSGBOX returns numeric (selected-button id) -> string B$
+        'S$=TCB(1)',       // TCB returns numeric -> string S$
+        'N=XFIN(1)',       // XFIN returns string -> numeric N
     ])('flags return/target mismatch: %j', async (code) => {
         expect(await callIssues(code)).not.toEqual([]);
     });
@@ -78,6 +81,9 @@ describe('builtin function call validation (#451)', () => {
         'N%=LEN("hi")',    // int return -> numeric target
         'X!=NULL()',       // object return -> object target (not judged)
         'A=IFF(1,2,3)',    // any return -> not judged
+        'N=MSGBOX("hi")',  // MSGBOX returns numeric (selected-button id) -> numeric N
+        'N=TCB(1)',        // TCB returns numeric -> numeric N
+        'S$=XFIN(1)',      // XFIN returns string -> string S$
     ])('accepts return/target: %j', async (code) => {
         expect(await callIssues(code)).toEqual([]);
     });
@@ -99,6 +105,7 @@ describe('builtin function call validation (#451)', () => {
         's$="x"\n? HTA(s$)',   // string variable -> HTA string parameter
         'n=5\n? ABS(n)',       // numeric variable -> ABS numeric parameter
         '? STR(n)',            // STR objexpr is `any` -> not judged
+        '? PAD("x",5,"C")',    // PAD padtype is the string keyword "L"/"C"/"R"
     ])('accepts inferred argument: %j', async (code) => {
         expect(await callIssues(code)).toEqual([]);
     });

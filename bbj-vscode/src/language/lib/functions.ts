@@ -592,7 +592,7 @@ MOD(numA: num, numB: num, ERR?!: lineref): num
 
 The MSGBOX() function creates a message dialog box and returns a value that identifies the user-selected button.
 @/
-MSGBOX(str1: string, expr?: num, str2?: string, button1?: string, button2?: string, button3?: string, MODE?!: string, TIM?!: int, ERR?!: lineref): string
+MSGBOX(str1: string, expr?: num, str2?: string, button1?: string, button2?: string, button3?: string, MODE?!: string, TIM?!: int, ERR?!: lineref): int
 
 /@@
 \`NEVAL(str{,ERR=lineref})\`
@@ -660,7 +660,7 @@ NUM(str: string, ERR?!: lineref): num
 
 The PAD() function pads a specified string.
 @/
-PAD(str: string, len: int, padtype?: int, padchr?: char, ERR?!: lineref): string
+PAD(str: string, len: int, padtype?: string, padchr?: char, ERR?!: lineref): string
 
 /@@
 \`PCK(num1,num2{,ERR=lineref})\`
@@ -733,7 +733,7 @@ RESINFO(handle: res_handle, resource: string, ERR?!: lineref): string
 
 The RESNEXT() function returns a string assigning the next valid resource in the resource file to the template defined by RESFIRST().
 @/
-RESNEXT(handle: res_handle, res_id: int, ERR?!: lineref): string
+RESNEXT(handle: res_handle, res_id: string, ERR?!: lineref): string
 
 /@@
 \`RESOPEN(filename{,ERR=lineref})\`
@@ -895,7 +895,7 @@ TBL(str: string, TBL?!:lineref, ERR?!:lineref): string
 
 The TCB() function returns information on the current state of the application.
 @/
-TCB(funcnum: int, ERR?!:lineref): string
+TCB(funcnum: int, ERR?!:lineref): num
 
 /@@
 \`TIME(str1{,str2}{,str3}{,ERR=lineref})\`
@@ -938,14 +938,14 @@ UPK(str: string, ERR?!:lineref): num
 
 The WINFIRST() function returns a window context ID that can be used by the WININFO() function to obtain information about the referenced window.
 @/
-WINFIRST(sysguichan: sysgui, ERR?!:lineref): int
+WINFIRST(sysguichan: sysgui, ERR?!:lineref): string
 
 /@@
 \`WININFO(sysgui,contextid{,ERR=lineref}{,END=lineref})\`
 
 The WININFO() function returns a string that contains information about the contents of a SYSGUI window.
 @/
-WININFO(sysguichan: sysgui, contextid: int, ERR?!:lineref, END?!:lineref): string
+WININFO(sysguichan: sysgui, contextid: string, ERR?!:lineref, END?!:lineref): string
 
 /@@
 \`WINNEXT(sysgui,context{,ERR=lineref})\`
@@ -953,7 +953,7 @@ WININFO(sysguichan: sysgui, contextid: int, ERR?!:lineref, END?!:lineref): strin
 The WINNEXT() function returns the next context ID of each of the top-level windows in sequence by way of a templated 
 string obtained either from the WINFIRST() function or from a previous use of the WINNEXT() function.
 @/
-WINNEXT(sysguichan: sysgui, context: int, ERR?!:lineref): int
+WINNEXT(sysguichan: sysgui, context: string, ERR?!:lineref): string
 
 /@@
 \`XFID(channelno{,ERR=lineref})\`
@@ -968,7 +968,7 @@ XFID(channelno: int, ERR?!:lineref): string
 
 The XFIN() function returns an 8-byte file length.
 @/
-XFIN(channelno: int, ERR?!:lineref): num
+XFIN(channelno: int, ERR?!:lineref): string
 
 /@@
 \`XKGEN(str1,str2,int{,ERR=lineref})\`
