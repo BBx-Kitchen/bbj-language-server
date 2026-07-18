@@ -49,6 +49,33 @@ describe('BBJ completion provider', async () => {
         return (list?.items ?? []).map(i => i.label);
     }
 
+    // Plain (Invoked) completion driver — models VS Code re-querying as the user keeps typing a
+    // segment. The '.' list is returned `isIncomplete`, so the client re-queries; that re-query
+    // must return the narrowed candidates rather than an empty list (issue #460).
+    async function useInvokedCompletion(text: string): Promise<string[]> {
+        const offset = text.indexOf('<|>');
+        const clean = text.replace('<|>', '');
+        const doc = await parseHelper<Model>(bbjServices)(
+            clean, { documentUri: `file:///use-invoked-completion-${dotCompletionCounter++}.bbj` });
+        const params: CompletionParams = {
+            textDocument: { uri: doc.textDocument.uri },
+            position: doc.textDocument.positionAt(offset),
+            context: { triggerKind: CompletionTriggerKind.Invoked }
+        };
+        const list = await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+        return (list?.items ?? []).map(i => i.label);
+    }
+
+    test("partially typed subpackage after `use java.` still narrows - issue #460", async () => {
+        const labels = await useInvokedCompletion('use java.u<|>\n');
+        expect(labels).toContain('util');
+    });
+
+    test("partially typed class after `use java.util.` still narrows - issue #460", async () => {
+        const labels = await useInvokedCompletion('use java.util.Hash<|>\n');
+        expect(labels).toContain('HashMap');
+    });
+
     test("'.' after `use java` offers subpackages - issue #453", async () => {
         const labels = await useDotCompletion('use java.<|>\n');
         expect(labels).toContain('util');

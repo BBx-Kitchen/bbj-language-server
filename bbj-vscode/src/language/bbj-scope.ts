@@ -34,7 +34,9 @@ import {
     isClasspath, isCompoundStatement,
     isJavaClass, isJavaField, isJavaMethod, isJavaMethodParameter,
     isJavaPackage,
+    isJavaSymbol,
     isJavaTypeRef,
+    JavaTypeRef,
     isLibFunction,
     isMemberCall,
     isMethodCall,
@@ -108,15 +110,31 @@ export class BbjScopeProvider extends DefaultScopeProvider {
                 assertType<JavaSymbol>(container);
                 const property = context.property as CrossReferencesOfAstNodeType<typeof container>;
                 if (property === 'symbol') {
-                    if (isJavaTypeRef(container.$container)) {
-                        // During completion after a '.' in a `use` statement (issue #453) Langium
-                        // synthesizes a new JavaSymbol node with no $containerIndex. In that case the
-                        // new part is appended after the last already-parsed part, so treat the last
-                        // existing pathPart as the previous one.
-                        const pathParts = container.$container.pathParts;
-                        const previousIndex = container.$containerIndex !== undefined
-                            ? container.$containerIndex - 1
-                            : pathParts.length - 1;
+                    // Resolve which JavaTypeRef path we are in and the index of the segment being
+                    // completed, across the three shapes the scope is queried with (issue #453):
+                    //  1. linking / a real parsed part:  container.$container is the JavaTypeRef and
+                    //     container.$containerIndex is the part's position;
+                    //  2. completion right after a '.':  Langium synthesizes a new JavaSymbol whose
+                    //     $container is the JavaTypeRef and whose $containerIndex is undefined — a new
+                    //     part appended after the last parsed one (`use java.|`);
+                    //  3. completion on a partially-typed part (`use java.ut|`): the synthetic
+                    //     JavaSymbol's $container is the EXISTING part node, so the JavaTypeRef is one
+                    //     level up and the completed part's index is that existing node's index.
+                    // Typed as AstNode: the generated AST fixes JavaSymbol.$container to JavaTypeRef,
+                    // but Langium's synthetic completion node (case 3) makes it a JavaSymbol at runtime.
+                    const parent = container.$container as AstNode | undefined;
+                    let typeRef: JavaTypeRef | undefined = undefined;
+                    let completingIndex = -1;
+                    if (isJavaTypeRef(parent)) {
+                        typeRef = parent;
+                        completingIndex = container.$containerIndex ?? typeRef.pathParts.length;
+                    } else if (isJavaSymbol(parent) && isJavaTypeRef(parent.$container)) {
+                        typeRef = parent.$container;
+                        completingIndex = parent.$containerIndex ?? typeRef.pathParts.length;
+                    }
+                    if (typeRef) {
+                        const pathParts = typeRef.pathParts;
+                        const previousIndex = completingIndex - 1;
                         if (previousIndex < 0) {
                             return this.createScopeForNodes(this.javaInterop.getChildrenOf());
                         } else {
