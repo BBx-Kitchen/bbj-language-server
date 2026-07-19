@@ -67,7 +67,7 @@ describe('Inlay hints', () => {
         const { hints } = await getHints(`
             A$ = CHR(65)
         `);
-        expect(hints.map(h => h.label)).toEqual(['num:']);
+        expect(hints.map(h => h.label)).toEqual(['char_code:']);
     });
 
     test('literals mode skips non-literal arguments', async () => {
