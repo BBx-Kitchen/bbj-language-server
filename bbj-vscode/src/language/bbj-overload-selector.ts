@@ -63,7 +63,11 @@ function scoreOverload(method: MethodData, argTypes: ArgumentType[]): number {
 // Numeric also covers booleans: BBj spells them 0/1. Class names are compared by
 // lower-cased simple name — Java subtyping is not available here (JavaClass carries
 // no hierarchy), so an unrelated-looking pair scores neutral, never negative.
-const NUMERIC_TYPES = new Set(['number', 'int', 'integer', 'long', 'short', 'byte', 'float', 'double', 'boolean', 'bool', 'num', 'bbjnumber', 'bbjint']);
+// `byte` is deliberately NOT numeric: the interop service erases arrays to their
+// component type, so a reflected `byte` is almost always a byte[] parameter
+// (addWindow's p_flags, event masks), which BBj fills with (hex) strings — it must
+// not count against a string argument.
+const NUMERIC_TYPES = new Set(['number', 'int', 'integer', 'long', 'short', 'float', 'double', 'boolean', 'bool', 'num', 'bbjnumber', 'bbjint']);
 const STRING_TYPES = new Set(['string', 'charsequence', 'bbjstring']);
 
 function typeAffinity(arg: ArgumentType, parameterType: string): number {

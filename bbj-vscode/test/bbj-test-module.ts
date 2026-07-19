@@ -222,7 +222,9 @@ function createSysGuiClass(container: Classpath) {
             $type: JavaMethod,
             parameters: [
                 { name: 'p_title', type: 'java.lang.String' },
-                { name: 'p_flags', type: 'java.lang.String' }
+                // byte[] in the real API; the interop service erases arrays to their
+                // component type, so this is what the language server actually sees
+                { name: 'p_flags', type: 'byte' }
             ]
         },
         // Like addWindow above, but with the synthetic parameter names produced by
