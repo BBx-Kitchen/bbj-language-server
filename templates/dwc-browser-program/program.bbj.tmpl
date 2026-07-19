@@ -1,0 +1,27 @@
+REM ${ProgramName}
+REM Generated from the BBj starter catalogue.
+REM Run with "Run As DWC Program" (Alt+D).
+
+REM --- Open the SysGui channel --------------------------------------------
+sysgui! = BBjAPI().openSysGui("X0")
+
+REM --- Create the top-level window -----------------------------------------
+title$ = "${WindowTitle}"
+window! = sysgui!.addWindow(50, 50, 400, 220, title$)
+window!.setCallback(BBjAPI.ON_CLOSE, "onClose")
+
+REM --- Add a button ---------------------------------------------------------
+button! = window!.addButton(101, 140, 90, 120, 40, "Say hello")
+button!.setCallback(BBjAPI.ON_BUTTON_PUSH, "onButtonPush")
+
+REM --- Hand control to the event loop ---------------------------------------
+process_events
+
+onButtonPush:
+    msg$ = "Hello from " + title$ + "!"
+    msgbox(msg$, 0, title$)
+return
+
+onClose:
+    release
+return

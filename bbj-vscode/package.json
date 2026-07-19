@@ -79,6 +79,11 @@
     "commands": [
       {
         "category": "BBj",
+        "command": "bbj.newFromTemplate",
+        "title": "New Program from Template…"
+      },
+      {
+        "category": "BBj",
         "command": "bbj.config",
         "title": "Show the config.bbx file"
       },
@@ -210,6 +215,12 @@
       }
     ],
     "menus": {
+      "file/newFile": [
+        {
+          "command": "bbj.newFromTemplate",
+          "group": "file"
+        }
+      ],
       "editor/context": [
         {
           "when": "(resourceLangId == bbj && resourceExtname != .bbjt) || resourceLangId == bbx",
@@ -608,6 +619,7 @@
   },
   "activationEvents": [
     "onLanguage:bbj",
+    "onCommand:bbj.newFromTemplate",
     "onCommand:bbj.config",
     "onCommand:bbj.properties",
     "onCommand:bbj.em",

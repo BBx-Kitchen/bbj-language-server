@@ -1,0 +1,21 @@
+{
+  "id": "dwc-browser-program",
+  "title": "DWC Browser Program",
+  "description": "A minimal BBj program that opens a window with a button and runs in the browser via DWC.",
+  "category": "BBj",
+  "kind": "single-file",
+  "source": "program.bbj.tmpl",
+  "fileName": "${ProgramName}.bbj",
+  "variables": [
+    {
+      "name": "ProgramName",
+      "prompt": "Program name",
+      "default": "HelloDWC"
+    },
+    {
+      "name": "WindowTitle",
+      "prompt": "Window title",
+      "default": "Hello DWC"
+    }
+  ]
+}
