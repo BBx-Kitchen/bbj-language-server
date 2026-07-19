@@ -81,6 +81,10 @@ class public Gen
                                 param! = it3!.next()
                                 par! = new JsonObject()
                                 par!.addProperty("name",STR(param!.getName()))
+                                rem the declared type as written in the source (e.g. "BBjString", "int", "List<String>").
+                                rem It lets the language server tell same-arity overloads apart (issue #481);
+                                rem without it, doc entries can only be paired with reflected methods by position.
+                                par!.addProperty("type",STR(param!.getType()))
                                 params!.add(par!)
                             wend
                             methods!.add(meth!)

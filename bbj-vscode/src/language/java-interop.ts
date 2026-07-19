@@ -13,7 +13,7 @@ import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
-import { isClassDoc, JavadocProvider } from './java-javadoc.js';
+import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -604,11 +604,14 @@ export class JavaInteropService {
                     $refText: field.type
                 };
             }
+            // Overloads share a name, so a method's javadoc entry is found among the
+            // entries with its name and arity (see selectMethodDoc, #478/#481).
             for (const method of javaClass.methods) {
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
                 ) : [];
+                const methodDoc = selectMethodDoc(methodDocs, method);
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
                     $refText: method.returnType
@@ -619,13 +622,12 @@ export class JavaInteropService {
                         ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
                         $refText: parameter.type
                     };
-                    if (methodDocs.length > 0) {
-                        // TODO check types of parameters
-                        parameter.realName = methodDocs[0].params[index]?.name
+                    if (methodDoc) {
+                        parameter.realName = methodDoc.params[index]?.name
                     }
                 }
-                if (methodDocs.length > 0 && methodDocs[0].docu) {
-                    const doc = methodDocs[0];
+                if (methodDoc?.docu) {
+                    const doc = methodDoc;
                     // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
                     const params = method.parameters.map((p, idx) => {
                         const realName = doc.params[idx]?.name ?? p.name;
@@ -826,6 +828,41 @@ export class JavaInteropService {
             this.currentLockToken = null;
         }
     }
+}
+
+/**
+ * Picks the javadoc entry describing `method` among the doc entries sharing its name
+ * and arity (#478/#481). A single candidate is an unambiguous match. Several
+ * candidates — same-arity overloads like addWindow(p_context, p_title) vs
+ * addWindow(p_title, p_flags) — are told apart by the declared parameter types
+ * (emitted by genjdoc.bbj since #481). Without types the assignment would be a
+ * guess, and a wrong parameter name or doc text is worse than none: no entry is
+ * used, which also suppresses the parameter-name inlay hints for that method.
+ */
+function selectMethodDoc(docs: MethodDoc[], method: JavaMethod): MethodDoc | undefined {
+    if (docs.length <= 1) {
+        return docs[0];
+    }
+    return docs.find(doc =>
+        doc.params.every(p => p.type)
+        && doc.params.every((p, i) => erasedSimpleName(p.type!) === erasedSimpleName(method.parameters[i].type)));
+}
+
+/**
+ * Reduces a type name to its erased simple name for comparison. The javadoc side
+ * carries the source text ("BBjString", "List<String>", "int[]", varargs "String...");
+ * the reflected side the canonical name from Class.getCanonicalName() (arrays already
+ * reduced to their component type by the interop service's getProperTypeName).
+ */
+function erasedSimpleName(type: string): string {
+    let name = type.trim();
+    const generic = name.indexOf('<');
+    if (generic >= 0) {
+        name = name.substring(0, generic);
+    }
+    name = name.replace(/(\.\.\.|\[\])+$/, '');
+    const dot = name.lastIndexOf('.');
+    return dot >= 0 ? name.substring(dot + 1) : name;
 }
 
 /** Extracts package name from fully qualified class name

@@ -102,7 +102,7 @@ export const BBjModule: Module<BBjServices, PartialLangiumServices & BBjAddedSer
         CompletionProvider: (services) => new BBjCompletionProvider(services),
         SemanticTokenProvider: (services) => new BBjSemanticTokenProvider(services),
         SignatureHelp: () => new BBjSignatureHelpProvider(),
-        InlayHintProvider: () => new BBjInlayHintProvider(),
+        InlayHintProvider: (services) => new BBjInlayHintProvider(services),
         CodeActionProvider: (services) => new BBjCodeActionProvider(services),
     },
     parser: {

@@ -134,6 +134,87 @@ describe('Inlay hints', () => {
         expect(hints).toHaveLength(0);
     });
 
+    test('overloaded Java method: hints come from the overload matching the argument count (#478)', async () => {
+        // The linker resolves `addWindow` to the first overload (p_context, p_id, p_title);
+        // the one-argument call must be hinted from the single-parameter overload.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow("Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_title:']);
+    });
+
+    test('overloaded Java method: call matching the linked overload is unaffected', async () => {
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow(100, 200, "Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_id:', 'p_title:']);
+    });
+
+    test('hex string literal argument counts as a string: addWindow("test", $00000082$)', async () => {
+        // (p_context, p_title) and (p_title, p_flags) both take two arguments;
+        // "test" and the hex string $00000082$ are both strings, so the
+        // (title, flags) overload must win over the numeric-first one.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow("test", $00000082$)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_title:', 'p_flags:']);
+    });
+
+    test('same-arity Java overloads are told apart by the argument types (#478)', async () => {
+        // Both setValue overloads take two arguments; only the types in order decide.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            sg!.setValue("abc", 5)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_text:', 'p_flags:']);
+    });
+
+    test('same-arity Java overloads: reversed argument types pick the other overload', async () => {
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            sg!.setValue(1, "abc")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_index:', 'p_text:']);
+    });
+
+    test('same-arity BBj method overloads are told apart by the argument types', async () => {
+        const { hints } = await getHints(`
+            class public Gui
+                method public draw(BBjNumber x, BBjString caption)
+                methodend
+                method public draw(BBjString caption, BBjNumber size)
+                methodend
+            classend
+
+            declare Gui g!
+            g!.draw("Hi", 3)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['caption:', 'size:']);
+    });
+
+    test('overloaded BBj method: hints come from the overload matching the argument count', async () => {
+        const { hints } = await getHints(`
+            class public Gui
+                method public makeWindow(BBjNumber context, BBjNumber id, BBjString caption)
+                methodend
+                method public makeWindow(BBjString caption)
+                methodend
+            classend
+
+            declare Gui g!
+            g!.makeWindow("Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['caption:']);
+    });
+
     test('extra arguments beyond the declared parameters get no hint', async () => {
         const { hints } = await getHints(`
             DEF FNTWICE(N)=N*2

@@ -1,0 +1,1 @@
+{"name":"com.basiscomponents.db.importer","version":"com.basiscomponents.db.importer","docu":"BBjAPI Class Hierarchy","classes":[{"name":"ListImporter","docu":"","fields":[],"constructors":[],"methods":[{"name":"ResultSetFromVector","docu":"","params":[{"name":"li","type":"List"},{"name":"AttributesRecord","type":"DataRow"}]}]}]}

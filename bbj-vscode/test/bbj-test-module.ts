@@ -57,7 +57,8 @@ class JavaInteropTestService extends JavaInteropService {
             createBBjApiClass(this.classpath),
             createHashMapClass(this.classpath),
             createJavaLangStringClass(this.classpath),
-            createJavaLangClassClass(this.classpath)
+            createJavaLangClassClass(this.classpath),
+            createSysGuiClass(this.classpath)
         ]
         fakeJavaClasses.forEach(clazz => {
             this.classpath.classes.push(clazz)
@@ -155,6 +156,162 @@ function createBBjApiClass(container: Classpath) {
             returnType: 'java.lang.String',
             $type: JavaMethod,
             parameters: []
+        }
+    ]
+    return clazz
+}
+
+// Overloaded methods à la BBjSysGui.addWindow: the multi-parameter overload comes first,
+// so name-based linking resolves to it and call sites must re-select by arity (#478).
+function createSysGuiClass(container: Classpath) {
+    const clazz: JavaClass = {
+        $type: JavaClass,
+        name: 'com.test.SysGui',
+        // The interop DTO's `simpleName` carries the canonical (fully qualified) name;
+        // getDocumentation() depends on it once storeJavaClass has cut `name` down to
+        // the simple name.
+        simpleName: 'com.test.SysGui',
+        packageName: 'com.test',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: []
+    } as JavaClass
+    clazz.methods = [
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_context', type: 'int' },
+                { name: 'p_id', type: 'int' },
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        // The two-parameter addWindow pair: (context, title) vs (title, flags) —
+        // same arity, distinguishable only by the argument types in order.
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_context', type: 'int' },
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_title', type: 'java.lang.String' },
+                // byte[] in the real API; the interop service erases arrays to their
+                // component type, so this is what the language server actually sees
+                { name: 'p_flags', type: 'byte' }
+            ]
+        },
+        // Like addWindow above, but with the synthetic parameter names produced by
+        // reflection on jars compiled without -parameters: the real names exist only
+        // in the javadoc (see inlay-hints-javadoc.test.ts).
+        {
+            name: 'openWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'openWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'java.lang.String' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        // Not overloaded: its single untyped javadoc entry is an unambiguous match
+        // by name+arity alone (inlay-hints-javadoc.test.ts).
+        {
+            name: 'closeWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' }
+            ]
+        },
+        // Like openWindow, but its javadoc entries carry no types (old-format files):
+        // the assignment would be a guess, so no doc entry is used and the hints are
+        // suppressed (inlay-hints-javadoc.test.ts).
+        {
+            name: 'showDialog',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'showDialog',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'java.lang.String' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        // Same arity, different parameter order — only the argument types tell the
+        // overloads apart (like the 7-parameter addWindow overloads in the real API).
+        {
+            name: 'setValue',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_index', type: 'int' },
+                { name: 'p_text', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'setValue',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_text', type: 'java.lang.String' },
+                { name: 'p_flags', type: 'int' }
+            ]
         }
     ]
     return clazz
