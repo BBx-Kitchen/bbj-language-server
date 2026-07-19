@@ -196,6 +196,30 @@ function createSysGuiClass(container: Classpath) {
             parameters: [
                 { name: 'p_title', type: 'java.lang.String' }
             ]
+        },
+        // Same arity, different parameter order — only the argument types tell the
+        // overloads apart (like the 7-parameter addWindow overloads in the real API).
+        {
+            name: 'setValue',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_index', type: 'int' },
+                { name: 'p_text', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'setValue',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_text', type: 'java.lang.String' },
+                { name: 'p_flags', type: 'int' }
+            ]
         }
     ]
     return clazz

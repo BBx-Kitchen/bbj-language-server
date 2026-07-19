@@ -1,8 +1,11 @@
 import { AstNode, Reference } from 'langium';
 import { AbstractInlayHintProvider, InlayHintAcceptor } from 'langium/lsp';
 import { InlayHintKind } from 'vscode-languageserver';
-import { findOverloadForArity, fitsArity, isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
-import { Expression, MethodCall, NamedElement, isMemberCall, isMethodCall, isNumberLiteral, isPrefixExpression, isStringLiteral, isSymbolRef } from './generated/ast.js';
+import type { BBjServices } from './bbj-module.js';
+import { isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
+import { ArgumentType, findBestOverload } from './bbj-overload-selector.js';
+import type { TypeInferer } from './bbj-type-inferer.js';
+import { Expression, MethodCall, NamedElement, isClass, isMemberCall, isMethodCall, isNumberLiteral, isPrefixExpression, isStringLiteral, isSymbolRef } from './generated/ast.js';
 
 export type ParameterHintMode = 'none' | 'literals' | 'all';
 
@@ -32,6 +35,13 @@ const SYNTHETIC_NAME = /^(arg|param|p)\d+$/i;
  */
 export class BBjInlayHintProvider extends AbstractInlayHintProvider {
 
+    protected readonly inferer: TypeInferer;
+
+    constructor(services: BBjServices) {
+        super();
+        this.inferer = services.types.Inferer;
+    }
+
     override computeInlayHint(node: AstNode, acceptor: InlayHintAcceptor): void {
         if (parameterHintMode === 'none') {
             return;
@@ -49,13 +59,10 @@ export class BBjInlayHintProvider extends AbstractInlayHintProvider {
             return;
         }
         const calleeName = description.name.toLowerCase();
-        // The linker links an overloaded name to one arbitrary declaration; when that
-        // signature cannot take this call's argument count, hint from the sibling
-        // overload that can (#478).
-        let parameters = description.parameters;
-        if (!fitsArity(description, node.args.length)) {
-            parameters = findOverloadForArity(ref.ref, node.args.length)?.parameters ?? parameters;
-        }
+        // The linker links an overloaded name to one arbitrary declaration; hint from
+        // the overload that actually fits the call's argument count and types (#478).
+        const argTypes = node.args.map(arg => this.argumentType(arg.expression));
+        const parameters = findBestOverload(ref.ref, description, argTypes).parameters;
         // Extra arguments beyond the declared parameters (varargs, arity errors) get no hint
         const count = Math.min(node.args.length, parameters.length);
         for (let i = 0; i < count; i++) {
@@ -91,6 +98,22 @@ export class BBjInlayHintProvider extends AbstractInlayHintProvider {
             return method.member;
         }
         return undefined;
+    }
+
+    /** The call-site knowledge about an argument's type, used to rank overloads. */
+    protected argumentType(expression: Expression): ArgumentType {
+        let expr = expression;
+        while (isPrefixExpression(expr) && (expr.operator === '-' || expr.operator === '+')) {
+            expr = expr.expression;
+        }
+        if (isNumberLiteral(expr)) {
+            return 'number';
+        }
+        if (isStringLiteral(expr)) {
+            return 'string';
+        }
+        const type = this.inferer.getType(expr);
+        return isClass(type) ? { className: type.name } : undefined;
     }
 }
 

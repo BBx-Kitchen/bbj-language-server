@@ -154,6 +154,40 @@ describe('Inlay hints', () => {
         expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_id:', 'p_title:']);
     });
 
+    test('same-arity Java overloads are told apart by the argument types (#478)', async () => {
+        // Both setValue overloads take two arguments; only the types in order decide.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            sg!.setValue("abc", 5)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_text:', 'p_flags:']);
+    });
+
+    test('same-arity Java overloads: reversed argument types pick the other overload', async () => {
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            sg!.setValue(1, "abc")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_index:', 'p_text:']);
+    });
+
+    test('same-arity BBj method overloads are told apart by the argument types', async () => {
+        const { hints } = await getHints(`
+            class public Gui
+                method public draw(BBjNumber x, BBjString caption)
+                methodend
+                method public draw(BBjString caption, BBjNumber size)
+                methodend
+            classend
+
+            declare Gui g!
+            g!.draw("Hi", 3)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['caption:', 'size:']);
+    });
+
     test('overloaded BBj method: hints come from the overload matching the argument count', async () => {
         const { hints } = await getHints(`
             class public Gui

@@ -1,5 +1,5 @@
 import { AstNode, AstNodeDescription, AstUtils, CstNode, DefaultAstNodeDescriptionProvider, LangiumDocument, Reference, assertUnreachable, isAstNodeDescription } from "langium";
-import { Class, DefFunction, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl, QualifiedClass, isJavaClass, isJavaMethod, isLibFunction, isMethodDecl } from "./generated/ast.js";
+import { Class, DefFunction, JavaClass, JavaMethod, LibEventType, LibFunction, MethodDecl, QualifiedClass } from "./generated/ast.js";
 import { documentationHeader } from "./bbj-hover.js";
 
 export class BBjAstNodeDescriptionProvider extends DefaultAstNodeDescriptionProvider {
@@ -121,46 +121,6 @@ export type MethodData = {
     name: string,
     parameters: ParameterData[],
     returnType: string
-}
-
-/** A signature can take `argCount` arguments: all non-optional parameters are covered. */
-export function fitsArity(method: MethodData, argCount: number): boolean {
-    const required = method.parameters.filter(p => !p.optional).length;
-    return argCount >= required && argCount <= method.parameters.length;
-}
-
-/**
- * Overload selection for call sites (#478). The linker resolves an overloaded method
- * name to whichever declaration the scope yields first, so `sg!.addWindow("Title")`
- * may link to the multi-parameter overload and expose the wrong parameter list.
- * Given the linked declaration and the call's argument count, returns the sibling
- * overload whose signature fits the call: an exact parameter-count match first,
- * otherwise a signature whose non-optional parameters cover the argument count.
- * Returns undefined when no sibling overload fits.
- */
-export function findOverloadForArity(resolved: AstNode, argCount: number): MethodData | undefined {
-    const overloads = siblingOverloads(resolved);
-    return overloads.find(o => o.parameters.length === argCount)
-        ?? overloads.find(o => fitsArity(o, argCount));
-}
-
-/** All other declarations sharing the resolved declaration's name and container. */
-function siblingOverloads(node: AstNode): MethodData[] {
-    if (isJavaMethod(node) && isJavaClass(node.$container)) {
-        return node.$container.methods.filter(m => m !== node && m.name === node.name);
-    }
-    if (isMethodDecl(node)) {
-        const name = node.name.toLowerCase();
-        return node.$container.members
-            .filter((m): m is MethodDecl => isMethodDecl(m) && m !== node && m.name.toLowerCase() === name)
-            .map(toMethodData);
-    }
-    if (isLibFunction(node)) {
-        const name = node.name.toLowerCase();
-        return node.$container.declarations
-            .filter((d): d is LibFunction => isLibFunction(d) && d !== node && d.name.toLowerCase() === name);
-    }
-    return [];
 }
 
 export type ParameterData = {
