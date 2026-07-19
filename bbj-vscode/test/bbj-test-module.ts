@@ -57,7 +57,8 @@ class JavaInteropTestService extends JavaInteropService {
             createBBjApiClass(this.classpath),
             createHashMapClass(this.classpath),
             createJavaLangStringClass(this.classpath),
-            createJavaLangClassClass(this.classpath)
+            createJavaLangClassClass(this.classpath),
+            createSysGuiClass(this.classpath)
         ]
         fakeJavaClasses.forEach(clazz => {
             this.classpath.classes.push(clazz)
@@ -155,6 +156,46 @@ function createBBjApiClass(container: Classpath) {
             returnType: 'java.lang.String',
             $type: JavaMethod,
             parameters: []
+        }
+    ]
+    return clazz
+}
+
+// Overloaded methods à la BBjSysGui.addWindow: the multi-parameter overload comes first,
+// so name-based linking resolves to it and call sites must re-select by arity (#478).
+function createSysGuiClass(container: Classpath) {
+    const clazz: JavaClass = {
+        $type: JavaClass,
+        name: 'com.test.SysGui',
+        packageName: 'com.test',
+        $container: container,
+        $containerProperty: 'classes',
+        classes: [],
+        fields: [],
+        methods: []
+    }
+    clazz.methods = [
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_context', type: 'int' },
+                { name: 'p_id', type: 'int' },
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
         }
     ]
     return clazz

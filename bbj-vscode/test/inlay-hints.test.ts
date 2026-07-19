@@ -134,6 +134,41 @@ describe('Inlay hints', () => {
         expect(hints).toHaveLength(0);
     });
 
+    test('overloaded Java method: hints come from the overload matching the argument count (#478)', async () => {
+        // The linker resolves `addWindow` to the first overload (p_context, p_id, p_title);
+        // the one-argument call must be hinted from the single-parameter overload.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow("Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_title:']);
+    });
+
+    test('overloaded Java method: call matching the linked overload is unaffected', async () => {
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow(100, 200, "Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_id:', 'p_title:']);
+    });
+
+    test('overloaded BBj method: hints come from the overload matching the argument count', async () => {
+        const { hints } = await getHints(`
+            class public Gui
+                method public makeWindow(BBjNumber context, BBjNumber id, BBjString caption)
+                methodend
+                method public makeWindow(BBjString caption)
+                methodend
+            classend
+
+            declare Gui g!
+            g!.makeWindow("Title")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['caption:']);
+    });
+
     test('extra arguments beyond the declared parameters get no hint', async () => {
         const { hints } = await getHints(`
             DEF FNTWICE(N)=N*2

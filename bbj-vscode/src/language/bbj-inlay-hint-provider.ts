@@ -1,7 +1,7 @@
 import { AstNode, Reference } from 'langium';
 import { AbstractInlayHintProvider, InlayHintAcceptor } from 'langium/lsp';
 import { InlayHintKind } from 'vscode-languageserver';
-import { isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
+import { findOverloadForArity, fitsArity, isFunctionNodeDescription } from './bbj-nodedescription-provider.js';
 import { Expression, MethodCall, NamedElement, isMemberCall, isMethodCall, isNumberLiteral, isPrefixExpression, isStringLiteral, isSymbolRef } from './generated/ast.js';
 
 export type ParameterHintMode = 'none' | 'literals' | 'all';
@@ -49,14 +49,21 @@ export class BBjInlayHintProvider extends AbstractInlayHintProvider {
             return;
         }
         const calleeName = description.name.toLowerCase();
+        // The linker links an overloaded name to one arbitrary declaration; when that
+        // signature cannot take this call's argument count, hint from the sibling
+        // overload that can (#478).
+        let parameters = description.parameters;
+        if (!fitsArity(description, node.args.length)) {
+            parameters = findOverloadForArity(ref.ref, node.args.length)?.parameters ?? parameters;
+        }
         // Extra arguments beyond the declared parameters (varargs, arity errors) get no hint
-        const count = Math.min(node.args.length, description.parameters.length);
+        const count = Math.min(node.args.length, parameters.length);
         for (let i = 0; i < count; i++) {
             const cst = node.args[i].$cstNode;
             if (!cst) {
                 continue;
             }
-            const parameter = description.parameters[i];
+            const parameter = parameters[i];
             const name = (parameter.realName ?? parameter.name)?.trim();
             if (!name || SYNTHETIC_NAME.test(stripTypeSuffix(name))) {
                 continue;
