@@ -606,16 +606,12 @@ export class JavaInteropService {
             }
             // Overloads share a name, so a method's javadoc entry is found among the
             // entries with its name and arity (see selectMethodDoc, #478/#481).
-            const docOccurrence = new Map<string, number>();
             for (const method of javaClass.methods) {
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
                 ) : [];
-                const overloadKey = `${method.name}/${method.parameters.length}`;
-                const occurrence = docOccurrence.get(overloadKey) ?? 0;
-                docOccurrence.set(overloadKey, occurrence + 1);
-                const methodDoc = selectMethodDoc(methodDocs, method, occurrence);
+                const methodDoc = selectMethodDoc(methodDocs, method);
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
                     $refText: method.returnType
@@ -836,17 +832,20 @@ export class JavaInteropService {
 
 /**
  * Picks the javadoc entry describing `method` among the doc entries sharing its name
- * and arity (#478/#481). Same-arity overloads — addWindow(p_context, p_title) vs
- * addWindow(p_title, p_flags) — are told apart by the declared parameter types when
- * the javadoc data carries them (emitted by genjdoc.bbj since #481). Files without
- * types fall back to positional pairing: the n-th reflected overload of a name+arity
- * group takes the n-th doc entry, and the first entry is the last resort.
+ * and arity (#478/#481). A single candidate is an unambiguous match. Several
+ * candidates — same-arity overloads like addWindow(p_context, p_title) vs
+ * addWindow(p_title, p_flags) — are told apart by the declared parameter types
+ * (emitted by genjdoc.bbj since #481). Without types the assignment would be a
+ * guess, and a wrong parameter name or doc text is worse than none: no entry is
+ * used, which also suppresses the parameter-name inlay hints for that method.
  */
-function selectMethodDoc(docs: MethodDoc[], method: JavaMethod, occurrence: number): MethodDoc | undefined {
-    const byType = docs.find(doc =>
+function selectMethodDoc(docs: MethodDoc[], method: JavaMethod): MethodDoc | undefined {
+    if (docs.length <= 1) {
+        return docs[0];
+    }
+    return docs.find(doc =>
         doc.params.every(p => p.type)
         && doc.params.every((p, i) => erasedSimpleName(p.type!) === erasedSimpleName(method.parameters[i].type)));
-    return byType ?? docs[occurrence] ?? docs[0];
 }
 
 /**
