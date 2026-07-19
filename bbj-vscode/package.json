@@ -190,6 +190,11 @@
         "category": "BBj",
         "command": "bbj.composeAddChildWindow",
         "title": "Compose addChildWindow (visual)…"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeConfigSetopts",
+        "title": "Compose config.bbx SETOPTS (visual)…"
       }
     ],
     "keybindings": [
@@ -259,6 +264,11 @@
         {
           "command": "bbj.composeAddChildWindow",
           "when": "editorLangId == bbj",
+          "group": "1_modification"
+        },
+        {
+          "command": "bbj.composeConfigSetopts",
+          "when": "editorLangId == bbx-config",
           "group": "1_modification"
         }
       ],
@@ -634,7 +644,9 @@
     "onCommand:bbj.composeMsgbox",
     "onCommand:bbj.composeMsgboxVisual",
     "onCommand:bbj.composeAddWindow",
-    "onCommand:bbj.composeAddChildWindow"
+    "onCommand:bbj.composeAddChildWindow",
+    "onCommand:bbj.composeConfigSetopts",
+    "onLanguage:bbx-config"
   ],
   "main": "./out/extension.cjs",
   "scripts": {
