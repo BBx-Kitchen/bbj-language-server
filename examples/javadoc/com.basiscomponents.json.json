@@ -1,0 +1,1 @@
+{"name":"com.basiscomponents.json","version":"com.basiscomponents.json","docu":"BBjAPI Class Hierarchy","classes":[{"name":"ComponentsCharacterEscapes","docu":"","fields":[],"constructors":[],"methods":[{"name":"<init>","docu":"","params":[]},{"name":"getEscapeCodesForAscii","docu":"","params":[]},{"name":"getEscapeSequence","docu":"","params":[{"name":"ch","type":"int"}]}]}]}
