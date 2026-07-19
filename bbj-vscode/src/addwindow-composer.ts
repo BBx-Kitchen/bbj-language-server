@@ -317,7 +317,7 @@ export interface AddWindowCallInfo {
  * `"` string literals (with `""` escapes) so commas inside them don't split arguments. `$...$` hex
  * literals contain no comma/paren so they need no special handling here.
  */
-function scanArgs(line: string, open: number): { argRanges: Array<[number, number]>; callEnd: number } {
+export function scanArgs(line: string, open: number): { argRanges: Array<[number, number]>; callEnd: number } {
     const argRanges: Array<[number, number]> = [];
     let depth = 0, inStr = false, argStart = open, i = open, ended = false;
     for (; i < line.length; i++) {
@@ -341,7 +341,7 @@ function scanArgs(line: string, open: number): { argRanges: Array<[number, numbe
 }
 
 /** The [start, end) of the trimmed token inside an argument range (strips surrounding whitespace). */
-function trimmedRange(line: string, a: number, b: number): [number, number] {
+export function trimmedRange(line: string, a: number, b: number): [number, number] {
     const seg = line.slice(a, b);
     const start = a + (seg.length - seg.trimStart().length);
     return [start, start + seg.trim().length];

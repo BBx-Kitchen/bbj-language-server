@@ -13,6 +13,8 @@ describe('composer LS command layer (#433)', () => {
         expect(c.msgbox.icons.length).toBeGreaterThan(0);
         expect(c.addwindow.flags).toHaveLength(26);
         expect(c.addwindow.eventBits).toHaveLength(19);
+        expect(c.addchildwindow.flags).toHaveLength(17);
+        expect(c.addchildwindow.eventBits).toHaveLength(19);
     });
 
     test('msgbox encode/decode round-trips a selection through expr', () => {
@@ -125,6 +127,44 @@ describe('composer LS command layer (#433)', () => {
         expect(bare.initial.flags).toEqual([]);
         expect(bare.edit.flagsInsertOffset).toBeGreaterThan(0);
         expect(bare.edit.eventMaskRange).toBeUndefined();
+    });
+
+    test('addchildwindow/preview returns hex + statement + schematic in one call', () => {
+        const p = call('bbj/composer/addchildwindow/preview', {
+            input: {
+                flags: [0x00000800, 0x00200000], eventMaskEnabled: false, eventMask: [],
+                receiver: 'child!', window: 'window!', id: '101', context: 'ctx!',
+                x: '10', y: '10', width: '200', height: '150', title: '"Panel"',
+            },
+        }) as any;
+        expect(p.flagsHex).toBe('$00200800$');
+        expect(p.eventHex).toBeNull();
+        expect(p.statement).toBe('child! = window!.addChildWindow(101, 10, 10, 200, 150, "Panel", $00200800$, ctx!)');
+        expect(p.render.borderless).toBe(true);
+        expect(p.render.docked).toBe(true);
+    });
+
+    test('addchildwindow/decodeCall decodes flags/event bits + token ranges at the caret', () => {
+        const line = 'c! = w!.addChildWindow(1, 0, 0, 9, 9, "T", $00000810$, ctx, $00000440$)';
+        const r = call('bbj/composer/addchildwindow/decodeCall', { line, character: line.indexOf('$00000810$') }) as any;
+        expect(r.found).toBe(true);
+        expect(r.initial.flags).toContain(0x00000800);       // Borderless
+        expect(r.initial.flags).toContain(0x00000010);       // Initially invisible
+        expect(r.initial.eventMaskEnabled).toBe(true);
+        expect(r.initial.eventMask).toContain(0x00000040);   // Mouse button down
+        expect(r.initial.title).toBe('"T"');
+        expect(line.slice(r.edit.flagsRange[0], r.edit.flagsRange[1])).toBe('$00000810$');
+        expect(line.slice(r.edit.eventMaskRange[0], r.edit.eventMaskRange[1])).toBe('$00000440$');
+
+        // a call with no flags yet -> found, insert offset after the title (before the context)
+        const bare = call('bbj/composer/addchildwindow/decodeCall', { line: 'w!.addChildWindow("T", ctx)', character: 5 }) as any;
+        expect(bare.found).toBe(true);
+        expect(bare.initial.flags).toEqual([]);
+        expect(bare.edit.flagsInsertOffset).toBe('w!.addChildWindow("T"'.length);
+        expect(bare.edit.eventMaskRange).toBeUndefined();
+
+        // caret outside any call -> not found
+        expect((call('bbj/composer/addchildwindow/decodeCall', { line, character: 0 }) as any).found).toBe(false);
     });
 
     test('registerComposerRequests wires every handler onto the connection', () => {

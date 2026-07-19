@@ -17,6 +17,7 @@ import { isTokenizedBBjHeader, TOKENIZED_BBJ_MAGIC_LENGTH } from './tokenized-bb
 import { isLineNumberedSource } from './line-numbering.js';
 import { registerMsgboxComposer } from './msgbox-composer-ui.js';
 import { registerAddWindowComposer } from './addwindow-composer-ui.js';
+import { registerAddChildWindowComposer } from './addchildwindow-composer-ui.js';
 import {
     OPTION_GROUP_ORDER,
     getOptionsGrouped,
@@ -581,6 +582,7 @@ export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
     registerMsgboxComposer(context); // spike: visual MSGBOX composer (#426)
     registerAddWindowComposer(context); // spike: visual addWindow flags/event-mask composer (#430)
+    registerAddChildWindowComposer(context); // visual addChildWindow flags/event-mask composer (#473)
     secretStorage = context.secrets;
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;

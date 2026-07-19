@@ -26,15 +26,23 @@ import {
     findAddWindowCallAt, parseAddWindowCallOnLine,
     type AddWindowInput, type AddWindowPreviewInput,
 } from '../addwindow-composer.js';
+import {
+    CHILD_WINDOW_FLAGS, CHILD_EVENT_MASK_BITS,
+    childWindowSchematic, composeAddChildWindow, addchildwindowPreview,
+    findAddChildWindowCallAt, parseAddChildWindowCallOnLine,
+    type AddChildWindowInput, type AddChildWindowPreviewInput,
+} from '../addchildwindow-composer.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }
 
-/** Best-effort title for an addWindow preview: the last string-literal argument in the call. */
-function addWindowTitleArg(args: string[]): string {
+/** Best-effort title for a window preview: the last string-literal argument in the call. */
+function titleArg(args: string[], fallback: string): string {
     const literal = [...args].reverse().find(a => /^"([^"]|"")*"$/.test(a));
-    return literal ?? '"Window"';
+    return literal ?? fallback;
 }
+const addWindowTitleArg = (args: string[]) => titleArg(args, '"Window"');
+const addChildWindowTitleArg = (args: string[]) => titleArg(args, '"Child"');
 
 /**
  * The composer request handlers, keyed by LSP method. Exported (not just wired) so they can be
@@ -45,6 +53,7 @@ export const composerHandlers = {
     'bbj/composer/catalogs': () => ({
         msgbox: { buttonSets: BUTTON_SETS, icons: ICONS, defaultButtons: DEFAULT_BUTTONS, flags: FLAGS },
         addwindow: { flags: WINDOW_FLAGS, eventBits: EVENT_MASK_BITS },
+        addchildwindow: { flags: CHILD_WINDOW_FLAGS, eventBits: CHILD_EVENT_MASK_BITS },
     }),
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -150,6 +159,42 @@ export const composerHandlers = {
                 eventMaskEnabled: hasEvent,
                 eventMask: hasEvent ? bitsSet(eventMask, EVENT_MASK_BITS) : [],
                 title: addWindowTitleArg(info.args),
+            },
+        };
+    },
+    // ---- addChildWindow --------------------------------------------------------------------------
+    /** Aggregate: full UI payload (statement + flags/event hex + summaries + schematic) in one call. */
+    'bbj/composer/addchildwindow/preview': (p: { input: AddChildWindowPreviewInput }) => addchildwindowPreview(p.input),
+    'bbj/composer/addchildwindow/compose': (p: { input: AddChildWindowInput }) => ({ statement: composeAddChildWindow(p.input) }),
+    'bbj/composer/addchildwindow/schematic': (p: { mask: number }) => childWindowSchematic(p.mask),
+    /** Locate an addChildWindow call on a line (the one at `character`, or the first). */
+    'bbj/composer/addchildwindow/parseLine': (p: LineQuery) =>
+        ({ call: p.character === undefined ? parseAddChildWindowCallOnLine(p.line) : findAddChildWindowCallAt(p.line, p.character) }),
+    /**
+     * Find the addChildWindow call at the caret and decode it into a prefill payload + the token
+     * ranges/insert offsets to rewrite in place. `found: false` when the caret is not inside one.
+     */
+    'bbj/composer/addchildwindow/decodeCall': (p: LineQuery) => {
+        const info = p.character === undefined ? parseAddChildWindowCallOnLine(p.line) : findAddChildWindowCallAt(p.line, p.character);
+        if (!info) {
+            return { found: false };
+        }
+        const flags = info.flagsValue ?? 0;
+        const hasEvent = info.eventMaskValue !== undefined;
+        const eventMask = info.eventMaskValue ?? 0;
+        return {
+            found: true,
+            edit: {
+                flagsRange: info.flagsRange, flagsInsertOffset: info.flagsInsertOffset,
+                eventMaskRange: info.eventMaskRange, eventMaskInsertOffset: info.eventMaskInsertOffset,
+                preservedFlagBits: unknownBits(flags, CHILD_WINDOW_FLAGS),
+                preservedEventBits: hasEvent ? unknownBits(eventMask, CHILD_EVENT_MASK_BITS) : 0,
+            },
+            initial: {
+                flags: bitsSet(flags, CHILD_WINDOW_FLAGS),
+                eventMaskEnabled: hasEvent,
+                eventMask: hasEvent ? bitsSet(eventMask, CHILD_EVENT_MASK_BITS) : [],
+                title: addChildWindowTitleArg(info.args),
             },
         };
     },
