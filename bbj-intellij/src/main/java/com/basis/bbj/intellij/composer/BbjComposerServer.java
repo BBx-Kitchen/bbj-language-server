@@ -1,5 +1,8 @@
 package com.basis.bbj.intellij.composer;
 
+import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowPreviewParams;
@@ -40,4 +43,12 @@ public interface BbjComposerServer extends LanguageServer {
     /** Decode the addWindow call at the caret into a prefill payload + token ranges to rewrite. */
     @JsonRequest("bbj/composer/addwindow/decodeCall")
     CompletableFuture<AddWindowDecodeResult> addWindowDecodeCall(DecodeCallParams params);
+
+    /** Full addChildWindow preview (flags/event hex + statement + summaries + schematic) (#473). */
+    @JsonRequest("bbj/composer/addchildwindow/preview")
+    CompletableFuture<AddChildWindowPreview> addChildWindowPreview(AddChildWindowPreviewParams params);
+
+    /** Decode the addChildWindow call at the caret into a prefill payload + token ranges to rewrite. */
+    @JsonRequest("bbj/composer/addchildwindow/decodeCall")
+    CompletableFuture<AddChildWindowDecodeResult> addChildWindowDecodeCall(DecodeCallParams params);
 }

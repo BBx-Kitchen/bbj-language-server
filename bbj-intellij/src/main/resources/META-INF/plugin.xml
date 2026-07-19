@@ -73,6 +73,13 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
+        <action id="bbj.composeAddChildWindow"
+                class="com.basis.bbj.intellij.actions.BbjComposeAddChildWindowAction"
+                text="Compose addChildWindow…"
+                description="Visually compose a BBjWindow addChildWindow(...) statement">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
         <!-- BBj Compile Action -->
         <action id="bbj.compile"
                 class="com.basis.bbj.intellij.actions.BbjCompileAction"
@@ -110,6 +117,11 @@
         <intentionAction>
             <language>BBj</language>
             <className>com.basis.bbj.intellij.composer.ConfigureAddWindowIntention</className>
+            <category>BBj</category>
+        </intentionAction>
+        <intentionAction>
+            <language>BBj</language>
+            <className>com.basis.bbj.intellij.composer.ConfigureAddChildWindowIntention</className>
             <category>BBj</category>
         </intentionAction>
 

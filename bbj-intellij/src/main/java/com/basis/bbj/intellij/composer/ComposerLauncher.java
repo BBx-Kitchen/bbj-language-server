@@ -1,5 +1,6 @@
 package com.basis.bbj.intellij.composer;
 
+import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
@@ -30,7 +31,7 @@ import java.util.List;
  */
 public final class ComposerLauncher {
 
-    public enum Kind { MSGBOX, ADDWINDOW }
+    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW }
 
     private ComposerLauncher() {}
 
@@ -75,9 +76,12 @@ public final class ComposerLauncher {
                 if (kind == Kind.MSGBOX) {
                     server.msgboxDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
                             onEdt(() -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line)));
-                } else {
+                } else if (kind == Kind.ADDWINDOW) {
                     server.addWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
                             onEdt(() -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line)));
+                } else {
+                    server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
+                            onEdt(() -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line)));
                 }
             });
         });
@@ -132,22 +136,55 @@ public final class ComposerLauncher {
         }
     }
 
+    private static void openAddChildWindow(Project project, Editor editor, BbjComposerServer server,
+                                           AddWindowCatalogs catalogs, AddChildWindowDecodeResult decoded, int line) {
+        if (catalogs == null) {
+            notifyNotReady(project, Kind.ADDCHILDWINDOW);
+            return;
+        }
+        boolean edit = decoded != null && decoded.found;
+        AddChildWindowComposerDialog dialog = edit
+                ? new AddChildWindowComposerDialog(project, server, catalogs, decoded.initial, true,
+                        decoded.edit.preservedFlagBits, decoded.edit.preservedEventBits)
+                : new AddChildWindowComposerDialog(project, server, catalogs);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        if (edit) {
+            applyHexEdit(project, editor, line, decoded.edit, "Configure child window flags",
+                    dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null);
+        } else {
+            insertAtCaret(project, editor, dialog.getStatement(), "Compose addChildWindow");
+        }
+    }
+
     /** Rewrite the flags (and, if enabled, event_mask) hex tokens in place, right-to-left. */
     private static void applyAddWindowEdit(Project project, Editor editor, int line, AddWindowEdit ed, AddWindowComposerDialog dialog) {
-        WriteCommandAction.runWriteCommandAction(project, "Configure window flags", null, () -> {
+        applyHexEdit(project, editor, line, ed, "Configure window flags",
+                dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null);
+    }
+
+    /**
+     * Rewrite the flags (and, when {@code eventHex} is non-null, event_mask) hex tokens in place.
+     * Shared by the addWindow and addChildWindow edit flows — the token-range/insert-offset payload
+     * has the same shape for both ({@link AddWindowEdit}).
+     */
+    private static void applyHexEdit(Project project, Editor editor, int line, AddWindowEdit ed,
+                                     String commandName, String flagsHex, String eventHex) {
+        WriteCommandAction.runWriteCommandAction(project, commandName, null, () -> {
             Document doc = editor.getDocument();
             int ls = doc.getLineStartOffset(line);
             List<Op> ops = new ArrayList<>();
             if (ed.flagsRange != null) {
-                ops.add(new Op(ls + ed.flagsRange[0], ls + ed.flagsRange[1], dialog.getFlagsHex()));
+                ops.add(new Op(ls + ed.flagsRange[0], ls + ed.flagsRange[1], flagsHex));
             } else if (ed.flagsInsertOffset != null) {
-                ops.add(new Op(ls + ed.flagsInsertOffset, ls + ed.flagsInsertOffset, ", " + dialog.getFlagsHex()));
+                ops.add(new Op(ls + ed.flagsInsertOffset, ls + ed.flagsInsertOffset, ", " + flagsHex));
             }
-            if (dialog.isEventEnabled() && dialog.getEventHex() != null) {
+            if (eventHex != null) {
                 if (ed.eventMaskRange != null) {
-                    ops.add(new Op(ls + ed.eventMaskRange[0], ls + ed.eventMaskRange[1], dialog.getEventHex()));
+                    ops.add(new Op(ls + ed.eventMaskRange[0], ls + ed.eventMaskRange[1], eventHex));
                 } else if (ed.eventMaskInsertOffset != null) {
-                    ops.add(new Op(ls + ed.eventMaskInsertOffset, ls + ed.eventMaskInsertOffset, ", " + dialog.getEventHex()));
+                    ops.add(new Op(ls + ed.eventMaskInsertOffset, ls + ed.eventMaskInsertOffset, ", " + eventHex));
                 }
             }
             // Apply from the highest offset down so earlier edits don't shift later ranges.
@@ -170,7 +207,11 @@ public final class ComposerLauncher {
     }
 
     private static void notifyNotReady(Project project, Kind kind) {
-        String title = kind == Kind.MSGBOX ? "Compose MSGBOX" : "Compose addWindow";
+        String title = switch (kind) {
+            case MSGBOX -> "Compose MSGBOX";
+            case ADDWINDOW -> "Compose addWindow";
+            case ADDCHILDWINDOW -> "Compose addChildWindow";
+        };
         onEdt(() -> Messages.showInfoMessage(project,
                 "The BBj language server is not ready yet. Open a BBj file and try again.", title));
     }

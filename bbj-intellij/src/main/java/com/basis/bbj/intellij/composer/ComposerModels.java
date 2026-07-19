@@ -38,6 +38,8 @@ public final class ComposerModels {
     public static final class ComposerCatalogs {
         public MsgboxCatalogs msgbox;
         public AddWindowCatalogs addwindow;
+        /** Child-window flag catalog (#473) — same {flags, eventBits} shape as addwindow. */
+        public AddWindowCatalogs addchildwindow;
     }
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -130,6 +132,68 @@ public final class ComposerModels {
         public String flagsSummary;
         public String eventSummary;
         public WindowRender render;
+    }
+
+    // ---- addChildWindow (#473) -------------------------------------------------------------------
+
+    public static final class AddChildWindowPreviewInput {
+        public List<Long> flags;
+        public boolean eventMaskEnabled;
+        public List<Long> eventMask;
+        public String receiver;
+        /** The parent BBjWindow expression the method is called on. */
+        public String window = "window!";
+        public String id = "101";
+        public String context = "sysgui!.getAvailableContext()";
+        public String x = "10";
+        public String y = "10";
+        public String width = "200";
+        public String height = "150";
+        public String title = "\"Child\"";
+        public Boolean editMode;
+        public Long preservedFlagBits;
+        public Long preservedEventBits;
+    }
+
+    public static final class AddChildWindowPreviewParams {
+        public AddChildWindowPreviewInput input;
+        public AddChildWindowPreviewParams(AddChildWindowPreviewInput input) { this.input = input; }
+    }
+
+    /** Schematic descriptor of a child window inside its parent frame. */
+    public static final class ChildWindowRender {
+        public boolean borderless;
+        public boolean recessed;
+        public boolean raised;
+        public boolean fieldset;
+        public boolean hScroll;
+        public boolean vScroll;
+        public boolean invisible;
+        public boolean disabled;
+        public boolean docked;
+        public List<String> badges;
+        public String title;
+    }
+
+    public static final class AddChildWindowPreview {
+        public long flags;
+        public Long eventMask;
+        public String flagsHex;
+        public String eventHex;
+        public String statement;
+        public String flagsSummary;
+        public String eventSummary;
+        public ChildWindowRender render;
+    }
+
+    /**
+     * Result of {@code bbj/composer/addchildwindow/decodeCall}; the edit/initial payloads share the
+     * addWindow shapes (same JSON keys), so those DTOs are reused.
+     */
+    public static final class AddChildWindowDecodeResult {
+        public boolean found;
+        public AddWindowEdit edit;
+        public AddWindowInitial initial;
     }
 
     // ---- decodeCall (edit-in-place) --------------------------------------------------------------
