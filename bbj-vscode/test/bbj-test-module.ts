@@ -252,8 +252,21 @@ function createSysGuiClass(container: Classpath) {
                 { name: 'arg1', type: 'java.lang.String' }
             ]
         },
-        // Like openWindow, but its javadoc entries carry no types (old-format files),
-        // exercising the positional pairing fallback in inlay-hints-javadoc.test.ts.
+        // Not overloaded: its single untyped javadoc entry is an unambiguous match
+        // by name+arity alone (inlay-hints-javadoc.test.ts).
+        {
+            name: 'closeWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'void',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' }
+            ]
+        },
+        // Like openWindow, but its javadoc entries carry no types (old-format files):
+        // the assignment would be a guess, so no doc entry is used and the hints are
+        // suppressed (inlay-hints-javadoc.test.ts).
         {
             name: 'showDialog',
             $containerProperty: 'methods',

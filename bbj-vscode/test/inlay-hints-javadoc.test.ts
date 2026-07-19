@@ -31,10 +31,14 @@ const javadocJson = {
                 // ((int, String) is reflected first): only type matching pairs them right.
                 { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_title', type: 'String' }, { name: 'p_flags', type: 'String' }] },
                 { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_context', type: 'int' }, { name: 'p_title', type: 'String' }] },
-                // showDialog entries have no types (old-format javadoc file) and match the
-                // reflected order, exercising the positional fallback.
+                // showDialog entries have no types (old-format javadoc file): with two
+                // same-arity candidates the assignment would be a guess, so neither is
+                // used and the hints are suppressed.
                 { name: 'showDialog', docu: 'Shows a dialog.', params: [{ name: 'p_context' }, { name: 'p_title' }] },
-                { name: 'showDialog', docu: 'Shows a dialog.', params: [{ name: 'p_title' }, { name: 'p_flags' }] }
+                { name: 'showDialog', docu: 'Shows a dialog.', params: [{ name: 'p_title' }, { name: 'p_flags' }] },
+                // closeWindow is not overloaded: a single untyped entry matches by
+                // name+arity alone, no guessing involved.
+                { name: 'closeWindow', docu: 'Closes a window.', params: [{ name: 'p_id' }] }
             ]
         }
     ]
@@ -91,21 +95,21 @@ describe('Inlay hints with javadoc-backed parameter names', () => {
         expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_title:']);
     });
 
-    test('untyped javadoc entries fall back to positional pairing', async () => {
+    test('ambiguous untyped javadoc entries produce no hints instead of guessed names', async () => {
         const hints = await getHints(`
             use com.test.SysGui
             declare SysGui sg!
             w! = sg!.showDialog("test", $00000082$)
         `);
-        expect(hints.map(h => h.label)).toEqual(['p_title:', 'p_flags:']);
+        expect(hints).toHaveLength(0);
     });
 
-    test('untyped javadoc entries: the numeric-first overload keeps its own names', async () => {
+    test('a single untyped javadoc entry is unambiguous and still provides names', async () => {
         const hints = await getHints(`
             use com.test.SysGui
             declare SysGui sg!
-            w! = sg!.showDialog(1, "test")
+            sg!.closeWindow(1)
         `);
-        expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_title:']);
+        expect(hints.map(h => h.label)).toEqual(['p_id:']);
     });
 });
