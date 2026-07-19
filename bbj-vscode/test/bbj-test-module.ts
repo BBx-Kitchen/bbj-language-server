@@ -250,6 +250,30 @@ function createSysGuiClass(container: Classpath) {
                 { name: 'arg1', type: 'java.lang.String' }
             ]
         },
+        // Like openWindow, but its javadoc entries carry no types (old-format files),
+        // exercising the positional pairing fallback in inlay-hints-javadoc.test.ts.
+        {
+            name: 'showDialog',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'showDialog',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'java.lang.String' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
         // Same arity, different parameter order — only the argument types tell the
         // overloads apart (like the 7-parameter addWindow overloads in the real API).
         {

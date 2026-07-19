@@ -197,8 +197,17 @@ export type ClassDoc = NamedDoc & {
     constructors?: MethodDoc[]
 }
 
+export type ParamDoc = NamedDoc & {
+    /**
+     * The declared parameter type as written in the Java source (e.g. "BBjString",
+     * "int", "List<String>"). Optional: emitted by genjdoc.bbj since #481 to tell
+     * same-arity overloads apart; older javadoc files carry names only.
+     */
+    type?: string
+}
+
 export type MethodDoc = NamedDoc & {
-    params: NamedDoc[]
+    params: ParamDoc[]
 }
 
 export function isMethodDoc(item: NamedDoc | undefined): item is MethodDoc {

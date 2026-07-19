@@ -13,7 +13,7 @@ import { URI } from 'vscode-uri';
 import { BBjServices } from './bbj-module.js';
 import { notifyJavaConnectionError } from './bbj-notifications.js';
 import { Classpath, DocumentationInfo, JavaClass, JavaField, JavaMethod, JavaMethodParameter, JavaPackage } from './generated/ast.js';
-import { isClassDoc, JavadocProvider } from './java-javadoc.js';
+import { isClassDoc, JavadocProvider, MethodDoc } from './java-javadoc.js';
 import { logger } from './logger.js';
 import { assertType } from './utils.js';
 
@@ -604,11 +604,8 @@ export class JavaInteropService {
                     $refText: field.type
                 };
             }
-            // Javadoc entries carry parameter names but no types, so same-arity overloads
-            // (addWindow(p_context, p_title) vs addWindow(p_title, p_flags), #478) cannot be
-            // matched by signature. Pair them positionally instead: the n-th reflected
-            // overload of a name+arity group takes the n-th doc entry of that group —
-            // previously every overload took the first entry and got its parameter names.
+            // Overloads share a name, so a method's javadoc entry is found among the
+            // entries with its name and arity (see selectMethodDoc, #478/#481).
             const docOccurrence = new Map<string, number>();
             for (const method of javaClass.methods) {
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
@@ -618,7 +615,7 @@ export class JavaInteropService {
                 const overloadKey = `${method.name}/${method.parameters.length}`;
                 const occurrence = docOccurrence.get(overloadKey) ?? 0;
                 docOccurrence.set(overloadKey, occurrence + 1);
-                const methodDoc = methodDocs[occurrence] ?? methodDocs[0];
+                const methodDoc = selectMethodDoc(methodDocs, method, occurrence);
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
                     $refText: method.returnType
@@ -835,6 +832,38 @@ export class JavaInteropService {
             this.currentLockToken = null;
         }
     }
+}
+
+/**
+ * Picks the javadoc entry describing `method` among the doc entries sharing its name
+ * and arity (#478/#481). Same-arity overloads — addWindow(p_context, p_title) vs
+ * addWindow(p_title, p_flags) — are told apart by the declared parameter types when
+ * the javadoc data carries them (emitted by genjdoc.bbj since #481). Files without
+ * types fall back to positional pairing: the n-th reflected overload of a name+arity
+ * group takes the n-th doc entry, and the first entry is the last resort.
+ */
+function selectMethodDoc(docs: MethodDoc[], method: JavaMethod, occurrence: number): MethodDoc | undefined {
+    const byType = docs.find(doc =>
+        doc.params.every(p => p.type)
+        && doc.params.every((p, i) => erasedSimpleName(p.type!) === erasedSimpleName(method.parameters[i].type)));
+    return byType ?? docs[occurrence] ?? docs[0];
+}
+
+/**
+ * Reduces a type name to its erased simple name for comparison. The javadoc side
+ * carries the source text ("BBjString", "List<String>", "int[]", varargs "String...");
+ * the reflected side the canonical name from Class.getCanonicalName() (arrays already
+ * reduced to their component type by the interop service's getProperTypeName).
+ */
+function erasedSimpleName(type: string): string {
+    let name = type.trim();
+    const generic = name.indexOf('<');
+    if (generic >= 0) {
+        name = name.substring(0, generic);
+    }
+    name = name.replace(/(\.\.\.|\[\])+$/, '');
+    const dot = name.lastIndexOf('.');
+    return dot >= 0 ? name.substring(dot + 1) : name;
 }
 
 /** Extracts package name from fully qualified class name

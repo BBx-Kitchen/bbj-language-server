@@ -23,11 +23,18 @@ const javadocJson = {
             name: 'SysGui',
             fields: [],
             methods: [
-                // Same order as the reflected openWindow overloads in bbj-test-module.ts,
-                // whose parameters are the synthetic arg0/arg1 — the names below are the
-                // only source for the hints.
-                { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_context' }, { name: 'p_title' }] },
-                { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_title' }, { name: 'p_flags' }] }
+                // The reflected overloads' parameters are the synthetic arg0/arg1 — the
+                // names below are the only source for the hints.
+                //
+                // openWindow entries carry declared types (#481) and are deliberately in
+                // the REVERSE order of the reflected overloads in bbj-test-module.ts
+                // ((int, String) is reflected first): only type matching pairs them right.
+                { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_title', type: 'String' }, { name: 'p_flags', type: 'String' }] },
+                { name: 'openWindow', docu: 'Creates a top level window.', params: [{ name: 'p_context', type: 'int' }, { name: 'p_title', type: 'String' }] },
+                // showDialog entries have no types (old-format javadoc file) and match the
+                // reflected order, exercising the positional fallback.
+                { name: 'showDialog', docu: 'Shows a dialog.', params: [{ name: 'p_context' }, { name: 'p_title' }] },
+                { name: 'showDialog', docu: 'Shows a dialog.', params: [{ name: 'p_title' }, { name: 'p_flags' }] }
             ]
         }
     ]
@@ -66,7 +73,7 @@ describe('Inlay hints with javadoc-backed parameter names', () => {
         };
     });
 
-    test('same-arity overloads keep their own javadoc parameter names', async () => {
+    test('typed javadoc entries pair by declared types, independent of entry order', async () => {
         const hints = await getHints(`
             use com.test.SysGui
             declare SysGui sg!
@@ -75,11 +82,29 @@ describe('Inlay hints with javadoc-backed parameter names', () => {
         expect(hints.map(h => h.label)).toEqual(['p_title:', 'p_flags:']);
     });
 
-    test('the numeric-first overload also keeps its javadoc parameter names', async () => {
+    test('typed javadoc entries: the numeric-first overload keeps its own names', async () => {
         const hints = await getHints(`
             use com.test.SysGui
             declare SysGui sg!
             w! = sg!.openWindow(1, "test")
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_title:']);
+    });
+
+    test('untyped javadoc entries fall back to positional pairing', async () => {
+        const hints = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.showDialog("test", $00000082$)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_title:', 'p_flags:']);
+    });
+
+    test('untyped javadoc entries: the numeric-first overload keeps its own names', async () => {
+        const hints = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.showDialog(1, "test")
         `);
         expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_title:']);
     });
