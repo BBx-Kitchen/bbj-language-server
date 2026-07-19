@@ -1,0 +1,7 @@
+{
+  "$comment": "Curated 'getting started' BBj programs. See templates/README.md. Generated into both IDE plugins by tools/gen-templates.mjs — do not hand-edit the generated files.",
+  "version": 1,
+  "templates": [
+    "dwc-browser-program"
+  ]
+}
