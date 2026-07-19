@@ -167,13 +167,17 @@ function createSysGuiClass(container: Classpath) {
     const clazz: JavaClass = {
         $type: JavaClass,
         name: 'com.test.SysGui',
+        // The interop DTO's `simpleName` carries the canonical (fully qualified) name;
+        // getDocumentation() depends on it once storeJavaClass has cut `name` down to
+        // the simple name.
+        simpleName: 'com.test.SysGui',
         packageName: 'com.test',
         $container: container,
         $containerProperty: 'classes',
         classes: [],
         fields: [],
         methods: []
-    }
+    } as JavaClass
     clazz.methods = [
         {
             name: 'addWindow',
@@ -195,6 +199,55 @@ function createSysGuiClass(container: Classpath) {
             $type: JavaMethod,
             parameters: [
                 { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        // The two-parameter addWindow pair: (context, title) vs (title, flags) —
+        // same arity, distinguishable only by the argument types in order.
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_context', type: 'int' },
+                { name: 'p_title', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'addWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'p_title', type: 'java.lang.String' },
+                { name: 'p_flags', type: 'java.lang.String' }
+            ]
+        },
+        // Like addWindow above, but with the synthetic parameter names produced by
+        // reflection on jars compiled without -parameters: the real names exist only
+        // in the javadoc (see inlay-hints-javadoc.test.ts).
+        {
+            name: 'openWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'int' },
+                { name: 'arg1', type: 'java.lang.String' }
+            ]
+        },
+        {
+            name: 'openWindow',
+            $containerProperty: 'methods',
+            $container: clazz,
+            returnType: 'java.lang.Object',
+            $type: JavaMethod,
+            parameters: [
+                { name: 'arg0', type: 'java.lang.String' },
+                { name: 'arg1', type: 'java.lang.String' }
             ]
         },
         // Same arity, different parameter order — only the argument types tell the

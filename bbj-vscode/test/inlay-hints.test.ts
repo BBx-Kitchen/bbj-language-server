@@ -154,6 +154,18 @@ describe('Inlay hints', () => {
         expect(hints.map(h => h.label)).toEqual(['p_context:', 'p_id:', 'p_title:']);
     });
 
+    test('hex string literal argument counts as a string: addWindow("test", $00000082$)', async () => {
+        // (p_context, p_title) and (p_title, p_flags) both take two arguments;
+        // "test" and the hex string $00000082$ are both strings, so the
+        // (title, flags) overload must win over the numeric-first one.
+        const { hints } = await getHints(`
+            use com.test.SysGui
+            declare SysGui sg!
+            w! = sg!.addWindow("test", $00000082$)
+        `);
+        expect(hints.map(h => h.label)).toEqual(['p_title:', 'p_flags:']);
+    });
+
     test('same-arity Java overloads are told apart by the argument types (#478)', async () => {
         // Both setValue overloads take two arguments; only the types in order decide.
         const { hints } = await getHints(`

@@ -604,11 +604,21 @@ export class JavaInteropService {
                     $refText: field.type
                 };
             }
+            // Javadoc entries carry parameter names but no types, so same-arity overloads
+            // (addWindow(p_context, p_title) vs addWindow(p_title, p_flags), #478) cannot be
+            // matched by signature. Pair them positionally instead: the n-th reflected
+            // overload of a name+arity group takes the n-th doc entry of that group —
+            // previously every overload took the first entry and got its parameter names.
+            const docOccurrence = new Map<string, number>();
             for (const method of javaClass.methods) {
                 const methodDocs = isClassDoc(documentation) ? documentation.methods.filter(
                     m => m.name == method.name
                         && m.params.length === method.parameters.length
                 ) : [];
+                const overloadKey = `${method.name}/${method.parameters.length}`;
+                const occurrence = docOccurrence.get(overloadKey) ?? 0;
+                docOccurrence.set(overloadKey, occurrence + 1);
+                const methodDoc = methodDocs[occurrence] ?? methodDocs[0];
                 method.resolvedReturnType = {
                     ref: await this.resolveClassByName(method.returnType, token, _depth + 1),
                     $refText: method.returnType
@@ -619,13 +629,12 @@ export class JavaInteropService {
                         ref: await this.resolveClassByName(parameter.type, token, _depth + 1),
                         $refText: parameter.type
                     };
-                    if (methodDocs.length > 0) {
-                        // TODO check types of parameters
-                        parameter.realName = methodDocs[0].params[index]?.name
+                    if (methodDoc) {
+                        parameter.realName = methodDoc.params[index]?.name
                     }
                 }
-                if (methodDocs.length > 0 && methodDocs[0].docu) {
-                    const doc = methodDocs[0];
+                if (methodDoc?.docu) {
+                    const doc = methodDoc;
                     // Build signature: "ReturnType ClassName.methodName(Type paramName, ...)"
                     const params = method.parameters.map((p, idx) => {
                         const realName = doc.params[idx]?.name ?? p.name;
