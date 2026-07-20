@@ -605,7 +605,17 @@ export function collectAllUseStatements(program: Program): Use[] {
     if (isBbjDocument(document) && document.cachedUseStatements) {
         return document.cachedUseStatements;
     }
-    return collectUseStatements(program.statements.filter(isStatement))
+    return computeAllUseStatements(program);
+}
+
+/**
+ * Compute USE statements directly from the AST, bypassing the document cache.
+ * Must be used to (re)fill the cache: reading through collectAllUseStatements would
+ * return the previous parse's (possibly empty) cached list and freeze it forever,
+ * so USE statements added by an edit would never be picked up until restart.
+ */
+export function computeAllUseStatements(program: Program): Use[] {
+    return collectUseStatements(program.statements.filter(isStatement));
 }
 
 function collectUseStatements(statements: Statement[]): Use[] {
