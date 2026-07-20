@@ -1,9 +1,14 @@
 import { EmptyFileSystem, URI, LangiumDocument } from 'langium';
 import { DocumentValidator } from 'langium';
+import { NodeFileSystem } from 'langium/node';
 import { parseHelper } from 'langium/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { WorkspaceFolder } from 'vscode-languageserver';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
+import { createBBjServices } from '../src/language/bbj-module';
 import { BBjWorkspaceManager, ConfigUseDocUri, collectConfigUseStatements } from '../src/language/bbj-ws-manager';
 import { Model } from '../src/language/generated/ast';
 
@@ -109,4 +114,49 @@ describe('Without the config USE document (flag off)', () => {
         });
         expect(linkingErrors(consumer).length).toBeGreaterThan(0);
     });
+});
+
+/**
+ * End-to-end on the real file system: config.bbx read from a custom configPath,
+ * USE with an ABSOLUTE path to a class file that lives OUTSIDE the workspace
+ * (e.g. `use ::/Users/x/bbx/plugins/BBjGridExWidget/BBjGridExWidget.bbj::BBjGridExWidget`).
+ * Exercises the whole chain: config parsing, synthetic document creation, external
+ * document loading by the document builder, and scope injection.
+ */
+describe('config.bbx USE with absolute path, real file system (#83)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bbj-config-use-'));
+    const wsDir = path.join(tmp, 'workspace');
+    const pluginDir = path.join(tmp, 'plugins', 'BBjGridExWidget');
+    const widgetFile = path.join(pluginDir, 'BBjGridExWidget.bbj');
+
+    const services = createBBjServices(NodeFileSystem);
+    const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+
+    beforeAll(async () => {
+        fs.mkdirSync(wsDir, { recursive: true });
+        fs.mkdirSync(pluginDir, { recursive: true });
+        fs.mkdirSync(path.join(tmp, 'cfg'), { recursive: true });
+
+        fs.writeFileSync(widgetFile,
+            'class public BBjGridExWidget\n    method public void render()\n    methodend\nclassend\n');
+        fs.writeFileSync(path.join(tmp, 'cfg', 'config.bbx'),
+            `PREFIX "${pluginDir}/"\nuse ::${widgetFile}::BBjGridExWidget\n`);
+        fs.writeFileSync(path.join(wsDir, 'main.bbj'),
+            'x! = new BBjGridExWidget()\nx!.render()\n');
+
+        wsManager.setConfigPath(path.join(tmp, 'cfg', 'config.bbx'));
+        // set the private opt-in flag directly; in production it comes from initializationOptions
+        (wsManager as unknown as { configUseStatementsEnabled: boolean }).configUseStatementsEnabled = true;
+
+        // may take a while when a Java interop service is probed but unreachable
+        await wsManager.initializeWorkspace([{ uri: URI.file(wsDir).toString(), name: 'ws' }]);
+    }, 120_000);
+
+    test('class from config.bbx USE resolves in a workspace program', async () => {
+        const mainUri = URI.file(path.join(wsDir, 'main.bbj'));
+        const doc = services.shared.workspace.LangiumDocuments.getDocument(mainUri);
+        expect(doc, 'main.bbj should be loaded by workspace init').toBeTruthy();
+        await services.shared.workspace.DocumentBuilder.build([doc!], { validation: true });
+        expect(linkingErrors(doc!).map(d => d.message).join('\n')).toBe('');
+    }, 60_000);
 });
