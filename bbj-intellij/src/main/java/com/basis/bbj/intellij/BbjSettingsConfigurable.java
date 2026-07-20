@@ -53,6 +53,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getJavaInteropHost(), state.javaInteropHost)
             || state.javaInteropPort != myComponent.getJavaInteropPort()
             || !Objects.equals(myComponent.getConfigPath(), state.configPath)
+            || state.configUseStatementsEnabled != myComponent.isConfigUseStatementsEnabled()
             || !Objects.equals(myComponent.getEmUrl(), state.emUrl)
             || state.autoSaveBeforeRun != myComponent.isAutoSaveBeforeRun();
     }
@@ -70,6 +71,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.javaInteropHost = myComponent.getJavaInteropHost();
         state.javaInteropPort = myComponent.getJavaInteropPort();
         state.configPath = myComponent.getConfigPath();
+        state.configUseStatementsEnabled = myComponent.isConfigUseStatementsEnabled();
         state.emUrl = myComponent.getEmUrl();
         state.autoSaveBeforeRun = myComponent.isAutoSaveBeforeRun();
 
@@ -142,6 +144,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
 
         // Load config.bbx path
         myComponent.setConfigPath(state.configPath != null ? state.configPath : "");
+        myComponent.setConfigUseStatementsEnabled(state.configUseStatementsEnabled);
 
         // Load EM URL and auto-save setting
         myComponent.setEmUrl(state.emUrl != null ? state.emUrl : "");

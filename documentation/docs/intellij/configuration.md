@@ -42,6 +42,14 @@ Optional custom path to your `config.bbx` file.
 
 **When to configure:** Only needed if using a non-standard `config.bbx` location outside the BBj installation directory.
 
+### Treat USE Statements in config.bbx as Project-Wide Imports
+
+When enabled, classes imported via `USE` statements in `config.bbx` are available in every BBj program without a local `USE`, matching BBj runtime behavior.
+
+**Default:** disabled
+
+**When to configure:** Enable for projects that rely on `config.bbx` `USE` entries. Note that this adds those classes to code completion and linking in all files, which may slow down large workspaces.
+
 ## Node.js Runtime
 
 ### Node.js Path

@@ -29,6 +29,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String javaInteropHost = "localhost";  // Default: localhost (resolves to 127.0.0.1)
         public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
         public String configPath = "";  // Default: empty (uses {bbjHome}/cfg/config.bbx)
+        public boolean configUseStatementsEnabled = false;  // Default: false (opt-in project-wide USE from config.bbx, #83)
         public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
         public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
     }

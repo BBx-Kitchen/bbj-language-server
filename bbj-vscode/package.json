@@ -595,6 +595,12 @@
           "description": "Path to config.bbx file. When not set, defaults to {bbj.home}/cfg/config.bbx. Set this to use a custom config.bbx location for PREFIX resolution.",
           "scope": "window"
         },
+        "bbj.configUseStatements.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Treat USE statements found in config.bbx as project-wide imports that are available in every BBj program, matching BBj runtime behavior. Opt-in: enabling this adds those classes to code completion and linking in all files, which may slow down large workspaces.",
+          "scope": "window"
+        },
         "bbj.inlayHints.parameterNames.enabled": {
           "type": "string",
           "enum": [

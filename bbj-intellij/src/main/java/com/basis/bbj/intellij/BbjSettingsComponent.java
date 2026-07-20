@@ -37,6 +37,7 @@ public class BbjSettingsComponent {
     private final JBTextField javaInteropHostField;
     private final JTextField javaInteropPortField;
     private final JBTextField configPathField;
+    private final JCheckBox configUseStatementsCheckbox;
     private final JBTextField emUrlField;
     private final JCheckBox autoSaveCheckbox;
 
@@ -110,6 +111,13 @@ public class BbjSettingsComponent {
         configPathField = new JBTextField();
         configPathField.getEmptyText().setText("{BBj Home}/cfg/config.bbx (default)");
 
+        // --- config.bbx USE statements checkbox (#83) ---
+        configUseStatementsCheckbox = new JCheckBox("Treat USE statements in config.bbx as project-wide imports");
+        configUseStatementsCheckbox.setSelected(false);
+        configUseStatementsCheckbox.setToolTipText(
+            "Makes classes imported via USE in config.bbx available in every BBj program, "
+            + "matching BBj runtime behavior. May slow down large workspaces.");
+
         // --- Java Interop Host field ---
         javaInteropHostField = new JBTextField();
         javaInteropHostField.setText("localhost");
@@ -168,6 +176,7 @@ public class BbjSettingsComponent {
             .addComponent(new TitledSeparator("BBj Environment"))
             .addLabeledComponent(new JBLabel("BBj home:"), bbjHomeField, 1, false)
             .addLabeledComponent(new JBLabel("config.bbx Path:"), configPathField, 1, false)
+            .addComponent(configUseStatementsCheckbox)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -313,6 +322,14 @@ public class BbjSettingsComponent {
 
     public void setConfigPath(@NotNull String path) {
         configPathField.setText(path);
+    }
+
+    public boolean isConfigUseStatementsEnabled() {
+        return configUseStatementsCheckbox.isSelected();
+    }
+
+    public void setConfigUseStatementsEnabled(boolean enabled) {
+        configUseStatementsCheckbox.setSelected(enabled);
     }
 
     public @NotNull String getEmUrl() {
