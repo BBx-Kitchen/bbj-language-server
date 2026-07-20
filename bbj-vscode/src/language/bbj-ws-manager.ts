@@ -67,7 +67,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 // Opt-in (#83): treat USE statements from config.bbx as project-wide imports
                 this.configUseStatementsEnabled = params.initializationOptions.configUseStatementsEnabled === true;
                 if (this.configUseStatementsEnabled) {
-                    logger.info('Project-wide USE statements from config.bbx enabled');
+                    console.log('Project-wide USE statements from config.bbx enabled');
                 }
 
                 // Set type resolution warnings based on settings
@@ -135,7 +135,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                         const configContents = await this.fileSystemProvider.readFile(configUri);
                         prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
                         usesfromconfig = collectConfigUseStatements(configContents);
-                        logger.info(`Loaded config.bbx from custom path: ${this.configPath}`);
+                        console.log(`Loaded config.bbx from custom path: ${this.configPath} (${usesfromconfig.length} USE statement(s))`);
                     } catch (e) {
                         logger.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
                     }
@@ -147,6 +147,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                             const configContents = await this.fileSystemProvider.readFile(configbbx.uri);
                             prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
                             usesfromconfig = collectConfigUseStatements(configContents);
+                            console.log(`Loaded ${configbbx.uri.fsPath} (${usesfromconfig.length} USE statement(s))`);
                         }
                     } catch (e) {
                         logger.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
@@ -156,6 +157,9 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 }
             }
             this.settings = { ...parseSettings(propcontents, prefixfromconfig), configUses: usesfromconfig }
+            if (usesfromconfig.length > 0 && !this.configUseStatementsEnabled) {
+                console.log(`config.bbx contains ${usesfromconfig.length} USE statement(s), but project-wide USE statements are disabled (enable bbj.configUseStatements.enabled)`);
+            }
 
             // initialize javadoc look-up before loading classes.
             const wsJavadocFolders = folders.map(folder =>
@@ -232,7 +236,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         // them into every program (see BbjScopeProvider.configUseImports).
         if (this.configUseStatementsEnabled && this.settings && this.settings.configUses.length > 0) {
             const content = this.settings.configUses.map(use => `use ${use}`).join('\n');
-            logger.info(`Injecting ${this.settings.configUses.length} project-wide USE statement(s) from config.bbx`);
+            console.log(`Injecting ${this.settings.configUses.length} project-wide USE statement(s) from config.bbx`);
             collector(this.documentFactory.fromString(content, URI.parse(ConfigUseDocUri)));
         }
     }
