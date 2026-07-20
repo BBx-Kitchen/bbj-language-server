@@ -46,9 +46,9 @@ Optional custom path to your `config.bbx` file.
 
 When enabled, classes imported via `USE` statements in `config.bbx` are available in every BBj program without a local `USE`, matching BBj runtime behavior.
 
-**Default:** disabled
+**Default:** enabled
 
-**When to configure:** Enable for projects that rely on `config.bbx` `USE` entries. Note that this adds those classes to code completion and linking in all files, which may slow down large workspaces.
+**When to configure:** Disable if a shared `config.bbx` adds unwanted classes to code completion and linking (the classes it imports become visible in all files).
 
 ## Node.js Runtime
 

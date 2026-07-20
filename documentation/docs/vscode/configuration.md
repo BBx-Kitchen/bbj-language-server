@@ -127,13 +127,13 @@ Treat `USE` statements found in `config.bbx` as project-wide imports that are av
 
 ```json
 {
-  "bbj.configUseStatements.enabled": true
+  "bbj.configUseStatements.enabled": false
 }
 ```
 
-**Default**: `false`
+**Default**: `true`
 
-Opt-in: enabling this adds the classes imported in `config.bbx` to code completion and linking in all files, which may slow down large workspaces.
+Disable this if a shared `config.bbx` adds unwanted classes to code completion and linking in a workspace (the classes it imports become visible in all files).
 
 #### `bbj.typeResolution.warnings`
 

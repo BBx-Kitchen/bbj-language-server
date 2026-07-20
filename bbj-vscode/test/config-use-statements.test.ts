@@ -14,9 +14,9 @@ import { Model } from '../src/language/generated/ast';
 
 /**
  * Issue #83: USE statements in config.bbx act as project-wide imports for every
- * BBj program (opt-in via bbj.configUseStatements.enabled). The workspace manager
- * materializes them as a synthetic program at ConfigUseDocUri; the scope provider
- * merges its USE statements into every program's imports.
+ * BBj program (on by default; bbj.configUseStatements.enabled is the opt-out).
+ * The workspace manager materializes them as a synthetic program at ConfigUseDocUri;
+ * the scope provider merges its USE statements into every program's imports.
  */
 
 function linkingErrors(doc: LangiumDocument) {
@@ -65,7 +65,7 @@ describe('Project-wide USE statements from config.bbx (#83)', () => {
         });
 
         // Simulate the synthetic program BBjWorkspaceManager.loadAdditionalDocuments creates
-        // when bbj.configUseStatements.enabled is set and config.bbx contains USE lines.
+        // when config.bbx contains USE lines (and the feature is not opted out).
         await parse(`use ::lib/MyClass.bbj::MyClass\nuse java.util.HashMap`, {
             documentUri: ConfigUseDocUri,
             validation: false,
@@ -91,7 +91,7 @@ describe('Project-wide USE statements from config.bbx (#83)', () => {
     });
 });
 
-describe('Without the config USE document (flag off)', () => {
+describe('Without the config USE document (opted out or no config USEs)', () => {
     const services = createBBjTestServices(EmptyFileSystem);
     const parse = parseHelper<Model>(services.BBj);
 
@@ -145,8 +145,7 @@ describe('config.bbx USE with absolute path, real file system (#83)', () => {
             'x! = new BBjGridExWidget()\nx!.render()\n');
 
         wsManager.setConfigPath(path.join(tmp, 'cfg', 'config.bbx'));
-        // set the private opt-in flag directly; in production it comes from initializationOptions
-        (wsManager as unknown as { configUseStatementsEnabled: boolean }).configUseStatementsEnabled = true;
+        // no flag needed: project-wide USE statements from config.bbx are on by default
 
         // may take a while when a Java interop service is probed but unreachable
         await wsManager.initializeWorkspace([{ uri: URI.file(wsDir).toString(), name: 'ws' }]);

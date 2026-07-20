@@ -597,8 +597,8 @@
         },
         "bbj.configUseStatements.enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Treat USE statements found in config.bbx as project-wide imports that are available in every BBj program, matching BBj runtime behavior. Opt-in: enabling this adds those classes to code completion and linking in all files, which may slow down large workspaces.",
+          "default": true,
+          "description": "Treat USE statements found in config.bbx as project-wide imports that are available in every BBj program, matching BBj runtime behavior. Disable if a shared config.bbx adds unwanted classes to completion and linking in this workspace.",
           "scope": "window"
         },
         "bbj.inlayHints.parameterNames.enabled": {

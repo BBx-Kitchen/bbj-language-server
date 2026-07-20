@@ -36,7 +36,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private bbjdir = "";
     private classpathFromSettings = "";
     private configPath = "";
-    private configUseStatementsEnabled = false;
+    private configUseStatementsEnabled = true;
 
     constructor(services: LangiumSharedServices) {
         super(services);
@@ -64,10 +64,11 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 // Extract configPath setting
                 this.configPath = params.initializationOptions.configPath || "";
 
-                // Opt-in (#83): treat USE statements from config.bbx as project-wide imports
-                this.configUseStatementsEnabled = params.initializationOptions.configUseStatementsEnabled === true;
-                if (this.configUseStatementsEnabled) {
-                    console.log('Project-wide USE statements from config.bbx enabled');
+                // #83: USE statements from config.bbx act as project-wide imports, matching BBj
+                // runtime behavior. On by default — the setting is an opt-out escape hatch.
+                this.configUseStatementsEnabled = params.initializationOptions.configUseStatementsEnabled !== false;
+                if (!this.configUseStatementsEnabled) {
+                    console.log('Project-wide USE statements from config.bbx disabled via settings');
                 }
 
                 // Set type resolution warnings based on settings
@@ -158,7 +159,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             }
             this.settings = { ...parseSettings(propcontents, prefixfromconfig), configUses: usesfromconfig }
             if (usesfromconfig.length > 0 && !this.configUseStatementsEnabled) {
-                console.log(`config.bbx contains ${usesfromconfig.length} USE statement(s), but project-wide USE statements are disabled (enable bbj.configUseStatements.enabled)`);
+                console.log(`config.bbx contains ${usesfromconfig.length} USE statement(s), but project-wide USE statements are disabled (bbj.configUseStatements.enabled is false)`);
             }
 
             // initialize javadoc look-up before loading classes.

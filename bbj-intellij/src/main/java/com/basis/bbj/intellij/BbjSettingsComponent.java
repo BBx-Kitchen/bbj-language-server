@@ -113,10 +113,10 @@ public class BbjSettingsComponent {
 
         // --- config.bbx USE statements checkbox (#83) ---
         configUseStatementsCheckbox = new JCheckBox("Treat USE statements in config.bbx as project-wide imports");
-        configUseStatementsCheckbox.setSelected(false);
+        configUseStatementsCheckbox.setSelected(true);
         configUseStatementsCheckbox.setToolTipText(
             "Makes classes imported via USE in config.bbx available in every BBj program, "
-            + "matching BBj runtime behavior. May slow down large workspaces.");
+            + "matching BBj runtime behavior. Disable if a shared config.bbx adds unwanted classes.");
 
         // --- Java Interop Host field ---
         javaInteropHostField = new JBTextField();
