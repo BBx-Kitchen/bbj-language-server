@@ -871,6 +871,7 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
             classpath: vscode.workspace.getConfiguration("bbj").get("classpath"),
             typeResolutionWarnings: vscode.workspace.getConfiguration("bbj").get("typeResolution.warnings", true),
             configPath: vscode.workspace.getConfiguration("bbj").get("configPath", null),
+            configUseStatementsEnabled: vscode.workspace.getConfiguration("bbj").get("configUseStatements.enabled", true),
             interopHost: vscode.workspace.getConfiguration("bbj").get("interop.host", "localhost"),
             interopPort: vscode.workspace.getConfiguration("bbj").get("interop.port", 5008),
             suppressCascading: vscode.workspace.getConfiguration("bbj").get("diagnostics.suppressCascading", true),
