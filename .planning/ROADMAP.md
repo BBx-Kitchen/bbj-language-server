@@ -208,22 +208,31 @@ inventory plus a shared bar for what counts as a valid, non-duplicate finding.
 **Requirements**: BASE-01, BASE-02, BASE-03, BASE-04, RVW-06, RVW-07
 
 **Success Criteria** (what must be TRUE):
+
   1. PROJECT.md's Validated section lists every subsystem shipped since v3.9 — webview composers
      (msgbox, addwindow, addchildwindow, SETOPTS), inlay hints, the bbx-config editor,
      `Commands/CompilerOptions.ts`, the document formatter, and line numbering — each traceable to
      the 154-commit range
+
   2. PROJECT.md's Context, Constraints, and Key Decisions sections read as true today, not as of v3.9
   3. MILESTONES.md contains an entry spanning `2194616` → `HEAD` (0.12.0) so project history has no
      unexplained six-month gap
+
   4. A module inventory document enumerates every file in scope for Phases 61-64, the 8 review
      dimensions, and every explicit exclusion (`java-interop/`, `generated/`, `bbj-vscode-deprecated/`)
+
   5. The inventory states the standard every later finding must meet: a concrete verified failure
      scenario, and a check against the 15 currently open GitHub issues before being recorded
 
 **Plans**: 4 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 60-01-PLAN.md — Review standard, inventory tracer and frozen baselines (creates `.planning/reviews/INVENTORY.md`; finding-ID scheme, evidence tiers, easy-vs-major rule, frozen 15-issue snapshot, pinned range, test/build baseline, D-15 correction log)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 60-02-PLAN.md — Full review-unit inventory, D1-D8 applicability grid and full-surface accounting
 - [ ] 60-03-PLAN.md — Baseline resync of PROJECT.md's Validated list, Context, Constraints and Key Decisions, plus the MILESTONES.md release-window entry
 - [ ] 60-04-PLAN.md — In-place ROADMAP/REQUIREMENTS corrections and staleness banners on the seven codebase maps
@@ -243,14 +252,18 @@ boundary of its java-interop client.
 **Requirements**: RVW-01, SEC-06
 
 **Success Criteria** (what must be TRUE):
+
   1. All 39 files (grammar, lexer, `bbj-scope.ts`, `bbj-scope-local.ts`, `bbj-linker.ts`,
      `bbj-type-inferer.ts`, `bbj-validator.ts`, `validations/`, `bbj-completion-provider.ts`,
      document builder/validator, `bbj-ws-manager.ts`, CPL service/parser, `java-interop.ts`, `lib/`
      builtin catalogs) have a recorded pass/fail against each of D1-D8
+
   2. `java-interop.ts`'s trust boundary is documented — what a malicious or unresponsive peer on the
      configured host/port can do to the language server, and whether the channel is authenticated
+
   3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
+
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
 **Plans**: TBD
@@ -267,13 +280,17 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 **Requirements**: RVW-02, RVW-03
 
 **Success Criteria** (what must be TRUE):
+
   1. `extension.ts`, `Commands/CompilerOptions.ts`, the document formatter, line numbering,
      tokenized-BBj, and decompile-io each have a recorded pass/fail against D1-D8
+
   2. All 13 webview composer files (msgbox, addwindow, addchildwindow, SETOPTS — each split across
      `-composer`/`-ui`/`-webview`) plus `setopts-catalog.ts` have a recorded pass/fail against D1-D8,
      with duplication across the four composer subsystems explicitly called out under D4
+
   3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
+
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
 **Plans**: TBD
@@ -292,13 +309,17 @@ the security of its Node.js runtime download path.
 **Requirements**: RVW-04, SEC-03
 
 **Success Criteria** (what must be TRUE):
+
   1. All 61 files (`BbjRunActionBase.java` and its GUI/BUI/DWC subclasses, `BbjSettingsComponent.java`,
      composer dialogs, `BbjNodeDownloader.java`, `BbjEMTokenStore.java`, LSP wiring, status bar
      widgets, lexer/parser definitions) have a recorded pass/fail against D1-D8
+
   2. `BbjNodeDownloader.java`'s integrity posture is documented — transport security, checksum or
      signature verification, and archive extraction path safety (zip-slip)
+
   3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
+
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
 **Plans**: TBD
@@ -318,13 +339,17 @@ trees' vulnerability posture.
 **Requirements**: RVW-05, SEC-07, SEC-08
 
 **Success Criteria** (what must be TRUE):
+
   1. All 6 workflows (`manual-release.yml`, `preview.yml`, `pr-vsix.yml`, and 3 more totaling 568
      lines), the Gradle build, esbuild/packaging config, and the 3 `bbj-vscode/tools/*.bbj` scripts
      have a recorded pass/fail against D1-D8
+
   2. Every workflow's secret handling, `GITHUB_TOKEN` permission scope, third-party action pinning,
      and exposure to untrusted PR-controlled input is documented
+
   3. Every npm and Gradle dependency with a known vulnerability is enumerated and triaged as
      fix-now, file-issue, or accepted-with-reason
+
   4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
 
@@ -345,15 +370,20 @@ they get a dedicated phase rather than being split across the module-owning revi
 **Requirements**: SEC-01, SEC-02, SEC-04, SEC-05
 
 **Success Criteria** (what must be TRUE):
+
   1. Every interpolated value in composer and bbx-config-editor markup is confirmed escaped/safe or
      flagged, and CSP posture is documented
+
   2. Every webview→extension message handler validates message shape and value range before acting,
      with any gaps flagged
+
   3. The EM token lifecycle — acquisition, storage at rest, exposure via process args/logs, expiry —
      is traced end to end across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`, and VS
      Code's equivalent storage
+
   4. Every run/compile process-spawn path in both IDEs is checked for argument/command injection via
      user-controlled paths, classpath values, or config.bbx settings
+
   5. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication
 
@@ -373,14 +403,19 @@ it re-examines specific, already-known items rather than surfacing new ones.
 **Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05, DEBT-06
 
 **Success Criteria** (what must be TRUE):
+
   1. CPU stability in multi-project workspaces (#232) has either a landed mitigation or an issue
      update with a concrete implementation plan
+
   2. The 3 disabled `parser.test.ts` assertions and the skipped TEST-03 case are each either
      re-enabled or documented with the specific blocker and unblocking condition
+
   3. The static method return-type inference gap and the FQN static-only completion filtering gap
      are each either fixed or filed
+
   4. LSP4IJ's 19 experimental API usages and the `BbjCompletionFeature` coupling have a current risk
      assessment against the installed LSP4IJ version
+
   5. Every one of these 6 items ends the milestone represented either by a merged fix or a GitHub
      issue — none remain as PROJECT.md prose only
 
@@ -398,10 +433,12 @@ regression-tested, atomically-committed change, and the full test/build suite is
 **Requirements**: FIX-01, FIX-02, FIX-03, FIX-04
 
 **Success Criteria** (what must be TRUE):
+
   1. Each easy fix lands as its own atomic commit whose message references its finding ID
   2. Each behavior-changing fix has a regression test that fails on the pre-fix code and passes after
   3. `npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew build` succeeds in
      `bbj-intellij/`
+
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
 **Plans**: TBD
@@ -419,12 +456,16 @@ explicitly.
 **Requirements**: DOC-01, DOC-02, DOC-03, DOC-04
 
 **Success Criteria** (what must be TRUE):
+
   1. `.planning/reviews/EASY-FIXES.md` lists every easy finding with finding ID, `file:line`,
      dimension, verified failure scenario, the fix applied, and its commit hash
+
   2. `.planning/reviews/MAJOR-REFACTORS.md` lists every major finding with finding ID, `file:line`,
      dimension, verified failure scenario, proposed approach, and effort estimate
+
   3. Both documents open with an explicit coverage statement — modules reviewed, dimensions applied,
      exclusions — so a reader can see what was and wasn't checked
+
   4. Findings that were duplicate, wontfix, already-covered, or not-reproducible are listed with
      their disposition and reason, not silently dropped
 
@@ -442,12 +483,16 @@ against the 15 issues open at milestone start, only after the user has approved 
 **Requirements**: ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, ISSUE-05
 
 **Success Criteria** (what must be TRUE):
+
   1. The complete drafted issue list is presented to the user, and no issue is created on the tracker
      before explicit approval is given
+
   2. Each filed issue is self-contained — problem statement, `file:line` evidence, verified failure
      scenario, proposed approach, acceptance criteria — readable without opening the review documents
+
   3. Each filed issue carries an area label, a `PRIO 1/2/3` label, and an effort (`2`/`4`/`8`) label
      from the repository's existing label set
+
   4. No filed issue duplicates any of the 15 issues open at milestone start
   5. MAJOR-REFACTORS.md is updated with the filed issue number next to each corresponding finding
 
