@@ -1017,9 +1017,9 @@ disposition:       easy-fix
 **Owning plan:** 61-03.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked `bbj-cpl-service.ts`'s command-line assembly for the spawned BBjCPL compiler: `spawn(bbjcplBin, ['-N', filePath])` (bbj-cpl-service.ts:140) uses the argument-array form with no shell interposed, so `filePath` cannot inject shell syntax; but `bbjcplBin` itself (`getBbjcplPath()`, bbj-cpl-service.ts:228-235) is derived from `wsManager.getBBjDir()` with only a truthiness check, no validation that the resolved `<bbjHome>/bin/bbjcpl[.exe]` path is a legitimate BBj installation — and `bbj.home` is a `window`-scoped VS Code setting (`bbj-vscode/package.json:340`), settable via a workspace-committed `.vscode/settings.json`, the same class of gap `RU-61-06` recorded for `interopHost`/`interopPort` at `P61-D1-001`. Checked whether a classpath value reaches this spawn — it does not; only `bbjHome` and `filePath` are used, and no temp files are written by this unit's code for the compiler invocation. Checked `bbj-cpl-parser.ts`'s `parseBbjcplOutput` for hostile-output-driven diagnostics — it interpolates only a `sourceSnippet` extracted from stderr into a plain-text `message` field with no Markdown/HTML rendering path in this unit's files, so hostile compiler output reaching the IDE is bounded to plain diagnostic text, not markup injection. Checked `check-classes.ts`, `check-function-calls.ts` and `check-variable-scoping.ts` for any sink that writes validated-document-derived content to the filesystem, a URI, or a spawned process — none exists; these three files only call `accept()` to emit diagnostics. 1 finding recorded: `P61-D1-003` (cross-referenced to SEC-05 per this unit's must-have). One D1 candidate considered and not promoted — see Not-reproducible dispositions.
+- D2 Correctness & error handling — fail — Checked `bbj-cpl-parser.ts`'s 63 lines against malformed/edge-case compiler output: `parseBbjcplOutput`'s physical-line arithmetic (`parseInt(match[1], 10) - 1`, line 40) produces a negative, out-of-LSP-spec `range.start.line`/`range.end.line` for a reported physical line of `0`, with no clamp anywhere in the function and no test covering that boundary (found `P61-D2-009`); empty/no-error stderr is handled correctly (`if (!stderr.trim()) return diagnostics;`, confirmed against `test/cpl-parser.test.ts`'s dedicated empty/whitespace-only cases). Checked `bbj-cpl-service.ts`'s process lifecycle for the ENOENT/timeout/abort-on-resave/race paths its own comments document — `settle()`'s `settled` guard correctly no-ops a second resolution, `handle.cancel()` correctly kills the live process and clears the timeout before a superseding `compile()` call proceeds, and `proc.on('error', ...)` is attached before any await, so no unhandled-rejection risk was found in this file (contrast with `RU-61-06`'s `P61-D2-002`). Checked `bbj-document-validator.ts`'s `mergeDiagnostics`/`applyDiagnosticHierarchy` for exceptions caught-and-discarded — none found; both are pure array transforms with no try/catch to swallow. Checked all four `validations/*` modules for null propagation on partially-linked ASTs — `check-function-calls.ts`'s `resolveLibFunction`/`inferredKind` explicitly `try/catch` a cyclic-or-unresolved `.ref` access and degrade to `undefined` (documented, not swallowed); `check-classes.ts` guards every `getClass(...)` result with a `klass`/`declaredClass` truthiness check before use. Found a scope-crossing false positive in `check-variable-scoping.ts`'s `checkUseBeforeAssignment`: its Pass 2 traversal comment claims nested `MethodDecl`/`BbjClass`/`DefFunction` bodies are excluded, but the bare `continue` used against `AstUtils.streamAllContents` does not prune the underlying `TreeStreamImpl`, so a Program-scope (or enclosing-method-scope) variable can spuriously flag a same-named, fully valid local variable inside a nested method — reproduced in this sweep (`P61-D2-010`). Checked `line-break-validation.ts` for off-by-one behavior at CRLF and the final line — `hasLinebreakAfter`'s clamped-position lookup and `lineEndRegex`'s optional-CR handling did not reproduce a divergence in this sweep, though no dedicated test confirms this (see `P61-D5-006`). Do not re-report the cyclic-inheritance hang: confirmed `a7e1b53`'s `visitedClasses` termination guard is present and unmodified at `bbj-validator.ts:230-244`, and `check-classes.ts:523-547`'s `MAX_INHERITANCE_DEPTH`-bounded `checkCyclicInheritance` independently terminates the same class of walk. 2 findings recorded: `P61-D2-009`, `P61-D2-010`.
+- D3 Performance & resource use — pass — Checked whether BBjCPL runs are debounced or spawned per keystroke: `bbj-document-builder.ts`'s `debouncedCompile` (owned by `RU-61-05`, read for this unit's D3 boundary) wraps `cplService.compile(key)` in a 500ms trailing-edge `setTimeout`, and `bbj-cpl-service.ts`'s own `compile()` additionally aborts any prior in-flight compilation for the same file via `existing.cancel()` before spawning a new one, so at most one live `bbjcpl` process runs per file at a time, not one per keystroke. Checked whether `check-classes.ts` walks the class hierarchy once per member or once per class: `checkBBjClass` checks only the single resolved class's own visibility per call (no ancestor walk); `checkCyclicInheritance` walks the `extends[0]` chain once per `BbjClass` node, bounded by `MAX_INHERITANCE_DEPTH = 20`; `bbjSupertypesReach` (used by the return-type-assignability check) is a bounded, visited-set-guarded DFS over `extends`+`implements`, called once per value-returning `METHODRET`. Checked whether each registered check re-walks the AST independently rather than sharing one traversal: Langium's `ValidationRegistry` dispatches all of this unit's per-node-type checks (`bbj-validator.ts`, `check-classes.ts`, `check-function-calls.ts`) from its own single document-wide walk, with one exception — `check-variable-scoping.ts`'s `checkUseBeforeAssignment` performs its own additional `AstUtils.streamAllContents` sub-walk once per `Program` and once per every `MethodDecl`, and — because of the un-pruning bug recorded as `P61-D2-010` (secondary D3) — the Program-level walk redundantly re-visits every nested method body a second time. This redundancy is bounded (roughly 2x, not quadratic, since BBj methods do not nest inside other methods) and is recorded under `P61-D2-010` rather than as a second entry here. No unbounded accumulation found: `bbj-cpl-service.ts`'s `inFlight` map is bounded to currently-open files and is cleaned up in both the `close` and `error` handlers. No independent D3 finding recorded.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
@@ -1027,13 +1027,191 @@ disposition:       easy-fix
 - D8 Comment & doc accuracy — pending
 
 ### Findings
-_(none recorded)_
+
+```
+id:                P61-D1-003
+unit:              RU-61-03
+location:          bbj-vscode/src/language/bbj-cpl-service.ts:82-155,228-235
+dimension:         D1
+secondary:         []
+severity:          high
+evidence_tier:     repro
+evidence:          Line-by-line trace: compile() (bbj-cpl-service.ts:82-155) derives the
+                   spawned executable's path entirely from getBbjcplPath() (228-235), which
+                   computes path.join(this.wsManager.getBBjDir(), 'bin', binaryName) guarded
+                   only by a truthiness check on bbjHome (`if (!bbjHome) return undefined;`)
+                   — no check that the resolved path exists, is confined to any allowed
+                   directory, or is a genuine BBj installation. compile() (line 140) then
+                   spawns that derived path directly via spawn(bbjcplBin, ['-N', filePath])
+                   with no further confirmation. bbjHome originates from
+                   BBjWorkspaceManager.getBBjDir(), fed by the bbj.home VS Code setting, which
+                   bbj-vscode/package.json:340-347 declares "scope": "window" — a
+                   workspace-scoped setting settable by a .vscode/settings.json committed
+                   inside a cloned repository, the same class of gap already recorded for
+                   interopHost/interopPort at P61-D1-001. A runnable reproduction was built
+                   and run in this sweep, substituting a controlled directory for bbjHome and
+                   confirming that compile() executes whatever program is present at
+                   <bbjHome>/bin/bbjcpl (or bbjcpl.exe on Windows) with the current document's
+                   file path as an argument — establishing that this is unconditional,
+                   unvalidated execution of a workspace-configured path, not a theoretical
+                   gap. Per D-12, the trigger sequence and reproduction script are not
+                   published in this record.
+failure_scenario:  A workspace-scoped .vscode/settings.json committed inside a cloned
+                   repository sets bbj.home to a directory an attacker controls. Opening that
+                   workspace and triggering any BBjCPL compilation (on-save, under the default
+                   compilerTrigger: 'debounced') causes the language server to execute
+                   whatever program the attacker placed at <bbj.home>/bin/bbjcpl (or .exe on
+                   Windows), with the currently-edited file's path as an argument — full code
+                   execution in the language-server process, with no confirmation step visible
+                   in this unit's files.
+classification:    major
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest,
+                   confirmed via the reproduction built in this sweep using the existing
+                   createMockServices pattern in test/cpl-service.test.ts: pass — (5)
+                   reviewer can name the exact edit (validate that the resolved bbjcpl path
+                   exists and is confined to an expected layout before spawning, or warn/gate
+                   on an unusual bbjHome): pass — (6) severity is `high`: FAIL — `major`
+                   regardless of the other five tests (D-13's safety gate).
+effort:            4
+dedup:             none — checked against #231 (Support Custom Classpath and Command Line
+                   Settings for starting BBj Programs), the closest area match — it requests
+                   ADDING configurable classpath/CLI args for RUN commands, not validating the
+                   bbjcpl binary path already spawned here; #466 and #90 (this unit's flagged
+                   plausible neighbours) do not concern process-spawn path validation either.
+                   No frozen open issue addresses bbjcpl binary-path validation.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D2-009
+unit:              RU-61-03
+location:          bbj-vscode/src/language/bbj-cpl-parser.ts:40-46
+dimension:         D2
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          Runnable reproduction of parseBbjcplOutput's own regex/arithmetic against a
+                   malformed-but-plausible bbjcpl line reporting physical line "0"
+                   (`/some/file.bbj: error at line 10 (0):     bad code`): `physicalLine =
+                   parseInt(match[1], 10) - 1` (bbj-cpl-parser.ts:40) evaluates to -1, which
+                   flows unclamped into the returned Diagnostic's range.start.line/
+                   range.end.line (lines 43-46) — reproduced directly: `parseInt('0', 10) - 1
+                   === -1`. No test in test/cpl-parser.test.ts exercises a reported physical
+                   line of 0 or 1 (the boundary case), and no clamp/guard exists anywhere in
+                   this function, in contrast with bbj-document-validator.ts:228's
+                   extractCyclicReferenceRelatedInfo, which clamps an equivalent 1-based-to
+                   -0-based line conversion with Math.max(0, line).
+failure_scenario:  bbjcpl emits (or a future compiler version emits, or a malformed/truncated
+                   compiler invocation produces) an error line reporting physical line 0, or a
+                   line number exceeding the LSP client's document's actual line count;
+                   parseBbjcplOutput returns a Diagnostic with a negative range.start.line,
+                   outside the LSP Position contract (zero-based, non-negative), which can be
+                   rejected, clamped unpredictably, or cause a client-side rendering exception
+                   instead of surfacing the intended compiler error.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                   (5) reviewer can name the exact edit (`Math.max(0, parseInt(match[1], 10) -
+                   1)`): pass — (6) severity `low`, dimension D2 (not D1): pass — all six pass,
+                   classification is `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours) and the rest of the frozen 15; none address BBjCPL diagnostic
+                   line-number bounds.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-010
+unit:              RU-61-03
+location:          bbj-vscode/src/language/validations/check-variable-scoping.ts:205-220
+dimension:         D2
+secondary:         [D3]
+severity:          medium
+evidence_tier:     repro
+evidence:          Runnable reproduction, confirmed in this sweep via a throwaway vitest file
+                   (not committed): checkUseBeforeAssignment's Pass 2 loop (lines 205-220)
+                   reads `for (const child of AstUtils.streamAllContents(node)) { if
+                   (isMethodDecl(child) && child !== node) { continue; } ... }`, intending, per
+                   the function's own doc comment (lines 44-46: "Does NOT recurse into
+                   MethodDecl... AstUtils.streamAllContents visits everything, so we need to
+                   filter"), to exclude nested-scope usages from the outer scope's check.
+                   AstUtils.streamAllContents returns a TreeStreamImpl
+                   (langium/src/utils/stream.ts:797-825) whose traversal only stops descending
+                   into a node's children when the consumer calls the iterator's own prune()
+                   method; a bare `continue` inside a for...of loop does not call prune() — it
+                   only skips processing of the matched node itself, while the stream still
+                   yields every descendant underneath it on subsequent iterations. Compiled a
+                   class TestPrune containing `method public void test()` with a local `x = 1;
+                   PRINT x` and, after the class, a program-scope `x = 99`:
+                   checkUseBeforeAssignment(Program, ...)'s Pass 1 correctly records only the
+                   program-scope assignment (x -> offset of x = 99, since walkStatements does
+                   not recurse into MethodDecl bodies), but Pass 2's un-pruned traversal still
+                   reaches the method body's PRINT x SymbolRef, matches it against the
+                   program-scope declPositions map by string name alone (no AST-identity
+                   check), finds usageOffset < declOffset, and emits a hint. Reproduction
+                   output: a single Hint diagnostic "'x' used before assignment (first
+                   assigned at line 8)" on the method-body PRINT x, even though the method's
+                   own local x = 1 correctly precedes its own PRINT x — the method's own
+                   separate checkUseBeforeAssignment(MethodDecl, ...) call correctly produces
+                   no hint for the same usage; only the outer Program-scope's un-pruned walk
+                   misfires.
+failure_scenario:  Any BBj program containing a class/method whose body assigns and then reads
+                   a local variable, where an unrelated Program-scope (or
+                   enclosing-method-scope) variable happens to share the same case-insensitive
+                   name and is assigned later in document order, produces a spurious "used
+                   before assignment" Hint on the method-local variable's perfectly valid read
+                   — a false positive traceable to the outer scope's traversal reaching into a
+                   nested scope it was documented not to enter. The same un-pruned traversal is
+                   also a redundant full-subtree AST walk (secondary D3): every Program-level
+                   validation pass additionally re-walks the body of every nested MethodDecl
+                   that the MethodDecl's own separate validation pass already walks in full.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest,
+                   demonstrated by the reproduction above: pass — (5) reviewer can name the
+                   exact edit (use the TreeStream iterator's prune() method, or switch to a
+                   manual recursive walk mirroring walkStatements's exclusion logic, instead
+                   of a bare continue in the for...of loop): pass — (6) severity `medium`,
+                   primary dimension D2 (D3 only secondary): pass — all six pass,
+                   classification is `easy`.
+effort:            4
+dedup:             none — checked against #466 (sibling-type method return mismatches — a
+                   different check entirely) and #90 (opting files/regions out of linking — a
+                   different subsystem, RU-61-02's linker, not this unit's scope walk) as this
+                   unit's flagged plausible neighbours, and against the remaining 13; none
+                   concern variable-scoping's use-before-assignment traversal.
+disposition:       easy-fix
+```
 
 ### Not-reproducible dispositions
-_(none recorded)_
+- **Tier failed: `repro` (D1).** Candidate claim: `bbjcpl` inherits the language-server
+  process's full environment (`spawn()` in `bbj-cpl-service.ts:140` passes no `env` override),
+  which could expose secrets if the server process's environment holds sensitive values.
+  **Reason not recorded as a finding:** confirming this requires knowing what secrets (if any)
+  the language-server process's environment typically holds in production IDE deployments,
+  which is outside a read-only sweep of these 8 files; no evidence in this unit's code that
+  anything currently populates the server's own environment with secrets. The unvalidated
+  *path* to the inherited-environment process is still recorded as `P61-D1-003`; the stronger
+  claim of confirmed secret exposure is not asserted without deployment-specific evidence.
+- **Tier failed: `repro` (D2).** Candidate claim: `bbj-cpl-parser.ts`'s `ERROR_LINE_RE`
+  (`^.+:\s+error at line \d+ \((\d+)\):\s*(.*)`) could mis-parse a source-code snippet that
+  itself happens to contain the literal substring `error at line N (M):`, echoed back verbatim
+  by the compiler inside a string-literal source line, causing a shifted or duplicated
+  diagnostic. **Reason not recorded as a finding:** confirming or refuting this requires
+  knowing `bbjcpl`'s real output format for source-snippet echoing beyond what the three
+  fixtures in `test/test-data/cpl-fixtures/` cover, and no real `bbjcpl` binary is available in
+  this sandbox to probe further; the regex's `^.+:` anchor requires the line to start with a
+  file-path-then-colon prefix, which the indented source-echo lines in the existing fixtures do
+  not have, so this remains a theoretical, unconfirmed edge case.
 
 ### Cross-unit referrals
-_(none recorded)_
+- **RU-61-05** — `bbj-document-builder.ts`'s `trackBbjcplAvailability()` (owned by `RU-61-05`)
+  performs the same path-existence-only check (`accessSync`) as this unit's own gap recorded at
+  `P61-D1-003` — confirming the binary *exists* is not the same as confirming it is a
+  legitimate BBj compiler. `RU-61-05`'s own D1/D4 sweep should confirm whether that caller adds
+  validation this unit's `compile()` does not see, or record its own finding if not.
 
 ## RU-61-02 — Scope, linking & type inference
 
