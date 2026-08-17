@@ -1493,11 +1493,11 @@ disposition:       easy-fix
 - D1 Security — pass — Checked whether cross-file linking resolves document URIs derived from `USE` statements / `::file::Class` paths or configured `prefixes` without workspace constraint: `getBBjClassesFromFile` (bbj-scope.ts:308-331) builds candidate URIs from the current doc dir, every workspace root, and every configured `prefixes` entry via `resolve(prefixPath, bbjFilePath)` — `bbjFilePath` is untrusted source text and `resolve()` permits `..` traversal — but the result is used only to filter `indexManager.allElements(BbjClass.$type)` by URI equality, never to open or load a file; a URI with no matching already-indexed document simply yields an empty scope, so this unit's own code cannot be made to read outside the workspace/prefix set it was already given (see Not-reproducible dispositions for the boundary question this defers to `RU-61-05`). Checked whether `bbj-nodedescription-provider.ts` copies peer-supplied Java descriptions into the global index without validation: it does not re-copy raw peer fields — `enhanceFunctionDescription`/`toMethodData`/`toDefFunctionData` (bbj-nodedescription-provider.ts:30-59) only read already-typed AST properties (`MethodDecl`/`DefFunction`/`LibFunction`/`JavaMethod`), and the underlying peer-response admission itself is `RU-61-06`'s `java-interop.ts:543-596`, already recorded as `P61-D1-002` there. Checked whether `bbj-index-manager.ts` (29 lines) admits entries from any source it does not control: its only override, `isAffected()` (bbj-index-manager.ts:14-27), narrows which documents get rebuilt — it adds no new admission path, only a rebuild-skip optimization delegated to `DefaultIndexManager` for everything else. No `RU-61-02` finding recorded.
 - D2 Correctness & error handling — fail — **Ties:** `bbj-overload-selector.ts:37-51`'s `findBestOverload` places the linked declaration first in its candidate array and uses strict `>` when comparing scores, so an exact tie always resolves to the linked (first-scope-yielded) declaration — deterministic and stable across runs (declaration order for `MethodDecl` siblings, classpath-response order for `JavaMethod` siblings). `bbj-scope.ts`'s local-vs-member shadowing (`StreamScopeWithPredicate.getElement`, bbj-scope.ts:508-524) always checks the inner/local scope first and falls through to `outerScope` only on a miss — nearest-scope-wins, deterministic. `bbj-linker.ts`'s duplicate-qualified-name case (two documents exporting the identical `::file::Class` name) cannot occur in practice because the qualified name embeds the exporting file's own path (bbj-scope.ts:322-323), so two *different* files can never produce the same qualified name; the only realistic duplicate is two `class` declarations sharing a name inside one file, which resolves by first-match iteration order over that file's local scope (same deterministic first-wins rule, no crash). However: `findBestOverload` is called from exactly one place in the whole codebase — `bbj-inlay-hint-provider.ts:65` (confirmed via `grep -rn findBestOverload bbj-vscode/src/`) — while `bbj-type-inferer.ts:47-48,77-78` and `bbj-linker.ts:105-110`'s `getCandidate` both trust the first-scope-yielded declaration's return type/identity directly, never re-selecting by the call's actual argument shape; recorded as `P61-D2-012`. **Empty/single-element/failed-load inputs:** an empty `Program` and a single-declaration `Program` both traverse `collectLocalSymbols`'/`processNode`'s loops zero or one time with no special-cased branch, no crash; a reference whose target document failed to load resolves via `getBBjClassesFromFile` to an empty `bbjClasses` array (bbj-scope.ts:317-319), which `bbj-linker.ts:133-140` turns into a `LinkingError` — the standard, already-diagnosed path, no swallowed failure. **Null propagation / DEBT-03:** `bbj-type-inferer.ts:75-76`'s `isJavaMethod(member)` branch returns `member.resolvedReturnType?.ref` with **no fallback** to the always-present raw `member.returnType: string` (generated/ast.ts:1350) when `resolvedReturnType` is unset — reproduced with a throwaway, uncommitted vitest test (deleted before this commit, `git status --porcelain bbj-vscode` clean): pushing a `JavaMethod` (`valueOf`, `returnType: 'java.lang.String'`) onto the fake `java.lang.String` class with `resolvedReturnType` left unset (simulating any path that bypasses java-interop.ts's async Phase 2 at `java-interop.ts:615-618`) and validating `methodret String.valueOf(2)` against a declared `java.util.HashMap` return type produced **zero** "incompatible type" diagnostics — proving `getType()` silently returned `undefined` instead of the expected mismatch the positive-control tests in `method-return-java-type.test.ts` already demonstrate for a correctly-resolved case. Recorded as `P61-D2-011`, `dedup` naming DEBT-03. **Swallowed exceptions:** `bbj-scope.ts:200-206`, `bbj-type-inferer.ts:34-40,67-71`, and `bbj-scope-local.ts:169-172` each catch cyclic-reference/resolution errors and either silently ignore (documented `// cyclic reference, ignore`) or `logger.warn`/`console.error` before continuing — none swallow silently without a trace, no finding. **Java-interop-unavailable distinguishability (SEC-06/boundary, owned by `RU-61-06`):** `bbj-scope-local.ts:158-165` treats every `javaClass.error` uniformly regardless of cause (peer unreachable vs. genuinely-missing class) and surfaces the same generic unresolved-reference linking diagnostic either way — stated here per the plan's instruction, not recorded as a `RU-61-02` finding; see Cross-unit referrals. 2 findings recorded: `P61-D2-011`, `P61-D2-012`.
 - D3 Performance & resource use — fail — This unit owns the routing-table item **#232 CPU stability in multi-project workspaces (DEBT-01)**. Re-triaged against the current code (not restated): two current-code mechanisms scale with total multi-project workspace size rather than the referencing file's own size. (1) `getBBjClassesFromFile` (bbj-scope.ts:308-331) performs a full linear scan of `indexManager.allElements(BbjClass.$type)` — every `BbjClass` in the **entire workspace index, across all loaded projects** — on **every** `::file::Class`-qualified reference and on every `USE "::file::"` resolution, with no per-file/per-request cache; a document with many such references pays this full-index scan once per reference. (2) `collectLocalSymbols` (bbj-scope-local.ts:106-114) walks the **full, unpruned** AST of every document via `AstUtils.streamAllContents(rootNode)` with a per-node `await interruptAndCheck(cancelToken)` — contrast `bbj-linker.ts:47-58`'s `link()`, which already calls `treeIter.prune()` to skip external-document private-member subtrees; `collectLocalSymbols` has no equivalent `isExternalDocument`-aware pruning, so in a multi-project workspace every loaded external project's documents pay full per-node scope-computation cost proportional to their own total LOC, not just the active project's. Recorded as `P61-D3-003`, severity `high` (matches this unit's own pre-registered threat `T-61-P04-S1`), `dedup` stating #232 is not in the frozen 15-issue snapshot (not an open issue) and naming **DEBT-01** as the owning requirement so Phase 66 re-triages against this evidence rather than re-deriving it. Beyond #232: `bbj-index-manager.ts:14-27`'s `isAffected()` override already implements a **present, partial** mitigation — it skips rebuilding external documents when only non-external URIs changed — so DEBT-01's "documented mitigations" are partially present at the index-rebuild layer but absent at the two request-time paths above; checked whether the linker re-resolves already-resolved references (no — Langium's standard reference caching applies, no override here re-triggers it) and whether the index grows unbounded as documents open/close (index growth is `DefaultIndexManager`'s standard lifecycle, not overridden by this unit — no finding). 1 finding recorded: `P61-D3-003`.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked overlap between bbj-scope.ts (578) and bbj-scope-local.ts (408) for duplicated traversal/name-matching logic: none found — each maps to a distinct Langium DI service hook (ScopeProvider, queried at reference-resolution time, vs. ScopeComputation, run once at document-parse time), the same pattern `RU-61-01` confirmed for bbj-value-converter.ts/bbj-lexer.ts's small single-purpose modules; `collectAllUseStatements` (bbj-scope.ts:559-566) is shared, not duplicated, between them. Checked function length/branch depth in the scope providers: `BbjScopeProvider.getScope` (bbj-scope.ts:79-306, ~227 lines) is a large dispatch switch but each branch is a short, independent case — not flagged as a god function on its own; no distinct finding. Checked whether `assertions.ts` (4 lines) is live: `grep -rn "assertions.js|assertTrue" bbj-vscode/src bbj-vscode/test` returns zero consumers anywhere in the tree — confirmed dead, not dismissed; recorded as `P61-D4-009`. Checked whether `bbj-index-manager.ts` (29 lines) is a meaningful override or pass-through: its `isAffected()` (lines 14-27) implements real, non-trivial rebuild-skip logic (the D3 partial mitigation above) — confirmed meaningful, not a pass-through, no finding. Checked whether the linker, scope provider and type inferer share one convention for reporting an unresolvable reference: they do not — `bbj-linker.ts` raises a `LinkingError` via `createLinkingError` (augmented with source location, lines 145-153), `bbj-scope.ts` returns `EMPTY_SCOPE` on a resolution miss (no diagnostic of its own), and `bbj-type-inferer.ts` silently returns `undefined` with no diagnostic at all — three different, purpose-appropriate shapes (a diagnostic-emitting linker, a scope-candidate provider, and an internal-signal-only inferer) rather than one inconsistent pattern; not filed as a finding on its own, but the `bbj-type-inferer.ts` half of this asymmetry is exactly what makes `P61-D2-011` (silent `undefined`, no diagnostic) possible. Found `bbj-linker.ts:155-212`'s `getSourceLocation`/`getSourceLocationForNode` near-duplication; recorded as `P61-D4-008`. 2 findings recorded: `P61-D4-008`, `P61-D4-009`.
+- D5 Test coverage gaps — fail — Checked which of the eight files have a dedicated unit-test module: none do — all coverage is integration-style, through `variable-scoping.test.ts` (404 lines), `imports.test.ts` (279 lines), `test/linking.test.ts`, `method-return-java-type.test.ts`, and `unresolvable-type.test.ts`, consistent with this codebase's existing test-organization pattern (not itself flagged, matching how `RU-61-01`/`RU-61-03` characterized their own integration-style coverage). Checked whether overload selection has any test covering an exact-tie case: `grep -rl overload bbj-vscode/test/` returns only `bbj-test-module.ts` (fixture classes) and the composer/inlay-hint tests (a different unit's own consumer) — no test constructs two same-name sibling declarations that score an exact tie in `scoreOverload` to assert `bbj-overload-selector.ts:37`'s documented "linked declaration wins ties" rule; recorded as `P61-D5-007`. Checked whether scope-shadowing precedence is asserted anywhere: `grep -rli shadow bbj-vscode/test/` returns nothing; recorded as `P61-D5-008`. Checked whether the type inferer's untyped-static-call gap (DEBT-03) has a regression test or only a prose record: only a prose record (STATE.md §Tech Debt, ROADMAP.md `DEBT-03`) — no committed test constructs a static Java method call and asserts its inferred/propagated type; the gap was reproduced only via this sweep's throwaway, uncommitted test (evidence under `P61-D2-011`); recorded as `P61-D5-009`. Checked whether cross-file linking has coverage that does not depend on java-interop being reachable: `imports.test.ts` covers BBj-class-to-BBj-class cross-file linking (`beforeAll`, lines 26-40) unconditionally — only its one `java.util.List` case is gated on `shouldRunBBjTests()` — so this specific gap does **not** apply; not a finding. Per the plan's explicit instruction, the 11 `test/linking.test.ts` "Interop related tests" failures are **not** re-recorded here — see Cross-unit referrals (owned by `RU-61-06`); the `beforeAll` `hookTimeout` flakiness is likewise not recorded here (owned by `RU-61-05`). 3 findings recorded: `P61-D5-007`, `P61-D5-008`, `P61-D5-009`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — pass — Checked every JSDoc/inline comment block across the eight files against what the code does: `bbj-overload-selector.ts:5-13`'s module header ("Call sites re-select among the sibling overloads by the call's shape") is checked against actual usage — the overstatement of its integration scope (only one real consumer, `bbj-inlay-hint-provider.ts`) is captured as `secondary: [D4, D8]` on `P61-D2-012` rather than filed as a separate D8 record, since it is the same underlying gap viewed from the doc-accuracy angle; `bbj-type-inferer.ts`'s per-branch comments (cyclic-reference handling, `.class` property, dangling member access) all matched the code read; `bbj-scope-local.ts`'s inline comments (DEF FN parameter scoping, template-string-array aliasing, CompoundStatement parent-scope routing) all matched; `bbj-linker.ts`'s comments (external-document member pruning, BBjAPI() priority ordering, `err=*next` special case) all matched. Checked CLAUDE.md's §Architecture Scope/Linking bullet ("`bbj-scope.ts` (name provider + scope provider), `bbj-scope-local.ts` (scope computation/LocalSymbols), `bbj-linker.ts` (cross-file reference linking)") file by file: `BbjNameProvider` (bbj-scope.ts:527-538) and `BbjScopeProvider` (bbj-scope.ts:62-504) both live in bbj-scope.ts — accurate; `BbjScopeComputation.collectLocalSymbols` returning a `LocalSymbols` map lives in bbj-scope-local.ts — accurate; `BbjLinker` performing reference linking (including the external-document cross-file case) lives in bbj-linker.ts — accurate. Checked CLAUDE.md's §Type-inference bullet naming `bbj-type-inferer.ts` — accurate, `BBjTypeInferer` is the sole implementation of the `TypeInferer` interface. Checked CLAUDE.md's §AST Type Constants claim (Langium 4.x uses the string type constant for `$type` checks; `isXxx()` guards come from `generated/ast.ts`) against this unit's code: `bbj-scope.ts:90-165`'s `switch (container.$type)` uses raw string literals (`'SimpleTypeRef'`, `'BBjTypeRef'`, `'JavaSymbol'`) in its case labels rather than the exported `X.$type` constants, and `bbj-overload-selector.ts`/`bbj-nodedescription-provider.ts` use `isJavaClass`/`isJavaMethod`/`isMethodDecl`-style guards from `generated/ast.ts` throughout, as CLAUDE.md describes — the case-label literals are functionally identical to their constants (Langium's generated constants equal their own name strings) and CLAUDE.md's example is specifically about node *construction* (`$type: JavaClass`, not a string literal), not comparison, so this is not a divergence from the documented claim; noted as a style observation, not filed. No D8-primary finding recorded (secondary content folded into `P61-D2-012`).
 
 ### Findings
 
@@ -1653,6 +1653,154 @@ dedup:             none — #232 is not in the frozen 15-issue snapshot because 
                     feature), #466 (sibling-type method return mismatches, no match — unrelated
                     dimension) as this unit's plausible neighbours; none match.
 disposition:       major-refactor
+```
+
+```
+id:                P61-D4-008
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-linker.ts:155-212
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: getSourceLocation (155-192) and getSourceLocationForNode (194-212)
+                    both independently derive `workspaceRoot` from
+                    `wsManager.workspaceFolders[0]` with the identical fallback-to-document-
+                    dirname logic, then compute `relative(workspaceRoot, ...)` — near-identical
+                    bodies differing only in how the line number is obtained (from a Reference's
+                    CST node vs. a passed-in `line` parameter) and in try/catch fallback shape.
+                    No shared helper exists for the common workspace-root-resolution +
+                    relative-path logic.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                    runtime failure): a change to the workspace-root resolution strategy (e.g.
+                    supporting multi-root workspaces properly instead of always
+                    `workspaceFolders[0]`) must be applied by hand in two places, risking drift.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                    no new dependency: pass — (4) regression-testable with vitest (assert
+                    formatted error-message location strings): pass — (5) reviewer can name the
+                    exact edit (extract a shared `resolveWorkspaceRoot()` /
+                    `formatSourceLocation(uri, line)` helper called by both): pass — (6) severity
+                    `low`, dimension D4: pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-009
+unit:              RU-61-02
+location:          bbj-vscode/src/language/assertions.ts:1-4
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: `grep -rn "assertions.js|assertTrue" bbj-vscode/src bbj-vscode/test`
+                    finds zero import or usage sites anywhere in either directory; the file's
+                    sole export, `assertTrue`, is unreferenced. The file has no side effects at
+                    import time and is not a type-only re-export module — it exports exactly one
+                    unused runtime function.
+failure_scenario:  n/a (D4 trace-tier finding — dead code, not a runtime failure): the module
+                    ships in the bundle with no consumer; a future contributor cannot tell from
+                    the code alone whether it is vestigial or intentionally kept for future use.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                    no new dependency: pass — (4) regression-testable with vitest / build check:
+                    pass — (5) reviewer can name the exact edit (delete assertions.ts, or wire it
+                    into a real assertion site): pass — (6) severity `low`, dimension D4: pass —
+                    `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-007
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-overload-selector.ts:32-52
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: `grep -rl overload bbj-vscode/test/` returns only `bbj-test-module.ts`
+                    (fixture classes) and the composer/inlay-hint tests (a different unit's
+                    consumer) — no test in the tree constructs two same-name sibling
+                    declarations that score an exact tie in `scoreOverload`
+                    (bbj-overload-selector.ts:54-61) to assert the documented "linked declaration
+                    wins ties" rule (bbj-overload-selector.ts:37, "linked declaration goes first
+                    so it wins all ties").
+failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future
+                    change to the tie-break comparison (e.g. `>` to `>=` on line 46) would
+                    silently flip which overload wins ties with no test catching the regression.
+classification:    easy
+                    (1) touches 1 file (a new test file): pass — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest: pass — (5) reviewer can name the exact edit (add a test asserting
+                    findBestOverload returns the linked declaration when a sibling scores equal):
+                    pass — (6) severity `medium`, dimension D5: pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-008
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-scope.ts:253-292
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: `grep -rli shadow bbj-vscode/test/` returns no results.
+                    variable-scoping.test.ts (404 lines) covers use-before-assignment and
+                    declaration scoping, but no test declares a class field and a same-named
+                    local variable or method parameter in the same method body to assert which
+                    one an unqualified reference resolves to (bbj-scope.ts:253-292's
+                    isSymbolRef branch).
+failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future
+                    change to the local-vs-member scope nesting order in this branch would go
+                    undetected by the existing test suite.
+classification:    easy
+                    (1) touches 1 file (a new test file): pass — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest: pass — (5) reviewer can name the exact edit (add a test declaring a
+                    field and a same-named local in one method, asserting the local wins):
+                    pass — (6) severity `medium`, dimension D5: pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-009
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-type-inferer.ts:73-78
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: no test file under bbj-vscode/test/ constructs a static Java method
+                    call (e.g. `String.valueOf(2)`) and asserts its inferred/propagated type.
+                    DEBT-03 exists only as a prose record (STATE.md §Tech Debt line 144,
+                    ROADMAP.md `DEBT-03`) — confirmed reproducible in this sweep via a
+                    throwaway, uncommitted vitest test (see P61-D2-011's evidence), which is not
+                    present in the committed tree.
+failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a fix to
+                    P61-D2-011 without an accompanying regression test would leave this specific
+                    gap open independently — the underlying bug and the missing test are two
+                    distinct defects that both need closing.
+classification:    easy
+                    (1) touches 1 file (a new test file): pass — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest: pass — (5) reviewer can name the exact edit (add a test asserting
+                    String.valueOf(2)'s inferred type once P61-D2-011 is fixed, using the same
+                    #437 mismatch-detection mechanism as the reproduction): pass — (6) severity
+                    `medium`, dimension D5: pass — `easy`.
+effort:            2
+dedup:             none — DEBT-03 — this is the untested-regression angle of the same debt item
+                    P61-D2-011 fixes; recorded separately per D5's own dimension since a code
+                    fix without an accompanying test would leave this gap open independently.
+disposition:       easy-fix
 ```
 
 ### Not-reproducible dispositions
