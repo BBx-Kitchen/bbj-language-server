@@ -1020,11 +1020,11 @@ disposition:       easy-fix
 - D1 Security — fail — Checked `bbj-cpl-service.ts`'s command-line assembly for the spawned BBjCPL compiler: `spawn(bbjcplBin, ['-N', filePath])` (bbj-cpl-service.ts:140) uses the argument-array form with no shell interposed, so `filePath` cannot inject shell syntax; but `bbjcplBin` itself (`getBbjcplPath()`, bbj-cpl-service.ts:228-235) is derived from `wsManager.getBBjDir()` with only a truthiness check, no validation that the resolved `<bbjHome>/bin/bbjcpl[.exe]` path is a legitimate BBj installation — and `bbj.home` is a `window`-scoped VS Code setting (`bbj-vscode/package.json:340`), settable via a workspace-committed `.vscode/settings.json`, the same class of gap `RU-61-06` recorded for `interopHost`/`interopPort` at `P61-D1-001`. Checked whether a classpath value reaches this spawn — it does not; only `bbjHome` and `filePath` are used, and no temp files are written by this unit's code for the compiler invocation. Checked `bbj-cpl-parser.ts`'s `parseBbjcplOutput` for hostile-output-driven diagnostics — it interpolates only a `sourceSnippet` extracted from stderr into a plain-text `message` field with no Markdown/HTML rendering path in this unit's files, so hostile compiler output reaching the IDE is bounded to plain diagnostic text, not markup injection. Checked `check-classes.ts`, `check-function-calls.ts` and `check-variable-scoping.ts` for any sink that writes validated-document-derived content to the filesystem, a URI, or a spawned process — none exists; these three files only call `accept()` to emit diagnostics. 1 finding recorded: `P61-D1-003` (cross-referenced to SEC-05 per this unit's must-have). One D1 candidate considered and not promoted — see Not-reproducible dispositions.
 - D2 Correctness & error handling — fail — Checked `bbj-cpl-parser.ts`'s 63 lines against malformed/edge-case compiler output: `parseBbjcplOutput`'s physical-line arithmetic (`parseInt(match[1], 10) - 1`, line 40) produces a negative, out-of-LSP-spec `range.start.line`/`range.end.line` for a reported physical line of `0`, with no clamp anywhere in the function and no test covering that boundary (found `P61-D2-009`); empty/no-error stderr is handled correctly (`if (!stderr.trim()) return diagnostics;`, confirmed against `test/cpl-parser.test.ts`'s dedicated empty/whitespace-only cases). Checked `bbj-cpl-service.ts`'s process lifecycle for the ENOENT/timeout/abort-on-resave/race paths its own comments document — `settle()`'s `settled` guard correctly no-ops a second resolution, `handle.cancel()` correctly kills the live process and clears the timeout before a superseding `compile()` call proceeds, and `proc.on('error', ...)` is attached before any await, so no unhandled-rejection risk was found in this file (contrast with `RU-61-06`'s `P61-D2-002`). Checked `bbj-document-validator.ts`'s `mergeDiagnostics`/`applyDiagnosticHierarchy` for exceptions caught-and-discarded — none found; both are pure array transforms with no try/catch to swallow. Checked all four `validations/*` modules for null propagation on partially-linked ASTs — `check-function-calls.ts`'s `resolveLibFunction`/`inferredKind` explicitly `try/catch` a cyclic-or-unresolved `.ref` access and degrade to `undefined` (documented, not swallowed); `check-classes.ts` guards every `getClass(...)` result with a `klass`/`declaredClass` truthiness check before use. Found a scope-crossing false positive in `check-variable-scoping.ts`'s `checkUseBeforeAssignment`: its Pass 2 traversal comment claims nested `MethodDecl`/`BbjClass`/`DefFunction` bodies are excluded, but the bare `continue` used against `AstUtils.streamAllContents` does not prune the underlying `TreeStreamImpl`, so a Program-scope (or enclosing-method-scope) variable can spuriously flag a same-named, fully valid local variable inside a nested method — reproduced in this sweep (`P61-D2-010`). Checked `line-break-validation.ts` for off-by-one behavior at CRLF and the final line — `hasLinebreakAfter`'s clamped-position lookup and `lineEndRegex`'s optional-CR handling did not reproduce a divergence in this sweep, though no dedicated test confirms this (see `P61-D5-006`). Do not re-report the cyclic-inheritance hang: confirmed `a7e1b53`'s `visitedClasses` termination guard is present and unmodified at `bbj-validator.ts:230-244`, and `check-classes.ts:523-547`'s `MAX_INHERITANCE_DEPTH`-bounded `checkCyclicInheritance` independently terminates the same class of walk. 2 findings recorded: `P61-D2-009`, `P61-D2-010`.
 - D3 Performance & resource use — pass — Checked whether BBjCPL runs are debounced or spawned per keystroke: `bbj-document-builder.ts`'s `debouncedCompile` (owned by `RU-61-05`, read for this unit's D3 boundary) wraps `cplService.compile(key)` in a 500ms trailing-edge `setTimeout`, and `bbj-cpl-service.ts`'s own `compile()` additionally aborts any prior in-flight compilation for the same file via `existing.cancel()` before spawning a new one, so at most one live `bbjcpl` process runs per file at a time, not one per keystroke. Checked whether `check-classes.ts` walks the class hierarchy once per member or once per class: `checkBBjClass` checks only the single resolved class's own visibility per call (no ancestor walk); `checkCyclicInheritance` walks the `extends[0]` chain once per `BbjClass` node, bounded by `MAX_INHERITANCE_DEPTH = 20`; `bbjSupertypesReach` (used by the return-type-assignability check) is a bounded, visited-set-guarded DFS over `extends`+`implements`, called once per value-returning `METHODRET`. Checked whether each registered check re-walks the AST independently rather than sharing one traversal: Langium's `ValidationRegistry` dispatches all of this unit's per-node-type checks (`bbj-validator.ts`, `check-classes.ts`, `check-function-calls.ts`) from its own single document-wide walk, with one exception — `check-variable-scoping.ts`'s `checkUseBeforeAssignment` performs its own additional `AstUtils.streamAllContents` sub-walk once per `Program` and once per every `MethodDecl`, and — because of the un-pruning bug recorded as `P61-D2-010` (secondary D3) — the Program-level walk redundantly re-visits every nested method body a second time. This redundancy is bounded (roughly 2x, not quadratic, since BBj methods do not nest inside other methods) and is recorded under `P61-D2-010` rather than as a second entry here. No unbounded accumulation found: `bbj-cpl-service.ts`'s `inFlight` map is bounded to currently-open files and is cleaned up in both the `close` and `error` handlers. No independent D3 finding recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked `bbj-validator.ts` (566 lines) for duplication against `check-classes.ts`: `BBjValidator.checkClassReference`/`isSubFolderOf` (266-311) are a near-duplicate visibility-check implementation of `ClassValidator.checkClassReference`/`isSubFolderOf` (check-classes.ts:104-188), but a grep across the whole repository confirms `bbj-validator.ts`'s copy is never called from anywhere — dead code, not merely duplicated code (found `P61-D4-006`). Checked `check-classes.ts`'s `ClassValidator` (549 lines, the largest single class read in this unit) for responsibility bundling: it combines class-reference/visibility checking, return-type/field-initializer literal and assignability checking (including an 11-entry hand-maintained `FINAL_TYPE_ASSIGNABLE_TO` map), constructor validation, and cyclic-inheritance detection with no internal module boundary — the same god-class shape `RU-61-06` recorded for `java-interop.ts` at `P61-D4-001` (found `P61-D4-007`). Checked whether the four `validations/*` checks follow one consistent registration/severity-selection pattern: all four register via a `register*Checks(registry, ...)` function called from `bbj-validator.ts:63-65`, and each uses plain `accept('error'|'warning'|'hint', ...)` calls with no shared severity-selection abstraction — consistent, no divergence found. Checked whether the two CPL modules (`bbj-cpl-service.ts`, `bbj-cpl-parser.ts`) share a coherent boundary or leak parsing concerns into the service — they do not: `bbj-cpl-service.ts` owns only process lifecycle and delegates all stderr parsing to `parseBbjcplOutput` in `bbj-cpl-parser.ts`, a clean single-responsibility split; no defect found there. Checked `bbj-document-validator.ts` (271 lines) for repeated hierarchy-walk/diagnostic-emission code — its `applyDiagnosticHierarchy`/`mergeDiagnostics`/`toDiagnostic` functions are each single-purpose with no duplication found. 2 findings recorded: `P61-D4-006`, `P61-D4-007`.
+- D5 Test coverage gaps — fail — Checked which of the four `validations/*` modules have a dedicated test file: `check-classes.ts` (`test/class-validations-issues.test.ts` + `test/inheritance-cycle-validation.test.ts`), `check-function-calls.ts` (`test/validation-function-calls.test.ts`) and `check-variable-scoping.ts` (`test/variable-scoping.test.ts`, 404 lines) all do; `line-break-validation.ts` does not — it is exercised only indirectly inside `test/validation.test.ts`, and no test anywhere in `test/` exercises its checks against CRLF line endings or a statement on the document's final line with no trailing newline (found `P61-D5-006`). Checked whether `bbj-cpl-service.ts` and `bbj-cpl-parser.ts` have any test at all, given they require an external compiler: both do — `test/cpl-service.test.ts` (mocked `WorkspaceManager`, no real `bbjcpl` needed) and `test/cpl-parser.test.ts` (fixture-driven, `test/test-data/cpl-fixtures/`) — and `test/cpl-integration.test.ts` exercises the combined path; but no test in `test/cpl-service.test.ts` (all 8 tests read) asserts anything about the legitimacy of the resolved `bbjcpl` path before it is spawned, the coverage gap directly underlying `P61-D1-003` (found `P61-D5-005`). Checked whether malformed-compiler-output handling is tested — `test/cpl-parser.test.ts` covers empty/whitespace-only/mixed-content cases but not the negative-line-number boundary recorded as `P61-D2-009`; not filed as a second overlapping finding since `P61-D2-009` already fully captures that gap's evidence. Checked whether each diagnostic this unit can emit has a regression test naming it — `variable-scoping.test.ts`'s 40+ tests do not include a case with a method-local variable sharing a name with a later Program-scope assignment, the exact scenario `P61-D2-010` reproduces; not filed separately for the same reason as above. Per the plan's explicit instruction, the 11 `test/linking.test.ts` "Interop related tests" failures (already owned by `RU-61-06`'s `P61-D5-001`) and the `beforeAll` hookTimeout flakiness (owned by `RU-61-05`) are not re-recorded here. 2 findings recorded: `P61-D5-005`, `P61-D5-006`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every comment and JSDoc block across all 8 files against what the code does. `bbj-cpl-service.ts`'s class-level comment (48-49) states BBjCPL wiring into `buildDocuments()` as future work ("Phase 53 will wire this"), but `bbj-document-builder.ts:173` confirms this wiring already exists — stale (found `P61-D8-004`); the same file's `setTimeout()` doc comment claims it is "Called by Phase 53 from VS Code settings wiring", but no caller of `setTimeout()` exists anywhere in the codebase — an unfulfilled claim about dead/unused public API (same finding, secondary D4). Checked `bbj-cpl-parser.ts`'s header comment describing the `<file>: error at line <legacy> (<physical>): <source>` format and the "bbjcpl always exits 0" claim against `test/cpl-parser.test.ts`'s fixtures — accurate, matches. Checked `bbj-document-validator.ts`'s `applyDiagnosticHierarchy` doc comment's stated Rule 0-3 ordering against the implementation (100-128) — accurate. Checked `check-classes.ts`'s extensive method-level doc comments (e.g. `checkMethodReturn`, `checkReturnTypeAssignable`, `isAssignable`) against the code — all accurate, including the deliberately conservative false-positive-avoidance rationale each documents. Checked CLAUDE.md's §Architecture Validation bullet: it names `bbj-validator.ts`, `bbj-document-validator.ts`, `check-classes.ts`, `check-variable-scoping.ts` and `line-break-validation.ts`, correctly describing the first two, but omits `check-function-calls.ts` from the `validations/` list — confirmed against the current `validations/` directory listing (found `P61-D8-003`). 2 findings recorded: `P61-D8-003`, `P61-D8-004`.
 
 ### Findings
 
@@ -1182,6 +1182,266 @@ dedup:             none — checked against #466 (sibling-type method return mis
                    different subsystem, RU-61-02's linker, not this unit's scope walk) as this
                    unit's flagged plausible neighbours, and against the remaining 13; none
                    concern variable-scoping's use-before-assignment traversal.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-006
+unit:              RU-61-03
+location:          bbj-vscode/src/language/bbj-validator.ts:266-311
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace, confirmed by exhaustive grep across bbj-vscode/:
+                   BBjValidator.checkClassReference (bbj-validator.ts:266-303) and its private
+                   helper isSubFolderOf (305-311) are never called from anywhere in the
+                   codebase — `grep -rn '\.checkClassReference\b' bbj-vscode --include=*.ts`
+                   (excluding their own declarations) returns only calls to a DIFFERENT
+                   checkClassReference implementation, ClassValidator.checkClassReference in
+                   validations/check-classes.ts:112-128, which IS wired into the validation
+                   registry (check-classes.ts:37,44,56,64,71,77,81) and is the one that
+                   actually runs. The two implementations are near-duplicates of the same
+                   PUBLIC/PROTECTED/PRIVATE visibility-check shape — both switch on
+                   klass.visibility.toUpperCase(), both call an isSubFolderOf helper with an
+                   identical body (bbj-validator.ts:305-311 vs check-classes.ts:104-110) — but
+                   bbj-validator.ts's copy operates on Reference<Class> while
+                   check-classes.ts's operates on QualifiedClass and additionally handles the
+                   unresolvable-type warning case the dead copy does not.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                   runtime failure): ~46 lines of dead, unreachable code sit alongside the
+                   working implementation with an almost-identical name and shape; a future
+                   contributor fixing a visibility-check bug in check-classes.ts's
+                   checkClassReference has no signal that bbj-validator.ts's same-named method
+                   is inert, and could plausibly "fix" the wrong one.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: these are
+                   internal, unexported methods on the internal BBjValidator class, not part
+                   of any published API: pass — (3) no new dependency: pass — (4)
+                   regression-testable, confirmed by the existing suite staying green after
+                   removal: pass — (5) reviewer can name the exact edit (delete
+                   bbj-validator.ts:266-311, or wire it up if it was meant to replace
+                   check-classes.ts's copy): pass — (6) severity `low`, dimension D4: pass —
+                   all six pass, classification is `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours); neither concerns dead code or the visibility-check
+                   implementations.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-007
+unit:              RU-61-03
+location:          bbj-vscode/src/language/validations/check-classes.ts:89-548
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: the single class ClassValidator (check-classes.ts:89-548, 460 of
+                   the file's 549 lines) bundles at least 4 distinct responsibilities with no
+                   internal module boundary: class-reference/visibility checking
+                   (checkClassReference/warnUnresolvableType/checkBBjClass/isSubFolderOf,
+                   104-188), return-type and field-initializer literal/assignability checking,
+                   including a hand-maintained 11-entry FINAL_TYPE_ASSIGNABLE_TO supertype map
+                   (checkMethodReturn/checkReturnTypeAssignable/isAssignable/
+                   bbjSupertypesReach/classFqn/classDisplayName/checkFieldInit/
+                   literalTypeMismatch/simpleTypeName, 190-457), constructor validation
+                   (checkInstantiable/checkConstructorArguments/isArrayConstruction, 459-521),
+                   and cyclic-inheritance detection (checkCyclicInheritance, 523-547) — the
+                   same god-class shape already recorded for java-interop.ts at P61-D4-001 in
+                   RU-61-06. #466 (sibling-type method return mismatches via Java class
+                   hierarchy) partially overlaps this file's FINAL_TYPE_ASSIGNABLE_TO
+                   mechanism — the existing code already implements a conservative version of
+                   #466's request, limited to well-known FINAL Java types (String, the boxed
+                   numeric types, BigDecimal/BigInteger) — but this finding is about the
+                   class's responsibility count, not about extending that coverage, so no
+                   duplication with #466's feature request.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                   runtime failure): a future change to any one responsibility (e.g.,
+                   extending FINAL_TYPE_ASSIGNABLE_TO per #466, or changing the
+                   cyclic-inheritance depth bound) risks touching unrelated state or logic in
+                   the same 460-line class, and a new contributor cannot reason about one
+                   responsibility (e.g., constructor-argument arity) without reading the whole
+                   class.
+classification:    major
+                   (1) touches 1 file: FAIL — a responsibility split necessarily creates or
+                   touches more than one file — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest, using
+                   the existing class-validations-issues.test.ts/inheritance-cycle
+                   -validation.test.ts suites as a regression baseline: pass — (5) reviewer
+                   can name the exact edit (extract return-type/field-init checking and
+                   constructor validation into their own modules, mirroring how
+                   check-function-calls.ts and check-variable-scoping.ts are already separated
+                   from check-classes.ts): pass — (6) severity `low`, dimension D4: pass — but
+                   test (1) already fails, so classification is `major`.
+effort:            8
+dedup:             #466 partial-overlap — this finding's subject (the class's responsibility
+                   count) does not duplicate #466's request (extending sibling-type mismatch
+                   detection), but the FINAL_TYPE_ASSIGNABLE_TO mechanism this finding names is
+                   the code #466 would extend, so cross-referencing is useful when #466 is
+                   triaged. Checked against #90 also (this unit's other flagged plausible
+                   neighbour); no overlap.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-005
+unit:              RU-61-03
+location:          bbj-vscode/test/cpl-service.test.ts:1-133
+dimension:         D5
+secondary:         [D1]
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace of every test in test/cpl-service.test.ts (all 8, read in full): each
+                   test asserts graceful []-returning behavior for an empty or non-existent
+                   bbjHome (ENOENT), abort-on-resave, isCompiling, and setTimeout — none
+                   asserts anything about the LEGITIMACY of the resolved bbjcpl path before it
+                   is spawned. A reproduction built and run in this sweep (see P61-D1-003)
+                   shows compile() executes whatever is present at <bbjHome>/bin/bbjcpl; no
+                   test in this file, nor anywhere else under test/, exercises that path with
+                   a controlled non-empty bbjHome pointing at a substitute executable to
+                   assert the current (unvalidated) behavior or a future validated one.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                   future change to getBbjcplPath()/compile()'s path-validation behavior
+                   (e.g. a fix for P61-D1-003) has no existing regression test to confirm it
+                   actually rejects an untrusted bbjHome, or to prevent a future regression
+                   from silently reopening the gap.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) IS itself the regression-testable
+                   artifact: pass — (5) reviewer can name the exact edit (add a test using
+                   the file's own createMockServices helper with a bbjHome pointing at a
+                   controlled substitute binary, asserting the spawn is rejected once
+                   P61-D1-003 is fixed, or documenting the current unvalidated behavior
+                   explicitly): pass — (6) severity `medium`, primary dimension D5 (D1 only
+                   secondary): pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours) and #231 (closest area match, a feature request for
+                   RUN-command classpath/CLI settings, not bbjcpl test coverage); none address
+                   this test-coverage gap.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-006
+unit:              RU-61-03
+location:          bbj-vscode/src/language/validations/line-break-validation.ts:294-318
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: line-break-validation.ts has no dedicated test file (unlike
+                   check-classes.ts, check-function-calls.ts and check-variable-scoping.ts,
+                   each with a named test file); its checks are exercised only indirectly
+                   inside test/validation.test.ts (confirmed by `grep -n "line break"
+                   test/validation.test.ts`, 9 hits, none containing \r\n). `grep -rn
+                   "\r\n" test/*.ts` shows the only CRLF-aware test in the whole test/
+                   directory is test/line-numbering.test.ts's "handles CRLF line endings" — a
+                   different unit's file (bbj-vscode/src/line-numbering.ts, outside
+                   bbj-vscode/src/language/). hasLinebreakBefore/hasLinebreakAfter (294-318)
+                   compute text ranges keyed on node.range.start.line/node.range.end.line + 1,
+                   the same shape RU-61-01 already flagged as CRLF-sensitive in the lexer's
+                   line splitter (P61-D2-006) — no test here confirms this file's own
+                   line-break checks behave correctly against a source file containing CRLF
+                   endings, or against a statement on the document's final line with no
+                   trailing newline.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                   regression in hasLinebreakBefore/hasLinebreakAfter's CRLF or final-line
+                   handling would pass the full npm test suite undetected, because no test
+                   exercises either case for this file's checks.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) IS itself the regression-testable
+                   artifact: pass — (5) reviewer can name the exact edit (add CRLF and
+                   no-trailing-newline cases to test/validation.test.ts or a new dedicated
+                   file): pass — (6) severity `low`, dimension D5: pass — all six pass,
+                   classification is `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours); neither concerns line-break-validation test coverage.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-003
+unit:              RU-61-03
+location:          CLAUDE.md:34
+dimension:         D8
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: CLAUDE.md's §Architecture Validation bullet reads: "Validation:
+                   bbj-validator.ts (main validator registering checks),
+                   bbj-document-validator.ts (document-level validation with BBjCPL compiler
+                   integration), plus validations/check-classes.ts,
+                   validations/check-variable-scoping.ts, validations/line-break
+                   -validation.ts" — confirmed against the current file list (`ls
+                   bbj-vscode/src/language/validations/`: check-classes.ts,
+                   check-function-calls.ts, check-variable-scoping.ts, line-break
+                   -validation.ts, 4 files) that check-function-calls.ts (196 lines,
+                   registered via registerFunctionCallChecks in bbj-validator.ts:17,65) is
+                   omitted from the bullet's list of three. The rest of the bullet is
+                   accurate: bbj-validator.ts does register the checks (confirmed in Task 1),
+                   and bbj-document-validator.ts does integrate BBjCPL (confirmed via its
+                   mergeDiagnostics/applyDiagnosticHierarchy functions, also read in this
+                   sweep).
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a
+                   runtime failure): a reader of CLAUDE.md's Architecture section forms an
+                   incomplete picture of the validation surface, unaware that
+                   builtin-function-call argument/arity/return-type checking is a fourth,
+                   separate validations/ module.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                   (5) reviewer can name the exact edit (add
+                   validations/check-function-calls.ts to the bullet's list): pass — (6)
+                   severity `low`, dimension D8: pass — all six pass, classification is
+                   `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours); neither concerns CLAUDE.md's Architecture section.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-004
+unit:              RU-61-03
+location:          bbj-vscode/src/language/bbj-cpl-service.ts:48-49,203-207
+dimension:         D8
+secondary:         [D4]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: the class-level doc comment (bbj-cpl-service.ts:48-49) reads "Phase
+                   53 will wire this into buildDocuments() via:
+                   services.compiler.BBjCPLService.compile(filePath)" — stated as future work,
+                   but bbj-document-builder.ts:173 (`const cplDiags = await
+                   cplService.compile(key);`) confirms this wiring is already done; the
+                   comment describes a completed integration as still pending. Separately,
+                   setTimeout(ms: number): void's own doc comment (203-207) reads "Called by
+                   Phase 53 from VS Code settings wiring" — `grep -rn '\.setTimeout('
+                   bbj-vscode/src/language bbj-vscode/src` (excluding this file's own
+                   declaration) returns no caller anywhere in the codebase: this claim was
+                   never fulfilled, and the method is dead/unused public API with a comment
+                   asserting a caller that does not exist.
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a
+                   runtime failure): a reader of compile()'s class-level comment could wrongly
+                   conclude BBjCPL diagnostics are not yet surfaced to users (they are, via
+                   the debounced on-save path in bbj-document-builder.ts), and a reader of
+                   setTimeout()'s comment could wrongly assume the compile timeout is
+                   configurable from VS Code settings today, when no such wiring exists.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                   (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                   (5) reviewer can name the exact edit (update the class comment to state the
+                   integration is complete, and either wire setTimeout() to a settings path or
+                   update its comment to reflect that it is currently unused): pass — (6)
+                   severity `low`, dimension D8 (D4 only secondary): pass — all six pass,
+                   classification is `easy`.
+effort:            2
+dedup:             none — checked against #466 and #90 (this unit's flagged plausible
+                   neighbours); neither concerns these stale comments.
 disposition:       easy-fix
 ```
 
