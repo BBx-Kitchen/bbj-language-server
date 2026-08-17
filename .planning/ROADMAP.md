@@ -220,7 +220,15 @@ inventory plus a shared bar for what counts as a valid, non-duplicate finding.
   5. The inventory states the standard every later finding must meet: a concrete verified failure
      scenario, and a check against the 15 currently open GitHub issues before being recorded
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 60-01-PLAN.md — Review standard, inventory tracer and frozen baselines (creates `.planning/reviews/INVENTORY.md`; finding-ID scheme, evidence tiers, easy-vs-major rule, frozen 15-issue snapshot, pinned range, test/build baseline, D-15 correction log)
+- [ ] 60-02-PLAN.md — Full review-unit inventory, D1-D8 applicability grid and full-surface accounting
+- [ ] 60-03-PLAN.md — Baseline resync of PROJECT.md's Validated list, Context, Constraints and Key Decisions, plus the MILESTONES.md release-window entry
+- [ ] 60-04-PLAN.md — In-place ROADMAP/REQUIREMENTS corrections and staleness banners on the seven codebase maps
+
+Waves: 1 → `60-01`; 2 → `60-02`, `60-03`, `60-04` (parallel, disjoint files)
 
 ---
 
