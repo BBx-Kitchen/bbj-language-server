@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 60
-current_phase_name: not yet planned
-status: planning
-stopped_at: Phase 60 context gathered
-last_updated: "2026-08-17T16:26:39.963Z"
+current_phase_name: baseline-resync-review-standards
+status: executing
+stopped_at: Completed 60-01-PLAN.md (INVENTORY.md created; finding standard, baseline, D-15 corrections)
+last_updated: "2026-08-17T17:27:03.819Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.0 Stability and Quality — roadmap created, ready for phase planning starting at Phase 60
+**Current Focus:** Phase 60 — baseline-resync-review-standards
 
 ---
 
 ## Current Position
 
-Phase: 60 (Baseline Resync & Review Standards) — not yet planned
-Plan: —
-Status: Roadmap approved, awaiting `/gsd-plan-phase 60`
-Last activity: 2026-08-17 — Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
+Phase: 60 (baseline-resync-review-standards) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-08-17 — Phase 60 execution started
 
 ## Performance Metrics
 
@@ -73,6 +73,11 @@ Last activity: 2026-08-17 — Roadmap created for v4.0 (Phases 60-69, 38 require
 - Key: Diagnostic noise reduction, Structure View resilience, BBjCPL compiler integration
 
 ---
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 60 P01 | ~34s (task commits only) | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -107,6 +112,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [v4.0 Roadmap]: FIX-01..04 isolated to a single dedicated Phase 67 run after all review sweeps —
   review phases record findings, this phase is the only one that applies them
 
+- [Phase 60 Plan 01]: Finding-ID scheme locked as phase-dimension-seq (P{phase}-D{dimension}-{seq}) at Task 1 checkpoint, confirming D-11
+- [Phase 60 Plan 01]: Baseline range pinned to 2194616..v0.12.0 (153 commits), not HEAD, because HEAD moves with v4.0 planning commits
+
 ### Tech Debt
 
 - CPU stability mitigations documented but not yet implemented (#232) — re-triaged in v4.0 Phase 66 (DEBT-01)
@@ -130,9 +138,9 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T15:18:02.890Z
-Stopped at: Phase 60 context gathered
-Resume file: .planning/phases/60-baseline-resync-review-standards/60-CONTEXT.md
+Last session: 2026-08-17T17:27:03.806Z
+Stopped at: Completed 60-01-PLAN.md (INVENTORY.md created; finding standard, baseline, D-15 corrections)
+Resume file: None
 
 ---
 

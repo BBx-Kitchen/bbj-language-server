@@ -26,7 +26,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 - [ ] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and 0.12.0 (`HEAD`), reconstructed from that 154-commit range
 - [ ] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, line numbering
-- [ ] **BASE-03**: A module inventory recording review scope, the 8 dimensions, and explicit exclusions exists, so review coverage is auditable rather than assumed
+- [ ] **BASE-03**: A module inventory recording review scope, the 8 dimensions, and explicit exclusions exists, so review coverage is auditable rather than assumed (partially satisfied by 60-01: INVENTORY.md exists with one review unit worked end-to-end; plan 60-02 defines the remaining ~20 review units)
 - [ ] **BASE-04**: MILESTONES.md records the v3.9 → 0.12.0 interval so project history contains no silent six-month gap
 
 ### Review Coverage
@@ -36,8 +36,8 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [ ] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — msgbox, addwindow, addchildwindow, SETOPTS (`-composer`, `-ui`, `-webview` files plus `setopts-catalog.ts`)
 - [ ] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
 - [ ] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
-- [ ] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
-- [ ] **RVW-07**: Every finding is checked against the open GitHub issues before it is recorded, so no finding duplicates existing tracker content
+- [x] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
+- [x] **RVW-07**: Every finding is checked against the open GitHub issues before it is recorded, so no finding duplicates existing tracker content
 
 ### Security
 
@@ -117,10 +117,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 |-------------|-------|--------|
 | BASE-01 | Phase 60 | Pending |
 | BASE-02 | Phase 60 | Pending |
-| BASE-03 | Phase 60 | Pending |
+| BASE-03 | Phase 60 | Partial (60-01) |
 | BASE-04 | Phase 60 | Pending |
-| RVW-06 | Phase 60 | Pending |
-| RVW-07 | Phase 60 | Pending |
+| RVW-06 | Phase 60 | Complete |
+| RVW-07 | Phase 60 | Complete |
 | RVW-01 | Phase 61 | Pending |
 | SEC-06 | Phase 61 | Pending |
 | RVW-02 | Phase 62 | Pending |
@@ -155,6 +155,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | ISSUE-05 | Phase 69 | Pending |
 
 **Coverage:**
+
 - v4.0 requirements: 38 total
 - Mapped to phases: 38 (Phases 60-69)
 - Unmapped: 0 ✓

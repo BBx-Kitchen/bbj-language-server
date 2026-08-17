@@ -224,12 +224,12 @@ inventory plus a shared bar for what counts as a valid, non-duplicate finding.
   5. The inventory states the standard every later finding must meet: a concrete verified failure
      scenario, and a check against the 15 currently open GitHub issues before being recorded
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 60-01-PLAN.md — Review standard, inventory tracer and frozen baselines (creates `.planning/reviews/INVENTORY.md`; finding-ID scheme, evidence tiers, easy-vs-major rule, frozen 15-issue snapshot, pinned range, test/build baseline, D-15 correction log)
+- [x] 60-01-PLAN.md — Review standard, inventory tracer and frozen baselines (creates `.planning/reviews/INVENTORY.md`; finding-ID scheme, evidence tiers, easy-vs-major rule, frozen 15-issue snapshot, pinned range, test/build baseline, D-15 correction log)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
