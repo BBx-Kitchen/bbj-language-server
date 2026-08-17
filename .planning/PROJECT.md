@@ -180,6 +180,32 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Deprecated methods show strikethrough indicator in completion items — v3.9
 - ✓ Constructor completion for `new ClassName()` expressions — v3.9
 
+*The entries below are labelled by release tag (`— 0.9.0` … `— 0.12.0`), not by GSD milestone
+(`— vN.M`), because this work shipped across four public releases without going through a GSD
+milestone; labelling it as if it had would be false. Reconstructed from `2194616..v0.12.0`
+(153 commits) — see `.planning/reviews/INVENTORY.md` §"Pinned Baseline Range".*
+
+- ✓ Runtime stability fixes: EM Config sentinel stripping extended to DWC/BUI app registration paths, java-interop depth-limit flood no longer re-stubs cached classes, and LS output-channel noise further quieted (#382) — 0.9.0
+- ✓ Parser, lexer and highlighting fixes: "rem"-prefixed identifiers no longer misread as comments, consistent '#' instance-access highlighting, single-line DEF FN inside class methods, multiline strings preserved in TextMate string scope, and #field! resolution on assignment LHS (#240, #389, #226, #269, #107) — 0.9.0
+- ✓ Decompile tokenized BBj programs and denumber/read-only line-numbered programs on open, with the async decompile output race handled (#64, #65) — 0.9.0
+- ✓ Diagnostic and stability fixes: hover resilient to malformed Java interop data, false line-break errors eliminated on single-line ELSE/IF after ';', relative USE paths resolve against the workspace root, and a comment-provider crash on malformed data fixed (#388, #378) — 0.9.0
+- ✓ Visual MSGBOX composer: QuickPick wizard, Code Action, live-preview webview panel, and string-field validation (#426) — 0.9.0
+- ✓ Visual addWindow composer for BBjSysGui::addWindow flags + event_mask, with schematic preview (#430) — 0.9.0
+- ✓ Composer command layer: shared bbj/composer/* LS requests power visual composer creation and edit-in-place in both VS Code and IntelliJ (#433) — 0.9.0
+
+- ✓ New semantic validation diagnostics: missing METHODRET, CASE outside SWITCH, illegal BBj word separators, malformed class definitions and void-identifier handling, unresolvable RUN/CALL targets, corrected builtin function definitions, builtin function argument arity/type checks, unresolvable type identifiers, and method return-type mismatches against Java types (#372, #206, #112, #79, #80, #86, #87, #439, #173, #179, #451, #438, #437) — 0.10.0
+- ✓ Completion enhancements: dot member-access IntelliSense trigger, dangling-# field-completion recovery, '#' completion offering methods/this!/super!, class completion after EXTENDS/IMPLEMENTS, package/class completion after a USE-statement dot, file-path completion inside ::...::, and Java event constants resolving on class references (#76, #445, #455, #454, #453, #456, #440) — 0.10.0
+- ✓ Quick-fix suggests missing USE statements for unresolved symbols (#447) — 0.10.0
+- ✓ REPEAT..UNTIL loop code snippet — 0.10.0
+
+- ✓ Parameter-name inlay hints for BBj methods, DEF FN and Java methods, with a bbj.inlayHints.parameterNames.enabled setting (#108) — 0.11.0
+- ✓ Builtin function library return/parameter type corrections (MSGBOX, TCB, XFIN, WINFIRST, WINNEXT, WININFO, RESNEXT, PAD) — 0.11.0
+
+- ✓ config.bbx / config.min syntax highlighting restored as a dedicated bbx-config language, filename-scoped so other .bbx files keep full BBj language support (#381) — 0.12.0
+- ✓ Visual addChildWindow composer for BBjWindow::addChildWindow flags + event_mask, with parent/child schematic preview, in both VS Code and IntelliJ (#473) — 0.12.0
+- ✓ Inlay hints refined: call-site overload selection by argument-type affinity instead of an arbitrarily-linked declaration, plus descriptive builtin-function parameter names (#478, #481, #482) — 0.12.0
+- ✓ Visual SETOPTS composer — CodeLens and code action on the bbx-config language generate BASIS SETOPTS byte/bit vectors via setopts-composer-webview.ts, scoped to that language by setopts-composer-ui.ts (#474) — 0.12.0
+
 ### Active
 
 **v4.0 Stability and Quality** — requirements defined in `.planning/REQUIREMENTS.md`
@@ -206,7 +232,7 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 **Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases). Test suite fully green at that point (511 passed, 4 skipped). Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
 
-**⚠ Planning drift (as of 2026-08-17):** 154 commits landed between `2194616` (end of v3.9) and `HEAD` without going through a GSD milestone. `bbj-vscode/package.json` is now at **0.12.0**. Subsystems present in code but absent from the Validated list include the four webview composers (msgbox, addwindow, addchildwindow, SETOPTS — #474/#483), inlay hints (#480/#482), the bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, and line numbering. The v4.0 baseline-resync phase closes this gap; treat the Validated list above as accurate only through v3.9.
+**⚠ Planning drift (as of 2026-08-17):** 154 commits landed between `2194616` (end of v3.9) and `HEAD` without going through a GSD milestone. `bbj-vscode/package.json` is now at **0.12.0**. Subsystems present in code but absent from the Validated list include the four webview composers (msgbox, addwindow, addchildwindow, SETOPTS — #474/#483), inlay hints (#480/#482), the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`), `Commands/CompilerOptions.ts`, document formatter, and line numbering. The v4.0 baseline-resync phase closes this gap; treat the Validated list above as accurate only through v3.9.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
