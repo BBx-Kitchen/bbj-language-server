@@ -16,6 +16,8 @@
 
 **Placeholder.** Every not-yet-recorded live-dimension cell line ends with the single lowercase word `pending`. This is mechanically checkable at every wave.
 
+**D-05 checkpoint: approved.** The recording shape rendered in `## RU-61-06 — Java interop client` below — the `### Cells` line format, the written pass/fail check-line wording, the `n/a` verbatim carry-forward presentation, the 13-field fenced finding-record shape, and the four per-unit sub-blocks (`### Findings`, `### Not-reproducible dispositions`, `### Cross-unit referrals`, plus `### SEC-06 Trust Boundary` for this unit) — was reviewed against the grid/gate/exclusion-reasons sections above it and approved as rendered, with no revisions, before plan `61-02` runs. Per D-03/D-05 this shape is now frozen: plans `61-02`..`61-07` copy it unchanged into their own unit sections.
+
 ## Applicability Grid — Phase 61 slice
 
 Cells below record applicability exactly as INVENTORY's grid states it (this table does not change as plans execute); the recorded pass/fail verdict for each live dimension lives in the matching unit's own `### Cells` block further down, so a coverage claim stays adjacent to its evidence (D-09) rather than being flattened into this summary table.
