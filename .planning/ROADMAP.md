@@ -271,13 +271,14 @@ boundary of its java-interop client.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 7 plans — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 1/7 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable: `.planning/reviews/61-COVERAGE.md` (50 `applies` verdicts, 38 verbatim `n/a`
 carry-forwards, 88 cells). No source file is modified by this phase.
 
-- [ ] 61-01-PLAN.md — wave 1, tracer: create the `61-COVERAGE.md` skeleton (grid, D-17 gate, 38 `n/a`
+- [x] 61-01-PLAN.md — wave 1, tracer: create the `61-COVERAGE.md` skeleton (grid, D-17 gate, 38 `n/a`
       carry-forwards, 7 stubbed sections) and sweep `RU-61-06` java-interop client (4 files / 1,255 LOC)
       end to end, including the SEC-06 trust-boundary write-up; D-05 format checkpoint
+
 - [ ] 61-02-PLAN.md — wave 2: sweep `RU-61-01` grammar & lexing (5 files / 1,340 LOC)
 - [ ] 61-03-PLAN.md — wave 3: sweep `RU-61-03` validation & BBjCPL diagnostics (8 files / 2,542 LOC)
 - [ ] 61-04-PLAN.md — wave 4: sweep `RU-61-02` scope, linking & type inference (8 files / 1,601 LOC)

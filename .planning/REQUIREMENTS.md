@@ -46,7 +46,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [ ] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
 - [ ] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
 - [ ] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
-- [ ] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
+- [x] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
 - [ ] **SEC-07**: GitHub Actions workflows audited — secret handling, `GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via untrusted PR-controlled inputs
 - [ ] **SEC-08**: Dependency vulnerabilities enumerated for both `npm` and Gradle dependency trees, each triaged as fix-now, file-issue, or accepted-with-reason
 
@@ -122,7 +122,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | RVW-06 | Phase 60 | Complete |
 | RVW-07 | Phase 60 | Complete |
 | RVW-01 | Phase 61 | Pending |
-| SEC-06 | Phase 61 | Pending |
+| SEC-06 | Phase 61 | Complete |
 | RVW-02 | Phase 62 | Pending |
 | RVW-03 | Phase 62 | Pending |
 | RVW-04 | Phase 63 | Pending |

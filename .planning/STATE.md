@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
 status: executing
-stopped_at: Phase 61 context gathered
-last_updated: "2026-08-17T20:54:39.521Z"
+stopped_at: Completed 61-01-PLAN.md
+last_updated: "2026-08-17T21:18:48.974Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 11
-  completed_plans: 4
+  completed_plans: 5
   percent: 10
 ---
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 60 — baseline-resync-review-standards
+**Current Focus:** Phase 61 — Language Core Review
 
 ---
 
 ## Current Position
 
-Phase: 61 — Language Core Review
-Plan: Not started
+Phase: 61 (Language Core Review) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-08-17 — Phase 60 complete, transitioned to Phase 61
+Last activity: 2026-08-17 — Phase 61 execution started
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Last activity: 2026-08-17 — Phase 60 complete, transitioned to Phase 61
 | Phase 60 P02 | ~1h | 3 tasks | 1 files |
 | Phase 60 P03 | ~55m | 3 tasks | 2 files |
 | Phase 60 P04 | ~45m | 2 tasks | 10 files |
+| Phase 61 P01 | 23min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 60 Plan 03]: Corrected PROJECT.md Context/Constraints/Key Decisions per D-15 log (154->153 commits, 39->~49 files, 7->6 debt items, HEAD->v0.12.0 endpoint) plus 3 plan-authorized Tech-stack version corrections not in the D-15 log
 - [Phase 60 Plan 04]: Corrected ROADMAP.md/REQUIREMENTS.md figures per D-15 (154->153 commits, HEAD->v0.12.0 endpoint, 39->~49 src/language/ files with LOC re-measured to ~10.8k, 13->11 composer files+setopts-catalog.ts with SETOPTS asymmetry made explicit, nonexistent bbx-config editor replaced with setopts-composer-webview.ts wording)
 - [Phase 60 Plan 04]: Added additive dated SUPERSEDED banners to all seven codebase/*.md maps naming INVENTORY.md as the v4.0 scope authority (D-16); logged 60-03's un-logged Langium/Chevrotain/Vitest Tech-stack corrections into INVENTORY.md's D-15 Correction Log as a carried-forward defect fix
+- [Phase ?]: [Phase 61 Plan 01]: D-05 checkpoint approved as rendered — RU-61-06 recording shape frozen verbatim for plans 61-02..61-07
+- [Phase ?]: [Phase 61 Plan 01]: 11 test/linking.test.ts Interop related tests failures recorded once as RU-61-06 (not RU-61-02) per location-decides-ownership rule, with a cross-unit referral
 
 ### Tech Debt
 
@@ -147,9 +150,9 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T20:14:19.220Z
-Stopped at: Phase 61 context gathered
-Resume file: .planning/phases/61-language-core-review/61-CONTEXT.md
+Last session: 2026-08-17T21:18:48.957Z
+Stopped at: Completed 61-01-PLAN.md
+Resume file: None
 
 ---
 
