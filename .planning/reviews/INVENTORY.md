@@ -1218,6 +1218,9 @@ appear in this table** — the amendment is auditable, not silent (T-60-04).
 | PROJECT.md | §Context planning-drift note; Target features | "the bbx-config editor" | Same as above — no editor subsystem exists; same replacement wording | (same two commands as above) | Same as above |
 | PROJECT.md | §Context, "Current state:" | "Test suite fully green at that point (511 passed, 4 skipped)" presented under the "Current state:" heading | The "at that point" qualifier is present but sits under a "Current state:" header immediately followed by an unresolved-since-2026-08-17 planning-drift note — a reader can misread it as still current. Today's actual state (see Test & Build Baseline above) is **11 failed, 850/843 passed (run-dependent), 25-79 skipped, 886 total**. Cross-reference the Test & Build Baseline section above rather than repeating the numbers. | (established by the Test & Build Baseline section, Task 3 of this plan) | See "Headline vitest counts" above |
 | PROJECT.md | §Current Milestone "Known tech debt" list | 8 bullet items under "Known tech debt" | REQUIREMENTS.md's carried-debt enumeration (DEBT-01..DEBT-06) has **6** items, not 8 — two PROJECT.md bullets (`CPL-06 hierarchy suppression timing nuance`, `IntelliJ TextMate bundle cannot exclude config.bbx by filename`) are not represented as a `DEBT-*` requirement and must either be folded into an existing DEBT item or added as a new one before DEBT-06 ("every carried debt item ends this milestone... none remain recorded only as prose in PROJECT.md") can be satisfied | `grep -c '^- \[ \] \*\*DEBT-' .planning/REQUIREMENTS.md` | `6` |
+| PROJECT.md | Tech stack line (IntelliJ Constraints block) | "Langium 4.1.3" | **`4.3.1`** — resolved via the bbj-vscode lockfile | `grep -A1 '"node_modules/langium"' bbj-vscode/package-lock.json` | `"version": "4.3.1"` |
+| PROJECT.md | Tech stack line (IntelliJ Constraints block) | "Chevrotain 11.0.3" | **`12.0.0`** — resolved via the bbj-vscode lockfile | `grep -A1 '"node_modules/chevrotain"' bbj-vscode/package-lock.json` | `"version": "12.0.0"` |
+| PROJECT.md | Tech stack line (IntelliJ Constraints block) | "Vitest 1.6.1" | **`4.1.10`** — resolved via the bbj-vscode lockfile | `grep -A1 '"node_modules/vitest"' bbj-vscode/package-lock.json` | `"version": "4.1.10"` |
 
 ### Files absent from the 2026-02-01 maps and from the roadmap enumeration
 
@@ -1244,4 +1247,9 @@ webview composer file count/shape, bbx-config editor) to `.planning/ROADMAP.md` 
 `src/language/` file count where PROJECT.md carries it, bbx-config editor, the Context test-suite
 cross-reference, and the carried-debt count) to `.planning/PROJECT.md`. No correction may be
 applied that does not appear in the table above.
+
+The three Tech-stack version rows (Langium, Chevrotain, Vitest) were applied by plan 60-03 to
+`.planning/PROJECT.md` in commit `417f25e`, authorized by that plan's own Task 2 action text
+("verify each version claim you touch with a command") but not logged here at the time. Plan 60-04
+appends them retroactively, closing that gap — see 60-04's SUMMARY.md for the full account.
 
