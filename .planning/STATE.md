@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
 status: executing
-stopped_at: Completed 61-02-PLAN.md
-last_updated: "2026-08-17T21:38:34.787Z"
+stopped_at: Completed 61-03-PLAN.md
+last_updated: "2026-08-17T21:57:32.464Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 11
-  completed_plans: 6
+  completed_plans: 7
   percent: 10
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 61 (Language Core Review) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-08-17 — Phase 61 execution started
 
@@ -83,6 +83,7 @@ Last activity: 2026-08-17 — Phase 61 execution started
 | Phase 60 P04 | ~45m | 2 tasks | 10 files |
 | Phase 61 P01 | 23min | 3 tasks | 3 files |
 | Phase 61 P02 | ~25min | 2 tasks | 1 files |
+| Phase 61 P03 | 20min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 61 Plan 02]: STRING_LITERAL doubled-quote escape never collapsed by BBjValueConverter despite bbj.langium's own comment claiming it is (P61-D2-005/P61-D8-002)
 - [Phase ?]: [Phase 61 Plan 02]: mixed line-ending files break bbj-lexer.ts's prepareLineSplitter length-preservation invariant, corrupting downstream LSP position mapping (P61-D2-006)
 - [Phase ?]: [Phase 61 Plan 02]: 3 disabled parser.test.ts assertions recorded as P61-D5-003 with dedup naming DEBT-02 as owning requirement
+- [Phase ?]: P61-D1-003 (bbjcpl spawn path validation gap) rated severity high to match plan's threat T-61-P03-S1, forcing classification major
+- [Phase ?]: P61-D2-010's redundant-AST-walk consequence folded into that finding as secondary D3 rather than a second record, sharing one root cause
 
 ### Tech Debt
 
@@ -154,8 +157,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T21:38:23.220Z
-Stopped at: Completed 61-02-PLAN.md
+Last session: 2026-08-17T21:57:32.448Z
+Stopped at: Completed 61-03-PLAN.md
 Resume file: None
 
 ---
