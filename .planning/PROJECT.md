@@ -404,4 +404,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-17 at start of v4.0 milestone*
+*Last updated: 2026-08-17 — Phase 60 (Baseline Resync & Review Standards) complete; planning baseline resynced to `v0.12.0` and `.planning/reviews/INVENTORY.md` established as the review authority for Phases 61-65*
