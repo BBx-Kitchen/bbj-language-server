@@ -635,11 +635,11 @@ disposition:       easy-fix
 - D1 Security — pass — Checked every terminal regex in bbj.langium (COMMENT, BBjFilePath, ID, ID_WITH_SUFFIX, NUMBER, STRING_LITERAL, HEX_STRING, MNEMONIC, DOCU) and every custom pattern bbj-token-builder.ts constructs (ASTERISK_STANDALONE/EXPRESSION, RELEASE_NL/NO_NL, EXIT_NO_NL, RPAREN_NL, START_BREAK, FNEND, NEXT_BREAK/NEXT_ID, METHODRET_END, ENDLINE_PRINT_COMMA, PRINT_STANDALONE_NL, KEYWORD_STANDALONE) for catastrophic-backtracking shapes — nested quantifiers, overlapping alternation inside a repeated group, unanchored greedy `.*` inside a repeated group — none found (STRING_LITERAL's `([^"]|"{2})*` alternates over disjoint, fixed-length branches with no partition ambiguity; DOCU's lazy `[\s\S]*?` is a single unnested quantifier); checked bbj-lexer.ts's prepareLineSplitter for unbounded memory/token growth on a pathological input (linear — see D3); checked bbj-value-converter.ts for any evaluation, unescaping, or interpolation of input (none — it only slices delimiter characters; see P61-D2-005 for a related but distinct correctness gap in that slicing); checked whether java-types.langium accepts type text originating from the java-interop peer — it declares only AST type-shape interfaces with no parsing/validation logic of its own, so the actual unvalidated peer-data assignment lives in RU-61-06's java-interop.ts (already recorded there as P61-D1-002, see Cross-unit referrals below); no independent D1 finding recorded here. One D1-adjacent candidate considered and not promoted — see Not-reproducible dispositions.
 - D2 Correctness & error handling — fail — Checked the line-continuation splitter for off-by-one behavior at CRLF vs. LF line endings by tracing bbj-lexer.ts:11's `windowsEol` detection against a mixed-EOL reproduction (found P61-D2-006); checked STRING_LITERAL's doubled-quote escape handling against bbj.langium:948's comment claim by tracing bbj-value-converter.ts:14 (found P61-D2-005, cross-ref P61-D8-002); checked bbj.langium:941's BBjFilePath terminal for tokenization-boundary correctness across multiple qualified references on one physical line (found P61-D2-007); checked bbj-token-builder.ts for errors caught-and-discarded rather than surfaced (found P61-D2-008's silent-wrong-removal-on-missing-name gap in spliceToken); checked bbj-value-converter.ts's ID/STRING_LITERAL cases and HEX_STRING's default pass-through for null/undefined propagation on values the grammar permits — none found, ID always has length >= 1 given its terminal pattern. 4 findings recorded: P61-D2-005, P61-D2-006, P61-D2-007, P61-D2-008.
 - D3 Performance & resource use — pass — Checked whether bbj-token-builder.ts's regexes are compiled once or rebuilt per call: buildTokens()/buildTerminalToken() run once per grammar/services initialization (Langium invokes the token builder when creating BBjServices), not per document parse or per keystroke, so no per-call regex-recompilation cost exists on the hot path; checked bbj-lexer.ts's prepareLineSplitter for linear-vs-quadratic behavior in line count and continuation-run length by re-implementing the algorithm and benchmarking synthetic inputs from 2,000 to 160,000 lines split across many independent 2-line continuation groups — runtime scaled linearly (e.g. 80,000 lines: 74.6ms vs. 160,000 lines: 138.3ms, roughly 2x for 2x input), confirming that splice's equal insert/delete count here performs an in-place slot replacement rather than an O(n) tail shift; checked whether any grammar construct forces backtracking proportional to file size — the expression-precedence chain (BinaryExpression/RelationalExpr/AdditiveExpr/MultiplicativeExpr/ExponentiationExpr/PrefixExpression) and MemberCall's repeated-alternation loop are ordinary LL(k) predictive constructs, and v3.3 already established all 47 Chevrotain ambiguities in this grammar resolve correctly (out-of-scope to re-litigate per REQUIREMENTS.md's Out of Scope table). No D3 finding recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked rule duplication inside bbj.langium at 1,036 lines: WithChannelAndOptionsAndOutputItems (line 513) and WithChannelAndOptionsAndInputItems (line 614) are near-identical fragments differing only by OutputItem/InputItem and one extra alternative (found P61-D4-004); checked overlap between bbj.langium and java-types.langium — no duplication found, java-types.langium declares only the JavaClass/JavaField/JavaMethod AST interfaces with no grammar-rule counterpart in bbj.langium; checked grammar rules for unreachable references by confirming every SingleStatement/ClassMember/LibMember alternative is referenced from its parent rule — no concretely unreachable rule found, though exhaustive call-graph verification was not performed (see Not-reproducible dispositions); checked whether bbj-value-converter.ts (17 lines) and bbj-lexer.ts (37 lines) are coherent modules or fragments of bbj-token-builder.ts — each maps to a distinct Langium DI service hook (ValueConverter vs. Lexer vs. TokenBuilder) with a single clear responsibility, the same reasoning RU-61-06 applied to bbj-api.ts's 12 lines, so no defect; checked bbj-token-builder.ts's buildTokens() for responsibility bundling (found P61-D4-005). 2 findings recorded: P61-D4-004, P61-D4-005.
+- D5 Test coverage gaps — fail — This unit owns the routing table's 3 disabled test/parser.test.ts assertions ('Check substring other cases', 'Release usage', and the OutputHandler class-field test), each blocked on a Java classpath unavailable under EmptyFileSystem; recorded with full evidence as P61-D5-003, dedup naming DEBT-02 as the owning requirement per D-14. Also checked whether test/functional/chevrotain-tokens.test.ts covers the token-builder branches D2 flagged: it exercises only the single KEYWORD_STANDALONE terminal (via its 7 describe blocks for READ/INPUT/ENTER/EXTRACT/DELETE/SAVE/FIND, all matched by that one terminal's alternation), leaving bbj-token-builder.ts's other 13 custom buildTerminalToken branches (ASTERISK_STANDALONE/EXPRESSION, RELEASE_NL/NO_NL, EXIT_NO_NL, RPAREN_NL, START_BREAK, FNEND, NEXT_BREAK/NEXT_ID, METHODRET_END, ENDLINE_PRINT_COMMA, PRINT_STANDALONE_NL) without an equivalent focused runtime-verification test — noted as context, not filed as a second overlapping finding; checked whether example-files.test.ts's corpus exercises line continuation and CRLF inputs — it does not (the single test-data file, class-def.bbj, contains neither), and separately its `.forEach(async ...)` loop doesn't await its own assertions, so a future non-parsing file added there would not fail the test (found P61-D5-004, cross-ref P61-D8's CLAUDE.md guarantee). Per the plan's explicit instruction, the beforeAll WorkspaceManager.initializeWorkspace() hookTimeout flakiness that intermittently strikes this unit's own chevrotain-tokens.test.ts suite is not recorded here — see Cross-unit referrals (owned by RU-61-05). 2 findings recorded: P61-D5-003, P61-D5-004.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every comment in the five target files against what the code does, including bbj.langium:948's STRING_LITERAL comment ("Handled in BBjValueConverter"), which is inaccurate — the converter never collapses `""` (found P61-D8-002, same underlying defect as P61-D2-005 viewed from the doc-accuracy angle); checked CLAUDE.md's §Architecture Langium-pipeline description and its specific claim that bbj-lexer.ts is "a custom lexer with line-continuation handling (prepareLineSplitter)" — accurate, matches the code read in this sweep; checked the `npm run langium:generate` instruction against bbj.langium's role as the grammar source for src/language/generated/ — accurate; checked CLAUDE.md's claim that every .bbj file in test/test-data/ must produce zero lexer/parser errors — currently true in practice (the sole test-data file parses cleanly, confirmed by running `npx vitest run test/example-files.test.ts`), but the test enforcing that guarantee has the coverage gap recorded as P61-D5-004, so the guarantee is not actually mechanically enforced against a future regression; every other inline comment read across bbj-token-builder.ts, bbj-lexer.ts, bbj-value-converter.ts and java-types.langium (suffix-character notes, EXIT_NO_NL's lookahead-restriction rationale, NEXT_BREAK's `*next` exclusion note, DEF FN's `void`-as-FeatureName rationale referencing #439) matched the code exactly. 1 finding recorded: P61-D8-002.
 
 ### Findings
 
@@ -805,11 +805,200 @@ dedup:             none
 disposition:       easy-fix
 ```
 
+```
+id:                P61-D4-004
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj.langium:513-521,614-617
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: fragment WithChannelAndOptionsAndOutputItems (bbj.langium:513-521)
+                   and fragment WithChannelAndOptionsAndInputItems (bbj.langium:614-617) share
+                   the identical `'(' channelno=Expression? Options? (...)` opening shape and
+                   the identical bare-items-list closing alternative, differing only in
+                   OutputItem vs. InputItem and one extra alternative the Output variant
+                   carries (`RPAREN_NO_NL ENDLINE_PRINT_COMMA` with no items) that the Input
+                   variant lacks — already a visible drift between the two near-duplicates.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                   runtime failure): a future change to the shared channel/options/RPAREN
+                   opening shape (e.g. adding a new Options variant) must be applied by hand
+                   in both fragments, and the two are already inconsistent (the extra
+                   Output-only alternative), so a change is likely to be applied to only one.
+classification:    major
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: FAIL —
+                   de-duplicating necessarily edits both fragments' rule text in
+                   bbj-vscode/src/language/bbj.langium — (3) no new dependency: pass — (4)
+                   regression-testable with vitest: pass — (5) reviewer can name the exact
+                   edit (extract a shared `WithChannelAndOptionsAndItems<Item>`-style common
+                   prefix fragment, or a documented rationale for why the extra Output-only
+                   alternative must stay asymmetric): pass — (6) severity `low`, dimension D4:
+                   pass — but test (2) already fails, so classification is `major`.
+effort:            4
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D4-005
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj-token-builder.ts:7-64
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: buildTokens() (bbj-token-builder.ts:7-64, 58 lines) bundles at least
+                   3 distinct responsibilities with no internal decomposition:
+                   terminal/keyword token construction and whitespace-priority ordering (lines
+                   8-19), 14 hardcoded sequential spliceToken priority-reordering calls (lines
+                   21-34), and ID/ID_WITH_SUFFIX CATEGORIES/LONGER_ALT wiring across a loop
+                   plus 3 special-cased terminals (lines 36-62) — all three phases read and
+                   mutate the same shared `tokens` array in sequence within one method.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                   runtime failure): a future change to token priority ordering (the
+                   spliceToken block) risks an accidental edit inside the unrelated
+                   ID-category-wiring block, since both operate on the same local `tokens`
+                   variable with no named boundary between them.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest, using the
+                   existing token-vocabulary assertions in
+                   lexer.test.ts/chevrotain-tokens.test.ts as a regression baseline: pass —
+                   (5) reviewer can name the exact edit (extract
+                   `reorderTokenPriorities(tokens)` and `wireIdCategories(tokens,
+                   terminalTokens)` as private helpers called from buildTokens): pass — (6)
+                   severity `low`, dimension D4: pass — all six pass, classification is
+                   `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-003
+unit:              RU-61-01
+location:          bbj-vscode/test/parser.test.ts:530-533,811-815,860-864
+dimension:         D5
+secondary:         [D2]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Trace of the 3 disabled assertions, per the routing table (D-06) item this
+                   unit owns: (1) 'Check substring other cases' (test/parser.test.ts:525-534)
+                   parses `new String()(1)` and disables `expectNoValidationErrors` at line
+                   533 with the comment "'String' is a Java class that cannot be resolved in
+                   EmptyFileSystem test context"; (2) 'Release usage' (lines 805-816) parses a
+                   `BBjAPI().getGlobalNamespace().getValue()` / `.release()` chain and
+                   disables the same assertion at line 815, noting "the synthetic BBjAPI stub
+                   in bbj-api.ts has no methods"; (3) the OutputHandler class-field test
+                   (lines 845-865) declares `field protected String[] strings` and `method
+                   public String[] createHTML(byte[] bytes)` and disables validation at line
+                   864, noting `String`/`byte` array-typed members need Java classpath
+                   resolution. All three are commented-out `expectNoValidationErrors(result)`
+                   calls, not `test.skip`, matching INVENTORY's Test & Build Baseline
+                   description exactly.
+failure_scenario:  Any regression in Java-classpath-dependent validation for these three
+                   scenarios — new String() substring validation, BBjAPI() global-namespace
+                   method-chain resolution, and String[]/byte[] Java-typed class fields —
+                   would pass the full npm test suite undetected, because the only assertions
+                   that would catch it are commented out rather than executed.
+classification:    major
+                   (1) touches 1 file: n/a — this is an environment/test-infrastructure gap
+                   (no Java classpath under EmptyFileSystem), not a single code edit —
+                   (2)-(5): n/a for the same reason — (6) severity `medium`, primary dimension
+                   D5: the six D-13 tests are built for code-fix findings; this is routed for
+                   triage per D-14, so `classification` is recorded as `major` conservatively,
+                   matching RU-61-06's P61-D5-001 precedent for the same class of
+                   environment-dependent gap.
+effort:            4
+dedup:             DEBT-02 — the owning re-triage requirement (Phase 66): "The 3 disabled
+                   parser.test.ts assertions and the skipped TEST-03 case re-triaged —
+                   enabled, or documented with the specific blocking limitation and what would
+                   unblock them." None of the 15 frozen open issues concern these disabled
+                   assertions.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-004
+unit:              RU-61-01
+location:          bbj-vscode/test/example-files.test.ts:16-20
+dimension:         D5
+secondary:         [D8]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: `fs.readdirSync(testDataFolder).filter(...).forEach(async file => {
+                   const result = await parse(...);
+                   expect(result.parseResult.lexerErrors).empty;
+                   expect(result.parseResult.parserErrors).empty; });`
+                   (test/example-files.test.ts:16-20) passes an `async` callback to
+                   `Array.prototype.forEach`, which never awaits the callback's returned
+                   promise nor propagates its rejection. The outer `test('Parse all files...',
+                   async () => {...})` function's own promise resolves as soon as the
+                   synchronous forEach loop returns — before any of the awaited `parse(...)`
+                   calls or their `expect()` assertions inside the loop have settled — so
+                   vitest records the test's pass/fail status independent of whether any file
+                   actually fails to parse. Confirmed the test currently passes (`npx vitest
+                   run test/example-files.test.ts` → 1 passed) against the sole test-data
+                   file, `class-def.bbj`, which does parse cleanly today; that file also
+                   contains no line-continuation (`:`-prefixed) or CRLF content, so this
+                   corpus additionally does not exercise those bbj-lexer.ts paths.
+failure_scenario:  A future .bbj file added to test/test-data/ that fails to lex or parse
+                   would NOT fail this test, silently defeating the regression-test guarantee
+                   CLAUDE.md's Testing Pattern section states: "Every .bbj file in
+                   test/test-data/ is automatically parsed by example-files.test.ts and must
+                   produce zero lexer/parser errors."
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest (the fix is
+                   itself the test-infrastructure correction): pass — (5) reviewer can name
+                   the exact edit (replace `.forEach(async ...)` with a `for (const file of
+                   ...) { await ... }` loop, or `await Promise.all(files.map(...))`): pass —
+                   (6) severity `low`, primary dimension D5 (D8 only secondary): pass — all
+                   six pass, classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-002
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj.langium:948
+dimension:         D8
+secondary:         [D2]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: the comment directly above the STRING_LITERAL terminal
+                   (bbj.langium:948) reads `// "" escapse " inside a string. Also \ as a plain
+                   non escape char. Handled in BBjValueConverter` — asserting that
+                   doubled-quote-escape collapsing is handled in BBjValueConverter.
+                   BBjValueConverter's STRING_LITERAL case (bbj-value-converter.ts:14, `return
+                   input.slice(1, -1);`) only strips the outer quote delimiters and performs
+                   no `""` → `"` collapsing, so the comment's central claim is false — same
+                   underlying defect as P61-D2-005, viewed from the doc-accuracy angle.
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a
+                   runtime failure): a reader of this comment reasonably concludes escaped
+                   double-quotes are already normalized in the parsed AST value, which is
+                   false.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest: pass — (5)
+                   reviewer can name the exact edit (fix the comment, or fix the code per
+                   P61-D2-005 so the comment becomes true): pass — (6) severity `low`, primary
+                   dimension D8 (D2 only secondary): pass — all six pass, classification is
+                   `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
 ### Not-reproducible dispositions
 - **Tier failed: `repro` (D1).** Candidate claim: the BBjFilePath greedy-match mis-tokenization (P61-D2-007) could, in principle, cause a statement's `ERR=` error-handling clause to be silently swallowed into an unrelated token, masking error-handling code from ever executing — a security-relevant control-flow-integrity concern. **Reason not recorded as a finding:** confirming this requires enumerating BBj's actual multi-statement-per-line usage patterns combined with `ERR=` clauses in real programs, which is beyond a read-only sweep of these 5 files; the tokenization defect itself is fully captured as `P61-D2-007`, and this note flags the theoretical D1-adjacent angle without asserting it as verified.
+- **Tier failed: `trace` (D4).** Candidate claim: some `ClassMember`/`LibMember` grammar alternatives may be unreachable dead rules. **Reason not recorded as a finding:** a full reachability analysis of bbj.langium's ~150 rules requires a call-graph tool beyond manual reading within this sweep's budget; spot-checks of every `SingleStatement` alternative, every `ClassMember` alternative (FieldDecl/MethodDecl/VariableDecl), and every `LibMember` alternative (LibFunction/LibVariable/LibSymbolicLabel) confirmed each is referenced from its parent rule, so no concretely unreachable rule was found to record as a finding, but exhaustive verification was not performed.
 
 ### Cross-unit referrals
 - **RU-61-06** — java-types.langium's `JavaClass`/`JavaField`/`JavaMethod` interfaces (java-types.langium:33-58) are the AST type-shape declarations that RU-61-06's java-interop.ts populates from unauthenticated, unvalidated JSON-RPC peer data (already recorded there as `P61-D1-002`). No independent finding is recorded here since java-types.langium contains no parsing, validation, or peer-data-handling logic of its own — it is purely the interface shape those interop values are assigned into; the unvalidated-assignment defect belongs entirely to `RU-61-06`'s files.
+- **RU-61-05** — the `beforeAll` `WorkspaceManager.initializeWorkspace()` hookTimeout flakiness (root-caused and owned by `RU-61-05` per D-14/the routing table) intermittently strikes this unit's own `test/functional/chevrotain-tokens.test.ts` suite — INVENTORY's "Flaky suite-level failures" table records that suite 21/21-skipped on run 1. Noted here per this plan's explicit instruction; not re-recorded as an `RU-61-01` finding. `RU-61-05`'s own D5 sweep (plan 61-06) owns dispositioning it.
 
 ## RU-61-03 — Validation & BBjCPL diagnostics
 
