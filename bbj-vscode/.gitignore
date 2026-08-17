@@ -2,3 +2,4 @@
 /src/language/generated/
 /syntaxes/gen-bbj.tmLanguage.json
 /coverage/
+/test/.tmp/

@@ -76,6 +76,28 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 
 ---
 
+## Language Server Process Lifecycle
+
+Regression coverage for #232, where the language server ran at 100% CPU and kept
+running after the editor exited. Each leaked process holds a CPU core indefinitely,
+so this is worth checking on every release.
+
+| # | Feature | Steps | Expected | Pass/Fail |
+|---|---------|-------|----------|-----------|
+| 1 | Server exits with the editor (VS Code) | 1. Open a `.bbj` file, wait for completion to work<br>2. Quit VS Code entirely (Cmd+Q / File > Exit — not just closing the window)<br>3. macOS/Linux: `ps aux \| grep 'bbj-lang'`<br>4. Windows (PowerShell): `Get-CimInstance Win32_Process \| Where-Object CommandLine -like '*bbj-lang*'` | No `out/language/main.cjs` process remains within ~10s | [ ] |
+| 2 | Server exits with the editor (IntelliJ) | Same as above, quitting IntelliJ instead | No `main.cjs` process remains within ~10s | [ ] |
+| 3 | No orphans after repeated sessions | 1. Open and quit the editor three times with a `.bbj` file open<br>2. Re-run the `ps` / `Get-CimInstance` check | Zero `main.cjs` processes. One per closed session means the shutdown path is broken | [ ] |
+| 4 | Idle CPU settles | 1. Open a `.bbj` file, leave the editor idle ~1 minute<br>2. Watch `main.cjs` CPU in Activity Monitor / `top` | Near-idle after initial indexing. Sustained ~100% of one core indicates a spinning validation or rebuild loop | [ ] |
+| 5 | CPU settles in a multi-project workspace | 1. Open a workspace containing several BBj projects (the original #232 trigger)<br>2. Wait for indexing, then leave idle ~2 minutes | CPU returns to near-idle; the editor stays responsive to completion requests | [ ] |
+| 6 | Editor survives an unresponsive Java interop | 1. Stop `java-interop` (port 5008)<br>2. Open a `.bbj` file using Java classes and request completion | Completion degrades with an error or empty result within ~10s; no hang and no runaway CPU | [ ] |
+
+**On failure:** capture `ps aux | grep bbj-lang` output including elapsed CPU time,
+note whether the `--clientProcessId` value is a live PID, and attach both to the issue.
+A surviving process whose client PID is dead points at a blocked event loop rather
+than a missing shutdown handler.
+
+---
+
 ## Test Run Result
 
 - [ ] **PASS** - All items marked with `[x]`

@@ -33,6 +33,8 @@ Quick sanity check to verify critical path functionality of the BBj Language Ser
 | 6 | IntelliJ Basic | 1. Open IntelliJ IDEA<br>2. Open any `.bbj` file from `examples/` directory<br>3. Verify syntax highlighting | File opens; keywords are colored; no error notifications | [ ] |
 | 7 | Run Program (VS Code) | 1. Open simple `.bbj` file (e.g., `examples/hello.bbj`)<br>2. Right-click editor<br>3. Run BBj > Run Program | Program executes; output appears in terminal | [ ] |
 | 8 | Run Program (IntelliJ) | 1. Open simple `.bbj` file in IntelliJ<br>2. Right-click editor<br>3. Run BBj > Run Program | Program executes; output appears in run window | [ ] |
+| 9 | Language Server Exits (#232) | 1. With a `.bbj` file open, quit VS Code completely (not just close the window)<br>2. macOS/Linux: `ps aux \| grep 'bbj-lang'`<br>3. Windows (PowerShell): `Get-CimInstance Win32_Process \| Where-Object CommandLine -like '*bbj-lang*'` | No `out/language/main.cjs` process remains within ~10s of quitting. A surviving process means the server is not shutting down — see #232 | [ ] |
+| 10 | No Runaway CPU (#232) | 1. Open a `.bbj` file and leave the editor idle for ~1 minute<br>2. Check CPU of the extension host / `main.cjs` process in Activity Monitor or `top` | CPU settles to near-idle after initial indexing. Sustained ~100% on one core indicates a spinning validation or rebuild loop | [ ] |
 
 ---
 
