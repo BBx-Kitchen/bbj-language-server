@@ -91,11 +91,11 @@ Each block below is copied verbatim from `.planning/reviews/INVENTORY.md` §"Exc
 - D1 Security — fail — Checked handshake/auth on the `net.Socket` channel (none found — `java-interop.ts:91-142`); field-level validation before JSON-RPC response fields become `JavaClass`/`JavaField`/`JavaMethod`/`JavaPackage`/`DocumentationInfo` AST nodes (none — `java-interop.ts:543-667`); whether a response can influence a filesystem path, URI, or spawned process (it cannot — no such sink exists across these four files); what `JavadocProvider` does with disk-supplied documentation (loads only from its own initialize-time `roots`, not peer-influenced — `java-javadoc.ts:44-86`); whether `lib/fs-provider.ts`'s `bbjlib` virtual filesystem can serve beyond its four fixed catalog paths (it cannot — `fs-provider.ts:27-35` is a hardcoded switch defaulting to an empty string); and whether `interopHost`/`interopPort` are validated for type/range (they are not). 2 findings recorded: `P61-D1-001`, `P61-D1-002`.
 - D2 Correctness & error handling — fail — Checked the cached `connection` field's behavior on post-connect socket error/close (never invalidated); whether concurrent `connect()` callers can race into two sockets (yes, no in-flight guard); whether a lost timeout race leaves an unhandled rejection (yes, on every `Promise.race` timeout pattern in this file); how a malformed/truncated response is handled (an uncaught `TypeError` on a missing `fields`/`methods` array); and whether `clearCache()` actually releases everything its doc comment claims (no — `completeClassIndex` survives). 4 findings recorded: `P61-D2-001`..`P61-D2-004`.
 - D3 Performance & resource use — fail — Checked whether `resolvedClasses`/`childrenOfByName`/`pendingResolutions` are bounded (they are not); whether an unavailable peer causes repeated reconnect attempts per unresolved reference (yes — every resolution serializes through a single global lock, and each queued resolution independently pays the full 10s socket-connect timeout); and the cost of the implicit-import preload against the package list size (bounded to 8 packages, but every resolved member type still serializes through the same global lock, so cost scales with the full type-graph size reached from those 8 packages, not just the package count). 2 findings recorded: `P61-D3-001`, `P61-D3-002`.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked java-interop.ts's size/responsibility count at 955 lines against the four-file unit (one class — `JavaInteropService` — bundles connection management, class resolution/caching, the global resolution lock, classpath loading, complete-class-index building, and package-tree storage: at least 5 distinct responsibilities); whether the request-sending paths repeat the same connect/await/error shape (yes — `getRawClass`, `loadClasspath`, `loadImplicitImports`, `ensureCompleteClassIndex` each independently call `connect()` then `sendRequest` inside their own try/catch with no shared helper); whether `JavadocProvider`'s singleton (`java-javadoc.ts:16-36`) is reachable and testable (it is a hard `getInstance()` singleton with a private constructor — the test double works around it via an `isInitialized()` check rather than dependency injection); and whether `lib/bbj-api.ts` at 12 lines earns its own module (checked — it is a single-purpose template-string constant with one consumer, `bbj-ws-manager.ts`; kept as a separate module for the same reason `bbj-module.ts`'s DI wiring separates other single-purpose constants, no defect). 3 findings recorded: `P61-D4-001`..`P61-D4-003`.
+- D5 Test coverage gaps — fail — This unit owns the routing-table's 11 `test/linking.test.ts` "Interop related tests" failures (recorded as `P61-D5-001`, full evidence below; cross-ref D2). Also checked what is genuinely untested against the real client: socket error/close paths, the three timeout paths, malformed-response handling, and whether `test/bbj-test-module.ts`'s `JavaInteropTestService` double diverges from the real client in ways that would hide a defect — it does: `connect()`, `loadClasspath()`, `loadImplicitImports()`, and `resolveClassByName()` are all overridden to bypass the network entirely (`test/bbj-test-module.ts:108-123`), so none of `P61-D2-001`/`002`/`003`/`004` or `P61-D3-002`'s code paths are exercised by any test that currently passes (recorded as `P61-D5-002`). 2 findings recorded: `P61-D5-001`, `P61-D5-002`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every JSDoc block in the four files against what the code does, including the doc comment on `setConnectionConfig` (accurate — it correctly notes `clearCache()` must be called separately to reconnect) and `clearCache()` (`java-interop.ts:757-760`, inaccurate — "Clears all cached Java class data" but `completeClassIndex`/`completeIndexResolved` survive, same defect as `P61-D2-004` viewed from the doc-accuracy angle); and CLAUDE.md's §Architecture description of `java-interop.ts` ("connects to the java-interop socket service to resolve Java classes/methods/fields for completion and hover") and its DI service-group list (`services.java.JavaInteropService`, `bbj-module.ts:53-54`, `89-90`) against the code just read — both accurate, no divergence found. 1 finding recorded: `P61-D8-001`.
 
 ### SEC-06 Trust Boundary
 
@@ -385,13 +385,236 @@ dedup:             none — none of the 15 frozen open issues concern java-inter
 disposition:       major-refactor
 ```
 
+```
+id:                P61-D4-001
+unit:              RU-61-06
+location:          bbj-vscode/src/language/java-interop.ts:37-831
+dimension:         D4
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: the single class JavaInteropService (java-interop.ts:37-831, 955
+                    lines total in the file) bundles at least 5 distinct responsibilities:
+                    connection lifecycle (connect/createSocket, 91-142), class
+                    resolution/caching (resolveClassByName/resolveClass/storeJavaClass,
+                    430-755), the global resolution lock (acquireLock/drainLockQueue,
+                    792-830), classpath/implicit-import loading (loadClasspath/
+                    loadImplicitImports, 189-277), and the complete-class-index builder
+                    (ensureCompleteClassIndex/buildCompleteClassIndex, 283-348). No internal
+                    module boundary separates them.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                    runtime failure): a change to any one responsibility (e.g. the lock, or
+                    the class-index cache) risks touching unrelated state in the same class,
+                    and a new contributor cannot reason about one responsibility (e.g.
+                    connection lifecycle) without reading the whole 955-line file.
+classification:    major
+                    (1) touches 1 file: FAIL — a responsibility split necessarily creates or
+                    touches more than one file — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (extract the lock and the
+                    complete-class-index builder into their own modules): pass — (6) severity
+                    `medium`, dimension D4: pass — but test (1) already fails, so
+                    classification is `major`.
+effort:            8
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D4-002
+unit:              RU-61-06
+location:          bbj-vscode/src/language/java-javadoc.ts:16-36
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: JavadocProvider (java-javadoc.ts:16-36) is a hard singleton — a
+                    private constructor plus a static `getInstance()` — rather than an
+                    injected DI service. test/bbj-test-module.ts:52-54 works around this by
+                    checking `isInitialized()` before calling `initialize()` a second time,
+                    instead of receiving a fresh instance per test, which is the pattern every
+                    other collaborator in this unit uses (JavaInteropService itself is
+                    constructor-injected via BBjServices).
+failure_scenario:  n/a (D4 trace-tier finding): the singleton's module-level static state
+                    persists across the process lifetime (and across unrelated test files
+                    sharing the same vitest worker, unless carefully guarded by
+                    `isInitialized()` checks as the test double already does), making the
+                    provider harder to reset, mock, or run with two independent
+                    configurations in the same process than an injected service would be.
+classification:    major
+                    (1) touches 1 file: FAIL — removing the singleton also touches
+                    bbj-module.ts's DI wiring — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (inject JavadocProvider via
+                    BBjServices instead of getInstance()): pass — (6) severity `low`,
+                    dimension D4: pass — but test (1) already fails, so classification is
+                    `major`.
+effort:            8
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D4-003
+unit:              RU-61-06
+location:          bbj-vscode/src/language/java-interop.ts:175-314
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: getRawClass (175-181), loadClasspath (189-206),
+                    loadImplicitImports (213-277), and ensureCompleteClassIndex (294-314)
+                    each independently call `await this.connect()` and then
+                    `connection.sendRequest(...)` inside their own try/catch, with similar
+                    but not identical error handling (some catch-and-return-false, one
+                    distinguishes METHOD_NOT_FOUND specially) and no shared helper for the
+                    connect+send+catch shape.
+failure_scenario:  n/a (D4 trace-tier finding): a change to the shared connect+send+catch
+                    shape (e.g. adding a retry, or the circuit breaker recommended by
+                    P61-D3-002) must be applied in up to 4 places by hand, risking drift
+                    between them.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (extract a private
+                    `sendRequestSafe(request, params, fallback)` helper): pass — (6) severity
+                    `low`, dimension D4: pass — `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-001
+unit:              RU-61-06
+location:          bbj-vscode/test/linking.test.ts:295-450
+dimension:         D5
+secondary:         [D2]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Per INVENTORY.md's Test & Build Baseline (§"Every failing test"): all 11
+                    tests inside `describe.runIf(isInteropRunning)("Interop related tests", ...)`
+                    (test/linking.test.ts:295-450) fail deterministically across repeated
+                    `npm test` runs — "All BBj classes extends Object", "Import and declare
+                    simple Java class without using FQNs", "Import Java class", "Declare with
+                    direct import", "Class definition with direct import in extends", "Class
+                    definition with direct import in implements", "Unloaded Java FQN access -
+                    test for #6", "Java FQN access - test for #6", "Linked List is resolved",
+                    "Resolve nested class in use statement", "Resolve nested class FQN" — each
+                    failing with an unresolved-reference error (`NamedElement`,
+                    `JavaPackageLike`, etc.) traced to `stderr: "No bbjdir set. No classpath
+                    and prefixes loaded."`. Confirmed independently in this sweep: the gate
+                    (`shouldRunBBjTests()`, test/test-helper.ts:38-43) defaults to
+                    `isPortOpen(5008)`; in this sandbox `isPortOpen(5008)` returns true (a
+                    listener answers on :5008), so the `describe.runIf` gate lets the suite
+                    run rather than skip — yet the 11 tests still fail, because whatever
+                    answers on :5008 is not a real BBj backend with a loaded classpath/bbjdir.
+                    This confirms INVENTORY's established fact from the client side: bringing
+                    a listener up on port 5008 alone does not fix these failures.
+failure_scenario:  Any of the 11 named tests, run against this sandbox's current environment
+                    (or any environment without a real `bbjdir`-configured BBj backend behind
+                    :5008), fails on an unresolved Java class/package reference rather than
+                    passing or being skipped.
+classification:    major
+                    (1) touches 1 file: n/a — this is an environment/test-infrastructure gap,
+                    not a code edit — (2) no public API/grammar/LSP change: n/a —
+                    (3) no new dependency: n/a — (4) regression-testable with vitest: n/a,
+                    already a vitest suite — (5) reviewer can name the exact edit: n/a, no
+                    single code edit fixes an environment dependency — (6) severity `medium`,
+                    primary dimension D5 (not D1): the six D-13 tests are built for
+                    code-fix findings; this is an environment/infrastructure gap that Phase 66
+                    re-triages rather than a fix this milestone applies, so `classification` is
+                    recorded as `major` conservatively (routed for triage, not accepted as an
+                    allowlisted known-failure per D-14/D-06).
+effort:            8
+dedup:             none — no frozen open issue matches; no DEBT-01..06 item names this
+                    specific test gap (DEBT-02 covers the 3 disabled parser.test.ts
+                    assertions and the TEST-03 completion-test.test.ts skip only, not
+                    test/linking.test.ts's "Interop related tests"). Phase 66 should triage
+                    this as a new debt item — e.g. a CI-safe mock interop backend that
+                    answers with a real classpath, or documenting these as
+                    RUN_BBJ_TESTS-gated local-only tests with the current environment
+                    behavior (port-open-but-no-bbjdir) called out explicitly.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-002
+unit:              RU-61-06
+location:          bbj-vscode/test/bbj-test-module.ts:108-123
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: JavaInteropTestService (test/bbj-test-module.ts:47-138), the
+                    double every non-"Interop related" unit test in this repo runs against,
+                    overrides connect() to always reject (108-110), loadClasspath() to
+                    return false (112-114), loadImplicitImports() to return false (116-118),
+                    and resolveClassByName() to resolve from a preloaded map or a synthetic
+                    stub, never calling the base resolveClass() (120-123). None of the real
+                    connection-lifecycle code (P61-D2-001), the Promise.race timeout pattern
+                    (P61-D2-002), the fields/methods undefined-guard gap (P61-D2-003), the
+                    completeClassIndex reset gap (P61-D2-004), or the global-lock
+                    serialization (P61-D3-002) is reachable through this double. The only
+                    tests that exercise the real code paths are test/linking.test.ts's
+                    "Interop related tests" and the two functional
+                    *-real-interop.test.ts files, all gated on a live interop service and,
+                    per P61-D5-001, currently failing/environment-blocked.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): any
+                    regression in connection lifecycle, timeout handling, malformed-response
+                    handling, or lock serialization in java-interop.ts would pass the full
+                    `npm test` suite undetected, because no currently-passing test exercises
+                    those code paths.
+classification:    major
+                    (1) touches 1 file: n/a — closing this gap requires new test
+                    infrastructure (a controllable fake socket peer), not a single-file
+                    code edit — (2)-(5): n/a for the same reason — (6) severity `medium`,
+                    dimension D5: the gap spans multiple defects and needs dedicated test
+                    infrastructure, so `classification` is recorded as `major`.
+effort:            8
+dedup:             none — no frozen open issue addresses java-interop.ts unit-test coverage
+                    for its connection/timeout/lock code paths.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D8-001
+unit:              RU-61-06
+location:          bbj-vscode/src/language/java-interop.ts:757-760
+dimension:         D8
+secondary:         [D2]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: clearCache()'s doc comment (java-interop.ts:757-760) reads "Clears
+                    all cached Java class data, disconnects the current connection, and
+                    resets the classpath document." The method (761-790) does not reset
+                    completeClassIndex/completeIndexResolved (same underlying gap as
+                    P61-D2-004), so the comment's "all cached" claim is inaccurate for that
+                    field.
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a
+                    runtime failure): a reader of clearCache()'s doc comment reasonably
+                    concludes calling it leaves no stale cached state, which is false for the
+                    complete class index.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (fix the comment, or fix the code per
+                    P61-D2-004 so the comment becomes true): pass — (6) severity `low`,
+                    primary dimension D8 (D2 is only secondary): pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
 ### Not-reproducible dispositions
 
 - **Tier failed: `repro` (D1).** Candidate claim: unescaped Markdown/HTML syntax in peer-supplied Javadoc text (`java-interop.ts:638-643`) achieves script injection in the rendered hover/completion UI. **Reason not recorded as a finding:** confirming this requires the renderer's `MarkupKind`/`supportHtml` configuration, which lives in `RU-61-04` (`bbj-hover.ts`, `bbj-completion-provider.ts`) — outside this unit's files and out of scope for a `RU-61-06` sweep. The unbounded/unescaped *content* flowing into `DocumentationInfo.javadoc` is still recorded as `P61-D1-002`; the stronger claim of confirmed HTML/script execution in the IDE is not asserted without that additional evidence, which `RU-61-04`'s own sweep is positioned to supply.
+- **Tier failed: `trace` (D8).** Candidate claim: the JSDoc on `resolveClassCandidatesBySimpleName` (java-interop.ts:350-356) characterizing its fallback package probe as "cheap" may understate its actual cost, given `autoImportCandidatePackages` has 10 entries each triggering a `resolveClassByName` call that now recurses through the single global lock documented in `P61-D3-002`. **Reason not recorded as a finding:** confirming or refuting "cheap" requires a runtime latency measurement, outside this review's read-only sweep. The fallback's structural mechanism is already fully captured by `P61-D3-002`; no additional D8 finding is recorded without that measurement.
 
 ### Cross-unit referrals
 
 - **RU-61-05** — `bbj-ws-manager.ts:53-55` and `main.ts:151-152` supply `interopHost`/`interopPort` from `initializationOptions`/`didChangeConfiguration` with only a falsy-check default (`|| 'localhost'`, `|| 5008`), the same gap this unit's `setConnectionConfig` (`java-interop.ts:116-120`, `P61-D1-001`) does not close. `RU-61-05`'s own D1/D2 sweep should confirm whether either call site adds validation this unit does not see, or record its own finding if not.
+- **RU-61-02** — the 11 `test/linking.test.ts` "Interop related tests" failures (`P61-D5-001` above) are recorded here as already-owned: their *subject* is the linker (`RU-61-02` resolves `NamedElement`/`JavaPackageLike` references), but their *cause* is this unit's unreachable/non-functional peer, per D-06's routing table and the finding-ownership rule ("a finding's `location:` decides which unit owns it, not which unit discovered it"). `RU-61-02` (plan `61-04`) must not re-record this item.
 
 ## RU-61-01 — Grammar & lexing
 
