@@ -221,12 +221,23 @@ export class BBjValidator {
                 expectedAccessLevels.push("PRIVATE", "PROTECTED");
             } else {
                 const remainingClasses = [classOfUsage];
+                // Cyclic `extends` (A extends B, B extends A) would otherwise re-expand the
+                // same classes forever. This walk is synchronous, so that blocks the event
+                // loop: no diagnostics, no completion, and the clientProcessId watchdog can
+                // no longer fire, leaving a spinning server behind after the editor exits
+                // (#494, same failure mode as #232). Expansion is deterministic, so skipping
+                // classes already seen cannot change whether classOfDeclaration is reachable.
+                const visitedClasses = new Set<Class>();
                 while (remainingClasses.length > 0) {
                     const c = remainingClasses.pop();
                     if (c === classOfDeclaration) {
                         expectedAccessLevels.push("PROTECTED");
                         break;
                     }
+                    if (!c || visitedClasses.has(c)) {
+                        continue;
+                    }
+                    visitedClasses.add(c);
                     if (isBbjClass(c)) {
                         remainingClasses.push(...c.extends.map(x => getClass(x)).filter(x => x !== undefined).map(x => x as Class))
                     }
