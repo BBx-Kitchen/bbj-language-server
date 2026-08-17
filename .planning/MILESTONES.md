@@ -479,3 +479,61 @@
 
 ---
 
+## Untracked Release Window: 2194616 → v0.12.0 (Shipped: 2026-07-19)
+
+**Delivered:** Four public releases (0.9.0, 0.10.0, 0.11.0, 0.12.0) shipped without going through a GSD milestone — visual webview composers for MSGBOX, addWindow, addChildWindow and SETOPTS with a shared cross-IDE command layer, parameter-name inlay hints with overload-aware selection, decompile/denumber support for tokenized and line-numbered BBj programs, a wave of new semantic validation diagnostics and completion enhancements, and numerous stability fixes.
+
+**Phases completed:** None — this window shipped four public releases without going through any GSD phase; it is reconstructed after the fact by Phase 60 of the v4.0 milestone.
+
+**Key accomplishments:**
+
+- Visual MSGBOX composer: QuickPick wizard, Code Action, live-preview webview panel, string-field validation (#426)
+- Visual addWindow composer for BBjSysGui::addWindow flags + event_mask with schematic preview (#430)
+- Composer command layer: shared bbj/composer/* LS requests power composer UIs in both VS Code and IntelliJ (#433)
+- Decompile tokenized BBj programs and denumber/read-only line-numbered programs on open (#64, #65)
+- Runtime stability fixes: EM Config sentinel stripping extended to DWC/BUI paths, java-interop depth-limit flood fixed, LS output noise quieted (#382)
+- Parser, lexer and highlighting fixes: "rem" lexing, '#' highlighting, single-line DEF FN, multiline strings, #field! assignment-LHS resolution (#240, #389, #226, #269, #107)
+- Diagnostic and stability fixes: hover resilience, false line-break errors, USE path resolution, comment-provider crash (#388, #378)
+- New semantic validation diagnostics: missing METHODRET, CASE outside SWITCH, illegal word separators, class/void-identifier validations, unresolvable RUN/CALL targets, builtin function definition and argument checks, unresolvable type identifiers, method return-type mismatches (#372, #206, #112, #79, #80, #86, #87, #439, #173, #179, #451, #438, #437)
+- Completion enhancements: dot member-access trigger, dangling-# recovery, '#' completion breadth, EXTENDS/IMPLEMENTS completion, USE-statement completion, Java event constants (#76, #445, #455, #454, #453, #456, #440)
+- Quick-fix suggests missing USE statements for unresolved symbols (#447)
+- REPEAT..UNTIL loop code snippet
+- Parameter-name inlay hints for BBj methods, DEF FN and Java methods (#108)
+- Builtin function library return/parameter type corrections
+- config.bbx / config.min syntax highlighting restored as a dedicated bbx-config language (#381)
+- Visual addChildWindow composer for BBjWindow::addChildWindow flags + event_mask (#473)
+- Inlay hints refined: overload selection by argument-type affinity, descriptive builtin parameter names (#478, #481, #482)
+- Visual SETOPTS composer generating BASIS SETOPTS byte/bit vectors, scoped to the bbx-config language (#474)
+
+**Per-release breakdown:**
+
+| Release | Tag date | Tag target | Commits | Headline capabilities |
+|---|---|---|---|---|
+| 0.9.0 | 2026-07-17 | `f95a872` | 93 | Visual MSGBOX/addWindow composers, cross-IDE composer command layer, decompile/denumber, parser/lexer/highlighting and runtime stability fixes |
+| 0.10.0 | 2026-07-18 | `ac3a530` | 38 | New validation diagnostics, completion enhancements, quick-fix USE suggestions, REPEAT..UNTIL snippet |
+| 0.11.0 | 2026-07-18 | `8d8d814` | 9 | Parameter-name inlay hints, builtin function library type corrections |
+| 0.12.0 | 2026-07-19 | `1b86a6b` | 13 | Visual addChildWindow + SETOPTS composers, inlay-hint overload selection, config.bbx/config.min highlighting restored |
+| **Total** | | | **153** | |
+
+**Stats:**
+
+- 222 files modified (+18,592 / -4,767 lines)
+- 153 commits, 4 releases
+- 5 months (2026-02-21 → 2026-07-19)
+- Test suite at end of window: 11 failed \| 843-850 passed (run-dependent) \| 25-79 skipped (886 total) — contrast with the v3.9 entry above's *511 passed, 4 skipped, 0 failures*, the last GSD-tracked measurement. See `.planning/reviews/INVENTORY.md` §"Test & Build Baseline" for the full snapshot.
+
+**Git range:** `2194616` → `v0.12.0` (153 commits)
+
+**Tech debt accepted:**
+- 11 `test/linking.test.ts` "Interop related tests" failures (java-interop unreachable in this sandbox) — routed to Phase 61, D5/D2
+- `beforeAll` `WorkspaceManager.initializeWorkspace()` hook-timeout flakiness (hits a different suite each run) — routed to Phase 61, D5
+- 3 disabled `parser.test.ts` assertions + the TEST-03 skip (need a Java classpath unavailable under `EmptyFileSystem`) — routed to Phase 61, D5
+- `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch — routed to Phase 63, D6
+- 2 unused eslint-disable directive warnings in `bbj-document-symbol-provider.ts` — routed to Phase 61, D4
+
+See `.planning/reviews/INVENTORY.md` §"Routing table (D-06)" for the full disposition — these are pre-identified findings for Phases 61-64 to triage, not an accepted known-failing allowlist.
+
+**What's next:** v4.0 Stability and Quality (Phases 61-69) systematically reviews this window's output.
+
+---
+
