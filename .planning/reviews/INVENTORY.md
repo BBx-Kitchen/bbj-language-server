@@ -779,6 +779,142 @@ binaries (`RU-64-03`) or the workflow scripts (`RU-64-01`) ranked above it.
 claims contradicted by code. No editorial review of structure, tone or completeness — that is
 FUT-02, explicitly out of scope for this milestone.
 
+## Applicability Grid
+
+One row per review unit (21 rows, phase-then-risk-rank order) plus file-exception rows for the
+files whose applicability differs from their unit's. Every cell is `applies` or `n/a — <marker>`;
+markers resolve to a written sentence in `### Exclusion reasons` below. **Constraint (T-60-06):**
+D1 is never marked `n/a` for a unit containing executable code, process spawning, HTML generation,
+network I/O, or a third-party artifact — every unit in this document meets at least one of those
+conditions except the file-exception rows for `.bbl` catalogs, `package-lock.json`, and the D8-only
+documentation unit, which are pure non-executable data/config/prose.
+
+| Unit | D1 Security | D2 Correctness | D3 Performance | D4 Maintainability | D5 Test coverage | D6 Dependency health | D7 Cross-IDE parity | D8 Doc accuracy |
+|---|---|---|---|---|---|---|---|---|
+| `RU-61-06` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-01` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-03` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-02` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-04` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-05` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-61-07` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | applies |
+| `RU-62-04` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-62-01` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-62-03` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-62-05` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-62-02` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-63-03` | applies | applies | applies | applies | applies | applies | n/a — R-VSCODE-NO-DOWNLOAD | applies |
+| `RU-63-01` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-63-04` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-63-05` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-63-02` | applies | applies | applies | applies | applies | n/a — R-D6-CENTRAL | applies | applies |
+| `RU-64-03` | applies | applies | applies | applies | applies | applies | n/a — R-D7-CI | applies |
+| `RU-64-01` | applies | applies | applies | applies | n/a — R-D5-CI | applies | n/a — R-D7-CI | applies |
+| `RU-64-02` | applies | applies | applies | applies | applies | applies | n/a — R-D7-CI | applies |
+| `RU-D8-01` | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | n/a — R-D8-SCOPE | applies |
+
+### File-exception rows
+
+Per D-07, any file whose applicability differs from its unit's gets its own row.
+`setopts-composer-webview.ts` (`RU-62-04`, D4 asymmetric baseline) is **already recorded** in the
+`RU-62-04` block above and is not duplicated here.
+
+| File | Parent unit | D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 |
+|---|---|---|---|---|---|---|---|---|---|
+| `lib/events.bbl` | `RU-61-07` | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | n/a — R-BBL-NODOC |
+| `lib/functions.bbl` | `RU-61-07` | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | n/a — R-BBL-NODOC |
+| `lib/labels.bbl` | `RU-61-07` | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | n/a — R-BBL-NODOC |
+| `lib/variables.bbl` | `RU-61-07` | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | applies | n/a — R-BBL-STATIC | n/a — R-D6-CENTRAL | n/a — R-D7-SHARED-LS | n/a — R-BBL-NODOC |
+| `bbj-vscode/package-lock.json` | `RU-64-02` | n/a — R-LOCKFILE | n/a — R-LOCKFILE | n/a — R-LOCKFILE | n/a — R-LOCKFILE | n/a — R-LOCKFILE | applies | n/a — R-LOCKFILE | n/a — R-LOCKFILE |
+| `tools/formatter/BBjCFCli.jar` | `RU-64-03` | applies | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | applies | n/a — R-D7-CI | n/a — R-JAR-BINARY |
+| `tools/formatter/lib/BBjCodeFomatter.jar` | `RU-64-03` | applies | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | applies | n/a — R-D7-CI | n/a — R-JAR-BINARY |
+| `tools/formatter/lib/jcommander-1.71.jar` | `RU-64-03` | applies | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | n/a — R-JAR-BINARY | applies | n/a — R-D7-CI | n/a — R-JAR-BINARY |
+
+### Exclusion reasons
+
+Each marker below resolves every `n/a` cell above to a written sentence testing the dimension
+against its own "what counts as a finding" wording from REQUIREMENTS.md — none is a mechanical
+"looks expensive" exclusion (the must_haves prohibition).
+
+- **R-D6-CENTRAL** — *"No distinct third-party dependency of its own; dependency-tree health
+  (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance
+  at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a
+  different heading, not surface a new finding."* Applies to: `RU-61-06`/D6, `RU-61-01`/D6,
+  `RU-61-03`/D6, `RU-61-02`/D6, `RU-61-04`/D6, `RU-61-05`/D6, `RU-61-07`/D6, `RU-62-04`/D6,
+  `RU-62-01`/D6, `RU-62-03`/D6, `RU-62-05`/D6, `RU-62-02`/D6, `RU-63-01`/D6, `RU-63-04`/D6,
+  `RU-63-05`/D6, `RU-63-02`/D6, `lib/events.bbl`/D6, `lib/functions.bbl`/D6, `lib/labels.bbl`/D6,
+  `lib/variables.bbl`/D6 (20 cells).
+- **R-D7-SHARED-LS** — *"This code is part of the single language-server binary
+  (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is
+  no second, divergent implementation to compare it against, so no cross-IDE parity finding is
+  obtainable here."* Applies to: `RU-61-06`/D7, `RU-61-01`/D7, `RU-61-03`/D7, `RU-61-02`/D7,
+  `RU-61-04`/D7, `RU-61-05`/D7, `RU-61-07`/D7, `lib/events.bbl`/D7, `lib/functions.bbl`/D7,
+  `lib/labels.bbl`/D7, `lib/variables.bbl`/D7 (11 cells).
+- **R-D7-CI** — *"This surface governs build/CI/packaging output, not end-user-observable IDE
+  runtime behavior; there is no parity claim to make between two IDEs about a shared build
+  pipeline or a shared vendored tool invoked identically by both."* Applies to: `RU-64-03`/D7,
+  `RU-64-01`/D7, `RU-64-02`/D7, `tools/formatter/BBjCFCli.jar`/D7,
+  `tools/formatter/lib/BBjCodeFomatter.jar`/D7, `tools/formatter/lib/jcommander-1.71.jar`/D7
+  (6 cells).
+- **R-D5-CI** — *"Workflow YAML orchestrates test execution but is not itself unit-testable code;
+  test-coverage gaps are recorded against the code the workflow runs, not the workflow file
+  itself."* Applies to: `RU-64-01`/D5 (1 cell).
+- **R-VSCODE-NO-DOWNLOAD** — *"VS Code extensions execute inside VS Code's own bundled Node.js
+  host process and never perform a Node.js runtime download/detection step; there is no missing
+  VS Code counterpart for this IntelliJ-only mechanism to be compared against — the asymmetry is a
+  platform necessity, not a defect."* Applies to: `RU-63-03`/D7 (1 cell).
+- **R-D8-SCOPE** — *"`RU-D8-01` is deliberately scoped to D8 only (documentation and
+  comment-accuracy checks against code, per the seed taxonomy and FUT-02's exclusion of editorial
+  review); its files (`CLAUDE.md`, `VERBs.md`, `documentation/`) contain no executable code, no
+  runtime behavior and no IDE-specific surface for D1-D7 to assess."* Applies to: `RU-D8-01`/D1,
+  `RU-D8-01`/D2, `RU-D8-01`/D3, `RU-D8-01`/D4, `RU-D8-01`/D5, `RU-D8-01`/D6, `RU-D8-01`/D7
+  (7 cells).
+- **R-BBL-STATIC** — *"`.bbl` files are static builtin-verb/function/label/variable data catalogs
+  with no executable logic, no hot path, and no isolated regression-test surface of their own;
+  content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts`
+  sibling), not under this dimension."* Applies to: `lib/events.bbl`/D1, `lib/events.bbl`/D3,
+  `lib/events.bbl`/D5, `lib/functions.bbl`/D1, `lib/functions.bbl`/D3, `lib/functions.bbl`/D5,
+  `lib/labels.bbl`/D1, `lib/labels.bbl`/D3, `lib/labels.bbl`/D5, `lib/variables.bbl`/D1,
+  `lib/variables.bbl`/D3, `lib/variables.bbl`/D5 (12 cells).
+- **R-BBL-NODOC** — *"`.bbl` catalogs are raw data files with no comments or docstrings to go
+  stale; doc-accuracy review targets the `.ts` sibling files and `CLAUDE.md`/`VERBs.md` instead."*
+  Applies to: `lib/events.bbl`/D8, `lib/functions.bbl`/D8, `lib/labels.bbl`/D8,
+  `lib/variables.bbl`/D8 (4 cells).
+- **R-LOCKFILE** — *"`package-lock.json` is a machine-generated lockfile, never hand-edited; per
+  this document's coverage-denominator convention it is in scope for D6 only, as the
+  dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific
+  behavior for the other seven dimensions to assess."* Applies to:
+  `bbj-vscode/package-lock.json`/D1, `/D2`, `/D3`, `/D4`, `/D5`, `/D7`, `/D8` (7 cells).
+- **R-JAR-BINARY** — *"This is a compiled, vendored `.jar` binary; its bytecode cannot be read or
+  diffed in this review, so no correctness trace, performance trace, maintainability judgement,
+  test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and
+  pinning status are assessed under D1 and D6 instead."* Applies to:
+  `tools/formatter/BBjCFCli.jar`/D2, `/D3`, `/D4`, `/D5`, `/D8`,
+  `tools/formatter/lib/BBjCodeFomatter.jar`/D2, `/D3`, `/D4`, `/D5`, `/D8`,
+  `tools/formatter/lib/jcommander-1.71.jar`/D2, `/D3`, `/D4`, `/D5`, `/D8` (15 cells).
+
+### Recording protocol (D-09)
+
+Each review phase writes its slice of this grid into its own file — `.planning/reviews/{NN}-COVERAGE.md`:
+`61-COVERAGE.md`, `62-COVERAGE.md`, `63-COVERAGE.md`, `64-COVERAGE.md`, `65-COVERAGE.md` — recording
+a pass/fail for every `applies` cell it owns and copying the `n/a` reason verbatim (marker text
+resolved) for every `n/a` cell it owns. No phase edits this inventory. Phase 68 assembles DOC-03 by
+concatenating the five coverage files against this grid, so a missing cell in any coverage file is a
+**visible** coverage gap — not an invisible one.
+
+### Grid totals
+
+- **Units:** 21 (main grid rows) + **8 file-exception rows** = 29 total rows.
+- **`applies` cells:** 148.
+- **`n/a` cells:** 84.
+- **Sum:** 148 + 84 = **232** = (21 units + 8 file-exception rows) × 8 dimensions = 29 × 8 = 232. ✓
+- This is the total work Phases 61-65 are contracted for under this document: 148 dimension
+  passes/fails to record, and 84 `n/a` dispositions to carry forward verbatim into the relevant
+  `{NN}-COVERAGE.md`. This grid, together with the five coverage files it defines, is what
+  DOC-03 assembles into a coverage statement without re-deriving scope.
+
+## Pinned Baseline Range (D-01)
+
 The v4.0 baseline is pinned to the **`v0.12.0` tag**, not to the branch tip (`HEAD`). Pinning to a
 tag rather than a moving branch tip is deliberate: `HEAD` sits on branch
 `issue494-cyclic-inheritance-hang`, which advances with every v4.0 planning commit — a moving
