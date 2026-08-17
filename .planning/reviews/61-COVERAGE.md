@@ -1490,9 +1490,9 @@ disposition:       easy-fix
 **Owning plan:** 61-04.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — pass — Checked whether cross-file linking resolves document URIs derived from `USE` statements / `::file::Class` paths or configured `prefixes` without workspace constraint: `getBBjClassesFromFile` (bbj-scope.ts:308-331) builds candidate URIs from the current doc dir, every workspace root, and every configured `prefixes` entry via `resolve(prefixPath, bbjFilePath)` — `bbjFilePath` is untrusted source text and `resolve()` permits `..` traversal — but the result is used only to filter `indexManager.allElements(BbjClass.$type)` by URI equality, never to open or load a file; a URI with no matching already-indexed document simply yields an empty scope, so this unit's own code cannot be made to read outside the workspace/prefix set it was already given (see Not-reproducible dispositions for the boundary question this defers to `RU-61-05`). Checked whether `bbj-nodedescription-provider.ts` copies peer-supplied Java descriptions into the global index without validation: it does not re-copy raw peer fields — `enhanceFunctionDescription`/`toMethodData`/`toDefFunctionData` (bbj-nodedescription-provider.ts:30-59) only read already-typed AST properties (`MethodDecl`/`DefFunction`/`LibFunction`/`JavaMethod`), and the underlying peer-response admission itself is `RU-61-06`'s `java-interop.ts:543-596`, already recorded as `P61-D1-002` there. Checked whether `bbj-index-manager.ts` (29 lines) admits entries from any source it does not control: its only override, `isAffected()` (bbj-index-manager.ts:14-27), narrows which documents get rebuilt — it adds no new admission path, only a rebuild-skip optimization delegated to `DefaultIndexManager` for everything else. No `RU-61-02` finding recorded.
+- D2 Correctness & error handling — fail — **Ties:** `bbj-overload-selector.ts:37-51`'s `findBestOverload` places the linked declaration first in its candidate array and uses strict `>` when comparing scores, so an exact tie always resolves to the linked (first-scope-yielded) declaration — deterministic and stable across runs (declaration order for `MethodDecl` siblings, classpath-response order for `JavaMethod` siblings). `bbj-scope.ts`'s local-vs-member shadowing (`StreamScopeWithPredicate.getElement`, bbj-scope.ts:508-524) always checks the inner/local scope first and falls through to `outerScope` only on a miss — nearest-scope-wins, deterministic. `bbj-linker.ts`'s duplicate-qualified-name case (two documents exporting the identical `::file::Class` name) cannot occur in practice because the qualified name embeds the exporting file's own path (bbj-scope.ts:322-323), so two *different* files can never produce the same qualified name; the only realistic duplicate is two `class` declarations sharing a name inside one file, which resolves by first-match iteration order over that file's local scope (same deterministic first-wins rule, no crash). However: `findBestOverload` is called from exactly one place in the whole codebase — `bbj-inlay-hint-provider.ts:65` (confirmed via `grep -rn findBestOverload bbj-vscode/src/`) — while `bbj-type-inferer.ts:47-48,77-78` and `bbj-linker.ts:105-110`'s `getCandidate` both trust the first-scope-yielded declaration's return type/identity directly, never re-selecting by the call's actual argument shape; recorded as `P61-D2-012`. **Empty/single-element/failed-load inputs:** an empty `Program` and a single-declaration `Program` both traverse `collectLocalSymbols`'/`processNode`'s loops zero or one time with no special-cased branch, no crash; a reference whose target document failed to load resolves via `getBBjClassesFromFile` to an empty `bbjClasses` array (bbj-scope.ts:317-319), which `bbj-linker.ts:133-140` turns into a `LinkingError` — the standard, already-diagnosed path, no swallowed failure. **Null propagation / DEBT-03:** `bbj-type-inferer.ts:75-76`'s `isJavaMethod(member)` branch returns `member.resolvedReturnType?.ref` with **no fallback** to the always-present raw `member.returnType: string` (generated/ast.ts:1350) when `resolvedReturnType` is unset — reproduced with a throwaway, uncommitted vitest test (deleted before this commit, `git status --porcelain bbj-vscode` clean): pushing a `JavaMethod` (`valueOf`, `returnType: 'java.lang.String'`) onto the fake `java.lang.String` class with `resolvedReturnType` left unset (simulating any path that bypasses java-interop.ts's async Phase 2 at `java-interop.ts:615-618`) and validating `methodret String.valueOf(2)` against a declared `java.util.HashMap` return type produced **zero** "incompatible type" diagnostics — proving `getType()` silently returned `undefined` instead of the expected mismatch the positive-control tests in `method-return-java-type.test.ts` already demonstrate for a correctly-resolved case. Recorded as `P61-D2-011`, `dedup` naming DEBT-03. **Swallowed exceptions:** `bbj-scope.ts:200-206`, `bbj-type-inferer.ts:34-40,67-71`, and `bbj-scope-local.ts:169-172` each catch cyclic-reference/resolution errors and either silently ignore (documented `// cyclic reference, ignore`) or `logger.warn`/`console.error` before continuing — none swallow silently without a trace, no finding. **Java-interop-unavailable distinguishability (SEC-06/boundary, owned by `RU-61-06`):** `bbj-scope-local.ts:158-165` treats every `javaClass.error` uniformly regardless of cause (peer unreachable vs. genuinely-missing class) and surfaces the same generic unresolved-reference linking diagnostic either way — stated here per the plan's instruction, not recorded as a `RU-61-02` finding; see Cross-unit referrals. 2 findings recorded: `P61-D2-011`, `P61-D2-012`.
+- D3 Performance & resource use — fail — This unit owns the routing-table item **#232 CPU stability in multi-project workspaces (DEBT-01)**. Re-triaged against the current code (not restated): two current-code mechanisms scale with total multi-project workspace size rather than the referencing file's own size. (1) `getBBjClassesFromFile` (bbj-scope.ts:308-331) performs a full linear scan of `indexManager.allElements(BbjClass.$type)` — every `BbjClass` in the **entire workspace index, across all loaded projects** — on **every** `::file::Class`-qualified reference and on every `USE "::file::"` resolution, with no per-file/per-request cache; a document with many such references pays this full-index scan once per reference. (2) `collectLocalSymbols` (bbj-scope-local.ts:106-114) walks the **full, unpruned** AST of every document via `AstUtils.streamAllContents(rootNode)` with a per-node `await interruptAndCheck(cancelToken)` — contrast `bbj-linker.ts:47-58`'s `link()`, which already calls `treeIter.prune()` to skip external-document private-member subtrees; `collectLocalSymbols` has no equivalent `isExternalDocument`-aware pruning, so in a multi-project workspace every loaded external project's documents pay full per-node scope-computation cost proportional to their own total LOC, not just the active project's. Recorded as `P61-D3-003`, severity `high` (matches this unit's own pre-registered threat `T-61-P04-S1`), `dedup` stating #232 is not in the frozen 15-issue snapshot (not an open issue) and naming **DEBT-01** as the owning requirement so Phase 66 re-triages against this evidence rather than re-deriving it. Beyond #232: `bbj-index-manager.ts:14-27`'s `isAffected()` override already implements a **present, partial** mitigation — it skips rebuilding external documents when only non-external URIs changed — so DEBT-01's "documented mitigations" are partially present at the index-rebuild layer but absent at the two request-time paths above; checked whether the linker re-resolves already-resolved references (no — Langium's standard reference caching applies, no override here re-triggers it) and whether the index grows unbounded as documents open/close (index growth is `DefaultIndexManager`'s standard lifecycle, not overridden by this unit — no finding). 1 finding recorded: `P61-D3-003`.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
@@ -1500,13 +1500,170 @@ disposition:       easy-fix
 - D8 Comment & doc accuracy — pending
 
 ### Findings
-_(none recorded)_
+
+```
+id:                P61-D2-011
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-type-inferer.ts:75-76
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Reproduced with a throwaway, uncommitted vitest test (run via `npx vitest run`,
+                    deleted before this commit — `git status --porcelain bbj-vscode` is clean):
+                    pushed a synthetic `JavaMethod` ('valueOf', isStatic: true,
+                    returnType: 'java.lang.String') onto the test double's fake
+                    `java.lang.String` JavaClass with `resolvedReturnType` intentionally left
+                    unset — the exact shape produced whenever java-interop.ts's async Phase 2
+                    (java-interop.ts:615-618, which alone populates `resolvedReturnType`) has
+                    not completed for a given method. Validated
+                    `methodret String.valueOf(2)` against a declared `java.util.HashMap` return
+                    type (method-return-java-type.test.ts's own #437 mismatch-detection
+                    mechanism) and got zero "returns a value of incompatible type"
+                    diagnostics, proving getType() returned `undefined` for the call instead of
+                    `java.lang.String`. Line-by-line: getTypeInternal's isMemberCall branch
+                    (bbj-type-inferer.ts:72-83) reads `member.resolvedReturnType?.ref` only —
+                    JavaMethod's raw `returnType: string` (generated/ast.ts:1350) is always
+                    present but is never consulted as a fallback.
+failure_scenario:  Any static or instance Java method call whose JavaMethod.resolvedReturnType
+                    has not (yet, or ever) been populated — a resolution race, a partially
+                    resolved class, or any future code path that constructs/updates a JavaMethod
+                    outside java-interop.ts's own resolveClass() Phase 2 — causes
+                    bbj-type-inferer.ts to silently return no type for that call site, with no
+                    diagnostic explaining why. This matches DEBT-03's documented symptom
+                    (`String.valueOf(2)` assigns no type).
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass,
+                    proven by the reproduction above — (5) reviewer can name the exact edit (in
+                    the isJavaMethod branch, fall back to
+                    `this.javaInterop.getResolvedClass(member.returnType)` when
+                    `resolvedReturnType?.ref` is undefined): pass — (6) severity `medium`,
+                    dimension D2 (not D1): pass — all six pass, `easy`.
+effort:            4
+dedup:             none — checked #83 (project-wide USE statements, no match), #90 (opting
+                    files/regions out of linking, no match), #466 (sibling-type method return
+                    mismatch validation assumes a resolved type already exists and compares it
+                    against a hierarchy — this finding is about the type never being inferred in
+                    the first place, a different and upstream mechanism, no overlap); names
+                    DEBT-03 as the owning re-triage item per the routing table.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-012
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-type-inferer.ts:47-48,77-78
+dimension:         D2
+secondary:         [D4, D8]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: `grep -rn findBestOverload bbj-vscode/src/` returns exactly
+                    one call site, `bbj-inlay-hint-provider.ts:65` — no other file, including
+                    `bbj-type-inferer.ts` and `bbj-linker.ts`, ever calls it.
+                    bbj-type-inferer.ts:47-48 (`isMethodDecl(reference) => getClass(reference.returnType)`)
+                    and :77-78 (`isMethodDecl(member) => getClass(member.returnType)`) both read
+                    the return type of whatever declaration the LINKER already picked, with no
+                    re-selection by the call's actual argument count/types.
+                    bbj-linker.ts:105-110's getCandidate does a first-match
+                    `scope.getElement(refInfo.reference.$refText, ...)` with the same
+                    no-re-selection behavior. bbj-overload-selector.ts's own header comment
+                    ("Call sites re-select among the sibling overloads by the call's shape",
+                    lines 10-12) states this generally, but only one of this codebase's several
+                    overload-sensitive call sites (hover, completion, type inference, linking)
+                    actually does so.
+failure_scenario:  A BBj class or Java class with two same-named method overloads whose scope
+                    order (declaration order, or classpath-response order) yields the
+                    argument-shape-WRONG overload first: the linker links to that first-yielded
+                    declaration regardless of the call's real argument count/types (#478's
+                    original symptom, already fixed for bbj-inlay-hint-provider.ts's parameter
+                    hints), and bbj-type-inferer.ts propagates that same wrong declaration's
+                    return type unconditionally — an overload-sensitive call site can therefore
+                    be typed by the wrong overload's return type with nothing to correct it.
+classification:    major
+                    (1) touches 1 file: FAIL — a real fix needs bbj-linker.ts's getCandidate (or
+                    bbj-type-inferer.ts) to consult bbj-overload-selector.ts, spanning at least
+                    two files — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with vitest: pass — (5) reviewer
+                    can name the exact edit (call findBestOverload from getCandidate/getType and
+                    re-derive identity/return-type from the winning candidate): pass — (6)
+                    severity medium, dimension D2 (not D1): pass — but test (1) already fails,
+                    so classification is `major`.
+effort:            8
+dedup:             none — checked #83 (no match), #90 (no match), #466 (sibling-type RETURN
+                    MISMATCH VALIDATION assumes the resolved overload is already correct and
+                    compares its declared type against a hierarchy — this finding is about
+                    resolving to the wrong overload in the first place, upstream of and
+                    unrelated to #466's validation mechanism, no overlap); no frozen issue names
+                    overload re-selection for linking/type-inference specifically.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D3-003
+unit:              RU-61-02
+location:          bbj-vscode/src/language/bbj-scope.ts:308-331
+dimension:         D3
+secondary:         []
+severity:          high
+evidence_tier:     repro
+evidence:          Line-by-line trace, re-triaging routing-table item #232 (CPU stability in
+                    multi-project workspaces, DEBT-01) against the current code. (1)
+                    getBBjClassesFromFile (bbj-scope.ts:308-331) calls
+                    `this.indexManager.allElements(BbjClass.$type).filter(...)` — a full linear
+                    scan of every BbjClass in the entire workspace index across all loaded
+                    projects — on every `::file::Class`-qualified class reference and every
+                    `USE "::file::"` resolution (bbj-scope.ts:250, 342), with no per-file or
+                    per-request cache. (2) collectLocalSymbols (bbj-scope-local.ts:106-114) walks
+                    `AstUtils.streamAllContents(rootNode)` — the FULL, unpruned AST of every
+                    document — with a per-node `await interruptAndCheck(cancelToken)`, unlike
+                    bbj-linker.ts:47-58's link(), which already calls `treeIter.prune()` to skip
+                    external-document private-member subtrees; collectLocalSymbols has no
+                    equivalent isExternalDocument-aware pruning. Both mechanisms scale with total
+                    multi-project workspace size, not the referencing/active file's own size.
+                    Checked what documented mitigations are present: bbj-index-manager.ts:14-27's
+                    isAffected() override is a PRESENT, PARTIAL mitigation — it skips rebuilding
+                    external documents when only non-external URIs changed — but this only
+                    reduces rebuild frequency; it does not address either of the two request-time
+                    costs above, which remain ABSENT any mitigation.
+failure_scenario:  A multi-project workspace with many external/referenced BbjClass documents
+                    loaded: every `::file::Class` scope resolution rescans the entire
+                    cross-project index, and every document load/rebuild walks its full AST
+                    including any external project's documents with no pruning — CPU cost scales
+                    with total multi-project workspace size rather than the active file's own
+                    size, consistent with #232's reported symptom.
+classification:    major
+                    (1) touches 1 file: FAIL — a real fix needs both a cache in bbj-scope.ts and
+                    isExternalDocument-aware pruning in bbj-scope-local.ts, two files — (2) no
+                    public API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with vitest (synthetic multi-document workspace fixture
+                    plus timing assertions, per RU-61-01's D3 benchmark precedent): pass — (5)
+                    reviewer can name the exact edit (cache getBBjClassesFromFile's per-file
+                    lookup keyed by bbjFilePath+doc URI; add isExternalDocument-based pruning to
+                    collectLocalSymbols mirroring bbj-linker.ts's treeIter.prune()): pass — (6)
+                    severity `high`: FAIL — `major` regardless of the other five tests (D-13's
+                    safety gate).
+effort:            8
+dedup:             none — #232 is not in the frozen 15-issue snapshot because it is not an open
+                    GitHub issue (already tracked as roadmap tech debt); names DEBT-01 as the
+                    owning requirement so Phase 66 re-triages against this current-code evidence
+                    rather than re-deriving it. Checked #83 (project-wide USE statements
+                    mechanism, no match — different feature request), #90 (opting files/regions
+                    out of linking, no match — this is a performance path, not an opt-out
+                    feature), #466 (sibling-type method return mismatches, no match — unrelated
+                    dimension) as this unit's plausible neighbours; none match.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
-_(none recorded)_
+
+- **Tier failed: `repro` (D1).** Candidate claim: `getBBjClassesFromFile`'s workspace-configured `prefixes` setting, combined with untrusted `USE`-statement path text and Node's `path.resolve()` traversal (`..`) handling, could let a crafted workspace `.vscode/settings.json` cause the language server to load or index a `.bbj` file outside the intended prefix/workspace root — the same class of workspace-settings-as-attack-surface concern `RU-61-06` recorded as `P61-D1-001` for `interopHost`/`interopPort`. **Reason not recorded as a finding:** confirming this requires tracing whether `BBjWorkspaceManager`'s own file-discovery logic (which actually opens/loads files from `prefixes`) enforces any root constraint of its own — that logic lives in `bbj-ws-manager.ts`, outside this unit's files. This unit's own code (`getBBjClassesFromFile`) only *compares* URIs against an already-populated index; it cannot itself cause an out-of-bounds file read. Referred to `RU-61-05` below.
+- **Tier failed: `repro` (D2/D3).** Candidate claim: `bbj-index-manager.ts` inherits `DefaultIndexManager.allElements()`'s element order, which follows workspace file-discovery order (filesystem enumeration) rather than any explicit sort — so in a workspace with two ambiguous same-simple-name entries (e.g. two same-named library members), which one `getElement()`'s first-match picks could differ between runs or platforms. **Reason not recorded as a finding:** confirming an actual differing resolution requires an empirical cross-platform/cross-run comparison, outside this review's single-read sweep; the structural mechanism (no explicit sort, insertion-order-dependent `Map`/array) is traced but the claimed instability is not empirically reproduced.
 
 ### Cross-unit referrals
-_(none recorded)_
+
+- **RU-61-06** — this unit does **not** re-record the 11 `test/linking.test.ts` "Interop related tests" failures; they are already owned by `RU-61-06` as `P61-D5-001` (their *subject* is the linker, but their *cause* is the unreachable java-interop peer, per D-06's routing table and the finding-ownership rule). Also per the plan's explicit instruction, this unit does not file a finding for the SEC-06/boundary edge probe (whether an unresolved reference caused by an unavailable java-interop peer is distinguishable in code from a genuine resolution failure) — `bbj-scope-local.ts:158-165`'s uniform `javaClass.error` handling is stated in the D2 cell text above as context for `RU-61-06`'s own sweep, not filed here.
+- **RU-61-05** — the prefix-path-traversal candidate above (Not-reproducible dispositions, D1) depends on whether `bbj-ws-manager.ts`'s document-loading logic constrains file discovery from `prefixes` to a safe root; `RU-61-05` owns that file and should confirm or record its own finding.
 
 ## RU-61-04 — LSP feature providers
 
