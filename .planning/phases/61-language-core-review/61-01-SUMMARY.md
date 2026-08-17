@@ -151,6 +151,16 @@ None - no external service configuration required.
 - `RU-61-05` (plan `61-06`) has a live cross-unit referral waiting on it from this plan (host/port validation gap at `bbj-ws-manager.ts:53-55`/`main.ts:151-152`), and `RU-61-02` (plan `61-04`) has an already-owned item it must not re-record (the 11 `test/linking.test.ts` failures).
 - No blockers. `.planning/BACKLOG.md`'s FUT-01 entries are informational only and do not gate any downstream plan.
 
+## Self-Check: PASSED
+
+- FOUND: `.planning/reviews/61-COVERAGE.md`
+- FOUND: `.planning/BACKLOG.md`
+- FOUND: `.planning/phases/61-language-core-review/61-01-SUMMARY.md`
+- FOUND commit: `ee39b64` (Task 1)
+- FOUND commit: `64b82c5` (Task 2)
+- FOUND commit: `c56e92f` (Task 3)
+- FOUND commit: `6379452` (SUMMARY.md)
+
 ---
 *Phase: 61-language-core-review*
 *Completed: 2026-08-17*
