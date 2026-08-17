@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v4.0
+milestone_name: Stability and Quality
+status: planning
+last_updated: "2026-08-17T13:40:09.025Z"
+last_activity: 2026-08-17
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State: BBj Language Server
 
 **Last Updated:** 2026-02-21
@@ -14,13 +29,10 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-Phase: 59 of 59 — All phases complete
-Status: v3.9 shipped
-Last activity: 2026-03-29 - Completed quick task 260329-oqw: PR #383: Return undefined instead of empty list from getFieldCompletion to allow other providers to continue
-
-Progress: [██████████] 100% (v3.9 shipped)
-
----
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-17 — Milestone v4.0 started
 
 ## Performance Metrics
 
@@ -36,18 +48,21 @@ Progress: [██████████] 100% (v3.9 shipped)
 ### Recent History
 
 **v3.9 (Shipped: 2026-02-21):**
+
 - Duration: 1 day
 - Phases: 3 (57-59)
 - Plans: 8
 - Key: Bug fixes, grammar additions (EXIT/SERIAL/ADDR), Java class reference features (.class, static methods, deprecated, constructors)
 
 **v3.8 (Shipped: 2026-02-20):**
+
 - Duration: 1 day
 - Phases: 3 (54-56)
 - Plans: 7
 - Key: Fixed all test failures, re-enabled disabled assertions, removed dead code, resolved all production FIXMEs
 
 **v3.7 (Shipped: 2026-02-20):**
+
 - Duration: 1 day
 - Phases: 4 (50-53)
 - Plans: 7
@@ -66,6 +81,7 @@ Progress: [██████████] 100% (v3.9 shipped)
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
 - [Phase 59]: MemberCall isClassRef extension dropped — old JAR does not send isStatic for fields

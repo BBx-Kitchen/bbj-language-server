@@ -8,6 +8,24 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
+## Current Milestone: v4.0 Stability and Quality
+
+**Goal:** Systematically review every in-scope module for defects, security concerns, and code smells; fix everything cheap and low-risk with regression tests; convert everything expensive into detailed, labeled GitHub issues for separate resolution.
+
+**Target features:**
+- Baseline resync — reconstruct the 154 untracked commits (v3.9 → 0.12.0) into validated requirements; refresh Context and tech-debt list
+- Language core review — 39 files: grammar, lexer, scope/linking, validation, completion, type inference, CPL service
+- Extension host & composer review — `extension.ts`, 4 webview composer subsystems, formatter, tokenized-BBj, decompile-io, CompilerOptions
+- IntelliJ plugin review — 61 files: run/compile/EM-login actions, Node downloader, settings, LSP wiring, composer dialogs, token store
+- Build/CI/scripts review — 6 GitHub Actions workflows, Gradle/esbuild config, 3 BBj tool scripts
+- Cross-cutting security pass — webview CSP/HTML injection, Node download integrity, EM token handling, process spawning, java-interop socket exposure, CI secrets
+- Known-debt re-triage — 7 carried items each fixed or filed
+- Easy fixes applied — low-risk contained changes with regression tests, atomic commits
+- Deliverables — `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`
+- GitHub issues filed — deduped against open issues, labeled with area + PRIO + effort, created only after user approval
+
+**Out of scope for this milestone:** `java-interop/` Java service (TS-side client is reviewed, the Java service is not); generated files (`src/language/generated/`).
+
 ## Requirements
 
 ### Validated
@@ -164,7 +182,15 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ### Active
 
-(No active milestone — use `/gsd:new-milestone` to start next)
+**v4.0 Stability and Quality** — requirements defined in `.planning/REQUIREMENTS.md`
+
+- ☐ Planning baseline resynced with v3.9 → 0.12.0 code reality
+- ☐ Every in-scope module reviewed against a documented dimension set
+- ☐ Cross-cutting security review pass completed
+- ☐ Known tech debt re-triaged (fixed or filed)
+- ☐ Easy fixes applied with regression tests
+- ☐ `EASY-FIXES.md` and `MAJOR-REFACTORS.md` produced
+- ☐ Major findings filed as labeled GitHub issues after approval
 
 ### Out of Scope
 
@@ -178,7 +204,9 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Context
 
-**Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases). Test suite fully green (511 passed, 4 skipped). Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
+**Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases). Test suite fully green at that point (511 passed, 4 skipped). Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
+
+**⚠ Planning drift (as of 2026-08-17):** 154 commits landed between `2194616` (end of v3.9) and `HEAD` without going through a GSD milestone. `bbj-vscode/package.json` is now at **0.12.0**. Subsystems present in code but absent from the Validated list include the four webview composers (msgbox, addwindow, addchildwindow, SETOPTS — #474/#483), inlay hints (#480/#482), the bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, and line numbering. The v4.0 baseline-resync phase closes this gap; treat the Validated list above as accurate only through v3.9.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -322,5 +350,22 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | ( trigger returns empty CompletionList | Prevents slow fallthrough to default completion when constructor completion unavailable | ✓ Good — v3.9 shipped |
 | DTO isDeprecated → Langium deprecated field mapping | Java naming convention differs from Langium property name; explicit mapping in java-interop.ts | ✓ Good — v3.9 shipped |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-02-21 after v3.9 milestone*
+*Last updated: 2026-08-17 at start of v4.0 milestone*
