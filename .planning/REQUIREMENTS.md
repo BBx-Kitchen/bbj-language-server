@@ -24,10 +24,10 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 ### Baseline
 
-- [ ] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and 0.12.0 (`HEAD`), reconstructed from that 154-commit range
-- [ ] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, line numbering
+- [x] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and 0.12.0 (`HEAD`), reconstructed from that 154-commit range
+- [x] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, line numbering
 - [x] **BASE-03**: A module inventory recording review scope, the 8 dimensions, and explicit exclusions exists, so review coverage is auditable rather than assumed (satisfied by 60-01 + 60-02: INVENTORY.md's 21 review units, the applicability grid, and the surface accounting all exist and account for every in-scope file)
-- [ ] **BASE-04**: MILESTONES.md records the v3.9 → 0.12.0 interval so project history contains no silent six-month gap
+- [x] **BASE-04**: MILESTONES.md records the v3.9 → 0.12.0 interval so project history contains no silent six-month gap
 
 ### Review Coverage
 
@@ -115,10 +115,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BASE-01 | Phase 60 | Pending |
-| BASE-02 | Phase 60 | Pending |
+| BASE-01 | Phase 60 | Complete |
+| BASE-02 | Phase 60 | Complete |
 | BASE-03 | Phase 60 | Complete |
-| BASE-04 | Phase 60 | Pending |
+| BASE-04 | Phase 60 | Complete |
 | RVW-06 | Phase 60 | Complete |
 | RVW-07 | Phase 60 | Complete |
 | RVW-01 | Phase 61 | Pending |
