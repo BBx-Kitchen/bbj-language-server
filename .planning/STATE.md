@@ -5,16 +5,16 @@ milestone_name: Stability and Quality
 current_phase: 60
 current_phase_name: baseline-resync-review-standards
 status: executing
-stopped_at: Completed 60-01-PLAN.md (INVENTORY.md created; finding standard, baseline, D-15 corrections)
-last_updated: "2026-08-17T17:27:03.819Z"
+stopped_at: Completed 60-02-PLAN.md (INVENTORY.md expanded to 21 review units, applicability grid, surface accounting; BASE-03 complete)
+last_updated: "2026-08-17T19:11:17.424Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 50
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 60 (baseline-resync-review-standards) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-17 — Phase 60 execution started
 
@@ -78,6 +78,7 @@ Last activity: 2026-08-17 — Phase 60 execution started
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 60 P01 | ~34s (task commits only) | 4 tasks | 1 files |
+| Phase 60 P02 | ~1h | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 - [Phase 60 Plan 01]: Finding-ID scheme locked as phase-dimension-seq (P{phase}-D{dimension}-{seq}) at Task 1 checkpoint, confirming D-11
 - [Phase 60 Plan 01]: Baseline range pinned to 2194616..v0.12.0 (153 commits), not HEAD, because HEAD moves with v4.0 planning commits
+- [Phase 60 Plan 02]: Applicability grid n/a cells use short markers resolved in a keyed Exclusion reasons list (232 cells across 29 rows) rather than inline prose, to keep the grid readable
+- [Phase 60 Plan 02]: RU-62-04 kept in its pre-existing physical position (predates the D-07 ascending phase/risk-rank ordering rule) with a documented ordering-exception note, rather than moved
 
 ### Tech Debt
 
@@ -138,8 +141,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T17:27:03.806Z
-Stopped at: Completed 60-01-PLAN.md (INVENTORY.md created; finding standard, baseline, D-15 corrections)
+Last session: 2026-08-17T19:11:17.409Z
+Stopped at: Completed 60-02-PLAN.md (INVENTORY.md expanded to 21 review units, applicability grid, surface accounting; BASE-03 complete)
 Resume file: None
 
 ---
