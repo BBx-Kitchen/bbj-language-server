@@ -1,0 +1,127 @@
+# Requirements: BBj Language Server
+
+**Defined:** 2026-08-17
+**Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
+
+## v4.0 Requirements
+
+Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly one roadmap phase.
+
+**Milestone shape:** discover as much as possible, fix the easy findings, document the expensive ones as detailed GitHub issues for separate resolution.
+
+**Review dimensions** (applied to every in-scope module):
+
+| # | Dimension | What counts as a finding |
+|---|-----------|--------------------------|
+| D1 | Security | Injection, untrusted input, secret exposure, integrity gaps, privilege/trust boundary errors |
+| D2 | Correctness & error handling | Null/undefined safety, unhandled rejections, swallowed exceptions, async races, off-by-one, wrong edge-case behavior, resource leaks |
+| D3 | Performance & resource use | Hot-path cost, O(n²) walks, missing caches/debounces, redundant AST traversals, unbounded memory growth |
+| D4 | Maintainability & code smells | Duplication, god functions, dead code, tangled coupling, inconsistent patterns, missing abstractions |
+| D5 | Test coverage gaps | Untested modules and branches, missing regression tests for past fixes, skipped/disabled tests, brittle setups |
+| D6 | Dependency health | Outdated or vulnerable deps (npm + Gradle), license issues, unpinned GitHub Actions |
+| D7 | Cross-IDE parity | Behavior present or correct in one IDE but not the other |
+| D8 | Comment & doc accuracy | Stale comments, wrong JSDoc, CLAUDE.md and docs-site claims contradicted by code |
+
+### Baseline
+
+- [ ] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and 0.12.0 (`HEAD`), reconstructed from that 154-commit range
+- [ ] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, line numbering
+- [ ] **BASE-03**: A module inventory recording review scope, the 8 dimensions, and explicit exclusions exists, so review coverage is auditable rather than assumed
+- [ ] **BASE-04**: MILESTONES.md records the v3.9 → 0.12.0 interval so project history contains no silent six-month gap
+
+### Review Coverage
+
+- [ ] **RVW-01**: `bbj-vscode/src/language/` reviewed across all 8 dimensions — grammar, lexer, scope, scope-local, linker, type inferer, validator, `validations/`, completion provider, document builder, document validator, ws-manager, CPL service/parser, java-interop client, `lib/` builtin catalogs
+- [ ] **RVW-02**: `bbj-vscode/src/` extension host reviewed across all 8 dimensions — `extension.ts`, document formatter, line numbering, tokenized-BBj, decompile-io, `Commands/CompilerOptions.ts`
+- [ ] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — msgbox, addwindow, addchildwindow, SETOPTS (`-composer`, `-ui`, `-webview` files plus `setopts-catalog.ts`)
+- [ ] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
+- [ ] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
+- [ ] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
+- [ ] **RVW-07**: Every finding is checked against the open GitHub issues before it is recorded, so no finding duplicates existing tracker content
+
+### Security
+
+- [ ] **SEC-01**: Webview HTML generation audited for injection — every interpolated value into composer and bbx-config-editor markup is escaped or provably safe, and CSP posture is documented
+- [ ] **SEC-02**: Webview → extension message handling audited — messages from webview content are validated for shape and value range before acting on them
+- [ ] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
+- [ ] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
+- [ ] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
+- [ ] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
+- [ ] **SEC-07**: GitHub Actions workflows audited — secret handling, `GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via untrusted PR-controlled inputs
+- [ ] **SEC-08**: Dependency vulnerabilities enumerated for both `npm` and Gradle dependency trees, each triaged as fix-now, file-issue, or accepted-with-reason
+
+### Debt Re-triage
+
+- [ ] **DEBT-01**: CPU stability in multi-project workspaces (#232) re-triaged against current code — mitigation implemented, or issue updated with a concrete implementation plan
+- [ ] **DEBT-02**: The 3 disabled `parser.test.ts` assertions and the skipped TEST-03 case re-triaged — enabled, or documented with the specific blocking limitation and what would unblock them
+- [ ] **DEBT-03**: Static method return-type inference gap (`String.valueOf(2)` assigns no type) re-triaged — fixed or filed
+- [ ] **DEBT-04**: FQN path static-only completion filtering re-triaged — fixed or filed, with the JAR-redeployment dependency stated
+- [ ] **DEBT-05**: LSP4IJ experimental API usage (19 sites) and `BbjCompletionFeature` coupling re-triaged — current risk assessed against the installed LSP4IJ version
+- [ ] **DEBT-06**: Every carried debt item ends this milestone either fixed or represented by a GitHub issue — none remain recorded only as prose in PROJECT.md
+
+### Easy Fixes
+
+- [ ] **FIX-01**: Each easy fix is low-risk and contained, and lands as its own atomic commit referencing its finding ID
+- [ ] **FIX-02**: Each behavior-changing fix ships with a regression test that fails before the fix and passes after
+- [ ] **FIX-03**: After all fixes, `npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew build` succeeds in `bbj-intellij/`
+- [ ] **FIX-04**: No applied fix changes user-facing behavior without that change being recorded in EASY-FIXES.md
+
+### Deliverable Documents
+
+- [ ] **DOC-01**: `.planning/reviews/EASY-FIXES.md` records every easy finding with finding ID, `file:line`, dimension, verified failure scenario, the fix applied, and its commit hash
+- [ ] **DOC-02**: `.planning/reviews/MAJOR-REFACTORS.md` records every major finding with finding ID, `file:line`, dimension, verified failure scenario, proposed approach, effort estimate, and proposed labels
+- [ ] **DOC-03**: Both documents state review coverage explicitly — modules reviewed, dimensions applied, and what was excluded — so coverage gaps are visible to a reader
+- [ ] **DOC-04**: Findings that are neither easy fixes nor major refactors (duplicate, wontfix, already-covered, not-reproducible) are recorded with their disposition and reason rather than dropped silently
+
+### GitHub Issues
+
+- [ ] **ISSUE-01**: The drafted issue list is presented for approval, and nothing is filed to the tracker before that approval
+- [ ] **ISSUE-02**: Each filed issue is self-contained — problem statement, evidence with `file:line`, verified failure scenario, proposed approach, and acceptance criteria — readable without the review documents
+- [ ] **ISSUE-03**: Each filed issue carries area, `PRIO 1/2/3`, and effort (`2`/`4`/`8`) labels drawn from the repository's existing label set
+- [ ] **ISSUE-04**: No filed issue duplicates an existing open issue
+- [ ] **ISSUE-05**: MAJOR-REFACTORS.md cross-references the filed issue numbers, so each documented finding is traceable to its tracker entry
+
+## Future Requirements
+
+Acknowledged, not in this roadmap.
+
+### Review Scope Extensions
+
+- **FUT-01**: `java-interop/` Java service reviewed across the same 8 dimensions
+- **FUT-02**: Docs-site editorial review (structure, tone, completeness) beyond code-accuracy checks
+- **FUT-03**: Automated quality gates in CI derived from this review's findings (lint rules, coverage thresholds, dependency scanning)
+
+### Resolution Work
+
+- **FUT-04**: Implementation of the major refactors filed as issues by this milestone — each resolved in its own dedicated milestone or PR
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Item | Reason |
+|------|--------|
+| `java-interop/` Java service review | Excluded by scope decision at milestone start; the TypeScript-side client (`java-interop.ts`) is reviewed |
+| `bbj-vscode/src/language/generated/` (17.5k LOC) | Machine-generated from `bbj.langium`; the grammar source is reviewed instead |
+| Implementing the major refactors | The milestone deliverable is detailed issues for separate resolution — that is the explicit intent |
+| Wholesale test-suite authoring | Coverage gaps are reported as findings; only regression tests for applied fixes are written here |
+| `bbj-vscode-deprecated/` contents | Contains a stale `.vsix` artifact only, no source; flagged for removal, not reviewed |
+| New features of any kind | Quality milestone — behavior changes only where a defect is being fixed |
+| Grammar redesign to remove parser ambiguity | v3.3 established all 47 ambiguities resolve correctly; redesign is a language-level project |
+
+## Traceability
+
+Which phases cover which requirements. Populated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| — | — | Pending |
+
+**Coverage:**
+- v4.0 requirements: 38 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 38 ⚠️
+
+---
+*Requirements defined: 2026-08-17*
+*Last updated: 2026-08-17 after initial definition*
