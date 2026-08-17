@@ -2,6 +2,20 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Predates the BBjCPL compiler integration (`bbj-cpl-service.ts`, `bbj-cpl-parser.ts`), added in
+>   v3.7.
+> - Predates the `logger.ts` singleton — widely adopted since v3.3, used in place of `console.*`
+>   across the language module.
+> - Predates the webview composer subsystem entirely (`msgbox-composer*.ts`,
+>   `addwindow-composer*.ts`, `addchildwindow-composer*.ts`, `setopts-composer*.ts`).
+> - Predates the whole `bbj-intellij/` (IntelliJ plugin, LSP4IJ integration) side of the
+>   architecture.
+
 ## Pattern Overview
 
 **Overall:** Language Server Protocol (LSP) architecture with plugin-based service composition

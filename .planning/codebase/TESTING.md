@@ -2,6 +2,18 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Cites Vitest 1.6.1; the installed version is **`^4.1.10`**, verified via
+>   `grep '"vitest"' bbj-vscode/package.json`.
+> - Its suite-state assumptions predate the drift window: current measured state is 4 failing test
+>   files, 11 failing tests, and 79 skipped tests (up from 4 skips), none of which existed when this
+>   map was written. Do not restate suite-state numbers here — see
+>   `.planning/reviews/INVENTORY.md` §"Test & Build Baseline" for the current, dated snapshot.
+
 ## Test Framework
 
 **Runner:**

@@ -2,6 +2,20 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17 — **highest re-report risk of the seven codebase maps.**
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Lists FIXMEs already resolved in v3.8 (Phase 54-56 "resolved all production FIXMEs"): the
+>   orphaned-AST-instances workaround in `bbj-scope.ts` and the "try to not resolve receiver ref"
+>   comment in `bbj-linker.ts` below. `grep -rn 'FIXME' bbj-vscode/src --include='*.ts' | grep -v
+>   generated` returns **no matches** in the current tree — a Phase 61-64 reviewer citing these two
+>   items would be re-reporting debt that no longer exists.
+> - Cites "Langium Framework (v3.2.1)" under Dependencies at Risk; the installed version is
+>   **`~4.3.1`**, verified via `grep '"langium"' bbj-vscode/package.json` — two majors newer than
+>   claimed here.
+
 ## Tech Debt
 
 **Orphaned AST Instances Workaround:**

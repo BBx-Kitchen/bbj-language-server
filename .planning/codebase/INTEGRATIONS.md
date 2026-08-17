@@ -2,6 +2,20 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Describes the java-interop connection as a fixed `localhost:5008` socket; `java-interop.ts` now
+>   exposes `setConnectionConfig(host, port)`, making both host and port configurable — this map
+>   documents neither the API nor the configurability.
+> - Omits EM token-based authentication entirely (`bbj-intellij/src/main/java/com/basis/bbj/intellij
+>   /actions/BbjEMTokenStore.java`, `bbj-vscode/tools/em-login.bbj`,
+>   `bbj-vscode/tools/em-validate-token.bbj`), all absent from this map.
+> - Omits the BBjCPL compiler integration (`bbj-cpl-service.ts`, `bbj-cpl-parser.ts`) added in v3.7 —
+>   no `BBjCPL`/`cpl` mention anywhere in this file.
+
 ## APIs & External Services
 
 **BBj Compiler & Runtime:**

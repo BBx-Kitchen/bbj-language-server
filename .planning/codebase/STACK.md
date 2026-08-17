@@ -2,6 +2,18 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Cites `langium` 3.2.1 and Langium CLI 3.2.0; the installed version is **`~4.3.1`**, verified via
+>   `grep '"langium"' bbj-vscode/package.json`.
+> - Cites `chevrotain` 11.0.3; the installed version is **`~12.0.0`**, verified via
+>   `grep '"chevrotain"' bbj-vscode/package.json`.
+> - Predates the IntelliJ toolchain and LSP4IJ entries entirely — no `bbj-intellij/` Gradle/Kotlin/
+>   Java toolchain or LSP4IJ dependency is documented anywhere in this file.
+
 ## Languages
 
 **Primary:**

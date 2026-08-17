@@ -2,6 +2,20 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Predates the `-composer`/`-ui`/`-webview` module split convention (msgbox, addwindow,
+>   addchildwindow follow the full triple; SETOPTS is a deliberate exception with only `-ui`/
+>   `-webview` and no `-composer.ts`).
+> - Predates the logger-over-console convention established in v3.3 (`logger.ts`) — this map still
+>   documents `console.error()`/`console.log()`/`console.warn()` as the pattern without mentioning
+>   `logger.ts`, which is now used across `bbj-scope-local.ts`, `bbj-ws-manager.ts`, `bbj-scope.ts`,
+>   `bbj-hover.ts`, `bbj-linker.ts`, `bbj-module.ts`, `java-javadoc.ts`, `java-interop.ts`, `main.ts`
+>   and `document-formatter.ts`.
+
 ## Naming Patterns
 
 **Files:**

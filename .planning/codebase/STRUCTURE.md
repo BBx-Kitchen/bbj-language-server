@@ -2,6 +2,21 @@
 
 **Analysis Date:** 2026-02-01
 
+> ⚠ SUPERSEDED — 2026-08-17
+> `.planning/reviews/INVENTORY.md` is the authority on review scope, structure and file counts for
+> the v4.0 milestone (D-16); this map was not regenerated.
+>
+> Known-wrong in this map:
+> - Predates `bbj-intellij/` entirely — the directory tree below omits the whole IntelliJ plugin
+>   (`ls bbj-intellij` shows `build.gradle.kts`, `gradle`, `gradlew`, `src`, etc.).
+> - States "Complete language server implementation (39 TypeScript files)" for
+>   `bbj-vscode/src/language/`; the verified hand-written total is ~49 (37 top-level `.ts` + 2
+>   `.langium` + 4 `validations/*.ts` + 6 `lib/*.ts`), per INVENTORY.md's D-15 Correction Log.
+> - Omits the drift window's additions to `bbj-vscode/src/`: the four webview composers
+>   (`msgbox-composer*.ts`, `addwindow-composer*.ts`, `addchildwindow-composer*.ts`,
+>   `setopts-composer*.ts`), `setopts-catalog.ts`, `bbj-inlay-hint-provider.ts`,
+>   `Commands/CompilerOptions.ts`, `document-formatter.ts`, and line numbering support.
+
 ## Directory Layout
 
 ```
