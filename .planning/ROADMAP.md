@@ -18,6 +18,7 @@
 - ✅ **v3.7 Diagnostic Quality & BBjCPL Integration** — Phases 50-53 (shipped 2026-02-20)
 - ✅ **v3.8 Test & Debt Cleanup** — Phases 54-56 (shipped 2026-02-20)
 - ✅ **v3.9 Quick Wins** — Phases 57-59 (shipped 2026-02-21)
+- 🚧 **v4.0 Stability and Quality** — Phases 60-69 (in progress, started 2026-08-17)
 
 ## Phases
 
@@ -177,6 +178,275 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v4.0 Stability and Quality (Phases 60-69) — IN PROGRESS
+
+Code-review milestone: discover as much as possible across every in-scope module → fix the easy
+findings → document the expensive findings → file them as labeled GitHub issues after user approval.
+Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`.
+
+- [ ] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 154-commit gap and produce the module inventory + finding-verification standard
+- [ ] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (39 files) across all 8 dimensions, incl. java-interop client trust boundary
+- [ ] **Phase 62: Extension Host & Webview Composer Review** - Review `extension.ts`/formatter/etc. and all four webview composer subsystems across all 8 dimensions
+- [ ] **Phase 63: IntelliJ Plugin Review** - Review `bbj-intellij/` (61 files) across all 8 dimensions, incl. Node.js download integrity
+- [ ] **Phase 64: Build, CI & Dependency Review** - Review GitHub Actions, Gradle/esbuild, and BBj tool scripts across all 8 dimensions, incl. CI security and dependency CVEs
+- [ ] **Phase 65: Cross-Cutting Security Audit** - Audit webview injection, webview↔extension messaging, EM token lifecycle, and process spawning across both IDEs
+- [ ] **Phase 66: Known Debt Re-triage** - Re-triage all 6 carried debt items — each fixed or filed
+- [ ] **Phase 67: Apply Easy Fixes** - Apply every easy finding as an atomic, regression-tested commit
+- [ ] **Phase 68: Deliverable Documents** - Produce EASY-FIXES.md and MAJOR-REFACTORS.md with full coverage statement
+- [ ] **Phase 69: GitHub Issue Filing** - File approved major findings as labeled, deduped GitHub issues
+
+## Phase Details
+
+### Phase 60: Baseline Resync & Review Standards
+
+**Goal**: The planning baseline accurately reflects everything shipped in the 154-commit gap between
+v3.9 (`2194616`) and 0.12.0 (`HEAD`), and every subsequent review phase inherits a documented module
+inventory plus a shared bar for what counts as a valid, non-duplicate finding.
+
+**Depends on**: Nothing (first phase of milestone)
+
+**Requirements**: BASE-01, BASE-02, BASE-03, BASE-04, RVW-06, RVW-07
+
+**Success Criteria** (what must be TRUE):
+  1. PROJECT.md's Validated section lists every subsystem shipped since v3.9 — webview composers
+     (msgbox, addwindow, addchildwindow, SETOPTS), inlay hints, the bbx-config editor,
+     `Commands/CompilerOptions.ts`, the document formatter, and line numbering — each traceable to
+     the 154-commit range
+  2. PROJECT.md's Context, Constraints, and Key Decisions sections read as true today, not as of v3.9
+  3. MILESTONES.md contains an entry spanning `2194616` → `HEAD` (0.12.0) so project history has no
+     unexplained six-month gap
+  4. A module inventory document enumerates every file in scope for Phases 61-64, the 8 review
+     dimensions, and every explicit exclusion (`java-interop/`, `generated/`, `bbj-vscode-deprecated/`)
+  5. The inventory states the standard every later finding must meet: a concrete verified failure
+     scenario, and a check against the 15 currently open GitHub issues before being recorded
+
+**Plans**: TBD
+
+---
+
+### Phase 61: Language Core Review
+
+**Goal**: Every hand-written file in `bbj-vscode/src/language/` — the largest and most structurally
+critical module (~8.5k LOC across 39 files) — is swept across all 8 dimensions, including the trust
+boundary of its java-interop client.
+
+**Depends on**: Phase 60
+
+**Requirements**: RVW-01, SEC-06
+
+**Success Criteria** (what must be TRUE):
+  1. All 39 files (grammar, lexer, `bbj-scope.ts`, `bbj-scope-local.ts`, `bbj-linker.ts`,
+     `bbj-type-inferer.ts`, `bbj-validator.ts`, `validations/`, `bbj-completion-provider.ts`,
+     document builder/validator, `bbj-ws-manager.ts`, CPL service/parser, `java-interop.ts`, `lib/`
+     builtin catalogs) have a recorded pass/fail against each of D1-D8
+  2. `java-interop.ts`'s trust boundary is documented — what a malicious or unresponsive peer on the
+     configured host/port can do to the language server, and whether the channel is authenticated
+  3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+     Phase 60 standard
+  4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
+
+**Plans**: TBD
+
+---
+
+### Phase 62: Extension Host & Webview Composer Review
+
+**Goal**: The VS Code-side extension host and all four webview composer subsystems are swept across
+all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to build on.
+
+**Depends on**: Phase 60
+
+**Requirements**: RVW-02, RVW-03
+
+**Success Criteria** (what must be TRUE):
+  1. `extension.ts`, `Commands/CompilerOptions.ts`, the document formatter, line numbering,
+     tokenized-BBj, and decompile-io each have a recorded pass/fail against D1-D8
+  2. All 13 webview composer files (msgbox, addwindow, addchildwindow, SETOPTS — each split across
+     `-composer`/`-ui`/`-webview`) plus `setopts-catalog.ts` have a recorded pass/fail against D1-D8,
+     with duplication across the four composer subsystems explicitly called out under D4
+  3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+     Phase 60 standard
+  4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+---
+
+### Phase 63: IntelliJ Plugin Review
+
+**Goal**: The IntelliJ plugin's 61 Java files (~6.6k LOC) are swept across all 8 dimensions, including
+the security of its Node.js runtime download path.
+
+**Depends on**: Phase 60
+
+**Requirements**: RVW-04, SEC-03
+
+**Success Criteria** (what must be TRUE):
+  1. All 61 files (`BbjRunActionBase.java` and its GUI/BUI/DWC subclasses, `BbjSettingsComponent.java`,
+     composer dialogs, `BbjNodeDownloader.java`, `BbjEMTokenStore.java`, LSP wiring, status bar
+     widgets, lexer/parser definitions) have a recorded pass/fail against D1-D8
+  2. `BbjNodeDownloader.java`'s integrity posture is documented — transport security, checksum or
+     signature verification, and archive extraction path safety (zip-slip)
+  3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+     Phase 60 standard
+  4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
+
+**Plans**: TBD
+
+**UI hint**: yes
+
+---
+
+### Phase 64: Build, CI & Dependency Review
+
+**Goal**: The project's build and CI surface — 6 GitHub Actions workflows, Gradle, esbuild, and the 3
+BBj tool scripts — is swept across all 8 dimensions, including workflow security and both dependency
+trees' vulnerability posture.
+
+**Depends on**: Phase 60
+
+**Requirements**: RVW-05, SEC-07, SEC-08
+
+**Success Criteria** (what must be TRUE):
+  1. All 6 workflows (`manual-release.yml`, `preview.yml`, `pr-vsix.yml`, and 3 more totaling 568
+     lines), the Gradle build, esbuild/packaging config, and the 3 `bbj-vscode/tools/*.bbj` scripts
+     have a recorded pass/fail against D1-D8
+  2. Every workflow's secret handling, `GITHUB_TOKEN` permission scope, third-party action pinning,
+     and exposure to untrusted PR-controlled input is documented
+  3. Every npm and Gradle dependency with a known vulnerability is enumerated and triaged as
+     fix-now, file-issue, or accepted-with-reason
+  4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+     Phase 60 standard
+
+**Plans**: TBD
+
+---
+
+### Phase 65: Cross-Cutting Security Audit
+
+**Goal**: The four security concerns that inherently span multiple modules — webview HTML injection,
+webview↔extension message trust, EM token lifecycle, and process-spawning injection — are audited end
+to end across both IDEs, closing gaps a single-module review would miss. (These four items span
+`bbj-vscode` extension host, webview composers, `bbj-intellij`, and the BBj tool scripts at once, so
+they get a dedicated phase rather than being split across the module-owning review phases.)
+
+**Depends on**: Phase 62, Phase 63, Phase 64
+
+**Requirements**: SEC-01, SEC-02, SEC-04, SEC-05
+
+**Success Criteria** (what must be TRUE):
+  1. Every interpolated value in composer and bbx-config-editor markup is confirmed escaped/safe or
+     flagged, and CSP posture is documented
+  2. Every webview→extension message handler validates message shape and value range before acting,
+     with any gaps flagged
+  3. The EM token lifecycle — acquisition, storage at rest, exposure via process args/logs, expiry —
+     is traced end to end across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`, and VS
+     Code's equivalent storage
+  4. Every run/compile process-spawn path in both IDEs is checked for argument/command injection via
+     user-controlled paths, classpath values, or config.bbx settings
+  5. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+     Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication
+
+**Plans**: TBD
+
+---
+
+### Phase 66: Known Debt Re-triage
+
+**Goal**: Every debt item carried forward from prior milestones is re-triaged against current code —
+resolved now, or converted into a properly filed issue with a concrete plan — so no debt survives this
+milestone as bare prose in PROJECT.md. Can run independently of the review sweeps (Phases 61-65) since
+it re-examines specific, already-known items rather than surfacing new ones.
+
+**Depends on**: Phase 60
+
+**Requirements**: DEBT-01, DEBT-02, DEBT-03, DEBT-04, DEBT-05, DEBT-06
+
+**Success Criteria** (what must be TRUE):
+  1. CPU stability in multi-project workspaces (#232) has either a landed mitigation or an issue
+     update with a concrete implementation plan
+  2. The 3 disabled `parser.test.ts` assertions and the skipped TEST-03 case are each either
+     re-enabled or documented with the specific blocker and unblocking condition
+  3. The static method return-type inference gap and the FQN static-only completion filtering gap
+     are each either fixed or filed
+  4. LSP4IJ's 19 experimental API usages and the `BbjCompletionFeature` coupling have a current risk
+     assessment against the installed LSP4IJ version
+  5. Every one of these 6 items ends the milestone represented either by a merged fix or a GitHub
+     issue — none remain as PROJECT.md prose only
+
+**Plans**: TBD
+
+---
+
+### Phase 67: Apply Easy Fixes
+
+**Goal**: Every finding classified as an easy fix across Phases 61-65 is applied as a low-risk,
+regression-tested, atomically-committed change, and the full test/build suite is green afterward.
+
+**Depends on**: Phase 61, Phase 62, Phase 63, Phase 64, Phase 65
+
+**Requirements**: FIX-01, FIX-02, FIX-03, FIX-04
+
+**Success Criteria** (what must be TRUE):
+  1. Each easy fix lands as its own atomic commit whose message references its finding ID
+  2. Each behavior-changing fix has a regression test that fails on the pre-fix code and passes after
+  3. `npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew build` succeeds in
+     `bbj-intellij/`
+  4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
+
+**Plans**: TBD
+
+---
+
+### Phase 68: Deliverable Documents
+
+**Goal**: Every finding from the milestone — easy, major, or dispositioned-away — is recorded in the
+two deliverable documents with enough detail to act on independently, and review coverage is stated
+explicitly.
+
+**Depends on**: Phase 66, Phase 67
+
+**Requirements**: DOC-01, DOC-02, DOC-03, DOC-04
+
+**Success Criteria** (what must be TRUE):
+  1. `.planning/reviews/EASY-FIXES.md` lists every easy finding with finding ID, `file:line`,
+     dimension, verified failure scenario, the fix applied, and its commit hash
+  2. `.planning/reviews/MAJOR-REFACTORS.md` lists every major finding with finding ID, `file:line`,
+     dimension, verified failure scenario, proposed approach, and effort estimate
+  3. Both documents open with an explicit coverage statement — modules reviewed, dimensions applied,
+     exclusions — so a reader can see what was and wasn't checked
+  4. Findings that were duplicate, wontfix, already-covered, or not-reproducible are listed with
+     their disposition and reason, not silently dropped
+
+**Plans**: TBD
+
+---
+
+### Phase 69: GitHub Issue Filing
+
+**Goal**: Every major finding is filed as a self-contained, correctly labeled GitHub issue, deduped
+against the 15 issues open at milestone start, only after the user has approved the drafted list.
+
+**Depends on**: Phase 68
+
+**Requirements**: ISSUE-01, ISSUE-02, ISSUE-03, ISSUE-04, ISSUE-05
+
+**Success Criteria** (what must be TRUE):
+  1. The complete drafted issue list is presented to the user, and no issue is created on the tracker
+     before explicit approval is given
+  2. Each filed issue is self-contained — problem statement, `file:line` evidence, verified failure
+     scenario, proposed approach, acceptance criteria — readable without opening the review documents
+  3. Each filed issue carries an area label, a `PRIO 1/2/3` label, and an effort (`2`/`4`/`8`) label
+     from the repository's existing label set
+  4. No filed issue duplicates any of the 15 issues open at milestone start
+  5. MAJOR-REFACTORS.md is updated with the filed issue number next to each corresponding finding
+
+**Plans**: TBD
+
+---
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -197,9 +467,11 @@ Research-only milestone — no phases.
 | v3.7 Diagnostic Quality & BBjCPL | 50-53 | 7 | Complete | 2026-02-20 |
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
+| v4.0 Stability and Quality | 60-69 | 0 | Not started | - |
 
-**Total:** 16 milestones shipped, 59 phases complete, 143 plans shipped.
+**Total:** 16 milestones shipped, 59 phases complete, 143 plans shipped. v4.0 adds 10 phases (60-69),
+38 requirements, currently not started.
 
 ---
 
-*Roadmap last updated: 2026-02-21 after v3.9 milestone completion*
+*Roadmap last updated: 2026-08-17 after v4.0 roadmap creation*

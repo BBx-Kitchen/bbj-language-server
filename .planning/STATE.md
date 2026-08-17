@@ -6,7 +6,7 @@ status: planning
 last_updated: "2026-08-17T13:40:09.025Z"
 last_activity: 2026-08-17
 progress:
-  total_phases: 0
+  total_phases: 10
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,24 +15,24 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-08-17
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-21)
+See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone
+**Current Focus:** v4.0 Stability and Quality — roadmap created, ready for phase planning starting at Phase 60
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 60 (Baseline Resync & Review Standards) — not yet planned
 Plan: —
-Status: Defining requirements
-Last activity: 2026-08-17 — Milestone v4.0 started
+Status: Roadmap approved, awaiting `/gsd-plan-phase 60`
+Last activity: 2026-08-17 — Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 
 ## Performance Metrics
 
@@ -77,6 +77,8 @@ Last activity: 2026-08-17 — Milestone v4.0 started
 - TEST-03 (DEF FN suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
+- v4.0 scope excludes `java-interop/` Java service and `src/language/generated/` (machine-generated, 17.5k LOC)
+- v4.0 ISSUE-01 is a hard gate — no GitHub issue is filed before the user approves the drafted list
 
 ### Decisions
 
@@ -87,15 +89,25 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 59]: MemberCall isClassRef extension dropped — old JAR does not send isStatic for fields
 - [Phase 59]: ( trigger returns empty CompletionList (not undefined) — prevents slow fallthrough
 - [Phase 59]: CompletionItemTag.Deprecated only — no sortText change, no label suffix
+- [v4.0 Roadmap]: SEC-03/SEC-06/SEC-07/SEC-08 folded into the single-owning module review phase
+  (RVW-04, RVW-01, RVW-05, RVW-05 respectively); SEC-01/SEC-02/SEC-04/SEC-05 given a dedicated
+  Cross-Cutting Security Audit phase (65) because each spans multiple modules/IDEs
+- [v4.0 Roadmap]: RVW-01 (`src/language/`, ~8.5k LOC) kept as a single phase rather than split —
+  comparable in scale to RVW-04's single-phase 6.6k LOC IntelliJ review, so splitting wasn't
+  necessary to keep the phase executable
+- [v4.0 Roadmap]: RVW-06 (verified failure scenario) and RVW-07 (dedup vs open issues) established
+  as standards in Phase 60 and enforced as a success criterion in every review/security phase (61-65)
+- [v4.0 Roadmap]: FIX-01..04 isolated to a single dedicated Phase 67 run after all review sweeps —
+  review phases record findings, this phase is the only one that applies them
 
 ### Tech Debt
 
-- CPU stability mitigations documented but not yet implemented (#232)
-- 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize)
-- BbjCompletionFeature depends on LSPCompletionFeature API that may change
+- CPU stability mitigations documented but not yet implemented (#232) — re-triaged in v4.0 Phase 66 (DEBT-01)
+- 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize) — re-triaged in v4.0 Phase 66 (DEBT-05)
+- BbjCompletionFeature depends on LSPCompletionFeature API that may change — re-triaged in v4.0 Phase 66 (DEBT-05)
 - IntelliJ TextMate bundle cannot exclude config.bbx at filename level
-- FQN path static-only filtering deferred — requires JAR redeployment
-- Static method return type inference gap — String.valueOf(2) does not assign type
+- FQN path static-only filtering deferred — re-triaged in v4.0 Phase 66 (DEBT-04)
+- Static method return type inference gap — String.valueOf(2) does not assign type — re-triaged in v4.0 Phase 66 (DEBT-03)
 
 ### Blockers/Concerns
 
@@ -111,8 +123,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-02-21
-Stopped at: Completed v3.9 milestone — all 11 requirements satisfied, milestone archived
+Last session: 2026-08-17
+Stopped at: v4.0 ROADMAP.md created — Phases 60-69, 38/38 requirements mapped (100% coverage). Next step: `/gsd-plan-phase 60`.
 Resume file: None
 
 ---
@@ -138,8 +150,10 @@ Resume file: None
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | 2026-02-21 |
 
+v4.0 Stability and Quality (Phases 60-69) is in progress — not yet in this table (added on ship).
+
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-21 after v3.9 milestone completion*
+*State updated: 2026-08-17 after v4.0 ROADMAP.md creation*

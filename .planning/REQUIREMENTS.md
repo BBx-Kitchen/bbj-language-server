@@ -115,13 +115,50 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| — | — | Pending |
+| BASE-01 | Phase 60 | Pending |
+| BASE-02 | Phase 60 | Pending |
+| BASE-03 | Phase 60 | Pending |
+| BASE-04 | Phase 60 | Pending |
+| RVW-06 | Phase 60 | Pending |
+| RVW-07 | Phase 60 | Pending |
+| RVW-01 | Phase 61 | Pending |
+| SEC-06 | Phase 61 | Pending |
+| RVW-02 | Phase 62 | Pending |
+| RVW-03 | Phase 62 | Pending |
+| RVW-04 | Phase 63 | Pending |
+| SEC-03 | Phase 63 | Pending |
+| RVW-05 | Phase 64 | Pending |
+| SEC-07 | Phase 64 | Pending |
+| SEC-08 | Phase 64 | Pending |
+| SEC-01 | Phase 65 | Pending |
+| SEC-02 | Phase 65 | Pending |
+| SEC-04 | Phase 65 | Pending |
+| SEC-05 | Phase 65 | Pending |
+| DEBT-01 | Phase 66 | Pending |
+| DEBT-02 | Phase 66 | Pending |
+| DEBT-03 | Phase 66 | Pending |
+| DEBT-04 | Phase 66 | Pending |
+| DEBT-05 | Phase 66 | Pending |
+| DEBT-06 | Phase 66 | Pending |
+| FIX-01 | Phase 67 | Pending |
+| FIX-02 | Phase 67 | Pending |
+| FIX-03 | Phase 67 | Pending |
+| FIX-04 | Phase 67 | Pending |
+| DOC-01 | Phase 68 | Pending |
+| DOC-02 | Phase 68 | Pending |
+| DOC-03 | Phase 68 | Pending |
+| DOC-04 | Phase 68 | Pending |
+| ISSUE-01 | Phase 69 | Pending |
+| ISSUE-02 | Phase 69 | Pending |
+| ISSUE-03 | Phase 69 | Pending |
+| ISSUE-04 | Phase 69 | Pending |
+| ISSUE-05 | Phase 69 | Pending |
 
 **Coverage:**
 - v4.0 requirements: 38 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 38 ⚠️
+- Mapped to phases: 38 (Phases 60-69)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-17*
-*Last updated: 2026-08-17 after initial definition*
+*Last updated: 2026-08-17 after v4.0 roadmap creation — 100% requirement coverage across Phases 60-69*
