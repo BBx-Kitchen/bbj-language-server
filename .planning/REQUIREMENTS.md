@@ -24,8 +24,8 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 ### Baseline
 
-- [x] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and 0.12.0 (`HEAD`), reconstructed from that 154-commit range
-- [x] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, bbx-config editor, `Commands/CompilerOptions.ts`, document formatter, line numbering
+- [x] **BASE-01**: PROJECT.md Validated requirements cover everything shipped between v3.9 (`2194616`) and `v0.12.0`, reconstructed from that 153-commit range
+- [x] **BASE-02**: PROJECT.md Context, Constraints, and Key Decisions reflect the subsystems added in that range — webview composers, inlay hints, the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`), `Commands/CompilerOptions.ts`, document formatter, line numbering
 - [x] **BASE-03**: A module inventory recording review scope, the 8 dimensions, and explicit exclusions exists, so review coverage is auditable rather than assumed (satisfied by 60-01 + 60-02: INVENTORY.md's 21 review units, the applicability grid, and the surface accounting all exist and account for every in-scope file)
 - [x] **BASE-04**: MILESTONES.md records the v3.9 → 0.12.0 interval so project history contains no silent six-month gap
 
@@ -33,7 +33,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 - [ ] **RVW-01**: `bbj-vscode/src/language/` reviewed across all 8 dimensions — grammar, lexer, scope, scope-local, linker, type inferer, validator, `validations/`, completion provider, document builder, document validator, ws-manager, CPL service/parser, java-interop client, `lib/` builtin catalogs
 - [ ] **RVW-02**: `bbj-vscode/src/` extension host reviewed across all 8 dimensions — `extension.ts`, document formatter, line numbering, tokenized-BBj, decompile-io, `Commands/CompilerOptions.ts`
-- [ ] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — msgbox, addwindow, addchildwindow, SETOPTS (`-composer`, `-ui`, `-webview` files plus `setopts-catalog.ts`)
+- [ ] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — 11 composer files: msgbox, addwindow, addchildwindow each split across `-composer`/`-ui`/`-webview`; SETOPTS split across `-ui`/`-webview` only (no `-composer.ts`) — plus `setopts-catalog.ts`
 - [ ] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
 - [ ] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
 - [x] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
@@ -41,7 +41,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 ### Security
 
-- [ ] **SEC-01**: Webview HTML generation audited for injection — every interpolated value into composer and bbx-config-editor markup is escaped or provably safe, and CSP posture is documented
+- [ ] **SEC-01**: Webview HTML generation audited for injection — every interpolated value into composer markup and the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`) is escaped or provably safe, and CSP posture is documented
 - [ ] **SEC-02**: Webview → extension message handling audited — messages from webview content are validated for shape and value range before acting on them
 - [ ] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
 - [ ] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
@@ -163,3 +163,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 ---
 *Requirements defined: 2026-08-17*
 *Last updated: 2026-08-17 after v4.0 roadmap creation — 100% requirement coverage across Phases 60-69*
+
+*Amended 2026-08-17 by Phase 60 (plan 60-04) under D-15: BASE-01, BASE-02, RVW-03 and SEC-01 texts
+corrected in place against the verified tree. See `.planning/reviews/INVENTORY.md` §"D-15 Correction
+Log" for the evidence.*

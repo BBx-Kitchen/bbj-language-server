@@ -184,8 +184,8 @@ Code-review milestone: discover as much as possible across every in-scope module
 findings → document the expensive findings → file them as labeled GitHub issues after user approval.
 Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`.
 
-- [ ] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 154-commit gap and produce the module inventory + finding-verification standard
-- [ ] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (39 files) across all 8 dimensions, incl. java-interop client trust boundary
+- [ ] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 153-commit range and produce the module inventory + finding-verification standard
+- [ ] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (~49 files) across all 8 dimensions, incl. java-interop client trust boundary
 - [ ] **Phase 62: Extension Host & Webview Composer Review** - Review `extension.ts`/formatter/etc. and all four webview composer subsystems across all 8 dimensions
 - [ ] **Phase 63: IntelliJ Plugin Review** - Review `bbj-intellij/` (61 files) across all 8 dimensions, incl. Node.js download integrity
 - [ ] **Phase 64: Build, CI & Dependency Review** - Review GitHub Actions, Gradle/esbuild, and BBj tool scripts across all 8 dimensions, incl. CI security and dependency CVEs
@@ -199,8 +199,8 @@ Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REF
 
 ### Phase 60: Baseline Resync & Review Standards
 
-**Goal**: The planning baseline accurately reflects everything shipped in the 154-commit gap between
-v3.9 (`2194616`) and 0.12.0 (`HEAD`), and every subsequent review phase inherits a documented module
+**Goal**: The planning baseline accurately reflects everything shipped in the 153-commit range between
+v3.9 (`2194616`) and `v0.12.0`, and every subsequent review phase inherits a documented module
 inventory plus a shared bar for what counts as a valid, non-duplicate finding.
 
 **Depends on**: Nothing (first phase of milestone)
@@ -210,12 +210,13 @@ inventory plus a shared bar for what counts as a valid, non-duplicate finding.
 **Success Criteria** (what must be TRUE):
 
   1. PROJECT.md's Validated section lists every subsystem shipped since v3.9 — webview composers
-     (msgbox, addwindow, addchildwindow, SETOPTS), inlay hints, the bbx-config editor,
+     (msgbox, addwindow, addchildwindow, SETOPTS), inlay hints, the `setopts-composer-webview.ts`
+     markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`),
      `Commands/CompilerOptions.ts`, the document formatter, and line numbering — each traceable to
-     the 154-commit range
+     the 153-commit range
 
   2. PROJECT.md's Context, Constraints, and Key Decisions sections read as true today, not as of v3.9
-  3. MILESTONES.md contains an entry spanning `2194616` → `HEAD` (0.12.0) so project history has no
+  3. MILESTONES.md contains an entry spanning `2194616` → `v0.12.0` so project history has no
      unexplained six-month gap
 
   4. A module inventory document enumerates every file in scope for Phases 61-64, the 8 review
@@ -244,7 +245,7 @@ Waves: 1 → `60-01`; 2 → `60-02`, `60-03`, `60-04` (parallel, disjoint files)
 ### Phase 61: Language Core Review
 
 **Goal**: Every hand-written file in `bbj-vscode/src/language/` — the largest and most structurally
-critical module (~8.5k LOC across 39 files) — is swept across all 8 dimensions, including the trust
+critical module (~10.8k LOC across ~49 files) — is swept across all 8 dimensions, including the trust
 boundary of its java-interop client.
 
 **Depends on**: Phase 60
@@ -253,10 +254,14 @@ boundary of its java-interop client.
 
 **Success Criteria** (what must be TRUE):
 
-  1. All 39 files (grammar, lexer, `bbj-scope.ts`, `bbj-scope-local.ts`, `bbj-linker.ts`,
-     `bbj-type-inferer.ts`, `bbj-validator.ts`, `validations/`, `bbj-completion-provider.ts`,
+  1. All ~49 files (grammar, lexer, `bbj-scope.ts`, `bbj-scope-local.ts`, `bbj-linker.ts`,
+     `bbj-type-inferer.ts`, `bbj-validator.ts`, `validations/` incl. `check-function-calls.ts`,
+     `bbj-completion-provider.ts`, `bbj-code-action-provider.ts`, `bbj-inlay-hint-provider.ts`,
+     `bbj-overload-selector.ts`, `bbj-use-insert.ts`, `composer-commands.ts`,
+     `bbj-definition-provider.ts`, `bbj-document-symbol-provider.ts`, `logger.ts`,
      document builder/validator, `bbj-ws-manager.ts`, CPL service/parser, `java-interop.ts`, `lib/`
-     builtin catalogs) have a recorded pass/fail against each of D1-D8
+     builtin catalogs incl. `lib/fs-provider.ts` and `lib/bbj-api.ts`) have a recorded pass/fail
+     against each of D1-D8
 
   2. `java-interop.ts`'s trust boundary is documented — what a malicious or unresponsive peer on the
      configured host/port can do to the language server, and whether the channel is authenticated
@@ -284,9 +289,10 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
   1. `extension.ts`, `Commands/CompilerOptions.ts`, the document formatter, line numbering,
      tokenized-BBj, and decompile-io each have a recorded pass/fail against D1-D8
 
-  2. All 13 webview composer files (msgbox, addwindow, addchildwindow, SETOPTS — each split across
-     `-composer`/`-ui`/`-webview`) plus `setopts-catalog.ts` have a recorded pass/fail against D1-D8,
-     with duplication across the four composer subsystems explicitly called out under D4
+  2. All 11 webview composer files (msgbox, addwindow, addchildwindow each split across
+     `-composer`/`-ui`/`-webview`; SETOPTS split across `-ui`/`-webview` only — it has no
+     `-composer.ts`) plus `setopts-catalog.ts` have a recorded pass/fail against D1-D8, with
+     duplication across the four composer subsystems explicitly called out under D4
 
   3. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
@@ -371,8 +377,9 @@ they get a dedicated phase rather than being split across the module-owning revi
 
 **Success Criteria** (what must be TRUE):
 
-  1. Every interpolated value in composer and bbx-config-editor markup is confirmed escaped/safe or
-     flagged, and CSP posture is documented
+  1. Every interpolated value in composer markup and the `setopts-composer-webview.ts` markup
+     (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`) is confirmed escaped/safe
+     or flagged, and CSP posture is documented
 
   2. Every webview→extension message handler validates message shape and value range before acting,
      with any gaps flagged
@@ -528,3 +535,7 @@ against the 15 issues open at milestone start, only after the user has approved 
 ---
 
 *Roadmap last updated: 2026-08-17 after v4.0 roadmap creation*
+
+*Amended 2026-08-17 by Phase 60 (plan 60-04) under D-15: §Phase 60/61/62/65 success criteria corrected
+in place against the verified tree. See `.planning/reviews/INVENTORY.md` §"D-15 Correction Log" for
+the evidence.*
