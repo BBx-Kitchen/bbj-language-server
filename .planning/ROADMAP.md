@@ -184,7 +184,7 @@ Code-review milestone: discover as much as possible across every in-scope module
 findings → document the expensive findings → file them as labeled GitHub issues after user approval.
 Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`.
 
-- [ ] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 153-commit range and produce the module inventory + finding-verification standard
+- [x] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 153-commit range and produce the module inventory + finding-verification standard (completed 2026-08-17)
 - [ ] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (~49 files) across all 8 dimensions, incl. java-interop client trust boundary
 - [ ] **Phase 62: Extension Host & Webview Composer Review** - Review `extension.ts`/formatter/etc. and all four webview composer subsystems across all 8 dimensions
 - [ ] **Phase 63: IntelliJ Plugin Review** - Review `bbj-intellij/` (61 files) across all 8 dimensions, incl. Node.js download integrity
