@@ -262,3 +262,189 @@ not qualify; and the D-13 test-(6) outcome — a D1 finding is `major` regardles
 Because this repository is public and this surface is unfixed, the illustration names the surface
 and the class of problem only. No payload, no trigger sequence, and no proof-of-concept are
 recorded here (threat T-60-02).
+
+## Pinned Baseline Range (D-01)
+
+The v4.0 baseline is pinned to the **`v0.12.0` tag**, not to the branch tip (`HEAD`). Pinning to a
+tag rather than a moving branch tip is deliberate: `HEAD` sits on branch
+`issue494-cyclic-inheritance-hang`, which advances with every v4.0 planning commit — a moving
+endpoint would reproduce exactly the drift this phase exists to eliminate. The measured tail
+(`v0.12.0..HEAD`) was **4 commits** when Phase 60's context was gathered and is **larger now** (8
+commits at the time this section was written) — this growth is the evidence for why the endpoint
+must be a fixed tag, not a floating ref.
+
+**Range:** `2194616..v0.12.0`
+
+**Endpoint semantics:** the left endpoint `2194616` is **excluded**; the right endpoint `v0.12.0`
+is **included**.
+
+**Verified size** — `git rev-list --count 2194616..v0.12.0` → **153**
+
+**Per-release breakdown** — each count from `git rev-list --count <prev>..<tag>`:
+
+| Range | Command | Count |
+|---|---|---|
+| `2194616..v0.9.0` | `git rev-list --count 2194616..v0.9.0` | 93 |
+| `v0.9.0..v0.10.0` | `git rev-list --count v0.9.0..v0.10.0` | 38 |
+| `v0.10.0..v0.11.0` | `git rev-list --count v0.10.0..v0.11.0` | 9 |
+| `v0.11.0..v0.12.0` | `git rev-list --count v0.11.0..v0.12.0` | 13 |
+
+**Checked arithmetic identity:** `93 + 38 + 9 + 13 = 153` = the range total above. ✓
+
+**Release tags** — from
+`git tag --list 'v0.9.0' 'v0.10.0' 'v0.11.0' 'v0.12.0' --sort=creatordate --format='%(refname:short) %(creatordate:short) %(objectname:short)'`:
+
+| Tag | Date | Commit |
+|---|---|---|
+| `v0.9.0` | 2026-07-17 | `f95a872` |
+| `v0.10.0` | 2026-07-18 | `ac3a530` |
+| `v0.11.0` | 2026-07-18 | `8d8d814` |
+| `v0.12.0` | 2026-07-19 | `1b86a6b` |
+
+`v0.10.0` and `v0.11.0` are **both dated 2026-07-18** and are nevertheless separate releases with
+separate rows above, ordered by tag creation date, not deduplicated by calendar day.
+
+**Attribution rule (used by plan 60-03's reconstruction):** a single commit belongs to the first
+release tag that contains it (`git tag --contains <sha>`, taking the earliest by creation date); a
+capability spanning several commits is attributed to the tag of its **last** commit, and is listed
+exactly once.
+
+**Excluded tail** — `git log --oneline v0.12.0..HEAD`, all outside the baseline:
+
+| Commit | Classification |
+|---|---|
+| `ff35ceb` | planning-doc |
+| `3fbdc52` | planning-doc |
+| `696750d` | planning-doc |
+| `8f02970` | planning-doc |
+| `e8f566e` | planning-doc |
+| `110be82` | planning-doc |
+| `9cc746a` | planning-doc |
+| `a7e1b53` | code-fix |
+
+**`a7e1b53 fix(#494): terminate the visibility hierarchy walk on cyclic inheritance`** is called
+out explicitly as an **unreleased, in-flight code fix** — a Phase 61 reviewer must **not**
+re-report the cyclic-inheritance hang as a live finding; it is already fixed on this branch, just
+not yet released under a tag.
+
+The commit range above was measured on branch **`issue494-cyclic-inheritance-hang`**. v4.0
+planning commits are landing on this same branch, which is precisely why the endpoint is pinned to
+the `v0.12.0` tag rather than to this moving tail.
+
+## Test & Build Baseline (D-05, D-06)
+
+**Commands run** (per `CLAUDE.md` §"Build & Test Commands"): `npm test` and `npm run lint` from
+`bbj-vscode/`; `./gradlew build` from `bbj-intellij/`. BBj/Java-dependent tests skip unless BBj is
+reachable; per the established environment fact, these failures are **not** resolved by bringing a
+java-interop peer up on port 5008 — that has been tried.
+
+### Headline vitest counts
+
+`npm test` was run **twice in immediate succession**, with no source changes between runs, to
+characterize stability. The two runs produced different totals:
+
+| Run | Test files | Tests |
+|---|---|---|
+| 1 | 3 failed \| 47 passed (50) | 11 failed \| 850 passed \| 25 skipped (886) |
+| 2 | 2 failed \| 48 passed (50) | 11 failed \| 843 passed \| 32 skipped (886) |
+
+The **11 failed tests are identical and deterministic across both runs** — all 11 are in
+`test/linking.test.ts > Linking Tests > Interop related tests`. The **variance in test-file
+failures and skip counts is itself a finding** (see the routing table below): a `beforeAll` hook
+(`WorkspaceManager.initializeWorkspace()`) intermittently exceeds vitest's default 10-second
+`hookTimeout` under system load, and whichever suite happens to be running that hook when
+contention spikes is marked as a failed suite with its tests reported skipped. Run 1 hit this on
+`test/functional/chevrotain-tokens.test.ts` (21/21 skipped) and `test/run-call-file-resolution.test.ts`
+(1/6 skipped); run 2 hit it on `test/variable-scoping.test.ts` (29/29 skipped) instead. Per D-05,
+the snapshot recorded when Phase 60's context was gathered measured **79** skipped tests (4 test
+files failed, 796 passed) — a third, even-more-contended data point consistent with the same
+root cause. 886 total tests is stable across all three measurements.
+
+### Every failing test
+
+All 11 failures are deterministic and reproduce identically across both runs:
+
+| Test file | Test name | Failure summary | Classification | Evidence |
+|---|---|---|---|---|
+| `test/linking.test.ts` | All BBj classes extends Object | Unresolved reference to `NamedElement` | environment | No `bbjdir` set (`stderr: "No bbjdir set. No classpath and prefixes loaded."`); java-interop is not reachable in this sandbox and port-5008 was already ruled out as a fix (D-06). |
+| `test/linking.test.ts` | Import and declare simple Java class without using FQNs | Unresolved Java class reference | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Import Java class | Unresolved Java class reference | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Declare with direct import | Unresolved Java class reference | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Class definition with direct import in extends | `Could not resolve reference to JavaPackageLike named 'Date'` | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Class definition with direct import in implements | `Could not resolve reference to JavaPackageLike named 'List'` | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Unloaded Java FQN access - test for #6 | Unresolved `sql`/`Date`/`valueOf` references | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Java FQN access - test for #6 | Unresolved `sql`/`Date`/`Boolean`/`TRUE`/`valueOf` references | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Linked List is resolved | `Could not resolve reference to JavaPackageLike named 'LinkedList'` | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Resolve nested class in use statement | `Could not resolve reference to JavaPackageLike named 'Map'/'Entry'` | environment | Same interop-unreachable root cause. |
+| `test/linking.test.ts` | Resolve nested class FQN | `Could not resolve reference to JavaPackageLike named 'Map'/'Entry'`, `NamedElement named 'getValue'` | environment | This is the **leading environment-dependent candidate** already established in D-06: it fails on unresolved `Map`/`Entry`/`getValue` references, which is exactly the java-interop-dependency signature. |
+
+No failure in this run is classified `genuine` — each is traced to the same unreachable
+java-interop dependency, and none has evidence of a defect independent of that dependency. This is
+not a blanket classification: each row's evidence is the specific unresolved-reference error text
+for that test, all pointing to the same root cause (no live java-interop peer / no `bbjdir`).
+
+### Flaky suite-level failures (separate from the 11 above)
+
+| Test file | Symptom | Classification | Evidence |
+|---|---|---|---|
+| `test/functional/chevrotain-tokens.test.ts` (run 1 only) | `beforeAll` hook timed out in 10000ms calling `WorkspaceManager.initializeWorkspace()` | environment | Did not reproduce in run 2; timing-dependent, consistent with sandbox resource contention. |
+| `test/run-call-file-resolution.test.ts` (run 1 only) | Same `beforeAll` hook timeout | environment | Did not reproduce in run 2. |
+| `test/variable-scoping.test.ts` (run 2 only) | Same `beforeAll` hook timeout | environment | Did not reproduce in run 1; a *different* suite than run 1's, confirming the timeout is load-dependent rather than tied to one file. |
+
+### Every skipped test, grouped by file
+
+| File | Skipped | Deliberate & documented? |
+|---|---|---|
+| `test/linking.test.ts` | 1 (`Link to string template array members`) | Yes — `test.skip` at `test/linking.test.ts:85`. |
+| `test/completion-test.test.ts` | 1 (`DEF FN parameters with $ suffix inside class method`) | Yes — TEST-03, `test.skip` at `test/completion-test.test.ts:185`, Langium grammar-follower limitation. |
+| `test/parser.test.ts` | 3 assertions disabled (not `test.skip` — commented-out expectations at lines ~530, ~811, ~860) | Yes — need a Java classpath unavailable under `EmptyFileSystem`; documented in STATE.md Active Constraints. |
+| `test/functional/chevrotain-tokens.test.ts` | 0-21, varies by run | **No** — introduced by the `hookTimeout` flakiness above, not a deliberate skip; routed below. |
+| `test/run-call-file-resolution.test.ts` | 0-1, varies by run | **No** — same flakiness; routed below. |
+| `test/variable-scoping.test.ts` | 0-29, varies by run | **No** — same flakiness; routed below. |
+
+The 3 disabled `parser.test.ts` assertions are not counted in vitest's "skipped" total (they are
+commented-out expectations inside otherwise-passing tests, not `test.skip`/`it.skip` calls), but
+are recorded here per D-06's instruction to distinguish deliberate, already-documented skips from
+skips introduced during the drift window with no recorded reason. No undocumented deliberate skip
+was found beyond the flakiness above.
+
+### `npm run lint`
+
+**Exit code:** 0. **Errors:** 0. **Warnings:** 2 — both in
+`bbj-vscode/src/language/bbj-document-symbol-provider.ts` (lines 75 and 149): "Unused eslint-disable
+directive (no problems were reported from `@typescript-eslint/no-explicit-any`)".
+
+### `bbj-intellij/./gradlew build`
+
+**Exit code:** non-zero (`BUILD FAILED`). **Failure mode:** a toolchain/Java-version rejection —
+Gradle reports the failure as the bare string `25.0.3` (the local JDK's version). The local JDK is
+**Temurin 25.0.3**, while `bbj-intellij/build.gradle.kts` sets source/target compatibility to
+`JavaVersion.VERSION_17`. This is an **environment** classification, not a code defect — the build
+config's target (`17`) is unchanged and correct; the local toolchain simply does not offer a
+matching JDK.
+
+### Contrast with v3.9
+
+MILESTONES.md records v3.9 (2026-02-21) as **511 passed, 4 skipped, 0 failures**. The drift window
+(153 commits, `2194616..v0.12.0`, plus the still-growing `v0.12.0..HEAD` tail) produced:
+
+- **Tests added:** 886 total today vs. 511+4=515 at v3.9 → **+371 tests**.
+- **Failures added:** 0 → 11 (all `environment`-classified, java-interop dependency).
+- **Skip growth:** 4 → 25-79 depending on run (deterministic deliberate skips: 5 — `linking.test.ts`
+  ×1, `completion-test.test.ts` ×1 TEST-03, plus the 3 `parser.test.ts` disabled assertions counted
+  separately; the remainder is the `hookTimeout` flakiness above, not a deliberate skip).
+
+### Routing table (D-06)
+
+These are **pre-identified findings routed into Phases 61-64 for triage**, not an accepted
+known-failing allowlist — FIX-03's "`npm test` clean" gate in Phase 67 is unreachable until they
+are dispositioned.
+
+| Item | Target phase | Target dimension |
+|---|---|---|
+| 11 `test/linking.test.ts` "Interop related tests" failures (java-interop unreachable) | Phase 61 | D5 (test coverage / environment-dependent setup), cross-referenced D2 |
+| `beforeAll` `WorkspaceManager.initializeWorkspace()` hook timeout flakiness (hits a different suite each run) | Phase 61 | D5 (brittle test setup) |
+| 3 disabled `parser.test.ts` assertions (needs Java classpath under `EmptyFileSystem`) | Phase 61 | D5 |
+| TEST-03 `completion-test.test.ts` skip (Langium grammar-follower limitation) | Phase 61 | D5 |
+| `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch | Phase 63 | D6 (dependency/toolchain health) |
+| `bbj-document-symbol-provider.ts` unused eslint-disable directives (2 warnings) | Phase 61 | D4 |
