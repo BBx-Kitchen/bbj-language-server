@@ -632,9 +632,9 @@ disposition:       easy-fix
 **Owning plan:** 61-02.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — pass — Checked every terminal regex in bbj.langium (COMMENT, BBjFilePath, ID, ID_WITH_SUFFIX, NUMBER, STRING_LITERAL, HEX_STRING, MNEMONIC, DOCU) and every custom pattern bbj-token-builder.ts constructs (ASTERISK_STANDALONE/EXPRESSION, RELEASE_NL/NO_NL, EXIT_NO_NL, RPAREN_NL, START_BREAK, FNEND, NEXT_BREAK/NEXT_ID, METHODRET_END, ENDLINE_PRINT_COMMA, PRINT_STANDALONE_NL, KEYWORD_STANDALONE) for catastrophic-backtracking shapes — nested quantifiers, overlapping alternation inside a repeated group, unanchored greedy `.*` inside a repeated group — none found (STRING_LITERAL's `([^"]|"{2})*` alternates over disjoint, fixed-length branches with no partition ambiguity; DOCU's lazy `[\s\S]*?` is a single unnested quantifier); checked bbj-lexer.ts's prepareLineSplitter for unbounded memory/token growth on a pathological input (linear — see D3); checked bbj-value-converter.ts for any evaluation, unescaping, or interpolation of input (none — it only slices delimiter characters; see P61-D2-005 for a related but distinct correctness gap in that slicing); checked whether java-types.langium accepts type text originating from the java-interop peer — it declares only AST type-shape interfaces with no parsing/validation logic of its own, so the actual unvalidated peer-data assignment lives in RU-61-06's java-interop.ts (already recorded there as P61-D1-002, see Cross-unit referrals below); no independent D1 finding recorded here. One D1-adjacent candidate considered and not promoted — see Not-reproducible dispositions.
+- D2 Correctness & error handling — fail — Checked the line-continuation splitter for off-by-one behavior at CRLF vs. LF line endings by tracing bbj-lexer.ts:11's `windowsEol` detection against a mixed-EOL reproduction (found P61-D2-006); checked STRING_LITERAL's doubled-quote escape handling against bbj.langium:948's comment claim by tracing bbj-value-converter.ts:14 (found P61-D2-005, cross-ref P61-D8-002); checked bbj.langium:941's BBjFilePath terminal for tokenization-boundary correctness across multiple qualified references on one physical line (found P61-D2-007); checked bbj-token-builder.ts for errors caught-and-discarded rather than surfaced (found P61-D2-008's silent-wrong-removal-on-missing-name gap in spliceToken); checked bbj-value-converter.ts's ID/STRING_LITERAL cases and HEX_STRING's default pass-through for null/undefined propagation on values the grammar permits — none found, ID always has length >= 1 given its terminal pattern. 4 findings recorded: P61-D2-005, P61-D2-006, P61-D2-007, P61-D2-008.
+- D3 Performance & resource use — pass — Checked whether bbj-token-builder.ts's regexes are compiled once or rebuilt per call: buildTokens()/buildTerminalToken() run once per grammar/services initialization (Langium invokes the token builder when creating BBjServices), not per document parse or per keystroke, so no per-call regex-recompilation cost exists on the hot path; checked bbj-lexer.ts's prepareLineSplitter for linear-vs-quadratic behavior in line count and continuation-run length by re-implementing the algorithm and benchmarking synthetic inputs from 2,000 to 160,000 lines split across many independent 2-line continuation groups — runtime scaled linearly (e.g. 80,000 lines: 74.6ms vs. 160,000 lines: 138.3ms, roughly 2x for 2x input), confirming that splice's equal insert/delete count here performs an in-place slot replacement rather than an O(n) tail shift; checked whether any grammar construct forces backtracking proportional to file size — the expression-precedence chain (BinaryExpression/RelationalExpr/AdditiveExpr/MultiplicativeExpr/ExponentiationExpr/PrefixExpression) and MemberCall's repeated-alternation loop are ordinary LL(k) predictive constructs, and v3.3 already established all 47 Chevrotain ambiguities in this grammar resolve correctly (out-of-scope to re-litigate per REQUIREMENTS.md's Out of Scope table). No D3 finding recorded.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
@@ -642,13 +642,174 @@ disposition:       easy-fix
 - D8 Comment & doc accuracy — pending
 
 ### Findings
-_(none recorded)_
+
+```
+id:                P61-D2-005
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj-value-converter.ts:14
+dimension:         D2
+secondary:         [D8]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace, confirmed with a standalone reproduction of the exact
+                   logic: the STRING_LITERAL case in runConverter()
+                   (bbj-value-converter.ts:14) is `return input.slice(1, -1);` — it strips
+                   only the outer quote delimiters. The terminal's own comment
+                   (bbj.langium:948) documents the intended contract: `"" escapse " inside a
+                   string ... Handled in BBjValueConverter`. Reproduction: for source text
+                   `"He said ""hi"""`, the STRING_LITERAL terminal (bbj.langium:949,
+                   `"([^"]|"{2})*"`) matches the full `"He said ""hi"""`, and `input.slice(1,
+                   -1)` yields `He said ""hi""` — the doubled quotes are never collapsed to a
+                   single embedded `"`. No `.replace(/""/g, '"')` or equivalent exists
+                   anywhere in this file.
+failure_scenario:  A BBj source string literal containing a doubled-quote escape (e.g. `"He
+                   said ""hi"""`) parses without error, but StringLiteral.value retains the
+                   literal `""` sequence instead of the single embedded `"` the language's own
+                   escape convention specifies, so every consumer of `.value` — including
+                   RU-61-03's bbj-validator.ts:419 file-path resolution (`let cleanPath =
+                   fileid.value`), which would mis-resolve a path containing an escaped quote
+                   — sees a semantically wrong string.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest: pass — (5)
+                   reviewer can name the exact edit (`input.slice(1, -1).replace(/""/g,
+                   '"')`): pass — (6) severity `medium`, primary dimension D2 (D8 only
+                   secondary): pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none — checked against #83 (project-wide USE-statement scoping, unrelated),
+                   #90 (per-file linking opt-out, unrelated) and #381 (config.bbx TextMate
+                   highlighting regression, a different subsystem reviewed by `RU-62-05`) as
+                   the plausible neighbours; no frozen open issue concerns string-literal
+                   escape conversion.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-006
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj-lexer.ts:11-34
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Runnable reproduction of prepareLineSplitter's logic against a mixed-EOL
+                   input: for text `"PRINT 1\r\nPRINT 2\nPRINT \"After\"\n"` (31 chars, one
+                   CRLF line followed by two LF lines), `windowsEol = text.includes('\r\n')`
+                   (bbj-lexer.ts:11) evaluates true, so every line is rejoined with `'\r\n'`
+                   (bbj-lexer.ts:33) regardless of that line's original ending. The
+                   transformed text grows to 35 chars, and the offset of `PRINT "After"`
+                   shifts from 17 in the original text to 18 in the transformed text — a
+                   1-character drift per normalized LF-only line. lexer.test.ts's own
+                   'preserve offset with empty line' test (test/lexer.test.ts:32-51) proves
+                   length-preservation is this function's designed invariant for the
+                   single-EOL-style case it covers; no test exercises a file with genuinely
+                   mixed \r\n/\n endings.
+failure_scenario:  A .bbj file containing mixed line endings (at least one \r\n line and at
+                   least one bare \n line — plausible when a repository lacks .gitattributes
+                   EOL normalization, or a file is edited across Windows/Unix tooling) is
+                   retokenized by BbjLexer.tokenize; prepareLineSplitter's uniform-EOL
+                   normalization changes the transformed text's length relative to the
+                   original document text. Every token offset computed against the transformed
+                   text from the first drifted line onward no longer matches the corresponding
+                   offset in the original document text that the LSP layer maps positions
+                   against, so diagnostics, hover, completion and go-to-definition ranges are
+                   silently shifted for the remainder of the file.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest, following
+                   the exact pattern already used by lexer.test.ts: pass — (5) reviewer can
+                   name the exact edit (track and re-emit each line's own original EOL instead
+                   of a single detected `eol`, or reject/normalize before this function runs
+                   in a length-preserving way): pass — (6) severity `medium`, dimension D2:
+                   pass — all six pass, classification is `easy`.
+effort:            4
+dedup:             none — no frozen open issue concerns mixed line-ending handling in the lexer.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-007
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj.langium:941
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Regex reproduction of the BBjFilePath terminal (`/::.*::/`,
+                   bbj.langium:941): for input `"::lib1::ClassA a; declare ::lib2::ClassB b"`,
+                   `"::lib1::ClassA a; declare ::lib2::ClassB b".match(/::.*::/)[0]` returns
+                   `"::lib1::ClassA a; declare ::lib2::"` — the greedy `.*` backtracks from
+                   the end of the line to the LAST `::` occurrence rather than the nearest
+                   one, consuming a second, independent `declare ::lib2::...` statement into
+                   the first token. `QualifiedBBjClassName` (bbj.langium:869-870, `BBjFilePath
+                   ID`) feeds `BBjTypeRef`/`Use`, both reachable inside a `;`-separated
+                   compound `Statement` (bbj.langium:22-23), so two BBjFilePath-qualified
+                   references can legally appear on one physical line.
+failure_scenario:  A line containing two independent qualified-file-path class references
+                   joined by `;` — e.g. `declare ::lib1::ClassA a; declare ::lib2::ClassB b` —
+                   tokenizes the first BBjFilePath as spanning through the second
+                   declaration's opening `::`, corrupting the parse of both statements (the
+                   second `declare` loses its own file-path token, and the first's `ID`
+                   production is fed garbled trailing text).
+classification:    major
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: FAIL — the
+                   fix edits the BBjFilePath terminal, a rule in
+                   bbj-vscode/src/language/bbj.langium — (3) no new dependency: pass — (4)
+                   regression-testable with vitest: pass — (5) reviewer can name the exact
+                   edit (e.g. `/::[^:]*(:[^:][^:]*)*::/` or an explicit
+                   non-greedy/negated-character-class rewrite, verified against legitimate
+                   paths containing single colons): pass — (6) severity `medium`, dimension
+                   D2: pass — but test (2) already fails, so classification is `major`
+                   regardless of the other five tests (D-13's safety gate).
+effort:            4
+dedup:             none — no frozen open issue concerns BBjFilePath tokenization.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D2-008
+unit:              RU-61-01
+location:          bbj-vscode/src/language/bbj-token-builder.ts:67-71
+dimension:         D2
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          Reproduction of Array.prototype.splice(-1, 1) semantics against
+                   spliceToken()'s exact shape: for `tokens =
+                   [{name:"A"},{name:"B"},{name:"C"}]` and a sought `name` absent from the
+                   array, `tokens.findIndex(...)` (bbj-token-builder.ts:68) returns `-1`, and
+                   `tokens.splice(-1, 1)[0]` (line 69) removes `{name:"C"}` — the LAST element
+                   — instead of throwing or being a no-op. spliceToken is called 14 times
+                   (lines 21-34) with hardcoded terminal names (START_BREAK, FNEND,
+                   NEXT_BREAK, NEXT_ID, METHODRET_END, ENDLINE_PRINT_COMMA,
+                   KEYWORD_STANDALONE, PRINT_STANDALONE_NL, RPAREN_NL, ASTERISK_EXPRESSION,
+                   ASTERISK_STANDALONE, RELEASE_NL, RELEASE_NO_NL, EXIT_NO_NL), none of which
+                   currently guards the lookup result.
+failure_scenario:  If any of the 14 hardcoded terminal names passed to spliceToken becomes
+                   absent from `tokens` — e.g. a future grammar edit renames or removes
+                   RPAREN_NL — findIndex returns -1 and `tokens.splice(-1, 1)` silently
+                   removes and re-splices the unrelated LAST token in the vocabulary array
+                   instead of raising an error, corrupting Chevrotain's token-priority
+                   ordering with no diagnostic message; the failure would surface later as a
+                   confusing, hard-to-trace lexer misbehavior rather than at the point of the
+                   misconfiguration.
+classification:    easy
+                   (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3)
+                   no new dependency: pass — (4) regression-testable with vitest (call
+                   buildTokens with a token vocabulary missing one of the 14 names and assert
+                   a thrown error): pass — (5) reviewer can name the exact edit (throw when
+                   `nextTokenIndex === -1` before splicing): pass — (6) severity `low`,
+                   dimension D2: pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
 
 ### Not-reproducible dispositions
-_(none recorded)_
+- **Tier failed: `repro` (D1).** Candidate claim: the BBjFilePath greedy-match mis-tokenization (P61-D2-007) could, in principle, cause a statement's `ERR=` error-handling clause to be silently swallowed into an unrelated token, masking error-handling code from ever executing — a security-relevant control-flow-integrity concern. **Reason not recorded as a finding:** confirming this requires enumerating BBj's actual multi-statement-per-line usage patterns combined with `ERR=` clauses in real programs, which is beyond a read-only sweep of these 5 files; the tokenization defect itself is fully captured as `P61-D2-007`, and this note flags the theoretical D1-adjacent angle without asserting it as verified.
 
 ### Cross-unit referrals
-_(none recorded)_
+- **RU-61-06** — java-types.langium's `JavaClass`/`JavaField`/`JavaMethod` interfaces (java-types.langium:33-58) are the AST type-shape declarations that RU-61-06's java-interop.ts populates from unauthenticated, unvalidated JSON-RPC peer data (already recorded there as `P61-D1-002`). No independent finding is recorded here since java-types.langium contains no parsing, validation, or peer-data-handling logic of its own — it is purely the interface shape those interop values are assigned into; the unvalidated-assignment defect belongs entirely to `RU-61-06`'s files.
 
 ## RU-61-03 — Validation & BBjCPL diagnostics
 
