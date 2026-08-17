@@ -263,7 +263,521 @@ Because this repository is public and this surface is unfixed, the illustration 
 and the class of problem only. No payload, no trigger sequence, and no proof-of-concept are
 recorded here (threat T-60-02).
 
-## Pinned Baseline Range (D-01)
+### What counts as an in-scope file
+
+**Planner's working assumption (plan 60-02), recorded explicitly and correctable by the
+developer.** The roadmap and REQUIREMENTS.md speak of "every file in scope", but four file
+categories in this repository are genuinely ambiguous. This document resolves them as follows:
+
+| Category | In denominator? | Applicable dimensions |
+|---|---|---|
+| Machine-generated TypeScript (`bbj-vscode/src/language/generated/`) | **No** — already an explicit Out-of-Scope row in REQUIREMENTS.md; the grammar source (`bbj.langium`) is reviewed instead. | n/a |
+| Binary vendored artifacts (the three JARs under `bbj-vscode/tools/formatter/`) | **Yes**, narrowly. | D1 (provenance/trust) and D6 (version/pinning) only — the bytecode cannot be read, so D2/D3/D4/D5/D8 cannot produce a finding. |
+| Data catalogs that are not code (`bbj-vscode/src/language/lib/*.bbl`) | **Yes**, narrowly. | D2 (value correctness) and D4 (duplication against the `.ts` sibling) only. |
+| Lockfiles (`bbj-vscode/package-lock.json`) | **Yes**, narrowly. | D6 only, as the dependency-tree source for SEC-08. |
+
+This convention is applied consistently below and in the Applicability Grid's file-exception rows.
+
+**Ordering note.** `RU-62-04` (above) was written by plan 60-01, before the D-07 edge-probe
+ordering rule — units grouped by owning phase in ascending order, ranked by risk within each
+phase — was finalized. Per this plan's explicit instruction, `RU-62-04` is left byte-identical and
+in its existing position; it is not moved. Every unit below is listed in ascending phase order
+(61, then the remainder of 62, then 63, then 64, then the cross-cutting D8 unit) and, within a
+phase, in ascending risk rank, so the only deviation from strict ascending order in this document
+is `RU-62-04`'s fixed position above, which this note makes explicit rather than leaving it to
+look like an oversight.
+
+## Phase 61 review units (`bbj-vscode/src/language/`, RVW-01, SEC-06)
+
+**Ranking basis:** rank 1 goes to the unit with the widest security-relevant attack surface
+(unauthenticated network trust boundary or external-process control), rank 2-6 descend by blast
+radius through the pipeline (parse → scope/type → validate/compile → serve LSP features → wire
+the server), and rank 7 is the static builtin-data catalogs, which carry the least behavioral
+risk of the seven despite having the most raw LOC.
+
+### RU-61-06 — Java interop client
+
+**Review phase:** 61 (RVW-01); trust boundary cross-referenced by SEC-06.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/java-interop.ts` | 955 |
+| `bbj-vscode/src/language/java-javadoc.ts` | 219 |
+| `bbj-vscode/src/language/lib/bbj-api.ts` | 12 |
+| `bbj-vscode/src/language/lib/fs-provider.ts` | 69 |
+| **Total** | **1,255 (4 files)** |
+
+**Risk rank:** 1 of 7 Phase 61 units — this is the entire SEC-06 trust boundary: a configurable
+host/port, an unauthenticated JSON-RPC channel, and behavior against a malicious or unresponsive
+peer, which outranks even the larger-LOC units on attack-surface grounds.
+
+### RU-61-01 — Grammar & lexing
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/bbj.langium` | 1,036 |
+| `bbj-vscode/src/language/java-types.langium` | 68 |
+| `bbj-vscode/src/language/bbj-lexer.ts` | 37 |
+| `bbj-vscode/src/language/bbj-token-builder.ts` | 182 |
+| `bbj-vscode/src/language/bbj-value-converter.ts` | 17 |
+| **Total** | **1,340 (5 files)** |
+
+**Risk rank:** 2 of 7 Phase 61 units — every other unit in this phase, and every downstream
+consumer in Phases 62-63, depends on this grammar/lexer pipeline; a defect here has the widest
+blast radius in the phase even though it is not the largest LOC.
+
+### RU-61-03 — Validation & BBjCPL diagnostics
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/bbj-validator.ts` | 566 |
+| `bbj-vscode/src/language/bbj-document-validator.ts` | 271 |
+| `bbj-vscode/src/language/validations/check-classes.ts` | 549 |
+| `bbj-vscode/src/language/validations/check-function-calls.ts` | 196 |
+| `bbj-vscode/src/language/validations/check-variable-scoping.ts` | 343 |
+| `bbj-vscode/src/language/validations/line-break-validation.ts` | 318 |
+| `bbj-vscode/src/language/bbj-cpl-service.ts` | 236 |
+| `bbj-vscode/src/language/bbj-cpl-parser.ts` | 63 |
+| **Total** | **2,542 (8 files)** — the largest unit by LOC in Phase 61. |
+
+**Risk rank:** 3 of 7 Phase 61 units — `bbj-cpl-service.ts` spawns the external BBjCPL compiler
+process (SEC-05-adjacent process control), and this unit carries the D-06 routing table's
+pre-identified findings (11 `linking.test.ts` failures, hook-timeout flakiness, disabled
+`parser.test.ts` assertions).
+
+### RU-61-02 — Scope, linking & type inference
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/bbj-scope.ts` | 578 |
+| `bbj-vscode/src/language/bbj-scope-local.ts` | 408 |
+| `bbj-vscode/src/language/bbj-linker.ts` | 229 |
+| `bbj-vscode/src/language/bbj-index-manager.ts` | 29 |
+| `bbj-vscode/src/language/bbj-nodedescription-provider.ts` | 131 |
+| `bbj-vscode/src/language/bbj-type-inferer.ts` | 107 |
+| `bbj-vscode/src/language/bbj-overload-selector.ts` | 115 |
+| `bbj-vscode/src/language/assertions.ts` | 4 |
+| **Total** | **1,601 (8 files)** |
+
+**Risk rank:** 4 of 7 Phase 61 units — the semantic core (name resolution, cross-file linking,
+type inference); #232's CPU-stability tech debt (multi-project workspace scope walks) is routed
+here.
+
+### RU-61-04 — LSP feature providers
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/bbj-completion-provider.ts` | 818 |
+| `bbj-vscode/src/language/bbj-hover.ts` | 210 |
+| `bbj-vscode/src/language/bbj-signature-help-provider.ts` | 123 |
+| `bbj-vscode/src/language/bbj-definition-provider.ts` | 58 |
+| `bbj-vscode/src/language/bbj-document-symbol-provider.ts` | 183 |
+| `bbj-vscode/src/language/bbj-semantic-token-provider.ts` | 35 |
+| `bbj-vscode/src/language/bbj-inlay-hint-provider.ts` | 155 |
+| `bbj-vscode/src/language/bbj-code-action-provider.ts` | 111 |
+| `bbj-vscode/src/language/bbj-comment-provider.ts` | 56 |
+| `bbj-vscode/src/language/bbj-node-kind.ts` | 57 |
+| `bbj-vscode/src/language/bbj-use-insert.ts` | 19 |
+| **Total** | **1,825 (11 files)** |
+
+**Risk rank:** 5 of 7 Phase 61 units — the largest file count in the phase; user-facing on every
+keystroke, but each provider is a narrower, more contained surface than the pipeline-wide units
+ranked above it. The D-06 routing table's `bbj-document-symbol-provider.ts` unused-eslint-disable
+warnings (D4) are routed here.
+
+### RU-61-05 — Server lifecycle, DI wiring & workspace management
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/main.ts` | 189 |
+| `bbj-vscode/src/language/bbj-module.ts` | 210 |
+| `bbj-vscode/src/language/bbj-ws-manager.ts` | 293 |
+| `bbj-vscode/src/language/bbj-document-builder.ts` | 412 |
+| `bbj-vscode/src/language/bbj-notifications.ts` | 52 |
+| `bbj-vscode/src/language/logger.ts` | 68 |
+| `bbj-vscode/src/language/constants.ts` | 1 |
+| `bbj-vscode/src/language/utils.ts` | 0 |
+| `bbj-vscode/src/language/composer-commands.ts` | 208 |
+| **Total** | **1,433 (9 files)** |
+
+**Risk rank:** 6 of 7 Phase 61 units — server bootstrap and workspace lifecycle, generally lower
+churn than the pipeline units above. Note for the Phase 61 reviewer: `constants.ts` (1 line) and
+`utils.ts` (0 lines) are effectively empty — a plausible D4 finding (dead/vestigial module) is
+flagged here for confirmation, not asserted as one.
+
+### RU-61-07 — Builtin catalogs
+
+**Review phase:** 61 (RVW-01).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/language/lib/events.ts` | 734 |
+| `bbj-vscode/src/language/lib/functions.ts` | 995 |
+| `bbj-vscode/src/language/lib/labels.ts` | 67 |
+| `bbj-vscode/src/language/lib/variables.ts` | 86 |
+| `bbj-vscode/src/language/lib/events.bbl` | 732 |
+| `bbj-vscode/src/language/lib/functions.bbl` | 993 |
+| `bbj-vscode/src/language/lib/labels.bbl` | 61 |
+| `bbj-vscode/src/language/lib/variables.bbl` | 84 |
+| **Total** | **3,752 (8 files: 4 `.ts` + 4 `.bbl`)** — the largest unit by LOC in the entire inventory. |
+
+**Risk rank:** 7 of 7 Phase 61 units — despite the LOC total, these are static builtin-verb/
+function/label/variable data catalogs with no dynamic behavior, no dependencies and no
+IDE-specific code; lowest behavioral risk in the phase. Each `.ts`/`.bbl` pair (e.g.
+`events.ts`/`events.bbl`, 734 vs. 732 lines) is near-duplicate content in two formats — a
+D4 duplication candidate the Phase 61 reviewer should check.
+
+## Phase 62 review units (extension host & composers, RVW-02, RVW-03) — remainder
+
+`RU-62-04` (rank 1 of 5) is defined above. The remaining four units follow, ranked 2-5.
+
+**Ranking basis:** rank 2 goes to the extension entry point and command surface (widest blast
+radius — every other Phase 62 subsystem is activated through it, and `CompilerOptions.ts`/
+`Commands.cjs` touch process invocation), rank 3 to the composer logic feeding `RU-62-04`'s HTML
+generators, rank 4 to the TextMate grammar (a D7 parity surface shared with Phase 63), and rank 5
+to the smallest, most self-contained editor feature modules.
+
+### RU-62-01 — Extension host & commands
+
+**Review phase:** 62 (RVW-02).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/extension.ts` | 894 |
+| `bbj-vscode/src/Commands/CompilerOptions.ts` | 506 |
+| `bbj-vscode/src/Commands/Commands.cjs` | 405 |
+| **Total** | **1,805 (3 files)** |
+
+**Risk rank:** 2 of 5 Phase 62 units — the extension activation entry point; every command,
+composer launch and editor feature in this phase is wired through `extension.ts`.
+
+### RU-62-03 — Composer logic & UI layer
+
+**Review phase:** 62 (RVW-03).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/msgbox-composer.ts` | 550 |
+| `bbj-vscode/src/addwindow-composer.ts` | 405 |
+| `bbj-vscode/src/addchildwindow-composer.ts` | 308 |
+| `bbj-vscode/src/msgbox-composer-ui.ts` | 193 |
+| `bbj-vscode/src/addwindow-composer-ui.ts` | 68 |
+| `bbj-vscode/src/addchildwindow-composer-ui.ts` | 72 |
+| `bbj-vscode/src/setopts-composer-ui.ts` | 96 |
+| `bbj-vscode/src/setopts-catalog.ts` | 335 |
+| **Total** | **2,027 (8 files)** — the largest unit by LOC in Phase 62. |
+
+**Risk rank:** 3 of 5 Phase 62 units — this is the logic that assembles the values `RU-62-04`'s
+generators interpolate into webview HTML; a D-15-confirmed asymmetry applies here too — SETOPTS
+has no `-composer.ts` file, only `-ui.ts` (`setopts-composer-ui.ts`) plus the shared
+`setopts-catalog.ts`, so this unit's D4 duplication assessment runs against 3 `-composer.ts`
+files (msgbox/addwindow/addchildwindow), not 4.
+
+### RU-62-05 — TextMate grammar & language configuration
+
+**Review phase:** 62 (RVW-02); D7 parity cross-referenced by Phase 63 (`RU-63-02`).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/syntaxes/bbj.tmLanguage.json` | 74 |
+| `bbj-vscode/bbj-language-configuration.json` | 100 |
+| `bbj-vscode/bbx-language-configuration.json` | 82 |
+| **Total** | **256 (3 files)** |
+
+**Risk rank:** 4 of 5 Phase 62 units — assigned to Phase 62 per D-10 because the TextMate grammar
+is the highlighting source shared by VS Code and the IntelliJ TextMate bundle, making it a genuine
+D7 cross-IDE parity surface; regression #381 (config.bbx highlighting lost) is exactly this
+surface's failure mode.
+
+### RU-62-02 — Editor feature modules
+
+**Review phase:** 62 (RVW-02).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/src/document-formatter.ts` | 96 |
+| `bbj-vscode/src/line-numbering.ts` | 49 |
+| `bbj-vscode/src/tokenized-bbj.ts` | 39 |
+| `bbj-vscode/src/decompile-io.ts` | 84 |
+| **Total** | **268 (4 files)** — the smallest unit by LOC in Phase 62. |
+
+**Risk rank:** 5 of 5 Phase 62 units — four small, independent editor-feature modules with the
+narrowest individual blast radius in the phase.
+
+## Phase 63 review units (`bbj-intellij/`, RVW-04, SEC-03) — 5 units, 61 Java files
+
+**Ranking basis:** rank 1 goes to the unit with a named security requirement of its own
+(SEC-03, Node.js download integrity), rank 2 to process-spawning/token-handling actions
+(SEC-05/SEC-04-adjacent), rank 3 to the largest-LOC unit (the composer bridge, which also spawns
+an external composer server), rank 4 to LSP/server-lifecycle wiring, and rank 5 to the
+lowest-risk static language-registration files.
+
+### RU-63-03 — Settings & runtime acquisition
+
+**Review phase:** 63 (RVW-04); SEC-03.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `BbjSettings.java` | 152 |
+| `BbjSettingsComponent.java` | 333 |
+| `BbjSettingsConfigurable.java` | 161 |
+| `BbjHomeDetector.java` | 91 |
+| `BbjNodeDetector.java` | 70 |
+| `BbjNodeDownloader.java` | 290 |
+| **Total** | **1,097 (6 files)** — all directly under `com/basis/bbj/intellij/`. |
+
+**Risk rank:** 1 of 5 Phase 63 units — `BbjNodeDownloader.java` is the entire SEC-03 surface:
+Node.js runtime download integrity (transport security, checksum/signature verification, archive
+extraction path traversal, cache trust).
+
+### RU-63-01 — Run, compile & EM actions
+
+**Review phase:** 63 (RVW-04); SEC-05 (process spawning), SEC-04 (EM token lifecycle).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `actions/BbjCompileAction.java` | 71 |
+| `actions/BbjComposeAddChildWindowAction.java` | 38 |
+| `actions/BbjComposeAddWindowAction.java` | 38 |
+| `actions/BbjComposeMsgboxAction.java` | 38 |
+| `actions/BbjEMLoginAction.java` | 169 |
+| `actions/BbjEMTokenStore.java` | 89 |
+| `actions/BbjRefreshJavaClassesAction.java` | 48 |
+| `actions/BbjRunActionBase.java` | 423 |
+| `actions/BbjRunBuiAction.java` | 142 |
+| `actions/BbjRunDwcAction.java` | 142 |
+| `actions/BbjRunGuiAction.java` | 62 |
+| **Total** | **1,260 (11 files)**, all under `com/basis/bbj/intellij/actions/`. |
+
+**Risk rank:** 2 of 5 Phase 63 units — every run/compile action spawns a process
+(`BbjRunActionBase.java` is the shared base for GUI/BUI/DWC), and `BbjEMTokenStore.java` is the
+EM token lifecycle's IntelliJ-side storage, cross-referenced by SEC-04.
+
+### RU-63-04 — Composer dialogs & bridge
+
+**Review phase:** 63 (RVW-04); D7 parity cross-referenced against `RU-62-03`/`RU-62-04`.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `composer/AddChildWindowComposerDialog.java` | 315 |
+| `composer/AddWindowComposerDialog.java` | 306 |
+| `composer/BbjComposerServer.java` | 54 |
+| `composer/BbjComposerService.java` | 30 |
+| `composer/ChildWindowSchematicPanel.java` | 159 |
+| `composer/ComposerLauncher.java` | 224 |
+| `composer/ComposerModels.java` | 245 |
+| `composer/ConfigureAddChildWindowIntention.java` | 50 |
+| `composer/ConfigureAddWindowIntention.java` | 50 |
+| `composer/ConfigureMsgboxIntention.java` | 49 |
+| `composer/MsgboxComposerDialog.java` | 273 |
+| `composer/MsgboxSchematicPanel.java` | 180 |
+| `composer/WindowSchematicPanel.java` | 132 |
+| **Total** | **2,067 (13 files)** — the largest unit by LOC in Phase 63. |
+
+**Risk rank:** 3 of 5 Phase 63 units — `BbjComposerServer.java`/`ComposerLauncher.java` bridge to
+an external composer process; these dialogs are IntelliJ's native-Swing counterpart to VS Code's
+webview composers (`RU-62-03`/`RU-62-04`) — the genuine D7 parity comparison is equivalence of the
+generated BBj code, not of the UI toolkit.
+
+### RU-63-05 — LSP wiring, server lifecycle & status UI
+
+**Review phase:** 63 (RVW-04).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `lsp/BbjCompletionFeature.java` | 77 |
+| `lsp/BbjLanguageClient.java` | 50 |
+| `lsp/BbjLanguageServerFactory.java` | 66 |
+| `lsp/BbjLanguageServer.java` | 97 |
+| `ui/BbjJavaInteropService.java` | 206 |
+| `ui/BbjJavaInteropStatusBarWidgetFactory.java` | 43 |
+| `ui/BbjJavaInteropStatusBarWidget.java` | 151 |
+| `ui/BbjRestartServerAction.java` | 43 |
+| `ui/BbjServerCrashNotificationProvider.java` | 63 |
+| `ui/BbjServerLogToolWindowFactory.java` | 47 |
+| `ui/BbjServerService.java` | 244 |
+| `ui/BbjStatusBarWidgetFactory.java` | 43 |
+| `ui/BbjStatusBarWidget.java` | 167 |
+| **Total** | **1,297 (13 files: 4 under `lsp/`, 9 under `ui/`)** |
+
+**Risk rank:** 4 of 5 Phase 63 units — LSP4IJ wiring (a named DEBT-05 tech-debt surface — 19
+experimental-API usages) and the server-health status bar; note for the Phase 63 reviewer:
+`BbjCompletionFeature.java` depends on the LSPCompletionFeature API named in PROJECT.md's Known
+tech debt as liable to change across LSP4IJ versions.
+
+### RU-63-02 — Language registration, editor support & notifications
+
+**Review phase:** 63 (RVW-04); D7 parity cross-referenced against `RU-62-05` (TextMate grammar).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `BbjColorSettingsPage.java` | 157 |
+| `BbjCommenter.java` | 36 |
+| `BbjFile.java` | 21 |
+| `BbjFileType.java` | 36 |
+| `BbjIcons.java` | 19 |
+| `BbjJavaInteropNotificationProvider.java` | 57 |
+| `BbjLanguageCodeStyleSettingsProvider.java` | 31 |
+| `BbjLanguage.java` | 11 |
+| `BbjMissingHomeNotificationProvider.java` | 55 |
+| `BbjMissingNodeNotificationProvider.java` | 76 |
+| `BbjPairedBraceMatcher.java` | 39 |
+| `BbjParserDefinition.java` | 79 |
+| `BbjPsiElement.java` | 15 |
+| `BbjSpellcheckingStrategy.java` | 16 |
+| `BbjTextMateBundleProvider.java` | 49 |
+| `BbjTokenTypes.java` | 23 |
+| `BbjWelcomeNotification.java` | 63 |
+| `BbjWordLexer.java` | 105 |
+| **Total** | **888 (18 files)**, all directly under `com/basis/bbj/intellij/`, excluding the 6 settings/detection files claimed by `RU-63-03`. |
+
+**Risk rank:** 5 of 5 Phase 63 units — file-type/language registration, PSI/parser plumbing, and
+passive notification providers; the lowest-churn, most declarative unit in the phase. Named-file
+note: `BbjTextMateBundleProvider.java` is the IntelliJ-side consumer of `RU-62-05`'s TextMate
+grammar and is the concrete D7 cross-reference point (PROJECT.md's known tech debt: the IntelliJ
+TextMate bundle cannot exclude `config.bbx` by filename, the platform-limitation counterpart to
+VS Code's `configurationDefaults` fix for the same file, #381).
+
+## Phase 64 review units (build, CI & tools, RVW-05, SEC-07, SEC-08) — 3 units
+
+**Ranking basis:** rank 1 goes to the unit with a named security requirement (SEC-08, vendored
+dependency vulnerabilities — three unpinned JARs shipped inside the extension), rank 2 to the
+other named security requirement (SEC-07, CI secrets/permissions/script injection), and rank 3 to
+the general build/packaging manifests, which are lower-risk configuration rather than an
+attacker-reachable surface.
+
+### RU-64-03 — BBj tool scripts, vendored JARs & interop test harness
+
+**Review phase:** 64 (RVW-05); SEC-08.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/tools/web.bbj` | 97 |
+| `bbj-vscode/tools/em-login.bbj` | 51 |
+| `bbj-vscode/tools/em-validate-token.bbj` | 34 |
+| `bbj-vscode/tools/interop-test-harness/run-tests.ts` | 1,058 |
+| `bbj-vscode/tools/formatter/BBjCFCli.jar` | — binary (6,780 bytes) |
+| `bbj-vscode/tools/formatter/lib/BBjCodeFomatter.jar` | — binary (38,078 bytes) |
+| `bbj-vscode/tools/formatter/lib/jcommander-1.71.jar` | — binary (67,503 bytes) |
+| **Total (readable source)** | **1,240 (4 files)** + 3 binary JARs (byte sizes above, no LOC) |
+
+**Risk rank:** 1 of 3 Phase 64 units — the three JARs are vendored, **unpinned** and **unscanned**
+third-party binaries shipped inside the extension, named nowhere in RVW-01..RVW-05 before this
+document; `jcommander-1.71.jar` is notably old (jcommander's current stable line is well past
+1.71). This is the entire SEC-08 dependency-vulnerability surface for bundled binaries, distinct
+from the npm/Gradle dependency trees assessed at `RU-64-02`.
+
+### RU-64-01 — GitHub Actions workflows
+
+**Review phase:** 64 (RVW-05); SEC-07.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `.github/workflows/build.yml` | 45 |
+| `.github/workflows/deploy-docs.yml` | 62 |
+| `.github/workflows/manual-release.yml` | 186 |
+| `.github/workflows/preview.yml` | 109 |
+| `.github/workflows/pr-validation.yml` | 61 |
+| `.github/workflows/pr-vsix.yml` | 105 |
+| **Total** | **568 (6 files)** |
+
+**Risk rank:** 2 of 3 Phase 64 units — the entire SEC-07 surface: secret handling,
+`GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via
+untrusted PR-controlled inputs (`pr-validation.yml`, `pr-vsix.yml` process fork PRs).
+
+### RU-64-02 — Build, packaging & dependency manifests
+
+**Review phase:** 64 (RVW-05).
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `bbj-vscode/package.json` | 694 |
+| `bbj-vscode/package-lock.json` | 7,894 |
+| `bbj-vscode/esbuild.mjs` | 28 |
+| `bbj-vscode/eslint.config.js` | 18 |
+| `bbj-vscode/langium-config.json` | 22 |
+| `bbj-vscode/tsconfig.json` | 25 |
+| `bbj-vscode/tsconfig.test.json` | 13 |
+| `bbj-vscode/vitest.config.ts` | 30 |
+| `bbj-intellij/build.gradle.kts` | 135 |
+| `bbj-intellij/settings.gradle.kts` | 5 |
+| `bbj-intellij/gradle.properties` | 1 |
+| `bbj-intellij/gradlew` | 244 |
+| `bbj-intellij/gradlew.bat` | 92 |
+| `bbj-intellij/gradle/wrapper/gradle-wrapper.properties` | 7 |
+| **Total** | **9,208 (14 files)** — the largest unit by LOC in the entire inventory, dominated by the machine-generated `package-lock.json` (7,894 of the 9,208 lines). |
+
+**Risk rank:** 3 of 3 Phase 64 units — this is the npm + Gradle dependency-tree source for SEC-08
+(`package-lock.json` in the denominator for D6 only, per the coverage-denominator convention
+above) and the build/CI configuration surface; lower attacker-reachability than the vendored
+binaries (`RU-64-03`) or the workflow scripts (`RU-64-01`) ranked above it.
+
+## Cross-cutting D8-only unit
+
+### RU-D8-01 — Documentation & claim accuracy
+
+**Review phase:** cross-cutting, not owned by Phases 61-64; D8 only.
+
+**Files, LOC, and risk rank:**
+
+| File | LOC |
+|---|---|
+| `CLAUDE.md` | 96 |
+| `bbj-vscode/VERBs.md` | 148 |
+| `documentation/` | 29 files (Docusaurus site: `docs/`, `concepts/`, `static/`, plus config) |
+| **Total** | **244 lines (`CLAUDE.md` + `VERBs.md`) + 29 documentation-site files** |
+
+**Risk rank:** not phase-ranked (1 of 1 cross-cutting unit) — scoped to **D8 only**: docs-site
+claims contradicted by code. No editorial review of structure, tone or completeness — that is
+FUT-02, explicitly out of scope for this milestone.
 
 The v4.0 baseline is pinned to the **`v0.12.0` tag**, not to the branch tip (`HEAD`). Pinning to a
 tag rather than a moving branch tip is deliberate: `HEAD` sits on branch
