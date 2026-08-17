@@ -4,17 +4,17 @@ milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 60
 current_phase_name: baseline-resync-review-standards
-status: executing
-stopped_at: Completed 60-03-PLAN.md (PROJECT.md Validated list reconstructed, Context/Constraints/Key Decisions corrected, MILESTONES.md gap closed; BASE-01/BASE-02/BASE-04 complete)
-last_updated: "2026-08-17T19:26:59.437Z"
+status: verifying
+stopped_at: Completed 60-04-PLAN.md (final plan of Phase 60 — ROADMAP/REQUIREMENTS corrected per D-15, seven codebase maps bannered per D-16, carried-forward D-15 log gap from 60-03 closed); Phase 60 ready for verification
+last_updated: "2026-08-17T19:34:43.972Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 10
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 Phase: 60 (baseline-resync-review-standards) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-17 — Phase 60 execution started
 
 ## Performance Metrics
@@ -80,6 +80,7 @@ Last activity: 2026-08-17 — Phase 60 execution started
 | Phase 60 P01 | ~34s (task commits only) | 4 tasks | 1 files |
 | Phase 60 P02 | ~1h | 3 tasks | 1 files |
 | Phase 60 P03 | ~55m | 3 tasks | 2 files |
+| Phase 60 P04 | ~45m | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 60 Plan 02]: RU-62-04 kept in its pre-existing physical position (predates the D-07 ascending phase/risk-rank ordering rule) with a documented ordering-exception note, rather than moved
 - [Phase 60 Plan 03]: Reconstructed 17 Validated entries labelled by release tag (0.9.0-0.12.0) from the pinned 2194616..v0.12.0 range, each traced to a named commit
 - [Phase 60 Plan 03]: Corrected PROJECT.md Context/Constraints/Key Decisions per D-15 log (154->153 commits, 39->~49 files, 7->6 debt items, HEAD->v0.12.0 endpoint) plus 3 plan-authorized Tech-stack version corrections not in the D-15 log
+- [Phase 60 Plan 04]: Corrected ROADMAP.md/REQUIREMENTS.md figures per D-15 (154->153 commits, HEAD->v0.12.0 endpoint, 39->~49 src/language/ files with LOC re-measured to ~10.8k, 13->11 composer files+setopts-catalog.ts with SETOPTS asymmetry made explicit, nonexistent bbx-config editor replaced with setopts-composer-webview.ts wording)
+- [Phase 60 Plan 04]: Added additive dated SUPERSEDED banners to all seven codebase/*.md maps naming INVENTORY.md as the v4.0 scope authority (D-16); logged 60-03's un-logged Langium/Chevrotain/Vitest Tech-stack corrections into INVENTORY.md's D-15 Correction Log as a carried-forward defect fix
 
 ### Tech Debt
 
@@ -144,8 +147,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T19:26:59.421Z
-Stopped at: Completed 60-03-PLAN.md (PROJECT.md Validated list reconstructed, Context/Constraints/Key Decisions corrected, MILESTONES.md gap closed; BASE-01/BASE-02/BASE-04 complete)
+Last session: 2026-08-17T19:34:43.957Z
+Stopped at: Completed 60-04-PLAN.md (final plan of Phase 60 — ROADMAP/REQUIREMENTS corrected per D-15, seven codebase maps bannered per D-16, carried-forward D-15 log gap from 60-03 closed); Phase 60 ready for verification
 Resume file: None
 
 ---

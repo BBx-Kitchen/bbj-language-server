@@ -225,7 +225,7 @@ inventory plus a shared bar for what counts as a valid, non-duplicate finding.
   5. The inventory states the standard every later finding must meet: a concrete verified failure
      scenario, and a check against the 15 currently open GitHub issues before being recorded
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 
 Plans:
 **Wave 1**
@@ -236,7 +236,7 @@ Plans:
 
 - [x] 60-02-PLAN.md — Full review-unit inventory, D1-D8 applicability grid and full-surface accounting
 - [x] 60-03-PLAN.md — Baseline resync of PROJECT.md's Validated list, Context, Constraints and Key Decisions, plus the MILESTONES.md release-window entry
-- [ ] 60-04-PLAN.md — In-place ROADMAP/REQUIREMENTS corrections and staleness banners on the seven codebase maps
+- [x] 60-04-PLAN.md — In-place ROADMAP/REQUIREMENTS corrections and staleness banners on the seven codebase maps
 
 Waves: 1 → `60-01`; 2 → `60-02`, `60-03`, `60-04` (parallel, disjoint files)
 
