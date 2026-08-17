@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
 status: executing
-stopped_at: Completed 61-01-PLAN.md
-last_updated: "2026-08-17T21:18:48.974Z"
+stopped_at: Completed 61-02-PLAN.md
+last_updated: "2026-08-17T21:38:34.787Z"
 last_activity: 2026-08-17
 last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 11
-  completed_plans: 5
+  completed_plans: 6
   percent: 10
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 61 (Language Core Review) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-08-17 — Phase 61 execution started
 
@@ -82,6 +82,7 @@ Last activity: 2026-08-17 — Phase 61 execution started
 | Phase 60 P03 | ~55m | 3 tasks | 2 files |
 | Phase 60 P04 | ~45m | 2 tasks | 10 files |
 | Phase 61 P01 | 23min | 3 tasks | 3 files |
+| Phase 61 P02 | ~25min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 60 Plan 04]: Added additive dated SUPERSEDED banners to all seven codebase/*.md maps naming INVENTORY.md as the v4.0 scope authority (D-16); logged 60-03's un-logged Langium/Chevrotain/Vitest Tech-stack corrections into INVENTORY.md's D-15 Correction Log as a carried-forward defect fix
 - [Phase ?]: [Phase 61 Plan 01]: D-05 checkpoint approved as rendered — RU-61-06 recording shape frozen verbatim for plans 61-02..61-07
 - [Phase ?]: [Phase 61 Plan 01]: 11 test/linking.test.ts Interop related tests failures recorded once as RU-61-06 (not RU-61-02) per location-decides-ownership rule, with a cross-unit referral
+- [Phase ?]: [Phase 61 Plan 02]: STRING_LITERAL doubled-quote escape never collapsed by BBjValueConverter despite bbj.langium's own comment claiming it is (P61-D2-005/P61-D8-002)
+- [Phase ?]: [Phase 61 Plan 02]: mixed line-ending files break bbj-lexer.ts's prepareLineSplitter length-preservation invariant, corrupting downstream LSP position mapping (P61-D2-006)
+- [Phase ?]: [Phase 61 Plan 02]: 3 disabled parser.test.ts assertions recorded as P61-D5-003 with dedup naming DEBT-02 as owning requirement
 
 ### Tech Debt
 
@@ -150,8 +154,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T21:18:48.957Z
-Stopped at: Completed 61-01-PLAN.md
+Last session: 2026-08-17T21:38:23.220Z
+Stopped at: Completed 61-02-PLAN.md
 Resume file: None
 
 ---
