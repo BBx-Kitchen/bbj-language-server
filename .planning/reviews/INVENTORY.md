@@ -913,6 +913,101 @@ concatenating the five coverage files against this grid, so a missing cell in an
   `{NN}-COVERAGE.md`. This grid, together with the five coverage files it defines, is what
   DOC-03 assembles into a coverage statement without re-deriving scope.
 
+## Surface Accounting & Named Exclusions
+
+Every top-level directory and top-level file in the repository (`ls -A`, excluding `.git`), one
+level down for the three surfaces that mix reviewed and excluded content
+(`bbj-vscode/`, `bbj-intellij/`, `.github/`), with exactly one disposition each: a review-unit
+assignment, or an exclusion with a written reason. Nothing is left unaccounted for.
+
+| Surface | Disposition | Reason / owning unit |
+|---|---|---|
+| `bbj-intellij/` | **reviewed** (mixed — see breakdown below) | `RU-63-01`..`RU-63-05` (61 Java files) + `RU-64-02` (Gradle build files) |
+| `bbj-vscode/` | **reviewed** (mixed — see breakdown below) | `RU-61-01`..`RU-61-07`, `RU-62-01`..`RU-62-05`, `RU-64-02`, `RU-64-03` |
+| `bbj-vscode-deprecated/` | **excluded** | Contains a stale `.vsix` artifact only (`bbj-vscode-0.1.999.vsix`), no source; flagged for removal, per REQUIREMENTS.md's Out of Scope table. |
+| `CLAUDE.md` | **reviewed** | `RU-D8-01` |
+| `.devcontainer/` | **excluded** | Dev-container environment config (`devcontainer.json`, `devcontainer-lock.json`) for contributor tooling; not shipped product code, no D1-D8 finding shape applies. |
+| `documentation/` | **scoped, not excluded** | `RU-D8-01` — D8 only (code-accuracy checks against docs-site claims); no editorial review of structure/tone/completeness, that is FUT-02. |
+| `examples/` | **excluded** | Real-world BBj sample files (many named after GitHub issues, e.g. `issue190-switch-case.bbj`) used as syntax regression material; they are inputs to the parser, not implementation. |
+| `.github/` | **reviewed** (mixed — see breakdown below) | `workflows/` → `RU-64-01`; no other content under `.github/` in this tree. |
+| `.gitignore` | **excluded** | Repository housekeeping — an ignore-pattern list, no executable logic, no runtime behavior. |
+| `.gitpod.yml` | **excluded** | Gitpod cloud-dev-environment config for contributor tooling; same rationale as `.devcontainer/`. |
+| `.gsd` | **excluded** | GSD workflow orchestrator state (`dispatch-isolation-sentinel.json`); not part of the shipped product, not reviewed. |
+| `java-interop/` | **excluded** | The Java JSON-RPC socket service is excluded by scope decision at milestone start (FUT-01); the TypeScript-side client is reviewed at `RU-61-06`. `java-interop/build.gradle` and `java-interop/settings.gradle` are read once by `RU-64-02`/SEC-08 only as an additional dependency-tree source, not as a code review — this does not add `java-interop/` source files to any unit's file list. |
+| `LICENSE` | **excluded** | Legal text (MIT license), no code, no claim to verify against implementation. |
+| `node_modules/` | **excluded** | Installed npm dependency artifacts; gitignored and not committed (0 packages present in this checkout). Dependency *health* is assessed from the manifest/lockfile at `RU-64-02`, not by reading installed package trees. |
+| `.planning/` | **excluded** | This milestone's own planning artifacts (including this document); not a review surface, per the Status & Authority section above. |
+| `QA/` | **excluded** | Manual smoke and full test checklists (`FULL-TEST-CHECKLIST.md`, `TESTING-GUIDE.md`) used at release time; not code, and their accuracy is a release-process concern rather than one of the eight review dimensions. |
+| `README.md` | **excluded** | Top-level repository README; overview/quickstart content, outside `RU-D8-01`'s explicit scope (`CLAUDE.md`, `VERBs.md`, `documentation/`) as seeded by this plan. Flagged here as a candidate for a future D8 unit, not silently dropped. |
+| `.vscode/` | **excluded** | Repo-local editor settings/launch/extension-recommendation config for contributors (`settings.json`, `launch.json`, `extensions.json`); not shipped product code. |
+
+### `bbj-vscode/` breakdown (one level down)
+
+| Sub-surface | Disposition | Reason / owning unit |
+|---|---|---|
+| `src/language/` | reviewed | `RU-61-01`..`RU-61-07` |
+| `src/language/generated/` | **excluded** | Machine-generated from `bbj.langium` (~17.5k LOC); the grammar source is reviewed instead. Already an Out-of-Scope row in REQUIREMENTS.md. |
+| `src/` (outside `language/`) | reviewed | `RU-62-01`..`RU-62-04` |
+| `syntaxes/`, `bbj-language-configuration.json`, `bbx-language-configuration.json` | reviewed | `RU-62-05` |
+| `tools/` | reviewed | `RU-64-03` |
+| `package.json`, `package-lock.json`, `esbuild.mjs`, `eslint.config.js`, `langium-config.json`, `tsconfig.json`, `tsconfig.test.json`, `vitest.config.ts` | reviewed | `RU-64-02` |
+| `test/`, `test-data/` | **excluded as an implementation surface** | The test corpus itself is not reviewed as implementation; its adequacy is assessed as D5 findings against the units it covers (per-unit test-coverage gaps, not a standalone unit), so this exclusion is stated explicitly rather than left for a reviewer to mistake for an oversight. |
+| `snippets/` | **excluded** | Static snippet definitions (`bbj.json`) with no logic. |
+| `README.md`, `LICENSE`, `langium-quickstart.md`, `enable_ls_in_bbj.png`, `.gitignore`, `.vscodeignore`, `tsconfig.tsbuildinfo` | **excluded** | Non-source housekeeping, packaging-ignore lists, and a build cache file; no D1-D8 finding shape applies. |
+
+### `bbj-intellij/` breakdown (one level down)
+
+| Sub-surface | Disposition | Reason / owning unit |
+|---|---|---|
+| `src/main/java/` (61 files) | reviewed | `RU-63-01`..`RU-63-05` |
+| `src/main/resources/` | **excluded, with one cross-reference** | Icons (`.svg`), the TextMate bundle's `package.json`, and `META-INF/` assets (`plugin.xml`, `LICENSE`, `NOTICES`, `description.html`, plugin icons) are bundled resources — mostly declarative or binary, no D1-D8 code-review shape. Exception: `plugin.xml`'s extension-point declarations are the manifest counterpart to `RU-63-02`'s Java registration classes and are read as context when reviewing that unit, not as a separate finding surface. |
+| `build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.properties` | reviewed | `RU-64-02` |
+| `.gradle/`, `.intellijPlatform/`, `build/`, `bin/` | **excluded** | Gradle/IntelliJ-Platform build output and caches; gitignored, not source, regenerated on every build. |
+
+### `.github/` breakdown (one level down)
+
+| Sub-surface | Disposition | Reason / owning unit |
+|---|---|---|
+| `workflows/` (6 files) | reviewed | `RU-64-01` |
+
+### Re-report risk
+
+The single most valuable re-report trap in this repository: `.planning/codebase/*.md` (7 files —
+`STRUCTURE.md`, `CONCERNS.md`, `ARCHITECTURE.md`, `CONVENTIONS.md`, `INTEGRATIONS.md`, `STACK.md`,
+`TESTING.md`) is **superseded by this document** (D-16). All seven are dated 2026-02-01 and predate
+`bbj-intellij/` entirely. `CONCERNS.md` in particular lists FIXMEs already resolved in v3.8 and
+cites Langium **3.2.1**, two majors behind the installed **4.1.3** — a Phase 61-64 reviewer trusting
+it as current would re-report resolved debt as a fresh finding. This document — not the
+`.planning/codebase/*.md` maps — is the authority on review scope, structure and file counts for
+this milestone, per the Status & Authority section above.
+
+### Cross-check against REQUIREMENTS.md Out of Scope
+
+Row-by-row assertion against all seven existing Out-of-Scope rows in `.planning/REQUIREMENTS.md`,
+so any contradiction is resolved here rather than discovered by a later reviewer:
+
+1. **`java-interop/` Java service review** — **Reflected.** Named exclusion above; the TS-side
+   client (`java-interop.ts`) is reviewed at `RU-61-06`, matching REQUIREMENTS.md's own carve-out
+   verbatim.
+2. **`bbj-vscode/src/language/generated/` (17.5k LOC)** — **Reflected.** Named exclusion in the
+   `bbj-vscode/` breakdown above; the grammar source (`RU-61-01`) is reviewed instead.
+3. **Implementing the major refactors** — **Not applicable to this document.** This inventory
+   defines review *scope*, not implementation; the "detailed issues for separate resolution"
+   intent belongs to Phase 67/68/69, which this document does not touch. No contradiction.
+4. **Wholesale test-suite authoring** — **Reflected, narrower than it appears.** The `test/` and
+   `test-data/` exclusion above states explicitly that coverage gaps are recorded as D5 findings
+   against the units they cover, not as a mandate to author a full suite from this document.
+5. **`bbj-vscode-deprecated/` contents** — **Reflected.** Named exclusion above, same wording
+   (stale `.vsix`, flagged for removal, not reviewed).
+6. **New features of any kind** — **Not applicable to this document.** This inventory adds no
+   feature; it only assigns review scope. No contradiction.
+7. **Grammar redesign to remove parser ambiguity** — **Reflected.** `RU-61-01` (Grammar &
+   lexing) is scoped to *review* of the existing grammar/lexer across D1-D8, not redesign; v3.3's
+   finding that all 47 Chevrotain ambiguities resolve correctly stands, and no unit in this
+   document proposes revisiting that conclusion.
+
+No contradiction was found between this document and REQUIREMENTS.md's Out of Scope table.
+
 ## Pinned Baseline Range (D-01)
 
 The v4.0 baseline is pinned to the **`v0.12.0` tag**, not to the branch tip (`HEAD`). Pinning to a
