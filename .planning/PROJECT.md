@@ -13,13 +13,13 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 **Goal:** Systematically review every in-scope module for defects, security concerns, and code smells; fix everything cheap and low-risk with regression tests; convert everything expensive into detailed, labeled GitHub issues for separate resolution.
 
 **Target features:**
-- Baseline resync — reconstruct the 154 untracked commits (v3.9 → 0.12.0) into validated requirements; refresh Context and tech-debt list
-- Language core review — 39 files: grammar, lexer, scope/linking, validation, completion, type inference, CPL service
+- Baseline resync — reconstruct the 153 untracked commits (v3.9 → 0.12.0) into validated requirements; refresh Context and tech-debt list
+- Language core review — ~49 hand-written files (37 top-level `.ts` + 2 `.langium` + 4 `validations/*.ts` + 6 `lib/*.ts`, plus 4 `lib/*.bbl` catalogs): grammar, lexer, scope/linking, validation, completion, type inference, CPL service
 - Extension host & composer review — `extension.ts`, 4 webview composer subsystems, formatter, tokenized-BBj, decompile-io, CompilerOptions
 - IntelliJ plugin review — 61 files: run/compile/EM-login actions, Node downloader, settings, LSP wiring, composer dialogs, token store
 - Build/CI/scripts review — 6 GitHub Actions workflows, Gradle/esbuild config, 3 BBj tool scripts
 - Cross-cutting security pass — webview CSP/HTML injection, Node download integrity, EM token handling, process spawning, java-interop socket exposure, CI secrets
-- Known-debt re-triage — 7 carried items each fixed or filed
+- Known-debt re-triage — 6 carried items (DEBT-01..DEBT-06) each fixed or filed
 - Easy fixes applied — low-risk contained changes with regression tests, atomic commits
 - Deliverables — `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`
 - GitHub issues filed — deduped against open issues, labeled with area + PRIO + effort, created only after user approval
@@ -230,11 +230,13 @@ milestone; labelling it as if it had would be false. Reconstructed from `2194616
 
 ## Context
 
-**Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases). Test suite fully green at that point (511 passed, 4 skipped). Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
+**Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases) with test suite fully green at that point (511 passing / 4 skipped / 0 failing, per `.planning/MILESTONES.md`'s v3.9 entry) — a historical reference only, not today's state. Four unreleased-through-GSD versions (0.9.0 → 0.12.0) have since shipped; today's measured test/build state is 11 failed | 850/843 passed (run-dependent) | 25-79 skipped (886 total), all 11 failures environment-classified (java-interop unreachable in this sandbox), `npm run lint` clean (2 warnings), and `bbj-intellij/./gradlew build` fails on a local JDK 25.0.3 vs. required JDK 17 toolchain mismatch (environment, not a code defect). See `.planning/reviews/INVENTORY.md` §"Test & Build Baseline" for the full snapshot. Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
 
-**⚠ Planning drift (as of 2026-08-17):** 154 commits landed between `2194616` (end of v3.9) and `HEAD` without going through a GSD milestone. `bbj-vscode/package.json` is now at **0.12.0**. Subsystems present in code but absent from the Validated list include the four webview composers (msgbox, addwindow, addchildwindow, SETOPTS — #474/#483), inlay hints (#480/#482), the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`), `Commands/CompilerOptions.ts`, document formatter, and line numbering. The v4.0 baseline-resync phase closes this gap; treat the Validated list above as accurate only through v3.9.
+**⚠ Planning drift (as of 2026-08-17, resolved 2026-08-17):** 153 commits landed between `2194616` (end of v3.9) and the `v0.12.0` tag without going through a GSD milestone. `bbj-vscode/package.json` is now at **0.12.0**. Subsystems present in code but absent from the Validated list included the four webview composers (msgbox, addwindow, addchildwindow, SETOPTS — #474/#483), inlay hints (#480/#482), the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`), `Commands/CompilerOptions.ts`, document formatter, and line numbering. Phase 60 of the v4.0 milestone resolved this gap on 2026-08-17 by reconstructing the shipped capabilities into the Validated list above (see the release-tag-labelled block) and adding the corresponding `.planning/MILESTONES.md` entry.
 
-**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
+**Unreleased in-flight fix:** `a7e1b53 fix(#494): terminate the visibility hierarchy walk on cyclic inheritance` is committed on branch `issue494-cyclic-inheritance-hang` but sits outside the `v0.12.0` tag and is therefore unreleased — a Phase 61 reviewer must not report the cyclic-inheritance hang as a live finding; it is already fixed on this branch.
+
+**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.3.1, Chevrotain 12.0.0, Vitest 4.1.10 with V8 coverage.
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary. BBjCPL compiler integration lives in `bbj-document-builder.ts` with lazy service resolution and availability detection via `bbj-notifications.ts`.
 
@@ -244,15 +246,15 @@ milestone; labelling it as if it had would be false. Reconstructed from `2194616
 
 **Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`.
 
-**Known tech debt:**
-- BbjCompletionFeature depends on LSPCompletionFeature API that may change across LSP4IJ versions
-- CPU stability mitigations documented but not yet implemented (#232)
-- CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct)
-- TEST-03 (DEF FN completion inside class methods) skipped — Langium grammar follower limitation
-- 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
-- IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
-- FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment
-- Static method return type inference gap — String.valueOf(2) does not assign type to target variable
+**Known tech debt:** (checked against the tree and against `.planning/REQUIREMENTS.md`'s DEBT-01..DEBT-06 on 2026-08-17; none resolved — all 8 survive. REQUIREMENTS.md's carried-debt enumeration has 6 items, not 8: the two items marked "not yet mapped" below are not represented as a DEBT-* requirement — see `.planning/reviews/INVENTORY.md` §"D-15 Correction Log".)
+- BbjCompletionFeature still extends LSPCompletionFeature (`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java`), API that may change across LSP4IJ versions — DEBT-05
+- CPU stability mitigations documented but not yet implemented (#232) — DEBT-01
+- CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct) — not yet mapped to a DEBT-NN item
+- TEST-03 (DEF FN completion inside class methods) skipped — Langium grammar follower limitation — DEBT-02
+- 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment — DEBT-02
+- IntelliJ TextMate bundle: filename-based `config.bbx`/`config.min` registration was added to the bundle (`2489001`, #381, in `2194616..v0.12.0`) mirroring the VS Code approach, but whether JetBrains' TextMate plugin actually honors `filenames` (vs. `extensions`) is unverified in this sandbox (`./gradlew build` fails on a local JDK toolchain mismatch, not a code defect) — not yet mapped to a DEBT-NN item
+- FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment — DEBT-04
+- Static method return type inference gap — String.valueOf(2) does not assign type to target variable — DEBT-03
 
 ## Constraints
 
@@ -375,6 +377,14 @@ milestone; labelling it as if it had would be false. Reconstructed from `2194616
 | CompletionItemTag.Deprecated only (no sort change) | Strikethrough indicator without demoting deprecated items in completion order | ✓ Good — v3.9 shipped |
 | ( trigger returns empty CompletionList | Prevents slow fallthrough to default completion when constructor completion unavailable | ✓ Good — v3.9 shipped |
 | DTO isDeprecated → Langium deprecated field mapping | Java naming convention differs from Langium property name; explicit mapping in java-interop.ts | ✓ Good — v3.9 shipped |
+
+| `-composer`/`-ui`/`-webview` file split for MSGBOX, addWindow and addChildWindow composers | Separates editor-agnostic compose/parse logic, webview UI, and panel wiring so both VS Code and IntelliJ reuse the same core (#426, #430, #473) | ✓ Good — 0.9.0 → 0.12.0 shipped |
+| SETOPTS composer deviates from the triple split — only `-ui`/`-webview` plus a shared `setopts-catalog.ts` | SETOPTS needs no compose/parse-statement layer of its own; byte/bit catalog logic is reusable across future BBj-code and bbx-config SETOPTS composers (#474) | ✓ Good — 0.12.0 shipped |
+| Shared `bbj/composer/*` LS command layer serves both VS Code and IntelliJ from one editor-agnostic implementation | Avoids duplicating flag/catalog logic in Java; IntelliJ dialogs are driven entirely by LSP requests (#433) | ✓ Good — 0.9.0 shipped |
+| Parameter-name inlay hints resolve the callee through the same FunctionNodeDescription path signature help uses | One implementation covers BBj class methods, builtin library functions and Java methods; noise-controlled per JDT LS/IntelliJ conventions (#108) | ✓ Good — 0.11.0 shipped |
+| Decompile-on-open for tokenized BBj programs, denumber/read-only offer for line-numbered programs | Detects binary `<<bbj>>` header / line-numbered source on open rather than requiring a manual command (#64, #65) | ✓ Good — 0.9.0 shipped |
+| `bbj-overload-selector.ts` re-selects call-site overloads by argument count + per-position type affinity | The arbitrarily-linked declaration from Langium's default linker doesn't reflect which overload actually applies at a given call site (#478, #480, #481) | ✓ Good — 0.12.0 shipped |
+| Composer entry points exposed as RefactorRewrite code actions alongside commands | Discoverable via the lightbulb/quick-fix affordance without memorizing a command palette entry (#427, #473, #474) | ✓ Good — 0.9.0 → 0.12.0 shipped |
 
 ## Evolution
 
