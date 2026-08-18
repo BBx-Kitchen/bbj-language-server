@@ -313,7 +313,7 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 
 Plans:
 **Wave 1**
@@ -322,7 +322,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 62-02-PLAN.md — Sweep `RU-62-01` extension host & commands (`extension.ts`, `CompilerOptions.ts`, `Commands.cjs`) across the 7 live dimensions
+- [x] 62-02-PLAN.md — Sweep `RU-62-01` extension host & commands (`extension.ts`, `CompilerOptions.ts`, `Commands.cjs`) across the 7 live dimensions
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
