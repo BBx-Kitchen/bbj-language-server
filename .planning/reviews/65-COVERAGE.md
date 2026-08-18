@@ -531,50 +531,169 @@ None. No candidate's safety turned on a value's provenance that required constru
 
 ### Enumeration
 
-*Filled by plan `65-01`, Task 3. Denominator from `## Surface Enumeration Register`: 4 handlers + 16 case arms = 20 enumerated items, with the `default:`-arm distribution derived as 1/1/0/0.*
+Re-derived at Task 3 execution time. Leg 1:
+
+```bash
+grep -rn 'onDidReceiveMessage' bbj-vscode/src --include=*.ts
+```
+
+**Literal output: the same 4 lines recorded in the register — 4 handlers, no drift.** Leg 2:
+
+```bash
+H4=$(grep -rln 'onDidReceiveMessage' bbj-vscode/src --include=*.ts | sort)
+for f in $H4; do sed -n '/onDidReceiveMessage/,/^    });/p' "$f" | grep -cE "case '"; done
+```
+
+**Literal output: `4 4 4 4` — 16 case arms, no drift.** Denominator unchanged: 4 + 16 = 20 enumerated items. The 4/4 symmetry with SEC-01 is the register's finding: these are the same four files that generate the HTML (byte-identical sorted file lists, confirmed there by `md5`).
+
+**Leg 3 — the `default:`-arm distribution (D-13) — re-derived, and a drift from Task 1's recorded value found and corrected.** Re-running the register's exact leg-3 command:
+
+```bash
+for f in $H4; do printf '%s %s\n' "$f" "$(sed -n '/onDidReceiveMessage/,/^    });/p' "$f" | grep -c 'default:')"; done
+```
+
+**Literal output: `addchildwindow-composer-webview.ts 1`, `addwindow-composer-webview.ts 1`, `msgbox-composer-webview.ts 0`, `setopts-composer-webview.ts 0`** — reproducing the register's recorded `1/1/0/0` exactly; no drift **in this command's output**.
+
+**But the command's own scoping is imprecise, and re-verifying it against the actual code shows the "1" results are false positives.** The sed range `/onDidReceiveMessage/,/^    });/p` is intended to bound the handler body, but its end-pattern `^    });` (four-space indent) never occurs after the `onDidReceiveMessage(async (msg...` opening line in **any** of the four files — each file instead closes the call as `}, undefined, context.subscriptions);` (msgbox-composer-webview.ts:119, addwindow-composer-webview.ts:138, addchildwindow-composer-webview.ts:143, setopts-composer-webview.ts:108), which does not match `^    });`. Confirmed directly:
+
+```bash
+for f in $H4; do grep -n '^    });' "$f" || echo "$f: no match"; done
+```
+
+For `addwindow-composer-webview.ts` and `addchildwindow-composer-webview.ts`, an *earlier* `^    });` line exists in the file (closing an unrelated call before `onDidReceiveMessage` — `addwindow-composer-webview.ts:106`, `addchildwindow-composer-webview.ts:111`), which `sed`'s forward-only range cannot match once the start pattern has already fired; for `msgbox-composer-webview.ts` and `setopts-composer-webview.ts` no such line exists anywhere. **In all four files the window therefore runs to end-of-file, not to the end of the handler**, silently scanning through each generator's client-side HTML/CSS/JS. The one substring `default:` that this over-long window happens to catch in two of the four files is `<label class="toggle-line"><input type="checkbox" id="event-enabled"> Configure event mask (default: unset)</label>` (addwindow-composer-webview.ts:272, addchildwindow-composer-webview.ts:292) — an HTML label's parenthetical UI text, **not a `switch` `default:` case arm**.
+
+**Precisely scoping each file's own `switch (msg.type) { … }` block** (from the `switch` line to its own matching closing `}` at the switch's indentation, confirmed by direct inspection of all four handler bodies at their `[SEC-02][handler]`/`[SEC-02][case]` line ranges in `### Verdicts` below) shows **zero** `default:` case arms in **all four** files — `msgbox-composer-webview.ts:83-118`, `addwindow-composer-webview.ts:109-137`, `addchildwindow-composer-webview.ts:114-142`, `setopts-composer-webview.ts:71-107` each contain exactly the four `case '…'` arms already counted by leg 2 and no `default:` arm.
+
+**The corrected fact, stated precisely per D-13: the distribution is uniformly zero-of-four, not the register's `1/1/0/0`.** This is a drift **within the phase** (Task 1's committed register vs. Task 3's re-verification), written up per plan instruction rather than silently adopted. It does **not** independently justify a new `P65-D1-nnn` finding under D-04: a uniform absence across all four near-duplicate handlers is not an asymmetry, and the message `type` space is not attacker-influenced (SEC-01's enumeration confirmed each `getHtml()` string emits exactly one bundled, nonce-locked, CSP-restricted `<script>` — no external script source is ever permitted — so `msg.type` values sent via `postMessage` originate only from that same bundled script, never from document/workspace/attacker content). `### Runtime Validation Posture` states, per handler, what an unrecognised `type` actually does (silently falls through the `switch` with no `case` executed and no error) now that the true mechanism is established.
 
 ### Verdicts
 
-- [SEC-02][handler] bbj-vscode/src/addchildwindow-composer-webview.ts:113 — pending
-- [SEC-02][handler] bbj-vscode/src/addwindow-composer-webview.ts:108 — pending
-- [SEC-02][handler] bbj-vscode/src/msgbox-composer-webview.ts:82 — pending
-- [SEC-02][handler] bbj-vscode/src/setopts-composer-webview.ts:70 — pending
-- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:115 — pending
-- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:123 — pending
-- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:126 — pending
-- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:139 — pending
-- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:110 — pending
-- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:118 — pending
-- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:121 — pending
-- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:134 — pending
-- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:84 — pending
-- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:92 — pending
-- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:97 — pending
-- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:115 — pending
-- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:72 — pending
-- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:81 — pending
-- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:84 — pending
-- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:104 — pending
+- [SEC-02][handler] bbj-vscode/src/addchildwindow-composer-webview.ts:113 — fail — P62-D1-001 (payload typed only by a compile-time TS annotation, zero runtime shape/type/range check before any arm's first side effect); confirmed no `default:` case arm exists (:114-142, corrected leg-3 derivation above) — an unrecognised `type` silently falls through with no action; blast radius is `vscode.workspace.applyEdit` via the `'insert'` arm (:126-138). Per `P65-D1-001` (new finding below), this handler's `'insert'` arm applies its edit with no content-validity gate on its own free-text fields (`receiver`, `window`, `id`, `context`, `title`, `x`, `y`, `width`, `height`) — unlike `msgbox-composer-webview.ts`'s analogous arm.
+- [SEC-02][handler] bbj-vscode/src/addwindow-composer-webview.ts:108 — fail — P62-D1-001 (same compile-time-only typing, zero runtime check); confirmed no `default:` case arm (:109-137, corrected leg-3 derivation above) — unrecognised `type` silently falls through; blast radius `vscode.workspace.applyEdit` via `'insert'` (:121-133). Per `P65-D1-001`, this handler's `'insert'` arm likewise applies unconditionally with no content-validity gate on `receiver`, `sysgui`, `title`, `x`, `y`, `width`, `height`.
+- [SEC-02][handler] bbj-vscode/src/msgbox-composer-webview.ts:82 — fail — P62-D1-001 (the payload's raw shape/field types/ranges are never checked before `build(msg.payload)` at :99); confirmed no `default:` case arm (:83-118, corrected leg-3 derivation above) — unrecognised `type` silently falls through; blast radius `vscode.workspace.applyEdit` via `'insert'` (:97-114). This is the one handler of the four whose `'insert'` arm gates the edit on a content-validity result (`r.valid`, :100) — see `P65-D1-001` below, of which this handler is the reference/positive side.
+- [SEC-02][handler] bbj-vscode/src/setopts-composer-webview.ts:70 — fail — P62-D1-001 (payload's checked-bit ids and `maskComma`/`maskDot`/`rawTail` fields are never type/range-checked server-side before `build(msg.payload)` at :86); confirmed no `default:` case arm (:71-107, corrected leg-3 derivation above) — unrecognised `type` silently falls through; blast radius `vscode.workspace.applyEdit` via `'apply'` (:84-103). Not implicated in `P65-D1-001`'s asymmetry: SETOPTS composes a byte vector, not a BBj-expression statement, so it has no comparable "valid expression" concept for msgbox's gate to be absent from.
+- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:115 — n/a — `'ready'` arm reads no `msg.payload` field; its only action is `panel.webview.postMessage({ type: 'init', editMode, catalogs: { flags: CHILD_WINDOW_FLAGS, eventBits: CHILD_EVENT_MASK_BITS }, initial })` (:116-121) — extension-owned catalog/initial data only.
+- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:123 — fail — P62-D1-001; `'change'` arm's only guard on `msg.payload` is the truthy check `if (msg.payload)` (:124) before `build(msg.payload)`; no field-level type/range check on any of `flags[]`, `eventMask[]`, `receiver`, `window`, `id`, `context`, `x`, `y`, `width`, `height`, `title`; first side effect is `panel.webview.postMessage({ type: 'preview', ...build(msg.payload) })`, not a document edit.
+- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:126 — fail — P65-D1-001 (new finding: this arm applies `vscode.workspace.applyEdit` (:135) unconditionally after `build(msg.payload)` — no `r.valid`-equivalent gate exists anywhere in `addchildwindow-composer.ts`, confirmed by `grep -n 'valid' bbj-vscode/src/addchildwindow-composer.ts` returning zero matches — unlike `msgbox-composer-webview.ts:97` below); also duplicates P62-D1-001's baseline no-raw-shape-check claim on the same fields as the `'change'` arm above.
+- [SEC-02][case] bbj-vscode/src/addchildwindow-composer-webview.ts:139 — n/a — `'cancel'` arm reads no `msg.payload` field; its only action is `panel.dispose()` (:140).
+- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:110 — n/a — `'ready'` arm reads no `msg.payload` field; its only action is `panel.webview.postMessage({ type: 'init', editMode, catalogs: { flags: WINDOW_FLAGS, eventBits: EVENT_MASK_BITS }, initial })` (:111-116) — extension-owned catalog/initial data only.
+- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:118 — fail — P62-D1-001; `'change'` arm's only guard is `if (msg.payload) panel.webview.postMessage({ type: 'preview', ...build(msg.payload) })` (:119) — same truthy-only pattern, no field-level check on `flags[]`, `eventMaskEnabled`, `eventMask[]`, `receiver`, `sysgui`, `x`, `y`, `width`, `height`, `title`; first side effect is a `postMessage`, not a document edit.
+- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:121 — fail — P65-D1-001 (new finding: this arm applies `vscode.workspace.applyEdit` (:130) unconditionally after `build(msg.payload)` — `grep -n 'valid' bbj-vscode/src/addwindow-composer.ts` returns zero matches, so `receiver`, `sysgui`, `title`, `x`, `y`, `width`, `height` are never checked for well-formedness anywhere in the module — unlike `msgbox-composer-webview.ts:97` below); also duplicates P62-D1-001's baseline claim.
+- [SEC-02][case] bbj-vscode/src/addwindow-composer-webview.ts:134 — n/a — `'cancel'` arm reads no `msg.payload` field; its only action is `panel.dispose()` (:135).
+- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:84 — n/a — `'ready'` arm reads no `msg.payload` field; its only action is `panel.webview.postMessage({ type: 'init', editMode, catalogs: { buttonSets: BUTTON_SETS, icons: ICONS, defaultButtons: DEFAULT_BUTTONS, flags: FLAGS }, initial })` (:85-90) — extension-owned catalog/initial data only.
+- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:92 — fail — P62-D1-001; `'change'` arm's only guard is `if (msg.payload) { panel.webview.postMessage({ type: 'preview', ...build(msg.payload) }); }` (:93-95) — truthy-only, no field-level check on `buttonSet`, `icon`, `defaultButton`, `flags[]`, `customButtons[]`, `assignTo`, `useConstants` before `build()`; first side effect is a `postMessage`, not a document edit.
+- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:97 — fail — P62-D1-001 (the raw `payload` — `buttonSet`, `icon`, `defaultButton`, `flags[]`, `customButtons[]`, `assignTo`, `useConstants` — is never type/range-checked before `build()` is called at :99); this is, however, the one arm of the four analogous `'insert'`/`'apply'` arms that gates its `vscode.workspace.applyEdit` (:111) on `if (!r.valid) break;` (:100), where `r.valid = msgV.ok && titleV.ok && customOk` (`msgbox-composer.ts:420`) and `msgV`/`titleV` come from `validateStringField()` (`msgbox-composer.ts:311-322`), which calls `validateBbjExpression()` (`msgbox-composer.ts:197-216`) to check structural well-formedness and String typing of `message`/`title` before the statement is composed — see `P65-D1-001` below, of which this arm is the reference/positive side.
+- [SEC-02][case] bbj-vscode/src/msgbox-composer-webview.ts:115 — n/a — `'cancel'` arm reads no `msg.payload` field; its only action is `panel.dispose()` (:116).
+- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:72 — n/a — `'ready'` arm reads no `msg.payload` field; its only action is `panel.webview.postMessage({ type: 'init', editMode, catalog: SETOPTS_BITS, groups: BYTE_GROUPS, initial: initialSelection(original) })` (:73-79) — extension-owned catalog/initial data only.
+- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:81 — fail — P62-D1-001; `'change'` arm's only guard is `if (msg.payload) panel.webview.postMessage({ type: 'preview', ...build(msg.payload) })` (:82) — truthy-only, no field-level check on `checked[]`, `maskComma`, `maskDot`, `rawTail` before `build()`; first side effect is a `postMessage`, not a document edit.
+- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:84 — fail — P62-D1-001; `'apply'` arm's only guard is `if (!msg.payload) break;` (:85) before `build(msg.payload)` (:86) and an unconditional `vscode.workspace.applyEdit` (:100) — no field-level check on `checked[]`, `maskComma`, `maskDot`, or `rawTail` server-side (`rawTail` is charset-filtered client-side in the webview script to `[0-9A-Fa-f]` only, never re-validated on the extension side). Not implicated in `P65-D1-001`: SETOPTS has no comparable "valid expression" concept to lack.
+- [SEC-02][case] bbj-vscode/src/setopts-composer-webview.ts:104 — n/a — `'cancel'` arm reads no `msg.payload` field; its only action is `panel.dispose()` (:105).
 
 ### Runtime Validation Posture
 
-*Filled by plan `65-01`, Task 3. States up front that the handlers are typed with a TypeScript annotation, that the annotation is erased at compile time, and that it is refused as evidence of validation (D-13). Then answers, per handler: what runtime check sits between message receipt and the first side effect; whether the `switch` has a `default` branch and what it does, with the per-handler derivation command and its literal output recorded; whether payload fields are checked for type, shape or value range before being read; and what the first side effect actually is. Then the cross-handler comparison, stated explicitly.*
+**Stated up front, per D-13: all four handlers are typed `async (msg: { type: string; payload?: <Shape> }) => …`. That TypeScript annotation is erased at compile time; the value arriving from the webview is whatever `postMessage` sent, and the annotation is refused as evidence of validation here.** The only question that matters for criterion 2 is what *runtime* check sits between message receipt and the first side effect.
+
+**Per handler (all four, checked by reading the full handler body — see `### Verdicts` for the `file:line` trace):**
+
+1. **What runtime check sits between receipt and the first side effect. If none, say none.** **None**, in all four. Every arm's only gate on `msg.payload` before acting is a bare truthy check (`if (msg.payload)` / `if (!msg.payload) break;`) — never a check of `payload`'s shape, its fields' types, or any field's value range. `msgbox-composer-webview.ts`'s `'insert'` arm additionally gates on `r.valid` (a *content*-validity result computed *inside* `build()`, after the payload has already been passed in unchecked) — this is evidence about the arm's *first side effect* (see point 4), not a receipt-time payload check, so it does not change this answer.
+2. **Whether the `switch` has a `default` branch, and if so what it does.** **None of the four has one** — see `### Enumeration`'s corrected leg-3 derivation above, which shows the register's `1/1/0/0` was a sed-range false positive matching unrelated HTML text, and that precise scoping of each `switch (msg.type) { … }` block finds zero `default:` arms in all four. **The distribution is uniform: an unrecognised `type` silently falls through every one of the four handlers with no `case` executed, no `postMessage` reply, and no error** — not glossed, stated precisely per D-13. This is uniform rather than asymmetric, and (per `### Enumeration`) the `type` value space is not attacker-influenced (SEC-01 confirmed each webview loads only one bundled, nonce-locked, CSP-restricted inline script — no external script source is ever permitted), so the uniform silent-fallthrough does not on its own justify a new `P65-*` finding.
+3. **Whether the payload's fields are checked for type, shape or value range before being read.** **No**, in all four, for every field of every arm's payload — `flags[]`/`eventMask[]`/`receiver`/`window`/`id`/`context`/`x`/`y`/`width`/`height`/`title` (addwindow, addchildwindow), `buttonSet`/`icon`/`defaultButton`/`flags[]`/`customButtons[]`/`message`/`title`/`assignTo`/`useConstants` (msgbox), `checked[]`/`maskComma`/`maskDot`/`rawTail` (setopts). This is `P62-D1-001`'s claim, confirmed here against every one of the 16 case arms individually rather than at handler-summary level — see `### Verdicts`.
+4. **What the first side effect actually is, and therefore what an unchecked field can reach.** Two shapes recur across all four handlers: (a) the `'ready'` arm's first side effect is always a `postMessage` of extension-owned catalog/initial data — no payload field is read at all; (b) the `'change'` arm's first side effect is always a `postMessage` of `build(msg.payload)`'s output back into the webview's own DOM (written with safe `.value=`/`.textContent=` per SEC-01's enumeration, not `innerHTML`); (c) the `'insert'`/`'apply'` arm's first side effect is always `vscode.workspace.applyEdit` on the user's currently open document (or `config.bbx` for setopts) — the one sink through which an unchecked field reaches something consequential, matching `P62-D1-005`'s characterization; (d) the `'cancel'` arm's first side effect is always `panel.dispose()`, reading no payload field.
+
+**Cross-handler comparison, stated explicitly (D-12/D-04).** On points 1-3 above, **all four handlers agree** — this is a positive symmetric result on its own terms (no handler is *worse* than the others on raw payload-shape checking), recorded as such rather than left implicit. **On point 4's `'insert'`/`'apply'` arm, the four *diverge*: `msgbox-composer-webview.ts`'s arm alone gates the document-edit side effect on a content-validity result (`r.valid`, sourced from `validateStringField()`/`validateBbjExpression()` over its `message`/`title` fields); `addwindow-composer-webview.ts`'s and `addchildwindow-composer-webview.ts`'s arms apply their edit unconditionally, with no equivalent gate anywhere in their respective `-composer.ts` modules (confirmed by grep, zero `'valid'` matches in either); `setopts-composer-webview.ts`'s arm has no comparable "valid expression" concept to be missing, since it composes a byte vector rather than BBj-expression text.** This is exactly the asymmetry D-04 exists to surface — a divergence between near-duplicate modules that Phase 62's single-file-at-a-time review characterized as "identical" (`P62-D1-001`'s evidence: "Identical pattern recurs verbatim in...") without comparing the four `build()` outputs against each other closely enough to see it. Recorded as **`P65-D1-001`** below.
+
+**What a runtime shape validator would have to cover, as an observation about the gap rather than a proposal (a new capability is out of this phase's scope):** per-arm, a validator would need to check `flags`/`eventMask` are arrays of in-range integers, `receiver`/`sysgui`/`window`/`id`/`context`/`x`/`y`/`width`/`height`/`title`/`message`/`assignTo`/`customButtons` are strings within a bounded length, `buttonSet`/`icon`/`defaultButton` are integers within their catalog's valid value set, `useConstants`/`eventMaskEnabled` are booleans, and `checked`/`maskComma`/`maskDot`/`rawTail` match SETOPTS' own byte/character-set constraints — the concrete field set every one of the 16 case-arm verdicts above names individually.
 
 ### Findings
 
-*Filled by plan `65-01`, Task 3.*
+```
+id:                P65-D1-001
+unit:              SEC-02
+location:          bbj-vscode/src/addwindow-composer-webview.ts:121-131, bbj-vscode/src/addchildwindow-composer-webview.ts:126-137 (contrasted with bbj-vscode/src/msgbox-composer-webview.ts:97-101 and bbj-vscode/src/msgbox-composer.ts:398-420)
+dimension:         D1
+secondary:         [D2, D4]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: msgbox-composer-webview.ts's 'insert' arm (:97-114) computes
+                    r = build(msg.payload) (msgboxPreview(), msgbox-composer.ts:391-421) and gates
+                    the WorkspaceEdit application on `if (!r.valid) break;` (:100) before reaching
+                    vscode.workspace.applyEdit (:111). r.valid is `msgV.ok && titleV.ok && customOk`
+                    (msgbox-composer.ts:420), where msgV/titleV come from validateStringField()
+                    (msgbox-composer.ts:311-322), which calls validateBbjExpression()
+                    (msgbox-composer.ts:197-216) to check structural well-formedness and String
+                    typing of the message/title fields before the statement is composed.
+                    addwindow-composer-webview.ts's near-identical 'insert' arm (:121-133) computes
+                    r = build(msg.payload) (addwindowPreview()) and applies the WorkspaceEdit (via
+                    applyEdit() or edit.insert()) unconditionally at :130 — there is no r.valid field
+                    or equivalent gate; confirmed by `grep -n 'valid' bbj-vscode/src/addwindow-
+                    composer.ts` returning zero matches, meaning none of its own free-text fields
+                    (receiver, sysgui, title, x, y, width, height) is ever checked for well-
+                    formedness anywhere in the module. addchildwindow-composer-webview.ts's 'insert'
+                    arm (:126-138) is the same pattern against addchildwindow-composer.ts (also zero
+                    'valid' matches; fields receiver, window, id, context, title, x, y, width,
+                    height). Phase 62's own RU-62-04 sweep (P62-D1-001's evidence) characterized this
+                    pattern as "identical" across all four handlers — a single-file-at-a-time review
+                    that did not compare the four build() outputs against each other and so did not
+                    surface that only one of the four gates its document-edit side effect on any
+                    content-validity check at all.
+failure_scenario:  A developer types a malformed or unintended free-text value into addwindow's or
+                    addchildwindow's Title/x/y/width/height/receiver/sysgui (or window/id/context)
+                    fields via the webview form and clicks Insert; the value is written verbatim
+                    into their own BBj source document with no warning, because — unlike msgbox's
+                    message/title fields — nothing in addwindow-composer.ts or addchildwindow-
+                    composer.ts ever checks these fields' well-formedness. This is a self-inflicted
+                    statement-corruption gap (the same shape as P62-D1-005, no attacker-controlled
+                    input reaches it), but it is inconsistent across three near-duplicate composer
+                    forms in a way no single-file review surfaced: two of the four insert/apply
+                    paths apply their edit unconditionally while the third gates on validated
+                    content.
+classification:    major
+                    (1) touches 1 file: n/a — the fix (porting an equivalent content-validity gate)
+                    is a repeated single-file edit independently applicable to each of the 2 files
+                    lacking it — (2) no public API/grammar/LSP change: pass — (3) no new dependency:
+                    pass — (4) regression-testable with vitest: pass — (5) reviewer can name the
+                    exact edit (port validateStringField-style checks to addwindow-composer.ts's and
+                    addchildwindow-composer.ts's free-text fields and gate the 'insert' side effect
+                    on the result, mirroring msgbox's r.valid pattern): pass — (6) severity is `low`
+                    but primary dimension is D1: FAIL — test (6) fails on the D1 primary-dimension
+                    clause alone, so classification is `major` regardless of the other five tests
+                    (D-13's safety gate).
+effort:            4
+dedup:             none — neither #475 (SETOPTS tri-state composer UX) nor #385 (external Graffiti
+                    Composer launch) concerns addWindow/addChildWindow field-validation parity with
+                    msgbox; no open issue overlaps this asymmetry.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
 
-*Filled by plan `65-01`, Task 3.*
+None. Every claim raised while sweeping SEC-02 — including the leg-3 `default:`-arm re-derivation drift — was settled by a direct code trace with concrete `file:line` citations (see `### Enumeration` and `### Verdicts`); no claim required constructing an unconfirmable exploit.
 
 ### Cross-references
 
-*Filled by plan `65-01`, Task 3. Ledger rows naming SEC-02: `P62-D1-001`, `P62-D1-005`, `P62-D1-007`, `P63-D1-006` (4 rows).*
+**`P62-D1-001`** (`bbj-vscode/src/msgbox-composer-webview.ts:82-119`, low severity, identical pattern recurring in the other three files) — the owner of the no-runtime-validation claim at the four handlers. **Confirmed** against every one of the 16 case arms individually (not merely at handler-summary level): every arm's only guard on `payload` is a truthy check, with zero field-level type/shape/range validation anywhere before `build()`. This sweep also **extends** it: `P62-D1-001`'s own evidence text described the pattern as "identical" across all four files, which this sweep shows is true for the *raw-payload-check* absence but not for what happens *after* `build()` — see `P65-D1-001`.
+
+**`P62-D1-005`** (`bbj-vscode/src/addwindow-composer.ts:195-282`, `addchildwindow-composer.ts:117-215`, `msgbox-composer.ts:145,162,410`, low severity) — establishes what an unchecked payload field reaches: the composer `build()` layer emitting BBj syntax from unescaped string fields. **Confirmed and extended**: this sweep's `P65-D1-001` shows that reach is not uniform either — `addwindow`/`addchildwindow`'s free-text fields reach the document edit with zero gate of any kind, while `msgbox`'s reach it behind a content-validity gate that happens to not cover every field `P62-D1-005` names (`assignTo`, `customButtons` are validated for string-ness but not further bounded).
+
+**`P62-D1-007`** (`bbj-vscode/src/decompile-io.ts:15-27,29-35`, low severity) — its own failure scenario is explicitly conditioned on "a webview-message-derived path reaching `fs.promises.open`/`stat`", asking SEC-02 to state whether that chain is currently reachable. **Not reachable from any of the four enumerated handlers**: `decompile-io.ts` is invoked only from `bbj-vscode/src/Commands/Commands.cjs` (confirmed by `grep -rln "decompile-io" bbj-vscode/src --include=*.ts`), not from any of the 20 `[SEC-02]` verdicts above — none of the four handlers' arms passes payload data to `decompile-io.ts` or to `Commands.cjs`'s decompile path. This sweep **confirms** the finding's own conditional framing (the chain does not currently exist) rather than extending or disagreeing with it.
+
+**`P63-D1-006`** (`bbj-intellij/.../composer/ComposerLauncher.java:107-115,172-196`, low severity) — the cross-IDE comparison point: the IntelliJ composer writes a composed statement into the document with no validation, paralleling the VS Code side. **Confirmed for 3 of the 4 VS Code composers, with a nuance this sweep adds**: `addwindow`/`addchildwindow`/`setopts`'s VS Code composers indeed apply with zero validation, matching the IntelliJ side exactly. `msgbox`'s VS Code composer does not — it is the one composer, on either IDE, that gates its document-write on any content-validity result. The cross-IDE parity point (`RU-63-04`'s and this file's own concern) therefore holds for three of the four VS Code forms and is not weakened by this correction.
 
 ### Surface closure
 
-*Filled by plan `65-01`, Task 3. States the four-part stopping rule discharged part by part, plus whether the live denominator agreed with D-02's baseline of four handlers.*
+**Four-part stopping rule, discharged part by part:**
+
+(i) **Every enumerated item carries a verdict, no placeholder remains.** `grep -cE '^- \[SEC-02\]\[[a-z-]+\] .* — pending$'` prints `0` within this section; all 20 `[SEC-02]` lines above carry `fail` or `n/a`.
+
+(ii) **Every `fail` names a discharging ID (`P62-D1-001` or `P65-D1-001`), and every `n/a` carries a written exclusion reason.** No `pass` or `undetermined` verdict was needed at this surface — every arm either genuinely lacks a runtime check (fail) or reads no payload field at all (n/a).
+
+(iii) **Every candidate claim raised was either promoted to a finding or written under `### Not-reproducible dispositions`.** One claim was promoted: `P65-D1-001`, the msgbox/addwindow/addchildwindow content-validity asymmetry. `### Not-reproducible dispositions` is correctly empty — nothing required an unconfirmable exploit.
+
+(iv) **Every ledger row whose Surfaces column names SEC-02 carries a written cross-reference.** All four such rows — `P62-D1-001`, `P62-D1-005`, `P62-D1-007`, `P63-D1-006` — are cross-referenced in `### Cross-references` above. Zero inherited items were dropped.
+
+**Live-derived denominator vs. D-02 baseline:** leg 1 reproduces exactly **4** handlers, agreeing with D-02's baseline of 4 with **no drift**. Leg 2's live case-arm count is **16**, matching the register exactly (D-02 set no baseline for this leg). Leg 3's `default:`-arm distribution **drifted from the register's recorded `1/1/0/0` to the corrected, precisely-scoped `0/0/0/0`** — written up above with its cause (a `sed`-range end-pattern that never matches, causing the window to run past the handler into unrelated HTML text) rather than silently adopted, per the stopping rule's evidence discipline.
+
+**SEC-02 is closed.**
 
 ## SEC-04 — EM token lifecycle end to end
 
