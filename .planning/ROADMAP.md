@@ -374,13 +374,13 @@ the security of its Node.js runtime download path.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 5 plans — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 1/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable `.planning/reviews/63-COVERAGE.md`; no source file is modified.
 
 Plans:
 **Wave 1**
 
-- [ ] 63-01-PLAN.md — Create `63-COVERAGE.md` (skeleton, grid, cell-total gate, both verbatim `n/a` carry-forwards, inherited-referral ledger) and sweep `RU-63-03` settings & runtime acquisition end to end, incl. the SEC-03 Integrity Posture and the phase's only live D6 cell
+- [x] 63-01-PLAN.md — Create `63-COVERAGE.md` (skeleton, grid, cell-total gate, both verbatim `n/a` carry-forwards, inherited-referral ledger) and sweep `RU-63-03` settings & runtime acquisition end to end, incl. the SEC-03 Integrity Posture and the phase's only live D6 cell
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
