@@ -427,7 +427,7 @@ trees' vulnerability posture.
   4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 One plan per review unit in INVENTORY risk-rank order, one wave each, all three appending to the
 single deliverable `.planning/reviews/64-COVERAGE.md`; no source file is modified. This is the last
@@ -441,7 +441,7 @@ follows the scope, not the other way round.
 Plans:
 **Wave 1**
 
-- [ ] 64-01-PLAN.md — Create `64-COVERAGE.md` (skeleton, 8-row grid incl. all 5 file-exception rows, the two-part `8 29 35 64` cell gate, the 29-file gate with both the D-19 and D-20 adoptions, all four verbatim `n/a` carry-forwards, inherited-item ledger) and sweep `RU-64-03` BBj tool scripts, vendored JARs & interop harness end to end, incl. the Vendored Binary Provenance subsection and the 3 `tools/formatter/` JAR file-exception rows
+- [x] 64-01-PLAN.md — Create `64-COVERAGE.md` (skeleton, 8-row grid incl. all 5 file-exception rows, the two-part `8 29 35 64` cell gate, the 29-file gate with both the D-19 and D-20 adoptions, all four verbatim `n/a` carry-forwards, inherited-item ledger) and sweep `RU-64-03` BBj tool scripts, vendored JARs & interop harness end to end, incl. the Vendored Binary Provenance subsection and the 3 `tools/formatter/` JAR file-exception rows
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

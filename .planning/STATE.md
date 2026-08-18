@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stability and Quality
-current_phase: 63
-current_phase_name: IntelliJ Plugin Review
-status: verifying
-stopped_at: Phase 63 verified 4/4 and closed; Phase 64 planned (3 plans), ready to execute
-last_updated: "2026-08-18T13:05:50.344Z"
+current_phase: 64
+current_phase_name: Build, CI & Dependency Review
+status: executing
+stopped_at: Completed 64-01-PLAN.md — 64-COVERAGE.md created with its frozen skeleton and RU-64-03 swept end to end (13 cells, 12 findings); next 64-02 (RU-64-01)
+last_updated: "2026-08-18T13:33:37.229Z"
 last_activity: 2026-08-18
-last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
+last_activity_desc: Phase 64 Plan 01 — 64-COVERAGE.md skeleton frozen and RU-64-03 (BBj tool scripts, vendored JARs & interop harness) swept end to end
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 40
 ---
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 63 — IntelliJ Plugin Review
+**Current Focus:** Phase 64 — Build, CI & Dependency Review
 
 ---
 
 ## Current Position
 
-Phase: 63 (IntelliJ Plugin Review) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-08-18 — Phase 63 execution started
+Phase: 64 (Build, CI & Dependency Review) — EXECUTING
+Plan: 1 of 3 complete (wave 1 of 3)
+Status: 64-01 complete — RU-64-03 swept, skeleton frozen; next 64-02 (RU-64-01, GitHub Actions workflows)
+Last activity: 2026-08-18 — Phase 64 execution started
 
 ## Performance Metrics
 
@@ -98,6 +98,7 @@ Last activity: 2026-08-18 — Phase 63 execution started
 | Phase 63 P03 | ~24min (task commits only) | 2 tasks | 1 files |
 | Phase 63 P04 | ~20min | 2 tasks | 1 files |
 | Phase 63 P05 | ~48min | 3 tasks | 1 files |
+| Phase 64 P01 | ~50min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -140,46 +141,51 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 60 Plan 03]: Corrected PROJECT.md Context/Constraints/Key Decisions per D-15 log (154->153 commits, 39->~49 files, 7->6 debt items, HEAD->v0.12.0 endpoint) plus 3 plan-authorized Tech-stack version corrections not in the D-15 log
 - [Phase 60 Plan 04]: Corrected ROADMAP.md/REQUIREMENTS.md figures per D-15 (154->153 commits, HEAD->v0.12.0 endpoint, 39->~49 src/language/ files with LOC re-measured to ~10.8k, 13->11 composer files+setopts-catalog.ts with SETOPTS asymmetry made explicit, nonexistent bbx-config editor replaced with setopts-composer-webview.ts wording)
 - [Phase 60 Plan 04]: Added additive dated SUPERSEDED banners to all seven codebase/*.md maps naming INVENTORY.md as the v4.0 scope authority (D-16); logged 60-03's un-logged Langium/Chevrotain/Vitest Tech-stack corrections into INVENTORY.md's D-15 Correction Log as a carried-forward defect fix
-- [Phase ?]: [Phase 61 Plan 01]: D-05 checkpoint approved as rendered — RU-61-06 recording shape frozen verbatim for plans 61-02..61-07
-- [Phase ?]: [Phase 61 Plan 01]: 11 test/linking.test.ts Interop related tests failures recorded once as RU-61-06 (not RU-61-02) per location-decides-ownership rule, with a cross-unit referral
-- [Phase ?]: [Phase 61 Plan 02]: STRING_LITERAL doubled-quote escape never collapsed by BBjValueConverter despite bbj.langium's own comment claiming it is (P61-D2-005/P61-D8-002)
-- [Phase ?]: [Phase 61 Plan 02]: mixed line-ending files break bbj-lexer.ts's prepareLineSplitter length-preservation invariant, corrupting downstream LSP position mapping (P61-D2-006)
-- [Phase ?]: [Phase 61 Plan 02]: 3 disabled parser.test.ts assertions recorded as P61-D5-003 with dedup naming DEBT-02 as owning requirement
-- [Phase ?]: P61-D1-003 (bbjcpl spawn path validation gap) rated severity high to match plan's threat T-61-P03-S1, forcing classification major
-- [Phase ?]: P61-D2-010's redundant-AST-walk consequence folded into that finding as secondary D3 rather than a second record, sharing one root cause
-- [Phase ?]: P61-D2-011 root-causes and reproduces DEBT-03's static-method type-inference gap (bbj-type-inferer.ts missing resolvedReturnType fallback)
-- [Phase ?]: P61-D3-003 re-triages #232/DEBT-01 against current code: uncached full-index scan + unpruned scope-computation walk, with isAffected() confirmed as an existing partial mitigation
+- [Phase 64]: [Phase 61 Plan 01]: D-05 checkpoint approved as rendered — RU-61-06 recording shape frozen verbatim for plans 61-02..61-07
+- [Phase 64]: [Phase 61 Plan 01]: 11 test/linking.test.ts Interop related tests failures recorded once as RU-61-06 (not RU-61-02) per location-decides-ownership rule, with a cross-unit referral
+- [Phase 64]: [Phase 61 Plan 02]: STRING_LITERAL doubled-quote escape never collapsed by BBjValueConverter despite bbj.langium's own comment claiming it is (P61-D2-005/P61-D8-002)
+- [Phase 64]: [Phase 61 Plan 02]: mixed line-ending files break bbj-lexer.ts's prepareLineSplitter length-preservation invariant, corrupting downstream LSP position mapping (P61-D2-006)
+- [Phase 64]: [Phase 61 Plan 02]: 3 disabled parser.test.ts assertions recorded as P61-D5-003 with dedup naming DEBT-02 as owning requirement
+- [Phase 64]: P61-D1-003 (bbjcpl spawn path validation gap) rated severity high to match plan's threat T-61-P03-S1, forcing classification major
+- [Phase 64]: P61-D2-010's redundant-AST-walk consequence folded into that finding as secondary D3 rather than a second record, sharing one root cause
+- [Phase 64]: P61-D2-011 root-causes and reproduces DEBT-03's static-method type-inference gap (bbj-type-inferer.ts missing resolvedReturnType fallback)
+- [Phase 64]: P61-D3-003 re-triages #232/DEBT-01 against current code: uncached full-index scan + unpruned scope-computation walk, with isAffected() confirmed as an existing partial mitigation
 - [Phase 61 Plan 05]: Settled RU-61-06's open not-reproducible disposition — hover/completion documentation is explicitly typed and sent as LSP Markdown (kind: 'markdown'), confirming unescaped peer javadoc/signature text CAN render as markup (P61-D1-004); no command-execution claim asserted (VS Code sanitizes untrusted MarkupContent)
 - [Phase 61 Plan 05]: Unvalidated peer-supplied FQNs interpolate unescaped into `use ${fqn}\n` TextEdits inserted into the user's source document via the missing-use quick-fix and completion auto-import, with no format validation at either call site (P61-D1-005)
 - [Phase 61 Plan 05]: TEST-03 skip recorded as P61-D5-010 with dedup naming DEBT-02 as owning requirement; signature-help provider and hover provider's core logic found to have zero direct behavioral test coverage (P61-D5-011, P61-D5-012)
-- [Phase ?]: [Phase 61 Plan 06]: Resolved all 4 inherited cross-unit referrals for RU-61-05 — 2 promoted to new findings with direct node -e reproductions (P61-D1-006 interop host/port call-site gap, P61-D1-008 PREFIX path traversal), 1 dismissed with evidence (RU-61-03's trackBbjcplAvailability), 1 promoted as the hookTimeout flakiness cost-profile trace (P61-D5-013)
-- [Phase ?]: [Phase 61 Plan 06]: Found root cause behind #33 (multi-root workspaces broken) — initializeWorkspace() reads project.properties/config.bbx from folders[0] only (P61-D2-015); found settings never refresh on didChangeConfiguration, matching #486 exactly (P61-D2-018)
-- [Phase ?]: [Phase 61 Plan 06]: constants.ts/utils.ts dead-module candidate confirmed live (3 references) and dismissed with evidence, not asserted as a finding, per plan's explicit instruction
-- [Phase ?]: [Phase 61 Plan 07]: RU-61-07 (builtin catalogs) swept mechanically per D-08 — physical .bbl files confirmed never read by any runtime consumer or test, only their .ts-exported string siblings are used; found duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT eventtype declarations (P61-D2-019) and a CVS docstring drift between functions.ts/functions.bbl (P61-D4-015)
-- [Phase ?]: [Phase 61 Plan 07]: Phase 61 closed — D-17 gate re-derivation from INVENTORY prints 50 38 88, agrees with the coverage file's own totals; 53-file tree enumeration confirms every hand-written src/language/ file is named in 61-COVERAGE.md; RVW-01 marked complete
-- [Phase ?]: [Phase 62 Plan 01]: D-09 disclosure checkpoint approved as written for RU-62-04 — none of the 5 findings rates critical/high, so the redaction tier was never actually triggered; approved shape frozen for plans 62-02..62-05
-- [Phase ?]: [Phase 62 Plan 01]: RU-62-04 (composer webview HTML generators) swept across all 7 live dimensions — 5 findings recorded (P62-D1-001/002, P62-D2-001, P62-D4-001, P62-D5-001), 1 not-reproducible disposition, 1 cross-unit referral (SETOPTS has no IntelliJ counterpart) to RU-63-04
-- [Phase ?]: P62-D1-003 rated critical, rendered per the frozen D-09 disclosure tier: names the surface/problem-class/impact of unescaped child_process.exec() interpolation across Commands.cjs/extension.ts, no trigger sequence or payload
-- [Phase ?]: IntelliJ's BbjCompileAction.java is a TODO stub and 6 VS Code commands have no IntelliJ counterpart — routed as Cross-unit referrals to RU-63-01 rather than P62-D7-* findings, per D-05
-- [Phase ?]: P62-D1-005 rated low: every affected field (addwindow/addchildwindow composer geometry/title/receiver, msgbox assignTo) is developer-typed webview input, not document/config/workspace data — self-inflicted statement-corruption gap, not attacker-controlled injection
-- [Phase ?]: P62-D4-004 cross-references RU-62-04's P62-D4-001 by ID rather than restating it — the logic/UI-layer half of the D-12 composer duplication callout, applying the 3-file (not 4) -composer.ts baseline
-- [Phase ?]: RVW-03 marked complete — both plans declaring it (62-01's RU-62-04, 62-03's RU-62-03) now cover the full 12-file webview-composer surface; RVW-02 remains open pending 62-04/62-05
-- [Phase ?]: [Phase 62 Plan 04]: RU-62-05 (TextMate grammar & language configuration) swept across all 7 live dimensions via live vscode-textmate tokenization — found 4 concrete D2 defects (P62-D2-006 invalid JSON trailing commas, P62-D2-007 string content mis-scoped as escape, P62-D2-008 bare REM not a comment, P62-D2-009 IOL=/LEN= boundary inverted), confirmed #381 already fixed and symmetric on both IDEs, found one VS Code-side .bbl extension gap (P62-D7-002), and 2 test-coverage/1 doc-accuracy findings; 2 cross-unit referrals to RU-63-02
-- [Phase ?]: RU-62-02 swept: 8 findings recorded (P62-D1-006/007, P62-D2-010/011, P62-D3-001, P62-D4-005, P62-D5-006, P62-D8-002); document-formatter.ts's spawn() explicitly distinguished from RU-62-01's exec()-shell-string pattern rather than cross-referenced as a duplicate
-- [Phase ?]: Phase 62 closed: both D-14 gates re-derived live and agree (22 files; 35/5/40 cells) across all three sources; 34 findings total (14 easy-fix, 20 major-refactor); 0 intra-phase referrals, 7 outstanding RU-63-* referrals; all 4 ROADMAP success criteria answered Met
-- [Phase ?]: [Phase 63 Plan 01]: RU-63-03 (settings & runtime acquisition) swept across all 7 live dimensions — 12 findings recorded incl. P63-D1-001 (no checksum/signature verification on Node.js download/cache path, high, D-13 two-tier disclosure) and P63-D5-001 (systemic no-test-source-set finding, cross-referenced by the other 4 units)
-- [Phase ?]: [Phase 63 Plan 01]: Verified live against nodejs.org/dist/index.json and nodejs/Release schedule.json that pinned Node.js v20.18.1 is past its own LTS end-of-life (2026-04-30) and missing 5 later security releases (P63-D6-001)
-- [Phase ?]: [Phase 63 Plan 01]: extractZip's zip-slip risk confirmed NOT exploitable (hardcoded 'node.exe' target, not entry.getName()); extractTarGz's delegation to system tar recorded as Not-reproducible rather than a finding, since confirming it would require constructing an exploit archive (D-13 prohibition)
-- [Phase ?]: [Phase 63 Plan 02]: RU-63-01 (run/compile/EM actions) swept across all 7 live dimensions — 16 findings recorded incl. P63-D2-004 (BUI/DWC buildCommandLine blocks the EDT up to ~25s via synchronous EM token validation/re-login) and P63-D1-003 (EM password/token exposed as GeneralCommandLine process arguments)
-- [Phase ?]: [Phase 63 Plan 02]: All 3 inherited Phase 62 referrals dispositioned as promoted (P63-D7-001/002/003) — corrected referral #2's stated count from six to the actually-enumerated 5 VS Code commands with no IntelliJ counterpart; outbound referral to RU-63-05 for BbjServerService.restart()'s mechanism side
-- [Phase ?]: [Phase 63 Plan 03]: RU-63-04 (composer dialogs & bridge) swept across all 7 live dimensions — 14 findings recorded incl. P63-D2-010 (stale captured document-edit range never revalidated, matching threat T-63-P03-S4) and P63-D7-004 (dormant MsgboxPreview.exprText/CatalogItem.constant DTO field gap, currently inert on both IDEs)
-- [Phase ?]: [Phase 63 Plan 03]: Corrected INVENTORY's composer-bridge risk-rank framing ('bridge to an external composer process') after tracing BbjComposerServer.java/BbjComposerService.java — it is an LSP4IJ proxy over the existing language server, spawns no external process
-- [Phase ?]: [Phase 63 Plan 03]: Merged inherited referrals #4 (RU-62-04) and #5 (RU-62-03) into one disposition per D-06 — SETOPTS has no IntelliJ composer dialog, verified against the current tree, promoted to P63-D7-005 with dedup naming #475 as a partial-overlap (porting the existing #474 config.bbx composer)
-- [Phase ?]: [Phase 63 Plan 04]: RU-63-05 (LSP wiring, server lifecycle & status UI) swept across all 7 live dimensions — 11 findings incl. P63-D1-007 (untrusted-search-path 'node' launch fallback + project-CWD, high) and P63-D2-013 (dead debounce infrastructure behind an unguarded restart() race)
-- [Phase ?]: [Phase 63 Plan 04]: DEBT-05 evidence corrected to measured '20 lsp4ij references across 11 files' (not the carried '10 files'); referral #3's mechanism side re-triaged by cross-reference to RU-63-01's P63-D7-003 rather than re-filed
-- [Phase ?]: [Phase 63 Plan 05]: RU-63-02 (language registration, editor support & notifications) swept across all 7 live dimensions — 9 findings incl. P63-D2-015 (bracket-matching doesn't exclude string-literal content) and P63-D2-016 (BbjCommenter's case-sensitive 'REM ' prefix vs BBj's case-insensitive REM grammar terminal)
-- [Phase ?]: [Phase 63 Plan 05]: Both inherited Phase 62 referrals dispositioned — #6 (TextMate filenames/.bbl LSP4IJ coverage) not-reproducible without IDE launch; #7 (format/denumber/tokenized/decompile absence) promoted as one categorical finding P63-D7-006, dedup #65 partial-overlap
-- [Phase ?]: [Phase 63 Plan 05]: Phase 63 closed — both D-17 gates re-derived live and agree (file gate 61/61, cell gate 35/5/40); 62 findings total (10 easy-fix, 52 major-refactor) across all 5 units; RVW-04 and SEC-03 marked complete
+- [Phase 64]: [Phase 61 Plan 06]: Resolved all 4 inherited cross-unit referrals for RU-61-05 — 2 promoted to new findings with direct node -e reproductions (P61-D1-006 interop host/port call-site gap, P61-D1-008 PREFIX path traversal), 1 dismissed with evidence (RU-61-03's trackBbjcplAvailability), 1 promoted as the hookTimeout flakiness cost-profile trace (P61-D5-013)
+- [Phase 64]: [Phase 61 Plan 06]: Found root cause behind #33 (multi-root workspaces broken) — initializeWorkspace() reads project.properties/config.bbx from folders[0] only (P61-D2-015); found settings never refresh on didChangeConfiguration, matching #486 exactly (P61-D2-018)
+- [Phase 64]: [Phase 61 Plan 06]: constants.ts/utils.ts dead-module candidate confirmed live (3 references) and dismissed with evidence, not asserted as a finding, per plan's explicit instruction
+- [Phase 64]: [Phase 61 Plan 07]: RU-61-07 (builtin catalogs) swept mechanically per D-08 — physical .bbl files confirmed never read by any runtime consumer or test, only their .ts-exported string siblings are used; found duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT eventtype declarations (P61-D2-019) and a CVS docstring drift between functions.ts/functions.bbl (P61-D4-015)
+- [Phase 64]: [Phase 61 Plan 07]: Phase 61 closed — D-17 gate re-derivation from INVENTORY prints 50 38 88, agrees with the coverage file's own totals; 53-file tree enumeration confirms every hand-written src/language/ file is named in 61-COVERAGE.md; RVW-01 marked complete
+- [Phase 64]: [Phase 62 Plan 01]: D-09 disclosure checkpoint approved as written for RU-62-04 — none of the 5 findings rates critical/high, so the redaction tier was never actually triggered; approved shape frozen for plans 62-02..62-05
+- [Phase 64]: [Phase 62 Plan 01]: RU-62-04 (composer webview HTML generators) swept across all 7 live dimensions — 5 findings recorded (P62-D1-001/002, P62-D2-001, P62-D4-001, P62-D5-001), 1 not-reproducible disposition, 1 cross-unit referral (SETOPTS has no IntelliJ counterpart) to RU-63-04
+- [Phase 64]: P62-D1-003 rated critical, rendered per the frozen D-09 disclosure tier: names the surface/problem-class/impact of unescaped child_process.exec() interpolation across Commands.cjs/extension.ts, no trigger sequence or payload
+- [Phase 64]: IntelliJ's BbjCompileAction.java is a TODO stub and 6 VS Code commands have no IntelliJ counterpart — routed as Cross-unit referrals to RU-63-01 rather than P62-D7-* findings, per D-05
+- [Phase 64]: P62-D1-005 rated low: every affected field (addwindow/addchildwindow composer geometry/title/receiver, msgbox assignTo) is developer-typed webview input, not document/config/workspace data — self-inflicted statement-corruption gap, not attacker-controlled injection
+- [Phase 64]: P62-D4-004 cross-references RU-62-04's P62-D4-001 by ID rather than restating it — the logic/UI-layer half of the D-12 composer duplication callout, applying the 3-file (not 4) -composer.ts baseline
+- [Phase 64]: RVW-03 marked complete — both plans declaring it (62-01's RU-62-04, 62-03's RU-62-03) now cover the full 12-file webview-composer surface; RVW-02 remains open pending 62-04/62-05
+- [Phase 64]: [Phase 62 Plan 04]: RU-62-05 (TextMate grammar & language configuration) swept across all 7 live dimensions via live vscode-textmate tokenization — found 4 concrete D2 defects (P62-D2-006 invalid JSON trailing commas, P62-D2-007 string content mis-scoped as escape, P62-D2-008 bare REM not a comment, P62-D2-009 IOL=/LEN= boundary inverted), confirmed #381 already fixed and symmetric on both IDEs, found one VS Code-side .bbl extension gap (P62-D7-002), and 2 test-coverage/1 doc-accuracy findings; 2 cross-unit referrals to RU-63-02
+- [Phase 64]: RU-62-02 swept: 8 findings recorded (P62-D1-006/007, P62-D2-010/011, P62-D3-001, P62-D4-005, P62-D5-006, P62-D8-002); document-formatter.ts's spawn() explicitly distinguished from RU-62-01's exec()-shell-string pattern rather than cross-referenced as a duplicate
+- [Phase 64]: Phase 62 closed: both D-14 gates re-derived live and agree (22 files; 35/5/40 cells) across all three sources; 34 findings total (14 easy-fix, 20 major-refactor); 0 intra-phase referrals, 7 outstanding RU-63-* referrals; all 4 ROADMAP success criteria answered Met
+- [Phase 64]: [Phase 63 Plan 01]: RU-63-03 (settings & runtime acquisition) swept across all 7 live dimensions — 12 findings recorded incl. P63-D1-001 (no checksum/signature verification on Node.js download/cache path, high, D-13 two-tier disclosure) and P63-D5-001 (systemic no-test-source-set finding, cross-referenced by the other 4 units)
+- [Phase 64]: [Phase 63 Plan 01]: Verified live against nodejs.org/dist/index.json and nodejs/Release schedule.json that pinned Node.js v20.18.1 is past its own LTS end-of-life (2026-04-30) and missing 5 later security releases (P63-D6-001)
+- [Phase 64]: [Phase 63 Plan 01]: extractZip's zip-slip risk confirmed NOT exploitable (hardcoded 'node.exe' target, not entry.getName()); extractTarGz's delegation to system tar recorded as Not-reproducible rather than a finding, since confirming it would require constructing an exploit archive (D-13 prohibition)
+- [Phase 64]: [Phase 63 Plan 02]: RU-63-01 (run/compile/EM actions) swept across all 7 live dimensions — 16 findings recorded incl. P63-D2-004 (BUI/DWC buildCommandLine blocks the EDT up to ~25s via synchronous EM token validation/re-login) and P63-D1-003 (EM password/token exposed as GeneralCommandLine process arguments)
+- [Phase 64]: [Phase 63 Plan 02]: All 3 inherited Phase 62 referrals dispositioned as promoted (P63-D7-001/002/003) — corrected referral #2's stated count from six to the actually-enumerated 5 VS Code commands with no IntelliJ counterpart; outbound referral to RU-63-05 for BbjServerService.restart()'s mechanism side
+- [Phase 64]: [Phase 63 Plan 03]: RU-63-04 (composer dialogs & bridge) swept across all 7 live dimensions — 14 findings recorded incl. P63-D2-010 (stale captured document-edit range never revalidated, matching threat T-63-P03-S4) and P63-D7-004 (dormant MsgboxPreview.exprText/CatalogItem.constant DTO field gap, currently inert on both IDEs)
+- [Phase 64]: [Phase 63 Plan 03]: Corrected INVENTORY's composer-bridge risk-rank framing ('bridge to an external composer process') after tracing BbjComposerServer.java/BbjComposerService.java — it is an LSP4IJ proxy over the existing language server, spawns no external process
+- [Phase 64]: [Phase 63 Plan 03]: Merged inherited referrals #4 (RU-62-04) and #5 (RU-62-03) into one disposition per D-06 — SETOPTS has no IntelliJ composer dialog, verified against the current tree, promoted to P63-D7-005 with dedup naming #475 as a partial-overlap (porting the existing #474 config.bbx composer)
+- [Phase 64]: [Phase 63 Plan 04]: RU-63-05 (LSP wiring, server lifecycle & status UI) swept across all 7 live dimensions — 11 findings incl. P63-D1-007 (untrusted-search-path 'node' launch fallback + project-CWD, high) and P63-D2-013 (dead debounce infrastructure behind an unguarded restart() race)
+- [Phase 64]: [Phase 63 Plan 04]: DEBT-05 evidence corrected to measured '20 lsp4ij references across 11 files' (not the carried '10 files'); referral #3's mechanism side re-triaged by cross-reference to RU-63-01's P63-D7-003 rather than re-filed
+- [Phase 64]: [Phase 63 Plan 05]: RU-63-02 (language registration, editor support & notifications) swept across all 7 live dimensions — 9 findings incl. P63-D2-015 (bracket-matching doesn't exclude string-literal content) and P63-D2-016 (BbjCommenter's case-sensitive 'REM ' prefix vs BBj's case-insensitive REM grammar terminal)
+- [Phase 64]: [Phase 63 Plan 05]: Both inherited Phase 62 referrals dispositioned — #6 (TextMate filenames/.bbl LSP4IJ coverage) not-reproducible without IDE launch; #7 (format/denumber/tokenized/decompile absence) promoted as one categorical finding P63-D7-006, dedup #65 partial-overlap
+- [Phase 64]: [Phase 63 Plan 05]: Phase 63 closed — both D-17 gates re-derived live and agree (file gate 61/61, cell gate 35/5/40); 62 findings total (10 easy-fix, 52 major-refactor) across all 5 units; RVW-04 and SEC-03 marked complete
+- [Phase 64]: Phase 64 D-20's adopted gradle-wrapper.jar row moves BOTH gates: the cell gate is 8 29 35 64 (not INVENTORY's 7 27 29 56) and the file gate is 29 — the adopted row is not derivable from any INVENTORY grep and must be added by hand
+- [Phase 64]: Phase 64 carries R-D6-CENTRAL zero times — all eight D6 cells in its slice are live, and 64-COVERAGE.md states that non-carry as a fact so its absence does not read as a dropped carry-forward
+- [Phase 64]: BBjCodeFomatter.jar's unidentifiability is itself the SEC-08 finding (P64-D6-002, triage file-issue): a 38,078-byte binary shipped in the published .vsix whose entire manifest is 'Manifest-Version: 1.0' cannot be vulnerability-triaged at all, which is a strictly worse posture than a known-vulnerable dependency
+- [Phase 64]: jcommander 1.71 is advisory-clean (OSV, checked 2026-08-18, mechanism sanity-checked against log4j-core 2.14.1) but dated 2017-04-27 from its own Bnd-LastModified — recorded as a finding-free pass with source and date rather than inflated into a CVE claim
+- [Phase 64]: All 12 RU-64-03 findings classify as major and none as easy — INVENTORY 3c test (4) fails for everything under bbj-vscode/tools/, which is reached by no tsconfig, no lint script and no vitest pattern; P64-D5-001 is the finding that explains why Phase 67's easy path gets nothing from this unit
 
 ### Tech Debt
 
@@ -204,9 +210,9 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T13:05:50.322Z
-Stopped at: Phase 63 verified 4/4 and closed; Phase 64 planned (3 plans), ready to execute
-Resume file: .planning/phases/64-build-ci-dependency-review/64-01-PLAN.md
+Last session: 2026-08-18T13:33:36.360Z
+Stopped at: Completed 64-01-PLAN.md — 64-COVERAGE.md created with its frozen skeleton and RU-64-03 swept end to end (13 cells, 12 findings); next 64-02 (RU-64-01)
+Resume file: None
 
 ---
 
