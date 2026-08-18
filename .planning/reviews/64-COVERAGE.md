@@ -1788,9 +1788,9 @@ Once (i)-(iv) hold the unit is done and no further reading is licensed. **`RU-64
 **Owning plan:** 64-03 — Task A (D1, D2, D3, tier `repro`), Task B (the SEC-08 dependency audit: D6 for the unit row and for both file-exception rows), Task C (D4, D5, D8, tier `trace`) — the three-way split D-03 pins for this plan. `64-03` additionally fills the close-out and resolves the inherited-item ledger.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked against REQUIREMENTS.md's D1 wording (injection, untrusted input, secret exposure, integrity gaps, privilege/trust-boundary errors) over the 13 readable manifests at tier `repro`, satisfied by line-by-line trace rather than by a runnable reproduction: no command in this phase mutates the tree, and the Gradle build does not execute in this environment at all (`./gradlew --offline -q dependencies` exits 1 in 723 ms — the literal output is recorded in the D6 cell). **(a) npm lifecycle hooks, enumerated rather than assumed.** `package.json:652-668` declares 15 scripts; programmatically intersecting that key set with npm's lifecycle-hook names returns exactly one — **`prepare` at `:653`** (`npm run langium:generate && npm run build`). There is no `preinstall`, `install`, `postinstall`, `prepublish`, `prepublishOnly`, `prepack`, `postpack`, `preuninstall`, `postuninstall` or `dependencies` hook, and that absence is a checked fact rather than an omission. `vscode:prepublish` at `:654` is a **vsce** hook, not an npm one: it fires under `vsce package`/`vsce publish` and never on install. `prepare` fires on every bare `npm install` and on every `npm ci` — `grep -rn 'npm ci' .github/workflows/` returns 8 occurrences across 5 workflows — so on every contributor machine and every CI runner the install step runs Langium code generation plus a full `tsc -b` and `node ./esbuild.mjs` before any reviewed step begins. **What it executes is repository-local only** (`langium generate` reading `langium-config.json` and `src/language/bbj.langium`, then `tsc` and `esbuild`), so it introduces no third-party execution beyond the packages the install itself just placed on disk; it is recorded here as a checked positive, not a finding, and its *cost* is a D3 matter recorded as `P64-D3-003`. **(b) The Gradle wrapper chain, all 7 properties read.** `gradle/wrapper/gradle-wrapper.properties:1-2` set `distributionBase`/`distributionPath`; `:3` sets `distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip` — **HTTPS, first-party Gradle host**; `:4` sets `networkTimeout=10000`; `:5` sets **`validateDistributionUrl=true`**, which is present; `:6-7` set `zipStoreBase`/`zipStorePath`. **There is no `distributionSha256Sum` property anywhere in the file**, and that is the one Gradle-side integrity question answerable without a working build, so it is answered explicitly rather than left implicit: it is **absent**. `validateDistributionUrl=true` checks that the URL is well-formed and resolves; it pins no content. The distribution that `gradlew` downloads, unpacks and executes is therefore authenticated by TLS to `services.gradle.org` and by nothing else in this repository. Recorded as `P64-D1-006`, whose evidence also covers the wrapper JAR's own row below. **(c) The wrapper JAR itself is swept directly, on its own file-exception row (D-20)** — `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar` and `:208-209` hands that classpath to `org.gradle.wrapper.GradleWrapperMain`, so a 43,583-byte third-party binary committed to this repository executes before any build logic runs; its identity, manifest, reachability and verification status are recorded on the `[file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D1` line below rather than inferred here from its two text neighbours. **(d) Build and bundling configuration.** `esbuild.mjs` (28 lines, read in full) marks exactly one module external — `'vscode'` at `:17`, with an accurate comment — and inlines everything else reachable from its two entry points at `:8` (`src/extension.ts`, `src/language/main.ts`). **No value from the build environment reaches the bundle**: `grep -n 'define\|banner\|inject\|process.env' bbj-vscode/esbuild.mjs` returns nothing, and the only `process.argv` reads are the `--watch`/`--minify` flags at `:4-5`, so nothing from the builder's environment is baked into the shipped output. What *is* inlined is a supply-chain fact and was checked against the built artifact rather than assumed: `out/extension.cjs` contains 38 occurrences of `minimatch` and 2 each of `brace-expansion` and `balanced-match`, reached through `vscode-languageclient/node` — that is the reachability evidence the D6 triage below rests on. `langium-config.json` points at `src/language/bbj.langium` (`:6`), emits generated code to `src/language/generated` (`:18`) and a TextMate grammar to `syntaxes/gen-bbj.tmLanguage.json` (`:14`); all three paths exist in this checkout, and the fact that the third output is referenced nowhere else is a D4 matter recorded as `P64-D4-005`. **(e) Declared repositories and plugin sources, every host and every scheme.** `build.gradle.kts:16-21` declares `mavenCentral()` and `intellijPlatform { defaultRepositories() }`; `settings.gradle.kts:1-3` declares `org.jetbrains.intellij.platform.settings` at version `2.11.0` with **no** `pluginManagement { repositories { … } }` block, so plugin resolution falls through to the Gradle Plugin Portal default. `grep -n 'http://' bbj-intellij/build.gradle.kts bbj-intellij/settings.gradle.kts bbj-intellij/gradle.properties bbj-intellij/gradle/wrapper/gradle-wrapper.properties` returns **nothing**: no declared endpoint in this unit resolves over plaintext. **(f) Secrets and paths.** No credential literal appears in any of the 13 readable files. The only credential reference is `build.gradle.kts:75`, `token = providers.gradleProperty("intellijPlatformPublishingToken")`, which reads a Gradle property rather than embedding a value — the correct shape on the manifest side; that the CI callers then pass that value on the command line at `manual-release.yml:137` and `preview.yml:102` is `RU-64-01`'s finding `P64-D1-004`, cross-referenced here rather than re-recorded. `build.gradle.kts:45` reads `src/main/resources/META-INF/description.html` at configuration time; the file exists (1,618 bytes). One developer-machine path is baked into a build task — `build.gradle.kts:133`, `runIde { args = listOf(System.getProperty("user.home") + "/tinybbj") }` — recorded as an observation and deliberately not promoted, because `runIde` is a developer-only sandbox task reached by no CI path and the value derives from the running user's own home rather than being hardcoded to one machine. No manifest in this unit declares a token, a password, or an absolute path outside the project.
+- D2 Correctness & error handling — fail — Checked against wrong edge-case behaviour, swallowed failures, inconsistent configuration and resource leaks, read into configuration terms, at tier `repro`; every claim below names the concrete state and the exact `file:line` where behaviour diverges, and two of the three were additionally confirmed by running a read-only command. **Do the two tsconfigs agree, and is the divergence deliberate?** `tsconfig.json:2-17` sets `target: ES6`, `module`/`moduleResolution: Node16`, `strict: true`, `noEmit: true`, `noUnusedLocals`, `noImplicitReturns`, `noImplicitOverride`, `esModuleInterop: false`, `sourceMap: true`, over `include: ["src/**/*.ts"]` (`:18-20`). `tsconfig.test.json:2` extends it and overrides only `noEmit: true` (already true) and `rootDir: "test"` (`:3-6`), then declares `references: [{ path: "tsconfig.json" }]` (`:7-9`) and `include: ["test/**/*",]` (`:10-12`, with a trailing comma tsc tolerates in JSONC). **That reference is not merely redundant — it is invalid, and the divergence is accidental rather than deliberate**: `npx tsc -p tsconfig.test.json --noEmit` reports `tsconfig.test.json(7,18): error TS6306: Referenced project '…/tsconfig.json' must have setting "composite": true.` and `error TS6310: Referenced project '…/tsconfig.json' may not disable emit.` The test-side type-check configuration this repository declares **cannot be compiled at all**, and nothing notices because nothing runs it: `grep -rn 'tsconfig.test'` across every `.json`, `.ts`, `.js`, `.mjs`, `.yml` and `.md` in the tree, excluding `node_modules/` and `.planning/`, returns **zero** hits outside the file itself — no script in `package.json:652-668`, no workflow, no editor config. Recorded as `P64-D2-008`. **Do `package.json`'s scripts do what their names claim, and can any report success while its step failed?** Read one by one: `build` (`:655`) chains `tsc -b tsconfig.json && node ./esbuild.mjs` with `&&`, so the second step cannot run after a failed first and the shell's exit status is the failing step's — correct; `watch` (`:656`) delegates to `concurrently`, which propagates a non-zero child status by default; `lint` (`:657`), `test` (`:658`), `test:watch`, `test:coverage` and `test:bbj` (`:667`) are single commands whose status is the script's status; **no script anywhere in the file contains a pipeline (`|`), a `;` separator, an `|| true`, or a subshell that could mask an exit code** — checked across all 15. The `RUN_BBJ_TESTS=1` prefix on `test:bbj` (`:667`) is the variable the suite actually reads: `test/test-helper.ts:39` reads `process.env.RUN_BBJ_TESTS`, documented at `:31-32`. **But one script builds the wrong artifact.** `package.json:651` declares `"main": "./out/extension.cjs"`, which `esbuild.mjs:8-12` produces. `vscode:prepublish` (`:654`) — the hook `vsce package`/`vsce publish` runs — does **not** invoke that path: it runs `esbuild-base` (`:661`), which bundles only `./src/extension.ts` and writes `--outfile=out/main.js`, a filename nothing declares, loads or references, and which omits the language-server entry point `src/language/main.ts` entirely. The consequence is concrete and visible on disk in this checkout: `out/extension.cjs` and `out/language/main.cjs` are dated 2026-08-17 (from `prepare`/`build`) while `out/main.js` is dated 2026-07-19 and 622,562 bytes — so `--minify` has never applied to the file that actually ships, and packaging silently depends on a prior unrelated build having left `out/extension.cjs` in place. Recorded as `P64-D2-007`. **Does `esbuild.mjs` fail non-zero on its own build failure?** Yes, by construction rather than by handling: `:26` awaits `ctx.rebuild()` at ESM top level with no `try`/`catch`, so an esbuild error rejects the top-level await and Node exits non-zero; the only casualty is `ctx.dispose()` at `:27`, which is skipped on the failure path — immaterial, since the process is terminating. Stated as a checked positive. **Do `eslint.config.js` and `langium-config.json` point at paths that exist?** Yes: `eslint.config.js:5` ignores `out/**` and `src/language/generated/**`, both present, and `:8` matches `**/*.ts`; `langium-config.json:6,14,18` name `src/language/bbj.langium`, `syntaxes/gen-bbj.tmLanguage.json` and `src/language/generated`, all three present. **Is `build.gradle.kts`'s declared Java level consistent with what the build assumes?** `:11-14` sets `sourceCompatibility`/`targetCompatibility` to `VERSION_17` and declares **no `toolchain`**, so the build compiles with whatever JVM launched Gradle rather than provisioning a JDK 17 — the file `P63-D6-002` is anchored in; the correctness observation is recorded here and the toolchain-health **triage** is deliberately left to the `### Inherited item triage` block so the two are not double-counted. The contrast is in this repository: `java-interop/build.gradle:6-10` declares `java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }`, the shape that pins the compiler independently of the launching JVM. **A cross-project input with no producer and no check.** `build.gradle.kts:93-98` (`copyLanguageServer`) and `:115-119` (`prepareSandbox`) both copy `main.cjs` from `${projectDir}/../bbj-vscode/out/language/`, a directory produced by the npm toolchain that Gradle neither builds, declares a dependency on, nor tests for: there is no `dependsOn` on any bbj-vscode step, no `onlyIf`, no `doFirst` existence assertion and no failure path anywhere in the 135-line file. Recorded as `P64-D2-009`; the precise runtime consequence could not be executed here and is written up under `### Not-reproducible dispositions` rather than asserted. **What do the wrapper scripts do when the properties file is missing or malformed?** Neither reads it: `gradlew:117` and `gradlew.bat:71` place the JAR on the classpath and `gradlew:208-209` / `gradlew.bat:75` hand control to `org.gradle.wrapper.GradleWrapperMain`, which is what parses the properties file — so a missing or malformed file surfaces as a Java-side wrapper error rather than a shell-side one, and both scripts still propagate its status (`gradlew:244` uses `exec`, so the JVM's status becomes the script's; `gradlew.bat:84-87` captures `%ERRORLEVEL%` and forces a non-zero code when the failure path is taken). Both fail closed.
+- D3 Performance & resource use — fail — Checked against redundant work, missing caches and unbounded growth, read in build terms, at tier `repro` satisfied by trace plus one timed measurement; where a cost is latent rather than active it is said to be so and is not promoted on volume alone. **Does the build compile the same sources twice?** Not within a single `npm run build`: `package.json:655` runs `tsc -b tsconfig.json` where `tsconfig.json:7` sets `noEmit: true`, so `tsc` type-checks and emits nothing, and `esbuild.mjs` then transpiles and bundles without type-checking — two passes with two different jobs, one emit, and that is the intended division rather than duplication. **But the whole build does run twice per CI job, and that is measurable from the manifests alone.** `package.json:653`'s `prepare` hook is `npm run langium:generate && npm run build`, and npm runs `prepare` on every `npm ci`; three workflows then invoke `npm run build` again on the line immediately following — `build.yml:27-28`, `pr-vsix.yml:49-50` and `pr-validation.yml:30-31`. Each of those jobs therefore performs Langium code generation, a full non-incremental `tsc -b` and a full esbuild bundle of both entry points, twice, on every push or pull request. The `-b` build mode buys nothing back: `tsconfig.json` declares no `composite: true` and no `incremental: true`, so there is no project-reference graph and no `.tsbuildinfo` to make the second pass cheap — every invocation is a cold full type-check. Recorded as `P64-D3-003`. **Is the test suite's discovery scoped?** No, and this is the latent half. `vitest.config.ts` (30 lines, read in full) declares **no `include` and no `exclude` for test discovery at all** — its `test` block contains only `coverage` (`:7-28`) — so which files constitute the suite is decided entirely by vitest's built-in defaults, which this repository states nowhere and which do not exclude `out/` (3.5 MB across four generated files in this checkout) or `examples/`. Measured rather than assumed: `npx vitest list --filesOnly` completes in **0.615 s** and resolves **50** files, exactly matching the 50 `*.test.ts` files present under `test/`. So the cost is latent — discovery is fast today because the tree is small and the default exclusions catch `node_modules/` — and it is recorded as latent, not promoted; the *correctness* half of the same fact, that three sources disagree about what the suite is, is D5's and is recorded there. **Is coverage collection scoped?** Yes, and tightly: `vitest.config.ts:8` sets `coverage.enabled: false` so the instrumented run is opt-in via `--coverage` (`package.json:660`'s `test:coverage`), `:12` scopes `include` to `src/**/*.ts`, and `:13-17` excludes `src/language/generated/**` (~17.5k generated LOC), `src/extension.ts` and `**/*.d.ts`. Checked positive. **Does esbuild produce a sourcemap, and is the bundle proportionate?** `esbuild.mjs:19-20` sets `sourcemap: !minify` and `minify` from `--minify`, so the default `build` path emits maps: `out/extension.cjs` is 1,265,974 bytes with a sibling `.cjs.map`, and `out/language/main.cjs` is 2,251,400 bytes — proportionate for a Langium language server that inlines its parser and its generated grammar. The disproportionate item is the 622,562-byte `out/main.js` that no configuration references, which is `P64-D2-007`'s subject and is not double-counted here. **Does any Gradle configuration force a re-resolve or disable caching?** No: `gradle.properties` is a single line (`org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8`) and declares no `--refresh-dependencies` equivalent, no `cacheChangingModulesFor`, no dynamic (`+`) or `-SNAPSHOT` version anywhere in `build.gradle.kts` or `settings.gradle.kts` — every coordinate is a fixed version, which is the cache-friendly case. It also declares no `org.gradle.caching` and no `org.gradle.parallel`, so the build cache and parallel execution are simply off by default; stated as a fact rather than as a defect, since neither is required for a single-project build.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — pending
@@ -1809,7 +1809,7 @@ Two rows. `bbj-vscode/package-lock.json` is transcribed verbatim from INVENTORY'
 - [file-exception] bbj-vscode/package-lock.json · D6 — pending
 - [file-exception] bbj-vscode/package-lock.json · D7 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
 - [file-exception] bbj-vscode/package-lock.json · D8 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
-- [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D1 — pending
+- [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D1 — fail — Swept **directly**, by manifest and hash only, on the same footing plan `64-01` gave the three `tools/formatter/` JAR rows: `unzip -p <jar> META-INF/MANIFEST.MF` and `sha256sum`, no decompilation, no disassembly, no unpacking beyond the manifest, no execution (D-11). **Artifact identity.** `sha256sum` prints `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`; size is 43,583 bytes; `ls -la bbj-intellij/gradle/wrapper/` shows the directory holds exactly two entries, this JAR and the 251-byte `gradle-wrapper.properties`. **What the manifest declares, and what it does not.** The whole of `META-INF/MANIFEST.MF` is two lines — `Manifest-Version: 1.0` and `Implementation-Title: Gradle Wrapper` — with **no `Implementation-Version`, no `Implementation-Vendor`, no `Build-Jdk`, no `Created-By` and no signature entry**. The JAR's own bytes therefore cannot tell a reader which Gradle release produced it, so identity has to be established by comparing the hash against Gradle's published wrapper checksums, and that comparison was made rather than described: `https://services.gradle.org/versions/all` publishes a `wrapperChecksum` per release, and this hash matches **19 published entries spanning Gradle 8.10 through 8.12.1** (latest final match: **8.12.1**, built 2025-01-24) — while `gradle-wrapper.properties:3` declares `gradle-8.13-bin.zip`, whose published wrapper checksum is `81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f`, a different value. **The committed JAR is not the wrapper JAR of the Gradle version the file beside it declares**, and the two were committed together in a single commit (`git log -- bbj-intellij/gradle/wrapper/` returns exactly one, `e97c587 chore(01-01): initialize Gradle wrapper and build scripts`) and have never been touched since, so the pair was never produced by one `./gradlew wrapper --gradle-version 8.13` run. **Reachability — this binary executes, it is not merely stored.** `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar`, `:208-209` passes that classpath and `org.gradle.wrapper.GradleWrapperMain` to the JVM and `:244` `exec`s it; `gradlew.bat:71,75` do the same on Windows. It runs on every contributor build and in every CI job that invokes a Gradle task — `pr-validation.yml:61` (`buildPlugin`), `manual-release.yml:127,133,137` (`buildPlugin`, `verifyPlugin`, `publishPlugin`) and `preview.yml:99` (`publishPlugin`) — and three of those five sit in jobs holding `secrets.JETBRAINS_MARKETPLACE_TOKEN`. **Does anything in this repository verify it before `gradlew` runs?** No, checked three ways: `gradle-wrapper.properties` carries no `distributionSha256Sum` (all 7 lines read above); `grep -rn 'wrapper-validation\|gradle/actions\|setup-gradle' .github/workflows/` returns nothing, so Gradle's own wrapper-validation action is absent from all six workflows; and no dependency-automation config could ever flag it, because `.github/dependabot.yml` declares no `gradle` ecosystem (`RU-64-01`'s `P64-D6-005`). The bootstrap is thus a three-step unverified chain — an unpinned JAR of a version that does not match its own properties file, loading a distribution pinned by nothing but TLS. Recorded as `P64-D1-006`; the identity-and-update-path half is recorded separately on this row's D6 cell as `P64-D6-006`. **D-16 assessment, stated rather than left implicit:** this record describes an integrity gap and cites only Gradle's own public checksum metadata; it contains no exploitation path, and substituting this JAR requires write access to the repository, so the redaction tier is not triggered here.
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D2 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D3 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D4 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
@@ -1828,7 +1828,327 @@ _(pending — plan `64-03`; re-triages `P63-D6-002`)_
 
 ### Findings
 
-_(pending — plan `64-03`)_
+All records carry `unit: RU-64-02`. Every `dedup:` is checked against INVENTORY's frozen 15-issue
+snapshot, in which **0 of 15** carry the `dependencies` area label and **0 of 15** name CI, a
+workflow, build configuration or a vendored binary — a fact re-derived in this file's header, so a
+`dedup: none` here is a derived result rather than a shrug. Findings are grouped by the task that
+recorded them; `triage:` is carried on every D6 record per D-09, immediately after
+`classification:`.
+
+```
+id:                P64-D1-006
+unit:              RU-64-02
+location:          bbj-intellij/gradle/wrapper/gradle-wrapper.properties:3-5
+dimension:         D1
+secondary:         [D6]
+severity:          high
+evidence_tier:     repro
+evidence:          Line-by-line trace over the complete 7-line properties file and the two wrapper
+                   scripts; no runnable reproduction accompanies this record because the Gradle
+                   build does not execute in this environment at all (`./gradlew --offline -q
+                   dependencies` exits 1 in 723 ms on the JDK 25.0.3 version check) and this phase
+                   mutates nothing. `gradle-wrapper.properties` declares, in full: `:1`
+                   `distributionBase=GRADLE_USER_HOME`, `:2` `distributionPath=wrapper/dists`, `:3`
+                   `distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip`,
+                   `:4` `networkTimeout=10000`, `:5` `validateDistributionUrl=true`, `:6`
+                   `zipStoreBase=GRADLE_USER_HOME`, `:7` `zipStorePath=wrapper/dists`. There is no
+                   `distributionSha256Sum` property, which is the mechanism Gradle provides for
+                   pinning the downloaded distribution by content; `validateDistributionUrl=true`
+                   only checks that the URL is well-formed and resolves, and pins nothing.
+                   Independently, nothing pins the wrapper JAR that performs the download:
+                   `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar`,
+                   `gradlew:208-209` passes that classpath plus
+                   `org.gradle.wrapper.GradleWrapperMain` to the JVM and `:244` `exec`s it
+                   (`gradlew.bat:71,75` are the Windows equivalents), and
+                   `grep -rn 'wrapper-validation\|gradle/actions\|setup-gradle' .github/workflows/`
+                   returns nothing, so Gradle's own wrapper-validation action is absent from all six
+                   workflows. The JAR's `sha256sum` is
+                   `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`, which matches
+                   Gradle's published `wrapperChecksum` for releases 8.10 through 8.12.1 and **not**
+                   the `81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f` published
+                   for the 8.13 distribution this same file declares — so the two halves of the
+                   wrapper do not even agree with each other. Resolvable references: Gradle's own
+                   release metadata at https://services.gradle.org/versions/all (fields
+                   `wrapperChecksum` and `checksum` per release) and
+                   https://services.gradle.org/distributions/gradle-8.13-wrapper.jar.sha256. This
+                   record describes an integrity gap and publishes no exploitation path; D-16's
+                   redaction tier is assessed and not triggered, since substituting either artifact
+                   requires write access to this repository.
+failure_scenario:  A CI runner or a contributor machine executes `./gradlew publishPlugin`
+                   (`manual-release.yml:137`, `preview.yml:99`) or `./gradlew buildPlugin`
+                   (`pr-validation.yml:61`, `manual-release.yml:127`). `gradlew:117` puts the
+                   committed 43,583-byte JAR on the classpath and runs it; the JAR downloads
+                   `gradle-8.13-bin.zip` over TLS and unpacks it into `~/.gradle/wrapper/dists`.
+                   Neither artifact is compared against any expected digest at any point: not the
+                   JAR (no wrapper-validation step exists in any workflow) and not the distribution
+                   (no `distributionSha256Sum`). A distribution served from a compromised mirror or
+                   a repository-side substitution of the JAR therefore executes with the full
+                   authority of the job — which, for `manual-release.yml:135-137` and
+                   `preview.yml:96-102`, includes `secrets.JETBRAINS_MARKETPLACE_TOKEN`, a
+                   credential that publishes to every IntelliJ user of this plugin. The
+                   version mismatch above is the direct evidence that nothing in this repository or
+                   its CI would notice the wrapper JAR being other than expected: it already is.
+classification:    major — (1) at most one file: FAIL, the minimal correct fix regenerates both
+                   `gradle-wrapper.properties` and `gradle-wrapper.jar` via
+                   `./gradlew wrapper --gradle-version <v> --gradle-distribution-sha256-sum <sum>`
+                   and adds a validation step to the workflows, touching three or more files.
+                   (2) no public API / no grammar rule / no LSP contract change: PASS. (3) adds or
+                   upgrades no dependency in `package.json` or `build.gradle.kts`: PASS — the
+                   Gradle distribution version is declared in the wrapper properties, not in
+                   `build.gradle.kts`. (4) regression-testable with the existing harness: FAIL — the
+                   Gradle build does not run in this environment and no test in this repository
+                   asserts anything about the wrapper. (5) reviewer can name the exact edit: PASS —
+                   add `distributionSha256Sum=<published sum for the chosen release>` to the
+                   properties file, regenerate the JAR for that same release, and add
+                   `gradle/actions/wrapper-validation` to the workflows that run `./gradlew`.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: FAIL
+                   on both halves. Tests (1), (4) and (6) fail; (6) is the deliberate safety gate,
+                   so this is `major` regardless of how small the properties-file edit looks.
+effort:            4
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions Gradle, the
+                   wrapper, checksums, supply chain or the IntelliJ build; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a
+                   vendored binary.
+disposition:       major-refactor — the fix spans the wrapper pair and the workflow definitions and
+                   changes what every build verifies before it runs, so Phase 67 does not apply it
+                   unilaterally; it belongs in `MAJOR-REFACTORS.md` alongside `P64-D6-006`, which
+                   records the same artifact's identity and update-path half.
+```
+
+```
+id:                P64-D2-007
+unit:              RU-64-02
+location:          bbj-vscode/package.json:654,661
+dimension:         D2
+secondary:         [D3]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace with the divergence confirmed against artefacts on disk; no
+                   packaging run was performed because this phase mutates nothing. `package.json:651`
+                   declares `"main": "./out/extension.cjs"`. The file of that name is produced only
+                   by `esbuild.mjs:7-21`, whose `entryPoints` are `src/extension.ts` and
+                   `src/language/main.ts` (`:8`), whose `outdir` is `out` (`:9`) and whose
+                   `outExtension` maps `.js` to `.cjs` (`:10-12`); `esbuild.mjs` is invoked only by
+                   `build` (`:655`) and `watch` (`:656`). The hook that `vsce package` and
+                   `vsce publish` run is `vscode:prepublish` (`:654`), which is
+                   `shx cp ../LICENSE ./LICENSE && npm run esbuild-base -- --minify && npm run lint`.
+                   `esbuild-base` (`:661`) is
+                   `esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode
+                   --format=cjs --platform=node`: a single entry point, a different output filename,
+                   and no language-server bundle. `grep -rn 'out/main.js'` over the tree excluding
+                   `node_modules/` and `.planning/` returns only `package.json:661` itself — nothing
+                   loads it. The two sibling scripts `esbuild` (`:662`) and `esbuild-watch` (`:663`)
+                   delegate to the same dead output, and `test-compile` (`:664`, `tsc -p ./`) is
+                   likewise referenced by nothing. The divergence is visible on disk in this
+                   checkout: `out/extension.cjs` (1,265,974 bytes) and `out/language/main.cjs`
+                   (2,251,400 bytes) are dated 2026-08-17, while `out/main.js` (622,562 bytes) is
+                   dated 2026-07-19 — different builds, months apart, only one of which ships.
+                   `.vscodeignore` was read as context to establish what the VSIX contains (it
+                   excludes `node_modules` and `src/` but not `out/`); INVENTORY excludes
+                   `.vscodeignore` from every unit, so it is cited as context only and no finding is
+                   located in it, and it adds no file to this unit's list or to the file gate.
+failure_scenario:  A maintainer runs `vsce package` (or the release path at `preview.yml:62-68` /
+                   `manual-release.yml:84-90`, which invoke vsce and therefore the same hook).
+                   `vscode:prepublish` writes a freshly minified `out/main.js` that nothing
+                   references, runs the linter, and exits successfully. vsce then packages the
+                   directory: the file named by `main`, `out/extension.cjs`, is whatever an earlier
+                   `npm ci`-triggered `prepare` left there — unminified, with its sourcemap — and
+                   `out/language/main.cjs`, the language server the IntelliJ plugin also consumes,
+                   is likewise the `prepare` output rather than anything `vscode:prepublish`
+                   produced. The published extension is therefore never the minified artifact the
+                   prepublish hook exists to build, ships a 622 KB unreferenced bundle plus
+                   sourcemaps as dead weight, and would ship a stale `out/extension.cjs` outright on
+                   any machine where `prepare` did not run immediately before packaging.
+classification:    major — (1) at most one file: PASS, the fix is confined to `package.json`'s
+                   scripts block. (2) no public API / no grammar rule / no LSP contract change:
+                   PASS. (3) adds or upgrades no dependency: PASS. (4) regression-testable with the
+                   existing harness: FAIL — vitest runs over `src/` and `test/` and asserts nothing
+                   about packaging output; catching this regression needs a VSIX-content check that
+                   does not exist. (5) reviewer can name the exact edit: PASS — point
+                   `vscode:prepublish` at `node ./esbuild.mjs --minify` and delete the dead
+                   `esbuild-base`, `esbuild`, `esbuild-watch` and `test-compile` scripts. (6)
+                   severity is neither critical nor high AND primary dimension is not D1: PASS.
+                   Only test (4) fails, which is enough to make this `major`.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions packaging, vsce,
+                   esbuild, minification or the VSIX; 0 of the 15 carry the `dependencies` label and
+                   0 name CI, a workflow, build configuration or a vendored binary.
+disposition:       major-refactor — the edit is one line plus four deletions, but it changes what
+                   the release path produces, so it wants a deliberate packaging verification
+                   rather than an unattended Phase 67 apply.
+```
+
+```
+id:                P64-D2-008
+unit:              RU-64-02
+location:          bbj-vscode/tsconfig.test.json:7-9
+dimension:         D2
+secondary:         [D4, D5]
+severity:          medium
+evidence_tier:     repro
+evidence:          Reproduced by a read-only compiler invocation that emits nothing.
+                   `npx tsc -p tsconfig.test.json --noEmit`, run from `bbj-vscode/`, prints exactly
+                   two diagnostics and exits non-zero: `tsconfig.test.json(7,18): error TS6306:
+                   Referenced project '/home/coder/repos/bbj-language-server/bbj-vscode/tsconfig.json'
+                   must have setting "composite": true.` and `tsconfig.test.json(7,18): error
+                   TS6310: Referenced project '.../tsconfig.json' may not disable emit.` Both are
+                   structural: `tsconfig.test.json:7-9` declares
+                   `"references": [{ "path": "tsconfig.json" }]`, while `tsconfig.json:2-17`
+                   declares neither `composite: true` nor emit — `:7` sets `noEmit: true`. A
+                   project reference is valid only against a composite, emitting project, so this
+                   configuration cannot be compiled in any mode that honours the reference. The
+                   reason no one has noticed is that nothing runs it:
+                   `grep -rn 'tsconfig.test'` across every `.json`, `.ts`, `.js`, `.mjs`, `.yml` and
+                   `.md` in the tree, excluding `node_modules/` and `.planning/`, returns zero hits
+                   outside the file itself — no entry in `package.json:652-668`, no workflow step,
+                   no editor configuration. `package.json:655`'s `build` type-checks
+                   `tsconfig.json` only, whose `include` is `["src/**/*.ts"]` (`:18-20`), so the
+                   120 TypeScript files under `src/` and `test/` are covered for linting
+                   (`:657`, `eslint src test`) but the `test/` half is type-checked by nothing.
+                   The file also carries a trailing comma at `:11` (`"test/**/*",`), which tsc
+                   tolerates in JSONC and which is noted as cosmetic rather than causal.
+failure_scenario:  A contributor follows the file's evident intent and runs
+                   `npx tsc -b tsconfig.test.json` (or wires it into `npm run build`, or an editor
+                   picks it up as the test project). The build fails immediately with TS6306/TS6310
+                   before type-checking a single test file. Meanwhile, in the state that actually
+                   ships, every type error in `test/` — 50 test files — passes unnoticed through
+                   both `npm run build` and CI, because the only configuration that claims to cover
+                   them is the one that cannot run. A type error introduced in a test helper
+                   surfaces as a vitest runtime failure with a confusing message rather than as a
+                   compile error, or does not surface at all in a code path the suite does not take.
+classification:    major — (1) at most one file: PASS if the fix is to drop the invalid
+                   `references` block from `tsconfig.test.json`; the alternative fix (make
+                   `tsconfig.json` composite and emitting) touches two. (2) no public API / no
+                   grammar rule / no LSP contract change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: FAIL — no test asserts
+                   that any tsconfig compiles, and adding one means wiring a type-check step that
+                   does not exist today. (5) reviewer can name the exact edit: PASS — delete
+                   `tsconfig.test.json:7-9` and add a `typecheck` script that runs
+                   `tsc -p tsconfig.test.json --noEmit`. (6) severity is neither critical nor high
+                   AND primary dimension is not D1: PASS. Only test (4) fails, which makes this
+                   `major`.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions TypeScript
+                   configuration, project references or type-checking the test suite; 0 of the 15
+                   carry the `dependencies` label and 0 name CI, a workflow or build configuration.
+disposition:       major-refactor — the honest fix is not the one-line deletion but wiring a
+                   type-check for `test/` that nothing runs today, which is a build-pipeline change
+                   rather than an unattended edit.
+```
+
+```
+id:                P64-D2-009
+unit:              RU-64-02
+location:          bbj-intellij/build.gradle.kts:93-98,115-119
+dimension:         D2
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace over the complete 135-line file; no runnable reproduction
+                   accompanies this record because the Gradle build does not execute in this
+                   environment (`./gradlew --offline -q dependencies` exits 1 in 723 ms — literal
+                   output recorded in the D6 cell) and this phase mutates nothing. Two tasks copy an
+                   artefact produced by a different toolchain: `copyLanguageServer` at `:93-98`
+                   copies `main.cjs` `from("${projectDir}/../bbj-vscode/out/language/")` into
+                   `resources/main/language-server`, and the `prepareSandbox` customisation at
+                   `:115-119` copies the same file into `${pluginName}/lib/language-server`.
+                   `out/language/main.cjs` is produced only by `bbj-vscode`'s `npm run build`
+                   (`bbj-vscode/package.json:655` → `esbuild.mjs:8-12`), and `bbj-vscode/.gitignore:1`
+                   is the line `/out/`, so it is never present in a fresh clone. The whole file was
+                   searched for a guard and there is none: no `dependsOn` on any bbj-vscode step,
+                   no `Exec` task that runs npm, no `onlyIf`, no `doFirst` existence assertion, no
+                   `inputs.files(...).withPropertyName(...)` declaration and no error path — the
+                   only `dependsOn` calls in the file are `:110-112`, which wire the three copy
+                   tasks into `processResources` and say nothing about their sources. The same
+                   pattern applies at `:83-91` (`copyTextMateBundle`) and `:100-107`
+                   (`copyWebRunner`), whose sources are tracked files and therefore always present;
+                   the language-server copy is the one whose source is a build output.
+failure_scenario:  A contributor clones the repository and runs `./gradlew buildPlugin` in
+                   `bbj-intellij/` without first running `npm ci && npm run build` in
+                   `bbj-vscode/` — the order CLAUDE.md documents as two separate sections and no
+                   build file enforces. `../bbj-vscode/out/language/main.cjs` does not exist,
+                   because `/out/` is gitignored. Nothing in `build.gradle.kts` declares that
+                   dependency, tests for the file, or fails; the copy specifications at `:93-98`
+                   and `:115-119` simply have no matching source. The plugin the build assembles is
+                   missing the language server it exists to wrap, and the contributor has no signal
+                   from the build about why. The same silent-input condition applies in CI at
+                   `pr-validation.yml:61`, which is guarded only by an `actions/download-artifact`
+                   step earlier in the same job rather than by anything in the Gradle build itself.
+classification:    major — (1) at most one file: PASS, the fix is confined to `build.gradle.kts`.
+                   (2) no public API / no grammar rule / no LSP contract change: PASS. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   FAIL — the Gradle build does not run in this environment, and no test asserts
+                   anything about the assembled plugin's contents. (5) reviewer can name the exact
+                   edit: PASS — declare the copy inputs explicitly and add a `doFirst` that fails
+                   with a directed message when `../bbj-vscode/out/language/main.cjs` is absent.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS.
+                   Only test (4) fails, which makes this `major`.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions the IntelliJ
+                   build, plugin packaging or the language-server copy step; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a
+                   vendored binary.
+disposition:       major-refactor — the fix adds a failure path to a build this environment cannot
+                   execute, so it needs a real Gradle run to verify rather than an unattended
+                   Phase 67 apply.
+```
+
+```
+id:                P64-D3-003
+unit:              RU-64-02
+location:          bbj-vscode/package.json:653
+dimension:         D3
+secondary:         [D4]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace across the manifest and the workflows that invoke it; no
+                   runnable reproduction accompanies this record because measuring CI wall-clock
+                   would require dispatching a workflow, which this phase does not do.
+                   `package.json:653` declares the lifecycle hook
+                   `"prepare": "npm run langium:generate && npm run build"`. npm runs `prepare`
+                   after every `npm install` **and** every `npm ci`, so it is not opt-in.
+                   `grep -rn 'npm ci' .github/workflows/` returns 8 occurrences; three of them are
+                   immediately followed by an explicit second build on the next line —
+                   `build.yml:27-28`, `pr-vsix.yml:49-50` and `pr-validation.yml:30-31`. Each of
+                   those jobs therefore runs `langium generate` (regenerating
+                   `src/language/generated/`, ~17.5k LOC, plus
+                   `syntaxes/gen-bbj.tmLanguage.json`), a full `tsc -b tsconfig.json` over the 53
+                   tracked files under `src/language/` plus the rest of `src/`, and a full esbuild
+                   bundle of both entry points — twice. The second pass is not cheap:
+                   `tsconfig.json:2-17` declares neither `composite: true` nor `incremental: true`,
+                   so `-b` build mode has no project graph and writes no `.tsbuildinfo`, making
+                   every invocation a cold full type-check; and `esbuild.mjs` uses
+                   `esbuild.context()` + `rebuild()` per process (`:7`, `:26`), so nothing carries
+                   over between the two runs either. The redundancy is structural rather than
+                   incidental: the workflows are correct to build explicitly, and `prepare` is the
+                   hook that makes the explicit build a duplicate.
+failure_scenario:  Any push to `typefox-dev`, or any pull request to `main` matching
+                   `pr-validation.yml:8-13`'s path filters, or any pull request touching
+                   `bbj-vscode/**`. The runner executes `npm ci`, npm fires `prepare`, and the
+                   full generate-plus-typecheck-plus-bundle pipeline runs to completion; the next
+                   line then runs `npm run build`, repeating the type-check and the bundle from
+                   cold. Every CI run of those three workflows pays the build twice, and every
+                   contributor who runs `npm install` locally pays it once before doing anything —
+                   including contributors who only wanted to update a dependency. The cost is
+                   duplicated work rather than incorrect output, which is why this is `low`.
+classification:    major — (1) at most one file: PASS, the fix is confined to `package.json`.
+                   (2) no public API / no grammar rule / no LSP contract change: PASS. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   FAIL — vitest asserts nothing about build timing or lifecycle-hook behaviour,
+                   and verifying the change means observing a CI run. (5) reviewer can name the
+                   exact edit: PASS — either narrow `prepare` to `npm run langium:generate` (the
+                   part a fresh checkout genuinely needs) and let each caller build explicitly, or
+                   drop the redundant `npm run build` line from the three workflows. (6) severity
+                   is neither critical nor high AND primary dimension is not D1: PASS. Only test
+                   (4) fails, which makes this `major`.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions build time, CI
+                   duration, npm lifecycle scripts or Langium code generation; 0 of the 15 carry
+                   the `dependencies` label and 0 name CI, a workflow or build configuration.
+disposition:       major-refactor — the edit is small but it changes what a bare `npm install`
+                   leaves behind, which several documented workflows and CLAUDE.md's own quickstart
+                   depend on, so it is a deliberate change rather than an unattended one.
+```
 
 ### Not-reproducible dispositions
 
