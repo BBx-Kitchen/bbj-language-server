@@ -271,7 +271,7 @@ boundary of its java-interop client.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 6/7 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 7/7 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable: `.planning/reviews/61-COVERAGE.md` (50 `applies` verdicts, 38 verbatim `n/a`
 carry-forwards, 88 cells). No source file is modified by this phase.
 
@@ -284,7 +284,7 @@ carry-forwards, 88 cells). No source file is modified by this phase.
 - [x] 61-04-PLAN.md — wave 4: sweep `RU-61-02` scope, linking & type inference (8 files / 1,601 LOC)
 - [x] 61-05-PLAN.md — wave 5: sweep `RU-61-04` LSP feature providers (11 files / 1,825 LOC)
 - [x] 61-06-PLAN.md — wave 6: sweep `RU-61-05` server lifecycle, DI wiring & workspace (9 files / 1,433 LOC)
-- [ ] 61-07-PLAN.md — wave 7: sweep `RU-61-07` builtin catalogs (8 files / 3,752 LOC, mechanical per
+- [x] 61-07-PLAN.md — wave 7: sweep `RU-61-07` builtin catalogs (8 files / 3,752 LOC, mechanical per
       D-08) and close the phase — D-17 cell-total gate plus the 53-file coverage enumeration
 
 ---

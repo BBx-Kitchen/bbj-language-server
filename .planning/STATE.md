@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
-status: executing
-stopped_at: Completed 61-06-PLAN.md
-last_updated: "2026-08-18T05:09:08.223Z"
+status: verifying
+stopped_at: Completed 61-07-PLAN.md — Phase 61 closed
+last_updated: "2026-08-18T05:26:20.607Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 Phase: 61 (Language Core Review) — EXECUTING
 Plan: 7 of 7
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-18 — Plan 61-05 (RU-61-04) complete
 
 ## Performance Metrics
@@ -87,6 +87,7 @@ Last activity: 2026-08-18 — Plan 61-05 (RU-61-04) complete
 | Phase 61-language-core-review P04 | 20min | 2 tasks | 1 files |
 | Phase 61-language-core-review P05 | ~45min | 2 tasks | 1 files |
 | Phase 61-language-core-review P06 | ~50min | 2 tasks | 1 files |
+| Phase 61 P07 | ~90min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -144,6 +145,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 61 Plan 06]: Resolved all 4 inherited cross-unit referrals for RU-61-05 — 2 promoted to new findings with direct node -e reproductions (P61-D1-006 interop host/port call-site gap, P61-D1-008 PREFIX path traversal), 1 dismissed with evidence (RU-61-03's trackBbjcplAvailability), 1 promoted as the hookTimeout flakiness cost-profile trace (P61-D5-013)
 - [Phase ?]: [Phase 61 Plan 06]: Found root cause behind #33 (multi-root workspaces broken) — initializeWorkspace() reads project.properties/config.bbx from folders[0] only (P61-D2-015); found settings never refresh on didChangeConfiguration, matching #486 exactly (P61-D2-018)
 - [Phase ?]: [Phase 61 Plan 06]: constants.ts/utils.ts dead-module candidate confirmed live (3 references) and dismissed with evidence, not asserted as a finding, per plan's explicit instruction
+- [Phase ?]: [Phase 61 Plan 07]: RU-61-07 (builtin catalogs) swept mechanically per D-08 — physical .bbl files confirmed never read by any runtime consumer or test, only their .ts-exported string siblings are used; found duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT eventtype declarations (P61-D2-019) and a CVS docstring drift between functions.ts/functions.bbl (P61-D4-015)
+- [Phase ?]: [Phase 61 Plan 07]: Phase 61 closed — D-17 gate re-derivation from INVENTORY prints 50 38 88, agrees with the coverage file's own totals; 53-file tree enumeration confirms every hand-written src/language/ file is named in 61-COVERAGE.md; RVW-01 marked complete
 
 ### Tech Debt
 
@@ -168,8 +171,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T05:09:08.206Z
-Stopped at: Completed 61-06-PLAN.md
+Last session: 2026-08-18T05:26:20.590Z
+Stopped at: Completed 61-07-PLAN.md — Phase 61 closed
 Resume file: None
 
 ---

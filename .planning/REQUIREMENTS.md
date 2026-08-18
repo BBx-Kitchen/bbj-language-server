@@ -31,7 +31,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 ### Review Coverage
 
-- [ ] **RVW-01**: `bbj-vscode/src/language/` reviewed across all 8 dimensions — grammar, lexer, scope, scope-local, linker, type inferer, validator, `validations/`, completion provider, document builder, document validator, ws-manager, CPL service/parser, java-interop client, `lib/` builtin catalogs
+- [x] **RVW-01**: `bbj-vscode/src/language/` reviewed across all 8 dimensions — grammar, lexer, scope, scope-local, linker, type inferer, validator, `validations/`, completion provider, document builder, document validator, ws-manager, CPL service/parser, java-interop client, `lib/` builtin catalogs
 - [ ] **RVW-02**: `bbj-vscode/src/` extension host reviewed across all 8 dimensions — `extension.ts`, document formatter, line numbering, tokenized-BBj, decompile-io, `Commands/CompilerOptions.ts`
 - [ ] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — 11 composer files: msgbox, addwindow, addchildwindow each split across `-composer`/`-ui`/`-webview`; SETOPTS split across `-ui`/`-webview` only (no `-composer.ts`) — plus `setopts-catalog.ts`
 - [ ] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
@@ -121,7 +121,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | BASE-04 | Phase 60 | Complete |
 | RVW-06 | Phase 60 | Complete |
 | RVW-07 | Phase 60 | Complete |
-| RVW-01 | Phase 61 | Pending |
+| RVW-01 | Phase 61 | Complete |
 | SEC-06 | Phase 61 | Complete |
 | RVW-02 | Phase 62 | Pending |
 | RVW-03 | Phase 62 | Pending |
