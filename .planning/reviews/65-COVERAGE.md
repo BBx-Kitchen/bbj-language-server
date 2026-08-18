@@ -1191,33 +1191,255 @@ the surface.
 - [SEC-05][candidate] bbj-vscode/src/setopts-catalog.ts:267 — n/a — `/^[ \t]+([^ \t]+)[ \t]*$/.exec(rest)` inside `parseSetOptsLine`, matching the hex-vector token following the `SETOPTS` keyword — `RegExp.prototype.exec` on document text, not a process spawn.
 - [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:2 — n/a — `import * as cp from 'child_process';`, the module-level import binding Node's `child_process` API into scope; it invokes nothing itself.
 - [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:59 — fail — P62-D1-006, P64-D1-003. Shell/argv: **argv** — `const p = cp.spawn('java', formatFlags)` (:59) passes the literal string `'java'` as the executable and `formatFlags` (an array built by successive `args.push(...)`) as separate argv elements — no shell involved. Origins: `formatFlags` is built entirely from `jarPath` (`${__dirname}/../tools/formatter/BBjCFCli.jar`, extension-internal), the literal flags `-jar`/`-p`/`-i`/`-w`, `document.uri.fsPath` (the file being formatted) and `config.indentWidth`/three boolean settings coerced to fixed literal flag strings — no value here is interpolated into a shell string, so no argument-injection class applies. Effect: since `'java'` is an unqualified name, it resolves via the OS's own `PATH` search rather than an absolute, pinned interpreter — the exact gap `P62-D1-006` already records for this line; separately, the JAR this spawn executes (`BBjCFCli.jar`) is one of the three unpinned, unverified vendored JARs `P64-D1-003` records — cross-referenced rather than re-recorded, since `P64-D1-003`'s own note distinguishes the executed-artifact-provenance half of SEC-05 from this construction's argument half. Shares P62-D1-003's shape: **no** — argv construction, not a shell string; the two known gaps here (unpinned interpreter, unpinned JAR) are provenance concerns, not argument-injection ones.
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:298 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java:115 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:98 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java:115 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunGuiAction.java:27 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:38 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:192 — pending
-- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDetector.java:42 — pending
-- [SEC-05][candidate] bbj-vscode/tools/em-login.bbj — pending
-- [SEC-05][candidate] bbj-vscode/tools/em-validate-token.bbj — pending
-- [SEC-05][candidate] bbj-vscode/tools/web.bbj — pending
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:298 — fail — P63-D1-003 (D-07 cross-reference — SEC-04 owns the token-as-process-argument exposure question outright; not re-recorded here). Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(bbjPath)` (:298, inside `validateTokenServerSide`) followed by five `.addParameter(...)` calls (`-q`, `emValidatePath`, `-`, `token`, `tmpFile.toString()`, :299-303) — `CapturingProcessHandler` spawns this directly, no shell involved. Origins: `bbjPath` from `getBbjExecutablePath()` (`BbjSettings`, application-scoped, set only by the local developer per RU-63-01's own D1 check); `emValidatePath` resolved from the plugin bundle; `token` the stored JWT; `tmpFile` from `Files.createTempFile`. Effect: since every value is a separate argv element with no shell involved, no argument-injection class applies to any of the five — this construction's own gap is `P63-D1-003`'s: `token` (:302) reaches this process's own argv, readable via OS process-listing. Shares P62-D1-003's shape: **no** — argv construction, not a shell string; `P62-D1-003`'s unescaped-shell-interpolation class has no equivalent here (confirmed by `62-COVERAGE.md`'s own `P62-D7-001`, the cross-IDE parity record establishing this exact categorical difference).
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java:115 — fail — P63-D1-003 (D-07 cross-reference — SEC-04 owns the token-as-process-argument exposure question outright; not re-recorded here). Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(bbjPath)` (:115) followed by eleven `.addParameter(...)` calls (`-q`, `-WD<webRunnerDir>`, `webBbjPath`, `-`, `"BUI"`, `name`, `programme`, `workingDir`, two empty placeholders, `classpath`, `token`, and optionally `configPath`, :116-131) — no shell involved. Origins: `bbjPath`/`classpath`/`configPath` from `BbjSettings` (application-scoped); `name`/`programme`/`workingDir` from the open `VirtualFile`; `token` the stored JWT. Effect: every value is a separate argv element, so no shell-metacharacter reinterpretation applies to any of the ten interpolated segments regardless of content — this construction's own known gap is `P63-D1-003`'s: `token` (:127) reaches this process's own argv. Shares P62-D1-003's shape: **no** — argv construction; the categorical difference `P62-D7-001` already establishes.
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:98 — fail — P63-D1-003 (D-07 cross-reference — SEC-04 owns the token-as-process-argument exposure question outright; not re-recorded here). Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(bbjPath.toString())` (:98) followed by five `.addParameter(...)` calls (`-q`, `emLoginPath`, `-`, `username`, `password`, `tmpFile.toString()`, :99-104) — no shell involved. Origins: `bbjPath` derived from `bbjHome` and resolved via `Path.toRealPath()`; `username`/`password` typed by the user into `Messages.showInputDialog`/`showPasswordDialog` moments earlier; `tmpFile` from `Files.createTempFile`. Effect: every value is a separate argv element — no shell-metacharacter class applies to `password` regardless of content — this construction's own known gap is `P63-D1-003`'s: `password` (:103) reaches this process's own argv, the password leg of the D-07 handoff. Shares P62-D1-003's shape: **no** — argv construction, not a shell string.
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java:115 — fail — P63-D1-003 (D-07 cross-reference — SEC-04 owns the token-as-process-argument exposure question outright; not re-recorded here). Shell/argv: **argv** — byte-for-byte the same `GeneralCommandLine`/`.addParameter(...)` construction as `BbjRunBuiAction.java:115` (confirmed by `diff`: the two files differ only in the `"BUI"`/`"DWC"` mode literal and user-facing strings) — no shell involved. Origins: identical to `BbjRunBuiAction.java` above — `bbjPath`/`classpath`/`configPath` from application-scoped `BbjSettings`, `name`/`programme`/`workingDir` from the open `VirtualFile`, `token` the stored JWT. Effect: identical — every value a separate argv element, no shell-metacharacter class applies; the known gap is `P63-D1-003`'s token-argv exposure at :127. Shares P62-D1-003's shape: **no** — argv construction.
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunGuiAction.java:27 — pass — Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(bbjPath)` (:27) followed by up to four `.addParameter(...)` calls (`-q`, `classpath`, `configPath`, `-WD<projectRoot>`, `file.getPath()`, :30-51) — no shell involved. Origins: `bbjPath`/`classpath`/`configPath` from application-scoped `BbjSettings` (set only by the local developer, unlike VS Code's workspace-committed `bbj.classpath`/`bbj.configPath`); `projectRoot` from `project.getBasePath()`; `file.getPath()` the currently-open file. No secret is added to this construction (confirmed by full read — this action carries no token/password parameter at all). Effect: every value a separate argv element, no shell-metacharacter class applies to any of the five regardless of content; no known exposure or provenance gap attaches to this exact site. Shares P62-D1-003's shape: **no** — argv construction, not a shell string; a genuinely clean result, checked rather than assumed (D-12).
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:38 — fail — P63-D1-007, P63-D1-002 (cross-references, not re-recorded). Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(nodePath, serverPath, "--stdio")` (:38), spawned by `OSProcessStreamConnectionProvider` — no shell involved, since all three tokens are separate constructor arguments. Origins: `nodePath` from `resolveNodePath()` (:45-64), which falls through `BbjSettings`' `nodeJsPath` setting → `BbjNodeDetector.detectNodePath()` (PATH search) → `BbjNodeDownloader.getCachedNodePath()` (the download cache `P63-D1-002` traces, no hash/provenance check on the cached binary's read path) → the unqualified literal `"node"` — exactly `P63-D1-007`'s own citation of this exact spawn; `serverPath` is plugin-internal. Effect: since this is argv construction, no shell-metacharacter class applies to any of the three tokens regardless of content — the known gap here is executable-provenance, not argument-injection: an unqualified `"node"` fallback resolves via the OS's own `PATH` search, and a cached binary reaches this spawn with no hash check (`P63-D1-002`'s cache-read finding, which names this exact downstream consumer as the process that ultimately spawns whatever `getCachedNodePath()` returned). Shares P62-D1-003's shape: **no** — argv construction, not a shell string; the two known gaps are supply-chain/provenance concerns, not argument-injection ones.
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:192 — pass — Shell/argv: **argv** — `ProcessBuilder pb = new ProcessBuilder("tar", "xzf", tarGzFile.toAbsolutePath().toString(), "-C", destDir.toAbsolutePath().toString(), "--strip-components=1")` (:192-196), spawned via `pb.start()` — no shell involved, since `ProcessBuilder`'s varargs constructor passes each element as a separate argv entry. Origins: `tarGzFile` is a `Files.createTempFile` download target, filled from `HttpRequests.request(DOWNLOAD_BASE_URL + NODE_VERSION + "/" + fileName + extension)` — `DOWNLOAD_BASE_URL` (`"https://nodejs.org/dist/"`) and `NODE_VERSION` are both hardcoded constants (:34-35), not user- or workspace-controlled; `destDir` is the plugin's own cache directory (`getNodeDataDirectory()`). Effect: every argv element traces to an internal constant or a temp/cache path with no external or attacker-influenced input reaching this construction, so no argument-injection or shell-metacharacter class applies. `63-COVERAGE.md`'s own SEC-03 sweep already records that this same call delegates archive **entry-path** safety (zip-slip) to the `tar` binary itself — a distinct extraction-safety question (D2/D6), not the argument-construction question this candidate answers. Shares P62-D1-003's shape: **no** — argv construction with no externally-influenced value; a genuinely clean result, checked rather than assumed (D-12).
+- [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDetector.java:42 — pass — Shell/argv: **argv** — `GeneralCommandLine cmd = new GeneralCommandLine(nodePath, "--version")` (:42) inside `getNodeVersion`, executed via `ExecUtil.execAndReadLine(cmd)` — no shell involved. Origins: `nodePath` is supplied by the caller — `BbjSettingsComponent`'s live settings-field validation (typed by the developer as they edit their own Node.js path setting) or `BbjMissingNodeNotificationProvider`'s already-detected/configured path — never a bare unqualified fallback the way `BbjLanguageServer.java:38`'s chain can end in; this call is only ever made with an already-concrete candidate path. Effect: `--version` is a fixed literal flag, and `nodePath` is the developer's own settings input (self-inflicted trust, not attacker-controlled, the same class of trust `RU-63-01`'s own D1 check already establishes for `bbjHomePath`/`classpathEntry`) — no argument-injection class applies. Shares P62-D1-003's shape: **no** — argv construction with a developer-supplied, not attacker-controlled, path; a genuinely clean result, checked rather than assumed (D-12).
+- [SEC-05][candidate] bbj-vscode/tools/em-login.bbj — fail — P64-D1-002 (role, not a new spawn site). Receives `username!`/`password!` as `ARGV(1)`/`ARGV(2)` (:10-11) from whichever launcher spawned it — VS Code's `exec(emLoginCmd, ...)` (`extension.ts:645`) or IntelliJ's `GeneralCommandLine` (`BbjEMLoginAction.java:98`), both cross-referenced above. Constructs/executes no further command, path or connection of its own: its only external call is the in-process `BBjAdminFactory.getAuthToken(...)` API (:39), confirmed by full read — this script is the **receiving end** of both IDEs' spawn, not itself a second spawn site. Writes the returned JWT to the caller-supplied `outputFile!` path with `open(ch,mode="O_CREATE,O_TRUNC")` and no permission control (:41-43) — `P64-D1-002`'s own citation of these exact lines, cross-referenced rather than re-recorded. Failure paths (:15-28 missing-credential, :46-51 auth-failed) write a fixed `"ERROR:..."` marker to the same output file, never the underlying exception text or the credential itself. Shares P62-D1-003's shape: **n/a** — this script never itself calls a shell or a process-spawn API; it is spawned, not a spawner.
+- [SEC-05][candidate] bbj-vscode/tools/em-validate-token.bbj — pass — Role: receives the token to validate as `ARGV(1)` (:8) from whichever launcher spawned it — VS Code's `exec(emValidateCmd, ...)` (`extension.ts:426`) or IntelliJ's `GeneralCommandLine` (`BbjRunActionBase.java:298`), both cross-referenced above. Constructs/executes no further command, path or connection of its own: its only external call is the in-process `BBjAdminFactory.getBBjAdmin(token!, err=token_invalid)` API (:22), confirmed by full read — the receiving end of both IDEs' spawn, not a second spawn site. Writes nothing but a fixed `"VALID"`/`"INVALID"`/`"ERROR:..."` marker at every one of its three `write(ch)` call sites (:14, :25, :32) — never the token itself, confirmed by reading all three (per SEC-04's own established exposure verdict for this file). Failure paths emit the same fixed markers, never the underlying exception text. Shares P62-D1-003's shape: **n/a** — this script never itself calls a shell or a process-spawn API; a genuinely clean result on this surface, checked rather than assumed (D-12).
+- [SEC-05][candidate] bbj-vscode/tools/web.bbj — fail — P64-D1-001 (role, not a new spawn site). Receives `username!`/`password!`/`token!`/`configFile!` as `ARGV(5)`-`ARGV(9)` (:19-23) from whichever launcher spawned it — VS Code's `exec(cmd, ...)` in `Commands.cjs`'s `runWeb` (:117, this candidate's VS Code sibling above) or IntelliJ's `GeneralCommandLine` in `BbjRunBuiAction.java`/`BbjRunDwcAction.java` (:115 each). Constructs/executes no further command, path or connection of its own: its only external calls are the in-process `BBjAdminFactory.getBBjAdmin(...)` API (:27,32) and `BBjAPI().getThinClient().browse(url!)` (:91, opening the registered app's URL in the system browser, not spawning a process) — confirmed by full read, no `ProcessBuilder`/`exec`/`spawn` anywhere in this file. When `username!`/`password!` arrive empty, `:30-31` silently substitutes the shipped EM administrator defaults `"admin"`/`"admin123"` and authenticates with them — `P64-D1-001`'s own citation of these exact lines, cross-referenced rather than re-recorded; this is not this file's ARGV-intake channel that is the defect, but what it does when that channel is empty. Writes nothing to disk itself (only mutates EM's own application registry via `admin!`/`configuration!`/`app!`). Its one failure path (`login_failed:`, :96-97) shows a `MSGBOX`, never logging the credentials. Shares P62-D1-003's shape: **n/a** — this script never itself calls a shell or a process-spawn API; it is spawned, not a spawner.
+
+
+**The cross-IDE comparison — ROADMAP criterion 4's own question, and the piece no single-module
+review could produce.** Both IDEs implement run/compile/EM-login against the same BBj tooling, and
+Phases 62 and 63 reviewed them separately by construction.
+
+1. **The construction mechanism on each side, named concretely.** VS Code's `Commands.cjs` (`run`
+   line 271, `runWeb` line 117, `compile` via `execWithProgress` at line 31) and `extension.ts` (EM
+   validate line 426, EM login line 645) all build **one shell-interpolated command string** via
+   template-literal interpolation and hand it to `child_process.exec()`, which always spawns through
+   `/bin/sh -c` (or `cmd.exe` on Windows) — **a shell is involved at every one of these five sites**.
+   IntelliJ's equivalents — `BbjRunGuiAction.java:27`, `BbjRunBuiAction.java:115`,
+   `BbjRunDwcAction.java:115`, `BbjRunActionBase.validateTokenServerSide` (`:298`), and
+   `BbjEMLoginAction.performLogin` (`:98`) — uniformly build a `GeneralCommandLine` and add each
+   argument via `.addParameter(...)`, spawned directly by `OSProcessHandler`/`CapturingProcessHandler`
+   — **no shell is involved at any of these five sites**. This is not a new observation of this
+   sweep's own making: `62-COVERAGE.md`'s own `P62-D7-001` (D7 cross-IDE parity, secondary D1)
+   already established and recorded this exact categorical divergence by reading both sides' actual
+   construction APIs side by side; this task's own independent trace of all thirteen real spawn
+   sites across both legs (above) confirms it rather than assumes it, and the finding is
+   cross-referenced, not re-recorded (D-04).
+2. **The consequence of that difference for injection, stated as a class.** On the VS Code side, a
+   value containing shell metacharacters (`;`, `|`, `` ` ``, `$(...)`, `"`, etc.) reaching any of the
+   five unescaped double-quoted interpolation points is reinterpreted by the shell rather than passed
+   through as inert data — the general command-injection impact (CWE-78), traced in full at
+   `P62-D1-003`. On the IntelliJ side, the identical class of value reaching any of the thirteen
+   `.addParameter(...)` calls above is passed to the child process as a single, literal argv element
+   with **no shell present to reinterpret it** — the value can influence what the receiving BBj
+   script or `bbjcpl`/`bbj` interpreter does with its own argument, but it cannot break out of the
+   command construction itself the way it can on the VS Code side.
+3. **The value sets each side exposes.** VS Code's five shell-string sites interpolate
+   workspace-settable string configuration — `bbj.classpath`, `bbj.configPath`, `bbj.web.apps.<file>.name`,
+   and the seven string-typed `bbj.compiler.*` options (all traced by `P62-D1-003`) — plus the EM
+   token and password (the D-07 exposure question). IntelliJ's thirteen argv sites expose the same
+   *kind* of value (a classpath entry, a `config.bbx` path, an EM token/password) through
+   application-scoped `BbjSettings`, which — per `RU-63-01`'s own D1 check — cannot be committed into
+   a shared repository's `.vscode/settings.json` the way VS Code's workspace-scoped equivalents can;
+   the same value is validated identically on neither side (VS Code's `getBBjHome()`/EM handlers only
+   check the setting is a non-empty string, discovering a bad path via `exec()`'s async error
+   callback; IntelliJ's `validateBeforeRun()` confirms the configured BBj Home directory exists and
+   the executable is present and executable before spawning — `P62-D7-001`'s own second finding).
+4. **The verdict on the comparison itself.** **This is a genuine, established divergence, not an
+   agreement**: VS Code's construction methodology exposes every one of its five sites to
+   shell-metacharacter reinterpretation of workspace-settable and credential values (`P62-D1-003`,
+   critical); IntelliJ's construction methodology exposes none of its thirteen sites to that same
+   injection class, by a categorical difference in the spawn API each side chose, already recorded as
+   the cross-IDE asymmetry `P62-D7-001` names and this sweep's own line-by-line trace of every real
+   spawn site on both legs (above) independently confirms rather than merely restates. Where IntelliJ
+   is the safer side, that is recorded as the comparison's own positive result, checked here by
+   re-tracing all thirteen argv sites rather than assumed from `P62-D7-001`'s existence alone (D-12).
+
+**The `P62-D1-003` shape question, answered across the whole surface, with counts derived from this
+section's own `### Verdicts` lines above rather than typed in.** Of the 36 enumerated candidates, 18
+are `n/a` (not process-spawn sites at all — `RegExp.prototype.exec` calls, import/`require`
+declarations, illustrative comments) and 3 are tool scripts that are themselves spawned but spawn
+nothing further (`n/a` on the shape question for that reason, stated on each script's own line). Of
+the remaining 15 real process-spawn sites (7 VS Code + 8 IntelliJ, counted directly from the
+`— fail — ` / `— pass — ` verdict lines above whose anchor is under `bbj-vscode/src/` or
+`bbj-intellij/src/`): **5 demonstrably share `P62-D1-003`'s shape** — the five VS Code
+`child_process.exec()` shell-string sinks (`Commands.cjs:31,117,271`, `extension.ts:426,645`), each
+verdict line above stating "Shares P62-D1-003's shape: **yes**" with the concrete unescaped
+interpolation traced. **10 demonstrably do not** — the 2 VS Code `spawn()`/`cp.spawn()` argv sites
+(`bbj-cpl-service.ts:140`, `document-formatter.ts:59`) and all 8 IntelliJ `GeneralCommandLine`/
+`ProcessBuilder` argv sites, each verdict line above stating "Shares P62-D1-003's shape: **no**" with
+the argv construction traced. **0 could not be settled** — every one of the 15 real spawn sites
+answers the question explicitly, either way, with no `undetermined` verdict needed anywhere on this
+surface (`### Not-reproducible dispositions` below is correctly empty). This is a sweep that reports
+what the *other* sites do and not only the ones resembling the known critical finding, discharging
+criterion 4's own requirement to say so either way (D-12's checked-and-clean-must-be-distinguishable
+rule, applied at the surface level rather than only at the single-site level).
 
 ### Findings
 
-*Filled by plan `65-03`.*
+None. Every real process-spawn site's shape — shell-string (5 VS Code sites) or argv (2 VS Code + 8
+IntelliJ sites) — traces to an owner already recorded by an earlier phase: `P62-D1-003` (the five
+`child_process.exec()` shell sinks), `P61-D1-003` (the `bbjcpl` `spawn()` executable-path gap),
+`P62-D1-006`/`P64-D1-003` (the `java`/`BBjCFCli.jar` unpinned-artifact pair), `P63-D1-003` (the four
+IntelliJ token/password-argv exposures, D-07), and `P63-D1-007`/`P63-D1-002` (the IntelliJ node-path
+resolution chain). The one genuine cross-cutting observation this surface produces — the categorical
+shell-vs-argv construction divergence between the two IDEs — is likewise already recorded, as
+`P62-D7-001` (D7 cross-IDE parity, secondary D1), confirmed rather than re-derived by this task's own
+independent trace of all fifteen real spawn sites (see the cross-IDE comparison above). Per D-04, a
+`P65-*` ID is justified only when the cross-cutting view shows something no single-module review
+could have seen; every candidate on this surface, including the asymmetry, was already seen and
+recorded by Phase 61, 62 or 63's own module-scoped sweep, so recording any of them again under a new
+`P65-*` ID would be exactly the duplicate D-04 forbids. This is consistent with `65-01`'s own SEC-01
+sweep, which also closed with zero new findings for the same reason (existing owners already covered
+the whole enumerated surface).
 
 ### Not-reproducible dispositions
 
-*Filled by plan `65-03`.*
+None. Every claim raised while sweeping SEC-05 — all 36 candidate resolutions, the cross-IDE
+comparison, and the `P62-D1-003` shape question — was settled by a direct code trace with concrete
+`file:line` citations (see `### Verdicts` and the cross-IDE comparison above); no claim required
+constructing a shell-metacharacter payload, a crafted `config.bbx`, a hostile classpath entry or any
+other exploit input (D-11, D-14's own prohibition on constructing a demonstration payload). Every
+site's origin, construction shape and effect class is stated from what the code itself does, not
+from what an unconstructed input might do to it.
 
 ### Cross-references
 
-*Filled by plan `65-03`. Ledger rows naming SEC-05: `P61-D1-003`, `P61-D1-007`, `P62-D1-003`, `P62-D1-004`, `P62-D1-006`, `P63-D1-002`, `P63-D1-003`, `P63-D1-007`, `P64-D1-003` (9 rows).*
+Nine ledger rows name SEC-05 in their Surfaces column; all nine are disposed here. Zero are left
+without an entry.
+
+**`P61-D1-003`** (`bbj-cpl-service.ts:82-155,228-235`, high severity) — establishes the `bbjcpl`
+`spawn()` executable-path gap: `bbj.home` gated only by a truthiness check, never that the resolved
+path is a real executable. **Confirmed unmodified**, cited directly at `bbj-cpl-service.ts:140`'s
+own verdict line above; this sweep additionally states the construction is argv-based (no shell
+involved), which `P61-D1-003`'s own record does not itself characterise in shell-vs-argv terms.
+
+**`P61-D1-007`** (`bbj-ws-manager.ts:118-126`, medium severity) — establishes the upstream half of
+SEC-05's explicit "config.bbx settings" injection leg: the LSP's own workspace manager reads a
+configured `configPath` with no workspace-containment check, for a *different* purpose (loading the
+config into the language server, not building a spawned command line) than any of this surface's 36
+enumerated candidates. **Not one of SEC-05's enumerated sites** — `bbj-ws-manager.ts` is absent from
+all three derivation legs (confirmed by re-running them) — so it is cross-referenced here as
+**context establishing nothing further for SEC-05's own enumerated surface**: the *downstream* half
+of the same `config.bbx`-value question, where a `configPath` value actually reaches a spawned
+command line, is `Commands.cjs`'s own `compile`/GUI-run construction, already fully traced under
+`P62-D1-003` above.
+
+**`P62-D1-003`** (`Commands.cjs:263,325-328`, critical severity) — the milestone's highest-severity
+open finding, and the owner this sweep's own job was to test the other sites against. **Confirmed
+and extended**: cited as the discharging ID for all five VS Code `child_process.exec()` shell-string
+sinks (`Commands.cjs:31,117,271`, `extension.ts:426,645`) — including `Commands.cjs:31`'s own
+`decompileReadonly` invocation, which this sweep traces as sharing the identical unescaped-quoting
+construction via a different value channel (the open file's own basename) than the workspace
+settings `P62-D1-003`'s own prose focuses on, without recording it as a separate finding, since
+`P62-D1-003`'s own evidence already states it checked "all six call sites" of `child_process.exec()`
+in this unit.
+
+**`P62-D1-004`** (`extension.ts:415,420,639`, medium severity) — the token/password-as-process-argument
+exposure that `65-02`/SEC-04 owns outright (D-07). **Confirmed and cross-referenced, not
+re-recorded**, on both VS Code shell-exec verdict lines above (`extension.ts:426` for the token leg,
+`extension.ts:645` for the password leg); this sweep additionally traces that the same two call
+sites also share `P62-D1-003`'s unescaped-shell-string shape, which `P62-D1-004`'s own record does
+not itself state (its own dimension is the argv-exposure question, not the shell-injection one).
+
+**`P62-D1-006`** (`document-formatter.ts:59`, low severity) — establishes the unqualified `'java'`
+executable-name gap on this exact spawn site. **Confirmed unmodified**, cited directly at
+`document-formatter.ts:59`'s own verdict line above, alongside `P64-D1-003`'s distinct
+executed-artifact half of the same construction (the JAR `'java'` is told to run).
+
+**`P63-D1-002`** (`BbjNodeDownloader.java:52`, low severity, the corrected record) — establishes the
+cache-**read** path's missing hash/provenance check on a `node` binary later spawned. **Confirmed
+and extended**: cross-referenced at `BbjLanguageServer.java:38`'s own verdict line above as the
+provenance concern bearing on `resolveNodePath()`'s cache-fallback branch, which is a different
+`file:line` than `P63-D1-002`'s own citation (`:52`, the read itself) but the same downstream
+consumer of what that read returns; this sweep does not re-record the cache-read gap itself, only
+states which spawn site inherits its consequence.
+
+**`P63-D1-003`** (four IntelliJ call sites, high severity) — the IntelliJ half of the
+token/password-as-process-argument exposure that `65-02`/SEC-04 owns outright (D-07). **Confirmed
+against each of its four sites individually**, cited directly at `BbjRunActionBase.java:298`'s,
+`BbjRunBuiAction.java:115`'s, `BbjEMLoginAction.java:98`'s and `BbjRunDwcAction.java:115`'s own
+verdict lines above; this sweep additionally traces that all four constructions are argv-based (no
+shell involved), so none of the four shares `P62-D1-003`'s shape — a fact `P63-D1-003`'s own record,
+scoped to the argv-exposure question, does not itself state.
+
+**`P63-D1-007`** (`BbjLanguageServer.java:32,38-43,45-66`, high severity) — establishes
+`resolveNodePath()`'s settings → auto-detection → download-cache → unqualified-name fallback chain,
+the exact executable-provenance gap this sweep's `BbjLanguageServer.java:38` verdict cites. **Confirmed
+unmodified**, and extended with the shell-vs-argv characterisation (argv, no shell) and the
+`P63-D1-002` cache-read cross-reference above.
+
+**`P64-D1-003`** (`bbj-vscode/tools/formatter/BBjCFCli.jar`, high severity) — establishes that three
+unpinned, unverified vendored JARs are executed with no existence, hash or signature check; explicitly
+distinguishes "the executed-artifact provenance half of SEC-05, distinct from its argument-construction
+half." **Confirmed and cross-referenced, not re-recorded**, at `document-formatter.ts:59`'s own
+verdict line above, alongside `P62-D1-006`'s argument-construction half of the same spawn.
+
+**`P62-D7-001`** (`Commands.cjs:117,271,336`, medium severity, dimension D7 secondary D1) — **not a
+ledger row** (the ledger's own derivation command filters to `dimension: D1` findings only, and
+`P62-D7-001`'s primary dimension is D7), so it carries no stopping-rule obligation here, but it
+already establishes the exact cross-IDE shell-vs-argv construction divergence the task instructions
+direct this surface to answer as a comparison. **Cited as the pre-existing owner of that comparison**
+in the cross-IDE comparison section above, confirmed rather than re-derived by this sweep's own
+independent trace of all fifteen real spawn sites on both legs.
+
+**The D-07 handoff, confirmed received rather than re-litigated.** `## SEC-04`'s own
+`### Cross-references` states the D-07 handoff explicitly, naming the five `[SEC-04][exposure]`
+verdict lines (`BbjRunBuiAction.java`, `BbjRunDwcAction.java`, `extension.ts` token legs;
+`BbjEMLoginAction.java` password leg; `em-login.bbj`'s receiving-end exposure) and their two
+discharging IDs (`P63-D1-003`, `P62-D1-004`). This surface's own verdict lines above cross-reference
+those same two IDs by ID at every site where the token/password reaches this surface's own enumerated
+argv construction, and record nothing new about the exposure question itself — the ownership is
+legible on the line without a lookup, and the question is answered exactly once across the whole
+phase.
 
 ### Surface closure
 
-*Filled by plan `65-03`.*
+**Four-part stopping rule, discharged part by part.**
+
+(i) **Every enumerated item carries a verdict, no placeholder remains.** Within `## SEC-05`,
+`grep -cE '^- \[SEC-05\]\[[a-z-]+\] .* — pending$'` prints `0`; all 36 `[SEC-05][candidate]` lines
+above carry `pass`, `fail` or `n/a` (18 `n/a`, 14 `fail`, 4 `pass` — no `undetermined` was needed
+anywhere on this surface). Zero `[SEC-05][extra]` lines were needed: the broader spawn-API pattern
+check in `### Enumeration` confirmed no real spawn site sits outside the three legs' own raw output.
+
+(ii) **Every `pass` names concrete checks with `file:line` anchors; every `fail` names a discharging
+ID, entirely inherited** (`P61-D1-003`, `P62-D1-003`, `P62-D1-004`, `P62-D1-006`, `P63-D1-002`,
+`P63-D1-003`, `P63-D1-007`, `P64-D1-001`, `P64-D1-002`, `P64-D1-003` — no new `P65-D1-*` ID was
+allocated on this surface); **every `n/a` carries a written reason** naming what the candidate
+actually is (an import/`require` declaration, a comment, a `RegExp.prototype.exec` call). No
+`undetermined` verdict was needed — every candidate resolved cleanly to one of the other three (see
+(iii)).
+
+(iii) **Every candidate claim raised during the sweep was either promoted to a finding or written
+under `### Not-reproducible dispositions`.** Zero claims were promoted to new findings — every real
+spawn site's shape traces to an inherited owner (see `### Findings` above); `### Not-reproducible
+dispositions` is correctly empty — nothing on this surface required constructing an exploit input.
+
+(iv) **Every ledger row whose Surfaces column names SEC-05 carries a written cross-reference.** All
+nine such rows — `P61-D1-003`, `P61-D1-007`, `P62-D1-003`, `P62-D1-004`, `P62-D1-006`, `P63-D1-002`,
+`P63-D1-003`, `P63-D1-007`, `P64-D1-003` — are cross-referenced in `### Cross-references` above;
+`P61-D1-007` explicitly as context establishing nothing further, since `bbj-ws-manager.ts` is not one
+of this surface's 36 enumerated sites. Zero inherited items were dropped.
+
+**Live-derived denominator vs. D-02 baseline.** The three live derivation commands
+(`### Enumeration` above) reproduce exactly **36 raw candidates** (25 VS Code + 8 IntelliJ + 3 tool
+scripts), a drift of **+9** from D-02's demoted comparison baseline of 27, with the cause recorded in
+`### Enumeration`: the leg-1 pattern actually run is wider than the "naive pattern" measured at
+discussion time, and this task's own decomposition (6 `child_process` lines + 11
+`RegExp.prototype.exec` lines + 8 real-construction-or-comment lines = 25) independently reproduces
+the register's own arithmetic rather than trusting it. The 36-item enumeration is fully resolved with
+no placeholder line remaining and zero `[extra]` lines needed.
+
+**What SEC-05 hands to the close-out's criterion and requirement gates.** ROADMAP criterion 4 is
+discharged: every enumerated process-spawn candidate across both IDEs and the tool scripts carries a
+verdict, every real spawn site (15 of them) answers shell-versus-argv and traces every interpolated
+value to its origin, and the `P62-D1-003` shape question is answered across the whole surface with
+counts derived from this section's own verdict lines — 5 share the shape, 10 do not, 0 unsettled. The
+cross-IDE comparison — the piece no single-module review could produce — is written as a comparison
+and confirms the categorical shell-vs-argv divergence `P62-D7-001` already established, rather than
+discovering a new one. Zero new `P65-D1-*` findings were allocated on this surface, so the phase's
+next allocation remains `P65-D1-004`.
+
+**SEC-05 is closed.**
 
 ## Phase 65 Close-Out
 
