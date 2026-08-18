@@ -244,7 +244,8 @@ Auto mode resolved every gray area. Left to the planner and executing agents:
 - Task boundaries within each plan (the two-task evidence-tier split is the default).
 - Whether SEC-04's lifecycle is rendered as a stage×site matrix or as a per-stage narrative,
   provided every one of the 7 sites is addressed at every one of the 4 stages.
-- Ordering of the 27 SEC-05 spawn sites, provided all 27 carry a verdict.
+- Ordering of the SEC-05 spawn candidates, provided every one resolves to a verdict or to an
+  `n/a` with a written exclusion reason (D-02 correction 2).
 
 </decisions>
 

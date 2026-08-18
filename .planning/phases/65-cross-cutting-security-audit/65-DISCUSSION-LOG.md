@@ -35,7 +35,7 @@ completion gates
 | Fix them as immutable literals | A tree change between now and execution would force a false choice | |
 
 **Choice:** Measure now, re-derive live → **D-02**
-**Notes:** `[auto] Denominators — Q: "How pinned?" → Selected: "measure + re-derive" (recommended default)`. Measured: SEC-01 → **4** HTML generators; SEC-02 → **4** `onDidReceiveMessage` handlers; SEC-04 → **4 stages × 7 sites**; SEC-05 → **27** spawn sites (16 VS Code + 8 IntelliJ + 3 `.bbj`). The 4/4 symmetry on SEC-01/SEC-02 is the same four composer webviews generating HTML and receiving messages — which is what drives D-06's pairing.
+**Notes:** `[auto] Denominators — Q: "How pinned?" → Selected: "measure + re-derive" (recommended default)`. Measured: SEC-01 → **4** HTML generators; SEC-02 → **4** `onDidReceiveMessage` handlers; SEC-04 → **4 stages × 7 sites**; SEC-05 → **27** spawn sites (16 VS Code + 8 IntelliJ + 3 `.bbj`) — *both of the last two were corrected during planning; see the post-discussion section at the end of this log*. The 4/4 symmetry on SEC-01/SEC-02 is the same four composer webviews generating HTML and receiving messages — which is what drives D-06's pairing.
 
 ---
 
