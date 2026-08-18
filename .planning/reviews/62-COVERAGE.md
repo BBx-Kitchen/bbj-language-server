@@ -334,26 +334,330 @@ disposition:       major-refactor
 **Owning plan:** 62-02.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked every `child_process.exec()` call site in the unit and traced each interpolated command-string segment back to its origin: `Commands.cjs`'s `run()` (classpath `sscp` at line 263, entirely unquoted), `runWeb()` (line 109, `bbj.web.apps.<file>.name` and EM credentials quoted-but-unescaped), `compile()` (line 328, `buildCompileOptions()`'s 7-flag output joined bare with no wrapping quotes at all), `decompileInPlace`/`decompileReadonly` (home-derived `bbjlstBin()`), and `extension.ts`'s EM validate (line 415) and EM login (line 635) `exec()` calls — none applies shell-escaping or content validation to any interpolated value, and `CompilerOptions.ts`'s `validateOptions()` (lines 384-431) only checks option presence/dependency/conflict, never the shell-safety of a string/number value's content, before `buildCompileOptions()` (lines 438-479) emits it bare into a would-be command line. Checked reachability: `bbj.home`, `bbj.classpath`, `bbj.configPath`, `bbj.web.apps`, and all 7 string-typed `bbj.compiler.*` options are declared `"scope": "window"` with no `restricted`/`capabilities.untrustedWorkspaces` marker anywhere in `package.json` (confirmed: `grep -c untrustedWorkspaces bbj-vscode/package.json` → `0`), so a workspace's own committed `.vscode/settings.json` can set every one of them, including in an untrusted workspace. Also checked the caller-supplied `params` surface: `bbj.runBUI`/`bbj.runDWC` (extension.ts:676,683) fall back to `params.fsPath` when no editor is focused, and any registered VS Code command is globally invocable by any other extension in the same window via `vscode.commands.executeCommand`, widening the same unescaped-interpolation surface beyond workspace settings alone. Also checked EM token/credential handling per the plan's own checklist: the raw JWT is interpolated as a literal `exec()` argument (extension.ts:415) rather than passed through a non-shell API, and the debug-mode masking that redacts it before writing to the output channel (extension.ts:420,639) is a naive substring match against the same unescaped string, sharing the identical fragility. 2 findings recorded: P62-D1-003, P62-D1-004.
+- D2 Correctness & error handling — fail — Checked whether `activate()` (extension.ts:582-830) can partially fail and leave commands registered against a client that never started: `client.start()` (line 892) is called without `await` or `.catch()`, so its rejection is unhandled while all 14 `registerCommand` calls (lines 592-707) proceed regardless of whether the language-server process actually started; `bbj.refreshJavaClasses`'s own guard (`if (!client)`, line 695) only checks that the variable was assigned, not that the client is ready. Checked whether every async `registerCommand` handler handles its own rejections: `bbj.loginEM` (line 597) and `bbj.refreshJavaClasses` (line 694) both wrap their awaited work in `try`/`catch`; `bbj.runBUI`/`bbj.runDWC` (lines 676,683) call `ensureValidToken(context)` unguarded, but its only unguarded internal throw path (`JSON.parse` on a `bbj.em.credentials` SecretStorage value, extension.ts:388) is unreachable in practice — confirmed by grep, nothing in the codebase ever writes that key, only `bbj.em.token` is ever stored (extension.ts:667). Checked whether disposables are pushed onto `context.subscriptions` or leaked: none of the 14 `registerCommand` calls, the `registerDocumentFormattingEditProvider` call (line 748), or the `client.onNotification` call (line 822) captures/pushes its returned `Disposable` — contrast with `msgbox-composer-ui.ts:27-28`/`addwindow-composer-ui.ts:18`/`addchildwindow-composer-ui.ts:19`/`setopts-composer-ui.ts:19`, which correctly push theirs via the same `context.subscriptions.push(...)` pattern used elsewhere in this same file for the status-bar items and listeners (lines 756,771,783,805,808,819,858). Checked what each command does when no workspace folder is open, no editor is focused, or `bbj.home` is missing: `getBBjHome()` (Commands.cjs:45-61) and the EM handlers correctly show an error and return early when `bbj.home` is empty, but `run()`, `runWeb()`, `decompile()`, and `compile()` (Commands.cjs:250,94,147,299) dereference `params.fsPath` with no check that `params` itself is defined when no editor is focused — while `resolveTargetFileName()` (Commands.cjs:135-141), used only by `decompileReplace`/`decompileReadonly`, already guards with `if (params && params.fsPath)`. Checked whether `exec` callbacks distinguish exit-code failure from spawn failure: `runWeb`/`run`'s bare-callback `exec()` (Commands.cjs:117,271) and `execWithProgress`'s promise wrapper (lines 29-41) both surface `err`/`stderr` uniformly via `showErrorMessage`, not distinguishing a nonexistent binary from a nonzero exit — acceptable, since both cases correctly inform the user rather than silently failing. Checked `stripSentinel` (Commands.cjs:18) against an absent/empty/malformed classpath: it returns `''` for `null`/`undefined`/`'--'` and passes through any other string — correct, no defect. Checked `CompilerOptions.ts`'s `validateOptions`/`buildCompileOptions` against an out-of-range or wrong-typed value: neither performs range/type coercion beyond the declared TypeScript type — a `number`-typed option set via a raw `settings.json` edit to a non-numeric string flows through `getOptionValue` unchanged and is interpolated as `${option.flag}${value}` (CompilerOptions.ts:473) with no `parseInt`/`isNaN` guard on this path (only the interactive `promptForValue` in extension.ts:132-136 validates numeric input) — a real but low-impact gap folded into the D1 finding's evidence rather than raised separately, since it shares the same unescaped-value-into-command-line root cause. 3 findings recorded: P62-D2-002, P62-D2-003, P62-D2-004.
+- D3 Performance & resource use — pass — Checked what `activate()` (extension.ts:582-830) does synchronously before the extension becomes usable: it registers 4 composer subsystems, 14 commands, 1 formatting provider, and a handful of listeners/status-bar items — all cheap, synchronous VS Code API calls with no filesystem or process work on the activation path itself; `startLanguageClient()` (line 840) constructs the `LanguageClient` and calls `client.start()` without blocking. Checked whether any command re-reads `config.bbx`/`BBj.properties` on every invocation rather than caching: `getBBjClasspathEntries()` (extension.ts:36-68, used only by the rarely-invoked `bbj.showClasspathEntries`) and `Commands.cjs`'s `openEnterpriseManager()` (`PropertiesReader`, line 229) both re-read `BBj.properties` fresh on each invocation — acceptable, since both are discrete, user-initiated commands, not hot-path or per-keystroke operations, and `BBj.properties` is small. Checked whether repeated command invocations accumulate output channels, watchers, listeners, or child processes: each `run`/`runWeb`/`compile` invocation spawns exactly one `exec()` child process whose callback self-completes with no retained reference or listener left attached; the activation-time disposable-registration gap found under D2 (P62-D2-003) is a one-time re-activation-lifecycle issue, not a per-invocation accumulation, so it is not double-counted here. Checked whether `CompilerOptions.ts`'s option model is rebuilt per UI interaction: `COMPILER_OPTIONS` (line 65) is a module-level `const` built once; `getOptionsGrouped()` (lines 485-495) rebuilds only an 18-entry `Map` from it on each `configureCompileOptions()` invocation — a rare, user-initiated, negligible-cost operation. 0 findings recorded.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
-- D7 Cross-IDE parity — pending
+- D7 Cross-IDE parity — fail — Enumerated the VS Code command surface from `package.json`'s `contributes.commands` (18 entries) and `extension.ts`'s `registerCommand` calls, then set it against IntelliJ's `actions/` package (`RU-63-01`): both IDEs implement Run-as-GUI/BUI/DWC and EM login/validate via a spawned `bbj`/`bbjcpl` process reading the same `bbj.home`-equivalent setting and the same `web.bbj`/`em-login.bbj`/`em-validate-token.bbj` run tools, but the two sides differ categorically in *how* they spawn: VS Code's `Commands.cjs` (`run` line 263, `runWeb` line 109, `compile` line 328) and `extension.ts` (EM validate line 415, EM login line 635) all build ONE shell-interpolated command STRING and pass it to `child_process.exec()`, which spawns via `/bin/sh -c`/`cmd.exe`, subjecting every interpolated segment to shell-metacharacter reinterpretation (traced as unescaped at every one of these sites — see P62-D1-003); IntelliJ's equivalents — `BbjRunGuiAction.java:27-52`, `BbjRunBuiAction.java:115-129`, `BbjRunDwcAction.java:115-129`, `BbjRunActionBase.validateTokenServerSide` (`BbjRunActionBase.java:282-322`), and `BbjEMLoginAction.performLogin` (`BbjEMLoginAction.java:94-152`) — uniformly build a `GeneralCommandLine` and add each argument via `.addParameter(...)`, spawned directly by `OSProcessHandler`/`CapturingProcessHandler` with no shell involved, so no argument is ever subject to metacharacter reinterpretation. Also checked pre-flight validation: IntelliJ's `validateBeforeRun()` (`BbjRunActionBase.java:144-169`) confirms BBj Home is configured, exists as a directory, and the executable is present before spawning; VS Code's `getBBjHome()` (Commands.cjs:45-61) and the EM handlers (extension.ts:401-403,601-608) only check that the setting is a non-empty string, discovering a bad path only via `exec()`'s asynchronous error callback. This categorical safety-methodology divergence is a VS Code-side defect, so it is recorded as `P62-D7-001` with `location:` inside `bbj-vscode/`, citing `BbjRunActionBase.java`/`BbjRunGuiAction.java`/`BbjRunBuiAction.java`/`BbjRunDwcAction.java`/`BbjEMLoginAction.java` as the comparison side only. Separately checked `BbjCompileAction.java` — the IntelliJ counterpart to `bbj.compile` — and found it is an unimplemented `TODO` stub that only logs "[Compile] Triggered" and never invokes `bbjcpl` at all, unlike VS Code's real 18-option-aware compile; this and three other command-surface gaps (`bbj.configureCompileOptions`, `bbj.denumber`/`bbj.decompile`/`bbj.decompileReadonly`, `bbj.em`) are IntelliJ-side absences, not VS Code defects, so per D-05 they are recorded as `### Cross-unit referrals` addressed to `RU-63-01` rather than as findings here. 1 finding recorded: P62-D7-001.
 - D8 Comment & doc accuracy — pending
 
 ### Findings
 
-_(none recorded)_
+```
+id:                P62-D1-003
+unit:              RU-62-01
+location:          bbj-vscode/src/Commands/Commands.cjs:263,325-328
+dimension:         D1
+secondary:         [D2, D7]
+severity:          critical
+evidence_tier:     repro
+evidence:          Traced every value that reaches a child_process.exec()-built shell command
+                    string in this unit back to its source, without constructing or running an
+                    exploit string (redacted per D-09; the trace itself is the evidence).
+                    Workspace-settable string configuration -- bbj.classpath (interpolated
+                    unquoted at Commands.cjs:263), bbj.configPath (Commands.cjs:261, quoted but
+                    unescaped), bbj.web.apps.<file>.name (Commands.cjs:97-99,109, quoted but
+                    unescaped), and all 7 string-typed bbj.compiler.* options --
+                    typeChecking.configFile, typeChecking.prefixDirectories,
+                    typeChecking.classpath, output.directory, output.extension,
+                    diagnostics.errorLog, content.protectPassword -- emitted bare by
+                    buildCompileOptions() (CompilerOptions.ts:438-479) and joined with no wrapping
+                    quotes at all into the compile command (Commands.cjs:325-328) -- none of these
+                    values passes through any shell-escaping function before interpolation, and
+                    validateOptions() (CompilerOptions.ts:384-431) checks only
+                    presence/dependency/conflict, never content. None of these settings carries a
+                    restricted marker or is covered by a capabilities.untrustedWorkspaces
+                    declaration in package.json (confirmed absent by grep), so each is settable
+                    from a workspace's own committed .vscode/settings.json, applying even in an
+                    untrusted workspace. A second, workspace-independent path reaches the identical
+                    unescaped interpolation: bbj.runBUI/bbj.runDWC (extension.ts:676,683) fall back
+                    to a caller-supplied params.fsPath when no editor is focused, and any command
+                    registered via vscode.commands.registerCommand is invocable by any other
+                    extension in the same window. extension.ts's EM validate (line 415) and EM
+                    login (line 635) exec() calls share the same unquoted/unescaped construction
+                    for the bbjHome-derived executable path. All six call sites use
+                    child_process.exec(), which always spawns via a shell, rather than an
+                    argument-array API (execFile/spawn) immune to this class of defect -- confirmed
+                    by reading all six call sites; none imports or calls execFile/spawn anywhere in
+                    this unit.
+failure_scenario:  A value containing shell metacharacters, reaching child_process.exec() through
+                    any of the channels traced above, executes as part of the shell command rather
+                    than as inert data -- the general OS command-injection impact (CWE-78):
+                    arbitrary command execution with the developer's own OS privileges, triggered
+                    by an ordinary, everyday action (Run, Run BUI, Run DWC, or Compile) on a
+                    workspace whose settings, or a params object supplied by another extension, the
+                    developer does not fully control. No trigger sequence or payload is recorded
+                    here per D-09, since the surface is unfixed in a public repository.
+classification:    major
+                    (1) touches 1 file: FAIL -- the fix spans at least Commands.cjs, extension.ts,
+                    and CompilerOptions.ts (a consistent escaping/argument-array strategy needs to
+                    reach every call site) -- (2) no public API/grammar/LSP change: pass -- (3) no
+                    new dependency: pass (Node's built-in execFile/spawn suffice) -- (4)
+                    regression-testable with vitest: pass (assert a value containing shell
+                    metacharacters is never passed through unescaped) -- (5) reviewer can name the
+                    exact edit: pass (switch to execFile/spawn with an argument array, mirroring
+                    IntelliJ's GeneralCommandLine.addParameter approach -- see P62-D7-001) -- (6)
+                    severity `critical` and primary dimension is D1: FAIL -- test (6) fails on its
+                    own, so classification is `major` regardless of the other five tests (D-13's
+                    safety gate).
+effort:            8
+dedup:             #231 partial-overlap -- #231 requests configurable classpath/command-line
+                    settings for starting BBj programs; those settings (bbj.classpath,
+                    bbj.compiler.*, bbj.configPath) already exist, and this finding is about their
+                    existing unescaped interpolation into child_process.exec(), a security defect
+                    #231 does not address. #485 partial-overlap -- #485 requests honoring
+                    custom-named/located config files everywhere; this finding's
+                    bbj.configPath/-c interpolation touches the same setting but is about
+                    injection-safety, not feature completeness. #486 none -- #486 requests
+                    live-reload of config.bbx PREFIX/USE changes, unrelated to command-string
+                    construction.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D1-004
+unit:              RU-62-01
+location:          bbj-vscode/src/extension.ts:415,420,639
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          extension.ts:415 builds emValidateCmd with the raw JWT token interpolated
+                    directly as a literal command-line argument ("${token}"), passed to
+                    child_process.exec() at line 426 -- while the child process runs, the full
+                    command line, including the token, is visible in the OS process table to any
+                    other process able to enumerate it (ps/Task Manager-style visibility), since
+                    exec()'s shell inherits normal process-argument visibility; no non-shell,
+                    non-argv channel (e.g. an env var or stdin) is used to pass the secret. The
+                    debug-mode log line at extension.ts:420 attempts to mask the token before
+                    writing it to the output channel via emValidateCmd.replace(token, '***') -- a
+                    literal substring match against the token as it appears inside the already-built
+                    command string; because that string is built by the same unescaped interpolation
+                    traced in P62-D1-003, a token value containing a double-quote character would
+                    not match the pattern the surrounding code assumes it is wrapped in, so the mask
+                    could fail to match and the raw token would be written to the output channel
+                    when bbj.debug is enabled. The EM login flow's password masking at
+                    extension.ts:639 (.replace(`"${password}"`, '"***"')) shares the identical
+                    substring-match fragility.
+failure_scenario:  Any local process running while the EM validate/login exec() call is in flight
+                    -- another process owned by the same user, a monitoring/diagnostic tool, or
+                    another account with process-list visibility in a shared environment -- can
+                    read the plaintext EM token or password directly from the child process's
+                    argument list. Separately, a developer running with bbj.debug: true whose stored
+                    token or typed password contains a double-quote would have the unmasked raw
+                    secret written into the (extension-visible, sometimes shared-in-bug-reports)
+                    Output Channel instead of the intended *** redaction.
+classification:    major
+                    (1) touches 1 file: pass (extension.ts only) -- (2) no public API change: pass
+                    -- (3) no new dependency: pass -- (4) regression-testable with vitest: pass
+                    (assert the masking replace matches the constructed string for token/password
+                    values containing quote characters) -- (5) reviewer can name the exact edit:
+                    pass (switch to execFile/spawn with an argument array so secrets never appear
+                    in a shell-interpolated string, and mask by position rather than substring
+                    match) -- (6) severity `medium` but primary dimension is D1: FAIL -- test (6)
+                    fails on the D1 clause alone, so classification is `major` regardless of the
+                    other five tests.
+effort:            4
+dedup:             none -- none of #231/#485/#486 concern credential/token exposure via process
+                    arguments or output-channel logging.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D2-002
+unit:              RU-62-01
+location:          bbj-vscode/src/Commands/Commands.cjs:250,94,147,299
+dimension:         D2
+secondary:         [D4]
+severity:          medium
+evidence_tier:     repro
+evidence:          run(params) (Commands.cjs:250), runWeb(params, client, credentials)
+                    (Commands.cjs:94, reached via runBUI/runDWC), decompile(params, options)
+                    (Commands.cjs:147, reached via denumber), and compile(params) (Commands.cjs:299)
+                    all compute `const fileName = active ? active.document.fileName :
+                    params.fsPath;` with no check that params itself is defined.
+                    bbj.run/bbj.runBUI/bbj.runDWC/bbj.compile/bbj.denumber are registered as global
+                    VS Code keybindings (package.json contributes.keybindings: alt+g/alt+b/alt+d/
+                    alt+c/alt+n) with no when clause restricting them to a focused BBj editor, and
+                    none of the five is excluded from the Command Palette via a commandPalette when
+                    entry (confirmed: grep -c commandPalette bbj-vscode/package.json -> 0) -- both
+                    invocation paths deliver params === undefined. When
+                    vscode.window.activeTextEditor is also undefined (focus in the
+                    Explorer/Search sidebar, an empty window, or a non-text panel), params.fsPath
+                    throws TypeError: Cannot read properties of undefined. Confirmed by contrast
+                    within the same file: resolveTargetFileName(params) (Commands.cjs:135-141),
+                    used only by decompileReplace/decompileReadonly, correctly guards with `if
+                    (params && params.fsPath)` before falling back to active -- the safe pattern
+                    already exists here and simply was not applied to the other four entry points.
+failure_scenario:  Pressing Alt+G/Alt+B/Alt+D/Alt+C/Alt+N (or invoking the corresponding Command
+                    Palette entry) while no text editor has focus throws inside the command handler
+                    instead of showing a graceful 'no active BBj file' message.
+classification:    major
+                    (1) touches 1 file: FAIL -- the identical unguarded pattern recurs in 4
+                    separate functions, and a comprehensive fix needs to touch all 4 -- (2) no
+                    public API change: pass -- (3) no new dependency: pass -- (4)
+                    regression-testable with vitest: pass (call each function with params:
+                    undefined and no active editor stub) -- (5) reviewer can name the exact edit:
+                    pass (apply resolveTargetFileName's existing guard to the other four) -- (6)
+                    severity `medium`, dimension D2 (not D1): pass -- test (1) alone already fails,
+                    so classification is `major` per D-13.
+effort:            2
+dedup:             none -- none of #231/#485/#486 concern command invocation without a focused
+                    editor.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D2-003
+unit:              RU-62-01
+location:          bbj-vscode/src/extension.ts:592-707
+dimension:         D2
+secondary:         [D4]
+severity:          medium
+evidence_tier:     repro
+evidence:          None of the 14 vscode.commands.registerCommand(...) calls in activate()
+                    (extension.ts:592-707: bbj.config, bbj.properties, bbj.em, bbj.loginEM,
+                    bbj.run, bbj.runBUI, bbj.runDWC, bbj.compile, bbj.denumber, bbj.decompile,
+                    bbj.decompileReadonly, bbj.configureCompileOptions, bbj.refreshJavaClasses,
+                    bbj.showClasspathEntries), the registerDocumentFormattingEditProvider call
+                    (line 748), or the client.onNotification call (line 822) captures or pushes its
+                    returned Disposable onto context.subscriptions -- confirmed by reading every
+                    call site in activate(). By contrast, msgbox-composer-ui.ts:27-28,
+                    addwindow-composer-ui.ts:18, addchildwindow-composer-ui.ts:19, and
+                    setopts-composer-ui.ts:19 (registered from extension.ts:584-587) correctly wrap
+                    their registerCommand calls in context.subscriptions.push(...), and
+                    extension.ts itself uses the same push pattern correctly for its status-bar
+                    items, file watcher, and listeners (lines 756,771,783,805,808,819,858) -- the
+                    safe pattern is established elsewhere in this same file and simply wasn't
+                    applied to these 16 registrations.
+failure_scenario:  VS Code's documented contract for registerCommand requires the caller to
+                    dispose the returned handle; registering the same command ID twice without
+                    disposing the first throws Error: command 'X' already exists. Because none of
+                    these 16 registrations is disposed, and deactivate() (extension.ts:833-837)
+                    only calls client.stop(), a second activate() call within the same
+                    extension-host process -- triggered by certain workspace-trust transitions, or
+                    by a test harness that activates the extension repeatedly -- throws on every
+                    one of the 16 registrations.
+classification:    major
+                    (1) touches 1 file: pass -- (2) no public API change: pass -- (3) no new
+                    dependency: pass -- (4) regression-testable with the existing harness: FAIL --
+                    asserting activation/re-activation and disposal behavior needs a VS Code
+                    extension-host or vscode-module mock that this unit's test suite does not
+                    currently have (P62-D5-002: extension.ts has zero existing test coverage), so
+                    this is new test infrastructure, not a fit into the existing harness -- (5)
+                    reviewer can name the exact edit: pass (wrap each registration in
+                    context.subscriptions.push(...)) -- (6) severity `medium`, dimension D2 (not
+                    D1): pass -- test (4) alone already fails, so classification is `major` per
+                    D-13.
+effort:            4
+dedup:             none -- none of #231/#485/#486 concern command disposal or registration
+                    lifecycle.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D2-004
+unit:              RU-62-01
+location:          bbj-vscode/src/extension.ts:892
+dimension:         D2
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          startLanguageClient() calls client.start() (extension.ts:892) without awaiting
+                    it or attaching a .catch(). LanguageClient.start() (vscode-languageclient)
+                    returns a Promise<void> that rejects if the server module fails to spawn (e.g.
+                    a corrupted out/language/main.cjs bundle, or an incompatible Node.js runtime).
+                    activate() proceeds synchronously to register all 14 commands
+                    (extension.ts:592-707) regardless of whether this promise has settled.
+                    bbj.refreshJavaClasses's handler (extension.ts:694-704) guards only `if
+                    (!client)` -- checking that the variable was assigned (it always is,
+                    synchronously, at line 589 right after `new LanguageClient(...)`), not whether
+                    the underlying process actually started -- so it can call
+                    client.sendRequest(...) against a client whose start() promise is still
+                    pending or has already rejected (though its own try/catch at least surfaces
+                    that specific failure to the user).
+failure_scenario:  If the language-server process fails to spawn, client.start()'s rejection is
+                    never observed anywhere in this file, producing an unhandled promise rejection
+                    in the extension host with no dedicated user-facing message explaining that the
+                    server didn't start, while every command remains registered as if it had.
+classification:    easy
+                    (1) touches 1 file: pass -- (2) no public API/grammar/LSP change: pass -- (3)
+                    no new dependency: pass -- (4) regression-testable with vitest: pass (a mock
+                    LanguageClient whose start() rejects, asserting the rejection is observed) --
+                    (5) reviewer can name the exact edit: pass (attach .catch() to log/surface the
+                    failure, e.g. via outputChannel/showErrorMessage) -- (6) severity `low` and
+                    primary dimension is D2 (not D1): pass -- all six tests pass, so this finding
+                    is `easy` per D-13, unlike the D1-tainted findings above.
+effort:            2
+dedup:             none -- none of #231/#485/#486 concern language-client startup error handling.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D7-001
+unit:              RU-62-01
+location:          bbj-vscode/src/Commands/Commands.cjs:117,271,336
+dimension:         D7
+secondary:         [D1]
+severity:          medium
+evidence_tier:     inherited
+evidence:          VS Code's bbj.run/bbj.runBUI/bbj.runDWC/bbj.compile (Commands.cjs:117,271,336)
+                    and its EM validate/login flows (extension.ts:426,645) all build a single
+                    shell command STRING via template-literal interpolation and pass it to
+                    child_process.exec(), which spawns the command through /bin/sh -c (or cmd.exe
+                    on Windows) -- meaning every interpolated segment is subject to shell
+                    metacharacter interpretation unless explicitly quoted and escaped (traced as
+                    unescaped at multiple points; see P62-D1-003). The equivalent IntelliJ actions
+                    for the same four operations plus EM login/validate --
+                    BbjRunGuiAction.java:27,30,33,35,39,41,47,52, BbjRunBuiAction.java:115-129,
+                    BbjRunDwcAction.java:115-129, BbjRunActionBase.validateTokenServerSide
+                    (BbjRunActionBase.java:298-303), and BbjEMLoginAction.performLogin
+                    (BbjEMLoginAction.java:98-112) -- uniformly build a GeneralCommandLine and add
+                    each argument via .addParameter(...), which OSProcessHandler/
+                    CapturingProcessHandler spawn directly (no shell), so no argument is ever
+                    subject to shell-metacharacter reinterpretation regardless of its content.
+                    IntelliJ's validateBeforeRun() (BbjRunActionBase.java:144-169) additionally
+                    confirms the configured BBj Home directory exists and the executable is
+                    present and executable before spawning; VS Code's getBBjHome()
+                    (Commands.cjs:45-61) and the EM login/validate paths (extension.ts:401-403,
+                    601-608) only check that the bbj.home config value is a non-empty string --
+                    never that the path resolves to an actual directory or executable -- so a
+                    misconfigured VS Code bbj.home is only discovered via exec()'s asynchronous
+                    error callback, after the shell has already attempted to interpret the
+                    (still-unescaped) command.
+failure_scenario:  n/a (D7 is a cross-IDE comparative observation, not itself a new runtime
+                    failure scenario beyond what P62-D1-003 already states) -- the divergence
+                    means the identical class of user-facing feature (run/compile/EM-authenticate
+                    a BBj program) carries fundamentally different injection exposure and
+                    pre-flight validation robustness depending on which IDE the developer uses,
+                    even though both IDEs read the same bbj.home-equivalent configuration concept.
+classification:    major
+                    (1) touches 1 file: FAIL -- Commands.cjs and extension.ts, the same files as
+                    P62-D1-003's fix -- (2) no public API/grammar/LSP change: pass -- (3) no new
+                    dependency: pass -- (4) regression-testable with vitest: pass -- (5) reviewer
+                    can name the exact edit: pass (adopt an argument-array-based spawn API --
+                    Node's execFile/spawn -- mirroring IntelliJ's GeneralCommandLine approach, plus
+                    add pre-flight existence/executable checks) -- (6) severity `medium`,
+                    dimension D7 (not D1): pass -- test (1) alone already fails, so classification
+                    is `major` per D-13.
+effort:            8
+dedup:             none -- none of #231/#485/#486 concern process-spawning methodology or
+                    pre-flight path validation; this is a comparative observation, not a feature
+                    request.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
 
-_(none recorded)_
+- **Tier failed: `repro` (D2).** Candidate claim: two EM login/validate invocations issued close enough together could collide on their `Date.now()`-millisecond-resolution temp-file names (`bbj-em-login-${Date.now()}.tmp` at `extension.ts:630`, `bbj-em-validate-${Date.now()}.tmp` at `extension.ts:412`), causing one invocation's `exec()` callback to read the other's output. **Reason not recorded as a finding:** confirming an actual same-millisecond collision and cross-read requires a timing-controlled concurrent-invocation harness driving two logins within the same millisecond and observing which callback reads which output — that harness is explicitly deferred infrastructure per this phase's scope (`62-CONTEXT.md` `<deferred>`; any harness a specific finding demands is a Phase 67 deliverable). A static trace confirms the theoretical millisecond-collision window exists but does not itself confirm an observable cross-read — left here rather than silently dropped, per RVW-06's drop-vs-disposition rule.
 
 ### Cross-unit referrals
 
-_(none recorded)_
+- **RU-63-01** — `BbjCompileAction.java` (`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java:24-37`) is an unimplemented `TODO` stub: `actionPerformed` only logs `"[Compile] Triggered for file: " + file.getName()` to the console and never invokes `bbjcpl` or any compiler process — unlike VS Code's `bbj.compile` (`Commands.cjs:294-343`), which builds and runs a real `bbjcpl` command line from 18 configurable options via `CompilerOptions.ts`/`buildCompileOptions()`. `RU-63-01`'s own sweep should confirm whether this is a documented, deliberate scope decision (e.g. compile-on-save is expected to be driven by the language server instead) or an unaddressed feature gap, and record its own finding if the latter.
+- **RU-63-01** — Six VS Code commands in this unit have no IntelliJ action counterpart anywhere in `bbj-intellij/src/main/java/com/basis/bbj/intellij/` (confirmed via `ls`/`grep` across the module — no `Denumber`/`Decompile`/`ConfigureCompileOptions`/`EnterpriseManager` action class exists): `bbj.configureCompileOptions` (compiler-options UI with dependency/conflict validation), `bbj.denumber`/`bbj.decompile`/`bbj.decompileReadonly` (tokenized/line-numbered program decompilation, issues #64/#65), and `bbj.em` (Enterprise Manager URL launcher reading `BBj.properties`' jetty host/port). `RU-63-01`'s sweep should confirm whether these are deliberate VS Code-only features or unaddressed IntelliJ gaps.
+- **RU-63-01** (secondary interest to `RU-63-05`) — `BbjRefreshJavaClassesAction.java:21-30` performs a full `BbjServerService.getInstance(project).restart()` (restarting the whole language server) where VS Code's `bbj.refreshJavaClasses` (`extension.ts:694-704`) sends a targeted `bbj/refreshJavaClasses` LSP request without restarting the server — a behavioral divergence worth confirming as deliberate (LSP4IJ architecture constraint) or a missed optimization.
 
 ## RU-62-03 — Composer logic & UI layer
 
