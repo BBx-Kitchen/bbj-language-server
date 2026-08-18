@@ -158,3 +158,12 @@ None - no external service configuration required.
 ---
 *Phase: 62-extension-host-webview-composer-review*
 *Completed: 2026-08-18*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/reviews/62-COVERAGE.md`
+- FOUND: `.planning/phases/62-extension-host-webview-composer-review/62-03-SUMMARY.md`
+- FOUND: `9c8673b` (Task 1 commit)
+- FOUND: `12b1d42` (Task 2 commit)
+- FOUND: `ad1b068` (SUMMARY commit)
+- Both plan-level automated `<verify>` gates re-run clean (7/7 live cells verdicted, 4 finding records with complete 13-field parity, phase-wide 21/14/5/40, no `location:` inside `bbj-intellij/`, no source-file modification, `.planning/reviews/INVENTORY.md` unchanged, D-14 grid re-derivation `35 5 40`)
