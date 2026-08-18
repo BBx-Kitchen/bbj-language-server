@@ -1486,26 +1486,355 @@ _(none recorded)_
 **Owning plan:** 62-05.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D1 Security — fail — Checked `document-formatter.ts`'s process-spawn path first, against `RU-62-01`'s already-recorded `child_process.exec()` shell-string pattern (`P62-D1-003`): `runFormatter` (document-formatter.ts:52-84) calls `cp.spawn('java', formatFlags)` (line 59) with `formatFlags` an argument-array built entirely by `.push()` (lines 14-27), never concatenated into a shell string — this is categorically different from `P62-D1-003`'s six `exec()` call sites, which all interpolate values into ONE command string parsed by `/bin/sh -c`/`cmd.exe`; `spawn` with no `shell: true` option (confirmed: no such option is passed anywhere in this file) never invokes a shell, so no argument here is subject to metacharacter reinterpretation regardless of its content — `document.uri.fsPath` (line 20) and `config.indentWidth.toString().trim()` (line 23) reach `argv` as literal, non-reinterpreted array elements. What `P62-D1-003` recorded does not recur here; this is the "differs, say so explicitly" case the plan anticipates, not a duplicate. The one gap that does remain: `'java'` (line 59) is resolved by argv[0] lookup against the process's `PATH` with no absolute-path pinning and no verification step before spawning — unlike `bbj.home`-based commands elsewhere in this phase, there is no `bbj.javaHome`-style setting an administrator could pin, so a `PATH` entry that resolves to an unintended `java` binary ahead of the real one would be silently used; `jarPath` itself (line 10, `${__dirname}/../tools/formatter/BBjCFCli.jar`) is a compile-time constant, not reachable by any document/workspace/setting value, so it carries no injection risk of its own — its provenance and pinning are `RU-64-03`'s territory (Phase 64), noted as a boundary here, not recorded as a finding. Checked `decompile-io.ts`'s `fs.promises.open`/`stat` calls (lines 18, 20, 31) next: neither performs a realpath/symlink check or a regular-file-type check on `file` before opening it — a directory surfaces as an `EISDIR` read failure (caught, returns `false`/`-1`, no crash) and a symlink is followed transparently to whatever it points at, all trusted entirely to the caller. Traced the only two call sites (`Commands.cjs:179,382`, `RU-62-01`'s territory): both always pass either the user's own already-open document path (`resolveTargetFileName`) or a private `fs.mkdtempSync` copy — no currently-reachable path is attacker-influenced — so this is a defense-in-depth gap, not a live vulnerability. Checked `line-numbering.ts`'s `isLineNumberedSource` (lines 26-49): it is a pure boolean predicate over `text` with no document-edit capability of its own — the actual document replacement happens via `vscode.commands.executeCommand('bbj.denumber', doc.uri)` in `extension.ts` (`RU-62-01`'s territory, already always targeting the same document the prompt fired for) — so "can an edit reach a document the user did not select" does not apply to this file, which performs no edit at all. Checked `tokenized-bbj.ts`'s `isTokenizedBBjHeader` (lines 29-39): a truncated read (`bytes.length < TOKENIZED_BBJ_MAGIC.length`) returns `false` explicitly (line 30) rather than throwing or reading out of bounds, and a coincidental partial match cannot mis-classify since every one of the 7 magic bytes is compared before returning `true` — no misclassification path found. 2 findings recorded: P62-D1-006, P62-D1-007.
+- D2 Correctness & error handling — fail — Checked `document-formatter.ts`'s exit/error handling: `p.on('close', (code) => { if (code !== 0) return reject(stderr); ...resolve(stdout); })` (lines 69-80) correctly distinguishes a non-zero exit and rejects with the collected stderr; but `p.on('error', (err) => { if (err && (err as any).code === 'ENOENT') { return reject(err); } })` (lines 63-67) only rejects for the missing-binary case — any other spawn-level error (`EACCES` on a non-executable `java`, `EMFILE`/`ENFILE` from exhausted file descriptors, etc.) falls through the `if` with no `else`, so the function body returns `undefined` and neither `resolve` nor `reject` is ever called: the `runFormatter` promise, and therefore the format request awaiting it, hangs permanently with no user-visible error (P62-D2-010). Checked whether `p.stdout`/`p.stderr` are fully drained and the child reaped: both streams have `.on('data', ...)` handlers registered unconditionally (lines 60-62) before `p.stdin.end(documentContent)` (line 82) is called, and `'close'` fires only after the child process actually exits and its stdio streams are fully flushed — no leaked handle found on the success/non-zero-exit paths (only on the P62-D2-010 error path above, which is a hang, not a leak per se, since no listener explosion occurs on repeat). Checked `decompile-io.ts`'s `FileHandle` closure: `isTokenizedFile`'s `let handle: fs.promises.FileHandle | undefined` (line 16) is closed unconditionally in a `finally` block (`await handle?.close().catch(() => {})`, lines 24-25) covering every exit path including the `catch` (line 22-23) — no leak found; the outer `try`/`catch`/`finally` shape correctly returns `false` on any open/read error rather than propagating. Checked `waitForDecompileOutput`'s (lines 64-84) size-settling heuristic for a stale-content race: the loop compares `lstSize === lastLstSize` (line 73) across successive 150ms-spaced polls (default `pollMs`) with **no check that the observed size was produced after this call started** — if a `.lst` file already exists at `lstPath` (e.g. left over from a prior failed/aborted `decompileInPlace`/`decompileReadonly` attempt against the same file, since neither caller unlinks a pre-existing `.lst` before invoking `bbjlst`) and its size happens to still equal the size the NEW `bbjlst` run's output will settle to, the very first two polls can observe the same (stale) size before the new write has even begun, and the function returns the stale `.lst` as if it were the fresh output (P62-D2-011); `waitForDecompileOutput`'s own test file (`decompile-io.test.ts:78-92`) exercises the size-*growing*-then-settling case but not the pre-existing-stale-file coincidence, so this gap is untested. Checked `line-numbering.ts`'s boundaries directly against its own 10-case test file (`line-numbering.test.ts`): empty document, single line, all-numbered, mixed, numeric-label-vs-line-number, and CRLF are all covered and pass — no boundary defect found by inspection or by the existing suite. Checked `tokenized-bbj.ts` for a short-file/zero-byte/coincidental-prefix defect: covered above under D1 (no misclassification path), no separate D2 defect. 2 findings recorded: P62-D2-010, P62-D2-011.
+- D3 Performance & resource use — fail — Checked whether `document-formatter.ts` spawns a JVM per format request and whether requests can overlap: `provideDocumentFormattingEdits` (lines 9-50) is invoked fresh by VS Code's formatting machinery on every format-on-save/format-on-demand trigger, and each invocation calls `this.runFormatter(args, documentContent)` (line 32), which unconditionally spawns a new `java` process (line 59) — there is no in-flight-request tracking, lock, queue, or debounce anywhere in this file (confirmed by reading the whole 96-line file: no `Map`/`Set`/`Promise` cache keyed by document URI exists for this purpose, unlike `unsavedContentMap`, which tracks content, not in-flight requests) — two format requests for the same document in quick succession, or format-on-save firing across several documents saved together (e.g. "Save All"), spawn fully independent, unbounded-in-count concurrent JVMs, each with its own ~750ms-plus startup cost (the file's own `timeTaken > 750` warning threshold, line 75, is evidence the authors already know JVM startup is the dominant cost here) (P62-D3-001). Checked `decompile-io.ts`: `isTokenizedFile` reads exactly `TOKENIZED_MAGIC.length` (7) bytes via a fixed-size `Buffer.alloc(7)` (line 19) — bounded, never the whole file; `statSize` (lines 29-35) uses `fs.promises.stat` only, no read at all — also bounded. Traced both callers in `Commands.cjs` (`RU-62-01`'s territory): `decompileInPlace` calls `isTokenizedFile` once per invocation (not per keystroke), `decompileReadonly` likewise once — no repeated-call cost found. Checked `tokenized-bbj.ts`: `isTokenizedBBjHeader` is called from `extension.ts`'s `maybePromptTokenized`, gated by the `promptedTokenizedFiles` reserve-once `Set` (`RU-62-01`'s territory) and triggered only on tab-open events, never per keystroke or per open of an already-prompted file — confirmed once-per-file-per-session, not a hot path. Checked `line-numbering.ts`: `isLineNumberedSource` scans at most `maxLinesToInspect` (20, line 31) non-blank lines regardless of total document length, and is called once per document open via `maybePromptLineNumbered` (`RU-62-01`'s territory, same reserve-once-`Set` pattern) — bounded and infrequent, no unbounded growth. 1 finding recorded: P62-D3-001.
+- D4 Maintainability & code smells — fail — Checked whether the four modules agree on one error-surfacing/logging convention: `document-formatter.ts` imports and uses the shared `logger` (line 3; `logger.warn` at lines 43, 76); `line-numbering.ts` and `tokenized-bbj.ts` are pure, side-effect-free predicate functions with no error path to surface at all (no finding — nothing to be inconsistent about); `decompile-io.ts`'s three `catch` blocks (lines 22, 32, and implicitly the timeout `throw` at line 83) all silently return a sentinel value (`false`/`-1`) rather than logging, which is a deliberate, documented contract for a boolean/size predicate (not an inconsistency with `document-formatter.ts`'s user-facing formatter, which has a different, notification-worthy failure mode) — checked and found justified, not filed. Checked for a duplicated constant within the unit: `tokenized-bbj.ts:17` exports `TOKENIZED_BBJ_MAGIC = Uint8Array.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e])`, and `decompile-io.ts:10` independently declares its own `const TOKENIZED_MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e])` — the identical 7-byte literal, hand-typed twice in the same review unit with no import/re-export link between them (confirmed: `decompile-io.ts` has no `import` from `./tokenized-bbj.js` anywhere) (P62-D4-005). Checked whether `document-formatter.ts`'s spawn/stream shape duplicates `RU-62-01`'s `exec()`/`execWithProgress()` shape: it does not — this file is a *third*, independently-written approach to child-process invocation in this codebase (raw `exec()` in `extension.ts`, the `execWithProgress()` Promise-wrapper helper in `Commands.cjs`, and this file's `spawn`-plus-manual-stream-accumulation), noted here as cross-unit context rather than restated or filed as a fourth finding, since no single one of the three is itself broken by the duplication (each already has its own D1/D2/D4 findings on its own merits). Checked whether `line-numbering.ts` (49 lines) and `tokenized-bbj.ts` (39 lines) earn their own modules or are fragments of a larger concern: both are single-purpose, independently and thoroughly tested (`line-numbering.test.ts`, `tokenized-bbj.test.ts`), have no shared state with any other file in the unit, and are imported by name from exactly one caller (`extension.ts`) each — small but cohesive, not a smell. Checked `decompile-io.ts`'s two responsibilities (`isTokenizedFile` magic-prefix read, `statSize` size check): both are exported or used (`statSize` is module-private, used only by `waitForDecompileOutput` in the same file, line 70) — no dead export found. 1 finding recorded: P62-D4-005.
+- D5 Test coverage gaps — fail — Established by enumeration, not assumption: `ls bbj-vscode/test/ | grep -iE 'format|line-numb|token|decompile'` -> `decompile-io.test.ts`, `line-numbering.test.ts`, `tokenized-bbj.test.ts` — three hits; `grep -rl 'document-formatter\|DocumentFormatter' bbj-vscode/test/` -> **nothing**. So three of this unit's four files are already thoroughly tested at their boundaries: `tokenized-bbj.test.ts` (7 cases, including the real tokenized-program header and the empty/truncated/near-miss boundaries this section's D1/D2 checks relied on), `line-numbering.test.ts` (10 cases, all boundaries this section's D2 check relied on), and `decompile-io.test.ts` (8 cases across `isTokenizedFile` and `waitForDecompileOutput`, including a size-settling race test — but not the specific stale-pre-existing-file coincidence `P62-D2-011` traces, which remains untested even within this file's own otherwise-strong suite). `document-formatter.ts` (96 lines: `provideDocumentFormattingEdits`, `runFormatter`, the `unsavedContentMap` listeners) has **zero** test coverage — no test imports it, mocks `child_process.spawn`, or exercises the exit-code/`ENOENT`/other-error paths this section's own `P62-D2-010`/`P62-D3-001` findings trace; `npm test`/`npx vitest run` staying green today provides no signal about either. Unlike this phase's other D5 findings (`P62-D5-001`..`P62-D5-005`, each requiring 2 or more new test files to close), this gap is a **single** file, `document-formatter.test.ts`, closable with one new test file mocking `cp.spawn` — noted explicitly in the classification below since it changes the D-13 test-(1) outcome relative to precedent. 1 finding recorded: P62-D5-006.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
-- D7 Cross-IDE parity — pending
-- D8 Comment & doc accuracy — pending
+- D7 Cross-IDE parity — pass — Established, for each of the four editor features, whether an IntelliJ counterpart exists at all, per this unit's own D-11 instruction, by grepping `bbj-intellij/src/main/java/` rather than assuming: **format document** — `BbjLanguageCodeStyleSettingsProvider.java` (`RU-63-02`) only customizes `CommonCodeStyleSettings` defaults (REM-at-column-0) via IntelliJ's own reformat infrastructure; it never invokes `BBjCFCli.jar` or spawns any process — confirmed by reading the file in full (28 lines) and by `grep -rl 'BBjCFCli\|formatter' bbj-intellij/src/main/java/` returning nothing — so the actual jar-backed reformat feature `document-formatter.ts` implements has **no** IntelliJ counterpart. **Line-numbered/denumber detection** — `grep -rliE 'denumber|lineNumber' bbj-intellij/src/main/java/com/basis/bbj/intellij/` returns only two false-positive hits inside `ComposerLauncher.java` (`doc.getLineNumber(caret)`, IntelliJ's own `Document` API, unrelated to BBj line-numbered-source detection) — confirmed no counterpart exists. **Tokenized-BBj detection** — `grep -rliE 'tokenized|<<bbj>>' bbj-intellij/src/main/java/` returns nothing — no counterpart. **Decompile** — `grep -rliE 'decompile|bbjlst' bbj-intellij/src/main/java/` returns nothing — no counterpart. All four are therefore genuine, IntelliJ-side absences, not VS Code defects — per D-05/this task's own instruction, none is recorded as a `P62-D7-*` finding; all four are written as a single `### Cross-unit referrals` entry addressed to `RU-63-02` ("language registration, editor support & notifications" — the unit whose files (`BbjLanguageCodeStyleSettingsProvider.java`, and the absence of any denumber/tokenized/decompile registration) is where each of these four features would live if implemented) below, per D-06. Checked `tokenized-bbj.ts` against open issue **#65** ("support tokenized BBj files") by number, as this unit's closest dedup neighbour, per this task's own instruction: #65 requests exactly the language-feature support this file (plus `decompile-io.ts` and their `extension.ts`/`Commands.cjs` callers) already implements on the VS Code side — so the tokenized-detection D7 absence recorded here is #65's IntelliJ-side remainder, not a novel request; the referral below states this explicitly rather than leaving it implicit. 0 findings recorded.
+- D8 Comment & doc accuracy — fail — Checked `tokenized-bbj.ts:1-17`'s header docstring byte-for-byte against `TOKENIZED_BBJ_MAGIC` and the detection logic: the docstring's `hexdump _util | head -1` output `3c3c 6262 3e6a 843e 0000 ...` (16-bit words, as `hexdump`'s default two-byte format displays them) unswaps to the byte stream `3c 3c 62 62 6a 3e 3e 84 ...` exactly as the comment states (swap `3e6a`->`6a 3e`, `843e`->`3e 84`); the first 7 unswapped bytes, `3c 3c 62 62 6a 3e 3e`, are ASCII `<<bbj>>` and match `TOKENIZED_BBJ_MAGIC = Uint8Array.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e])` (line 17) exactly, byte for byte — the docstring is accurate. Checked `decompile-io.ts`'s docstrings against Task 1's D1/D2 traces: `isTokenizedFile`'s "True if the file still starts with the tokenized-BBj magic" (line 14) is accurate; `waitForDecompileOutput`'s docstring (lines 56-63), including "bbjlst can return before its output is flushed ... polls until the output is actually ready", accurately describes the settling loop but does **not** mention (and so does not contradict, but also does not warn about) the stale-pre-existing-`.lst` coincidence `P62-D2-011` traces — a gap in the docstring's completeness, not a false claim, so not filed separately. Checked `document-formatter.ts:5-6`'s comment `// Store unsaved content in memory` plus its inline comment at line 29, `// Use unsaved content if available, otherwise read from the file system`, against what `document.getText()` (line 30's fallback) actually returns: for any `vscode.TextDocument`, `.getText()` always returns VS Code's live in-memory buffer for that document, **never** a disk read — there is no code path in this codebase, or in the VS Code API, by which `document.getText()` "reads from the file system"; the comment's framing is factually wrong, and because it is wrong, `unsavedContentMap`'s entire purpose is unclear: for the exact `document` object `provideDocumentFormattingEdits` receives, `document.getText()` already reflects the same live content the map would also hold for that same document/session, so the `unsavedContentMap.get(...) || document.getText()` fallback (line 30) is always semantically equivalent to calling `document.getText()` directly — the module-level `Map`, its `onDidChangeTextDocument` writer (lines 88-91), and its `onDidCloseTextDocument` cleanup (lines 94-96) add 9 of this file's 96 lines and an ongoing per-keystroke write for no confirmed behavioral difference (P62-D8-002, D4-secondary). Checked `CLAUDE.md` §Build & Test Commands and §Architecture against these four features: `CLAUDE.md` makes no positive claim naming `document-formatter.ts`/`line-numbering.ts`/`tokenized-bbj.ts`/`decompile-io.ts` or the formatter/denumber/decompile features by name anywhere (confirmed: no filename or feature-name match in `CLAUDE.md`) — its silence is noted, consistent with every other Phase 62 unit's own precedent, and not promoted to a finding. 1 finding recorded: P62-D8-002.
 
 ### Findings
 
-_(none recorded)_
+```
+id:                P62-D1-006
+unit:              RU-62-02
+location:          bbj-vscode/src/document-formatter.ts:59
+dimension:         D1
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          cp.spawn('java', formatFlags) (document-formatter.ts:59) resolves 'java'
+                    via argv[0] lookup against the extension host process's PATH, with no
+                    absolute-path pinning and no pre-spawn verification that the resolved
+                    binary is the intended one. Unlike bbj.home-based commands elsewhere in
+                    this phase (Commands.cjs's getBBjHome(), which reads an explicit
+                    bbj.home setting), this file exposes no equivalent bbj.javaHome-style
+                    setting an administrator could pin. Contrast confirmed against
+                    P62-D1-003 (RU-62-01): that finding's six exec() call sites build ONE
+                    shell-interpolated command string; this call site uses spawn() with an
+                    argument array and no shell:true option anywhere in this file, so no
+                    argument here is subject to shell metacharacter reinterpretation — the
+                    two findings share no root cause.
+failure_scenario:  On a machine where PATH contains an attacker- or misconfiguration-placed
+                    'java' entry ahead of the real JDK/JRE binary (e.g. a compromised or
+                    stale dev-tooling directory prepended to PATH), every format request
+                    silently runs that binary instead, with formatFlags (including the
+                    active document's own path) as its argv. No document/workspace/setting
+                    value currently constructs the resolved binary path itself, so this is
+                    a hardening gap rather than a currently exploitable injection.
+classification:    major
+                    (1) touches 1 file: pass — confined to document-formatter.ts — (2) no
+                    public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass (mock cp.spawn to assert the
+                    resolved binary path once pinning exists) — (5) reviewer can name the
+                    exact edit: pass (add an optional bbj.javaHome setting, defaulting to
+                    the current PATH lookup, and prefer it when set) — (6) severity is
+                    `low` but primary dimension is D1: FAIL — test (6) fails on the D1
+                    primary-dimension clause alone, so classification is `major` regardless
+                    of the other five tests (D-13's safety gate).
+effort:            4
+dedup:             none — checked against all 15 frozen issues; none requests java-binary
+                    pinning or spawn hardening. #65 (support tokenized BBj files) is
+                    unrelated — it requests tokenized-file language support, not
+                    process-spawn hardening, and is unrelated to the formatter feature.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D1-007
+unit:              RU-62-02
+location:          bbj-vscode/src/decompile-io.ts:15-27,29-35
+dimension:         D1
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          isTokenizedFile (decompile-io.ts:15-27) and statSize (decompile-io.ts:
+                    29-35) call fs.promises.open(file, 'r')/fs.promises.stat(file) directly
+                    on their file parameter with no realpath resolution, no symlink check,
+                    and no regular-file-type check before opening — a directory surfaces
+                    only as an EISDIR read failure (caught by the try/catch, returns
+                    false/-1, no crash); a symlink is followed transparently to whatever it
+                    points at. Both functions trust their caller entirely for path
+                    containment. Traced both call sites, Commands.cjs:179,382
+                    (RU-62-01's territory): decompileInPlace passes the already-open
+                    document's own resolved path; decompileReadonly passes a path inside a
+                    freshly created fs.mkdtempSync() temp directory — neither is currently
+                    attacker- or workspace-setting-influenced.
+failure_scenario:  If a future caller ever passes a webview-message-derived or
+                    workspace-setting-derived path to isTokenizedFile/statSize without its
+                    own containment check, a symlink escaping the workspace or a device
+                    node could be opened; today no such caller exists, so this is a
+                    defense-in-depth absence, not a currently exploitable defect.
+classification:    major
+                    (1) touches 1 file: pass — confined to decompile-io.ts — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass (Node's
+                    built-in fs.realpath/fs.lstat suffice) — (4) regression-testable with
+                    vitest: pass (extend decompile-io.test.ts with a symlink/directory
+                    fixture) — (5) reviewer can name the exact edit: pass (fs.lstat the
+                    resolved path first and reject non-regular files) — (6) severity is
+                    `low` but primary dimension is D1: FAIL — test (6) fails on the D1
+                    primary-dimension clause alone, so classification is `major` regardless
+                    of the other five tests (D-13's safety gate).
+effort:            2
+dedup:             none — #65 requests the tokenized-file feature itself, which this exact
+                    file already implements; this finding is a defense-in-depth hardening
+                    gap inside that implementation, not the feature request, so it does not
+                    overlap #65. No other frozen issue concerns file-path containment here.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D2-010
+unit:              RU-62-02
+location:          bbj-vscode/src/document-formatter.ts:63-67
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          p.on('error', (err) => { if (err && (err as any).code === 'ENOENT') {
+                    return reject(err); } }) (document-formatter.ts:63-67) only rejects the
+                    surrounding new Promise<string>((resolve, reject) => {...}) (line 53)
+                    for the missing-binary case. Any other spawn-level 'error' event (e.g.
+                    EACCES on a non-executable java, EMFILE/ENFILE from exhausted file
+                    descriptors) falls through the if with no else branch, so the handler
+                    body returns undefined and neither resolve nor reject is ever called
+                    for that promise.
+failure_scenario:  If cp.spawn('java', formatFlags) (line 59) emits 'error' with any code
+                    other than 'ENOENT' (a permissions error on the java binary being the
+                    most realistic case, e.g. after a botched local JDK reinstall), the
+                    runFormatter Promise never settles: the format request awaiting it
+                    (provideDocumentFormattingEdits's .then(...) at line 32) hangs
+                    indefinitely, with no error message, no timeout, and no way for the
+                    user to tell the formatter is stuck versus merely slow.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass
+                    (mock cp.spawn to emit a non-ENOENT 'error' and assert the promise
+                    rejects) — (5) reviewer can name the exact edit: pass (add an else
+                    branch calling reject(err) for any error code) — (6) severity `medium`,
+                    dimension D2 (not D1): pass — all six tests pass, so classification is
+                    `easy`.
+effort:            2
+dedup:             none — no frozen issue concerns the formatter's spawn-error handling.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D2-011
+unit:              RU-62-02
+location:          bbj-vscode/src/decompile-io.ts:69-82
+dimension:         D2
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          waitForDecompileOutput's polling loop (decompile-io.ts:69-82) compares
+                    lstSize === lastLstSize (line 73) across successive pollMs-spaced
+                    fs.promises.stat calls, with no check that the observed size was
+                    produced after this call started (no captured start-time/mtime
+                    comparison anywhere in the function). Neither decompileInPlace nor
+                    decompileReadonly (Commands.cjs:155,361, RU-62-01's territory) unlinks
+                    a pre-existing resolvedFileName + '.lst' before invoking bbjlst.
+                    decompile-io.test.ts:78-92 exercises the size-growing-then-settling
+                    case but not a pre-existing stale file of coincidentally matching
+                    final size.
+failure_scenario:  If a prior decompileInPlace attempt against the same file already left
+                    a stale <input>.lst on disk (e.g. the extension crashed or the user
+                    closed VS Code between the exec() completing and the rename step), and
+                    a subsequent retry's fresh bbjlst output happens to settle at the same
+                    byte size as the stale file, the first two 150ms-spaced polls can both
+                    observe that stale size before the new write has begun, causing
+                    waitForDecompileOutput to resolve immediately with the STALE .lst's
+                    content rather than the fresh run's output — the user would see outdated
+                    decompiled source with no error.
+classification:    easy
+                    (1) touches 1 file: pass — a self-contained fix (capture Date.now() at
+                    call start; only accept a settled size once at least one poll's mtimeMs
+                    is >= that timestamp) stays inside decompile-io.ts — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with vitest: pass (extend decompile-io.test.ts with
+                    a pre-existing-.lst-of-matching-size fixture) — (5) reviewer can name
+                    the exact edit: pass (gate resolution on stat().mtimeMs >= a
+                    call-start timestamp, not size alone) — (6) severity `low`, dimension
+                    D2 (not D1): pass — all six tests pass, so classification is `easy`.
+effort:            4
+dedup:             none — #65 requests the tokenized-file feature itself, already present;
+                    this is a correctness gap in the polling heuristic underneath it, not a
+                    feature-request overlap. No other frozen issue concerns decompile output
+                    detection.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D3-001
+unit:              RU-62-02
+location:          bbj-vscode/src/document-formatter.ts:9-50,52-84
+dimension:         D3
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          provideDocumentFormattingEdits (document-formatter.ts:9-50) calls
+                    this.runFormatter(...) (line 32) unconditionally on every invocation,
+                    and runFormatter (lines 52-84) unconditionally spawns a new java
+                    process (line 59) with no in-flight-request tracking, lock, queue, or
+                    debounce anywhere in the 96-line file — confirmed by reading the whole
+                    file: the only Map present, unsavedContentMap (line 6), tracks document
+                    content, not in-flight formatting requests. The file's own
+                    `timeTaken > 750` warning (line 75) confirms the authors already know
+                    JVM startup dominates the per-request cost.
+failure_scenario:  Saving several open BBj documents together (VS Code's "Save All", or
+                    format-on-save firing while a manual format request from the same
+                    document is still in flight) spawns one independent JVM per request
+                    with no upper bound on concurrency — on a machine with several BBj
+                    files open, this can transiently spawn several concurrent JVMs, each
+                    with the ~750ms+ startup cost the code's own warning threshold already
+                    flags, worsening perceived editor responsiveness during a bulk save.
+classification:    easy
+                    (1) touches 1 file: pass — a per-document in-flight-promise cache or a
+                    simple mutex/queue stays inside document-formatter.ts — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with vitest: pass (mock cp.spawn and assert a
+                    second concurrent call for the same document reuses the in-flight
+                    promise rather than spawning again) — (5) reviewer can name the exact
+                    edit: pass (track an in-flight Promise<string> per document URI in a
+                    module-level Map, returning the existing one instead of spawning again)
+                    — (6) severity `low`, dimension D3 (not D1): pass — all six tests pass,
+                    so classification is `easy`.
+effort:            4
+dedup:             none — no frozen issue concerns concurrent-format-request throttling.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D4-005
+unit:              RU-62-02
+location:          bbj-vscode/src/decompile-io.ts:10,bbj-vscode/src/tokenized-bbj.ts:17
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          tokenized-bbj.ts:17 exports TOKENIZED_BBJ_MAGIC =
+                    Uint8Array.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]).
+                    decompile-io.ts:10 independently declares const TOKENIZED_MAGIC =
+                    Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]) — the identical
+                    7-byte literal, hand-typed a second time in the same review unit, with
+                    no import from ./tokenized-bbj.js anywhere in decompile-io.ts
+                    (confirmed by reading the whole file's imports, line 7 only: import * as
+                    fs from 'fs'). A third, independent re-implementation of the same
+                    magic-byte check (docFileData.text.startsWith('<<bbj>>')) exists at
+                    bbj-vscode/src/language/bbj-document-builder.ts:322 — outside this
+                    unit's file list (src/language/ is not RU-62-02's surface) but cited
+                    here as corroborating evidence that the constant has already drifted
+                    into three independent forms across the codebase.
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — if
+                    the magic-byte sequence were ever revised (e.g. a future tokenized-file
+                    format version), a fix applied to only one of the two constants inside
+                    this unit would silently desynchronize isTokenizedBBjHeader and
+                    isTokenizedFile, causing the two detection paths (extension.ts's
+                    tab-open prompt vs. Commands.cjs's decompile/denumber flow) to disagree
+                    about whether the same file is tokenized.
+classification:    easy
+                    (1) touches 1 file: pass — decompile-io.ts alone, importing
+                    TOKENIZED_BBJ_MAGIC from ./tokenized-bbj.js and wrapping it with
+                    Buffer.from(...) in place of its own local const — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with vitest: pass (existing decompile-io.test.ts/
+                    tokenized-bbj.test.ts cases continue to pass unchanged) — (5) reviewer
+                    can name the exact edit: pass — (6) severity `low`, dimension D4 (not
+                    D1): pass — all six tests pass, so classification is `easy`.
+effort:            2
+dedup:             none — no frozen issue concerns internal constant duplication.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D5-006
+unit:              RU-62-02
+location:          bbj-vscode/src/document-formatter.ts (whole file; no test counterpart)
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          `grep -rl 'document-formatter\|DocumentFormatter' bbj-vscode/test/`
+                    returns nothing. By contrast the other three files in this unit are
+                    already thoroughly tested: tokenized-bbj.test.ts (7 cases),
+                    line-numbering.test.ts (10 cases), decompile-io.test.ts (8 cases).
+                    document-formatter.ts (96 lines) has zero test coverage — no test
+                    mocks child_process.spawn or exercises the exit-code/ENOENT/other-error
+                    paths P62-D2-010 and P62-D3-001 trace above.
+failure_scenario:  A regression in the exit-code handling, the P62-D2-010 hang path, or the
+                    P62-D3-001 concurrent-spawn behavior would ship silently — `npm test`
+                    staying green today provides no signal about any of them, since no test
+                    imports this file at all.
+classification:    easy
+                    (1) touches 1 file: pass — a single new document-formatter.test.ts
+                    mocking cp.spawn closes this gap, unlike this phase's other D5
+                    findings (P62-D5-001..005), each of which required 2 or more new test
+                    files and so failed this same test — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable
+                    with existing harness: n/a (this finding *is* the missing-test gap) —
+                    (5) reviewer can name the exact edit: pass (author
+                    document-formatter.test.ts mocking child_process.spawn, covering
+                    ENOENT, non-zero exit, a non-ENOENT error, and the unsaved-content
+                    fallback) — (6) severity `low`, dimension D5 (not D1): pass — test (1)
+                    passes here (unlike this phase's other D5 findings), so classification
+                    is `easy`.
+effort:            4
+dedup:             none — no frozen issue concerns document-formatter.ts test coverage.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D8-002
+unit:              RU-62-02
+location:          bbj-vscode/src/document-formatter.ts:5-6,29-30,88-96
+dimension:         D8
+secondary:         [D4]
+severity:          low
+evidence_tier:     trace
+evidence:          document-formatter.ts:5-6's comment "// Store unsaved content in
+                    memory" and line 29's "// Use unsaved content if available, otherwise
+                    read from the file system" both frame unsavedContentMap.get(...) ||
+                    document.getText() (line 30) as choosing between two genuinely
+                    different content sources. For any vscode.TextDocument,
+                    document.getText() always returns VS Code's live in-memory buffer for
+                    that document, never a disk read — there is no code path, in this file
+                    or in the VS Code API, by which document.getText() "reads from the
+                    file system". For the exact document object
+                    provideDocumentFormattingEdits receives, unsavedContentMap's tracked
+                    value and document.getText()'s live value are therefore always the
+                    same content, making the `|| document.getText()` fallback (line 30)
+                    semantically equivalent to calling document.getText() directly in
+                    every reachable case.
+failure_scenario:  n/a (D8 is a comment-accuracy finding) — the map, its
+                    onDidChangeTextDocument writer (lines 88-91), and its
+                    onDidCloseTextDocument cleanup (lines 94-96) add a per-keystroke write
+                    and 9 of this file's 96 lines for no confirmed behavioral difference,
+                    while the comment's inaccurate framing would mislead a future
+                    maintainer into believing the map is load-bearing.
+classification:    easy
+                    (1) touches 1 file: pass — document-formatter.ts alone, either
+                    correcting the comment or removing unsavedContentMap and its two
+                    listeners in favor of calling document.getText() directly — (2) no
+                    public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with existing harness: pass (vitest exists as
+                    the project's harness; a future test can assert getText()-only
+                    behavior is unchanged) — (5) reviewer can name the exact edit: pass —
+                    (6) severity `low`, dimension D8 (not D1): pass — all six tests pass,
+                    so classification is `easy`.
+effort:            2
+dedup:             none — no frozen issue concerns this comment or this map's necessity.
+disposition:       easy-fix
+```
 
 ### Not-reproducible dispositions
 
-_(none recorded)_
+- **Tier failed: `repro` (D2).** Candidate claim: `document-formatter.ts` passes both `-i document.uri.fsPath` (lines 19-20, telling `BBjCFCli.jar` the input file's on-disk path) and the live unsaved buffer content via `p.stdin.end(documentContent)` (line 82) — if the jar's `-i` flag takes precedence over stdin for unsaved-but-not-yet-saved edits, the formatter could silently format stale on-disk content instead of what the user is actually editing. **Reason not recorded as a finding:** confirming which input `BBjCFCli.jar` actually honors requires reading the vendored jar's Java source or running it with divergent `-i`-path/stdin content and observing the result — the jar itself is `RU-64-03`'s surface (Phase 64), and running it is outside a static code-review sweep of `bbj-vscode/src/`. Left here rather than silently dropped, per RVW-06's drop-vs-disposition rule.
 
 ### Cross-unit referrals
 
-_(none recorded)_
+- **RU-63-02** — None of this unit's four editor features has any IntelliJ counterpart, confirmed by grep across `bbj-intellij/src/main/java/` (see the D7 cell above for the per-feature commands and their empty results): (1) **format document** — `BbjLanguageCodeStyleSettingsProvider.java` only customizes reformat *defaults* (REM-at-column-0); it never invokes a `BBjCFCli.jar`-equivalent tool or spawns any process, so the actual jar-backed reformat feature `document-formatter.ts` implements is absent. (2) **line-numbered/denumber detection** — no `isLineNumberedSource`/denumber-prompt equivalent exists anywhere in the plugin. (3) **tokenized-BBj detection** — no magic-byte/tokenized-file detection exists anywhere in the plugin; this is #65's ("support tokenized BBj files") IntelliJ-side remainder — the VS Code side (this unit) already implements the feature #65 requests; #65 itself stays open until IntelliJ gets an equivalent. (4) **decompile** — no `bbjlst`-invoking decompile action exists anywhere in the plugin. `RU-63-02`'s own sweep should confirm, for each of the four, whether the absence is a deliberate scope decision (IntelliJ may rely on external tooling for some of these) or an unaddressed feature gap, and record its own D7 finding if the latter — this unit's own coverage records the divergent VS Code-side evidence above but locates no finding inside `bbj-intellij/` (D-05).
 
 ## Phase 62 Close-Out
 
