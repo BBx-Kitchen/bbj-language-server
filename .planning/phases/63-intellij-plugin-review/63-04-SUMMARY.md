@@ -36,7 +36,7 @@ key-decisions:
   - "IntelliJ's status/crash/log/java-interop surfaces (BbjServerService, both status-bar widgets, crash notification, restart action) found to have no VS Code counterpart at all — recorded as a Cross-phase observation (VS Code side) bullet per D-05, not a P63 finding, since the direction favors IntelliJ"
   - "P63-D1-007 (unqualified 'node' PATH/CWD-hijack fallback) rated severity high per D-13's disclosure tier, matching the plan's own threat-register T-63-P04-S1 entry — no trigger sequence or PoC stated"
 
-requirements-completed: [RVW-04]
+requirements-completed: []  # RVW-04 is phase-wide (spans all 5 plans); not marked complete until 63-05 closes the phase
 
 coverage: []
 
@@ -102,3 +102,11 @@ None - no external service configuration required.
 ---
 *Phase: 63-intellij-plugin-review*
 *Completed: 2026-08-18*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/reviews/63-COVERAGE.md`
+- FOUND: `.planning/phases/63-intellij-plugin-review/63-04-SUMMARY.md`
+- FOUND: commit `a4b611c` (Task 1)
+- FOUND: commit `f4d4867` (Task 2)
+- FOUND: commit `60b7380` (this SUMMARY)

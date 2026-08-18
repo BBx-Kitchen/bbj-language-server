@@ -374,7 +374,7 @@ the security of its Node.js runtime download path.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 3/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 4/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable `.planning/reviews/63-COVERAGE.md`; no source file is modified.
 
 Plans:
@@ -392,7 +392,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 63-04-PLAN.md — Sweep `RU-63-05` LSP wiring, server lifecycle & status UI (13 files) across the 7 live dimensions, incl. the bounded, measured DEBT-05 record
+- [x] 63-04-PLAN.md — Sweep `RU-63-05` LSP wiring, server lifecycle & status UI (13 files) across the 7 live dimensions, incl. the bounded, measured DEBT-05 record
 
 **Wave 5** *(blocked on Wave 4 completion)*
 

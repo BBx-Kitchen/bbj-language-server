@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 63
 current_phase_name: IntelliJ Plugin Review
 status: executing
-stopped_at: Completed 63-03-PLAN.md
-last_updated: "2026-08-18T10:21:45.470Z"
+stopped_at: Completed 63-04-PLAN.md
+last_updated: "2026-08-18T10:39:46.419Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
   percent: 30
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 63 (IntelliJ Plugin Review) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 63 execution started
 
@@ -96,6 +96,7 @@ Last activity: 2026-08-18 — Phase 63 execution started
 | Phase 63 P01 | ~15min (task commits only) | 2 tasks | 1 files |
 | Phase 63 P02 | ~40min | 2 tasks | 1 files |
 | Phase 63 P03 | ~24min (task commits only) | 2 tasks | 1 files |
+| Phase 63 P04 | ~20min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 63 Plan 03]: RU-63-04 (composer dialogs & bridge) swept across all 7 live dimensions — 14 findings recorded incl. P63-D2-010 (stale captured document-edit range never revalidated, matching threat T-63-P03-S4) and P63-D7-004 (dormant MsgboxPreview.exprText/CatalogItem.constant DTO field gap, currently inert on both IDEs)
 - [Phase ?]: [Phase 63 Plan 03]: Corrected INVENTORY's composer-bridge risk-rank framing ('bridge to an external composer process') after tracing BbjComposerServer.java/BbjComposerService.java — it is an LSP4IJ proxy over the existing language server, spawns no external process
 - [Phase ?]: [Phase 63 Plan 03]: Merged inherited referrals #4 (RU-62-04) and #5 (RU-62-03) into one disposition per D-06 — SETOPTS has no IntelliJ composer dialog, verified against the current tree, promoted to P63-D7-005 with dedup naming #475 as a partial-overlap (porting the existing #474 config.bbx composer)
+- [Phase ?]: [Phase 63 Plan 04]: RU-63-05 (LSP wiring, server lifecycle & status UI) swept across all 7 live dimensions — 11 findings incl. P63-D1-007 (untrusted-search-path 'node' launch fallback + project-CWD, high) and P63-D2-013 (dead debounce infrastructure behind an unguarded restart() race)
+- [Phase ?]: [Phase 63 Plan 04]: DEBT-05 evidence corrected to measured '20 lsp4ij references across 11 files' (not the carried '10 files'); referral #3's mechanism side re-triaged by cross-reference to RU-63-01's P63-D7-003 rather than re-filed
 
 ### Tech Debt
 
@@ -197,8 +200,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T10:21:45.448Z
-Stopped at: Completed 63-03-PLAN.md
+Last session: 2026-08-18T10:39:46.398Z
+Stopped at: Completed 63-04-PLAN.md
 Resume file: None
 
 ---
