@@ -313,7 +313,7 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 
 Plans:
 **Wave 1**
@@ -330,7 +330,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 62-04-PLAN.md — Sweep `RU-62-05` TextMate grammar & language configuration, incl. the #381 dedup neighbourhood and the two-part D7 parity method
+- [x] 62-04-PLAN.md — Sweep `RU-62-05` TextMate grammar & language configuration, incl. the #381 dedup neighbourhood and the two-part D7 parity method
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
