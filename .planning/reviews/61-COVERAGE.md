@@ -2293,11 +2293,11 @@ disposition:       easy-fix
 - D1 Security — fail — Checked `bbj-ws-manager.ts`'s `initializationOptions` handling (constructor's `onInitialize` callback, `bbj-ws-manager.ts:36-99`): `bbjdir`, `classpath`, `interopHost`/`interopPort` and `configPath` are each read with only an `||`-style falsy default, no type/shape/range validation — the same falsy-check-only pattern `RU-61-06` found inside `setConnectionConfig` itself (`P61-D1-001`); confirmed neither this unit's `initializationOptions` call site (`bbj-ws-manager.ts:53-55`) nor the `didChangeConfiguration` call site (`main.ts:151-152`) adds validation `RU-61-06` could not see — promoted as `P61-D1-006`, resolving that referral. Checked whether `configPath` can direct the server to read outside the workspace root: it can — `bbj-ws-manager.ts:118-126` passes the raw, unvalidated `configPath` setting straight to `fileSystemProvider.readFile()` with no containment check, an arbitrary local file read driven by a workspace-scoped setting — `P61-D1-007`. Checked whether a configured PREFIX can be escaped via a `USE`-statement path: yes — `bbj-document-builder.ts`'s `addImportedBBjDocuments` (`bbj-document-builder.ts:303-317`) resolves `use ::path::Class`'s untrusted `path` text against each configured PREFIX via Node's `path.resolve()`, which honors both `..`-traversal and absolute-path override, then reads and indexes whatever file is found there — confirmed by direct reproduction (`path.resolve('/home/user/project/lib', '../../../../etc/passwd')` → `/etc/passwd`) — promoted as `P61-D1-008`, resolving `RU-61-02`'s referral (the actual document-loading logic lives in `bbj-document-builder.ts`, not `bbj-ws-manager.ts` as that referral's file guess suggested, but is still this unit's own file). Checked `isExternalDocument()` (`bbj-ws-manager.ts:231-241`, whose own `// TODO check that document is part of the workspace folders` already flags this): its `documentUri.fsPath.startsWith(URI.file(prefix).fsPath)` is a bare string-prefix test with no path-segment boundary — confirmed by reproduction that a document under a sibling directory merely sharing a PREFIX's text as a prefix (PREFIX `/home/user/lib` against a document under `/home/user/library-secrets/`) is misclassified as an external, unvalidated document — `P61-D1-009`. Checked `composer-commands.ts` for command/path/argument construction from user-controlled values (per #385's area): none of its 20 handlers touch the filesystem or spawn anything — every handler is a pure, already-unit-tested (`test/composer-commands.test.ts`) numeric/string transform over LSP-supplied JSON, no injection sink. Checked `logger.ts`'s default `WARN` level for classpath/token/path/document-content exposure: `debug`/`info` calls carrying `configPath`/`bbjdir`/`classpath` values are gated above the default level; the one `WARN`-level message carrying a path (`bbj-ws-manager.ts:125`, the `configPath` load-failure warning) reflects only the user's own configured setting back to their own output channel, not peer- or attacker-supplied content — no finding. Checked whether `bbj-document-builder.ts` admits documents from outside the workspace/PREFIX set on its own beyond the traversal above: `shouldValidate`/`buildDocuments` only classify and skip-validate already-loaded documents via `isExternalDocument`, they do not independently open files. 4 findings recorded: `P61-D1-006`, `P61-D1-007`, `P61-D1-008`, `P61-D1-009`.
 - D2 Correctness & error handling — fail — **Coinciding roots** (EDGE-PROBE 1, #33): `initializeWorkspace()` (`bbj-ws-manager.ts:106-140`) reads `project.properties`/`config.bbx` and derives `this.settings.prefixes`/`classpath` from `folders[0]` ONLY — every additional workspace folder in a multi-root workspace is silently ignored for settings purposes (its files are still indexed by the inherited `DefaultWorkspaceManager.initializeWorkspace()` walk, but its own PREFIX/classpath never contributes) — `P61-D2-015`, a concrete root cause behind #33's report. **Empty inputs** (EDGE-PROBE 2): no workspace folder (`folders.length === 0` short-circuits to safe defaults, `this.settings` still gets set via `parseSettings("", undefined)`, no crash downstream since `addImportedBBjDocuments` treats an empty/undefined `prefixes` as a no-op); empty `initializationOptions` (falsy `params.initializationOptions` skips the whole `else if` branch including `javaInterop.setConnectionConfig`, so interop host/port simply keep `JavaInteropService`'s own constructor defaults, no crash); a nonexistent `bbjdir` (caught, `logger.warn`, no crash); a workspace with zero `.bbj` files (no divergence, nothing to import). No finding — all four handled without crash or silent corruption. **Batch order** (EDGE-PROBE 3): `addImportedBBjDocuments`/`revalidateUseFilePathDiagnostics`/`runBbjcplForDocuments` all iterate the `documents`/`bbjImports` arrays and `Set` in their given/insertion order with no sort or comparator anywhere in this unit — deterministic, no divergence found for equally-ranked documents. **Swallowed exceptions / half-configured state**: `initializeWorkspace()`'s outer `try` (`bbj-ws-manager.ts:107-182`) wraps the ENTIRE settings/javadoc/classpath/implicit-import setup in one `catch (e) { // all fine; console.error(e); }` (`bbj-ws-manager.ts:179-182`) — any exception at any step (a malformed properties file, a synchronous throw inside `parseSettings`, an unexpected `loadClasspath` rejection) is swallowed and initialization proceeds via `super.initializeWorkspace()` as if nothing failed, leaving `this.settings`/the classpath in whatever partial state existed at the throw point, with no signal beyond a raw `console.error` (not routed through `logger`, not surfaced to the client) — `P61-D2-016` (the comment itself is examined under D8, `P61-D8-006`). **Unhandled rejection**: `bbj-document-builder.ts`'s `debouncedCompile` (`bbj-document-builder.ts:155-190`) schedules an `async` `setTimeout` callback with no `try`/`catch` and no attached rejection handler — if `cplService.compile(key)` or `notifyDocumentPhase` rejects, that becomes an unhandled promise rejection at the process level — `P61-D2-017`. **Live settings never re-applied** (#486): `settings.prefixes`/`classpath` are computed exactly once, inside `initializeWorkspace()`; `main.ts`'s `onDidChangeConfiguration` handler calls `wsManager.setConfigPath(...)` (which only stores the new path for a FUTURE full re-init) but never re-reads `config.bbx`/`project.properties` or recomputes `this.settings` — a `config.bbx` PREFIX change never takes effect without a full server restart — `P61-D2-018`, matching #486. **Concurrent reconfiguration**: whether `bbj/refreshJavaClasses` and `didChangeConfiguration` (both `main.ts`) can race on `clearCache()`/`loadClasspath()` if invoked concurrently — see Not-reproducible dispositions; this unit's two call sites add no guard of their own, but confirming a divergent outcome needs `java-interop.ts`-internal state tracing outside this unit's files. 4 findings recorded: `P61-D2-015`, `P61-D2-016`, `P61-D2-017`, `P61-D2-018`.
 - D3 Performance & resource use — fail — Checked the cost profile of `WorkspaceManager.initializeWorkspace()` (`bbj-ws-manager.ts:106-184`), the path behind the routed `hookTimeout` flakiness: it runs 2 sequential filesystem reads (`project.properties`, `config.bbx`), a Javadoc-folder initialization, then TWO sequential `await`ed network round-trips to java-interop (`loadClasspath`, `loadImplicitImports`, each capable of costing up to `RU-61-06`'s own 10s connect timeout per `P61-D3-002`/`java-interop.ts:127-131`) — none of these independent steps run in parallel despite several having no data dependency on each other, before `super.initializeWorkspace()`'s own workspace scan even starts; recorded as the primary evidence for `P61-D5-013` (secondary D3, filed in Task 2) rather than duplicated here. Checked whether the workspace scan itself is bounded: `shouldIncludeEntry` (`bbj-ws-manager.ts:187-200`) only narrows the FILE-extension allowlist and defers to `super.shouldIncludeEntry` for directories, which already excludes dot-directories, `node_modules` and `out` (confirmed by reading Langium's own `DefaultWorkspaceManager.shouldIncludeEntry`) — bounded, no finding. Checked whether `bbj-document-builder.ts` rebuilds documents that did not change: the rebuild-skip decision is delegated entirely to `indexManager.isAffected()` (`RU-61-02`'s own file, already assessed as a partial mitigation there); this unit's `buildDocuments`/`shouldRelink` overrides add no redundant full-rebuild trigger of their own. Checked `bbj-document-builder.ts`'s `revalidateUseFilePathDiagnostics` (`bbj-document-builder.ts:359-411`): for every unresolved USE-file diagnostic in every document in the CURRENT build batch (which runs on every incremental rebuild, not just once at startup), it performs `indexManager.allElements(BbjClass.$type).some(...)` — a full linear scan of every `BbjClass` in the ENTIRE workspace index, uncached, repeated per diagnostic — `P61-D3-005`. Checked lifecycle accumulation: `cplDebounceTimers` (`bbj-document-builder.ts:25`) self-deletes its own entry inside the timer callback regardless of outcome — bounded, no leak; this unit's other lifecycle flags (`bbjcplAvailable`, `ambiguitiesReported`) are simple booleans, not accumulating collections. 1 finding recorded: `P61-D3-005`.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — **Dead/vestigial-module candidate**: `constants.ts` (1 line, `NegativeLabelIdList`) and `utils.ts` (0 `wc -l` lines — a single line with no trailing newline, `assertType`) are each confirmed live: `grep -rn "constants\.js\|utils\.js" bbj-vscode/src bbj-vscode/test` returns exactly 3 references (`constants.js`: 1 import in `bbj-validator.ts`; `utils.js`: 2 imports, `java-interop.ts` and `bbj-scope.ts`, each with a real call site) — candidate DISMISSED, not asserted as a finding, per the plan's explicit prohibition. Checked `bbj-document-builder.ts` (412 lines) for single-vs-multiple responsibility: it bundles build orchestration, BBjCPL-compile triggering/debounce, USE-based transitive document import, and diagnostic revalidation — but its own comments (`bbj-document-builder.ts:69-71`, `86-88`) explicitly document WHY these live together (calling from `onBuildPhase` instead of inside `buildDocuments()` causes a CPU rebuild loop, per STATE.md) — an architecturally-justified coupling, not filed as a smell. Checked `main.ts` and `bbj-ws-manager.ts` for duplicated settings-reading logic: confirmed — both independently compute `interopHost`/`interopPort` with the identical `|| 'localhost'`/`|| 5008` defaults (`bbj-ws-manager.ts:53-54`, `main.ts:151-152`) — `P61-D4-013`. Checked `main.ts` internally: its `bbj/refreshJavaClasses` handler (`main.ts:32-73`) and its `onDidChangeConfiguration` handler (`main.ts:147-188`) duplicate the same ~8-step "clear cache, reload classpath, reload implicit imports, re-mark documents Parsed, rebuild, refresh inlay hints, notify" sequence verbatim within the SAME FILE, with no shared helper — `P61-D4-012`. Checked `bbj-module.ts`'s DI registration for one consistent pattern: `(services) => new X(services)` for every service needing DI, bare `() => new X()` for standalone ones (`NameProvider`, `CommentProvider`, `SignatureHelp`, `ValueConverter`, `TokenBuilder`) — consistent with Langium's own convention, no finding. Checked whether `composer-commands.ts` belongs in `src/language/`: its only imports (`../msgbox-composer.js`, `../addwindow-composer.js`, `../addchildwindow-composer.js`) live one level up in `src/`, and it touches no Langium grammar/scope/validation service — misplaced relative to the modules it wraps — `P61-D4-014`. `bbj-notifications.ts`'s deliberate isolation (STATE.md Active Constraints) was not proposed for merging or inlining; its existence is exactly the intentional design the constraint documents, not a smell. 3 findings recorded: `P61-D4-012`, `P61-D4-013`, `P61-D4-014`.
+- D5 Test coverage gaps — fail — This unit owns the routing-table's **`beforeAll` `WorkspaceManager.initializeWorkspace()` hookTimeout flakiness**: per this section's D3 cost-profile trace above (`bbj-ws-manager.ts:106-184`), the sequential filesystem-plus-network I/O chain has no parallelization and no short-circuit against an unreachable java-interop peer, directly explaining why whichever suite's `beforeAll initializeWorkspace()` call happens to run under contention exceeds vitest's default 10s `hookTimeout` — recorded as `P61-D5-013` against the initialization path itself (both candidate remediations named, neither chosen), resolving `RU-61-01`'s referral. Checked direct test coverage per file: `bbj-module.ts`'s `createBBjServices()` is exercised by nearly every test file in `test/` (the standard service-construction entry point) — solid, no finding. `bbj-ws-manager.ts` is exercised via `test/test-helper.ts`'s shared `initializeWorkspace()` helper plus targeted tests (`test/lazy-prefix-loading.test.ts`, `test/use-project-root.test.ts`, `test/file-path-completion.test.ts`) covering PREFIX/classpath resolution paths — adequate, though (per this section's D2 cell) no test anywhere in `test/` constructs a 2+-folder `WorkspaceFolder[]` array, so `P61-D2-015`'s multi-root gap has zero coverage of its own (not filed as a second, overlapping D5 record — `P61-D2-015` already fully captures it). `main.ts` has **zero** references anywhere in `test/` (`grep -rln "from.*'\.\./src/language/main"` returns nothing) — none of its `onRequest`/`onDidChangeConfiguration` handlers are exercised by any test; `bbj-notifications.ts`'s own header comment independently confirms `main.ts` "calls `createConnection()` at module load time and would break test environments" if imported directly — `P61-D5-014`. `bbj-notifications.ts` itself has **zero** test references despite being purpose-built for isolated testability (per that same header comment) — `P61-D5-015`. `bbj-document-builder.ts`'s build-lifecycle overrides are exercised indirectly through the many tests that trigger document builds, but its BBjCPL-orchestration trio — `trackBbjcplAvailability`/`debouncedCompile`/`runBbjcplForDocuments` — has zero direct test reference anywhere in `test/` (`test/cpl-service.test.ts` tests `BBjCPLService` itself, not this unit's triggering/debounce/availability-detection wrapper) — `P61-D5-016`. Checked `composer-commands.ts` and `logger.ts`, per the plan's explicit instruction to check both: both have solid, dedicated coverage — `test/composer-commands.test.ts` (178 lines, all `composerHandlers` entries) and `test/logger.test.ts` (367 lines, level-filtering and scoped-logger behavior) — no finding for either. 4 findings recorded: `P61-D5-013`, `P61-D5-014`, `P61-D5-015`, `P61-D5-016`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every JSDoc/inline comment block across the nine files against what the code does: `bbj-notifications.ts`'s module header (isolation rationale) matches `main.ts`'s actual `initNotifications(connection)` call-once pattern; `getWorkspaceFolderUris()`'s JSDoc (#378 rationale) matches its 3 real consumers (`bbj-scope.ts:311`, `bbj-validator.ts:357,431`, `bbj-completion-provider.ts:273`); `shouldRelink`'s long inline comment (`bbj-document-builder.ts:234-247`) matches its actual `isImportingBBjDocuments`-gated behavior; `debouncedCompile`'s and `trackBbjcplAvailability`'s doc comments match their code. Found one divergence: `initializeWorkspace()`'s catch-block comment `// all fine` (`bbj-ws-manager.ts:180`) asserts consequence-free behavior for a caught exception, but per `P61-D2-016` the actual effect is a silently half-configured server with no signal beyond a raw `console.error` — the comment is actively misleading about the impact of taking that branch — `P61-D8-006` (secondary D2, paired with `P61-D2-016`). Checked CLAUDE.md's §"DI Module Pattern" claim against `bbj-module.ts`: `createBBjServices()` (`bbj-module.ts:191`) is the exact function name; the four named custom service groups — `services.java.JavaInteropService`, `services.types.Inferer`, `services.compiler.BBjCPLService`, `services.validation.BBjValidator` — match `BBjAddedServices`' declaration (`bbj-module.ts:49-62`) exactly in name and count — accurate, no divergence, no finding. 1 finding recorded: `P61-D8-006`.
 
 ### Findings
 
@@ -2649,6 +2649,303 @@ dedup:             none — checked against #33, #231, #385, #485 and #486; #232
                     RU-61-02's own routing item) is a different mechanism (unpruned scope-walk +
                     per-reference index scan on every keystroke) from this diagnostic-revalidation
                     scan, not restated here.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-012
+unit:              RU-61-05
+location:          bbj-vscode/src/language/main.ts:32-73,147-188
+dimension:         D4
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: the `bbj/refreshJavaClasses` handler (main.ts:32-73) and the
+                    `onDidChangeConfiguration` handler (main.ts:147-188) both perform, in the
+                    same order: clearCache(); conditionally loadClasspath() when
+                    settings.classpath.length > 0; loadImplicitImports(); mark every open
+                    file-scheme document DocumentState.Parsed; filter+collect their URIs;
+                    conditionally call DocumentBuilder.update() when the URI list is non-empty;
+                    refreshInlayHints(); connection.window.showInformationMessage('Java classes
+                    refreshed'). No shared helper extracts this ~30-line sequence; it is
+                    duplicated verbatim within the same file.
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                    runtime failure): a future change to this reload-and-revalidate sequence
+                    (e.g. adding a new step, or fixing P61-D2-016/P61-D2-018) must be applied by
+                    hand in both handlers, risking the two call sites drifting out of sync.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (extract a private
+                    `reloadJavaClassesAndRevalidate()` helper called by both handlers): pass —
+                    (6) severity `medium`, dimension D4 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-013
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:53-54
+dimension:         D4
+secondary:         [D1]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: bbj-ws-manager.ts:53-54 computes
+                    `params.initializationOptions.interopHost || 'localhost'` /
+                    `params.initializationOptions.interopPort || 5008`; main.ts:151-152
+                    independently computes `config.interop?.host || 'localhost'` /
+                    `config.interop?.port || 5008` — the identical default literals
+                    ('localhost', 5008) recomputed at two call sites with no shared constant or
+                    helper, in addition to the shared unvalidated-falsy-check gap already
+                    recorded as `P61-D1-006`.
+failure_scenario:  n/a (D4 trace-tier finding): if the default host/port ever needs to change
+                    (e.g. a new default interop port), both call sites must be updated in
+                    lockstep by hand; a partial update leaves the two paths silently disagreeing
+                    on the effective default.
+classification:    major
+                    (1) touches 1 file: FAIL — removing the duplication by stripping the
+                    redundant defaulting from both call sites (letting setConnectionConfig own
+                    the default alone) touches both bbj-ws-manager.ts and main.ts — 2 files —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass — (5) reviewer can name the exact
+                    edit (pass interopHost/interopPort through unmodified at both call sites,
+                    relying solely on setConnectionConfig's own default): pass — (6) severity
+                    `low`, dimension D4 (not D1): pass — but test (1) already fails, so
+                    classification is `major`.
+effort:            2
+dedup:             none — checked against #231 (closest area match — requests configurable
+                    classpath/CLI args for RUN commands, not interop-default duplication), #33,
+                    #385, #485 and #486 — none address this duplication.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D4-014
+unit:              RU-61-05
+location:          bbj-vscode/src/language/composer-commands.ts:1-13
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: composer-commands.ts's only non-`vscode-languageserver` imports are
+                    `../msgbox-composer.js`, `../addwindow-composer.js` and
+                    `../addchildwindow-composer.js` (composer-commands.ts:15-34) — all three live
+                    one directory up, in `src/`, not in `src/language/` alongside this file. The
+                    file touches no Langium grammar/scope/validation/LSP-provider service; its
+                    only interaction with `src/language/` is being imported once, by
+                    `main.ts:17`, to call `registerComposerRequests(connection)`.
+failure_scenario:  n/a (D4 trace-tier finding — a placement/structure defect, not a runtime
+                    failure): a contributor looking for the composer request-handling layer
+                    inside `src/` (next to the composer domain modules it wraps) will not find
+                    it there; it is instead nested inside the Langium-pipeline-focused
+                    `src/language/` directory.
+classification:    major
+                    (1) touches 1 file: FAIL — moving the file also updates the one import in
+                    main.ts (`./composer-commands.js` -> `../composer-commands.js`) — 2 files —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest (existing test/composer-commands.test.ts
+                    continues to pass after the move): pass — (5) reviewer can name the exact
+                    edit (move composer-commands.ts to src/, update main.ts's import path): pass
+                    — (6) severity `low`, dimension D4 (not D1): pass — but test (1) already
+                    fails, so classification is `major`.
+effort:            2
+dedup:             none — checked against #385 (requests launching the external Graffiti
+                    Composer tool — unrelated to this file's location in the source tree), #33,
+                    #231, #485 and #486 — none address module placement.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-013
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:106-184
+dimension:         D5
+secondary:         [D3]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Per INVENTORY.md's Test & Build Baseline (§"Flaky suite-level failures"): the
+                    `beforeAll` `WorkspaceManager.initializeWorkspace()` hook exceeded vitest's
+                    default 10s hookTimeout, hitting `test/functional/chevrotain-tokens.test.ts`
+                    and `test/run-call-file-resolution.test.ts` on run 1 and
+                    `test/variable-scoping.test.ts` on run 2 — a different suite each time,
+                    confirming a load-dependent timing issue rather than one tied to a specific
+                    file. Traced by `file:line`: initializeWorkspace() (bbj-ws-manager.ts:
+                    106-184) performs, sequentially and all `await`ed: a directory read plus a
+                    file read for project.properties (111-114); a config.bbx lookup, either
+                    custom-path (120-121) or bbjdir/cfg (129-132); a Javadoc-folder
+                    initialization (153); `javaInterop.loadClasspath()` (172); and
+                    `javaInterop.loadImplicitImports()` (177) — the last two are network
+                    round-trips to java-interop, each individually capable of costing up to the
+                    10s socket-connect timeout documented at `RU-61-06`'s `java-interop.ts:
+                    127-131`/`P61-D3-002`. None of these independent steps run in parallel
+                    despite several having no data dependency on each other (the
+                    project.properties/config.bbx reads do not depend on the Javadoc
+                    initialization, for instance).
+failure_scenario:  Under system-load contention in a sandbox where java-interop is reachable but
+                    slow to answer (or genuinely unreachable), the accumulated sequential cost of
+                    initializeWorkspace()'s filesystem-plus-network chain pushes whichever test
+                    file's `beforeAll` happens to be running past vitest's 10s default
+                    hookTimeout, marking that entire suite failed with its tests reported
+                    skipped — reproducing exactly the run-to-run variance INVENTORY's baseline
+                    recorded (21/21, 1/6, and 29/29 skipped across three separate measurements,
+                    each hitting a different suite).
+classification:    major
+                    (1) touches 1 file: FAIL/n/a — the two candidate remediations named below
+                    span different files (a code-level fix confined to bbj-ws-manager.ts, or a
+                    test-infrastructure fix confined to vitest.config.ts) and a reviewer cannot
+                    commit to one without a triage decision — (2)-(4): n/a for the same reason,
+                    this is an environment/brittle-test-setup gap, not a single nameable code
+                    edit — (5) reviewer can name the exact edit only as a choice between two
+                    approaches, not a single one: reduce the work (parallelize the independent
+                    I/O steps via Promise.all, and/or short-circuit classpath/implicit-import
+                    loading once java-interop is known unreachable, tying into RU-61-06's
+                    P61-D3-002 circuit-breaker recommendation) or configure the timeout (raise
+                    vitest's hookTimeout for this specific beforeAll or globally) — (6) severity
+                    `medium`, dimension D5 (not D1): passes on its own, but classification is
+                    recorded as `major` conservatively (routed for triage, not accepted as an
+                    allowlisted known-failure per D-14/D-06), matching how RU-61-06/RU-61-01/
+                    RU-61-03 classified their own routing-table items.
+effort:            8
+dedup:             none — this is the D-06 routing-table hookTimeout item, not a GitHub issue;
+                    no DEBT-01..06 item names it specifically (distinct from DEBT-02's TEST-03/
+                    parser.test.ts scope) — Phase 66 should triage this as a new debt item,
+                    mirroring how RU-61-06 handled the routing table's linking.test.ts item
+                    (P61-D5-001).
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-014
+unit:              RU-61-05
+location:          bbj-vscode/src/language/main.ts:1-190
+dimension:         D5
+secondary:         [D4]
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: `grep -rln "from.*'\.\./src/language/main"
+                    bbj-vscode/test` returns no matches — no test file anywhere in `test/`
+                    imports or exercises `main.ts`. `bbj-notifications.ts`'s own module header
+                    independently confirms why: `main.ts` "calls createConnection() at module
+                    load time and would break test environments" if imported directly — that
+                    comment is the in-repo acknowledgment that main.ts is currently
+                    structurally untestable without a refactor.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                    regression in the `bbj/refreshJavaClasses` handler, the
+                    `onDidChangeConfiguration` handler, or the startup wiring in main.ts (e.g. a
+                    future change to P61-D2-018's settings-refresh gap, or P61-D4-012's
+                    duplicated reload sequence) would pass the full `npm test` suite undetected,
+                    because no currently-passing test exercises any of main.ts's code paths.
+classification:    major
+                    (1) touches 1 file: FAIL — testing main.ts's handler logic requires
+                    extracting it into an importable, connection-agnostic form first (touching
+                    main.ts) before a new test file can exercise it — 2 files — (2)-(4): n/a
+                    pending that extraction — (5) reviewer can name the exact edit (extract the
+                    `bbj/refreshJavaClasses` and `onDidChangeConfiguration` handler bodies into
+                    named, exported functions taking `{shared, BBj, connection}` as parameters,
+                    then unit-test those functions directly) — (6) severity `medium`, dimension
+                    D5 (not D1): passes on its own, but test (1) already fails, so
+                    classification is `major`.
+effort:            8
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-015
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-notifications.ts:1-53
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: `grep -rln "bbj-notifications\|notifyBbjcplAvailability"
+                    bbj-vscode/test` returns no matches — neither `notifyBbjcplAvailability`'s
+                    dedup guard (only sends when the value changes, bbj-notifications.ts:34-39)
+                    nor `notifyJavaConnectionError`'s message formatting is exercised by any
+                    test, despite this module being explicitly designed for isolated testability
+                    per its own header comment (it exists specifically so callers avoid pulling
+                    in main.ts).
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                    regression in the dedup guard (e.g. always sending, or never sending after
+                    the first call) would pass `npm test` undetected.
+classification:    easy
+                    (1) touches 1 file: pass (a new test file only, source unchanged) — (2) no
+                    public API/grammar/LSP change: pass — (3) no new dependency: pass — (4) IS
+                    itself the regression-testable artifact: pass — (5) reviewer can name the
+                    exact edit (add test/notifications.test.ts mocking a Connection-shaped
+                    object, asserting the no-op-before-init behavior and the dedup guard): pass
+                    — (6) severity `low`, dimension D5 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-016
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-document-builder.ts:90-222
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: `grep -rln "trackBbjcplAvailability\|debouncedCompile\|
+                    runBbjcplForDocuments" bbj-vscode/test` returns no matches.
+                    `test/cpl-service.test.ts` tests `BBjCPLService` itself (mocked
+                    `WorkspaceManager`, no real `bbjcpl`), but nothing in `test/` directly
+                    exercises this unit's own trigger/debounce/availability-detection wrapper
+                    logic in `BBjDocumentBuilder` — `runBbjcplForDocuments`'s trigger-mode
+                    branching (bbj-document-builder.ts:90-119), `debouncedCompile`'s 500ms
+                    trailing-edge timer (155-190), and `trackBbjcplAvailability`'s lazy,
+                    once-only availability check (199-222) are all exercised only incidentally,
+                    if at all, through broader integration tests.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                    regression in the debounce timing, the lazy-availability-check's
+                    once-only guard, or the trigger-mode dispatch (P61-D2-017's unhandled-
+                    rejection gap included) would pass `npm test` undetected.
+classification:    easy
+                    (1) touches 1 file: pass (a new/extended test file, source unchanged) —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) IS itself the regression-testable artifact: pass — (5) reviewer can name
+                    the exact edit (construct a BBjDocumentBuilder with a mocked
+                    FileSystemProvider/CPLService/textDocuments, directly asserting
+                    trackBbjcplAvailability's dedup and debouncedCompile's timer behavior): pass
+                    — (6) severity `medium`, dimension D5 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-006
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:180
+dimension:         D8
+secondary:         [D2]
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: initializeWorkspace()'s catch block (bbj-ws-manager.ts:179-182) reads
+                    `catch (e) { // all fine console.error(e); }`. Per `P61-D2-016`, taking this
+                    branch actually leaves `this.settings` (and by extension classpath/PREFIX
+                    resolution) in whatever partial state existed at the throw point, with no
+                    signal beyond a raw `console.error` line — the opposite of "all fine".
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime
+                    failure): a reader of this comment reasonably concludes that any exception
+                    caught here has no consequence, which is false — it silently leaves setup
+                    half-completed.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (remove/replace the misleading comment,
+                    or fix the underlying handling per P61-D2-016 so the comment becomes true):
+                    pass — (6) severity `low`, primary dimension D8 (D2 is only secondary):
+                    pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none
 disposition:       easy-fix
 ```
 
