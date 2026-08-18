@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 63
 current_phase_name: IntelliJ Plugin Review
 status: executing
-stopped_at: Completed 63-01-PLAN.md
-last_updated: "2026-08-18T09:35:07.855Z"
+stopped_at: Completed 63-02-PLAN.md
+last_updated: "2026-08-18T09:56:44.542Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 17
+  completed_plans: 18
   percent: 30
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 63 (IntelliJ Plugin Review) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 63 execution started
 
@@ -94,6 +94,7 @@ Last activity: 2026-08-18 — Phase 63 execution started
 | Phase 62 P04 | ~22min | 2 tasks | 1 files |
 | Phase 62 P05 | 40min | 3 tasks | 4 files |
 | Phase 63 P01 | ~15min (task commits only) | 2 tasks | 1 files |
+| Phase 63 P02 | ~40min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 63 Plan 01]: RU-63-03 (settings & runtime acquisition) swept across all 7 live dimensions — 12 findings recorded incl. P63-D1-001 (no checksum/signature verification on Node.js download/cache path, high, D-13 two-tier disclosure) and P63-D5-001 (systemic no-test-source-set finding, cross-referenced by the other 4 units)
 - [Phase ?]: [Phase 63 Plan 01]: Verified live against nodejs.org/dist/index.json and nodejs/Release schedule.json that pinned Node.js v20.18.1 is past its own LTS end-of-life (2026-04-30) and missing 5 later security releases (P63-D6-001)
 - [Phase ?]: [Phase 63 Plan 01]: extractZip's zip-slip risk confirmed NOT exploitable (hardcoded 'node.exe' target, not entry.getName()); extractTarGz's delegation to system tar recorded as Not-reproducible rather than a finding, since confirming it would require constructing an exploit archive (D-13 prohibition)
+- [Phase ?]: [Phase 63 Plan 02]: RU-63-01 (run/compile/EM actions) swept across all 7 live dimensions — 16 findings recorded incl. P63-D2-004 (BUI/DWC buildCommandLine blocks the EDT up to ~25s via synchronous EM token validation/re-login) and P63-D1-003 (EM password/token exposed as GeneralCommandLine process arguments)
+- [Phase ?]: [Phase 63 Plan 02]: All 3 inherited Phase 62 referrals dispositioned as promoted (P63-D7-001/002/003) — corrected referral #2's stated count from six to the actually-enumerated 5 VS Code commands with no IntelliJ counterpart; outbound referral to RU-63-05 for BbjServerService.restart()'s mechanism side
 
 ### Tech Debt
 
@@ -190,8 +193,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T09:35:07.836Z
-Stopped at: Completed 63-01-PLAN.md
+Last session: 2026-08-18T09:56:44.521Z
+Stopped at: Completed 63-02-PLAN.md
 Resume file: None
 
 ---
