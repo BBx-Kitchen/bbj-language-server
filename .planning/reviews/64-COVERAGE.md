@@ -1791,11 +1791,11 @@ Once (i)-(iv) hold the unit is done and no further reading is licensed. **`RU-64
 - D1 Security — fail — Checked against REQUIREMENTS.md's D1 wording (injection, untrusted input, secret exposure, integrity gaps, privilege/trust-boundary errors) over the 13 readable manifests at tier `repro`, satisfied by line-by-line trace rather than by a runnable reproduction: no command in this phase mutates the tree, and the Gradle build does not execute in this environment at all (`./gradlew --offline -q dependencies` exits 1 in 723 ms — the literal output is recorded in the D6 cell). **(a) npm lifecycle hooks, enumerated rather than assumed.** `package.json:652-668` declares 15 scripts; programmatically intersecting that key set with npm's lifecycle-hook names returns exactly one — **`prepare` at `:653`** (`npm run langium:generate && npm run build`). There is no `preinstall`, `install`, `postinstall`, `prepublish`, `prepublishOnly`, `prepack`, `postpack`, `preuninstall`, `postuninstall` or `dependencies` hook, and that absence is a checked fact rather than an omission. `vscode:prepublish` at `:654` is a **vsce** hook, not an npm one: it fires under `vsce package`/`vsce publish` and never on install. `prepare` fires on every bare `npm install` and on every `npm ci` — `grep -rn 'npm ci' .github/workflows/` returns 8 occurrences across 5 workflows — so on every contributor machine and every CI runner the install step runs Langium code generation plus a full `tsc -b` and `node ./esbuild.mjs` before any reviewed step begins. **What it executes is repository-local only** (`langium generate` reading `langium-config.json` and `src/language/bbj.langium`, then `tsc` and `esbuild`), so it introduces no third-party execution beyond the packages the install itself just placed on disk; it is recorded here as a checked positive, not a finding, and its *cost* is a D3 matter recorded as `P64-D3-003`. **(b) The Gradle wrapper chain, all 7 properties read.** `gradle/wrapper/gradle-wrapper.properties:1-2` set `distributionBase`/`distributionPath`; `:3` sets `distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip` — **HTTPS, first-party Gradle host**; `:4` sets `networkTimeout=10000`; `:5` sets **`validateDistributionUrl=true`**, which is present; `:6-7` set `zipStoreBase`/`zipStorePath`. **There is no `distributionSha256Sum` property anywhere in the file**, and that is the one Gradle-side integrity question answerable without a working build, so it is answered explicitly rather than left implicit: it is **absent**. `validateDistributionUrl=true` checks that the URL is well-formed and resolves; it pins no content. The distribution that `gradlew` downloads, unpacks and executes is therefore authenticated by TLS to `services.gradle.org` and by nothing else in this repository. Recorded as `P64-D1-006`, whose evidence also covers the wrapper JAR's own row below. **(c) The wrapper JAR itself is swept directly, on its own file-exception row (D-20)** — `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar` and `:208-209` hands that classpath to `org.gradle.wrapper.GradleWrapperMain`, so a 43,583-byte third-party binary committed to this repository executes before any build logic runs; its identity, manifest, reachability and verification status are recorded on the `[file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D1` line below rather than inferred here from its two text neighbours. **(d) Build and bundling configuration.** `esbuild.mjs` (28 lines, read in full) marks exactly one module external — `'vscode'` at `:17`, with an accurate comment — and inlines everything else reachable from its two entry points at `:8` (`src/extension.ts`, `src/language/main.ts`). **No value from the build environment reaches the bundle**: `grep -n 'define\|banner\|inject\|process.env' bbj-vscode/esbuild.mjs` returns nothing, and the only `process.argv` reads are the `--watch`/`--minify` flags at `:4-5`, so nothing from the builder's environment is baked into the shipped output. What *is* inlined is a supply-chain fact and was checked against the built artifact rather than assumed: `out/extension.cjs` contains 38 occurrences of `minimatch` and 2 each of `brace-expansion` and `balanced-match`, reached through `vscode-languageclient/node` — that is the reachability evidence the D6 triage below rests on. `langium-config.json` points at `src/language/bbj.langium` (`:6`), emits generated code to `src/language/generated` (`:18`) and a TextMate grammar to `syntaxes/gen-bbj.tmLanguage.json` (`:14`); all three paths exist in this checkout, and the fact that the third output is referenced nowhere else is a D4 matter recorded as `P64-D4-005`. **(e) Declared repositories and plugin sources, every host and every scheme.** `build.gradle.kts:16-21` declares `mavenCentral()` and `intellijPlatform { defaultRepositories() }`; `settings.gradle.kts:1-3` declares `org.jetbrains.intellij.platform.settings` at version `2.11.0` with **no** `pluginManagement { repositories { … } }` block, so plugin resolution falls through to the Gradle Plugin Portal default. `grep -n 'http://' bbj-intellij/build.gradle.kts bbj-intellij/settings.gradle.kts bbj-intellij/gradle.properties bbj-intellij/gradle/wrapper/gradle-wrapper.properties` returns **nothing**: no declared endpoint in this unit resolves over plaintext. **(f) Secrets and paths.** No credential literal appears in any of the 13 readable files. The only credential reference is `build.gradle.kts:75`, `token = providers.gradleProperty("intellijPlatformPublishingToken")`, which reads a Gradle property rather than embedding a value — the correct shape on the manifest side; that the CI callers then pass that value on the command line at `manual-release.yml:137` and `preview.yml:102` is `RU-64-01`'s finding `P64-D1-004`, cross-referenced here rather than re-recorded. `build.gradle.kts:45` reads `src/main/resources/META-INF/description.html` at configuration time; the file exists (1,618 bytes). One developer-machine path is baked into a build task — `build.gradle.kts:133`, `runIde { args = listOf(System.getProperty("user.home") + "/tinybbj") }` — recorded as an observation and deliberately not promoted, because `runIde` is a developer-only sandbox task reached by no CI path and the value derives from the running user's own home rather than being hardcoded to one machine. No manifest in this unit declares a token, a password, or an absolute path outside the project.
 - D2 Correctness & error handling — fail — Checked against wrong edge-case behaviour, swallowed failures, inconsistent configuration and resource leaks, read into configuration terms, at tier `repro`; every claim below names the concrete state and the exact `file:line` where behaviour diverges, and two of the three were additionally confirmed by running a read-only command. **Do the two tsconfigs agree, and is the divergence deliberate?** `tsconfig.json:2-17` sets `target: ES6`, `module`/`moduleResolution: Node16`, `strict: true`, `noEmit: true`, `noUnusedLocals`, `noImplicitReturns`, `noImplicitOverride`, `esModuleInterop: false`, `sourceMap: true`, over `include: ["src/**/*.ts"]` (`:18-20`). `tsconfig.test.json:2` extends it and overrides only `noEmit: true` (already true) and `rootDir: "test"` (`:3-6`), then declares `references: [{ path: "tsconfig.json" }]` (`:7-9`) and `include: ["test/**/*",]` (`:10-12`, with a trailing comma tsc tolerates in JSONC). **That reference is not merely redundant — it is invalid, and the divergence is accidental rather than deliberate**: `npx tsc -p tsconfig.test.json --noEmit` reports `tsconfig.test.json(7,18): error TS6306: Referenced project '…/tsconfig.json' must have setting "composite": true.` and `error TS6310: Referenced project '…/tsconfig.json' may not disable emit.` The test-side type-check configuration this repository declares **cannot be compiled at all**, and nothing notices because nothing runs it: `grep -rn 'tsconfig.test'` across every `.json`, `.ts`, `.js`, `.mjs`, `.yml` and `.md` in the tree, excluding `node_modules/` and `.planning/`, returns **zero** hits outside the file itself — no script in `package.json:652-668`, no workflow, no editor config. Recorded as `P64-D2-008`. **Do `package.json`'s scripts do what their names claim, and can any report success while its step failed?** Read one by one: `build` (`:655`) chains `tsc -b tsconfig.json && node ./esbuild.mjs` with `&&`, so the second step cannot run after a failed first and the shell's exit status is the failing step's — correct; `watch` (`:656`) delegates to `concurrently`, which propagates a non-zero child status by default; `lint` (`:657`), `test` (`:658`), `test:watch`, `test:coverage` and `test:bbj` (`:667`) are single commands whose status is the script's status; **no script anywhere in the file contains a pipeline (`|`), a `;` separator, an `|| true`, or a subshell that could mask an exit code** — checked across all 15. The `RUN_BBJ_TESTS=1` prefix on `test:bbj` (`:667`) is the variable the suite actually reads: `test/test-helper.ts:39` reads `process.env.RUN_BBJ_TESTS`, documented at `:31-32`. **But one script builds the wrong artifact.** `package.json:651` declares `"main": "./out/extension.cjs"`, which `esbuild.mjs:8-12` produces. `vscode:prepublish` (`:654`) — the hook `vsce package`/`vsce publish` runs — does **not** invoke that path: it runs `esbuild-base` (`:661`), which bundles only `./src/extension.ts` and writes `--outfile=out/main.js`, a filename nothing declares, loads or references, and which omits the language-server entry point `src/language/main.ts` entirely. The consequence is concrete and visible on disk in this checkout: `out/extension.cjs` and `out/language/main.cjs` are dated 2026-08-17 (from `prepare`/`build`) while `out/main.js` is dated 2026-07-19 and 622,562 bytes — so `--minify` has never applied to the file that actually ships, and packaging silently depends on a prior unrelated build having left `out/extension.cjs` in place. Recorded as `P64-D2-007`. **Does `esbuild.mjs` fail non-zero on its own build failure?** Yes, by construction rather than by handling: `:26` awaits `ctx.rebuild()` at ESM top level with no `try`/`catch`, so an esbuild error rejects the top-level await and Node exits non-zero; the only casualty is `ctx.dispose()` at `:27`, which is skipped on the failure path — immaterial, since the process is terminating. Stated as a checked positive. **Do `eslint.config.js` and `langium-config.json` point at paths that exist?** Yes: `eslint.config.js:5` ignores `out/**` and `src/language/generated/**`, both present, and `:8` matches `**/*.ts`; `langium-config.json:6,14,18` name `src/language/bbj.langium`, `syntaxes/gen-bbj.tmLanguage.json` and `src/language/generated`, all three present. **Is `build.gradle.kts`'s declared Java level consistent with what the build assumes?** `:11-14` sets `sourceCompatibility`/`targetCompatibility` to `VERSION_17` and declares **no `toolchain`**, so the build compiles with whatever JVM launched Gradle rather than provisioning a JDK 17 — the file `P63-D6-002` is anchored in; the correctness observation is recorded here and the toolchain-health **triage** is deliberately left to the `### Inherited item triage` block so the two are not double-counted. The contrast is in this repository: `java-interop/build.gradle:6-10` declares `java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }`, the shape that pins the compiler independently of the launching JVM. **A cross-project input with no producer and no check.** `build.gradle.kts:93-98` (`copyLanguageServer`) and `:115-119` (`prepareSandbox`) both copy `main.cjs` from `${projectDir}/../bbj-vscode/out/language/`, a directory produced by the npm toolchain that Gradle neither builds, declares a dependency on, nor tests for: there is no `dependsOn` on any bbj-vscode step, no `onlyIf`, no `doFirst` existence assertion and no failure path anywhere in the 135-line file. Recorded as `P64-D2-009`; the precise runtime consequence could not be executed here and is written up under `### Not-reproducible dispositions` rather than asserted. **What do the wrapper scripts do when the properties file is missing or malformed?** Neither reads it: `gradlew:117` and `gradlew.bat:71` place the JAR on the classpath and `gradlew:208-209` / `gradlew.bat:75` hand control to `org.gradle.wrapper.GradleWrapperMain`, which is what parses the properties file — so a missing or malformed file surfaces as a Java-side wrapper error rather than a shell-side one, and both scripts still propagate its status (`gradlew:244` uses `exec`, so the JVM's status becomes the script's; `gradlew.bat:84-87` captures `%ERRORLEVEL%` and forces a non-zero code when the failure path is taken). Both fail closed.
 - D3 Performance & resource use — fail — Checked against redundant work, missing caches and unbounded growth, read in build terms, at tier `repro` satisfied by trace plus one timed measurement; where a cost is latent rather than active it is said to be so and is not promoted on volume alone. **Does the build compile the same sources twice?** Not within a single `npm run build`: `package.json:655` runs `tsc -b tsconfig.json` where `tsconfig.json:7` sets `noEmit: true`, so `tsc` type-checks and emits nothing, and `esbuild.mjs` then transpiles and bundles without type-checking — two passes with two different jobs, one emit, and that is the intended division rather than duplication. **But the whole build does run twice per CI job, and that is measurable from the manifests alone.** `package.json:653`'s `prepare` hook is `npm run langium:generate && npm run build`, and npm runs `prepare` on every `npm ci`; three workflows then invoke `npm run build` again on the line immediately following — `build.yml:27-28`, `pr-vsix.yml:49-50` and `pr-validation.yml:30-31`. Each of those jobs therefore performs Langium code generation, a full non-incremental `tsc -b` and a full esbuild bundle of both entry points, twice, on every push or pull request. The `-b` build mode buys nothing back: `tsconfig.json` declares no `composite: true` and no `incremental: true`, so there is no project-reference graph and no `.tsbuildinfo` to make the second pass cheap — every invocation is a cold full type-check. Recorded as `P64-D3-003`. **Is the test suite's discovery scoped?** No, and this is the latent half. `vitest.config.ts` (30 lines, read in full) declares **no `include` and no `exclude` for test discovery at all** — its `test` block contains only `coverage` (`:7-28`) — so which files constitute the suite is decided entirely by vitest's built-in defaults, which this repository states nowhere and which do not exclude `out/` (3.5 MB across four generated files in this checkout) or `examples/`. Measured rather than assumed: `npx vitest list --filesOnly` completes in **0.615 s** and resolves **50** files, exactly matching the 50 `*.test.ts` files present under `test/`. So the cost is latent — discovery is fast today because the tree is small and the default exclusions catch `node_modules/` — and it is recorded as latent, not promoted; the *correctness* half of the same fact, that three sources disagree about what the suite is, is D5's and is recorded there. **Is coverage collection scoped?** Yes, and tightly: `vitest.config.ts:8` sets `coverage.enabled: false` so the instrumented run is opt-in via `--coverage` (`package.json:660`'s `test:coverage`), `:12` scopes `include` to `src/**/*.ts`, and `:13-17` excludes `src/language/generated/**` (~17.5k generated LOC), `src/extension.ts` and `**/*.d.ts`. Checked positive. **Does esbuild produce a sourcemap, and is the bundle proportionate?** `esbuild.mjs:19-20` sets `sourcemap: !minify` and `minify` from `--minify`, so the default `build` path emits maps: `out/extension.cjs` is 1,265,974 bytes with a sibling `.cjs.map`, and `out/language/main.cjs` is 2,251,400 bytes — proportionate for a Langium language server that inlines its parser and its generated grammar. The disproportionate item is the 622,562-byte `out/main.js` that no configuration references, which is `P64-D2-007`'s subject and is not double-counted here. **Does any Gradle configuration force a re-resolve or disable caching?** No: `gradle.properties` is a single line (`org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8`) and declares no `--refresh-dependencies` equivalent, no `cacheChangingModulesFor`, no dynamic (`+`) or `-SNAPSHOT` version anywhere in `build.gradle.kts` or `settings.gradle.kts` — every coordinate is a fixed version, which is the cache-friendly case. It also declares no `org.gradle.caching` and no `org.gradle.parallel`, so the build cache and parallel execution are simply off by default; stated as a fact rather than as a defect, since neither is required for a single-project build.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked against duplication, dead configuration, tangled coupling, inconsistent patterns and missing abstractions, at tier `trace`, on a mechanical basis wherever one exists rather than on an eyeball impression. **Where `package.json`'s 694 lines actually sit, measured by block boundaries rather than estimated:** metadata `:1-21` (21); **`contributes` `:22-628` — 607 lines, 87% of the file** — subdivided as `languages` `:23-60` (38), `grammars` `:61-72` (12), `snippets` `:73-78` (6), `commands` `:79-199` (121, 19 entries), `keybindings` `:200-221` (22), `menus` `:222-329` (108), **`configuration` `:330-622` (293 lines, 42% of the whole file)** and `configurationDefaults` `:623-628` (6); then `activationEvents` `:629-650` (22), `main` `:651`, `scripts` `:652-668` (17, 15 entries), `dependencies` `:669-678` (8 entries) and `devDependencies` `:679-693` (13 entries). **The judgement is stated rather than implied: this is not a refactorable smell and is deliberately not promoted.** VS Code requires contribution points to live in the extension manifest, `configuration` is a flat settings schema whose length is a function of how many settings the extension has, and no supported mechanism splits it across files — so a 293-line block is large but is not something a maintainer could have avoided. What *is* actionable is everything below. **Dead configuration, enumerated by grep rather than by impression.** Three of the 15 scripts are reachable from nothing: `esbuild` (`:662`) and `esbuild-watch` (`:663`) both delegate to `esbuild-base`, and `test-compile` (`:664`, `tsc -p ./`); `grep -rn` for each name across the tree excluding `node_modules/` and `.planning/` returns only its own declaration, no workflow step, no documentation reference, and `CLAUDE.md`'s Build & Test Commands section names none of them. Separately, `langium-config.json:14` directs the TextMate generator's output to `syntaxes/gen-bbj.tmLanguage.json`, which `.gitignore:3` ignores and which `grep -rn 'gen-bbj'` finds referenced in **exactly one place — that same declaration**: `package.json:63-66` ships the hand-maintained `syntaxes/bbj.tmLanguage.json` instead, and `git ls-files bbj-vscode/syntaxes/` confirms only `bbj.tmLanguage.json` and `bbx.tmLanguage.json` are tracked. So every `npm run langium:generate` — which `prepare` (`:653`) runs on every install — regenerates an artefact that nothing consumes. And the manifest disagrees with itself about its own commands: `contributes.commands` declares 19, `activationEvents` declares 18 `onCommand:` entries, and the sets do not match — `bbj.showClasspathEntries` and `bbj.refreshJavaClasses` are contributed with no activation event, while **`onCommand:bbj.autoComment` (`:629-650`) names a command `contributes.commands` does not declare at all**. Recorded together as `P64-D4-006`. (`bbj.denumber` is also the one contributed command with no `category`; noted as an inconsistency, not promoted.) **The lint configuration enforces nothing, and this is the sharpest finding in the cell.** `eslint.config.js` is 18 lines: `:5` ignores `out/**` and `src/language/generated/**`, `:8-12` sets the TypeScript parser for `**/*.ts`, `:13-15` registers the `@typescript-eslint` plugin, and **`:16` declares `rules: {}`** — with no `extends`, no `tseslint.configs.recommended`, no shared preset anywhere. Verified rather than inferred: `npx eslint --print-config src/extension.ts` reports **0 rule entries and 0 enabled rules**, and `npx eslint src test` over 120 TypeScript files exits 0 with 2 warnings, both of which are `Unused eslint-disable directive` at `bbj-document-symbol-provider.ts:75,149` — a developer suppressed `@typescript-eslint/no-explicit-any` for a rule the configuration never turns on, which is the clearest possible demonstration that the lint step is decorative. Recorded as `P64-D4-005`. **Do the two tsconfigs duplicate settings one could inherit?** Barely, and in the harmless direction: `tsconfig.test.json:2` already `extends` `./tsconfig.json`, and its only redundancy is re-declaring `noEmit: true` (`:4`) which is inherited from `tsconfig.json:7`. The real defect in that file is structural and is `P64-D2-008`, not duplication, so it is cross-referenced rather than counted twice. **Does `eslint.config.js` cover the tree the project lints?** `npm run lint` (`:657`) is `eslint src test`, i.e. `find src test -name '*.ts' | wc -l` = **120** files. Exactly two `.ts` files in the checkout sit outside that scope: `vitest.config.ts` and `tools/interop-test-harness/run-tests.ts` — the second already recorded by `RU-64-03` as part of `P64-D5-001` and not re-recorded here; the first is new and is noted rather than promoted, being a 30-line config file. **Do the Gradle files share one convention or slice one concern three ways?** The latter, mildly, and it is recorded as an observation because nothing is broken: the plugin version lives in `settings.gradle.kts:2` (`2.11.0`), the platform and library versions in `build.gradle.kts:25,27`, the JVM memory setting alone in `gradle.properties`, and the project version in neither — `build.gradle.kts:9` reads `providers.gradleProperty("version").getOrElse("0.1.0")` while `gradle.properties` declares no `version`, so the literal fallback `"0.1.0"` is the effective local default and CI supplies the real value at `manual-release.yml:127,133,137` via `-Pversion=`. Three files, four homes for versioning concerns, no shared convention — legible today at 141 combined lines, and stated so a later reader is not surprised by it. **Are `gradlew` and `gradlew.bat` stock, or hand-edited? A recorded diff, not an impression.** This repository contains a second, independently generated copy of both scripts under `java-interop/`, which makes a mechanical comparison possible: `md5sum` gives `d6e9e0c5123926124374524add81b38c` for **both** `bbj-intellij/gradlew` and `java-interop/gradlew` — byte-identical, therefore unmodified stock. `gradlew.bat` differs (`d7a461fc…` vs `5f5d1ab2…`, 2,776 vs 2,868 bytes) but `diff <(tr -d '\r' < a) <(tr -d '\r' < b)` is empty: the only difference is line endings, `bbj-intellij/gradlew.bat` having been normalised to LF while its sibling retains the stock CRLF, and the repository has no `.gitattributes` to have done that deliberately. Neither script carries a functional hand-edit — an integrity fact worth having, since a modified wrapper script would be a far more direct attack than the unpinned JAR `P64-D1-006` records. The LF normalisation is recorded as an observation and not promoted: `cmd.exe` tolerates LF batch files in current Windows versions, and no Windows contributor path in this repository is evidenced as broken by it.
+- D5 Test coverage gaps — fail — Read per **D-15** as the specific question this phase means by D5: not "is this configuration file tested", but **"does the test configuration this unit owns accurately describe, and actually run, the suite it claims to run"** — at tier `inherited` resolving to `trace`, with both sides of every count recorded. **What `vitest.config.ts`'s globs actually match, counted against the tree.** The file is 30 lines and its `test` block (`:4-29`) contains **only** `coverage` — it declares **no `include` and no `exclude` for test discovery at all**. So the suite's boundary is decided entirely by vitest's built-in defaults, which this repository states nowhere and which a reader cannot find by reading its configuration. Measured on both sides: `npx vitest list --filesOnly` resolves **50** files; `find . -path ./node_modules -prune -o \( -name '*.test.ts' -o -name '*.spec.ts' \) -print` finds **50**. **The two counts agree — and the agreement is the finding, not the reassurance**, because nothing in this repository causes it: all 50 test files happen to live under `test/`, and vitest's defaults happen to exclude `node_modules/`. Nothing declared here would stop a `*.test.ts` under `tools/`, `examples/` or `out/` from silently joining the suite, and `out/` in particular is not in vitest's default exclude list. **Does `tsconfig.test.json` cover the same set?** Nominally yes — `:10-12` declares `include: ["test/**/*"]`, the same 50 files — but the comparison is moot, because that configuration **cannot compile** (`npx tsc -p tsconfig.test.json --noEmit` reports TS6306 and TS6310, recorded as `P64-D2-008`) and `grep -rn 'tsconfig.test'` finds nothing that runs it. So the one source that states a boundary in writing is the one that never executes. **Do `package.json`'s scripts run what their names claim?** `test` (`:658`) is `vitest run`; `test:watch` (`:659`) is `vitest watch`; `test:coverage` (`:660`) is `vitest run --coverage`, which is exactly what `vitest.config.ts:8`'s `enabled: false` requires to turn coverage on; and `test:bbj` (`:667`) is `RUN_BBJ_TESTS=1 vitest run`. **The BBj-gated script's environment variable is the one the suite actually reads** — verified, not assumed: `test/test-helper.ts:39` reads `process.env.RUN_BBJ_TESTS?.trim().toLowerCase()`, documented at `:31-32` as `RUN_BBJ_TESTS=1` forcing the BBj-dependent tests on and `RUN_BBJ_TESTS=0` forcing them off, and `test/functional/issue440-real-interop.test.ts:13` names the same variable. All four scripts do what their names claim; none delegates a boundary of its own. **Where the three sources disagree, the disagreement is named rather than the most convenient source reported.** `package.json`'s scripts declare **no** boundary and delegate entirely to vitest. `vitest.config.ts` declares **no** boundary and delegates entirely to vitest's undocumented defaults, whose effective scope is the whole project directory minus that built-in list. `tsconfig.test.json` declares a boundary in writing — `test/**/*` — and is the only source that does, but it is broken and unrun. **So this repository has three statements about what constitutes its test suite: two that abstain and one that is wrong to execute; the real boundary is vitest's default, which appears in no file here.** Recorded as `P64-D5-002`. The practical consequence is not hypothetical: `test/` is type-checked by nothing at all — `tsconfig.json:18-20` includes only `src/**/*.ts`, so `npm run build` never sees the 50 test files, and the configuration that would have covered them is the broken one. **Already-owned test debt, cross-referenced by ID and deliberately not re-recorded (D-15).** The 11 known-failing `linking.test.ts` tests are routed by INVENTORY's routing table to **Phase 61** and were recorded there as **`RU-61-06`**; the 3 disabled `parser.test.ts` assertions are owned by **DEBT-02**. Neither is re-counted here. What this cell adds — the question D-15 says to answer and the only thing new — is **whether the configuration conceals or surfaces them, and it surfaces them**: `vitest.config.ts` declares no `exclude`, no `bail`, no `retry`, no `testNamePattern` and no `allowOnly`, so no failing test is skipped, suppressed or retried into a pass, and `npm run test` at `build.yml:34` and `pr-vsix.yml:51` sees all 11 failures on every run. One adjacent gap belongs to a neighbouring unit and is referred rather than claimed: `pr-validation.yml:30-31` runs `npm ci` and `npm run build` and **never runs `npm run test`**, so the repository's cross-IDE validation workflow exercises no test at all; that file is `RU-64-01`'s and the referral is recorded under `### Cross-unit referrals`. Likewise `npm run test:coverage` — the only path that activates the 50/45/40 thresholds at `vitest.config.ts:20-27` — is run by **no** workflow, so the coverage gate those thresholds describe has never executed; the comment that claims otherwise is `P64-D8-005`.
 - D6 Dependency health — fail — Checked against REQUIREMENTS.md's D6 wording — outdated or vulnerable dependencies, license issues and unpinned artifacts — at tier `inherited` resolving to **repro-equivalent for every CVE claim**, so no version-looks-old assertion appears below without a resolvable advisory reference. This is the cell that carries SEC-08; the enumerations, the triage table and the coverage limitation are recorded in full under `### SEC-08 Dependency Triage`, and this line states the method and the verdicts. **The npm half — enumerated live, pinned to its run date (D-07).** `npm audit`, run from `bbj-vscode/` on **2026-08-18**, reports **`19 vulnerabilities (7 moderate, 11 high, 1 critical)`** over an installed tree of **593 packages (296 prod, 260 dev, 96 optional)**, and exits 1. The run date is pinned because `npm audit` is a live query whose answer moves as advisories publish: a reader in six months who re-runs it and gets a different number is seeing advisory drift, not a defect in this record, and the empty case is stated so the numbers are interpretable — a tree with no vulnerable package prints `found 0 vulnerabilities` and exits 0, so `19` here is a positive result and not an absence of data. `npm audit --json` supplied the machine-readable enumeration: all 19 packages, their installed ranges, their advisory identifiers with resolvable `https://github.com/advisories/GHSA-…` URLs, and their dependency paths, every row of which is in the triage table below. **The production-versus-dev split, established from `package.json` and the lockfile's own paths rather than asserted.** `npm ls <pkg> --omit=dev --all` was run for each of the 19: **16 sit inside the production dependency closure and 3 are dev-only** (`nanoid` and `postcss` via `vitest@4.1.10 → vite@8.1.5`, `shell-quote` via `concurrently@8.2.2`). The reason the production closure is that large is a single declaration: **`package.json:670` puts `@vscode/vsce@^3.7.1`, a marketplace **publishing** CLI, under `dependencies` rather than `devDependencies`**, and 15 of the 19 flagged packages reach the tree through it and through nothing else. Recorded as `P64-D6-007`. **What actually ships is narrower than either number, and was checked against the built artefact rather than inferred.** `.vscodeignore:8` excludes `node_modules` from the VSIX (read as context; INVENTORY excludes that file from every unit, so no finding is located in it and it adds no file to this unit's list), so the only third-party code reaching an end user is what esbuild inlines. Grepping the two bundles: `vsce`, `undici`, `shell-quote`, `markdown-it`, `nanoid` and `postcss` each return **0** occurrences in `out/extension.cjs` and `out/language/main.cjs`, while `brace-expansion` returns **2** in `out/extension.cjs` and **0** in `out/language/main.cjs`. **Exactly one flagged package reaches the shipped artefact** — `brace-expansion@5.0.7` (`package-lock.json:7581-7584`), pulled in by `vscode-languageclient@10.1.0` (`:7557-7563`) through `minimatch@10.2.5`, itself outside every flagged minimatch range. Recorded as `P64-D6-008`. **The Gradle half — enumerated statically, with the gap stated rather than hidden (D-10).** Confirmed rather than trusted: `cd bbj-intellij && ./gradlew --offline -q dependencies` **exits 1 in 723 ms** with the literal output `FAILURE: Build failed with an exception. * What went wrong: 25.0.3` — Gradle 8.13's own `JavaVersion` parser rejecting the local Temurin **25.0.3** before any task is scheduled, the same failure `P63-D6-002` records. **So transitive Gradle dependencies are not enumerable in this environment, and the Gradle half of SEC-08 covers declared coordinates only.** That limitation is stated here, in the criterion-3 answer, and in the close-out, rather than being papered over with a confident-sounding verdict. What *was* enumerated statically: `build.gradle.kts:25` `intellijIdeaCommunity("2024.2")`, `:27` `plugin("com.redhat.devtools.lsp4ij:0.19.0")`, `:11-13` Java 17 source/target with **no toolchain**; `settings.gradle.kts:2` `org.jetbrains.intellij.platform.settings` version **`2.11.0`**; `gradle.properties` (one line, no version coordinate); `gradle/wrapper/gradle-wrapper.properties:3` the Gradle distribution **8.13**; plus `java-interop/build.gradle:21-23` (`org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.20.1`, `com.google.guava:guava:31.1-jre`, `org.junit.jupiter:junit-jupiter:5.9.1`) and `java-interop/settings.gradle:1`, read **once** as an additional dependency-tree source under INVENTORY's own carve-out, which adds no `java-interop/` file to this unit's list. Each was checked against OSV (`https://api.osv.dev/v1/query`, Maven ecosystem): **one** returns advisories — `com.google.guava:guava:31.1-jre`, with `GHSA-5mg8-w23w-74h3` (CVE-2020-8908) and `GHSA-7g45-4rm6-3mm3` (CVE-2023-2976), recorded as `P64-D6-011`; `org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.20.1` and `org.junit.jupiter:junit-jupiter:5.9.1` return zero. `com.redhat.devtools.lsp4ij:0.19.0` and `intellijIdeaCommunity("2024.2")` are **not Maven coordinates OSV indexes at all**, so their zero result means *not answerable by this method*, which is a weaker statement than a clean bill of health and is recorded as such rather than as a pass. Staleness, which needs no advisory: Gradle **8.13** was built 2025-02-25 and the current release is **9.7.0** (2026-08-06) — one major line and roughly 18 months behind, verified against `https://services.gradle.org/versions/all`; recorded with the IntelliJ Platform and LSP4IJ pins as `P64-D6-010`. **Composed with `RU-64-01`'s finding, which is stronger than either half alone.** `P64-D6-005` records that `.github/dependabot.yml` declares only an `npm` ecosystem for `/bbj-vscode` and **no `gradle` entry**; this cell establishes that the same tree cannot be enumerated by hand here either. **The `bbj-intellij` dependency tree is therefore both unscanned by tooling and unenumerable locally — no automated process and no manual process currently produces a list of what it depends on**, which is the composed statement `RU-64-01` deliberately left to this cell, and it is what makes `P63-D6-002`'s toolchain fix worth more than its own severity suggests. **Consolidation:** the phase's other SEC-08 contributions — `RU-64-03`'s `### Vendored Binary Provenance` for the three `tools/formatter/` JARs and `RU-64-01`'s action-pinning and dependabot records — are brought together **by reference, not re-audited**, in the triage table below, so criterion 3's answer sits in one place.
 - D7 Cross-IDE parity — n/a — R-D7-CI — "This surface governs build/CI/packaging output, not end-user-observable IDE runtime behavior; there is no parity claim to make between two IDEs about a shared build pipeline or a shared vendored tool invoked identically by both."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked at tier `trace` against stale comments and claims contradicted by the code beneath them. **Every comment in the 13 readable manifests was enumerated and checked; the enumeration is small enough to state in full, so "checked" is verifiable rather than asserted.** `grep -n '//\|^\s*#\|/\*'` across the unit's readable files returns comments in exactly four of them: `esbuild.mjs` (3), `vitest.config.ts` (9), `build.gradle.kts` (3), and the stock Apache-2.0 headers plus generated explanatory blocks in `gradlew`/`gradlew.bat`. `package.json`, `package-lock.json`, `langium-config.json`, `tsconfig.json`, `tsconfig.test.json`, `eslint.config.js`, `settings.gradle.kts`, `gradle.properties` and `gradle-wrapper.properties` carry **none** — JSON forbids them and the rest simply have none — so there is no comment surface to be stale in nine of the thirteen. **`esbuild.mjs`, all three checked, two accurate and one inert.** `:17` "the vscode-module is created on-the-fly and must be excluded" accurately describes `external: ['vscode']`; `:18` "VSCode extensions run in a node process" accurately describes `platform: 'node'` and holds for both entry points, the extension host and the language server. `:1`'s `//@ts-check` is **inert rather than wrong**: `tsconfig.json:18-20` includes only `src/**/*.ts`, so this root-level `.mjs` is never checked by `npm run build`; the directive is honoured by an editor and by nothing in the pipeline. Recorded as an observation, not a finding, because it asserts nothing false. **`vitest.config.ts`, all nine checked — eight accurate, one contradicted by the configuration it sits in.** `:6` (`// globals: true,`) is a commented-out example and is accurate as such; `:8` "Enable via `--coverage` flag, not by default" accurately describes `enabled: false` and `package.json:660`'s `test:coverage`; `:14`, `:15` and `:16` accurately label the three `exclude` entries; `:18-19` accurately describe the thresholds as conservative and cite the researched values without claiming to use them; `:21` "current coverage unknown" is still true, because nothing ever runs coverage. **`:25-26` — "Fail build if coverage drops below thresholds / This prevents regressions, not ensures completeness" — is the one claim the tree contradicts.** A threshold only fails a run that collects coverage, coverage is off by default (`:8`), the sole path that enables it is `npm run test:coverage`, and `grep -rn 'test:coverage\|--coverage' .github/workflows/` returns nothing: no workflow runs it. So the comment describes a build-failing regression gate that **has never executed in this repository's CI**, which is precisely the claim-versus-reality shape D8 exists to catch. Recorded as `P64-D8-005`. **`build.gradle.kts`, all three checked and accurate.** `:76-78` describe the publishing channel defaulting to `"default"` with preview builds passing `-PintellijChannel=preview`; `:79` implements exactly that via `providers.gradleProperty("intellijChannel").getOrElse("default")`, and `preview.yml`/`manual-release.yml` supply the property accordingly. **`gradlew`/`gradlew.bat`:** stock generated content, byte-identical to `java-interop/gradlew` (`md5 d6e9e0c5…`) modulo line endings for the `.bat`, so their comments are Gradle's own and describe Gradle's own behaviour. **Do `package.json`'s contributed command titles, categories and `when` clauses describe what those commands do?** The parts answerable from inside this unit were checked mechanically, and the manifest disagrees with itself: `contributes.commands` declares **19** commands and `activationEvents` declares **18** `onCommand:` entries, with `bbj.showClasspathEntries` and `bbj.refreshJavaClasses` contributed but unlisted and **`onCommand:bbj.autoComment` naming a command `contributes.commands` does not declare** — recorded as part of `P64-D4-006`; and `bbj.denumber` is the one command with no `category`, noted as an inconsistency. Whether each `title` matches its handler's behaviour is **not** claimed here: the handlers live in `bbj-vscode/src/`, which belongs to `RU-62-01` and a closed phase, and this unit does not reach into it. **`CLAUDE.md`'s Build & Test Commands section, checked line by line — and routed, not claimed.** All ten npm commands it lists exist in `package.json` and mean what it says: `npm run langium:generate` (`:665`), `npm run build` (`:655`, and "TypeScript compile + esbuild bundle" is exactly `tsc -b tsconfig.json && node ./esbuild.mjs`), `npm run watch` (`:656`), `npm test` (`:658`), `npm run test:bbj` (`:667`, and its parenthetical `RUN_BBJ_TESTS=1` matches the script and `test/test-helper.ts:39`), `npx vitest run <file>`, `npm run test:watch` (`:659`), `npm run test:coverage` (`:660`) and `npm run lint` (`:657`). **Two of its Gradle claims cannot execute in this checkout.** `./gradlew build` from `bbj-intellij/` fails on the local JDK before task selection (`P64-D6-010`, merging `P63-D6-002`), and `./gradlew build` / `./gradlew run` from `java-interop/` cannot bootstrap at all, because `java-interop/.gitignore:5` ignores `gradle/` and `git ls-files java-interop` shows only `.gitignore`, `build.gradle`, `gradlew`, `gradlew.bat` and `settings.gradle` — the wrapper JAR and properties file that `java-interop/gradlew:117` requires are not committed. That is a striking contrast with `bbj-intellij`, which commits its wrapper JAR: two Gradle projects in one repository with opposite wrapper policies, one unverified and one absent. **`CLAUDE.md` is `RU-D8-01`'s file, `RU-D8-01` is owned by no sweep phase (D-18), and no Phase 64 plan may allocate a finding there** — so both claims are recorded here as written observations naming the row that owns them, and **no `P64-*` ID is issued against `CLAUDE.md`**. **Then the two INVENTORY drift records, both located in INVENTORY because Phase 60 D-09 makes it immutable and drift is recorded rather than corrected.** First, `INVENTORY.md:938` excludes `node_modules/` with the parenthetical "0 packages present in this checkout"; `ls bbj-vscode/node_modules | wc -l` prints **385** and the tree is 313 MB. **The exclusion still stands and this record says so explicitly** — Phase 64 reviewed no installed package source, and dependency health was assessed from the manifest and lockfile exactly as that row directs — but the stated *reason* no longer describes the tree, and `npm audit` in this phase queried that very installed tree. Recorded as `P64-D8-003`. Second, `INVENTORY.md:964` lists `bbj-intellij`'s reviewed build files as "`build.gradle.kts`, `settings.gradle.kts`, `gradle.properties`, `gradlew`, `gradlew.bat`, `gradle/wrapper/gradle-wrapper.properties`" and `INVENTORY.md:739-755`'s `RU-64-02` file table names the same fourteen — **neither names `gradle/wrapper/gradle-wrapper.jar`**, the 43,583-byte executable `gradlew:117` puts on the classpath, and `grep -c 'gradle-wrapper.jar' .planning/reviews/INVENTORY.md` prints **`0`**. Recorded as `P64-D8-004`. **The drift record stands on its own and is not cancelled by D-20's adoption** — these are two distinct facts and both are true: INVENTORY still fails to name a file plainly in scope, *and* Phase 64 has adopted that file into `RU-64-02` under **D-20** with its own file-exception row, swept directly by manifest and hash in this plan's Tasks 1 and 2 rather than assessed indirectly through its two text neighbours. The adoption's arithmetic, stated at the point of the record because it is what lets a later reader judge every count in this file: it moves **rows 7 → 8, cells 56 → 64, files 28 → 29**, where D-19's `.github/dependabot.yml` adoption moved only the file gate. And the principle in one sentence: **the gate follows the scope, not the other way round** — a count that excludes a real in-scope executable is simply a wrong count, so the gate moved to fit the surface rather than the surface being trimmed to fit the gate. **Classification note, applied consistently with `RU-64-03`'s reading:** a D8 fix that changes only comment or document text changes no runtime behaviour, so it may be `easy` when the other five D-13 tests pass; each of the three D8 records below states which reading was applied and why.
 
 ### File-exception cells
 
@@ -2936,17 +2936,499 @@ disposition:       easy-fix — the phase's one lockfile-only remediation bundle
                    untouched by the run.
 ```
 
+```
+id:                P64-D4-005
+unit:              RU-64-02
+location:          bbj-vscode/eslint.config.js:16
+dimension:         D4
+secondary:         [D5]
+severity:          medium
+evidence_tier:     trace
+evidence:          Mechanical, and confirmed by running the tool rather than by reading the file
+                   alone. `eslint.config.js` is 18 lines in total: `:1` imports `typescript-eslint`,
+                   `:4-6` set `ignores: ['out/**', 'src/language/generated/**']`, `:7-12` apply the
+                   TypeScript parser to `**/*.ts` with `sourceType: 'module'`, `:13-15` register the
+                   `@typescript-eslint` plugin, and `:16` declares `rules: {}`. There is no
+                   `extends`, no `tseslint.configs.recommended`, no `eslint.configs.recommended` and
+                   no shared preset anywhere in the file, so registering the plugin makes its rules
+                   *available* without enabling any of them. Verified:
+                   `npx eslint --print-config src/extension.ts` resolves **0 rule entries and 0
+                   enabled rules**; `npx eslint src test` — the exact command
+                   `package.json:657`'s `lint` script runs, over the 120 `.ts` files under `src/`
+                   and `test/` — exits **0** with 2 warnings, and both warnings are
+                   `Unused eslint-disable directive (no problems were reported from
+                   '@typescript-eslint/no-explicit-any')` at
+                   `src/language/bbj-document-symbol-provider.ts:75` and `:149`. Those two lines are
+                   the strongest available evidence: a developer wrote suppressions for
+                   `no-explicit-any`, which means they expected it to be on, and ESLint reports the
+                   suppressions as unnecessary precisely because it is not. `lint` runs in CI only
+                   through `package.json:654`'s `vscode:prepublish`, so the decorative check also
+                   sits on the release path.
+failure_scenario:  A contributor opens a pull request. `npm run lint` — invoked locally, and on the
+                   release path through `vscode:prepublish` — reports success on any TypeScript that
+                   parses: unused variables, floating promises, `any` everywhere, unsafe member
+                   access, missing `await`, unreachable code and every other rule in the
+                   `typescript-eslint` recommended set pass unexamined across all 120 files, because
+                   none of them is enabled. The project therefore carries the cost of a lint step
+                   (config file, dependency, script, CI time, the two suppression comments someone
+                   wrote in good faith) and receives none of its benefit, and — worse than having no
+                   linter — a green `npm run lint` reads to a reviewer as evidence the code was
+                   checked.
+classification:    major — (1) at most one file: PASS, adding a preset is confined to
+                   `eslint.config.js`. (2) no public API / no grammar rule / no LSP contract change:
+                   PASS. (3) adds or upgrades no dependency: PASS — `typescript-eslint@^8.64.0` is
+                   already declared at `package.json:689` and already imported at
+                   `eslint.config.js:1`. (4) regression-testable with the existing harness: FAIL —
+                   the moment a rule set is enabled, `npm run lint` will report findings across 120
+                   previously unlinted files, so the change cannot be verified green without a
+                   remediation pass of unknown size; that is a project of its own, not a
+                   regression test. (5) reviewer can name the exact edit: PASS — spread
+                   `...tseslint.configs.recommended` into the exported config. (6) severity is
+                   neither critical nor high AND primary dimension is not D1: PASS, `medium`/D4.
+                   Only test (4) fails, and it fails decisively, so this is `major`.
+effort:            8
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions ESLint, linting or
+                   code style; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow
+                   or build configuration.
+disposition:       major-refactor — enabling the rules is one line; making the tree pass them is
+                   not, and the size of that second step is unknown until the first is taken, so
+                   this belongs in `MAJOR-REFACTORS.md` with the remediation scoped before it is
+                   applied.
+```
+
+```
+id:                P64-D4-006
+unit:              RU-64-02
+location:          bbj-vscode/package.json:629-650,662-664
+dimension:         D4
+secondary:         [D8]
+severity:          low
+evidence_tier:     trace
+evidence:          Three independent pieces of dead configuration, each established by a grep whose
+                   result is recorded rather than summarised. **(a) Three unreachable scripts.**
+                   `esbuild` (`:662`) and `esbuild-watch` (`:663`) both delegate to `esbuild-base`,
+                   and `test-compile` (`:664`) is `tsc -p ./`. Searching the tree for each name,
+                   excluding `node_modules/` and `.planning/`, returns only its own declaration in
+                   `package.json` — no workflow step invokes them (`grep -rn 'npm run'
+                   .github/workflows/` lists only `build`, `test` and the documentation package's
+                   own build), no other script chains them, and `CLAUDE.md`'s Build & Test Commands
+                   section names none of the three. Their sibling `esbuild-base` (`:661`) is
+                   reachable, but only from `vscode:prepublish`, and what it produces is
+                   `P64-D2-007`'s subject. **(b) A generated artefact nothing consumes.**
+                   `langium-config.json:14` sets the TextMate generator's `out` to
+                   `syntaxes/gen-bbj.tmLanguage.json`. `grep -rn 'gen-bbj'` over every `.json`,
+                   `.ts`, `.kts` and `.md` in the tree, excluding `node_modules/` and `.planning/`,
+                   returns **exactly one line — that declaration itself**. `package.json:63-66`
+                   ships `./syntaxes/bbj.tmLanguage.json` instead, `git ls-files
+                   bbj-vscode/syntaxes/` tracks only `bbj.tmLanguage.json` and
+                   `bbx.tmLanguage.json`, and `.gitignore:3` ignores the generated file. Since
+                   `prepare` (`:653`) runs `langium:generate` on every install, the artefact is
+                   regenerated on every contributor machine and every CI runner and read by nothing.
+                   **(c) The manifest disagrees with itself about its own commands.** Comparing the
+                   two blocks programmatically: `contributes.commands` (`:79-199`) declares **19**
+                   commands; `activationEvents` (`:629-650`) declares **18** `onCommand:` entries;
+                   `bbj.showClasspathEntries` and `bbj.refreshJavaClasses` are contributed with no
+                   activation event, and `onCommand:bbj.autoComment` names a command that
+                   `contributes.commands` does not declare at all. `bbj.denumber` is additionally
+                   the one contributed command with no `category`.
+failure_scenario:  Nothing breaks at runtime, which is why this is `low` and is recorded as
+                   maintainability rather than correctness: VS Code 1.74+ auto-generates activation
+                   events for contributed commands, so the two unlisted commands still activate, and
+                   an `onCommand:` entry for a nonexistent command is simply never triggered. The
+                   failure is to the reader and to the build. A maintainer auditing this manifest to
+                   answer "which commands does this extension contribute?" gets two different
+                   answers from two adjacent blocks, and the one extra name in `activationEvents`
+                   suggests a command that was removed or renamed without its activation entry being
+                   cleaned up — so the manifest records a history rather than a state. A maintainer
+                   asking "what does `npm run esbuild` do?" finds a script that produces an output no
+                   part of this project loads. And every install pays for regenerating a TextMate
+                   grammar that is gitignored and unreferenced, while the grammar that actually
+                   ships is hand-maintained beside it — so the generator's role in this project is
+                   ambiguous from the configuration alone.
+classification:    major — (1) at most one file: **FAIL** — the deletions span two manifests,
+                   `package.json` (the three dead scripts and the phantom `onCommand:` entry) and
+                   `langium-config.json` (the unused `textMate.out` directive). Every other test
+                   passes: (2) no public API / no grammar rule / no LSP contract change: PASS —
+                   removing a `textMate.out` directive changes no rule in `bbj.langium`. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   PASS — `npm run build`, `npm run langium:generate` and the 50-file vitest suite
+                   all run unchanged, and every deleted entry is provably referenced by nothing.
+                   (5) reviewer can name the exact edit: PASS — delete `package.json:662`, `:663`,
+                   `:664` and the `onCommand:bbj.autoComment` entry, and remove the `textMate` block
+                   at `langium-config.json:13-15`. (6) severity is neither critical nor high AND
+                   primary dimension is not D1: PASS. **Test (1) is the sole failure, and it fails
+                   only on a file count of two** — the tests are applied as written rather than as
+                   convenient, so this is `major` despite being the least risky edit in the unit.
+                   Splitting it into two single-file findings would make both `easy`; that is noted
+                   rather than done, because inventing a split to clear a threshold is precisely the
+                   gaming D-13 is meant to resist.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions dead scripts,
+                   activation events, the TextMate generator or manifest hygiene; 0 of the 15 carry
+                   the `dependencies` label and 0 name CI, a workflow or build configuration.
+disposition:       major-refactor — classification governs the routing, so this goes to Phase 68's
+                   `MAJOR-REFACTORS.md` rather than Phase 67's apply path, even though the edit
+                   itself is three provably unreferenced deletions verifiable by re-running the
+                   existing build and suite.
+```
+
+```
+id:                P64-D5-002
+unit:              RU-64-02
+location:          bbj-vscode/vitest.config.ts:4-29
+dimension:         D5
+secondary:         [D4]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Resolves to `trace` — this asserts a missing declaration, not a runtime defect —
+                   with both sides of every count recorded rather than one side asserted. Three
+                   sources could state what constitutes this project's test suite, and all three
+                   were read. **(1) `vitest.config.ts`:** 30 lines; its `test` block (`:4-29`)
+                   contains only `coverage` (`:7-28`); it declares **no `include` and no `exclude`
+                   for test discovery**, so discovery falls entirely to vitest's built-in defaults,
+                   which are documented in vitest and nowhere in this repository. **(2)
+                   `tsconfig.test.json:10-12`:** declares `include: ["test/**/*"]` — the only
+                   written boundary in the repository — but the file cannot be compiled
+                   (`npx tsc -p tsconfig.test.json --noEmit` reports TS6306 and TS6310, recorded as
+                   `P64-D2-008`) and `grep -rn 'tsconfig.test'` across the tree finds nothing that
+                   runs it. **(3) `package.json:658,659,660,667`:** `test`, `test:watch`,
+                   `test:coverage` and `test:bbj` all delegate to `vitest` with no path argument and
+                   no glob, so they state no boundary either. Measured on both sides:
+                   `npx vitest list --filesOnly` resolves **50** files;
+                   `find . -path ./node_modules -prune -o \( -name '*.test.ts' -o -name '*.spec.ts'
+                   \) -print` finds **50**, all under `test/`. The counts agree, and the agreement is
+                   incidental: nothing in any of the three sources causes it. `out/` in particular
+                   is not in vitest's default exclude list and contains 3.5 MB of generated bundles
+                   in this checkout. Separately confirmed and not re-recorded: the 11 known-failing
+                   `linking.test.ts` tests belong to **`RU-61-06`** (Phase 61, per INVENTORY's
+                   routing table) and the 3 disabled `parser.test.ts` assertions belong to
+                   **DEBT-02**; `vitest.config.ts` declares no `exclude`, `bail`, `retry`,
+                   `testNamePattern` or `allowOnly`, so the configuration **surfaces** rather than
+                   conceals them — which is the only new thing this cell adds about them.
+failure_scenario:  Two consequences, both reachable today. First, the test surface is undefined in
+                   writing: a contributor adding `tools/foo.test.ts` or a stray `*.test.ts` anywhere
+                   outside `test/` silently extends the suite, and a reviewer checking "is this file
+                   in the suite?" cannot answer from any file in the repository — the true boundary
+                   lives in vitest's defaults, which no source here states and which change between
+                   vitest majors. The project is on `vitest@^4.1.10`, a caret range, so a minor
+                   upgrade that alters default discovery would change the suite with no diff in this
+                   repository. Second, and concretely: because `tsconfig.json:18-20` includes only
+                   `src/**/*.ts` and the one configuration that names `test/**/*` is the broken one,
+                   **the 50 test files are type-checked by nothing** — `npm run build` never sees
+                   them, and `npm run lint` sees them but enforces zero rules (`P64-D4-005`). A type
+                   error in a test helper therefore surfaces as a confusing vitest runtime failure,
+                   or not at all on a path the suite does not take.
+classification:    major — (1) at most one file: PASS if the fix is to declare `include`/`exclude`
+                   in `vitest.config.ts`; the complete fix also repairs `tsconfig.test.json` and
+                   wires a type-check script, which is `P64-D2-008`'s. (2) no public API / no
+                   grammar rule / no LSP contract change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: FAIL — the check that
+                   the declared globs match the intended suite is exactly the thing no test asserts,
+                   and adding one means a meta-test that does not exist. (5) reviewer can name the
+                   exact edit: PASS — add `include: ['test/**/*.test.ts']` and an explicit `exclude`
+                   naming `out/**` and `node_modules/**` to `vitest.config.ts`'s `test` block.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS.
+                   Only test (4) fails, which makes this `major`.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions vitest
+                   configuration, test discovery or type-checking the test suite; 0 of the 15 carry
+                   the `dependencies` label and 0 name CI, a workflow or build configuration.
+                   Cross-referenced rather than duplicated: `RU-61-06` owns the 11 failing
+                   `linking.test.ts` tests and DEBT-02 owns the 3 disabled `parser.test.ts`
+                   assertions; neither is re-recorded here.
+disposition:       major-refactor — pairs with `P64-D2-008`; declaring the globs is trivial, but
+                   doing it correctly means deciding what the suite is and giving `test/` a working
+                   type-check, which is a build-pipeline decision rather than an unattended edit.
+```
+
+```
+id:                P64-D8-003
+unit:              RU-64-02
+location:          .planning/reviews/INVENTORY.md:938
+dimension:         D8
+secondary:         none
+severity:          low
+evidence_tier:     trace
+evidence:          A claim in a document contradicted by the tree it describes, with both sides
+                   quoted. `INVENTORY.md:938` reads, verbatim: "| `node_modules/` | **excluded** |
+                   Installed npm dependency artifacts; gitignored and not committed (0 packages
+                   present in this checkout). Dependency *health* is assessed from the
+                   manifest/lockfile at `RU-64-02`, not by reading installed package trees. |" The
+                   parenthetical was true when INVENTORY was written and is not true now:
+                   `ls bbj-vscode/node_modules | wc -l` prints **385**, `ls -d
+                   bbj-vscode/node_modules/*/ | wc -l` prints the same **385**, and
+                   `du -sh bbj-vscode/node_modules` reports **313M**. The lockfile and the installed
+                   tree agree on 593 resolved packages. INVENTORY is immutable for the v4.0
+                   milestone (Phase 60 D-09), so this is recorded as drift against it rather than
+                   corrected in place, and `git status --porcelain .planning/reviews/INVENTORY.md`
+                   is empty.
+failure_scenario:  A later reader — Phase 68 assembling DOC-03, or anyone re-deriving this
+                   milestone's scope — reads line 938 and concludes that no installed package tree
+                   existed when Phase 64 ran, and therefore that this phase's SEC-08 answer must
+                   have been produced from the lockfile alone by hand. It was not: `npm audit` in
+                   this plan queried the installed 385-package tree directly, and its 19-vulnerability
+                   result is an enumeration of *that* tree. The stale parenthetical would lead a
+                   reader to under-rate the evidence behind criterion 3, or to re-run the audit
+                   expecting it to fail. **The exclusion itself still stands and this record says so
+                   explicitly, so that nothing here reads as licence to review `node_modules/`:**
+                   Phase 64 reviewed no installed package source, and dependency health was assessed
+                   from the manifest and lockfile exactly as that row directs. Only the stated
+                   reason is stale, not the decision.
+classification:    easy — (1) at most one file: PASS, `INVENTORY.md` alone. (2) no public API / no
+                   grammar rule / no LSP contract change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: PASS on the D8 reading
+                   `RU-64-03` established and applied consistently here — a change to document text
+                   alters no runtime behaviour, so there is nothing for a regression test to catch,
+                   and the claim itself is checkable by the one-line `ls | wc -l` recorded above.
+                   (5) reviewer can name the exact edit: PASS — replace the parenthetical with the
+                   live count, or drop it, leaving the exclusion and its rationale untouched.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS,
+                   `low`/D8. All six pass, so `easy` — and the D8 reading applied is stated rather
+                   than left implicit.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about this milestone's own
+                   planning documents, which are not a product surface; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a vendored
+                   binary.
+disposition:       easy-fix — a one-parenthetical correction. It is **not** applied by this phase:
+                   INVENTORY is immutable for v4.0 (Phase 60 D-09), so the record exists so that a
+                   post-milestone edit, or the next milestone's inventory, starts from the true
+                   state rather than from this one.
+```
+
+```
+id:                P64-D8-004
+unit:              RU-64-02
+location:          .planning/reviews/INVENTORY.md:964
+dimension:         D8
+secondary:         [D6]
+severity:          medium
+evidence_tier:     trace
+evidence:          An omission in a document that claims completeness, established by enumeration
+                   against the tree. `INVENTORY.md:964` reads, verbatim: "| `build.gradle.kts`,
+                   `settings.gradle.kts`, `gradle.properties`, `gradlew`, `gradlew.bat`,
+                   `gradle/wrapper/gradle-wrapper.properties` | reviewed | `RU-64-02` |", and
+                   `INVENTORY.md:739-755`'s `RU-64-02` file table names the same set for a stated
+                   "**Total** 9,208 (14 files)". Neither names
+                   `bbj-intellij/gradle/wrapper/gradle-wrapper.jar`. The file exists:
+                   `ls -la bbj-intellij/gradle/wrapper/` shows the directory holds exactly two
+                   entries, the 251-byte `gradle-wrapper.properties` INVENTORY does name and the
+                   **43,583-byte `gradle-wrapper.jar` it does not**, `sha256sum`
+                   `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`, committed in
+                   `e97c587`. It is not inert: `gradlew:117` sets
+                   `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar` and `:208-209` executes
+                   `org.gradle.wrapper.GradleWrapperMain` from it on every build. The omission is a
+                   fact rather than an inference: **`grep -c 'gradle-wrapper.jar'
+                   .planning/reviews/INVENTORY.md` prints `0`.** INVENTORY's Surface Accounting
+                   states that nothing is left unaccounted for, and this file is neither assigned
+                   nor excluded — it is absent. INVENTORY is immutable for the v4.0 milestone
+                   (Phase 60 D-09), so this is recorded as drift and
+                   `git status --porcelain .planning/reviews/INVENTORY.md` is empty.
+failure_scenario:  Without this record and D-20's adoption, the milestone's SEC-08 claim — "every
+                   npm and Gradle dependency with a known vulnerability, enumerated and triaged" —
+                   would rest on an unexamined 43,583-byte third-party executable that runs on every
+                   build and in every CI job that invokes Gradle, three of which hold
+                   `secrets.JETBRAINS_MARKETPLACE_TOKEN`. The gap is not theoretical: sweeping the
+                   file directly is what surfaced `P64-D1-006` (no `distributionSha256Sum`, no
+                   wrapper validation in any workflow) and `P64-D6-006` (the committed JAR's hash
+                   identifies Gradle 8.10-8.12.1 while its own properties file declares 8.13) —
+                   neither of which is visible from the two text files INVENTORY does assign.
+                   **The drift record and the adoption are two distinct facts and neither cancels
+                   the other:** INVENTORY still fails to name a file plainly in scope, *and*
+                   Phase 64 has adopted it into `RU-64-02` under **D-20** with its own
+                   file-exception row, swept by manifest and hash in this plan's Tasks 1 and 2.
+                   The adoption's arithmetic, stated at the point of the record: it moves **rows
+                   7 → 8, cells 56 → 64, files 28 → 29** — the one adoption in this phase that moves
+                   **both** gates, where D-19's `.github/dependabot.yml` moved only the file gate.
+                   The governing principle in one sentence, because it is what a later reader needs
+                   in order to judge the counts: **the gate follows the scope, not the other way
+                   round** — a count that excludes a real in-scope executable is simply a wrong
+                   count, so the gate moved to fit the surface rather than the surface being trimmed
+                   to fit the gate.
+classification:    easy — (1) at most one file: PASS, `INVENTORY.md` alone. (2) no public API / no
+                   grammar rule / no LSP contract change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: PASS on the same D8
+                   reading applied to `P64-D8-003` — document text carries no runtime behaviour, and
+                   the claim is checkable by the recorded `grep -c` and `ls -la`. (5) reviewer can
+                   name the exact edit: PASS — add `gradle/wrapper/gradle-wrapper.jar` to the
+                   `bbj-intellij/` breakdown row and to `RU-64-02`'s file table, with the
+                   file-exception row this phase authored (D1 and D6 live, D7 under `R-D7-CI`, the
+                   remaining five under `R-JAR-BINARY`) and the grid totals adjusted from 232 to 240
+                   cells. (6) severity is neither critical nor high AND primary dimension is not D1:
+                   PASS, `medium`/D8. All six pass, so `easy`; the D8 reading applied is stated
+                   rather than assumed.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about this milestone's own
+                   planning documents; 0 of the 15 carry the `dependencies` label and 0 name CI, a
+                   workflow, build configuration or a vendored binary. Distinct from `P64-D8-003`,
+                   which records a stale *reason* on a standing exclusion; this one records a file
+                   with **no disposition at all**, which is the more consequential of the two
+                   because Surface Accounting claims exhaustiveness.
+disposition:       easy-fix — a two-row addition plus a totals adjustment, **not applied by this
+                   phase** because INVENTORY is immutable for v4.0 (Phase 60 D-09). Recorded so the
+                   next milestone's inventory starts from the true surface, and so Phase 68's DOC-03
+                   can see why this phase reports 8 cells of coverage outside INVENTORY's 232-cell
+                   grid.
+```
+
+```
+id:                P64-D8-005
+unit:              RU-64-02
+location:          bbj-vscode/vitest.config.ts:25-26
+dimension:         D8
+secondary:         [D5]
+severity:          low
+evidence_tier:     trace
+evidence:          A comment claiming a guarantee the configuration around it cannot deliver, with
+                   both sides quoted. `vitest.config.ts:25-26` reads
+                   `// Fail build if coverage drops below thresholds` and
+                   `// This prevents regressions, not ensures completeness`, sitting inside the
+                   `thresholds` block at `:20-27` (`lines: 50`, `functions: 45`, `branches: 40`,
+                   `statements: 50`). A coverage threshold can only fail a run that collects
+                   coverage. Coverage is off by default — `:8` is `enabled: false, // Enable via
+                   --coverage flag, not by default` — and the only path that turns it on is
+                   `package.json:660`'s `test:coverage` (`vitest run --coverage`).
+                   `grep -rn 'test:coverage\|--coverage' .github/workflows/` returns **nothing**:
+                   `build.yml:34` and `pr-vsix.yml:51` run `npm run test`, `pr-validation.yml:30-31`
+                   runs only `npm ci` and `npm run build`, and no workflow anywhere invokes the
+                   coverage path. So no "build" exists that these thresholds could fail. The
+                   adjacent comments were checked and are accurate — `:18-19` describe the
+                   thresholds as conservative and cite researched values without claiming to use
+                   them, and `:21`'s "current coverage unknown" is still literally true, for the
+                   same reason.
+failure_scenario:  A contributor or reviewer reads `vitest.config.ts` to answer "does this project
+                   guard against coverage regressions?" and the file answers yes, in two consecutive
+                   comment lines, with concrete numbers beside them. The true answer is that no
+                   automated run has ever evaluated those numbers: a pull request that deletes half
+                   the test suite passes `build.yml` and `pr-vsix.yml` unchanged, because those
+                   workflows run `npm run test`, which does not collect coverage. The comment
+                   therefore creates a false sense of an enforced floor, which is worse than
+                   silence — a reviewer who has read it is *less* likely to check coverage manually
+                   than one who has not.
+classification:    easy — (1) at most one file: PASS if the fix is to correct the comment to say
+                   that the thresholds apply only to `npm run test:coverage`, which nothing
+                   currently automates. (2) no public API / no grammar rule / no LSP contract
+                   change: PASS. (3) adds or upgrades no dependency: PASS. (4) regression-testable
+                   with the existing harness: PASS on the D8 reading applied throughout this unit —
+                   a comment change carries no runtime behaviour. (5) reviewer can name the exact
+                   edit: PASS. (6) severity is neither critical nor high AND primary dimension is
+                   not D1: PASS, `low`/D8. All six pass, so `easy`. Note the alternative fix —
+                   adding a `npm run test:coverage` step to a workflow so the comment becomes true —
+                   would be `major`, because it touches `.github/workflows/`, is `RU-64-01`'s
+                   surface, and would fail CI immediately if current coverage is under the declared
+                   thresholds; that alternative is named here so Phase 67 does not choose it by
+                   accident.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions coverage,
+                   thresholds or vitest configuration; 0 of the 15 carry the `dependencies` label
+                   and 0 name CI, a workflow or build configuration.
+disposition:       easy-fix — a two-line comment correction in one file, with the tempting
+                   alternative fix explicitly ruled out of the easy path.
+```
+
 ### Not-reproducible dispositions
 
-_(pending — plan `64-03`)_
+Two candidate claims were raised during this unit's three tasks and **neither cleared its tier**, so
+both are written here with the tier they failed and why, rather than being asserted as findings or
+silently dropped (RVW-06's drop-vs-disposition rule).
+
+1. **"The IntelliJ plugin ZIP is assembled without a language server, and the build still reports
+   SUCCESS."** *Tier failed: `repro` (D2).* The **premise** cleared the bar and is recorded as
+   `P64-D2-009`: `build.gradle.kts:93-98` and `:115-119` copy `main.cjs` from
+   `../bbj-vscode/out/language/` with no `dependsOn`, no `onlyIf`, no `doFirst` existence check and
+   no failure path anywhere in the 135-line file, and `bbj-vscode/.gitignore:1` (`/out/`) means the
+   source is absent in a fresh clone. The **consequence** does not: asserting that Gradle's `Copy`
+   task treats an empty source set as `NO-SOURCE` and lets `buildPlugin` succeed with an incomplete
+   ZIP requires executing the build, and `./gradlew --offline -q dependencies` exits 1 in 723 ms on
+   the local JDK before any task is scheduled (`P64-D6-010`). It is documented Gradle behaviour, but
+   documented behaviour recalled rather than observed is exactly the "plausible-but-false mechanism"
+   this standard exists to keep out of the record, so the outcome is dispositioned here and the
+   finding is confined to the missing guard, which is verifiable by reading the file.
+2. **"A workspace-controlled glob pattern reaches the vulnerable `brace-expansion` copy inlined in
+   `out/extension.cjs`."** *Tier failed: `inherited` resolving to repro-equivalent (D6).* The
+   presence cleared the bar and is recorded as `P64-D6-008` — `package-lock.json:7581-7584` pins
+   `brace-expansion@5.0.7`, and `grep -c` finds 2 occurrences of it in the shipped bundle. The
+   **input path** does not: establishing which glob patterns the language client registers, and
+   whether any of them derives from workspace or user input, requires reading
+   `bbj-vscode/src/extension.ts` and the client wiring around it, which is `RU-62-01`'s surface and
+   belongs to a phase closed before this one. This unit therefore records reachable vulnerable code
+   in a shipped artefact and stops there. **This is also the reason that row is triaged
+   `file-issue` and not `accepted-with-reason`:** the argument that would justify acceptance is
+   precisely the one this unit cannot finish, and recording an acceptance on an unfinished argument
+   is the failure RVW-06 exists to prevent.
 
 ### Cross-unit referrals
 
-_(pending — plan `64-03`)_
+Three, each pointing at a unit that owns the file rather than being recorded twice here.
+
+1. **To `RU-64-01` — two workflow comments contradicted by this unit's manifest.**
+   `manual-release.yml:30` and `preview.yml:28` both read "vsce comes from bbj-vscode
+   devDependencies (npm ci) — `npx vsce` resolves the pinned version". `bbj-vscode/package.json:670`
+   declares `"@vscode/vsce": "^3.7.1"` under **`dependencies`**, not `devDependencies`. The manifest
+   side is `P64-D6-007` and is recorded above; the two stale comments are located in `.github/`,
+   which is `RU-64-01`'s surface and was swept by plan `64-02`, so they are referred rather than
+   given a second finding here.
+2. **To `RU-64-01` — the cross-IDE validation workflow runs no test.** `pr-validation.yml:30-31`
+   runs `npm ci` and `npm run build` and never `npm run test`, so the workflow whose stated job is
+   validating a pull request across both IDEs exercises none of the 50-file suite. Surfaced by this
+   unit's D5 sweep, located in `RU-64-01`'s file, referred rather than claimed. Note the adjacency:
+   `RU-64-01`'s `P64-D2-004` already records that one of the same workflow's five path filters can
+   never match.
+3. **To `RU-62-01` (closed, Phase 62) — the `brace-expansion` reachability question.** Establishing
+   whether a workspace-controlled glob reaches the vulnerable copy inlined in `out/extension.cjs`
+   requires reading `bbj-vscode/src/extension.ts`. That unit is closed and this phase does not
+   reopen it; the question is attached to `P64-D6-008` and carried into Phase 69's issue draft
+   rather than answered here or left unstated.
 
 ### Unit closure
 
-_(pending — plan `64-03`)_
+`RU-64-02` is closed against the four-part stopping rule.
+
+**(i) Every live cell it owns carries a verdict plus a written check line — 10 in all.** Seven live
+unit-row cells: D1 `fail`, D2 `fail`, D3 `fail`, D4 `fail`, D5 `fail`, D6 `fail`, D8 `fail`. One
+live cell on the `bbj-vscode/package-lock.json` file-exception row: D6 `fail`. **Two** live cells on
+D-20's adopted `bbj-intellij/gradle/wrapper/gradle-wrapper.jar` file-exception row: D1 `fail` and D6
+`fail`. Ten live cells, ten verdicts, ten written check lines, each naming the concrete checks
+applied and each phrased against that dimension's own REQUIREMENTS.md wording. No cell in this unit
+carries the placeholder any longer, and the phase-wide count is now **29 verdicts, 0 outstanding**.
+
+**(ii) All 15 files are named at least once inside this section** — INVENTORY's 14 plus D-20's
+adopted JAR — in a check line or in a finding's `location:`: `package.json` (D1-D8 cells and the
+`location:` of `P64-D2-007`, `P64-D3-003`, `P64-D6-007`, `P64-D6-012`, `P64-D4-006`),
+`package-lock.json` (its own file-exception D6 cell and the `location:` of `P64-D6-008`,
+`P64-D6-009`, `P64-D6-013`), `esbuild.mjs` (D1, D2, D3, D8 cells), `eslint.config.js` (D1, D2, D4,
+D8 cells and `P64-D4-005`'s `location:`), `langium-config.json` (D1, D2, D4 cells and part of
+`P64-D4-006`), `tsconfig.json` (D2, D3, D4, D5 cells), `tsconfig.test.json` (D2, D4, D5 cells and
+`P64-D2-008`'s `location:`), `vitest.config.ts` (D3, D5, D8 cells and the `location:` of
+`P64-D5-002` and `P64-D8-005`), `build.gradle.kts` (D1, D2, D4, D6, D8 cells and `P64-D2-009`'s
+`location:`), `settings.gradle.kts` (D1, D3, D4, D6 cells), `gradle.properties` (D1, D3, D4, D6
+cells), `gradlew` (D1, D2, D4 cells, the `gradlew:117` classpath evidence throughout), `gradlew.bat`
+(D2, D4 cells, the `:71,75` evidence and the CRLF comparison),
+`gradle/wrapper/gradle-wrapper.properties` (D1, D6 cells and `P64-D1-006`'s and `P64-D6-010`'s
+`location:`), and `gradle/wrapper/gradle-wrapper.jar` (its own two file-exception cells,
+`P64-D6-006`'s `location:`, and `P64-D8-004`'s evidence). Coverage is file-granular, not
+unit-granular.
+
+**(iii) Every candidate claim raised across the three tasks is either a finding record or a written
+`### Not-reproducible dispositions` entry.** Nineteen finding records were written here —
+`P64-D1-006`, `P64-D2-007`, `P64-D2-008`, `P64-D2-009`, `P64-D3-003`, `P64-D4-005`, `P64-D4-006`,
+`P64-D5-002`, `P64-D6-006` through `P64-D6-013`, `P64-D8-003`, `P64-D8-004`, `P64-D8-005` — and two
+claims that did not clear their tiers are dispositioned above with the tier they failed and why.
+Nothing was silently dropped. Several observations were deliberately **not** promoted and each says
+so where it is recorded: `runIde`'s `~/tinybbj` argument, `gradlew.bat`'s LF normalisation,
+`esbuild.mjs:1`'s inert `//@ts-check`, `bbj.denumber`'s missing `category`, the versioning concern
+spread across three Gradle files, and `package.json`'s 293-line `configuration` block, which is
+measured and judged rather than promoted because VS Code gives it nowhere else to live.
+
+**(iv) The phase's one inherited item was dispositioned in Task 2.** `P63-D6-002` carries a written
+disposition — **`merged`**, into `P64-D6-010` — in `### Inherited item triage` above, with the
+toolchain failure re-derived rather than restated and with the note that fixing it belongs to
+Phase 66/67 and would retroactively close the D-10 enumeration gap this unit's D6 cell records.
+
+**D7 is `n/a` under `R-D7-CI` across this unit's row and both of its file-exception rows, and no
+parity work of any kind was performed** — no behaviour was compared between VS Code and IntelliJ, no
+parity claim is made anywhere above, and no `P64-D7-*` ID exists in this phase (D-14). The absence
+is stated here so it reads as the scope decision it is rather than as an oversight.
 
 ## Phase 64 Close-Out
 
