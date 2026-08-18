@@ -76,11 +76,11 @@ No `R-D7-SHARED-LS` block applies here: D7 is live for all five Phase 62 units (
 - D1 Security — fail — Checked, per generator, every value interpolated into the returned HTML string and its origin: `getHtml(webview)` in all four files takes only `webview` as a parameter and interpolates exactly two values into the template — a freshly generated `nonce` and `webview.cspSource` (both self-generated/VS-Code-supplied, never editor-selection/document-text/config.bbx/workspace-path data); no form field, catalog value, or message payload reaches the HTML string itself (confirmed by reading all four `getHtml()` bodies in full — msgbox-composer-webview.ts:122-364, addwindow-composer-webview.ts:163-399, addchildwindow-composer-webview.ts:169-422, setopts-composer-webview.ts:133-312 — form values only reach the DOM later via `postMessage` + `.value`/`.textContent` assignment, one `innerHTML` exception at setopts-composer-webview.ts:240 using only the static `BYTE_GROUPS` catalog constant from setopts-catalog.ts:35, not user/document input). Checked the `Content-Security-Policy` each file emits via its `<meta http-equiv="Content-Security-Policy" content="${csp}">` tag (`default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'`, byte-identical across all four — msgbox-composer-webview.ts:124-128, addwindow-composer-webview.ts:165-169, addchildwindow-composer-webview.ts:171-175, setopts-composer-webview.ts:135-139) — restrictive (`default-src 'none'` blocks img/connect/frame by default) but `style-src` grants `'unsafe-inline'`. Checked nonce freshness and application: `getNonce()` is called once per `getHtml()` invocation (once per panel open, not reused) and applied to the panel's single `<script nonce="${nonce}">` tag, but is built from `Math.random()` (msgbox-composer-webview.ts:366-373, byte-identical in the other three at addwindow-composer-webview.ts:401-408, addchildwindow-composer-webview.ts:424-431, setopts-composer-webview.ts:314-321) — not a CSP-appropriate CSPRNG. Checked panel options: all four set `{ enableScripts: true, retainContextWhenHidden: true }` with no `localResourceRoots` override (default applies; none of the four loads a local resource via `asWebviewUri`, so this is inert). Checked every `onDidReceiveMessage` handler (msgbox-composer-webview.ts:82, addwindow-composer-webview.ts:108, addchildwindow-composer-webview.ts:113, setopts-composer-webview.ts:70): none performs runtime shape/type/range validation on `msg.payload` before passing it to `build()` and, on the insert/apply path, into a `vscode.WorkspaceEdit` applied to the user's document. Checked whether `setopts-composer-webview.ts`'s hex round-trip can be driven to emit invalid output: `parseVector()` (setopts-catalog.ts:133-140) rejects non-hex and over-length input outright (regex-gated, returns `undefined`) and `setRawTail()` (setopts-catalog.ts:213-220) no-ops on a rejected parse, so a malformed `rawTail` cannot corrupt the vector. 2 findings recorded: P62-D1-001, P62-D1-002.
 - D2 Correctness & error handling — fail — Checked the three D-11-mandated concurrency checks by name. (1) Message-after-disposal: `panel.dispose()` synchronously tears down the webview in all four files (msgbox-composer-webview.ts:112,116; addwindow-composer-webview.ts:131,135; addchildwindow-composer-webview.ts:136,140; setopts-composer-webview.ts:101,105), and every `postMessage` call in these files originates from inside the same `onDidReceiveMessage` callback in direct response to a webview-originated message, which cannot arrive once the webview is torn down — no reproducible after-disposal message-processing defect found. (2) Second instance opened while the first is live: no module-level registry/singleton exists in any of the four files — each `openXxxComposerPanel()` call creates an independent `vscode.window.createWebviewPanel(...)` with its own closure over `insertUri`/`insertPosition`/`target`, so two simultaneously open panels of the same composer type share no mutable state and cannot race on the same disposable; confirmed safe by tracing all four `open*Panel()` functions in full. (3) `onDidDispose` release completeness: **none of the four files registers `panel.onDidDispose(...)` at all** (confirmed: zero matches for `onDidDispose` across all four files) — see P62-D2-001 below. Checked absent/empty/malformed initial state: all four provide safe defaults (`arg?.initial ?? {...}` in msgbox-composer-webview.ts:64-67; `{...DEFAULT_INITIAL, ...(arg?.initial ?? {})}` in addwindow-composer-webview.ts:89 and addchildwindow-composer-webview.ts:94; `initialSelection(original)` returns an all-empty `PanelSelection` when `original` is `undefined` in setopts-composer-webview.ts:123-131) — no defect. Checked `await vscode.workspace.applyEdit(edit)` in every insert/apply handler for an unhandled-rejection risk — `applyEdit` resolves to a boolean and does not reject under the code paths reachable here (no attacker-influenced `Uri.parse` input — `target`/`arg` are server-computed, not webview-payload-derived). 1 finding recorded: P62-D2-001.
 - D3 Performance & resource use — pass — Checked whether the full HTML string is rebuilt on every state change or only at panel creation: `panel.webview.html = getHtml(panel.webview)` is assigned exactly once, immediately after `createWebviewPanel`, in all four files (msgbox-composer-webview.ts:76, addwindow-composer-webview.ts:98, addchildwindow-composer-webview.ts:103, setopts-composer-webview.ts:66) — the `'change'` handler only sends a small `preview` payload via `postMessage`, never re-renders `.html`. Checked whether any message handler recomputes an unbounded structure per keystroke: the `'change'` handlers call the shared preview functions (`msgboxPreview`/`addwindowPreview`/`addchildwindowPreview`/`setoptsPreview`) over option catalogs of at most ~70 static entries with no nested loop over document or workspace content — no quadratic or unbounded cost found. Checked the cost of the largest generated markup body (`addchildwindow-composer-webview.ts` at 431 lines, including its static `<style>` block) relative to how often it is regenerated — once per panel open, never per keystroke — negligible. Checked whether panels/listeners/disposables accumulate across repeated open/close cycles: they do, but the mechanism (unreleased `context.subscriptions` entries) is the same root cause as P62-D2-001, recorded there as a D2-primary/D3-secondary finding rather than duplicated here — no separate D3-primary finding. 0 findings recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Ran a programmatic structural diff across the four generators, per D-12 (mechanical, not eyeball): `git diff --no-index --numstat` pairwise between the four `*-composer-webview.ts` files, plus a same-body md5 check on the two smallest fully-shared functions. `getNonce()` is **byte-identical** across all four files (`sed -n '/^function getNonce/,/^}/p' <file> | md5sum` → `2703b8e54057ff248b28ad9ca453c5e7` in every one of the four), and the 5-line CSP-array construction (`const csp = [...]`) is likewise **byte-identical** across all four (md5 `308a7d4ffd99b94d598341ca988dd267` in every file) — neither is extracted into a shared helper module; both are copy-pasted verbatim four times (32 and 20 duplicated lines respectively). Pairwise `git diff --no-index --numstat`: addwindow-composer-webview.ts↔msgbox-composer-webview.ts `191 226` (of 408/373 lines — roughly half the shorter file is unchanged relative to the other); addchildwindow-composer-webview.ts↔msgbox-composer-webview.ts `189 247` (of 431/373 lines); addchildwindow-composer-webview.ts↔addwindow-composer-webview.ts `84 107` (of 431/408 lines — only 84 of addchildwindow's 431 lines need removing to reach addwindow's shape, ~80% structural overlap between those two, reflecting their shared flags/event-mask/schematic-preview design). Applying the D-15-confirmed asymmetric baseline: `setopts-composer-webview.ts` has **no `-composer.ts` sibling** — its codegen logic lives in `setopts-catalog.ts`, which belongs to `RU-62-03`, not this unit — so its own `-composer.ts`-comparison baseline (relevant to `RU-62-03`'s own D4 cell) is 3 files, not 4; against the other three `*-webview.ts` files here it diffs more (setopts↔msgbox `237 185`, setopts↔addwindow `254 167`, setopts↔addchildwindow `276 166`, of 321 lines), consistent with its structurally different per-byte-catalog UI. Beyond duplication: checked whether any generator's HTML-emitting function has crossed into god-function territory (no — `getHtml()` is a single large but flat template-literal return in each file, not branching logic); whether dead branches or unreferenced markup exist (none found); and whether the four files agree on a single panel-creation/disposal convention (three of four agree; all four omit `onDidDispose`, see P62-D2-001). 1 finding recorded: P62-D4-001.
+- D5 Test coverage gaps — fail — Established by enumeration, not assumption: `ls bbj-vscode/test/ | grep -i compos` → `addchildwindow-composer.test.ts`, `addwindow-composer.test.ts`, `composer-commands.test.ts`, `msgbox-composer.test.ts`; `ls bbj-vscode/test/ | grep -i setopt` → `setopts-catalog.test.ts`; `grep -rl 'webview\|Webview' bbj-vscode/test/` and `grep -rl 'createWebviewPanel\|composer-webview' bbj-vscode/test/` both return **nothing**. So all five existing composer test files exercise only `RU-62-03`'s pure logic layer (`msgbox-composer.ts`, `addwindow-composer.ts`, `addchildwindow-composer.ts`, `setopts-catalog.ts`) and the LS-side `composer-commands.ts` handlers — **none of the four `*-composer-webview.ts` files is imported or exercised by any currently-passing test.** Concretely untested: `getHtml()`'s CSP/nonce construction in all four files, every `onDidReceiveMessage` handler's message-to-edit path, and the disposal/subscription-lifecycle gap (P62-D2-001) — no test would have caught it or would catch a regression of it. 1 finding recorded: P62-D5-001.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — pass — The parity question here is equivalence of the generated BBj code, not of the UI toolkit (VS Code webview vs. IntelliJ native Swing). Checked, for msgbox/addwindow/addchildwindow, whether a divergent codegen path exists to compare: it does not — `bbj-vscode/src/language/composer-commands.ts:69,129,167` registers `bbj/composer/{msgbox,addwindow,addchildwindow}/preview` as thin wrappers directly around the same `msgboxPreview`/`addwindowPreview`/`addchildwindowPreview` functions these four VS Code webview files call locally (msgbox-composer-webview.ts:80, addwindow-composer-webview.ts:102, addchildwindow-composer-webview.ts:107); `MsgboxComposerDialog.java:209` (`server.msgboxPreview(new MsgboxPreviewParams(input))`), `AddWindowComposerDialog.java:238`, and `AddChildWindowComposerDialog.java:247` call those exact same LS handlers over LSP4IJ — confirmed by `ComposerModels.java:1-14`'s own doc comment ("The BBj-side TypeScript is the single source of truth for the flag/hex arithmetic (#433); these classes only carry the JSON across LSP4IJ") and by its DTOs mirroring the TS param/result shapes field-for-field (e.g. `MsgboxPreviewInput` vs. VS Code's `Selection`). Catalogs (`bbj/composer/catalogs`, composer-commands.ts:53-57) are likewise LS-served to both IDEs. So for three of the four generators there is no second, divergent BBj-codegen implementation to compare — a shared single source of truth, not a coincidental match. Checked SETOPTS separately: `grep -c setopts bbj-vscode/src/language/composer-commands.ts` → `0` (no `bbj/composer/setopts/*` LS command exists), and no `SetoptsComposerDialog.java` exists under `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/` (confirmed via `ls`), and `ComposerLauncher.java` (grepped for `Setopts`/`SetOpts`) has zero references — SETOPTS has no IntelliJ counterpart at all. This is a genuine, IntelliJ-side parity divergence, not a VS Code-side defect, so per D-05 it is **not** recorded as a `P62-D7-*` finding here; see the Cross-unit referrals subsection below, addressed to `RU-63-04`. 0 findings recorded.
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — pass — Checked every file-level and function-level comment in all four generators against the code just read, including every claim about escaping/validation/single-source-of-truth: msgbox-composer-webview.ts:1-13's "no flag math / button labels are duplicated here" and "Single source of truth: ... which the IntelliJ client reaches over the LS (#433)" — accurate, confirmed by the D7 trace above; addwindow-composer-webview.ts:1-14 and addchildwindow-composer-webview.ts:1-15 carry the identical claim, equally accurate; setopts-composer-webview.ts:1-14's claim that the round-trip is "lossless (unknown bits, unmodeled bytes and the original digit count all survive)" — accurate, confirmed by `SetOptsVector.digitCount` being preserved through `parseVector`/`encodeVector`/`setRawTail` (setopts-catalog.ts:120-131,145-146,213-220). Checked `addchildwindow-composer-webview.ts:151-154`'s comment on apply-order safety for `flagsRange`/`eventMaskRange` edits — the comment itself already notes "VS Code applies WorkspaceEdit entries per range, so distinct positions are safe in either order," which the code's actual apply order (event mask first, then flags) does not contradict. Checked `CLAUDE.md`'s §Repository Structure and §Architecture against these four files: `CLAUDE.md` makes no positive claim about the composer webview subsystems at all (confirmed: no mention of `msgbox-composer-webview.ts`/`addwindow-composer-webview.ts`/`addchildwindow-composer-webview.ts`/`setopts-composer-webview.ts` anywhere in `CLAUDE.md`) — its silence is noted as a candidate D8 observation per this plan's own instruction, not promoted to a finding, since no positive claim it does make is contradicted by these four files. 0 findings recorded.
 
 ### SEC-01/SEC-02 Surface Handoff
 
@@ -222,6 +222,93 @@ classification:    major
 effort:            4
 dedup:             none — neither #475 nor #385 concerns webview panel lifecycle or subscription
                     management; no other frozen open issue names composer resource disposal.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D4-001
+unit:              RU-62-04
+location:          bbj-vscode/src/msgbox-composer-webview.ts:366-373 (getNonce), msgbox-composer-webview.ts:124-128 (CSP array)
+secondary:         []
+dimension:         D4
+severity:          medium
+evidence_tier:     trace
+evidence:          Mechanical structural diff (D-12): getNonce() is byte-identical across all
+                    four *-composer-webview.ts files (md5 2703b8e54057ff248b28ad9ca453c5e7 at
+                    msgbox-composer-webview.ts:366-373, addwindow-composer-webview.ts:401-408,
+                    addchildwindow-composer-webview.ts:424-431, setopts-composer-webview.ts:
+                    314-321 — 4x8 = 32 duplicated lines) and the 5-line CSP-array construction is
+                    likewise byte-identical (md5 308a7d4ffd99b94d598341ca988dd267 at
+                    msgbox-composer-webview.ts:124-128 and the equivalent block in the other
+                    three — 4x5 = 20 duplicated lines); neither is factored into a shared helper.
+                    `git diff --no-index --numstat` pairwise: addwindow<->msgbox "191 226" (of
+                    408/373 lines), addchildwindow<->msgbox "189 247" (of 431/373), addchildwindow
+                    <->addwindow "84 107" (of 431/408 — ~80% structural overlap, the closest
+                    pair, reflecting their shared flags/event-mask/schematic design).
+                    Asymmetric-baseline qualifier (D-15): setopts-composer-webview.ts has no
+                    `-composer.ts` sibling of its own — its codegen lives in `setopts-catalog.ts`,
+                    which belongs to `RU-62-03`, not this unit — so setopts diffs more heavily
+                    against the other three *-webview.ts files here (setopts<->msgbox "237 185",
+                    setopts<->addwindow "254 167", setopts<->addchildwindow "276 166", of 321
+                    lines), consistent with its structurally different per-byte-catalog UI; this
+                    is stated as a qualifier on this cell, not normalized away and not a 41st row.
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — the
+                    duplication is a maintainability cost: a future CSP/nonce hardening fix (e.g.
+                    P62-D1-002's remediation) must currently be applied identically in 4 places
+                    with no shared source of truth, and the ~80% overlap between addwindow and
+                    addchildwindow means most future flag/event-mask UI changes need a matching
+                    edit in both files by hand, with drift risk between them.
+classification:    major
+                    (1) touches 1 file: FAIL — extracting a shared `webview-security.ts` helper
+                    for getNonce()/CSP-array construction necessarily touches all 4 call sites —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass — (5) reviewer can name the exact
+                    edit: pass — (6) severity `medium`, dimension D4 (not D1): pass — test (1)
+                    alone fails, so classification is `major` per D-13.
+effort:            4
+dedup:             none — neither #475 nor #385 concerns code duplication between the four
+                    generator files. RU-62-03's own D4 cell (logic/UI-layer duplication, a
+                    separate 3x`-composer.ts`x4x`-ui.ts` comparison) cross-references this finding
+                    rather than restating it (D-12) — see plan 62-03.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D5-001
+unit:              RU-62-04
+location:          bbj-vscode/test/ (absence) — the 4 files this finding covers are bbj-vscode/src/msgbox-composer-webview.ts, addwindow-composer-webview.ts, addchildwindow-composer-webview.ts, setopts-composer-webview.ts
+secondary:         []
+dimension:         D5
+severity:          low
+evidence_tier:     inherited
+evidence:          Established by enumeration: `ls bbj-vscode/test/ | grep -i compos` ->
+                    addchildwindow-composer.test.ts, addwindow-composer.test.ts,
+                    composer-commands.test.ts, msgbox-composer.test.ts; `ls bbj-vscode/test/ |
+                    grep -i setopt` -> setopts-catalog.test.ts; `grep -rl 'webview\|Webview'
+                    bbj-vscode/test/` and `grep -rl 'createWebviewPanel\|composer-webview'
+                    bbj-vscode/test/` both return nothing. All five existing composer test files
+                    exercise only RU-62-03's pure logic layer and the LS-side composer-commands.ts
+                    handlers — none imports or invokes any of the four *-composer-webview.ts
+                    files. Concretely untested: getHtml()'s CSP/nonce construction (all 4 files),
+                    every onDidReceiveMessage handler's message-to-WorkspaceEdit path (all 4
+                    files), and the P62-D2-001 disposal/subscription-lifecycle gap — no test would
+                    catch a regression of any of these.
+failure_scenario:  A regression in any of P62-D1-001/002's redaction (message validation, nonce
+                    strength) or P62-D2-001's dispose lifecycle would ship silently — `npm test`
+                    is green today with zero webview-layer assertions, so FIX-03's "npm test
+                    clean" gate cannot detect a future regression in this surface.
+classification:    major
+                    (1) touches 1 file: FAIL — comprehensive resolution requires a new test file
+                    per generator (or per shared concern), touching more than 1 file —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with existing harness: n/a (this finding *is* the
+                    missing-test gap) — (5) reviewer can name the exact edit: pass (author
+                    `*-composer-webview.test.ts` per generator using a minimal vscode-API mock) —
+                    (6) severity `low`, dimension D5 (not D1): pass — test (1) alone fails, so
+                    classification is `major` per D-13.
+effort:            8
+dedup:             none — neither #475 nor #385 concerns test coverage for the webview generator
+                    files; no other frozen open issue names composer test gaps.
 disposition:       major-refactor
 ```
 
