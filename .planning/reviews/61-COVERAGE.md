@@ -2290,9 +2290,9 @@ disposition:       easy-fix
 **Owning plan:** 61-06.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked `bbj-ws-manager.ts`'s `initializationOptions` handling (constructor's `onInitialize` callback, `bbj-ws-manager.ts:36-99`): `bbjdir`, `classpath`, `interopHost`/`interopPort` and `configPath` are each read with only an `||`-style falsy default, no type/shape/range validation — the same falsy-check-only pattern `RU-61-06` found inside `setConnectionConfig` itself (`P61-D1-001`); confirmed neither this unit's `initializationOptions` call site (`bbj-ws-manager.ts:53-55`) nor the `didChangeConfiguration` call site (`main.ts:151-152`) adds validation `RU-61-06` could not see — promoted as `P61-D1-006`, resolving that referral. Checked whether `configPath` can direct the server to read outside the workspace root: it can — `bbj-ws-manager.ts:118-126` passes the raw, unvalidated `configPath` setting straight to `fileSystemProvider.readFile()` with no containment check, an arbitrary local file read driven by a workspace-scoped setting — `P61-D1-007`. Checked whether a configured PREFIX can be escaped via a `USE`-statement path: yes — `bbj-document-builder.ts`'s `addImportedBBjDocuments` (`bbj-document-builder.ts:303-317`) resolves `use ::path::Class`'s untrusted `path` text against each configured PREFIX via Node's `path.resolve()`, which honors both `..`-traversal and absolute-path override, then reads and indexes whatever file is found there — confirmed by direct reproduction (`path.resolve('/home/user/project/lib', '../../../../etc/passwd')` → `/etc/passwd`) — promoted as `P61-D1-008`, resolving `RU-61-02`'s referral (the actual document-loading logic lives in `bbj-document-builder.ts`, not `bbj-ws-manager.ts` as that referral's file guess suggested, but is still this unit's own file). Checked `isExternalDocument()` (`bbj-ws-manager.ts:231-241`, whose own `// TODO check that document is part of the workspace folders` already flags this): its `documentUri.fsPath.startsWith(URI.file(prefix).fsPath)` is a bare string-prefix test with no path-segment boundary — confirmed by reproduction that a document under a sibling directory merely sharing a PREFIX's text as a prefix (PREFIX `/home/user/lib` against a document under `/home/user/library-secrets/`) is misclassified as an external, unvalidated document — `P61-D1-009`. Checked `composer-commands.ts` for command/path/argument construction from user-controlled values (per #385's area): none of its 20 handlers touch the filesystem or spawn anything — every handler is a pure, already-unit-tested (`test/composer-commands.test.ts`) numeric/string transform over LSP-supplied JSON, no injection sink. Checked `logger.ts`'s default `WARN` level for classpath/token/path/document-content exposure: `debug`/`info` calls carrying `configPath`/`bbjdir`/`classpath` values are gated above the default level; the one `WARN`-level message carrying a path (`bbj-ws-manager.ts:125`, the `configPath` load-failure warning) reflects only the user's own configured setting back to their own output channel, not peer- or attacker-supplied content — no finding. Checked whether `bbj-document-builder.ts` admits documents from outside the workspace/PREFIX set on its own beyond the traversal above: `shouldValidate`/`buildDocuments` only classify and skip-validate already-loaded documents via `isExternalDocument`, they do not independently open files. 4 findings recorded: `P61-D1-006`, `P61-D1-007`, `P61-D1-008`, `P61-D1-009`.
+- D2 Correctness & error handling — fail — **Coinciding roots** (EDGE-PROBE 1, #33): `initializeWorkspace()` (`bbj-ws-manager.ts:106-140`) reads `project.properties`/`config.bbx` and derives `this.settings.prefixes`/`classpath` from `folders[0]` ONLY — every additional workspace folder in a multi-root workspace is silently ignored for settings purposes (its files are still indexed by the inherited `DefaultWorkspaceManager.initializeWorkspace()` walk, but its own PREFIX/classpath never contributes) — `P61-D2-015`, a concrete root cause behind #33's report. **Empty inputs** (EDGE-PROBE 2): no workspace folder (`folders.length === 0` short-circuits to safe defaults, `this.settings` still gets set via `parseSettings("", undefined)`, no crash downstream since `addImportedBBjDocuments` treats an empty/undefined `prefixes` as a no-op); empty `initializationOptions` (falsy `params.initializationOptions` skips the whole `else if` branch including `javaInterop.setConnectionConfig`, so interop host/port simply keep `JavaInteropService`'s own constructor defaults, no crash); a nonexistent `bbjdir` (caught, `logger.warn`, no crash); a workspace with zero `.bbj` files (no divergence, nothing to import). No finding — all four handled without crash or silent corruption. **Batch order** (EDGE-PROBE 3): `addImportedBBjDocuments`/`revalidateUseFilePathDiagnostics`/`runBbjcplForDocuments` all iterate the `documents`/`bbjImports` arrays and `Set` in their given/insertion order with no sort or comparator anywhere in this unit — deterministic, no divergence found for equally-ranked documents. **Swallowed exceptions / half-configured state**: `initializeWorkspace()`'s outer `try` (`bbj-ws-manager.ts:107-182`) wraps the ENTIRE settings/javadoc/classpath/implicit-import setup in one `catch (e) { // all fine; console.error(e); }` (`bbj-ws-manager.ts:179-182`) — any exception at any step (a malformed properties file, a synchronous throw inside `parseSettings`, an unexpected `loadClasspath` rejection) is swallowed and initialization proceeds via `super.initializeWorkspace()` as if nothing failed, leaving `this.settings`/the classpath in whatever partial state existed at the throw point, with no signal beyond a raw `console.error` (not routed through `logger`, not surfaced to the client) — `P61-D2-016` (the comment itself is examined under D8, `P61-D8-006`). **Unhandled rejection**: `bbj-document-builder.ts`'s `debouncedCompile` (`bbj-document-builder.ts:155-190`) schedules an `async` `setTimeout` callback with no `try`/`catch` and no attached rejection handler — if `cplService.compile(key)` or `notifyDocumentPhase` rejects, that becomes an unhandled promise rejection at the process level — `P61-D2-017`. **Live settings never re-applied** (#486): `settings.prefixes`/`classpath` are computed exactly once, inside `initializeWorkspace()`; `main.ts`'s `onDidChangeConfiguration` handler calls `wsManager.setConfigPath(...)` (which only stores the new path for a FUTURE full re-init) but never re-reads `config.bbx`/`project.properties` or recomputes `this.settings` — a `config.bbx` PREFIX change never takes effect without a full server restart — `P61-D2-018`, matching #486. **Concurrent reconfiguration**: whether `bbj/refreshJavaClasses` and `didChangeConfiguration` (both `main.ts`) can race on `clearCache()`/`loadClasspath()` if invoked concurrently — see Not-reproducible dispositions; this unit's two call sites add no guard of their own, but confirming a divergent outcome needs `java-interop.ts`-internal state tracing outside this unit's files. 4 findings recorded: `P61-D2-015`, `P61-D2-016`, `P61-D2-017`, `P61-D2-018`.
+- D3 Performance & resource use — fail — Checked the cost profile of `WorkspaceManager.initializeWorkspace()` (`bbj-ws-manager.ts:106-184`), the path behind the routed `hookTimeout` flakiness: it runs 2 sequential filesystem reads (`project.properties`, `config.bbx`), a Javadoc-folder initialization, then TWO sequential `await`ed network round-trips to java-interop (`loadClasspath`, `loadImplicitImports`, each capable of costing up to `RU-61-06`'s own 10s connect timeout per `P61-D3-002`/`java-interop.ts:127-131`) — none of these independent steps run in parallel despite several having no data dependency on each other, before `super.initializeWorkspace()`'s own workspace scan even starts; recorded as the primary evidence for `P61-D5-013` (secondary D3, filed in Task 2) rather than duplicated here. Checked whether the workspace scan itself is bounded: `shouldIncludeEntry` (`bbj-ws-manager.ts:187-200`) only narrows the FILE-extension allowlist and defers to `super.shouldIncludeEntry` for directories, which already excludes dot-directories, `node_modules` and `out` (confirmed by reading Langium's own `DefaultWorkspaceManager.shouldIncludeEntry`) — bounded, no finding. Checked whether `bbj-document-builder.ts` rebuilds documents that did not change: the rebuild-skip decision is delegated entirely to `indexManager.isAffected()` (`RU-61-02`'s own file, already assessed as a partial mitigation there); this unit's `buildDocuments`/`shouldRelink` overrides add no redundant full-rebuild trigger of their own. Checked `bbj-document-builder.ts`'s `revalidateUseFilePathDiagnostics` (`bbj-document-builder.ts:359-411`): for every unresolved USE-file diagnostic in every document in the CURRENT build batch (which runs on every incremental rebuild, not just once at startup), it performs `indexManager.allElements(BbjClass.$type).some(...)` — a full linear scan of every `BbjClass` in the ENTIRE workspace index, uncached, repeated per diagnostic — `P61-D3-005`. Checked lifecycle accumulation: `cplDebounceTimers` (`bbj-document-builder.ts:25`) self-deletes its own entry inside the timer callback regardless of outcome — bounded, no leak; this unit's other lifecycle flags (`bbjcplAvailable`, `ambiguitiesReported`) are simple booleans, not accumulating collections. 1 finding recorded: `P61-D3-005`.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
@@ -2300,13 +2300,394 @@ disposition:       easy-fix
 - D8 Comment & doc accuracy — pending
 
 ### Findings
-_(none recorded)_
+
+```
+id:                P61-D1-006
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:53-55
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: bbj-ws-manager.ts:53-55 reads
+                    `params.initializationOptions.interopHost || 'localhost'` and
+                    `params.initializationOptions.interopPort || 5008` — a falsy check only,
+                    identical in shape to main.ts:151-152's
+                    `config.interop?.host || 'localhost'` / `config.interop?.port || 5008` —
+                    before handing both to javaInterop.setConnectionConfig(). Neither call site
+                    adds type/range validation beyond what RU-61-06 already found missing inside
+                    setConnectionConfig itself (P61-D1-001); a non-integer, negative,
+                    out-of-range, or string-typed interopPort passes through both call sites
+                    unmodified.
+failure_scenario:  A workspace-scoped .vscode/settings.json committed inside a cloned repository
+                    sets bbj.interop.host/bbj.interop.port to an attacker-controlled
+                    host/port, reachable via either the initial handshake (bbj-ws-manager.ts) or
+                    a later settings change (main.ts) — same failure shape as P61-D1-001, now
+                    confirmed at both of this unit's own call sites.
+classification:    major
+                    (1) touches 1 file (validation can be centralized inside
+                    setConnectionConfig, java-interop.ts, without touching either call site):
+                    pass — (2) no public API/grammar/LSP change: pass — (3) no new dependency:
+                    pass — (4) regression-testable with vitest: pass — (5) reviewer can name the
+                    exact edit (add type/range validation in setConnectionConfig, or duplicate it
+                    at both call sites): pass — (6) severity `medium` but primary dimension is
+                    D1: FAIL — major regardless of the other five tests (D-13's safety gate).
+effort:            2
+dedup:             none — checked against #33 (multi-root breakage, unrelated mechanism), #231
+                    (closest area match — requests configurable classpath/CLI args for RUN
+                    commands, not interop client host/port), #385, #485 and #486 — none address
+                    interop-destination validation.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D1-007
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:118-126
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: when `this.configPath` is set (from
+                    initializationOptions.configPath or the didChangeConfiguration path), lines
+                    120-121 do `const configUri = safeUri(this.configPath); const configContents
+                    = await this.fileSystemProvider.readFile(configUri);` with no check that the
+                    resolved path stays inside the workspace root — safeUri (bbj-ws-manager.ts:
+                    266-268) accepts any `file://` URI or bare path unmodified. The read result
+                    is only scanned for a line starting with "PREFIX"; the rest of the file's
+                    content is discarded, but the read itself is unconditional and unbounded.
+failure_scenario:  A workspace-scoped .vscode/settings.json committed inside a cloned repository
+                    sets bbj.configPath to an absolute path outside the workspace (e.g. a file
+                    under the user's home directory). Opening that workspace causes the language
+                    server to read that file's full contents into memory on every
+                    initializeWorkspace() call, with no confirmation step and no containment
+                    check visible in this unit's files.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (resolve configPath relative to the
+                    workspace root and reject paths that escape it): pass — (6) severity
+                    `medium` but primary dimension is D1: FAIL — major regardless (D-13).
+effort:            2
+dedup:             #485 partial-overlap — #485 requests honoring a custom-named/located config
+                    file "everywhere"; that capability is already implemented here via
+                    configPath. This finding is about that implementation's missing
+                    path-containment check, not about adding the capability #485 requests.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D1-008
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-document-builder.ts:303-317
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: addImportedBBjDocuments collects `importPath` from each
+                    USE statement's untrusted bbjFilePath text (matched against
+                    bbj-scope.ts's `BBjPathPattern = /^::(.*)::$/`, which places no restriction
+                    on the captured group) and, for each configured prefixPath, computes
+                    `const prefixedPath = URI.file(resolve(prefixPath, importPath));`
+                    (bbj-document-builder.ts:306) then `fsProvider.readFile(prefixedPath)`
+                    (bbj-document-builder.ts:308) with no check that the resolved path stays
+                    under prefixPath. Reproduced directly (Node path.resolve, not a theoretical
+                    claim): `resolve('/home/user/project/lib', '../../../../etc/passwd')` =>
+                    '/etc/passwd', and `resolve('/home/user/project/lib', '/etc/passwd')` =>
+                    '/etc/passwd' — both `..`-traversal and an absolute importPath escape the
+                    PREFIX root entirely via Node's own path.resolve() semantics. Any file found
+                    at the resolved path is read, added to langiumDocuments, and indexed
+                    (bbj-document-builder.ts:326-330) — not merely probed.
+failure_scenario:  A malicious or careless .bbj source file inside a PREFIX-resolved directory
+                    contains `use ::../../../../etc/passwd::SomeClass` (or an absolute-path
+                    variant). The next buildDocuments() cycle resolves that path outside the
+                    configured PREFIX root, reads whatever file exists there, and adds it to the
+                    workspace index as a parsed BBj document — an arbitrary local file read
+                    triggered purely by source-file content, independent of any workspace
+                    setting.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (after resolve(), verify the result
+                    stays under prefixPath before calling readFile, e.g. via a
+                    relative()-based containment check): pass — (6) severity `medium` but
+                    primary dimension is D1: FAIL — major regardless (D-13).
+effort:            4
+dedup:             none — checked against #33, #231, #385, #485 and #486 — none concern
+                    USE-statement path traversal into PREFIX-resolved directories.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D1-009
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:231-241
+dimension:         D1
+secondary:         [D2]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: isExternalDocument() (bbj-ws-manager.ts:231-241, whose
+                    own in-code comment reads `// TODO check that document is part of the
+                    workspace folders`) tests
+                    `documentUri.fsPath.startsWith(URI.file(prefix).fsPath)` — a bare string
+                    prefix comparison with no path-segment boundary. Reproduced directly (Node):
+                    with prefix `/home/user/lib`, `'/home/user/library-secrets/File.bbj'
+                    .startsWith('/home/user/lib')` evaluates `true`, even though
+                    `library-secrets` is a sibling directory, not a descendant of the PREFIX
+                    directory.
+failure_scenario:  A workspace happens to contain a directory whose name shares a PREFIX
+                    directory's path as a text prefix (e.g. PREFIX `/ws/lib` and an in-workspace
+                    directory `/ws/library-legacy`). Any document under that sibling directory is
+                    misclassified as an "external", PREFIX-resolved document — shouldValidate
+                    (bbj-document-builder.ts:50-59) then silently skips validation for it, and
+                    revalidateUseFilePathDiagnostics/shouldRelink treat it as read-only, even
+                    though it is a genuine in-workspace file that should be validated normally.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (compare against
+                    `prefix + path.sep`, or use a proper relative()-based containment check):
+                    pass — (6) severity `low` but primary dimension is D1: FAIL — major
+                    regardless of the other five tests (D-13's safety gate).
+effort:            2
+dedup:             none — checked against #33 (multi-root breakage — a different mechanism,
+                    root-folder handling rather than prefix-string collision), #231, #385, #485
+                    and #486 — none concern prefix-based document classification.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D2-015
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:106-141
+dimension:         D2
+secondary:         [D5]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: initializeWorkspace()'s `if (folders.length > 0) { ... }`
+                    block (bbj-ws-manager.ts:110-140) reads `project.properties` and
+                    `config.bbx` exclusively from `folders[0]` — `this.getRootFolder(folders[0])`
+                    at line 111 is the ONLY folder ever consulted for settings. `this.settings =
+                    parseSettings(propcontents, prefixfromconfig)` (line 141) is assigned once,
+                    from that single folder's data. Any second (or later) WorkspaceFolder passed
+                    to initializeWorkspace is still indexed for documents by the inherited
+                    DefaultWorkspaceManager traversal, but its own project.properties/config.bbx
+                    never contributes a PREFIX or classpath entry.
+failure_scenario:  A multi-root VS Code workspace has folder A (with project.properties
+                    defining PREFIX/classpath) and folder B (a second root, e.g. a shared
+                    library project with its own project.properties). If folder A is listed
+                    first, folder B's PREFIX/classpath settings are never read; if folder B is
+                    listed first, folder A's settings are ignored instead — either way, one
+                    root's Java classpath/PREFIX configuration is silently dropped, matching
+                    #33's report that VS Code multi-root workspaces "don't work".
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest
+                    (construct a 2-entry WorkspaceFolder[] in a test, assert both folders'
+                    settings are read): pass — (5) reviewer can name the exact edit (loop over
+                    all `folders`, merging prefixes/classpath rather than reading folders[0]
+                    only): pass — (6) severity `medium`, primary dimension D2 (not D1): pass —
+                    all six pass, classification is `easy`.
+effort:            4
+dedup:             #33 partial-overlap — #33 reports multi-root/workspace usage broken in VS
+                    Code without a code-level diagnosis; this finding traces a concrete root
+                    cause (settings resolved from folders[0] only) with file:line evidence,
+                    which the issue itself does not provide, so it is not asserted as a
+                    confirmed duplicate of the reporter's exact symptom.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-016
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-ws-manager.ts:179-182
+dimension:         D2
+secondary:         [D8]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: initializeWorkspace()'s try block spans lines 107-182,
+                    covering project.properties/config.bbx reads, Javadoc initialization,
+                    classpath loading and implicit-import loading. Its single catch
+                    (bbj-ws-manager.ts:179-182) reads `catch (e) { // all fine
+                    console.error(e); }` — any exception thrown at any point in that block is
+                    swallowed, execution falls through to `return await
+                    super.initializeWorkspace(folders, cancelToken);` unconditionally, and
+                    `this.settings` is left in whatever state existed at the throw point (fully
+                    set, partially set, or still undefined depending on where the exception
+                    occurred).
+failure_scenario:  A malformed project.properties file, or an unexpected synchronous throw
+                    inside parseSettings()/collectPrefixes(), causes initializeWorkspace() to
+                    exit its try block early. `this.settings` is left undefined or
+                    partially-populated; later calls to getSettings() (consumed by
+                    bbj-document-builder.ts and main.ts) silently receive that partial/undefined
+                    state, with no signal to the user beyond a raw console.error line — no
+                    logger.error, no connection.window.showErrorMessage.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest (throw
+                    inside a mocked fileSystemProvider.readDirectory, assert settings/behavior):
+                    pass — (5) reviewer can name the exact edit (remove the misleading comment,
+                    route the catch through logger.error, and/or surface a
+                    showErrorMessage so a failed setup is visible instead of silent): pass —
+                    (6) severity `medium`, dimension D2 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-017
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-document-builder.ts:155-190
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: debouncedCompile() schedules `const timer =
+                    setTimeout(async () => { ... }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);`
+                    (bbj-document-builder.ts:160-187). The async callback body — which clears
+                    diagnostics, resolves BBjCPLService via serviceRegistry, awaits
+                    `cplService.compile(key)`, merges diagnostics, and awaits
+                    `notifyDocumentPhase()` — has no try/catch of its own, and setTimeout
+                    neither awaits its callback nor attaches any rejection handler to the
+                    Promise the async function returns.
+failure_scenario:  `cplService.compile(key)` (or `notifyDocumentPhase`) rejects — e.g. an
+                    unexpected error inside BBjCPLService's process-spawn/parse path. The async
+                    setTimeout callback's returned promise rejects with no attached handler,
+                    surfacing as an unhandledRejection at the Node process level rather than
+                    being caught and logged in-context.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest (mock
+                    BBjCPLService.compile to reject, assert no unhandled rejection): pass —
+                    (5) reviewer can name the exact edit (wrap the callback body in try/catch,
+                    logging via logger.error on failure): pass — (6) severity `medium`,
+                    dimension D2 (not D1): pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-018
+unit:              RU-61-05
+location:          bbj-vscode/src/language/main.ts:140-155
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: `this.settings` (bbj-ws-manager.ts:29) is assigned
+                    exactly once, inside initializeWorkspace() (bbj-ws-manager.ts:141) —
+                    grep confirms `this.settings =` appears nowhere else in this unit's files.
+                    main.ts's onDidChangeConfiguration handler calls
+                    `wsManager.setConfigPath(config.configPath || '')` (main.ts:143, 155),
+                    which only stores the new path on the `configPath` field
+                    (bbj-ws-manager.ts:243-245) for a FUTURE initializeWorkspace() call — no
+                    code path anywhere in this unit re-reads config.bbx/project.properties or
+                    recomputes `this.settings.prefixes` after startup.
+failure_scenario:  A user edits config.bbx to add or change a PREFIX entry while the language
+                    server is running, then changes an unrelated bbj.* setting to trigger
+                    onDidChangeConfiguration (or explicitly changes bbj.configPath). The handler
+                    reloads the Java classpath and clears the interop cache, but
+                    `this.settings.prefixes` stays exactly as computed at startup — the new
+                    PREFIX has no effect until the window/server is fully restarted, matching
+                    #486's request to "watch config.bbx and re-apply PREFIX/USE changes without
+                    a manual restart".
+classification:    major
+                    (1) touches 1 file: FAIL — closing this gap requires exposing a
+                    settings-reload entry point on BBjWorkspaceManager (bbj-ws-manager.ts) AND
+                    calling it from main.ts's onDidChangeConfiguration handler — 2 files —
+                    (2) no public API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass — (5) reviewer can name the exact
+                    edit (add a `reloadSettings()` method re-running the config.bbx/
+                    project.properties read, call it from main.ts on relevant setting changes):
+                    pass — (6) severity `medium`, dimension D2 (not D1): pass — but test (1)
+                    already fails, so classification is `major`.
+effort:            8
+dedup:             #486 partial-overlap — #486 requests watching config.bbx and re-applying
+                    PREFIX/USE changes without a restart; this finding traces the exact missing
+                    call (settings.prefixes computed once in initializeWorkspace(), never
+                    recomputed by didChangeConfiguration) that implementing #486 would need to
+                    add.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D3-005
+unit:              RU-61-05
+location:          bbj-vscode/src/language/bbj-document-builder.ts:359-411
+dimension:         D3
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: revalidateUseFilePathDiagnostics iterates every document
+                    in the current build batch (bbj-document-builder.ts:366), and for every
+                    diagnostic in every such document whose message starts with
+                    USE_FILE_NOT_RESOLVED_PREFIX, calls
+                    `this.indexManager.allElements(BbjClass.$type).some(...)`
+                    (bbj-document-builder.ts:396-400) — a full linear scan of every BbjClass
+                    across the ENTIRE workspace index, uncached, repeated once per matching
+                    diagnostic. This runs inside buildDocuments() (line 79), i.e. on every
+                    incremental document rebuild that produces USE-not-resolved diagnostics, not
+                    only once at startup.
+failure_scenario:  A workspace with a large indexed class count and several documents each
+                    carrying multiple unresolved USE-file diagnostics triggers, on every
+                    incremental rebuild touching those documents, one full pass over the entire
+                    workspace's BbjClass index per unresolved diagnostic — cost scales with
+                    total indexed classes × unresolved diagnostics per rebuild, not with the
+                    size of the file(s) actually being edited.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
+                    (3) no new dependency: pass — (4) regression-testable with vitest: pass —
+                    (5) reviewer can name the exact edit (build a fsPath-to-BbjClass Map once
+                    per index update instead of re-scanning allElements() per diagnostic): pass
+                    — (6) severity `medium`, dimension D3 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            4
+dedup:             none — checked against #33, #231, #385, #485 and #486; #232 (DEBT-01,
+                    RU-61-02's own routing item) is a different mechanism (unpruned scope-walk +
+                    per-reference index scan on every keystroke) from this diagnostic-revalidation
+                    scan, not restated here.
+disposition:       easy-fix
+```
 
 ### Not-reproducible dispositions
-_(none recorded)_
+
+- **Tier failed: `repro` (D2).** Candidate claim: concurrent invocation of `bbj/refreshJavaClasses`
+  and the `didChangeConfiguration` handler (both `main.ts`) races on `javaInterop.clearCache()`/
+  `loadClasspath()`/`loadImplicitImports()` internal state, producing a divergent or corrupted
+  classpath result. **Reason not recorded as a finding:** confirming an actual divergent outcome
+  requires tracing `resolvedClasses`/`childrenOfByName`/connection-state transitions inside
+  `java-interop.ts` across two concurrent call sequences — that state and its transitions live in
+  `RU-61-06`'s files, already broadly covered by that unit's connection-lifecycle race findings
+  (`P61-D2-001`). This unit's own two call sites (`main.ts:32-73`, `147-188`) add no guard of
+  their own around the two handlers running concurrently, but neither do they introduce any new
+  race beyond what `RU-61-06` already evidenced at the `java-interop.ts` layer.
 
 ### Cross-unit referrals
-_(none recorded)_
+
+- **RU-61-06** — the `interopHost`/`interopPort` falsy-check-only validation gap this unit owns at
+  `bbj-ws-manager.ts:53-55` and `main.ts:151-152` is confirmed and promoted as `P61-D1-006` above,
+  resolving `RU-61-06`'s referral (`61-COVERAGE.md:618`, `P61-D1-001`'s evidence).
+- **RU-61-03** — `bbj-document-builder.ts`'s `trackBbjcplAvailability()` (`bbj-document-builder.ts:
+  199-222`) performs only an `accessSync()` existence check on the resolved `<bbjHome>/bin/bbjcpl`
+  path, and its result is used solely to set the `bbjcplAvailable` boolean gate and fire the
+  `bbj/bbjcplAvailability` notification — the resolved path is never itself passed onward to
+  `bbj-cpl-service.ts`'s `compile()`, which independently resolves and spawns its own `bbjcpl`
+  path (already recorded, with a runnable reproduction, as `P61-D1-003` in `RU-61-03`). Dismissed:
+  this unit's own `accessSync()` check has no execution consequence of its own, so no additional
+  `RU-61-05` finding is filed; `P61-D1-003` already fully covers the actual spawn-path validation
+  gap.
+- **RU-61-02** — the prefix-path-traversal candidate `RU-61-02` could not settle (`61-COVERAGE.md:
+  1808`, `1814`) is confirmed and promoted as `P61-D1-008` above: `bbj-document-builder.ts`'s
+  `addImportedBBjDocuments` (not `bbj-ws-manager.ts` itself, which only stores the `prefixes`
+  list) is the code that actually opens files from PREFIX-resolved paths, and it applies no
+  containment check before reading whatever `path.resolve()` produces.
+- **RU-61-01** — the `beforeAll` `WorkspaceManager.initializeWorkspace()` hookTimeout flakiness
+  this unit owns (`61-COVERAGE.md:1001`) is resolved as `P61-D5-013` in Task 2 of this plan (D5,
+  the tier the routing table assigns it), cross-referencing this section's D3 cost-profile trace
+  above.
 
 ## RU-61-07 — Builtin catalogs
 
