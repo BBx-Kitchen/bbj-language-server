@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 64
 current_phase_name: Build, CI & Dependency Review
 status: executing
-stopped_at: Completed 64-01-PLAN.md — 64-COVERAGE.md created with its frozen skeleton and RU-64-03 swept end to end (13 cells, 12 findings); next 64-02 (RU-64-01)
-last_updated: "2026-08-18T13:33:37.229Z"
+stopped_at: Completed 64-02-PLAN.md — RU-64-01 swept and closed (6 cells, 13 findings, SEC-07 posture table); 10 placeholders remain, all in RU-64-02; next 64-03
+last_updated: "2026-08-18T14:05:08.685Z"
 last_activity: 2026-08-18
-last_activity_desc: Phase 64 Plan 01 — 64-COVERAGE.md skeleton frozen and RU-64-03 (BBj tool scripts, vendored JARs & interop harness) swept end to end
+last_activity_desc: Phase 64 Plan 02 — RU-64-01 (6 workflows + dependabot.yml) swept across all 6 live dimensions, SEC-07 Workflow Security Posture table written, 13 findings recorded
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
   percent: 40
 ---
 
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 64 (Build, CI & Dependency Review) — EXECUTING
-Plan: 1 of 3 complete (wave 1 of 3)
-Status: 64-01 complete — RU-64-03 swept, skeleton frozen; next 64-02 (RU-64-01, GitHub Actions workflows)
+Plan: 2 of 3 complete (wave 2 of 3)
+Status: 64-02 complete — RU-64-01 (GitHub Actions workflows + dependabot.yml) swept and closed, SEC-07 posture table written; next 64-03 (RU-64-02, manifests + SEC-08 + phase close-out)
 Last activity: 2026-08-18 — Phase 64 execution started
 
 ## Performance Metrics
@@ -99,6 +99,7 @@ Last activity: 2026-08-18 — Phase 64 execution started
 | Phase 63 P04 | ~20min | 2 tasks | 1 files |
 | Phase 63 P05 | ~48min | 3 tasks | 1 files |
 | Phase 64 P01 | ~50min | 2 tasks | 1 files |
+| Phase 64 P02 | ~45min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,11 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 64]: BBjCodeFomatter.jar's unidentifiability is itself the SEC-08 finding (P64-D6-002, triage file-issue): a 38,078-byte binary shipped in the published .vsix whose entire manifest is 'Manifest-Version: 1.0' cannot be vulnerability-triaged at all, which is a strictly worse posture than a known-vulnerable dependency
 - [Phase 64]: jcommander 1.71 is advisory-clean (OSV, checked 2026-08-18, mechanism sanity-checked against log4j-core 2.14.1) but dated 2017-04-27 from its own Bnd-LastModified — recorded as a finding-free pass with source and date rather than inflated into a CVE claim
 - [Phase 64]: All 12 RU-64-03 findings classify as major and none as easy — INVENTORY 3c test (4) fails for everything under bbj-vscode/tools/, which is reached by no tsconfig, no lint script and no vitest pattern; P64-D5-001 is the finding that explains why Phase 67's easy path gets nothing from this unit
+- [Phase 64]: RU-64-01 — SEC-07 rendered as a 6-workflow x 4-clause grid with all 24 cells filled — a workflow with no secrets gets an explicit written cell, so criterion 2 is verifiable by a reader rather than by the phase's assertion (D-13)
+- [Phase 64]: RU-64-01 — INVENTORY 3c test (4) read as 'the existing harness for a workflow file IS the workflow run' — stated once at the head of the Findings block and applied to all 13 records, which is what let 2 findings classify easy and 1 D6 triage fix-now instead of everything defaulting to major
+- [Phase 64]: RU-64-01 — all 36 uses: references enumerated — 0 SHA-pinned, 36 mutable tags — and split into P64-D6-003 (6 files, file-issue) and P64-D6-004 (build.yml's stale @v3 pair, fix-now) so the applicable one-file fix is not routed onto MAJOR-REFACTORS.md with the six-file one
+- [Phase 64]: RU-64-01 — .github/dependabot.yml covers 1 of 4 dependency trees (no gradle, no documentation/, no github-actions); its Gradle half is referred to RU-64-02 to compose with D-10's un-enumerable Gradle tree, and its two ignore: entries are recorded as verified-correct accepted-with-reason models, not defects
+- [Phase 64]: RU-64-01 — INVENTORY's .github/ accounting drift recorded as P64-D8-002 located in INVENTORY.md:932 with disposition wontfix — INVENTORY is immutable (Phase 60 D-09), so the finding is the correction; D-19's adoption (one file, no cell) is stated separately from D-20's (one file, one row), giving file gate 29 and cell gate 29/35/64
 
 ### Tech Debt
 
@@ -210,8 +216,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T13:33:36.360Z
-Stopped at: Completed 64-01-PLAN.md — 64-COVERAGE.md created with its frozen skeleton and RU-64-03 swept end to end (13 cells, 12 findings); next 64-02 (RU-64-01)
+Last session: 2026-08-18T14:04:25.423Z
+Stopped at: Completed 64-02-PLAN.md
 Resume file: None
 
 ---

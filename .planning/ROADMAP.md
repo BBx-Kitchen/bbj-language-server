@@ -427,7 +427,7 @@ trees' vulnerability posture.
   4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 One plan per review unit in INVENTORY risk-rank order, one wave each, all three appending to the
 single deliverable `.planning/reviews/64-COVERAGE.md`; no source file is modified. This is the last
@@ -445,7 +445,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 64-02-PLAN.md — Sweep `RU-64-01` GitHub Actions workflows plus `.github/dependabot.yml` across the 6 live dimensions, write the SEC-07 Workflow Security Posture table (6 workflows × 4 criterion-2 clauses, no blank cells), enumerate all 36 `uses:` references by pinning kind, and record INVENTORY's `.github/` accounting drift as a D8 finding
+- [x] 64-02-PLAN.md — Sweep `RU-64-01` GitHub Actions workflows plus `.github/dependabot.yml` across the 6 live dimensions, write the SEC-07 Workflow Security Posture table (6 workflows × 4 criterion-2 clauses, no blank cells), enumerate all 36 `uses:` references by pinning kind, and record INVENTORY's `.github/` accounting drift as a D8 finding
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
