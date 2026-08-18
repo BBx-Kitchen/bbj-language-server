@@ -1099,7 +1099,7 @@ evidence:          Line-by-line trace with a mechanical basis; no runnable repro
                    `./gradlew buildPlugin`. It runs only when the pull request's diff matches one of
                    the five globs at `:8-13` — `bbj-intellij/**`, `bbj-vscode/out/language/**`,
                    `bbj-vscode/tools/**`, `bbj-vscode/syntaxes/**`, `.github/workflows/pr-validation.yml`.
-                   The second glob cannot match anything: `bbj-vscode/.gitignore:1` is the single line
+                   The second glob cannot match anything: `bbj-vscode/.gitignore` (4 lines) has at line 1 the entry
                    `/out/`, and `git ls-files bbj-vscode/out` returns zero tracked files, so no pull
                    request can contain a change under `bbj-vscode/out/language/`; GitHub evaluates
                    `paths:` against the files changed in the pull request, and an ignored, untracked
@@ -2195,7 +2195,8 @@ evidence:          Reproduced by a read-only compiler invocation that emits noth
                    outside the file itself — no entry in `package.json:652-668`, no workflow step,
                    no editor configuration. `package.json:655`'s `build` type-checks
                    `tsconfig.json` only, whose `include` is `["src/**/*.ts"]` (`:18-20`), so the
-                   120 TypeScript files under `src/` and `test/` are covered for linting
+                   117 TypeScript files under `src/` and `test/` are covered for linting
+                   (120 exist; `eslint.config.js:5` ignores `src/language/generated/**`, 3 files)
                    (`:657`, `eslint src test`) but the `test/` half is type-checked by nothing.
                    The file also carries a trailing comma at `:11` (`"test/**/*",`), which tsc
                    tolerates in JSONC and which is noted as cosmetic rather than causal.
@@ -2954,7 +2955,7 @@ evidence:          Mechanical, and confirmed by running the tool rather than by 
                    *available* without enabling any of them. Verified:
                    `npx eslint --print-config src/extension.ts` resolves **0 rule entries and 0
                    enabled rules**; `npx eslint src test` — the exact command
-                   `package.json:657`'s `lint` script runs, over the 120 `.ts` files under `src/`
+                   `package.json:657`'s `lint` script runs, over the 117 linted `.ts` files under `src/`
                    and `test/` — exits **0** with 2 warnings, and both warnings are
                    `Unused eslint-disable directive (no problems were reported from
                    '@typescript-eslint/no-explicit-any')` at
@@ -3839,17 +3840,20 @@ Each evidenced by a command and its output.
   file uses all count **0**: `grep -cE '^- (D[1-8]|\[file-exception\]) .* — pending$'` prints `0`
   (no unrecorded cell line), `grep -cE '^_\(pending'` prints `0` (no stubbed sub-block), and
   `grep -cE '\| pending \|'` prints `0` (the inherited-item ledger's disposition column is
-  resolved). A bare `grep -c 'pending'` over the whole file prints **`5`**, and every one of the five
-  is accounted for rather than left to look like a missed placeholder: **`:105`** is the skeleton's
-  own write-contract paragraph *describing* the placeholder convention; **`:889`** and **`:1753`** are
-  `RU-64-03`'s and `RU-64-01`'s unit closures each asserting that "no cell in this unit carries the
-  `pending` placeholder"; **`:922`** is the substring inside the word *de**pending*** in
-  `RU-64-01`'s D6 cell ("`langium@4.3.1` depending on `chevrotain`"); and the fifth is in §B above,
-  where the gate command `grep -cE '… — pending$'` is quoted verbatim alongside its literal output
-  `0`, as D-18 requires. **Four of the five sit in text written by plans `64-01` and `64-02`, which
+  resolved). A bare `grep -c 'pending'` over the whole file prints **`11`**, every one accounted for
+  rather than left to look like a missed placeholder. **Five sit outside this section:** **`:105`**
+  is the skeleton's own write-contract paragraph *describing* the placeholder convention;
+  **`:889`** and **`:1753`** are `RU-64-03`'s and `RU-64-01`'s unit closures each asserting that "no
+  cell in this unit carries the placeholder"; **`:922`** is the substring inside the word
+  *de**pending*** in `RU-64-01`'s D6 cell ("`langium@4.3.1` depending on `chevrotain`"); and the
+  fifth is in §B above, where the gate command is quoted verbatim alongside its literal output `0`,
+  as D-18 requires. **Four of those five sit in text written by plans `64-01` and `64-02`, which
   this plan's write contract forbids it to reword**, and the fifth is a gate record that would be
-  weakened by removing it. The bare-substring count is therefore `5` by construction and not by
-  omission.
+  weakened by removing it. **The remaining six are inside this very paragraph** — the explanation
+  is written in terms of the word it is explaining, so stating the count raised it. That is a
+  self-reference, not an omission: the three placeholder shapes above remain the load-bearing
+  checks and all three count `0`. A reader running the bare substring grep should compare against
+  `11`, not `5`.
 
 **Downstream inheritance — what each later phase consumes from this file.**
 
