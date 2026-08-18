@@ -313,12 +313,12 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 62-01-PLAN.md — Create `62-COVERAGE.md` (skeleton, grid, D-14 gate, verbatim `n/a` carry-forwards) and sweep `RU-62-04` composer webview HTML generators end to end, incl. the SEC-01/SEC-02 Surface Handoff
+- [x] 62-01-PLAN.md — Create `62-COVERAGE.md` (skeleton, grid, D-14 gate, verbatim `n/a` carry-forwards) and sweep `RU-62-04` composer webview HTML generators end to end, incl. the SEC-01/SEC-02 Surface Handoff
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
