@@ -914,22 +914,643 @@ Once (i)-(iv) hold the unit is done and no further reading is licensed. **`RU-64
 **Owning plan:** 64-02.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked against REQUIREMENTS.md's D1 wording (injection, untrusted input, secret exposure, integrity gaps, privilege/trust-boundary errors) over all six workflows and `.github/dependabot.yml`, at tier `repro` satisfied by trace per D-12 — GitHub Actions cannot be executed in this checkout, so every statement below names a file and line, the trigger that reaches it, the untrusted input that flows in and the sink it reaches, and nothing here claims a workflow was run, dispatched or exploited. **(a) Triggers, and which ref supplies the definition versus the code.** `build.yml:3-9` `push`→`typefox-dev` plus `pull_request`→`main` with no path filter; `deploy-docs.yml:3-10` `push`→`main` (paths `documentation/**` and the workflow itself) plus `workflow_dispatch`; `manual-release.yml:4-9` `workflow_dispatch` only, with one required `version` input; `preview.yml:4-8` `push`→`main` plus `workflow_dispatch`; `pr-validation.yml:4-13` `pull_request`→`main` behind five path globs; `pr-vsix.yml:12-17` `pull_request`→`main` behind `bbj-vscode/**` and the workflow itself. For all three `pull_request` workflows GitHub reads the workflow **definition** from the base branch, so a contributor cannot alter the definition their PR runs under — `pr-vsix.yml:8-9` states exactly that in a comment and the comment is accurate. `build.yml:18` and `pr-validation.yml:20,45` check out with no `ref:`, i.e. the PR **merge** ref; `pr-vsix.yml:36-39` checks out `github.event.pull_request.head.sha`, the un-merged PR **head**. In all three the job then executes contributor-controlled code (`npm ci`, which runs `bbj-vscode/package.json`'s `prepare` lifecycle script, then `npm run build`, `npm run test`, `npx vsce package` or `./gradlew buildPlugin`); that is the accepted `pull_request` model and is recorded as the boundary it is rather than as a finding, because none of those three workflows references a secret and GitHub forces a read-only token for fork PRs. **(b) Every `github`-context expression that reaches a shell or an action input.** The complete set in the tree: `pr-vsix.yml:21,60,69` — `github.event.pull_request.number`, a GitHub-generated integer that no contributor can set, and `:60` is the only one of the three that lands inside a `run:` string; `pr-vsix.yml:80-82` — `toJSON(...)` of two step outputs into `actions/github-script`, the documented-safe encoding, in a step gated to same-repository PRs at `:76`; `manual-release.yml:15,127,133,137` and `preview.yml:100,107` — `needs.<job>.outputs.version`; and `deploy-docs.yml:56` — `steps.deployment.outputs.page_url`, consumed by an `environment.url` field and not by a shell. `manual-release.yml:127,133` interpolate the `workflow_dispatch` `version` input straight into a `run:` shell block, which is a genuine sink, but it is not reachable with an unvalidated value: both live in `build-intellij`, which declares `needs: build-vscode` at `:108`, and `build-vscode` exits 1 at `:48-51` unless the value matches the anchored regex `^[0-9]+\.[0-9]+\.[0]+$`. Per D-12 a sink with no reachable trigger is recorded as this note, not as a finding. The same file passes that input through `env:` at `:38-39`, `:63-64` and `:71-73` — the correct pattern, used in three of five places. **(c) Fork reachability of secret-handling jobs.** No workflow that references a secret is reachable from a `pull_request` event at all: `manual-release.yml` is `workflow_dispatch`-only and `preview.yml` is `push`→`main` plus dispatch, both of which require write access. `pr-vsix.yml:76` additionally gates its only privileged step to `github.event.pull_request.head.repo.full_name == github.repository`; what that guards is the `pull-requests: write` comment API call, what it does not guard is the install, build, test and package steps at `:46-72`, which run fork code by design and hold no secret. **(d) The three secrets in play.** `secrets.VSCE_PAT` is bound through `env:` at `preview.yml:64-65` and `manual-release.yml:86-87` and consumed unquoted as `-p $VSCE_PAT` at `:68` and `:90`; `secrets.JETBRAINS_MARKETPLACE_TOKEN` is interpolated directly into the `run:` command line at `preview.yml:102` and `manual-release.yml:137` — recorded as `P64-D1-004`; `secrets.GITHUB_TOKEN` is named only at `manual-release.yml:72,132,169`, each through `env:`. Nothing echoes a secret to stdout, no `set -x` is enabled in any `run:` block, and no secret reaches an artifact-upload path or a third-party action's `with:` input. **(e) Artifact paths.** `preview.yml:70-75`, `pr-validation.yml:33-38` and `manual-release.yml:92-97` upload `bbj-vscode/out/language/main.cjs`, which `preview.yml:84-88`, `pr-validation.yml:47-51` and `manual-release.yml:113-117` download into a sibling job that builds and — in `preview.yml` and `manual-release.yml` — publishes it; every one of those flows stays inside a single workflow run, so nothing built by a fork-triggered run is ever consumed by a privileged one. **(f) `pull_request_target` — absent, recorded as an explicit positive.** `grep -rn 'pull_request_target' .github/workflows/` produces no output and exits 1: the single highest-severity GitHub Actions attack pattern is not present in this repository. That is checked-and-clean, not unchecked, and it is stated here so a reader can tell the difference. **Privilege scope:** four of the six workflows declare no `permissions:` block anywhere — recorded as `P64-D1-005`. **Observation, deliberately not promoted:** `pr-vsix.yml:57-62` builds `$OUT` from the `name` and `version` fields of the PR head's own `package.json` and appends it to `$GITHUB_OUTPUT`, so a multi-line value would be an output-injection sink; its only fork-reachable consumer is the `path:` action input at `:70`, and a fork PR already controls the entire workspace, so the sink reaches nothing the contributor does not already own, while the `github-script` consumer at `:80-82` is both `toJSON`-encoded and same-repository-gated. Whether the runner's `$GITHUB_OUTPUT` parser would accept such a value at all is recorded under `### Not-reproducible dispositions` rather than asserted.
+- D2 Correctness & error handling — fail — Checked against wrong edge-case behaviour, swallowed failures and resource leaks read into workflow terms, at tier `repro` satisfied by trace. **A verification step that silently does not run:** `pr-validation.yml:8-13` gates the repository's only cross-IDE build check on five path globs, and the second of them, `bbj-vscode/out/language/**`, can never match — `bbj-vscode/.gitignore:1` is the line `/out/` and `git ls-files bbj-vscode/out` returns zero tracked files, while the source that artefact is built from, `bbj-vscode/src/language/**` (53 tracked files), appears nowhere in the list. Recorded as `P64-D2-004`. **Failures that are not swallowed:** no workflow uses `continue-on-error` anywhere, no `run:` block masks an exit code behind a pipeline, and the one conditional that could mask a failure — `build.yml:30` `if: success() || failure()` — deliberately runs the test step after a failed build without suppressing its own exit code, which is correct rather than defective. **Half-published state:** both release workflows write durable state before publishing and then publish to two marketplaces from separate jobs with no rollback. `manual-release.yml:69-82` pushes `main` and the `v$VERSION` tag before `:84-90` publishes to the VS Code Marketplace, `:135-137` publishes to JetBrains from a second job, and `:167-186` creates the GitHub release from a third; `preview.yml:53-60` pushes the version bump before `:62-68` publishes and `:96-102` publishes to JetBrains from a second job. A failure at any later step leaves a tag and a bumped `package.json` on `main` describing a release that does not exist, wholly or in part. Recorded as `P64-D2-005`. **What each workflow does when an input it reads is empty or absent:** an empty `VSCE_PAT` reaches `npx vsce publish -p $VSCE_PAT` unquoted, so `-p` consumes the next token — there is none — and vsce exits non-zero; an empty `JETBRAINS_MARKETPLACE_TOKEN` becomes an empty Gradle property and `publishPlugin` fails at the marketplace API; `secrets.GITHUB_TOKEN` is auto-provisioned and cannot be empty, only insufficiently scoped, which also fails at the call. All three therefore fail **closed** — but none is checked before the tag and the version commit have already been pushed, which is why the empty case is a consequence of `P64-D2-005` rather than a separate defect. `manual-release.yml:6-9` declares its `version` input `required: true` with no default, so a dispatch cannot omit it. **Recomputation versus single computation:** the release version is computed once and threaded through job outputs in `manual-release.yml:14-15` → `:127,133,137` and `preview.yml:13-14,51` → `:100,107`, which is the correct shape; `preview.yml:38-47` instead recomputes the patch number from `package.json` on every run, and with no concurrency guard two pushes to `main` in quick succession compute the same value, whereupon one run's `git push` at `:60` is rejected as non-fast-forward and that run publishes nothing. Recorded as `P64-D2-006`. **Concurrency and cancellation, and what a cancelled run leaves behind:** only `deploy-docs.yml:17-19` (`group: pages`, `cancel-in-progress: false` — queues rather than cancels, correct for a deployment) and `pr-vsix.yml:20-22` (`group: pr-vsix-<PR number>`, `cancel-in-progress: true` — cancels a superseded PR build, which publishes nothing and so leaves nothing behind) declare a group at all; `build.yml`, `pr-validation.yml`, `preview.yml` and `manual-release.yml` declare none, so for the two publishing workflows two runs can overlap, and a run cancelled between `preview.yml:60`'s push and `:68`'s publish leaves exactly the half-published state above. **Observations, deliberately not promoted to findings:** `manual-release.yml:47-48`'s comment says `x.y.0` while its regex `^[0-9]+\.[0-9]+\.[0]+$` also accepts `1.2.00`; `preview.yml:39` splits the version with an unquoted `${VERSION//./ }` array expansion and `:41-47` silently drops a fourth version component; and only `build.yml:15` and `pr-vsix.yml:34` set `timeout-minutes`, so a hung job in the other four runs to the platform default. All three are reachable only from values that already live on `main` or from infrastructure, and none is promoted on volume alone.
+- D3 Performance & resource use — fail — Checked against redundant work, missing caches and unbounded growth, at tier `repro` satisfied by trace. **Caching:** exactly one of the six workflows configures a dependency cache — `deploy-docs.yml:29-34`, with `cache: npm` and `cache-dependency-path: documentation/package-lock.json`, which is the correct key for what it caches. The five `npm ci` invocations against `bbj-vscode` (`build.yml:27`, `pr-validation.yml:30`, `pr-vsix.yml:49`, `preview.yml:32`, `manual-release.yml:34`) configure none, and none of the three `actions/setup-java@v4` steps (`pr-validation.yml:53-57`, `preview.yml:90-94`, `manual-release.yml:119-123`) sets `cache: gradle`, so every Gradle build resolves its dependencies cold as well. The cost is larger than a download, because `bbj-vscode/package.json`'s `prepare` lifecycle script runs `langium:generate && build` on every `npm ci`, so each uncached run repeats a full grammar regeneration and bundle. Recorded as `P64-D3-001`. **The same build performed more than once for the same commit:** `build.yml:3-9` declares no `paths:` filter, so every pull request to `main` — including one touching only `documentation/`, `QA/` or `.planning/` — runs a full install, build, vitest suite and `npx vsce package`; and any PR touching `bbj-vscode/**` additionally runs the near-identical install, build and test sequence in `pr-vsix.yml:46-51`, giving two cold installs and two complete test runs of one commit. Recorded as `P64-D3-002`. **Superseded runs:** `build.yml` and `pr-validation.yml` declare no `concurrency:` group, so a branch pushed three times in a minute leaves three full builds running to completion; `pr-vsix.yml:20-22` is the only workflow that cancels its own superseded runs. **Retention and unbounded growth:** `build.yml:40-45` is the only artifact upload in the repository with no `retention-days`, so its `.vsix` inherits the repository-wide default while every other upload states one explicitly — 1 day at `pr-validation.yml:38` and `manual-release.yml:97,104,144`, 7 at `preview.yml:75,108`, 14 at `pr-vsix.yml:71`. It is one small artifact per pull request, so this is recorded here as a latent cost rather than promoted to a finding, on the rule that a cost is not promoted on volume alone. No `strategy: matrix` is declared in any of the six files, so matrix breadth contributes nothing. **What is already right:** every job pins `runs-on: ubuntu-latest`, no workflow polls, sleeps or retries, `deploy-docs.yml:7-9` and `pr-vsix.yml:15-17` both scope themselves with `paths:` filters so they do not run on irrelevant changes, and `pr-validation.yml:16-42` splits the Node and Java halves into two jobs so the second reuses the first's artefact instead of rebuilding it.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — n/a — R-D5-CI — "Workflow YAML orchestrates test execution but is not itself unit-testable code; test-coverage gaps are recorded against the code the workflow runs, not the workflow file itself."
-- D6 Dependency health — pending
+- D6 Dependency health — fail — Checked against REQUIREMENTS.md's D6 wording — outdated or vulnerable dependencies, license issues and **unpinned GitHub Actions**, which that wording names explicitly — at tier `inherited` resolving to repro-equivalent, over the six workflows' action references and over `.github/dependabot.yml`, this unit's seventh file. **Pinning, enumerated rather than asserted.** `grep -h 'uses:' .github/workflows/*.yml | wc -l` prints `36`, agreeing with the count scouted at discussion time, and `grep -c 'uses:' .github/workflows/*.yml` prints the same distribution: `build.yml` 3, `deploy-docs.yml` 5, `pr-vsix.yml` 4, `manual-release.yml` 11, `pr-validation.yml` 6, `preview.yml` 7. `grep -nE 'uses:.*@[0-9a-f]{40}' .github/workflows/*.yml | wc -l` prints `0`: **not one of the 36 is pinned to a commit SHA.** All 36 are pinned to a mutable major-version tag and none floats on a branch, across 9 distinct actions and 11 distinct `action@ref` pairs — `actions/checkout@v4` ×9, `actions/upload-artifact@v4` ×8, `actions/setup-node@v4` ×5, `actions/download-artifact@v4` ×5, `actions/setup-java@v4` ×3, and one each of `actions/configure-pages@v4`, `actions/deploy-pages@v4`, `actions/upload-pages-artifact@v3`, `actions/github-script@v7`, `actions/checkout@v3` and `actions/setup-node@v3`, summing to 36. The security consequence per class, one sentence each: a **commit-SHA** reference executes exactly the bytes that were reviewed and cannot change without an edit to this repository; a **mutable tag** executes whatever the tag points at when the job starts, so a compromised or re-pointed release changes what runs with no repository change and no reviewable diff; a **branch or floating** reference is strictly worse than a tag and does not occur here. All 36 resolve to the first-party `actions/` organisation, which materially lowers the likelihood without removing the class. Recorded as `P64-D6-003`. The highest-privilege combination of a mutable reference and a real secret is `preview.yml:71,105` and `manual-release.yml:93,100,140` — five `actions/upload-artifact@v4` steps sitting inside the same jobs that hold `secrets.VSCE_PAT` and `secrets.JETBRAINS_MARKETPLACE_TOKEN`. **Outdated:** `build.yml:18,20` still reference `actions/checkout@v3` and `actions/setup-node@v3`, one major behind the `@v4` line every other workflow uses; recorded as `P64-D6-004`. Recorded as an observation rather than promoted: `manual-release.yml:29` performs an unpinned `npm install -g semver` inside the release job, which is third-party code fetched at release time, though no secret is bound to that step's environment and the two publishing credentials are scoped to their own steps at `:87` and `:137`. **`.github/dependabot.yml` (adopted into this unit by D-19).** 19 lines, 881 bytes, committed as `be402d6`. It configures `version: 2` and exactly one `updates:` entry — `package-ecosystem: "npm"`, `directory: "/bbj-vscode"`, `schedule: interval: "weekly"` (`:2-7`). There is **no `gradle` entry**, so `bbj-intellij`'s dependency tree receives no automated update coverage at all; there is likewise no entry for `documentation/`, whose 685,194-byte `package-lock.json` `deploy-docs.yml:36-38` installs and builds on every docs change, and none for `github-actions`, whose absence is the direct cause of `build.yml`'s stale `@v3` references above. Three of this repository's four dependency trees are therefore uncovered by the milestone's only dependency-automation config; recorded as `P64-D6-005`. The observable output agrees with the config rather than contradicting it: `git branch -r` lists five open `dependabot/npm_and_yarn/bbj-vscode/*` branches (`concurrently`, `eslint`, `properties-file`, `types/node`, `typescript-eslint`) and none for gradle, github-actions or `documentation/`. The Gradle half of this gap is referred to `RU-64-02`/D6 in plan `64-03`, which under D-10 establishes that the same tree cannot even be enumerated locally; the composed unscanned-and-unenumerable result belongs there and is not pre-empted here. **The two `ignore:` entries are well-reasoned and are recorded as such, not as defects** — they are the model of what `triage: accepted-with-reason` requires under D-09, because each names the code path that would break and cites the pull request that established it, rather than resting on a bare not-shipped claim, and both were checked mechanically against the tree rather than taken on trust. `chevrotain` (`:8-13`, PR #347): `bbj-vscode/package.json:671` declares `chevrotain: ~12.0.0`, and `bbj-vscode/package-lock.json:4619-4626` shows `langium@4.3.1` depending on `chevrotain: ~12.0.0` — the pin matches Langium's own constraint exactly, so bumping it independently is precisely the grammar-generation break the comment describes. `typescript` majors (`:14-19`, PR #397): `bbj-vscode/package-lock.json:1826,1857,1881,1941` records typescript-eslint's peer requirement as the literal `">=4.8.4 <6.1.0"`, exactly the range the comment cites, so a TypeScript 6 major would put the declared `typescript-eslint: ^8.64.0` (`bbj-vscode/package.json:689`) outside its supported range. Both entries are correct, both are narrowly scoped — the TypeScript one blocks only `version-update:semver-major` and still allows 5.x — and neither is a finding.
 - D7 Cross-IDE parity — n/a — R-D7-CI — "This surface governs build/CI/packaging output, not end-user-observable IDE runtime behavior; there is no parity claim to make between two IDEs about a shared build pipeline or a shared vendored tool invoked identically by both."
 - D8 Comment & doc accuracy — pending
 
 ### SEC-07 Workflow Security Posture
 
-_(pending — plan `64-02`)_
+ROADMAP Phase 64 criterion 2 reads *"Every workflow's secret handling, `GITHUB_TOKEN` permission scope, third-party action pinning, and exposure to untrusted PR-controlled input is documented"*. The table below is that criterion rendered as a **6-row × 4-column grid** — one row per workflow file in INVENTORY's listed order, one column per criterion-2 clause, in the clause order the criterion states them: secret handling, `GITHUB_TOKEN` permission scope, third-party action pinning, and exposure to untrusted PR-controlled input. **All 24 cells are filled.** A workflow that references no secret carries an explicit written cell saying so and what follows from it, never a blank and never a dash, because a blank cell is indistinguishable from an unchecked cell and criterion 2 says *every* workflow's — which is what makes this table verifiable by a reader rather than by this phase's own assertion (D-13). Every line number below was read from the file at the swept commit.
+
+| Workflow | Secret handling | `GITHUB_TOKEN` permission scope | Third-party action pinning | Exposure to untrusted PR-controlled input |
+|---|---|---|---|---|
+| `.github/workflows/build.yml` | **No secrets referenced.** `grep -n 'secrets\.' .github/workflows/build.yml` returns no output; the file binds no `env:` secret and passes none to an action input. The absent/empty case is therefore vacuous — there is no credential to be missing — and the job still receives an auto-provisioned `GITHUB_TOKEN` it never names or uses. | **Not declared.** No `permissions:` block at file or job level, so the effective scope is the repository/organisation default "Workflow permissions" setting, which is a GitHub settings value and is not readable from a checkout — see `P64-D1-005`. On its `pull_request` runs from a fork GitHub forces a read-only token regardless; on its `push`→`typefox-dev` runs and its same-repository PR runs the default applies in full. Nothing in this workflow needs write access. | 3 of the 36 references: `actions/checkout@v3` (`:18`), `actions/setup-node@v3` (`:20`), `actions/upload-artifact@v4` (`:41`). All three are mutable tags; none is SHA-pinned. This is the only workflow still on the `@v3` majors while the other five have moved to `@v4` — `P64-D6-004`. | Trigger `pull_request`→`main` at `:7-9` with **no** path filter, so every PR reaches it. The definition is read from the base branch; `:18` checks out with no `ref:`, so the job runs the PR **merge** ref. **No `${{ github.* }}` expression appears anywhere in the file**, so no attacker-controllable value reaches a shell or an action input. The untrusted input that does flow in is the PR's own source, first executed at `:27` by `npm ci` (which runs `package.json`'s `prepare` script) and again at `:28`, `:34` and `:39`. No secret is present, so the blast radius is the ephemeral runner and the uploaded `.vsix`. |
+| `.github/workflows/deploy-docs.yml` | **No secrets referenced.** `grep -n 'secrets\.'` returns no output. Publication to GitHub Pages is done with OIDC — `id-token: write` at `:15` feeding `actions/deploy-pages@v4` at `:62` — so there is no long-lived credential in this workflow to leak, and the absent/empty case cannot arise because no static token exists to be absent. | **Declared, complete, least-privilege.** Top-level `permissions:` at `:12-15` grants exactly `contents: read`, `pages: write`, `id-token: write`; because declaring any block resets every other scope to `none`, both jobs are denied everything else. One of only two complete top-level declarations in the repository. | 5 of the 36: `actions/checkout@v4` (`:27`), `actions/setup-node@v4` (`:30`), `actions/configure-pages@v4` (`:45`), `actions/upload-pages-artifact@v3` (`:48`), `actions/deploy-pages@v4` (`:62`). All mutable tags, none SHA-pinned. The `@v3` here is that action's own current major, not a stale pin like `build.yml`'s. | **None.** Its triggers are `push`→`main` behind `paths:` (`:4-9`) and `workflow_dispatch` (`:10`); both require write access and there is no `pull_request` trigger, so no fork ref is ever read and the definition and the checkout are the same trusted `main`. The only expression in the file, `${{ steps.deployment.outputs.page_url }}` at `:56`, is an action output consumed by an `environment.url` field, not by a shell. |
+| `.github/workflows/manual-release.yml` | **All three secrets, two patterns.** `secrets.GITHUB_TOKEN` bound through `env:` at `:72`, `:132` and `:169`; `secrets.VSCE_PAT` bound through `env:` at `:87` and consumed unquoted as `-p $VSCE_PAT` at `:90`; `secrets.JETBRAINS_MARKETPLACE_TOKEN` **interpolated straight into the `run:` command line** at `:137` — `P64-D1-004`. Absent/empty behaviour: an empty `VSCE_PAT` leaves `-p` without a value and vsce exits non-zero; an empty JetBrains token becomes an empty Gradle property and `publishPlugin` fails at the marketplace API; `GITHUB_TOKEN` is auto-provisioned and cannot be empty, only under-scoped, which also fails at the call. All three fail **closed** — but only after `:81-82` has already pushed `main` and the `v$VERSION` tag (`P64-D2-005`). | **Mixed, and this is the only file that declares per job.** `create-release` declares `permissions: contents: write` at `:149-150`, which resets every other scope to `none` for that job — correct for `gh release create` at `:172`. `build-vscode` and `build-intellij` declare nothing and therefore run at the repository default; `:81-82`'s `git push origin main` and tag push authenticate through the credential `actions/checkout` persists by default, so that default **must** include `contents: write` for the release path to work at all (`P64-D1-005`). | 11 of the 36, the largest share: `actions/checkout@v4` (`:18`, `:111`, `:153`), `actions/setup-node@v4` (`:21`), `actions/upload-artifact@v4` (`:93`, `:100`, `:140`), `actions/download-artifact@v4` (`:114`, `:156`, `:162`), `actions/setup-java@v4` (`:120`). All mutable tags, none SHA-pinned, and five of them execute inside jobs holding a live publishing credential. `:29` separately installs `semver` globally from the registry, also unpinned. | **No pull-request trigger at all** — `workflow_dispatch` only (`:4-9`), so both the definition and the checkout come from the ref the dispatcher selects and only an account with write access can dispatch. The one externally supplied value is the `version` input; it reaches a shell through `env:` at `:38-41`, `:63-66` and `:71-75` — the correct pattern — and is validated against the anchored regex `^[0-9]+\.[0-9]+\.[0]+$` at `:48` before anything else runs. It **is** interpolated directly into `run:` at `:127`, `:133` and `:137`, a real sink, but `build-intellij` declares `needs: build-vscode` at `:108`, so it cannot be reached with a value that failed validation; per D-12 that is a pass-with-note, not a finding. |
+| `.github/workflows/preview.yml` | **Two publishing secrets, no `GITHUB_TOKEN` reference.** `secrets.VSCE_PAT` bound through `env:` at `:65` and consumed unquoted at `:68`; `secrets.JETBRAINS_MARKETPLACE_TOKEN` **interpolated into the `run:` command line** at `:102` — `P64-D1-004`. Absent/empty behaviour is identical to `manual-release.yml`: both publish steps fail closed on an empty credential, but only after `:53-60` has already pushed a version-bump commit to `main`, so `package.json` on `main` can record a preview version that was never published (`P64-D2-005`). | **Not declared, on either job.** No `permissions:` block anywhere in the file, so both `publish-preview` and `build-intellij` run at the repository default; `:60`'s `git push` is the proof that the default includes `contents: write`. The consequence is that every step in both jobs — five mutable-tag actions, a `./gradlew publishPlugin`, and two marketplace credentials — executes alongside a repository token at the full default scope (`P64-D1-005`). | 7 of the 36: `actions/checkout@v4` (`:17`, `:82`), `actions/setup-node@v4` (`:20`), `actions/upload-artifact@v4` (`:71`, `:105`), `actions/download-artifact@v4` (`:85`), `actions/setup-java@v4` (`:91`). All mutable tags, none SHA-pinned; this is the highest-privilege unpinned set in the repository, because these steps run in the same jobs as both publishing tokens. | **None.** Triggers are `push`→`main` and `workflow_dispatch` (`:4-8`), both write-gated; there is no `pull_request` trigger, so no fork ref is read and the workflow definition and the checked-out code are the same trusted ref. The values it interpolates at `:100` and `:107` come from its own `bump` step, which derives them at `:38` from `package.json` on `main`. |
+| `.github/workflows/pr-validation.yml` | **No secrets referenced.** `grep -n 'secrets\.' .github/workflows/pr-validation.yml` returns no output; neither job binds an `env:` secret nor passes one to an action. The absent/empty case cannot arise. `./gradlew buildPlugin` at `:61` needs no marketplace credential because it builds the plugin rather than publishing it. | **Not declared.** No `permissions:` block, so the effective scope is the repository default (`P64-D1-005`). For fork PRs GitHub forces a read-only token regardless; for same-repository PRs the full default applies to a job that builds contributor-supplied Gradle code at `:61`. Neither job requires any write scope. | 6 of the 36: `actions/checkout@v4` (`:20`, `:45`), `actions/setup-node@v4` (`:23`), `actions/upload-artifact@v4` (`:34`), `actions/download-artifact@v4` (`:48`), `actions/setup-java@v4` (`:54`). All mutable tags, none SHA-pinned. | Trigger `pull_request`→`main` behind five path globs (`:4-13`). The definition is read from the base branch; both checkouts (`:20`, `:45`) take no `ref:`, so the merge ref is used. **No `${{ github.* }}` expression exists anywhere in the file**, so nothing attacker-controllable reaches a shell or an action input; the untrusted input is the PR's code itself, first executed at `:30` by `npm ci` (running `prepare`) and again at `:61` by `./gradlew buildPlugin`, which executes the PR's own `build.gradle.kts`. Separately, the path list is misconfigured such that the job frequently does not run when it should (`P64-D2-004`). |
+| `.github/workflows/pr-vsix.yml` | **No secrets referenced.** `grep -n 'secrets\.' .github/workflows/pr-vsix.yml` returns no output; the `actions/github-script@v7` step at `:77` authenticates with the implicit job token rather than a named secret. The absent/empty case cannot arise; the realistic failure is an insufficient token scope, which GitHub forces for fork PRs and which `:76` handles by skipping the step rather than failing the run. | **Declared, complete, least-privilege.** Top-level `permissions:` at `:26-28` grants `contents: read` and `pull-requests: write` and resets everything else to `none`. The accompanying comment at `:24-25` describes both the intent and the fork read-only behaviour accurately. The second of the repository's only two complete top-level declarations. | 4 of the 36: `actions/checkout@v4` (`:37`), `actions/setup-node@v4` (`:42`), `actions/upload-artifact@v4` (`:67`), `actions/github-script@v7` (`:77`). All mutable tags, none SHA-pinned. `github-script` is the highest-capability of the four, because it executes JavaScript with an authenticated Octokit client under the `pull-requests: write` scope. | **The unit's most exposed workflow, and the only one that checks out an un-merged ref.** Trigger `pull_request`→`main` behind `bbj-vscode/**` (`:12-17`); GitHub reads the definition from the **base** branch — stated accurately in the file's own comment at `:8-9` — while `:36-39` checks out `github.event.pull_request.head.sha`, the PR head. The first point contributor-controlled content reaches a shell is `:49`, where `npm ci` runs the PR's `prepare` script; it reaches an **action input** at `:70` via `steps.pkg.outputs.vsix`, which `:57-62` derives from the PR head's `package.json`. The `github`-context values interpolated at `:21`, `:60` and `:69` are all the GitHub-generated PR number, which no contributor can set; `:80-82` uses `toJSON(...)`, the documented-safe encoding, and that step is gated to same-repository PRs at `:76`. |
+
+**`.github/dependabot.yml` has no row in this table, and that is deliberate rather than an omission.** It is not a workflow: it declares no `on:` trigger, defines no job, executes nothing on a runner and references no secret, so all four criterion-2 clauses are inapplicable to it and a row would be four "not applicable" cells. It is nonetheless swept as this unit's seventh file under D-19, and its substantive content — the npm-only ecosystem coverage and the two well-reasoned `ignore:` entries — is recorded in the D6 cell above and in `P64-D6-005`.
+
+**`pull_request_target` is absent from this repository, recorded here as a positive result.** The search that established it, run at execution time over the six workflow files:
+
+```bash
+grep -rn 'pull_request_target' .github/workflows/
+```
+
+**Output:** *(no output; exit status 1)*
+
+That matters enough to state rather than to omit: `pull_request_target` runs the **base** branch's workflow definition with a **read-write** token and full secret access in the context of a pull request, and combining it with a checkout of the PR head is the single highest-severity GitHub Actions misconfiguration pattern. It does not occur here. A document that listed only defects would leave a reader unable to distinguish that from a dimension nobody looked at (D-12).
+
+**Concurrency and cancellation.** Two of the six workflows declare a `concurrency:` group. `deploy-docs.yml:17-19` uses `group: pages` with `cancel-in-progress: false`, which queues rather than cancels — correct for a deployment, since a cancelled Pages deployment could otherwise leave the site mid-swap. `pr-vsix.yml:20-22` uses `group: pr-vsix-${{ github.event.pull_request.number }}` with `cancel-in-progress: true`, which cancels a superseded PR build; that run publishes nothing and writes only an artifact and a sticky comment, so cancelling it leaves nothing behind. The other four declare no group. For `build.yml` and `pr-validation.yml` the cost is only wasted runners (`P64-D3-002`). For `preview.yml` and `manual-release.yml` it is material: two publishing runs can overlap, and a run cancelled — or failed — between `preview.yml:60`'s push and `:68`'s publish, or between `manual-release.yml:82`'s tag push and `:90`'s publish, leaves a version commit and possibly a tag on `main` describing a release that was never published, with no compensating action anywhere in either file (`P64-D2-005`, `P64-D2-006`).
+
+**Blast radius of each named secret, stated so the severities above have a scale.** `secrets.VSCE_PAT` is a Visual Studio Marketplace personal access token: whoever holds it can publish or overwrite versions of `basis-intl.bbj-lang`, which every VS Code user of this extension receives as an automatic update, and its authority is bounded by the publisher account it was issued under rather than by this repository. `secrets.JETBRAINS_MARKETPLACE_TOKEN` is the equivalent for JetBrains plugin `30033-bbj-language-support`, reaching every IntelliJ user of the plugin. `secrets.GITHUB_TOKEN` is scoped to this repository and expires with the job, but at the permissive default it can push to `main`, create and move tags, create releases and write packages — enough to change what a subsequent release publishes. Two of the three therefore reach end users' machines directly and neither can be revoked by anything in this repository.
+
+**What was read and what was asserted.** Every cell above was derived by reading the seven files at the swept commit and by running the enumeration commands recorded in this section and in the D1 and D6 cell lines. **No workflow was triggered, dispatched, re-run or otherwise executed**, no GitHub API was queried, and no repository or organisation setting was read — where a fact depends on such a setting, the cell says so instead of guessing. Nothing in this table is a defect purely by virtue of appearing in it: the majority of these cells record correct or accepted behaviour, and the cells that record a defect name the finding ID that carries it.
 
 ### Findings
 
-_(pending — plan `64-02`)_
+Thirteen records, all `unit: RU-64-01`, allocated in discovery order and continuing the monotonic per-`(64, dimension)` sequences plan `64-01` opened rather than restarting at `001` — D1 resumes at `004`, D2 at `004`, D4 at `003`, D6 at `003`, D8 at `002`, and D3 opens at `001` because `RU-64-03` recorded no D3 finding. No `P64-D5-*` or `P64-D7-*` ID is allocated here: both dimensions are `n/a` for this unit. Every `dedup:` is checked against INVENTORY's frozen 15-issue snapshot, in which 0 of 15 carry the `dependencies` area label and 0 of 15 name CI, a workflow, build configuration or a vendored binary. Every record states in one clause why it carries no runnable reproduction: GitHub Actions cannot be executed in this checkout, so the evidence is a trace naming the trigger, the input and the sink (D-12).
+
+**A note on classification test (4), applied identically to all thirteen records so the reading is visible rather than implicit.** INVENTORY 3c test (4) asks whether a fix is regression-testable with the existing harness — vitest for TypeScript, Gradle for the IntelliJ plugin — with no new test infrastructure. For a workflow file the existing harness *is* the workflow run: a change to `.github/workflows/*.yml` is exercised by the very next run of that workflow, on the pull request that changes it, with nothing new to build. Test (4) therefore passes for changes whose effect a single run demonstrates, and fails for changes whose effect only shows under conditions a run cannot stage — a race between two concurrent runs, or the behaviour of a scheduled service. Each record below states which side it falls on.
+
+```
+id:                P64-D1-004
+unit:              RU-64-01
+location:          .github/workflows/preview.yml:96-102
+dimension:         D1
+secondary:         none
+severity:          high
+evidence_tier:     repro
+evidence:          Disclosure-limited per D-16 — this repository is public and forkable and the
+                   credential concerned publishes to a public marketplace, so this record states the
+                   surface, the problem class and the impact and stops there: no trigger sequence, no
+                   payload and no fork-and-run procedure is written here or anywhere in this file. The
+                   evidence exists and is a line-by-line read of the two files at the swept commit; no
+                   runnable reproduction accompanies it because GitHub Actions cannot be executed in
+                   this checkout and D-12 forbids claiming a workflow was run. **Surface:** the two
+                   `./gradlew publishPlugin` steps, `preview.yml:96-102` and `manual-release.yml:135-137`.
+                   **Problem class:** `secrets.JETBRAINS_MARKETPLACE_TOKEN` is expanded by the Actions
+                   expression evaluator directly into the `run:` command line, rather than bound to the
+                   step through an `env:` mapping and referenced as a shell variable. The credential is
+                   therefore materialised as an argument of a process on the runner and into the script
+                   file the runner writes for that step, instead of being confined to the step's process
+                   environment. **Impact:** for the duration of the publish the value is present as
+                   process-visible data inside a job that resolves and executes the full IntelliJ
+                   Platform Gradle plugin dependency tree, which is third-party code running
+                   concurrently in the same container. Log masking does not address this class — it
+                   redacts the transcript, not the runner. What makes this an inconsistency rather than
+                   a platform constraint is that both files already use the correct pattern two steps
+                   away: `env: VSCE_PAT: ${{ secrets.VSCE_PAT }}` at `preview.yml:64-65` and
+                   `manual-release.yml:86-87`.
+failure_scenario:  A release or preview run reaches the JetBrains publish step. During that step the
+                   marketplace publishing credential exists as process-visible data on the runner rather
+                   than only as step environment state, so any code already executing inside that job
+                   with process visibility — the Gradle daemon, a build plugin, a transitive plugin
+                   dependency, or any of the five mutable-tag actions in the same job under
+                   `P64-D6-003` — is positioned to observe it, whereas the `env:`-bound `VSCE_PAT` two
+                   steps earlier is not. The consequence of an observed token is publication rights to
+                   the plugin listing under this project's own identity, which is indistinguishable from
+                   a legitimate release to every downstream IntelliJ user, and which nothing in this
+                   repository can revoke.
+classification:    major — (1) at most one file: FAIL, two workflows carry the same pattern. (2) no
+                   public API / no grammar rule / no LSP contract change: PASS. (3) adds or upgrades no
+                   dependency: PASS. (4) regression-testable with the existing harness: PASS under the
+                   reading stated above — the next run of either workflow exercises the changed step
+                   directly. (5) reviewer can name the exact edit: PASS — add an `env:` mapping for the
+                   token to both steps and reference the shell variable from the `run:` body, exactly as
+                   `VSCE_PAT` is already handled. (6) severity is neither critical nor high AND primary
+                   dimension is not D1: FAIL on both halves. Tests (1) and (6) fail, and (6) is the
+                   deliberate safety gate, so this is `major` regardless of how small the edit is.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot names CI, a workflow, secret
+                   handling, publishing or a marketplace credential; 0 of the 15 carry the
+                   `dependencies` area label and 0 name build configuration of any kind. Issue #476
+                   mentions both IDEs but concerns starter-program templates, not the release pipeline.
+disposition:       major-refactor — test (6) routes every D1 finding to Phase 68's `MAJOR-REFACTORS.md`
+                   rather than Phase 67's apply path, even though the edit itself is two lines, and
+                   Phase 69's issue drafting for it is subject to D-16's disclosure limits and to
+                   ISSUE-01.
+```
+
+```
+id:                P64-D1-005
+unit:              RU-64-01
+location:          .github/workflows/preview.yml:8-10
+dimension:         D1
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace plus an enumeration; no runnable reproduction accompanies it
+                   because GitHub Actions cannot be executed in this checkout.
+                   `grep -n 'permissions:' .github/workflows/*.yml` returns exactly three hits —
+                   `deploy-docs.yml:12` and `pr-vsix.yml:26`, both top-level, and
+                   `manual-release.yml:149`, job-level on `create-release` alone. Four of the six
+                   workflows therefore declare no `permissions:` anywhere: `build.yml`, `preview.yml`,
+                   `pr-validation.yml`, and `manual-release.yml` for its `build-vscode` and
+                   `build-intellij` jobs — 7 of the repository's 10 jobs. For those jobs the
+                   `GITHUB_TOKEN` scope is not stated in the tree at all; it is whatever the repository
+                   or organisation "Workflow permissions" default is, which is a GitHub settings value
+                   and cannot be read from a checkout. The tree does constrain it in one direction:
+                   `preview.yml:53-60` runs `git config`, `git commit` and `git push` with no explicit
+                   token, authenticating through the credential `actions/checkout` persists by default,
+                   and `manual-release.yml:69-82` does the same plus `git push origin "v$VERSION"`.
+                   Neither can succeed unless that default grants `contents: write`, and both are the
+                   project's live release paths, so the default is necessarily the permissive setting —
+                   under which every scope is granted read and write to every job that declares no block
+                   of its own. This last step is an **inference from the workflows' design intent, not
+                   an observation of a run**, and is flagged as such; the unverifiable half is recorded
+                   under `### Not-reproducible dispositions`. Two consequences follow directly: the jobs
+                   holding `secrets.VSCE_PAT` and `secrets.JETBRAINS_MARKETPLACE_TOKEN`
+                   (`preview.yml:11-108`, `manual-release.yml:12-104`) also hold a full-scope repository
+                   token, and `pr-validation.yml`'s same-repository PR runs build contributor-supplied
+                   Gradle code under that same token — fork PRs are forced read-only by GitHub and are
+                   not exposed. The contrast lives in the same tree: `deploy-docs.yml:12-15` and
+                   `pr-vsix.yml:26-28` each declare a block, which resets every undeclared scope to
+                   `none`, and `pr-vsix.yml:24-25` names the posture explicitly as "Least privilege".
+failure_scenario:  A third-party action or a Gradle plugin executing inside `preview.yml`'s
+                   `publish-preview` or `build-intellij` job — every action reference in both being a
+                   mutable tag under `P64-D6-003` — runs with a repository token that, on the permissive
+                   default, can push to `main`, move tags, create releases and write packages, in
+                   addition to whatever marketplace credential is in scope for its step. The narrower
+                   everyday case is the same shape without a compromise: any step that misbehaves in
+                   those seven jobs does so with far more authority than the job's task requires, and
+                   nothing in the repository records what that authority is, so a reviewer reading
+                   `build.yml` or `pr-validation.yml` cannot tell from the file whether its token can
+                   write to the repository or not.
+classification:    major — (1) at most one file: FAIL, four workflows. (2) no public API / grammar /
+                   LSP change: PASS. (3) adds or upgrades no dependency: PASS. (4) regression-testable
+                   with the existing harness: PASS under the reading stated above — a declared scope is
+                   exercised by the next run of each workflow, and a scope that is too narrow fails that
+                   run loudly rather than silently. (5) reviewer can name the exact edit: PASS — add
+                   `permissions: contents: read` to `build.yml` and `pr-validation.yml`, `contents:
+                   write` to `preview.yml`, and per-job blocks to `manual-release.yml`'s two undeclared
+                   jobs. (6) severity is neither critical nor high AND primary dimension is not D1:
+                   FAIL — the primary dimension is D1. Tests (1) and (6) fail.
+effort:            4
+dedup:             none — the frozen 15-issue snapshot contains no issue about CI permissions, tokens,
+                   workflow configuration or release automation; 0 of the 15 carry the `dependencies`
+                   label and 0 name a workflow.
+disposition:       major-refactor — declaring a scope that turns out to be too narrow breaks the
+                   release path, so the change has to be staged against a real release run rather than
+                   applied unilaterally by Phase 67, and test (6) independently routes any D1 finding to
+                   `MAJOR-REFACTORS.md`.
+```
+
+```
+id:                P64-D2-004
+unit:              RU-64-01
+location:          .github/workflows/pr-validation.yml:8-13
+dimension:         D2
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace with a mechanical basis; no runnable reproduction accompanies it
+                   because GitHub Actions cannot be executed in this checkout. `pr-validation.yml`
+                   exists to prove the IntelliJ plugin still builds against the current language
+                   server: `build-vscode` (`:16-38`) builds `bbj-vscode` and uploads
+                   `out/language/main.cjs`, and `validate-intellij` (`:40-61`) downloads it and runs
+                   `./gradlew buildPlugin`. It runs only when the pull request's diff matches one of
+                   the five globs at `:8-13` — `bbj-intellij/**`, `bbj-vscode/out/language/**`,
+                   `bbj-vscode/tools/**`, `bbj-vscode/syntaxes/**`, `.github/workflows/pr-validation.yml`.
+                   The second glob cannot match anything: `bbj-vscode/.gitignore:1` is the single line
+                   `/out/`, and `git ls-files bbj-vscode/out` returns zero tracked files, so no pull
+                   request can contain a change under `bbj-vscode/out/language/`; GitHub evaluates
+                   `paths:` against the files changed in the pull request, and an ignored, untracked
+                   build-output directory never appears among them. The path the filter evidently
+                   means — the language-server source that `out/language/main.cjs` is built from — is
+                   `bbj-vscode/src/language/**`, which `git ls-files bbj-vscode/src/language | wc -l`
+                   reports as 53 tracked files and which appears nowhere in the list. Nothing else
+                   compensates: `build.yml` builds and tests `bbj-vscode` on every PR to `main` but
+                   never touches `bbj-intellij`, and `pr-vsix.yml` builds only the VS Code extension.
+                   The repository's only cross-IDE build gate therefore does not run on the class of
+                   change most likely to break it.
+failure_scenario:  A pull request edits `bbj-vscode/src/language/bbj-module.ts`, or any of the other 52
+                   tracked files under `src/language/`, and nothing else. The `paths:` filter at
+                   `:8-13` matches none of the changed files, so `pr-validation.yml` is skipped
+                   entirely and the pull request shows no IntelliJ check at all — not a failing check, an
+                   absent one, which reads to a reviewer as "not applicable" rather than "not run".
+                   `build.yml` runs and passes, because it builds and tests only `bbj-vscode`. The
+                   change merges to `main`, and the first time the IntelliJ side is exercised is
+                   `preview.yml`'s `build-intellij` job, which runs after `publish-preview` has already
+                   published the VS Code preview to the Marketplace — so the break surfaces after
+                   publication instead of before merge.
+classification:    easy — (1) at most one file: PASS, `pr-validation.yml` alone. (2) no public API / no
+                   grammar rule / no LSP contract change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: PASS under the reading
+                   stated above — the next pull request touching `bbj-vscode/src/language/**`
+                   demonstrates the fix directly, with no new test infrastructure. (5) reviewer can name
+                   the exact edit: PASS — replace the glob `'bbj-vscode/out/language/**'` at `:10` with
+                   `'bbj-vscode/src/language/**'`. (6) severity is neither critical nor high AND primary
+                   dimension is not D1: PASS — `medium`, D2. All six tests pass.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions CI, pull-request
+                   checks, the IntelliJ build or workflow configuration; issue #476 and #385 are the
+                   only two carrying the `intellij` or `vscode` area labels and both are feature
+                   requests about editor-facing functionality.
+disposition:       easy-fix — a one-glob change inside a single workflow file with no behavioural
+                   coupling to anything else; Phase 67 can apply it directly.
+```
+
+```
+id:                P64-D2-005
+unit:              RU-64-01
+location:          .github/workflows/manual-release.yml:69-82
+dimension:         D2
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace of both release workflows; no runnable reproduction accompanies
+                   it because publishing to either marketplace is precisely what this phase does not
+                   do. Both workflows write durable, externally visible state before the state that
+                   would justify it exists, and both spread publication across jobs with no rollback
+                   or compensating action anywhere. In `manual-release.yml`, `build-vscode` pushes the
+                   version commit to `main` and the `v$VERSION` tag at `:81-82`, then publishes to the
+                   VS Code Marketplace at `:84-90`; `build-intellij` publishes to the JetBrains
+                   Marketplace at `:135-137` in a second job; `create-release` creates the GitHub
+                   release at `:167-186` in a third. In `preview.yml`, `publish-preview` pushes the
+                   version bump at `:53-60` and publishes at `:62-68`, and `build-intellij` publishes
+                   to JetBrains at `:96-102`. Each stage can fail independently — a rejected push, an
+                   empty or expired credential (see the empty-input analysis in the D2 cell line), a
+                   Gradle failure, a marketplace rejection — and no stage undoes a preceding one. The
+                   ordering is also the wrong way round with respect to reversibility: a tag and a
+                   commit on `main` are cheap to create and awkward to retract, while a marketplace
+                   publication is the step most likely to fail on credentials. Note that the two
+                   workflows are not merely similar here; `preview.yml:53-60` and
+                   `manual-release.yml:69-82` are the same twelve-line procedure with different commit
+                   messages, which is why one fix has to address both (see `P64-D4-003`).
+failure_scenario:  A maintainer dispatches `manual-release.yml` with a valid version. `build-vscode`
+                   validates it, sets `package.json`, commits, pushes `main` and pushes the tag
+                   `v25.12.0` (`:81-82`). The next step, `npx vsce publish -p $VSCE_PAT` (`:90`), fails
+                   — the PAT has expired, which is the ordinary failure mode for a marketplace token.
+                   The job fails, so `build-intellij` and `create-release` never run. What is left
+                   behind is `main` claiming version 25.12.0 in `package.json`, a `v25.12.0` tag
+                   pointing at that commit, no VS Code Marketplace release, no JetBrains release and no
+                   GitHub release. Re-running the workflow with the same version now fails at `:54`,
+                   because the version is no longer greater than `package.json`'s current value, so
+                   recovery requires deleting the tag and hand-reverting `main` before any release can
+                   proceed. The `preview.yml` variant is the same shape one step smaller: a failed
+                   `vsce publish` at `:68` leaves `main` recording a preview version that was never
+                   published, and the next run bumps from that phantom version.
+classification:    major — (1) at most one file: FAIL, `manual-release.yml` and `preview.yml` carry the
+                   same defect and a fix that repaired one would leave the other. (2) no public API /
+                   grammar / LSP change: PASS. (3) adds or upgrades no dependency: PASS. (4)
+                   regression-testable with the existing harness: PASS under the reading stated above,
+                   though only weakly — a successful release run exercises the happy path; the failure
+                   path it fixes is exercised only by an actual failure. (5) reviewer can name the exact
+                   edit: FAIL — reordering a release pipeline so that nothing durable is written before
+                   the last publish succeeds is a design decision between publish-then-tag, an explicit
+                   compensating rollback, and collapsing the three jobs into one, not a nameable edit.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS.
+                   Tests (1) and (5) fail.
+effort:            8
+dedup:             none — the frozen 15-issue snapshot contains no issue about releases, versioning,
+                   tags or publication; 0 of the 15 carry the `dependencies` label and 0 name CI.
+disposition:       major-refactor — the change reorders two live publishing pipelines across two
+                   marketplaces and can only be validated by an actual release, so Phase 67 does not
+                   apply it unilaterally.
+```
+
+```
+id:                P64-D2-006
+unit:              RU-64-01
+location:          .github/workflows/preview.yml:3-8
+dimension:         D2
+secondary:         none
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace; no runnable reproduction accompanies it because staging two
+                   overlapping workflow runs requires executing GitHub Actions, which this phase does
+                   not do. `preview.yml` triggers on every `push` to `main` (`:4-8`) and declares no
+                   `concurrency:` group anywhere in the file — `grep -n 'concurrency:'
+                   .github/workflows/*.yml` returns hits only for `deploy-docs.yml:17` and
+                   `pr-vsix.yml:20`. Its `bump` step (`:34-51`) reads the current version out of the
+                   checked-out `package.json` with `jq -r .version` and increments the patch component
+                   in the workspace, then `:53-60` commits and pushes that bump to `main`. Because each
+                   run's checkout is the commit that triggered it, and because a `GITHUB_TOKEN` push
+                   does not itself trigger a workflow, a second push to `main` arriving before or
+                   shortly after the first run's push produces a run whose checkout does not contain the
+                   first run's bump. Both runs then compute the same `NEW_VERSION` from the same input.
+                   The loser's `git push` at `:60` is rejected as non-fast-forward, the step fails, and
+                   because publication happens afterwards at `:62-68` that run publishes nothing. The
+                   defect is in the read-modify-write shape rather than in the missing `concurrency:`
+                   block alone, which is why adding one does not by itself fix it: `cancel-in-progress:
+                   true` would drop a preview build for a commit that was pushed, and `false` would
+                   queue the second run, which would then still be working from a checkout that predates
+                   the first run's bump and would still collide.
+failure_scenario:  Two commits are pushed to `main` a minute apart — an ordinary merge followed by a
+                   follow-up fix. Run A and run B both start, both read version `0.12.0` from their own
+                   checkouts, and both compute `0.12.1`. Run A pushes the bump and publishes preview
+                   `0.12.1`. Run B's `git push` at `:60` is rejected, the step fails, and run B stops
+                   before `:62-68`, so the second commit is never published as a preview and the only
+                   signal is a red run whose failure message is a Git rejection rather than anything
+                   about releases. A maintainer who re-runs the failed job hits the same rejection,
+                   because run B's checkout is still the pre-bump commit.
+classification:    major — (1) at most one file: PASS, `preview.yml` alone. (2) no public API /
+                   grammar / LSP change: PASS. (3) adds or upgrades no dependency: PASS. (4)
+                   regression-testable with the existing harness: FAIL — a race between two concurrent
+                   runs cannot be staged by a workflow run, which is exactly why it has gone unnoticed;
+                   this is the "conditions a run cannot stage" side of the reading stated above. (5)
+                   reviewer can name the exact edit: FAIL — as traced above, a `concurrency:` block
+                   alone is insufficient in either cancel mode, so the fix requires deciding how the
+                   bump should read `main` (fetch-and-rebase before bumping, derive the version from
+                   the tag list, or move the bump after publication). (6) severity is neither critical
+                   nor high AND primary dimension is not D1: PASS. Tests (4) and (5) fail.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about preview builds,
+                   versioning or CI concurrency.
+disposition:       major-refactor — the fix is small in lines but is a release-policy decision about
+                   how the preview version is derived, so it belongs on `MAJOR-REFACTORS.md` rather
+                   than in Phase 67's apply path.
+```
+
+```
+id:                P64-D3-001
+unit:              RU-64-01
+location:          .github/workflows/build.yml:19-22
+dimension:         D3
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Trace with an enumeration; no runnable reproduction accompanies it because timing a
+                   GitHub-hosted runner requires running one. Exactly one of the six workflows
+                   configures a dependency cache: `deploy-docs.yml:29-34`, which sets `cache: npm` with
+                   `cache-dependency-path: documentation/package-lock.json` — a correct key for what it
+                   caches. The five `actions/setup-node@v4`/`@v3` steps that precede an `npm ci` against
+                   `bbj-vscode` set no `cache:` input at all: `build.yml:19-22` before `:27`,
+                   `pr-validation.yml:22-25` before `:30`, `pr-vsix.yml:41-44` before `:49`,
+                   `preview.yml:19-22` before `:32`, and `manual-release.yml:20-23` before `:34`. None
+                   of the three `actions/setup-java@v4` steps sets `cache: gradle` either —
+                   `pr-validation.yml:53-57` before `./gradlew buildPlugin` at `:61`,
+                   `preview.yml:90-94` before `./gradlew publishPlugin` at `:99`, and
+                   `manual-release.yml:119-123` before three `./gradlew` invocations at `:127`, `:133`
+                   and `:137`. The cost is larger than a package download: `bbj-vscode/package.json`
+                   declares `"prepare": "npm run langium:generate && npm run build"`, and npm runs
+                   `prepare` automatically after `npm ci`, so every uncached run repeats a full Langium
+                   grammar regeneration and esbuild bundle in addition to installing the dependency
+                   tree, and every uncached Gradle run re-resolves the IntelliJ Platform dependencies.
+                   `bbj-vscode/package-lock.json` is 7,894 lines, so the cache key that would serve
+                   these five is the same one `deploy-docs.yml` already uses for its own tree.
+failure_scenario:  Any pull request to `main` that touches `bbj-vscode/**` starts at least two jobs —
+                   `build.yml`'s and `pr-vsix.yml`'s (see `P64-D3-002`) — and each performs a complete
+                   cold `npm ci` plus the `prepare` regeneration and bundle before it does any work
+                   specific to its own purpose. A PR touching `bbj-intellij/**` additionally resolves
+                   the IntelliJ Platform dependency set from scratch in `pr-validation.yml`. The wrong
+                   behaviour is not an incorrect result but a fixed, repeated cost paid on every run of
+                   five of six workflows, on a repository whose CI already runs two to three
+                   overlapping builds per pull request; the same runner minutes are spent regenerating
+                   artefacts that are byte-identical to the previous run's whenever the lockfile has not
+                   changed.
+classification:    major — (1) at most one file: FAIL, five workflows would each need the input added.
+                   (2) no public API / grammar / LSP change: PASS. (3) adds or upgrades no dependency:
+                   PASS. (4) regression-testable with the existing harness: PASS under the reading
+                   stated above — a cache hit or miss is visible in the very next run of each workflow.
+                   (5) reviewer can name the exact edit: PASS — add `cache: npm` and
+                   `cache-dependency-path: bbj-vscode/package-lock.json` to the five `setup-node`
+                   steps and `cache: gradle` to the three `setup-java` steps. (6) severity is neither
+                   critical nor high AND primary dimension is not D1: PASS. Only test (1) fails, and it
+                   fails solely on file count.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about CI duration, caching or
+                   build performance.
+disposition:       major-refactor — the edit is mechanical and low-risk, but test (1) fails on file
+                   count, and INVENTORY 3c admits no exception for a change that is small in each of
+                   several files; recorded as `major` rather than reclassified to fit the fix.
+```
+
+```
+id:                P64-D3-002
+unit:              RU-64-01
+location:          .github/workflows/build.yml:3-9
+dimension:         D3
+secondary:         none
+severity:          medium
+evidence_tier:     repro
+evidence:          Trace across the three pull-request workflows; no runnable reproduction accompanies
+                   it because GitHub Actions cannot be executed in this checkout. `build.yml:7-9`
+                   declares `pull_request: branches: [main]` with **no `paths:` filter**, so it runs on
+                   every pull request to `main` regardless of what changed, and performs `npm ci`
+                   (`:27`), `npm run build` (`:28`), the full vitest suite (`:34`) and `npx vsce
+                   package` (`:39`). `pr-vsix.yml:12-17` declares the same trigger behind
+                   `paths: ['bbj-vscode/**', '.github/workflows/pr-vsix.yml']` and performs `npm ci`,
+                   `npm run build` and `npm run test` at `:46-51` followed by `npx vsce package` at
+                   `:61`. The two overlap completely for any pull request touching `bbj-vscode/**`,
+                   which is the majority of this repository's pull requests: the same commit is
+                   installed, built, tested and packaged twice, in two jobs, on two runners, with no
+                   cache between them (`P64-D3-001`). At the other end, a pull request touching only
+                   `documentation/`, `QA/`, `examples/` or `.planning/` still runs `build.yml` in full,
+                   including the vitest suite and a VSIX package, for a change that cannot affect any
+                   of them — `deploy-docs.yml:7-9`, `pr-validation.yml:8-13` and `pr-vsix.yml:15-17` all
+                   scope themselves with `paths:` filters, so `build.yml` is the only unscoped one.
+                   Neither `build.yml` nor `pr-validation.yml` declares a `concurrency:` group, so
+                   superseded runs are not cancelled and a branch pushed three times leaves three full
+                   builds running to completion.
+failure_scenario:  A contributor opens a pull request that edits `bbj-vscode/src/language/bbj.langium`
+                   and pushes three times over ten minutes while responding to review. Each push starts
+                   a fresh `build.yml` run (cold install, build, full vitest suite, VSIX package) and a
+                   fresh `pr-vsix.yml` run (cold install, build, full vitest suite, VSIX package), and
+                   because neither declares a `concurrency:` group for `build.yml`, none of the earlier
+                   `build.yml` runs is cancelled. Six full builds of the same project execute for one
+                   pull request, four of them for commits nobody will look at again. Separately, a
+                   documentation-only pull request — which `deploy-docs.yml` correctly declines to
+                   build — still triggers a complete `build.yml` run including the vitest suite.
+classification:    major — (1) at most one file: PASS in the narrowest reading, since a `paths:` filter
+                   and a `concurrency:` block would both go in `build.yml`. (2) no public API / grammar
+                   / LSP change: PASS. (3) adds or upgrades no dependency: PASS. (4) regression-testable
+                   with the existing harness: PASS under the reading stated above for the `paths:`
+                   filter; the concurrency half is the "conditions a run cannot stage" side and is
+                   weaker. (5) reviewer can name the exact edit: FAIL — deciding whether `build.yml`
+                   should gain a `paths:` filter, be merged into `pr-vsix.yml`, or deliberately remain
+                   the one unconditional gate on every pull request is a CI-policy decision about what
+                   `main` is protected by, not a nameable edit; the wrong choice removes the only check
+                   that currently runs on every PR. (6) severity is neither critical nor high AND
+                   primary dimension is not D1: PASS. Test (5) fails.
+effort:            4
+dedup:             none — the frozen 15-issue snapshot contains no issue about CI duration, redundant
+                   builds or workflow triggers.
+disposition:       major-refactor — the decision changes what protects `main`, so it is documented for
+                   review rather than applied by Phase 67.
+```
+
+```
+id:                P64-D6-003
+unit:              RU-64-01
+location:          .github/workflows/manual-release.yml:18-162
+dimension:         D6
+secondary:         [D1]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Repro-equivalent per INVENTORY 3b: the claim is a pinning claim, and it is settled
+                   by enumeration rather than by an advisory reference or a runnable reproduction — no
+                   workflow was run. `grep -h 'uses:' .github/workflows/*.yml | wc -l` prints `36`,
+                   matching the count scouted at discussion time; `grep -c 'uses:'
+                   .github/workflows/*.yml` prints `build.yml` 3, `deploy-docs.yml` 5,
+                   `manual-release.yml` 11, `pr-validation.yml` 6, `pr-vsix.yml` 4, `preview.yml` 7,
+                   summing to 36. `grep -nE 'uses:.*@[0-9a-f]{40}' .github/workflows/*.yml | wc -l`
+                   prints `0`. Every one of the 36 references a mutable major-version tag; none names a
+                   commit SHA and none floats on a branch. The full set is 9 distinct actions in 11
+                   distinct `action@ref` pairs: `actions/checkout@v4` ×9, `actions/upload-artifact@v4`
+                   ×8, `actions/setup-node@v4` ×5, `actions/download-artifact@v4` ×5,
+                   `actions/setup-java@v4` ×3, and one each of `actions/configure-pages@v4`,
+                   `actions/deploy-pages@v4`, `actions/upload-pages-artifact@v3`,
+                   `actions/github-script@v7`, `actions/checkout@v3` and `actions/setup-node@v3`. A
+                   mutable tag means the bytes executed at job start are whatever the tag points at
+                   then, so what runs can change without any change to this repository and without a
+                   reviewable diff; a commit SHA removes that property entirely. Two facts bound the
+                   severity honestly and are recorded rather than omitted: all 36 resolve to the
+                   first-party `actions/` organisation, which materially lowers likelihood, and
+                   `.github/dependabot.yml` declares no `github-actions` ecosystem (`P64-D6-005`), so
+                   nothing in the repository would notice or update these references either way. The
+                   highest-privilege combination of a mutable reference and a live secret is
+                   `preview.yml:71,105` and `manual-release.yml:93,100,140` — five
+                   `actions/upload-artifact@v4` steps inside the same jobs that hold
+                   `secrets.VSCE_PAT` and `secrets.JETBRAINS_MARKETPLACE_TOKEN` — with
+                   `actions/github-script@v7` at `pr-vsix.yml:77` the highest-capability reference
+                   outside them, since it executes JavaScript with an authenticated Octokit client.
+failure_scenario:  A release of any one of the nine referenced actions is re-tagged or republished
+                   under its existing major tag — the ordinary mechanism by which `@v4` advances, and
+                   the mechanism an account compromise would ride. The next `preview.yml` or
+                   `manual-release.yml` run executes the new bytes inside a job that holds a marketplace
+                   publishing credential and, per `P64-D1-005`, a repository token at the permissive
+                   default scope. Nothing in this repository changes, no pull request is opened, and no
+                   diff exists for anyone to review; the first observable signal would be whatever the
+                   changed action does. The same exposure applies in the ordinary non-malicious case as
+                   a reproducibility gap: a build that succeeded last week and fails today cannot be
+                   attributed from the repository alone, because the workflow file is identical and the
+                   code it ran is not.
+classification:    major — (1) at most one file: FAIL, all six workflows carry references. (2) no
+                   public API / grammar / LSP change: PASS. (3) adds or upgrades no dependency in
+                   `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`: PASS — a GitHub Action
+                   reference is in neither manifest. (4) regression-testable with the existing harness:
+                   PASS under the reading stated above; a SHA-pinned reference either resolves or fails
+                   on the next run. (5) reviewer can name the exact edit: FAIL — pinning 36 references
+                   requires resolving each tag to a SHA and, to remain maintainable rather than
+                   immediately stale, adopting an update mechanism alongside it, which is a process
+                   decision rather than an edit. (6) severity is neither critical nor high AND primary
+                   dimension is not D1: PASS — `medium`, D6, with D1 secondary. Tests (1) and (5) fail.
+triage:            file-issue — mapping to `classification: major` per D-09. Not `fix-now`: pinning is
+                   not a version bump with no API change, it is 36 coordinated edits across six files
+                   plus an ongoing update mechanism, and doing it without that mechanism trades a
+                   mutable-reference risk for a permanently-stale-dependency one. Not
+                   `accepted-with-reason`: the reachability argument that disposition requires cannot be
+                   made here, because the code paths concerned are reached on every run of every
+                   workflow, two of them alongside live publishing credentials.
+effort:            4
+dedup:             none — no open issue in the frozen 15-issue snapshot concerns GitHub Actions,
+                   pinning, supply-chain provenance or CI dependencies; 0 of the 15 carry the
+                   `dependencies` area label at all, which was re-derived in this file's header rather
+                   than assumed.
+disposition:       major-refactor — routed to Phase 68's `MAJOR-REFACTORS.md` with the enumeration
+                   above attached, so the pin set does not have to be re-derived; the separate one-file
+                   `@v3` staleness at `P64-D6-004` is the part Phase 67 can apply.
+```
+
+```
+id:                P64-D6-004
+unit:              RU-64-01
+location:          .github/workflows/build.yml:18-20
+dimension:         D6
+secondary:         none
+severity:          low
+evidence_tier:     inherited
+evidence:          Repro-equivalent per INVENTORY 3b, settled by enumeration; no workflow was run.
+                   `build.yml:18` references `actions/checkout@v3` and `build.yml:20` references
+                   `actions/setup-node@v3`. Every other reference to those two actions in the
+                   repository is `@v4` — `actions/checkout@v4` at `deploy-docs.yml:27`,
+                   `preview.yml:17,82`, `pr-validation.yml:20,45`, `manual-release.yml:18,111,153` and
+                   `pr-vsix.yml:37`, and `actions/setup-node@v4` at `deploy-docs.yml:30`,
+                   `preview.yml:20`, `pr-validation.yml:23`, `manual-release.yml:21` and
+                   `pr-vsix.yml:42`. `build.yml` is therefore the only file in the repository still on
+                   the `@v3` majors, and its third reference, `actions/upload-artifact@v4` at `:41`, is
+                   already on `@v4`, so the file is internally inconsistent as well. What a `@v3` tag
+                   resolves to today cannot be enumerated from this checkout and is not asserted here;
+                   the defect recorded is the divergence from the repository's own established
+                   convention and the absence of anything that would close it — `.github/dependabot.yml`
+                   declares no `github-actions` ecosystem (`P64-D6-005`), so no automated update will
+                   ever propose this bump, which is why it has persisted while five other files moved.
+failure_scenario:  A contributor reads `build.yml` to copy the standard checkout-and-setup preamble
+                   into a new workflow — the preamble being duplicated across five files already,
+                   `P64-D4-003` — and copies the `@v3` pair, propagating the stale reference. More
+                   directly: the `@v3` and `@v4` majors of these actions differ in defaults and in the
+                   runtime they execute under, so `build.yml`'s job is not running the same
+                   checkout-and-setup behaviour as the other five workflows even though the five files
+                   read as though it were, and any divergence between `build.yml`'s result and
+                   `pr-vsix.yml`'s for the same commit has a cause that is invisible in the diff.
+classification:    easy — (1) at most one file: PASS, `build.yml` alone. (2) no public API / grammar /
+                   LSP contract change: PASS. (3) adds or upgrades no dependency in
+                   `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`: PASS. (4)
+                   regression-testable with the existing harness: PASS under the reading stated above —
+                   the pull request that makes the change runs `build.yml` and demonstrates it. (5)
+                   reviewer can name the exact edit: PASS — change `@v3` to `@v4` on lines 18 and 20.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS —
+                   `low`, D6. All six tests pass.
+triage:            fix-now — mapping to `classification: easy` per D-09. It is a version bump with no
+                   API change, applicable in Phase 67, and it moves `build.yml` onto the convention the
+                   other five workflows already use rather than introducing a new one.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot names GitHub Actions, CI or
+                   dependency versions.
+disposition:       easy-fix — Phase 67 applies it; the broader SHA-pinning question is separately
+                   recorded as `P64-D6-003` and is not bundled into this one.
+```
+
+```
+id:                P64-D6-005
+unit:              RU-64-01
+location:          .github/dependabot.yml:3-7
+dimension:         D6
+secondary:         none
+severity:          medium
+evidence_tier:     inherited
+evidence:          Repro-equivalent per INVENTORY 3b: the claim is about declared coverage and is
+                   settled by reading the config and enumerating the trees it does and does not name.
+                   `.github/dependabot.yml` is 19 lines and 881 bytes, committed as `be402d6`, and
+                   declares `version: 2` with exactly one `updates:` entry — `package-ecosystem: "npm"`,
+                   `directory: "/bbj-vscode"`, `schedule: interval: "weekly"` (`:3-7`). Four dependency
+                   trees exist in this repository and the config names one of them. Uncovered: (a)
+                   `bbj-intellij`'s Gradle tree — `bbj-intellij/build.gradle.kts` plus
+                   `gradle/wrapper/gradle-wrapper.properties` — for which there is no `gradle` ecosystem
+                   entry, so it receives no automated update coverage at all; (b) `documentation/`'s npm
+                   tree, whose `package-lock.json` is 685,194 bytes and which `deploy-docs.yml:36-38`
+                   installs and builds on every documentation change, with no entry naming that
+                   directory; and (c) the 36 GitHub Actions references enumerated in `P64-D6-003`, for
+                   which there is no `github-actions` ecosystem entry — the direct cause of `build.yml`
+                   still sitting on `@v3` while five other files moved to `@v4` (`P64-D6-004`).
+                   The observable output agrees with the config rather than contradicting it: `git
+                   branch -r` lists five open Dependabot branches, all of them
+                   `dependabot/npm_and_yarn/bbj-vscode/*` (`concurrently`, `eslint`, `properties-file`,
+                   `types/node`, `typescript-eslint`), and none for gradle, github-actions or
+                   `documentation/`. The Gradle half of this gap is referred to `RU-64-02`/D6 in plan
+                   `64-03`, which under D-10 establishes that the same tree cannot be enumerated locally
+                   either; the composed result — unscanned by tooling *and* unenumerable by hand — is
+                   materially stronger than either half and belongs to that unit's SEC-08 triage, so it
+                   is stated as a referral here rather than pre-empted. The file's two `ignore:` entries
+                   are **not** part of this finding: both are well-reasoned, both were verified against
+                   the tree, and they are recorded in this unit's D6 cell line as the model of what
+                   `triage: accepted-with-reason` requires.
+failure_scenario:  A published advisory affects a transitive dependency of the IntelliJ Platform Gradle
+                   plugin, or the Docusaurus tree under `documentation/`, or one of the nine GitHub
+                   Actions this repository executes. Dependabot opens no pull request, because none of
+                   those three trees is declared in its configuration, and the repository's maintainers
+                   see the same steady stream of `bbj-vscode` npm updates they always see — five such
+                   branches are open right now — which reads as working dependency automation rather
+                   than as partial coverage. Nothing else fills the gap: `RU-64-02` will establish that
+                   the Gradle tree cannot be enumerated locally either, so for that tree there is no
+                   automated signal and no manual one. The failure is therefore silent by construction:
+                   the absence of an alert is indistinguishable from the absence of a vulnerability.
+classification:    major — (1) at most one file: PASS, `.github/dependabot.yml` alone. (2) no public
+                   API / grammar / LSP contract change: PASS. (3) adds or upgrades no dependency in
+                   `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`: PASS — it changes what
+                   is watched, not what is installed. (4) regression-testable with the existing harness:
+                   FAIL — Dependabot runs on GitHub's schedule against the default branch, so no vitest
+                   run, no Gradle build and no workflow run can demonstrate that a new ecosystem entry
+                   works; this is the "conditions a run cannot stage" side of the reading above. (5)
+                   reviewer can name the exact edit: FAIL for the finding as a whole — the
+                   `github-actions` and `documentation/` entries are nameable, but whether the Gradle
+                   tree should be covered by Dependabot, by a different scanner, or accepted with a
+                   written reason is exactly the criterion-3 triage decision `RU-64-02` owns. Tests (4)
+                   and (5) fail.
+triage:            file-issue — mapping to `classification: major` per D-09. Not `fix-now`: it is not a
+                   version bump, and the Gradle half needs a decision rather than a bump. Not
+                   `accepted-with-reason`: that disposition requires a written reachability argument
+                   naming the code path that would have to exist for the gap to matter and showing it
+                   does not, and the opposite holds here — `bbj-intellij` ships to users, `documentation/`
+                   publishes a public site, and the 36 action references execute on every run.
+effort:            4
+dedup:             none — 0 of the frozen 15 open issues carry the `dependencies` area label and none
+                   names Dependabot, dependency automation, Gradle dependencies or the documentation
+                   site's dependencies; this was re-derived from the snapshot's own `Area` column in
+                   this file's header rather than assumed.
+disposition:       major-refactor — the npm and `github-actions` additions are mechanical, but the
+                   Gradle decision is criterion-3 triage that plan `64-03` consolidates, so the whole is
+                   documented rather than applied.
+```
 
 ### Not-reproducible dispositions
 
