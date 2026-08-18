@@ -240,3 +240,18 @@ were deliberately left unpinned for the planner and executing agents:
 - Reviewing `RU-D8-01` — cross-cutting, owned by no sweep phase
 - Adding dependency scanning to CI (Dependabot / audit gate / Gradle plugin) — a new capability
   surfaced by this work, belongs in a future milestone
+
+---
+
+## Post-Discussion Correction — `.github/dependabot.yml` (added during plan-phase preflight)
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Adopt into `RU-64-01` as a 28th file + record INVENTORY's false claim as a D8 finding | The file is real, committed, and materially relevant to SEC-08 | ✓ |
+| Skip it — INVENTORY does not list it | Would leave the milestone's only dependency-automation config unreviewed in the very phase that owns SEC-08 | |
+| Edit INVENTORY to add it | Prohibited — Phase 60 D-09 makes INVENTORY immutable | |
+
+**Choice:** Adopt into `RU-64-01` → **D-19**
+**Notes:** Surfaced by the codebase-drift pre-check during plan-phase, *after* `64-CONTEXT.md` was first written; CONTEXT.md was corrected before the planner was spawned. INVENTORY's full-surface accounting states `.github/` contains *"no other content"* beyond `workflows/` — false: `.github/dependabot.yml` is 881 bytes, committed as `be402d6` ("chore: tell dependabot to ignore TypeScript major bumps (#402)"). Substantively it declares `package-ecosystem: "npm"` for `/bbj-vscode` and **no `gradle` entry**, so `bbj-intellij` has no automated dependency-update coverage — which compounds D-10's finding that the Gradle tree is not even locally enumerable. Its two `ignore:` entries (chevrotain pinned to Langium's version per PR #347; TypeScript majors blocked by typescript-eslint's `>=4.8.4 <6.1.0` range per PR #397) are well-reasoned and are recorded as a model of `triage: accepted-with-reason`, not as defects. Cell gate unchanged at 27/29/56 (it inherits `RU-64-01`'s row); file gate moves from 27 to 28 with the adoption stated at the point of the count.
+
+**Also corrected:** the deferred idea "Adding dependency scanning to CI (Dependabot…)" was wrong — Dependabot is already present for npm. Split into "extend Dependabot to Gradle" (recorded here, applied in Phase 67 if `easy`) and "add an `npm audit` CI gate" (still a future-milestone capability).

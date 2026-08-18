@@ -12,8 +12,10 @@ This phase delivers **one planning artifact and no production code changes**:
 
 `.planning/reviews/64-COVERAGE.md` — Phase 64's slice of INVENTORY.md's applicability grid, filled
 in. Concretely: a recorded pass/fail for every `applies` cell across the 3 Phase 64 review units
-(`RU-64-01`..`RU-64-03`, **27 files — 24 readable totalling 11,016 LOC, plus 3 vendored binary
-JARs totalling 112,361 bytes**), every `n/a` reason carried forward verbatim, every finding meeting
+(`RU-64-01`..`RU-64-03`, **28 files — 25 readable totalling 11,035 LOC, plus 3 vendored binary
+JARs totalling 112,361 bytes**; the 28th is `.github/dependabot.yml`, adopted into `RU-64-01` by
+D-19 because it exists in the tree but is absent from INVENTORY's file list), every `n/a` reason
+carried forward verbatim, every finding meeting
 its RVW-06 evidence tier and checked against the frozen 15-issue snapshot, the SEC-07 workflow
 security write-up and the SEC-08 dependency triage that ROADMAP criteria 2 and 3 require, plus the
 re-triage of **1 routed item inherited from Phase 63** (`P63-D6-002`).
@@ -324,10 +326,13 @@ tooling situations, and a criterion (3) that demands *enumeration*, not spot-che
      4 file-exception rows. Phase 63 closed with no file-exception rows at all and explicitly
      noted that adding one would have broken its gate; Phase 64 is the mirror image — omitting
      one breaks *this* gate.
-  2. **File gate** — enumerate the 27 files INVENTORY assigns to `RU-64-01`..`RU-64-03` from the
+  2. **File gate** — enumerate the files INVENTORY assigns to `RU-64-01`..`RU-64-03` from the
      live tree and confirm every one is named in `64-COVERAGE.md`. The counts and LOC were
      re-verified during this discussion and match INVENTORY exactly: 6 workflows / 568 lines,
-     4 readable tool files / 1,240 lines + 3 JARs, 14 manifest files / 9,208 lines.
+     4 readable tool files / 1,240 lines + 3 JARs, 14 manifest files / 9,208 lines — **27 files**.
+     Per **D-19** the gate prints **28**, the extra being `.github/dependabot.yml` (19 lines),
+     which must be named as a documented adoption at the point of the count rather than folded in
+     silently.
 
   **`RU-D8-01` is not Phase 64's.** INVENTORY scopes it as *"cross-cutting, not owned by Phases
   61-64"*. No `P64-*` finding may be located in `CLAUDE.md`, `VERBs.md` or `documentation/`, and
@@ -338,6 +343,51 @@ tooling situations, and a criterion (3) that demands *enumeration*, not spot-che
   milestone-level coverage position: which INVENTORY rows are now recorded across
   `61`/`62`/`63`/`64-COVERAGE.md`, and that `RU-D8-01`/D8 is the sole remainder. Phase 68 consumes
   this directly for its DOC-03 full-coverage statement.
+
+- **D-19:** **`.github/dependabot.yml` exists, INVENTORY says it does not, and Phase 64 adopts it
+  into `RU-64-01` as a 28th file.** Discovered during this discussion, verified live:
+
+  ```
+  $ ls .github/
+  dependabot.yml    workflows/
+  $ git log --oneline -1 -- .github/dependabot.yml
+  be402d6 chore: tell dependabot to ignore TypeScript major bumps (#402)
+  ```
+
+  INVENTORY's full-surface accounting table states for `.github/`: *"`workflows/` → `RU-64-01`;
+  **no other content under `.github/` in this tree**."* That is factually wrong — an 881-byte,
+  committed, functional config file sits beside `workflows/` and belongs to no review unit.
+
+  Three consequences, all of which the plans must carry:
+
+  1. **The claim is a D8 finding against INVENTORY.md**, recorded on `RU-64-01`'s row — the same
+     treatment D-08 gives the stale `node_modules/` note, and for the same reason (Phase 60 D-09
+     makes INVENTORY immutable, so drift is recorded, never edited away).
+  2. **The file is swept**, not skipped. Leaving the milestone's only dependency-automation config
+     unreviewed in the phase that owns SEC-08 would be the exact "invisible hole" the coverage
+     gates exist to prevent. It joins `RU-64-01` — it is `.github/` CI configuration, and
+     `RU-64-01` is the unit that owns `.github/`.
+  3. **It is substantively relevant to SEC-08, not just a scope-accounting footnote.** The config
+     declares `package-ecosystem: "npm"`, `directory: "/bbj-vscode"` — **npm only**. There is no
+     `gradle` ecosystem entry, so the `bbj-intellij` dependency tree receives no automated update
+     coverage at all. Given D-10 already establishes that the Gradle tree cannot even be
+     enumerated locally, "unscanned by tooling *and* unenumerable by hand" is a materially
+     stronger SEC-08 finding than either half alone. Its two documented `ignore:` entries
+     (`chevrotain` pinned to Langium's version per PR #347; `typescript` majors blocked by
+     typescript-eslint's `>=4.8.4 <6.1.0` range per PR #397) are **well-reasoned and must be
+     recorded as such** — they are a model of what `triage: accepted-with-reason` looks like
+     (D-09), not defects.
+
+  **Gate arithmetic is unchanged.** D-18's cell gate counts *rows*, and `dependabot.yml` inherits
+  `RU-64-01`'s row rather than earning a file-exception row of its own — its applicability is
+  identical to the workflows' (D5 `n/a — R-D5-CI`, D7 `n/a — R-D7-CI`). The cell gate still prints
+  **27 / 29 / 56**. Only D-18's **file gate** moves: **28 files**, not 27, with the 28th named and
+  its adoption justified in writing at the point of the count, so a reader diffing against
+  INVENTORY sees a deliberate documented addition rather than a miscount.
+
+  — **Reversibility:** reversible — if a later reader disagrees with the adoption, the file moves
+  to its own file-exception row or to `RU-64-02` with a one-line note; nothing downstream keys on
+  which of the two units holds it.
 
 ### Claude's Discretion
 
@@ -412,6 +462,8 @@ planner and the executing agents rather than pinned here:
 **`RU-64-01` — GitHub Actions workflows (rank 2)**
 - `.github/workflows/build.yml` (45), `deploy-docs.yml` (62), `manual-release.yml` (186),
   `preview.yml` (109), `pr-validation.yml` (61), `pr-vsix.yml` (105) — 568 total
+- `.github/dependabot.yml` (881 bytes) — **adopted into this unit by D-19**; present in the tree
+  but absent from INVENTORY's file list and contradicted by INVENTORY's own `.github/` accounting
 
 **`RU-64-02` — Build, packaging & dependency manifests (rank 3)**
 - `bbj-vscode/package.json` (694), `package-lock.json` (7,894), `esbuild.mjs` (28),
@@ -499,6 +551,8 @@ planner and the executing agents rather than pinned here:
 | JAR manifests readable via `unzip -p` | ✅ all 3 | jcommander 1.71 identified; `BBjCodeFomatter.jar` manifest is bare (D-11) |
 | `pull_request_target` in workflows | ❌ absent | Positive SEC-07 finding, must be stated not omitted (D-12) |
 | Top-level `permissions:` blocks | 2 of 6 workflows | Criterion-2 input (D-13) |
+| `.github/dependabot.yml` | ✅ present (881 B, committed `be402d6`) | Contradicts INVENTORY's `.github/` accounting; adopted into `RU-64-01` (D-19) |
+| Dependabot ecosystem coverage | npm only — no `gradle` entry | SEC-08 finding: `bbj-intellij` has no automated dependency updates (D-19) |
 
 </code_context>
 
@@ -545,9 +599,12 @@ planner and the executing agents rather than pinned here:
   close D-10's stated Gradle enumeration gap, which is worth noting in the re-triage.
 - **Reviewing `RU-D8-01`** (`CLAUDE.md`, `VERBs.md`, `documentation/`) — cross-cutting, owned by
   neither Phase 64 nor any other sweep phase; D-18 requires the close-out to say so out loud.
-- **Adding dependency scanning to CI** (Dependabot, `npm audit` gate, Gradle plugin) — a genuine
-  improvement surfaced by this phase's work, but a new capability, not a review finding. Belongs
-  in a future milestone.
+- **Extending Dependabot to the Gradle ecosystem** — `.github/dependabot.yml` already covers npm
+  for `/bbj-vscode` but declares no `gradle` entry (D-19), so `bbj-intellij` has no automated
+  dependency-update coverage. Phase 64 **records** that gap as a SEC-08 finding; adding the
+  ecosystem entry is Phase 67's if it classifies `easy`, and is not done here.
+- **Adding an `npm audit` gate to CI** — a genuine improvement surfaced by this phase's work, but
+  a new capability rather than a review finding. Belongs in a future milestone.
 
 </deferred>
 
