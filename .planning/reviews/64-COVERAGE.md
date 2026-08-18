@@ -136,7 +136,7 @@ D-20's adopted row reuses **R-JAR-BINARY** and **R-D7-CI** verbatim rather than 
 
 | # | Source | From | To | Subject | Disposition |
 |---|---|---|---|---|---|
-| 1 | `63-COVERAGE.md` close-out inheritance table | Phase 63 / `RU-63-03`/D6 | `RU-64-02`/D6 | `P63-D6-002` — the `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch at `bbj-intellij/build.gradle.kts:12-13`, a `location:` Phase 63 flagged as its one deliberate exception because INVENTORY assigns that file to `RU-64-02` for every dimension | pending |
+| 1 | `63-COVERAGE.md` close-out inheritance table | Phase 63 / `RU-63-03`/D6 | `RU-64-02`/D6 | `P63-D6-002` — the `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch at `bbj-intellij/build.gradle.kts:12-13`, a `location:` Phase 63 flagged as its one deliberate exception because INVENTORY assigns that file to `RU-64-02` for every dimension | **merged** — into `P64-D6-010`, which carries the same condition forward with `RU-64-02`'s own re-derived evidence (`./gradlew --offline -q dependencies` exits 1 in 723 ms with `* What went wrong: 25.0.3`) plus the Gradle-distribution, IntelliJ-Platform and LSP4IJ coordinates Phase 63 explicitly left to this unit. Written disposition in `## RU-64-02` → `### Inherited item triage`; accounted for in the close-out §D. Not `promoted`, because the toolchain declaration at `build.gradle.kts:11-14`, the Gradle 8.13 wrapper pin and the resulting inability to resolve any transitive coordinate are one condition with one fix. Fixing it belongs to Phase 66/67 and would retroactively close the D-10 enumeration gap this phase records |
 
 **Exactly one row, and the three facts that make it exactly one were each verified now rather than asserted:** INVENTORY's routing table (D-06) contains **no Phase 64 row**; `61-COVERAGE.md` has **no downstream-inheritance table at all** and names no Phase 64 obligation; and `62-COVERAGE.md`'s close-out inheritance table names Phases 63, 65, 66, 67, 68 and 69 and contains **no Phase 64 row**. Plan `64-03` resolves the disposition column.
 
@@ -3432,36 +3432,488 @@ is stated here so it reads as the scope decision it is rather than as an oversig
 
 ## Phase 64 Close-Out
 
-_(pending — plan `64-03` fills all of it.)_
+Sections A-G mirror `63-COVERAGE.md`'s close-out shape, plus one subsection that exists only here
+because Phase 64 is the last sweep phase. **Every gate below was re-run at execution time and its
+literal output recorded; none is restated from `64-CONTEXT.md` or from this file's own header
+(D-18).** Where a re-derivation could disagree with a stated total, the disagreement would be
+written up here as a defect rather than quietly adopted; none did.
+
+Two structural differences from Phase 63's close-out are worth naming up front, because they are
+exactly where this phase could have under-counted. Phase 63 closed with **no** file-exception rows
+at all and recorded explicitly that adding one would have broken its gate. Phase 64 is the mirror
+image: it closes with **five** — four transcribed from INVENTORY and one adopted by D-20 — so §A and
+§B must account for all of them, and §B's re-derivation must **add** the adopted row on top of the
+INVENTORY pipeline rather than expecting the pipeline to produce it.
 
 ### A. File gate
 
-_(pending)_
+Enumerated from the live tree at execution time, not from a list typed into a plan. Command:
+
+```bash
+ls .github/workflows/*.yml .github/dependabot.yml bbj-vscode/tools/*.bbj bbj-vscode/tools/interop-test-harness/run-tests.ts bbj-vscode/tools/formatter/*.jar bbj-vscode/tools/formatter/lib/*.jar bbj-vscode/package.json bbj-vscode/package-lock.json bbj-vscode/esbuild.mjs bbj-vscode/eslint.config.js bbj-vscode/langium-config.json bbj-vscode/tsconfig.json bbj-vscode/tsconfig.test.json bbj-vscode/vitest.config.ts bbj-intellij/build.gradle.kts bbj-intellij/settings.gradle.kts bbj-intellij/gradle.properties bbj-intellij/gradlew bbj-intellij/gradlew.bat bbj-intellij/gradle/wrapper/gradle-wrapper.properties bbj-intellij/gradle/wrapper/gradle-wrapper.jar | wc -l
+```
+
+**Literal output: `29`.** Every path resolved; the command listed all 29 files with no error.
+
+**Composition, stated at the point of the count so a reader diffing this file against INVENTORY sees
+two deliberate documented additions rather than a miscount.** **27 of the 29** come from INVENTORY's
+own per-unit file lists for `RU-64-01`, `RU-64-02` and `RU-64-03`. The other **two are adoptions,
+named individually with their justification restated in one sentence each**:
+
+1. **`.github/dependabot.yml` (D-19)** — committed, functional `.github/` CI configuration and this
+   milestone's only dependency-automation config; `RU-64-01` is the unit that owns `.github/`, and
+   its applicability is identical to the workflows', so it **inherits `RU-64-01`'s row and adds a
+   file but no cell**.
+2. **`bbj-intellij/gradle/wrapper/gradle-wrapper.jar` (D-20)** — a 43,583-byte third-party
+   executable that **`gradlew:117`** puts on the classpath and runs on every build, absent from
+   every INVENTORY file list (`grep -c 'gradle-wrapper.jar' .planning/reviews/INVENTORY.md` prints
+   `0`); it joins `RU-64-02` with **its own file-exception row** and therefore adds **both a file and
+   8 cells**.
+
+**The governing principle, in one sentence, because it is what lets a later reader judge every count
+in this file: the gate follows the scope, not the other way round.** A count that excludes a real
+in-scope artifact is simply a wrong count, so both gates moved to fit the surface rather than the
+surface being trimmed to fit a previously-stated number.
+
+**Every basename confirmed present in this file.** A shell loop over the same enumeration greps each
+basename against `64-COVERAGE.md` and reports any that is absent:
+
+```bash
+for p in $(ls …the same 29 paths…); do b=$(basename "$p"); grep -qF "$b" .planning/reviews/64-COVERAGE.md || echo "ABSENT: $b"; done
+```
+
+**Literal output: empty — zero absent basenames.**
+
+**Unit distribution: 7 + 7 + 15 = 29.** `RU-64-01` 7 (six workflow files, 568 lines, plus
+`dependabot.yml`); `RU-64-03` 7 (four readable tool files, 1,240 lines, plus three vendored JARs,
+112,361 bytes); `RU-64-02` 15 (fourteen manifests, 9,208 lines, plus the adopted wrapper JAR).
+**No file is named inside two unit sections** as that unit's own file: the three lists are disjoint
+by path, `.github/` appears only under `RU-64-01`, `bbj-vscode/tools/` only under `RU-64-03`, and the
+manifest set only under `RU-64-02`. Cross-*citation* does occur and is deliberate — `RU-64-02`'s
+cells cite workflow line numbers as evidence and `RU-64-03`'s D4 cell cites `build.gradle.kts` — but
+in each case the finding's `location:` sits in the citing unit's own file or is explicitly referred
+under `### Cross-unit referrals`, so ownership is never ambiguous.
 
 ### B. Cell-total gate
 
-_(pending)_
+Three sources, all re-derived live, all in agreement.
+
+| Source | Rows | `applies` | `n/a` | Total cells |
+|---|---|---|---|---|
+| **Stated** (this file's header and grid) | 8 | 29 | 35 | 64 |
+| **Re-derived** (INVENTORY pipeline + D-20's adopted row) | 7 + 1 = 8 | 27 + 2 = 29 | 29 + 6 = 35 | 56 + 8 = 64 |
+| **This file's own grep-counted content** | 8 | 29 | 35 | 64 |
+
+**Part 1 — the seven INVENTORY-sourced rows.** Run at execution time:
+
+```bash
+grep -E '^\| .(RU-64-0[1-3]|bbj-vscode/package-lock\.json|tools/formatter/[^|]*). \|' .planning/reviews/INVENTORY.md | grep -E 'applies|n/a' | awk '{a+=gsub(/applies/,"x"); n+=gsub(/n\/a/,"y")} END{print NR, a, n, a+n}'
+```
+
+**Literal output: `7 27 29 56`.** The four printed fields are rows, `applies`, `n/a`, total. **The
+leading row count is part of the gate and it must be 7, not 3** — a `3` would mean the four
+INVENTORY file-exception rows had been silently dropped, which is the specific failure mode D-17
+names for this phase. It printed 7.
+
+**Part 2 — D-20's adopted row, added by hand because it cannot come from the pipeline.**
+`bbj-intellij/gradle/wrapper/gradle-wrapper.jar` contributes **1 row, 2 `applies` (D1, D6), 6 `n/a`,
+8 cells**. The proof that its absence from the pipeline is a fact rather than an assumption:
+
+```bash
+grep -c 'gradle-wrapper.jar' .planning/reviews/INVENTORY.md
+```
+
+**Literal output: `0`.** INVENTORY does not name the file anywhere, so no grep over INVENTORY can
+recover this row; it is added explicitly or it is lost.
+
+**Sum: 7 + 1 = 8 rows; 27 + 2 = 29 `applies`; 29 + 6 = 35 `n/a`; 56 + 8 = 64 cells. The phase gate is
+`8 29 35 64`.** **A close-out that reported `7 27 29 56` as the phase total would have dropped
+D-20's row — the easiest row in this phase to lose, precisely because no INVENTORY grep can recover
+it — and both literals are recorded above so the two numbers can never be confused for one another.**
+
+**Part 3 — this file's own content, counted rather than assumed.**
+
+```bash
+grep -cE '^- (D[1-8]|\[file-exception\]) .* — (pass|fail) — ' .planning/reviews/64-COVERAGE.md   # 29
+grep -cE '^- (D[1-8]|\[file-exception\]) .* — n/a — '          .planning/reviews/64-COVERAGE.md   # 35
+grep -cE '^- (D[1-8]|\[file-exception\]) '                     .planning/reviews/64-COVERAGE.md   # 64
+grep -cE '^- (D[1-8]|\[file-exception\]) .* — pending$'        .planning/reviews/64-COVERAGE.md   # 0
+```
+
+**Literal outputs: `29`, `35`, `64`, `0`.** The pattern covers **both** cell-line shapes — the
+unit-row form (`- D1 …`) and the file-exception form (`- [file-exception] path · D1 …`) — so no
+file-exception row can be missed by the count that is supposed to catch a missing file-exception row.
+Split by shape: 24 unit-row cell lines (3 units × 8) and 40 file-exception cell lines (5 rows × 8),
+24 + 40 = 64.
+
+**All three sources agree at 8 / 29 / 35 / 64. No disagreement arose, and none was adopted:** had any
+of the three disagreed, that disagreement would be written up here as a defect to surface rather than
+reconciled silently, since INVENTORY is immutable and the three prior coverage files are closed.
 
 ### C. Finding accounting
 
-_(pending)_
+**44 findings** recorded across the phase — 12 in `RU-64-03`, 13 in `RU-64-01`, 19 in `RU-64-02`.
+
+**By primary dimension:**
+
+| D1 | D2 | D3 | D4 | D5 | D6 | D7 | D8 | Total |
+|---|---|---|---|---|---|---|---|---|
+| 6 | 9 | 3 | 6 | 2 | 13 | **0** | 5 | 44 |
+
+**By severity:**
+
+| `critical` | `high` | `medium` | `low` | Total |
+|---|---|---|---|---|
+| 1 | 8 | 22 | 13 | 44 |
+
+**By `classification`:** `easy` **8**, `major` **36**. **By `effort`:** `2` → **27**, `4` → **8**,
+`8` → **9** — every value on the `{2,4,8}` scale, none off it. **By `disposition`:** `easy-fix`
+**8**, `major-refactor` **34**, `wontfix` **2**; no `duplicate`, no `already-covered`, and no
+`not-reproducible` disposition on a *finding* record (the seven not-reproducible claims live in their
+units' `### Not-reproducible dispositions` blocks, which is where the drop-vs-disposition rule puts
+them).
+
+**Per unit:**
+
+| Unit | Findings | `critical`/`high`/`medium`/`low` | `easy`/`major` | `2`/`4`/`8` | Not-reproducible entries |
+|---|---|---|---|---|---|
+| `RU-64-03` | 12 | 0 / 3 / 5 / 4 | 0 / 12 | 5 / 2 / 5 | 2 |
+| `RU-64-01` | 13 | 0 / 1 / 8 / 4 | 3 / 10 | 7 / 4 / 2 | 3 |
+| `RU-64-02` | 19 | 1 / 4 / 9 / 5 | 5 / 14 | 15 / 2 / 2 | 2 |
+| **Total** | **44** | **1 / 8 / 22 / 13** | **8 / 36** | **27 / 8 / 9** | **7** |
+
+**`triage:` distribution (D6 only, per D-09).** All **13** D6 findings carry `triage:` alongside
+`classification:`, and `grep -c '^triage:'` equals `grep -c '^dimension: *D6'` exactly:
+
+| `fix-now` | `file-issue` | `accepted-with-reason` | Total |
+|---|---|---|---|
+| 3 | 9 | 1 | 13 |
+
+**Mapping check, stated as a check rather than assumed:** every `fix-now` record is
+`classification: easy` (3 of 3), and every `file-issue` and `accepted-with-reason` record is
+`classification: major` (10 of 10) — D-09's mapping holds on all 13 with no exception. **Every
+`accepted-with-reason` carries a written reachability argument rather than a bare not-shipped
+claim:** there is exactly one such record phase-wide, `P64-D6-012`, and it names three code paths
+that would have to exist — a caller passing unauthored data into `concurrently`'s command
+construction, a stylesheet entering Vite's CSS pipeline, and a call to a nanoid custom generator with
+`size === 0` — showing each absent by a recorded command, and it additionally states the three
+conditions under which the acceptance expires. `RU-64-01`'s D6 cell separately identifies
+`.github/dependabot.yml`'s two `ignore:` entries as the model of what that vocabulary requires,
+verified mechanically against the manifest and lockfile; they are recorded as correct, not as
+defects, and are not findings.
+
+**Not-reproducible by unit:** `RU-64-03` 2, `RU-64-01` 3, `RU-64-02` 2 — **7 in total**, each with
+the tier it failed and the reason it failed it, none silently dropped.
+
+**Dedup resolution.** All **44** `dedup:` fields are non-blank and all **44 resolve to `none`** — 0
+duplicates, 0 partial overlaps, and **0 issue numbers from the frozen 15-issue snapshot touched by
+this phase**. That is a derived result, not a shrug, and this file's header re-derived the reason
+before any sweep began: of the 15 open issues frozen on 2026-08-17, **0 carry the repository's
+`dependencies` area label** and **0 name CI, a workflow, build configuration or a vendored binary**.
+The tracker simply has no open issue anywhere near this phase's surface. Two `dedup:` fields carry
+additional cross-references that are not deduplications: `P64-D6-010` records that it **merges**
+`P63-D6-002` (`63-COVERAGE.md:439`), and `P64-D6-012` notes an existing Dependabot branch for
+`concurrently` that may resolve one triage row through routine automation. **No `dedup:` names a
+`DEBT-*` requirement**, so Phase 66 inherits from this phase only via the inherited-item route in §D.
+
+**Two explicit assertions, both required by D-14 and D-16.**
+
+1. **Zero `P64-D7-*` IDs were allocated.** `grep -cE '^id:[[:space:]]+P64-D7-'` prints **`0`**. D7 is
+   `n/a` in all 8 rows of this slice under `R-D7-CI`, no plan performed parity work of any kind, and
+   the dimension is retired for the phase. Every unit closure states this in its own words as well,
+   so the absence reads as a scope decision rather than an oversight.
+2. **Every `critical`/`high` finding in `## RU-64-01` opens its `evidence:` with the D-16 disclosure
+   marker.** Counted both ways within the extracted `RU-64-01` section:
+   `grep -cE '^severity: +(critical|high)'` prints **`1`**, and
+   `grep -c 'Disclosure-limited per D-16'` prints **`1`**. The two counts are equal. That single
+   record is `P64-D1-004` (the JetBrains marketplace token interpolated into a `run:` command line),
+   whose `evidence:` field opens with the literal phrase and states surface, problem class and
+   impact without a recipe.
+
+**D-16 assessed and not triggered elsewhere.** The `critical` and `high` findings outside
+`RU-64-01` — `P64-D6-012` (`critical`, an *acceptance* record citing public advisories),
+`P64-D1-006`/`P64-D6-006` (the wrapper chain), `P64-D6-007`/`P64-D6-008` (dependency placement and a
+shipped transitive package), and `RU-64-03`'s three `high` records — were each assessed against
+D-16's two-tier rule and none amounts to a working exploitation path against a shipped artifact:
+they cite public advisory URLs and first-party checksum metadata, and the two wrapper records
+describe an integrity gap whose exploitation would require write access to this repository. Those
+assessments are stated inside the records themselves rather than left implicit.
 
 ### D. Inherited-item accounting
 
-_(pending)_
+Three parts, none optional, and **zero inherited items were dropped**.
+
+**(1) The ledger's single row — `P63-D6-002`.** The `bbj-intellij` Gradle build JDK 17-vs-25.0.3
+toolchain mismatch at `bbj-intellij/build.gradle.kts:12-13`, routed here by `63-COVERAGE.md`'s
+close-out inheritance table. **Disposition: `merged`** — into `P64-D6-010`, which carries it forward
+with this unit's own re-derived evidence (`./gradlew --offline -q dependencies` exits 1 in 723 ms
+with `* What went wrong: 25.0.3`, reproduced through a different task than Phase 63 used) plus the
+version coordinates Phase 63 explicitly left to `RU-64-02`/SEC-08. It is `merged` rather than
+`promoted` because the toolchain declaration, the Gradle 8.13 wrapper pin and the resulting inability
+to resolve any transitive coordinate are one condition with one fix, not two defects. The written
+disposition sits in `### Inherited item triage` under `## RU-64-02`, and **the header's
+`## Inherited item ledger (D-17)` disposition column has been resolved to match it**, so the ledger
+and this table agree.
+
+**(2) The two Phase 62 body-level deferrals addressed to `RU-64-03`.** Recorded here so the
+accounting is complete, even though they are **not** ledger rows and are counted by no gate — D-18's
+arithmetic is unchanged by them. Both were dispositioned by plan `64-01` inside `## RU-64-03`:
+
+| Source anchor | Subject | Disposition recorded by `64-01` |
+|---|---|---|
+| **`62-COVERAGE.md:1489`** | `document-formatter.ts`'s `jarPath` provenance deferred to `RU-64-03`, plus `'java'` resolved by argv[0] lookup against `PATH` with no pinning or verification before spawning | **Addressed** — promoted into `### Vendored Binary Provenance` fact (4) and cited inside `P64-D1-003`'s `evidence:` as the runtime half of the same unverified-execution chain, rather than allocated a second finding against `document-formatter.ts`, which is `RU-62-02`'s file and closed |
+| **`62-COVERAGE.md:1833`** | Whether `BBjCFCli.jar` honours its `-i` path argument or its stdin content when the two disagree | **`not-reproducible`** — settling it requires decompiling or executing the JAR, both prohibited by D-11, and the JAR's six-line manifest carries no argument metadata, which was checked before disposing rather than assumed |
+
+**(3) The three verified negative facts, each re-confirmed at close-out rather than restated.**
+
+- **INVENTORY's routing table (D-06) has no Phase 64 row.** Re-read at
+  `.planning/reviews/INVENTORY.md` §"Routing table (D-06)": it holds six rows, five targeting
+  **Phase 61** (the 11 `linking.test.ts` failures, the `beforeAll` timeout flakiness, the 3 disabled
+  `parser.test.ts` assertions, the TEST-03 `completion-test.test.ts` skip, and the
+  `bbj-document-symbol-provider.ts` unused eslint-disable directives) and one targeting **Phase 63**
+  (the Gradle toolchain mismatch, which Phase 63 promoted as `P63-D6-002` and which reaches this
+  phase through the ledger, not through the routing table). **Phase 64 rows: 0.**
+- **`61-COVERAGE.md` names no Phase 64 obligation.** `grep -c 'Phase 64' .planning/reviews/61-COVERAGE.md`
+  prints **`0`**; that file has no downstream-inheritance table at all.
+- **`62-COVERAGE.md`'s close-out inheritance table has no Phase 64 row.** Re-read at
+  `62-COVERAGE.md:2071-2076`: it names Phases 63, 65, 66, 67, 68 and 69, and **no Phase 64 row**.
+
+The ledger therefore holds **exactly one** row, which is what it held when plan `64-01` created it,
+and that count was arrived at by re-confirmation rather than by trust.
 
 ### E. Scope-fidelity note
 
-_(pending)_
+**All 29 files were swept, although ROADMAP criterion 1 names only a subset.** The criterion names
+"6 workflows, the Gradle build, esbuild/packaging config, and the 3 `bbj-vscode/tools/*.bbj`
+scripts". The surfaces swept **beyond** that wording, named explicitly so the surplus is auditable
+rather than invisible: **`.github/dependabot.yml`** (D-19, 19 lines); **`gradle/wrapper/gradle-wrapper.jar`**
+(D-20, 43,583 bytes); the **interop test harness** `bbj-vscode/tools/interop-test-harness/run-tests.ts`
+(1,058 lines); the **three vendored `tools/formatter/` JARs** (112,361 bytes); and the **eight
+non-Gradle packaging manifests** (`package.json`, `package-lock.json`, `esbuild.mjs`,
+`eslint.config.js`, `langium-config.json`, `tsconfig.json`, `tsconfig.test.json`, `vitest.config.ts`).
+
+**The boundaries this phase held, each stated as a fact rather than as an intention.**
+
+- **No `P64-*` finding is located inside `bbj-vscode/src/` or `bbj-intellij/src/`**, both owned by
+  closed phases: `grep -cE '^location:[[:space:]]+bbj-vscode/src/'` and the `bbj-intellij/src/`
+  equivalent each print **`0`**. Files in those trees are cited as evidence in several cells —
+  `document-formatter.ts`, `extension.ts`, `test-helper.ts`,
+  `bbj-document-symbol-provider.ts` — and every such citation is either inside a finding whose
+  `location:` is this phase's own file or is recorded under `### Cross-unit referrals`.
+- **`java-interop/` contributed only `build.gradle` and `settings.gradle`**, read **once** as an
+  additional dependency-tree source per INVENTORY's own carve-out, which states that doing so "does
+  not add `java-interop/` source files to any unit's file list". No `java-interop/` source file
+  appears in any unit's file list and the file gate's enumeration is unchanged at 29. One finding —
+  `P64-D6-011`, the Guava advisories — carries `java-interop/build.gradle:22` as its `location:`,
+  because RVW-06 requires a `file:line` anchor and that is where the vulnerable coordinate is
+  declared; the record states the scope note in full so it is not mistaken for an expansion.
+- **`node_modules/` was not reviewed as source**, only queried as the installed tree behind
+  `npm audit` and `npm ls`. **INVENTORY's exclusion of it still stands**, exactly as its Surface
+  Accounting row directs — dependency health was assessed from the manifest and lockfile — even
+  though the exclusion's stated reason is now recorded as stale (`P64-D8-003`). Those are two
+  different things and the finding says so.
+- **All four vendored JARs were assessed by manifest and hash only** — `BBjCFCli.jar`,
+  `lib/BBjCodeFomatter.jar`, `lib/jcommander-1.71.jar` and `gradle/wrapper/gradle-wrapper.jar` — with
+  **no decompilation, no disassembly, no unpacking beyond `META-INF/MANIFEST.MF`, and no execution**
+  (D-11). Where that method could not answer a question, the question is recorded as unanswerable
+  rather than answered by assertion.
+
+**The two adoptions, with the direction of the reasoning made explicit so a later reader can audit
+it.** Both files were in scope **on the merits before either gate moved**: `.github/dependabot.yml`
+is committed, functional `.github/` configuration in the phase that owns SEC-08, and
+`gradle-wrapper.jar` is an executable that **`gradlew:117`** runs on every build. The gates were then
+corrected to match — **the gate follows the scope, not the other way round** — rather than the scope
+being trimmed to match a previously-stated number. **And INVENTORY's failure to name either file
+remains recorded as a D8 drift finding in each case** (`P64-D8-002` for `dependabot.yml`, recorded by
+plan `64-02`; `P64-D8-004` for the wrapper JAR): adoption and drift are two different facts and
+neither cancels the other. **D-20**'s adoption is the one that moves both gates — rows 7 → 8, cells
+56 → 64, files 28 → 29 — where D-19's moves only the file gate.
+
+**The `RU-D8-01` statement, said out loud because D-18 requires it.** `RU-D8-01` — `CLAUDE.md` (96
+lines), `bbj-vscode/VERBs.md` (148 lines) and `documentation/` (29 Docusaurus files) — is scoped by
+INVENTORY as **cross-cutting and owned by none of Phases 61-64**, D8 only, with its other seven cells
+`n/a` under **`R-D8-SCOPE`** (`INVENTORY.md:814,866-870`). **No `P64-*` finding is located in any of
+its files**: `grep -cE '^location:[[:space:]]+CLAUDE\.md'`,
+`grep -cE '^location:[[:space:]]+bbj-vscode/VERBs\.md'` and
+`grep -cE '^location:[[:space:]]+documentation/'` each print **`0`**. Both `RU-64-03` and `RU-64-02`
+encountered genuine `CLAUDE.md` staleness during their D8 sweeps — an incomplete run-tool list at
+`CLAUDE.md:92`, and two `./gradlew build` instructions that cannot execute in this checkout — and
+each is recorded as a **written observation naming `RU-D8-01` as the row that owns it**, with no ID
+allocated. **`RU-D8-01` therefore remains the milestone's one unrecorded row**, and it is stated here
+rather than leaving a reader to assume Phase 64 forgot it.
 
 ### F. ROADMAP success criteria
 
-_(pending)_
+Each of the four is answered per-criterion below, in Phase 63's shape, citing where in this file the
+evidence sits. Two of them close a requirement outright: **criterion 2** discharges SEC-07 and
+**criterion 3** discharges SEC-08, and neither flows to Phase 65 as open work.
+
+**Criterion 1 — all 6 workflows, the Gradle build, esbuild/packaging config and the 3
+`tools/*.bbj` scripts have a recorded pass/fail against D1-D8. Status: Met.** §A's live enumeration
+prints **29** files and confirms every basename present in this file; §B's three-source gate agrees
+at **8 rows / 29 `applies` / 35 `n/a` / 64 cells** with **0** placeholders remaining. Every live cell
+carries `pass` or `fail` plus a written check line naming the concrete checks applied, and every
+`n/a` carries its exclusion reason verbatim. The criterion's named subset is fully covered and, per
+§E, four further surfaces were swept beyond it.
+
+**Criterion 2 — every workflow's secret handling, `GITHUB_TOKEN` permission scope, third-party
+action pinning, and exposure to untrusted PR-controlled input is documented. Status: Met.** The
+evidence is `RU-64-01`'s **`### SEC-07 Workflow Security Posture`**, a per-workflow table covering
+all six files across those four axes, backed by that unit's D1 and D6 cells: three secrets traced to
+every binding site, the four workflows that declare no `permissions:` block (`P64-D1-005`), 36 of 36
+action references on mutable tags with **0** SHA-pinned (`P64-D6-003`), and the fork-reachability
+analysis including the explicit positive that `pull_request_target` appears nowhere in the tree.
+**SEC-07 closes with this phase**, so nothing on it flows to Phase 65 as open work.
+
+**Criterion 3 — every npm and Gradle dependency with a known vulnerability is enumerated and triaged
+as fix-now, file-issue, or accepted-with-reason. Status: Met, with a stated coverage limitation on
+the Gradle half.** The evidence is `RU-64-02`'s **`### SEC-08 Dependency Triage`**, a 20-row table —
+19 npm and 1 Maven — each row carrying a resolvable advisory reference, a `triage:`, a
+`classification:` and the finding ID that records it, with totals `fix-now` 6, `file-issue` 11,
+`accepted-with-reason` 3 at the table level. **The `npm audit` run is pinned to its run date,
+2026-08-18**, with its verbatim summary `19 vulnerabilities (7 moderate, 11 high, 1 critical)` and
+its `metadata.dependencies` totals, because it is a live query whose answer drifts as advisories
+publish. **The Gradle coverage limitation is stated rather than hidden:** declared coordinates were
+enumerated statically and checked against OSV, and **transitive Gradle dependencies are not
+enumerable in this environment** — `./gradlew --offline -q dependencies` exits 1 in 723 ms with
+`* What went wrong: 25.0.3`, the literal output being recorded in the D6 cell — so the Gradle half
+lists every vulnerable *declared* coordinate and cannot claim to list every vulnerable transitive
+one. Composed with `RU-64-01`'s `P64-D6-005`, the `bbj-intellij` tree is both unscanned by tooling
+and unenumerable by hand. The answer also consolidates, **by reference rather than by re-audit**, the
+phase's other two SEC-08 contributions — `RU-64-03`'s `### Vendored Binary Provenance` and
+`RU-64-01`'s action-pinning and dependabot records — and states that this milestone ships and
+executes **four** unpinned vendored JARs, not three. **SEC-08 closes with this phase.**
+
+**Criterion 4 — every recorded finding carries `file:line`, a dimension, and a verified failure
+scenario per the Phase 60 standard. Status: Met.** §C's counts are the evidence: all **44** records
+carry every required template field (`grep -c` for each of `unit`, `location`, `dimension`,
+`severity`, `evidence_tier`, `evidence`, `failure_scenario`, `classification`, `effort`, `dedup` and
+`disposition` equals the `^id:` count of 44), all IDs are unique and well-formed, none is in the
+reserved `P00-*` namespace, and no `dedup:` is blank. **The evidence bases, stated because they
+differ by unit:** `RU-64-01`'s findings are **trace-evidenced and name their triggering event**,
+because GitHub Actions cannot be executed in this checkout (D-12); the four JAR findings rest on
+**manifest, hash and distribution reasoning**, because no JAR was decompiled or run (D-11); and
+`RU-64-02`'s Gradle-side findings rest on static enumeration plus first-party release metadata,
+because the Gradle build does not run here (D-10). Seven claims that did not clear their tier are
+recorded under their units' `### Not-reproducible dispositions` with the tier they failed and why,
+rather than being asserted or dropped — which is the standard working in the direction that matters.
 
 ### G. Closing confirmations
 
-_(pending)_
+Each evidenced by a command and its output.
+
+- **ISSUE-01 not triggered.** No GitHub issue was opened, commented on, or drafted by any of this
+  phase's three plans, and no issue draft appears in this file. The only tracker interaction anywhere
+  in this phase is **reading** INVENTORY's frozen 15-issue snapshot for `dedup:` resolution, which is
+  a read of a committed document rather than a query. ISSUE-01 is a hard gate owned by Phase 69.
+- **`INVENTORY.md` not edited, even though this phase recorded two D8 findings against it.**
+  `git log --oneline -- .planning/reviews/INVENTORY.md` shows its most recent commit as
+  `1dcab8b docs(60-04): log 60-03's Langium/Chevrotain/Vitest corrections in D-15 log` — **Phase 60,
+  nothing since** — and `git status --porcelain .planning/reviews/INVENTORY.md` prints nothing. That
+  is precisely the immutability-plus-drift pattern D-08 and D-19 prescribe: `P64-D8-003` (the stale
+  `node_modules/` reason at `:938`) and `P64-D8-004` (the unlisted `gradle-wrapper.jar` at `:964`)
+  are recorded **as findings whose `location:` points into the stale document**, not as corrections
+  to it.
+- **`61`/`62`/`63-COVERAGE.md` not reopened or edited.**
+  `git status --porcelain .planning/reviews/61-COVERAGE.md .planning/reviews/62-COVERAGE.md .planning/reviews/63-COVERAGE.md`
+  prints nothing; their last commits remain `5e4fce7 docs(61-07)`, `c8603a3 docs(62-05)` and
+  `f14ffb9 fix(63)` respectively, all predating this phase. Prior-phase records were cited by ID and
+  by line anchor throughout, never modified.
+- **No source file modified and no working-tree mutation of any kind.**
+  `git status --porcelain bbj-vscode bbj-intellij java-interop .github` prints **nothing**, checked
+  before and after every task in all three plans. **This is also the evidence that no automated
+  dependency remediation ran during the SEC-08 audit**: `npm audit fix` — or any equivalent — would
+  have rewritten `bbj-vscode/package.json` or `bbj-vscode/package-lock.json` and broken this check.
+  The audit used only read-only queries (`npm audit`, `npm audit --json`, `npm ls`), and the one
+  Gradle invocation (`./gradlew --offline -q dependencies`) failed before scheduling a task.
+- **The swept-tree SHA still describes these three sweeps.** The header anchors this phase to branch
+  `v4.0-stability-and-quality` at commit `446c53c2ae9fe0533ece792f9acb0bcc54b6a9bb`
+  (`446c53c docs(63): mark phase complete after 4/4 verification`), recorded **once** for the whole
+  phase by plan `64-01` and never re-anchored. Every commit since is a `.planning/` commit landing
+  these three plans and this coverage file; no file under `bbj-vscode/`, `bbj-intellij/`,
+  `java-interop/` or `.github/` has changed, so the tree all three sweeps describe is the tree that
+  SHA names.
+
+- **No placeholder remains anywhere in this file, and the residual matches of the *substring*
+  `pending` are enumerated here so the check is not ambiguous.** The three placeholder shapes this
+  file uses all count **0**: `grep -cE '^- (D[1-8]|\[file-exception\]) .* — pending$'` prints `0`
+  (no unrecorded cell line), `grep -cE '^_\(pending'` prints `0` (no stubbed sub-block), and
+  `grep -cE '\| pending \|'` prints `0` (the inherited-item ledger's disposition column is
+  resolved). A bare `grep -c 'pending'` over the whole file prints **`5`**, and every one of the five
+  is accounted for rather than left to look like a missed placeholder: **`:105`** is the skeleton's
+  own write-contract paragraph *describing* the placeholder convention; **`:889`** and **`:1753`** are
+  `RU-64-03`'s and `RU-64-01`'s unit closures each asserting that "no cell in this unit carries the
+  `pending` placeholder"; **`:922`** is the substring inside the word *de**pending*** in
+  `RU-64-01`'s D6 cell ("`langium@4.3.1` depending on `chevrotain`"); and the fifth is in §B above,
+  where the gate command `grep -cE '… — pending$'` is quoted verbatim alongside its literal output
+  `0`, as D-18 requires. **Four of the five sit in text written by plans `64-01` and `64-02`, which
+  this plan's write contract forbids it to reword**, and the fifth is a gate record that would be
+  weakened by removing it. The bare-substring count is therefore `5` by construction and not by
+  omission.
+
+**Downstream inheritance — what each later phase consumes from this file.**
+
+| Phase | Inherits from Phase 64 |
+|---|---|
+| **Phase 65** | **Nothing as open work, by design.** SEC-01/02/04/05 are cross-cutting over Phases 61-63's units, and **SEC-07 and SEC-08 both close here**, so Phase 65's scope carries no CI and no dependency component. As *context* rather than open work, `RU-64-03`'s D1 records feed its SEC-04 and SEC-05 picture: `P64-D1-001` (the `admin`/`admin123` EM credential fallback at `web.bbj:30-31`), `P64-D1-002` (raw JWT written to a caller-supplied path by `em-login.bbj`) and `P64-D1-003` (three unpinned JARs executed with no existence, hash or signature check), together with `62-COVERAGE.md:1489`'s `PATH`-resolved `java` interpreter, which `64-01` dispositioned into that same chain |
+| **Phase 66** | Every finding whose `dedup:` names a `DEBT-*` requirement — **none does in this phase; all 44 resolve to `none`** — so Phase 66 inherits through the inherited-item route instead: **`P63-D6-002`'s re-triage**, dispositioned `merged` into `P64-D6-010`, whose fix is `DEBT`-shaped work spanning `build.gradle.kts` and the Gradle wrapper pair and whose value exceeds its `medium` severity, because applying it retroactively closes this phase's own stated Gradle enumeration gap |
+| **Phase 67** | The **`classification: easy` set — 8 findings** — and, within D6, the **`triage: fix-now` bucket — 3 findings** for its apply path. The 36 `major` records are explicitly **not** Phase 67's, and the 8 `high`/`critical` records among them are `major` by D-13 test (6) regardless of how small their diffs are |
+| **Phase 68** | **This whole file** for the DOC-03 concatenation against INVENTORY's 232-cell grid — §A and §B close that gate so no scope is re-derived — plus the **`### Milestone coverage position (last sweep phase)`** subsection below, which supplies the 147-of-148 arithmetic directly, and the `classification: major` set (36) for `MAJOR-REFACTORS.md` |
+| **Phase 69** | Every `dedup:` verdict — all 44, all `none` — for issue drafting, **gated on ISSUE-01**, under **D-16's disclosure limits** for the `RU-64-01` records: `P64-D1-004`'s `evidence:` is redacted and opens with `Disclosure-limited per D-16`, and any issue drafted from it must preserve that limit rather than reconstructing the detail |
 
 ### Milestone coverage position (last sweep phase)
 
-_(pending — Phase 64 is the last sweep phase, so this subsection states which INVENTORY rows are recorded across `61`/`62`/`63`/`64-COVERAGE.md` and that `RU-D8-01`/D8 is the sole remainder. Phase 68's DOC-03 full-coverage claim reads it directly.)_
+Phase 64 is the last sweep phase, so this subsection states where the milestone's coverage stands.
+**Re-derived live across all four coverage files, not restated**, using the **identical cell-line
+patterns this file's own gate uses** — covering both the unit-row and the file-exception line shapes
+— so no earlier phase's file-exception rows can be dropped the way this phase's could have been.
+
+```bash
+for c in 61 62 63 64; do printf "%s " "$(grep -cE '^- (D[1-8]|\[file-exception\]) .* — (pass|fail) — ' .planning/reviews/$c-COVERAGE.md)"; done   # verdicts
+for c in 61 62 63 64; do printf "%s " "$(grep -cE '^- (D[1-8]|\[file-exception\]) .* — n/a — '          .planning/reviews/$c-COVERAGE.md)"; done   # n/a
+for c in 61 62 63 64; do printf "%s " "$(grep -cE '^- (D[1-8]|\[file-exception\]) '                     .planning/reviews/$c-COVERAGE.md)"; done   # total
+```
+
+**Literal outputs, in order: `50 35 35 29`, `38 5 5 35`, `88 40 40 64`.** The verdict loop yields
+**`50 35 35 29`**, as expected.
+
+**Per-phase table, reconciled against INVENTORY's own §"Grid totals" figures of 148 `applies`, 84
+`n/a`, 232 cells across 29 rows.**
+
+| Phase | Rows in its slice | `applies` recorded | `n/a` carried forward | Total cells |
+|---|---|---|---|---|
+| Phase 61 | 11 | 50 | 38 | 88 |
+| Phase 62 | 5 | 35 | 5 | 40 |
+| Phase 63 | 5 | 35 | 5 | 40 |
+| Phase 64 — **on INVENTORY's rows** | 7 | **27** | 29 | 56 |
+| `RU-D8-01` — **unrecorded, owned by no sweep phase** | 1 | 0 of 1 | 0 of 7 | 0 of 8 |
+| **Subtotal against INVENTORY's grid** | **29** | **147 of 148** | **77 of 84** | **224 of 232** |
+| Phase 64 — **beyond INVENTORY's grid** (D-20's adopted row) | +1 | +2 | +6 | +8 |
+| **Phase 64 total as this file records it** | **8** | **29** | **35** | **64** |
+
+**The denominator is kept clean, and the two figures are never blended**, because Phase 68's DOC-03
+claim is measured against INVENTORY and a reader must still be able to check it there.
+
+- **Against INVENTORY's grid:** 50 + 35 + 35 + **27** = **147 of 148** `applies` cells recorded, and
+  38 + 5 + 5 + 29 = **77 of 84** `n/a` cells carried forward — **224 of 232 cells** — with the
+  **entire remainder being `RU-D8-01`'s single row**: 1 `applies` D8 cell plus 7 `n/a` cells under
+  **`R-D8-SCOPE`**, which INVENTORY scopes as cross-cutting and assigns to no sweep phase.
+- **Beyond INVENTORY's grid:** Phase 64 additionally records **8 cells — 2 `applies` and 6 `n/a` —
+  on D-20's adopted `gradle-wrapper.jar` row**, which is **not** part of INVENTORY's 232. It also
+  swept `.github/dependabot.yml` under D-19, which added a file but no cell. **This is additional
+  coverage and is never folded into the 147.**
+
+**Arithmetic check, so the two figures are visibly consistent rather than merely asserted:** Phase
+64's own gate counts 29 `applies`, 35 `n/a` and 64 cells; subtracting the adopted row's 2 / 6 / 8
+leaves **27 sit on INVENTORY** rows, 29 `n/a`, 56 cells — exactly the `7 27 29 56` the INVENTORY
+pipeline printed in §B. The on-grid subtotals then reconcile exactly: 147 + 1 = 148, 77 + 7 = 84,
+224 + 8 = 232, and 11 + 5 + 5 + 7 + 1 = 29 rows. **The live re-derivation agrees with this
+arithmetic at every position; had it disagreed, the disagreement would be surfaced here as a defect
+rather than the claim being adjusted to fit.**
+
+**Phase 68's DOC-03 full-coverage statement reads this subsection directly and does not need to
+re-derive scope.** What it must carry forward: **this milestone swept two files INVENTORY does not
+list** — `.github/dependabot.yml` (D-19) and `bbj-intellij/gradle/wrapper/gradle-wrapper.jar`
+(D-20) — **each recorded as a D8 drift finding against INVENTORY (`P64-D8-002`, `P64-D8-004`) and
+each adopted deliberately**, so a coverage statement that reports 147 of 148 against INVENTORY is
+accurate *and* understates what was actually reviewed, by exactly one file and eight cells.
