@@ -486,7 +486,7 @@ they get a dedicated phase rather than being split across the module-owning revi
   5. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 1/3 plans executed — INVENTORY defines **no `RU-65-*` units**, so the grid, the cell gate and the file
+**Plans**: 2/3 plans executed — INVENTORY defines **no `RU-65-*` units**, so the grid, the cell gate and the file
 gate every prior sweep relied on are absent. They are replaced by **four closed surface enumerations**
 (D-01), one per requirement, each with a denominator derived live by a recorded command and a verdict
 on every enumerated item. Grouped by surface rather than one-per-requirement (D-06), chained one per
@@ -499,7 +499,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 65-02-PLAN.md — Sweep **SEC-04** as a stage × site matrix: all four lifecycle stages ROADMAP criterion 3 names — acquisition, storage at rest, exposure via process args/logs, expiry — at every enumerated site across both IDEs and the two `.bbj` scripts, with the `SecretStorage` vs `BbjEMTokenStore` at-rest comparison and the client-parse vs server-round-trip expiry comparison each written **as comparisons**; owns the token-as-process-argument question outright (D-07) so `65-03` cross-references rather than duplicates it
+- [x] 65-02-PLAN.md — Sweep **SEC-04** as a stage × site matrix: all four lifecycle stages ROADMAP criterion 3 names — acquisition, storage at rest, exposure via process args/logs, expiry — at every enumerated site across both IDEs and the two `.bbj` scripts, with the `SecretStorage` vs `BbjEMTokenStore` at-rest comparison and the client-parse vs server-round-trip expiry comparison each written **as comparisons**; owns the token-as-process-argument question outright (D-07) so `65-03` cross-references rather than duplicates it
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
