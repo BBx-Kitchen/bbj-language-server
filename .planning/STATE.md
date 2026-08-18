@@ -5,16 +5,16 @@ milestone_name: Stability and Quality
 current_phase: 64
 current_phase_name: Build, CI & Dependency Review
 status: executing
-stopped_at: Completed 64-02-PLAN.md — RU-64-01 swept and closed (6 cells, 13 findings, SEC-07 posture table); 10 placeholders remain, all in RU-64-02; next 64-03
-last_updated: "2026-08-18T14:05:08.685Z"
+stopped_at: Completed 64-03-PLAN.md — Phase 64 closed, last sweep phase
+last_updated: "2026-08-18T14:49:09.443Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 64 Plan 02 — RU-64-01 (6 workflows + dependabot.yml) swept across all 6 live dimensions, SEC-07 Workflow Security Posture table written, 13 findings recorded
 progress:
   total_phases: 10
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
-  percent: 40
+  completed_plans: 24
+  percent: 50
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 64 (Build, CI & Dependency Review) — EXECUTING
-Plan: 2 of 3 complete (wave 2 of 3)
+Plan: 3 of 3 complete (wave 2 of 3)
 Status: 64-02 complete — RU-64-01 (GitHub Actions workflows + dependabot.yml) swept and closed, SEC-07 posture table written; next 64-03 (RU-64-02, manifests + SEC-08 + phase close-out)
 Last activity: 2026-08-18 — Phase 64 execution started
 
@@ -100,6 +100,7 @@ Last activity: 2026-08-18 — Phase 64 execution started
 | Phase 63 P05 | ~48min | 3 tasks | 1 files |
 | Phase 64 P01 | ~50min | 2 tasks | 1 files |
 | Phase 64 P02 | ~45min | 2 tasks | 1 files |
+| Phase 64 P03 | ~90min | 4 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 64]: RU-64-01 — all 36 uses: references enumerated — 0 SHA-pinned, 36 mutable tags — and split into P64-D6-003 (6 files, file-issue) and P64-D6-004 (build.yml's stale @v3 pair, fix-now) so the applicable one-file fix is not routed onto MAJOR-REFACTORS.md with the six-file one
 - [Phase 64]: RU-64-01 — .github/dependabot.yml covers 1 of 4 dependency trees (no gradle, no documentation/, no github-actions); its Gradle half is referred to RU-64-02 to compose with D-10's un-enumerable Gradle tree, and its two ignore: entries are recorded as verified-correct accepted-with-reason models, not defects
 - [Phase 64]: RU-64-01 — INVENTORY's .github/ accounting drift recorded as P64-D8-002 located in INVENTORY.md:932 with disposition wontfix — INVENTORY is immutable (Phase 60 D-09), so the finding is the correction; D-19's adoption (one file, no cell) is stated separately from D-20's (one file, one row), giving file gate 29 and cell gate 29/35/64
+- [Phase 64]: RU-64-02 — gradle-wrapper.jar identified by hash against Gradle's published wrapperChecksum — it is the 8.10-8.12.1 wrapper while gradle-wrapper.properties:3 declares 8.13, and nothing in-repo pins either (no distributionSha256Sum, no wrapper-validation action)
+- [Phase 64]: RU-64-02 — SEC-08 closed with a 20-row criterion-3 triage table — npm half pinned to a live 2026-08-18 audit (19 vulns), Gradle half declared-coordinates-only with the transitive gap stated; exactly 1 of 19 flagged packages (brace-expansion@5.0.7) reaches the shipped bundle, 15 reach the prod closure only through @vscode/vsce being in dependencies
+- [Phase 64]: RU-64-02 — P63-D6-002 dispositioned merged into P64-D6-010; fixing the bbj-intellij toolchain would retroactively close the D-10 Gradle enumeration gap, making one fix close two records
+- [Phase 64]: Phase 64 closed — both D-18 gates re-run live (file gate 29; cell gate 7 27 29 56 from INVENTORY plus D-20's hand-added row = 8 29 35 64), 44 findings, 8 easy / 36 major. Milestone sweep coverage is 147 of INVENTORY's 148 applies cells, remainder RU-D8-01/D8, plus 8 cells beyond the grid reported separately
 
 ### Tech Debt
 
@@ -216,8 +221,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T14:04:25.423Z
-Stopped at: Completed 64-02-PLAN.md
+Last session: 2026-08-18T14:48:57.722Z
+Stopped at: Completed 64-03-PLAN.md — Phase 64 closed, last sweep phase
 Resume file: None
 
 ---

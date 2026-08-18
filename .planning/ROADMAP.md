@@ -427,7 +427,7 @@ trees' vulnerability posture.
   4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 
 One plan per review unit in INVENTORY risk-rank order, one wave each, all three appending to the
 single deliverable `.planning/reviews/64-COVERAGE.md`; no source file is modified. This is the last
@@ -449,7 +449,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 64-03-PLAN.md — Sweep `RU-64-02` build, packaging & dependency manifests across the 7 live dimensions plus **both** file-exception rows — the lockfile and D-20's `gradle-wrapper.jar` — run the SEC-08 dependency audit as its own task (pinned live `npm audit` + static Gradle enumeration with its stated gap, the wrapper JAR's `distributionSha256Sum` question, criterion-3 triage table, `P63-D6-002` re-triage), and close the phase: close-out sections A-G, both D-18 gates re-run live, and the milestone coverage position (147 of INVENTORY's 148 `applies` cells, with the adopted row reported outside that denominator)
+- [x] 64-03-PLAN.md — Sweep `RU-64-02` build, packaging & dependency manifests across the 7 live dimensions plus **both** file-exception rows — the lockfile and D-20's `gradle-wrapper.jar` — run the SEC-08 dependency audit as its own task (pinned live `npm audit` + static Gradle enumeration with its stated gap, the wrapper JAR's `distributionSha256Sum` question, criterion-3 triage table, `P63-D6-002` re-triage), and close the phase: close-out sections A-G, both D-18 gates re-run live, and the milestone coverage position (147 of INVENTORY's 148 `applies` cells, with the adopted row reported outside that denominator)
 
 **UI hint**: no
 

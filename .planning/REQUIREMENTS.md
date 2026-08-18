@@ -35,7 +35,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **RVW-02**: `bbj-vscode/src/` extension host reviewed across all 8 dimensions — `extension.ts`, document formatter, line numbering, tokenized-BBj, decompile-io, `Commands/CompilerOptions.ts`
 - [x] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — 11 composer files: msgbox, addwindow, addchildwindow each split across `-composer`/`-ui`/`-webview`; SETOPTS split across `-ui`/`-webview` only (no `-composer.ts`) — plus `setopts-catalog.ts`
 - [x] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
-- [ ] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
+- [x] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
 - [x] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
 - [x] **RVW-07**: Every finding is checked against the open GitHub issues before it is recorded, so no finding duplicates existing tracker content
 
@@ -47,8 +47,8 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [ ] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
 - [ ] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
 - [x] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
-- [ ] **SEC-07**: GitHub Actions workflows audited — secret handling, `GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via untrusted PR-controlled inputs
-- [ ] **SEC-08**: Dependency vulnerabilities enumerated for both `npm` and Gradle dependency trees, each triaged as fix-now, file-issue, or accepted-with-reason
+- [x] **SEC-07**: GitHub Actions workflows audited — secret handling, `GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via untrusted PR-controlled inputs
+- [x] **SEC-08**: Dependency vulnerabilities enumerated for both `npm` and Gradle dependency trees, each triaged as fix-now, file-issue, or accepted-with-reason
 
 ### Debt Re-triage
 
@@ -127,9 +127,9 @@ Which phases cover which requirements. Populated during roadmap creation.
 | RVW-03 | Phase 62 | Complete |
 | RVW-04 | Phase 63 | Complete |
 | SEC-03 | Phase 63 | Complete |
-| RVW-05 | Phase 64 | Pending |
-| SEC-07 | Phase 64 | Pending |
-| SEC-08 | Phase 64 | Pending |
+| RVW-05 | Phase 64 | Complete |
+| SEC-07 | Phase 64 | Complete |
+| SEC-08 | Phase 64 | Complete |
 | SEC-01 | Phase 65 | Pending |
 | SEC-02 | Phase 65 | Pending |
 | SEC-04 | Phase 65 | Pending |
