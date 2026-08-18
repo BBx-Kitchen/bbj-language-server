@@ -398,14 +398,14 @@ for c in 61 62 63 64; do printf '%s ' "$(grep -cE "^id:[[:space:]]+P$c-D1-" .pla
 This section is a **write contract**, so it necessarily *names* the tokens the gates *count*. That makes every gate in this phase vulnerable to being satisfied or broken by this paragraph rather than by the record. Both instances are named, and the anchored form of each gate is stated, so that all three plans measure the same thing:
 
 1. **The placeholder token.** The grammar block above prints the placeholder form literally. Every placeholder gate is therefore anchored on the **line shape** `^- \[SEC-0[1245]\]\[[a-z-]+\] .* — pending$` and not on a bare substring count of the word. The grammar block uses the literal `[SURFACE][kind]` rather than a real surface ID precisely so that it cannot match. A gate counting the token anywhere in the file would be invalidated by this very section — the defect Phase 64's close-out ran into and had to explain away in prose.
-2. **The D-14 disclosure marker.** The disclosure rule above states the required marker `Disclosure-limited per D-14` literally, because a rule that does not name its own marker cannot be followed. The consequence is arithmetic and must be stated: **an unanchored count of that phrase over the whole file is permanently one greater than the number of `critical`/`high` findings**, because the rule statement itself contributes one line. The auditable comparison is therefore the **anchored** one — the number of `critical`/`high` `severity:` lines must equal the number of `evidence:` lines opening with the marker:
+2. **The D-14 disclosure marker.** The disclosure rule above states the required marker `Disclosure-limited per D-14` literally, because a rule that does not name its own marker cannot be followed — and this very paragraph, explaining that fact, necessarily quotes it again. The consequence is arithmetic and must be stated precisely rather than approximated: **an unanchored count of that phrase over the whole file is inflated by every line of this document's own prose that quotes it for illustration** (the rule statement above, and this hazard-explanation paragraph itself, together contribute a **fixed, non-zero, growable-by-future-prose baseline** that has no relationship to the number of `critical`/`high` findings actually recorded). An unanchored count can therefore never validly equal the `critical`/`high` count except by accident. The auditable comparison is therefore the **anchored** one — the number of `critical`/`high` `severity:` lines must equal the number of `evidence:` lines opening with the marker:
 
    ```bash
    grep -cE '^severity:[[:space:]]+(critical|high)' .planning/reviews/65-COVERAGE.md
    grep -cE '^evidence:[[:space:]]+Disclosure-limited per D-14' .planning/reviews/65-COVERAGE.md
    ```
 
-   These two must be **equal**. This is strictly stronger than the unanchored form: it verifies that the marker sits in the `evidence:` field of a redacted record, rather than merely appearing somewhere in the file. **All three plans use the anchored form**; a plan whose gate uses the unanchored comparison must expect the off-by-one and resolve it here rather than by deleting the rule statement or by inventing a `high` finding to balance the arithmetic.
+   These two must be **equal**. This is strictly stronger than the unanchored form: it verifies that the marker sits in the `evidence:` field of a redacted record, rather than merely appearing somewhere in the file. **All three plans use the anchored form**; a plan whose gate uses the unanchored comparison must expect a non-zero, prose-driven baseline mismatch and resolve it here — by substituting the anchored comparison for the unanchored one — rather than by deleting the rule statement, trimming this hazard explanation, or inventing a `high` finding to balance the arithmetic.
 
 ### Record constraints that hold across every finding in this file
 
@@ -421,66 +421,107 @@ No finding is located in `java-interop/` (FUT-01), `bbj-vscode/src/language/gene
 
 ### Enumeration
 
-*Filled by plan `65-01`, Task 2. Denominator from `## Surface Enumeration Register`: 4 generators + 32 interpolation-or-DOM-sink candidates = 36 enumerated items.*
+Re-derived at Task 2 execution time, self-contained for a reader who starts here rather than at the header. Leg 1:
+
+```bash
+grep -rln 'getHtml\|webview.html' bbj-vscode/src --include=*.ts | sort
+```
+
+**Literal output:** `bbj-vscode/src/addchildwindow-composer-webview.ts`, `bbj-vscode/src/addwindow-composer-webview.ts`, `bbj-vscode/src/msgbox-composer-webview.ts`, `bbj-vscode/src/setopts-composer-webview.ts` — **4 generators, no drift from `## Surface Enumeration Register`.**
+
+Leg 2:
+
+```bash
+G4=$(grep -rln 'getHtml\|webview.html' bbj-vscode/src --include=*.ts | sort)
+grep -nE '\$\{|innerHTML|outerHTML|insertAdjacentHTML|document\.write' $G4 | wc -l
+```
+
+**Literal output: `32`, no drift.** Denominator unchanged: 4 + 32 = 36 enumerated items.
+
+**D-05 test against the whole enumerated surface.** `62-COVERAGE.md`'s `### SEC-01/SEC-02 Surface Handoff` fact (1) (lines 87-96) concludes that across all four generators exactly two values reach the returned HTML string — `nonce` and `webview.cspSource` — plus one `innerHTML` exception at `setopts-composer-webview.ts:240` whose only externally-varying input is the static `BYTE_GROUPS` catalog. Reading every one of the 36 enumerated lines individually below **confirms this conclusion holds across the whole surface, not merely as a summary**: every `${...}` interpolation into an HTML string resolves to `nonce` or `cspSource`; every `innerHTML` assignment other than `setopts-composer-webview.ts:240` is a constant empty string; every other `${...}` candidate the leg-2 pattern over-captured is a `vscode.WorkspaceEdit` document-edit interpolation, not an HTML/DOM sink. **No disagreement with the Surface Handoff was found.**
 
 ### Verdicts
 
-- [SEC-01][generator] bbj-vscode/src/addchildwindow-composer-webview.ts — pending
-- [SEC-01][generator] bbj-vscode/src/addwindow-composer-webview.ts — pending
-- [SEC-01][generator] bbj-vscode/src/msgbox-composer-webview.ts — pending
-- [SEC-01][generator] bbj-vscode/src/setopts-composer-webview.ts — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:159 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:165 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:173 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:174 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:180 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:311 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:326 — pending
-- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:407 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:149 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:158 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:167 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:168 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:174 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:291 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:306 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:372 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:376 — pending
-- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:382 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:126 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:127 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:133 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:262 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:268 — pending
-- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:342 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:95 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:98 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:126 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:137 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:138 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:144 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:220 — pending
-- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:240 — pending
+- [SEC-01][generator] bbj-vscode/src/addchildwindow-composer-webview.ts — pass — `getHtml()` (:169-422) interpolates only `${webview.cspSource}` (:173) and `${nonce}` (:174, :180, :311) into the returned HTML string; both are VS-Code-internal/self-generated values, never editor-selection, document-text, `config.bbx`, workspace-path, or catalog data; the file's two `innerHTML` sinks (:326, :407) each assign only a constant empty string; panel options are `{ enableScripts: true, retainContextWhenHidden: true }` with no `localResourceRoots` override and no `asWebviewUri` call (confirmed by grep, zero matches).
+- [SEC-01][generator] bbj-vscode/src/addwindow-composer-webview.ts — pass — `getHtml()` (:163-399) interpolates only `${webview.cspSource}` (:167) and `${nonce}` (:168, :174, :291); same VS-Code-internal/self-generated-only sourcing as the other three generators; the file's four `innerHTML` sinks (:306, :372, :376, :382) each assign only a constant empty string; panel options `{ enableScripts: true, retainContextWhenHidden: true }`, no `localResourceRoots`, no `asWebviewUri`.
+- [SEC-01][generator] bbj-vscode/src/msgbox-composer-webview.ts — pass — `getHtml()` (:122-364) interpolates only `${webview.cspSource}` (:126) and `${nonce}` (:127, :133, :262); same VS-Code-internal/self-generated-only sourcing as the other three generators; the file's two `innerHTML` sinks (:268, :342) each assign only a constant empty string; panel options `{ enableScripts: true, retainContextWhenHidden: true }`, no `localResourceRoots`, no `asWebviewUri`.
+- [SEC-01][generator] bbj-vscode/src/setopts-composer-webview.ts — pass — `getHtml()` (:133-312) interpolates only `${webview.cspSource}` (:137) and `${nonce}` (:138, :144, :220); the file's one genuine content-bearing `innerHTML` sink (:240) interpolates only the static `BYTE_GROUPS` catalog (`setopts-catalog.ts:35-43`), never document/workspace/message data; panel options `{ enableScripts: true, retainContextWhenHidden: true }`, no `localResourceRoots`, no `asWebviewUri`.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:159 — n/a — `, ${r.eventHex}` is interpolated into a `vscode.WorkspaceEdit` insert applied to the user's own BBj document inside `applyEdit()` (:147-167), not into any HTML string returned by `getHtml()` or written into the webview DOM — a document-edit interpolation, not an HTML-rendering sink.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:165 — n/a — `, ${r.flagsHex}` is likewise a `vscode.WorkspaceEdit` insert into the user's BBj document inside `applyEdit()`, not an HTML interpolation or DOM sink.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:173 — pass — `${webview.cspSource}` interpolates VS Code's own per-webview origin string into the `style-src` CSP directive — an opaque, VS-Code-internal value, never document/workspace/catalog-derived, byte-identical directive text confirmed across all four generators by md5 (`308a7d4ffd99b94d598341ca988dd267`).
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:174 — pass — `${nonce}` interpolates the locally-generated 32-character alnum nonce (`getNonce()`, :424-431, byte-identical across all four files, confirmed by md5 `2703b8e54057ff248b28ad9ca453c5e7`) into the `script-src 'nonce-…'` directive; the fixed `A-Za-z0-9` charset contains no character capable of breaking out of the directive string.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:180 — pass — `${csp}` interpolates the already-assembled CSP directive string, built only from the two safe values above, into the `<meta http-equiv="Content-Security-Policy" content="…">` attribute; no externally-sourced value reaches it at any point in the chain.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:311 — pass — `${nonce}` is written onto the panel's single inline `<script nonce="…">` tag; the same alnum-only nonce as the CSP directive, safe against attribute breakout, and required by this file's own `script-src 'nonce-…'` binding for the script to execute at all.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:326 — n/a — `container.innerHTML = '';` assigns a constant empty string, clearing prior checkbox children before `renderChecks()` repopulates them via safe `createElement`/`textContent` calls; no interpolated or externally-sourced value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/addchildwindow-composer-webview.ts:407 — n/a — `badges.innerHTML = '';` likewise assigns a constant empty string before the badge list is rebuilt with `createElement`/`textContent` in `drawMock()`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:149 — n/a — `, ${r.flagsHex}` is a `vscode.WorkspaceEdit` insert into the user's BBj document inside `applyEdit()` (:142-161), not an HTML interpolation or DOM sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:158 — n/a — `, ${r.eventHex}` is likewise a document-edit insert inside `applyEdit()`, not an HTML/DOM sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:167 — pass — `${webview.cspSource}` in the `style-src` directive: the same VS-Code-internal opaque origin string as the other three generators, never document/workspace/catalog-derived, byte-identical directive text confirmed by md5.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:168 — pass — `${nonce}` in the `script-src 'nonce-…'` directive: the same fixed alnum-charset nonce as the other three generators, byte-identical `getNonce()` confirmed by md5, safe against directive-string breakout.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:174 — pass — `${csp}` in the CSP `<meta>` tag's `content` attribute: assembled only from the two safe values above; no externally-sourced value reaches it.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:291 — pass — `${nonce}` on the inline `<script nonce="…">` tag: the same alnum-only nonce as the CSP directive, safe against attribute breakout, required for the script to execute under this file's own `script-src` binding.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:306 — n/a — `container.innerHTML = '';` assigns a constant empty string before `renderChecks()` repopulates the flag-group checkboxes via `createElement`/`textContent`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:372 — n/a — `btns.innerHTML = '';` assigns a constant empty string before the title-bar button glyphs are rebuilt with `createElement`/`textContent` in `drawMock()`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:376 — n/a — `body.innerHTML = '';` likewise clears to a constant empty string before `drawMock()` rebuilds the window-body state markers with `createElement`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/addwindow-composer-webview.ts:382 — n/a — `badges.innerHTML = '';` clears to a constant empty string before the badge list is rebuilt with `createElement`/`textContent`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:126 — pass — `${webview.cspSource}` in the `style-src` directive: the same VS-Code-internal opaque origin string as the other three generators, byte-identical directive text confirmed by md5.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:127 — pass — `${nonce}` in the `script-src 'nonce-…'` directive: the same fixed alnum-charset nonce as the other three generators, byte-identical `getNonce()` confirmed by md5, safe against directive-string breakout.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:133 — pass — `${csp}` in the CSP `<meta>` tag's `content` attribute: assembled only from the two safe values above; no externally-sourced value reaches it.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:262 — pass — `${nonce}` on the inline `<script nonce="…">` tag: the same alnum-only nonce as the CSP directive, safe against attribute breakout, required for the script to execute under this file's own `script-src` binding.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:268 — n/a — `sel.innerHTML = '';` in `fillSelect()` assigns a constant empty string before the `<select>`'s `<option>` children are rebuilt via `createElement`/`textContent`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/msgbox-composer-webview.ts:342 — n/a — `mb.innerHTML = '';` (`mock-buttons`) clears to a constant empty string before the schematic-preview button spans are rebuilt with `createElement`/`textContent`; no interpolated value reaches this sink.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:95 — n/a — ` ${r.hexDigits}` is interpolated into a `vscode.WorkspaceEdit` insert applied to the user's `config.bbx` document inside the `'apply'` handler (:84-103), not into any HTML string or webview DOM sink.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:98 — n/a — `${r.line}\n` is likewise a `vscode.WorkspaceEdit` insert into the user's `config.bbx` document for the NEW-statement path, not an HTML/DOM sink.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:126 — n/a — `${b.byte}:${b.mask}` builds a plain JS identifier string (e.g. `"3:2"`) placed in the `initial.checked` array sent via `postMessage`; the client only compares it with `.includes()` to set a checkbox's boolean `.checked` property (:286-288) — never concatenated into markup. The underlying `original` vector this is filtered from can originate from `target.originalHex` (`config.bbx` document text), but that document-derived value still never reaches an HTML string or DOM sink through this path, so this does not disagree with `62-COVERAGE.md`'s Surface Handoff conclusion (D-05).
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:137 — pass — `${webview.cspSource}` in the `style-src` directive: the same VS-Code-internal opaque origin string as the other three generators, byte-identical directive text confirmed by md5.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:138 — pass — `${nonce}` in the `script-src 'nonce-…'` directive: the same fixed alnum-charset nonce as the other three generators, byte-identical `getNonce()` confirmed by md5, safe against directive-string breakout.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:144 — pass — `${csp}` in the CSP `<meta>` tag's `content` attribute: assembled only from the two safe values above; no externally-sourced value reaches it.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:220 — pass — `${nonce}` on the inline `<script nonce="…">` tag: the same alnum-only nonce as the CSP directive, safe against attribute breakout, required for the script to execute under this file's own `script-src` binding.
+- [SEC-01][candidate] bbj-vscode/src/setopts-composer-webview.ts:240 — pass — `legend.innerHTML = 'Byte ' + byteNo + ' <span class="byte-no">— ' + groups[byteNo] + '</span>';` is a genuine `innerHTML` sink with interpolated content, but both `byteNo` and `groups[byteNo]` are drawn exclusively from the developer-authored `BYTE_GROUPS` catalog constant (`setopts-catalog.ts:35-43`, 7 fixed literal strings keyed by 7 fixed numeric keys); no editor-selection, document-text, `config.bbx`, workspace-path, or message-supplied value ever reaches this sink — confirmed by tracing `renderCatalog(m.catalog, m.groups)`'s only call site (:284-285), which passes the static `SETOPTS_BITS`/`BYTE_GROUPS` catalog exports unchanged.
 
 ### CSP Posture
 
-*Filled by plan `65-01`, Task 2. Records, per generator and with the check that established each, the D-12 positive result: the directive set as emitted, whether a nonce is generated per render and how, whether `script-src` is bound to that nonce, whether any script source outside the nonce is permitted, the panel options passed at creation, and whether `localResourceRoots` is set. Then the cross-generator comparison, stated explicitly, so a checked-and-clean generator is distinguishable from an unchecked one.*
+**Directive set, per generator, checked by reading each `getHtml()` body in full and confirmed byte-identical by md5 (`308a7d4ffd99b94d598341ca988dd267` over the `const csp = [...]` array literal in all four files):**
+
+```
+default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'
+```
+
+Present verbatim in `msgbox-composer-webview.ts:124-128`, `addwindow-composer-webview.ts:165-169`, `addchildwindow-composer-webview.ts:171-175`, `setopts-composer-webview.ts:135-139`. `default-src 'none'` blocks image/connect/frame/font/media loads by default (none of the four generators needs any of those, checked by grepping each file for `<img`, `fetch(`, `<iframe`, `@font-face` — zero matches). `style-src` grants `'unsafe-inline'` (needed for the inline `<style>` block each file emits) plus the webview's own origin. `script-src` allows **only** the single nonce'd inline `<script>` tag each file emits — no `'unsafe-inline'` for scripts, no external script source — checked by grepping each file for `<script src=` and `http` inside the `<script>` block, zero matches beyond the one nonce'd tag.
+
+**Nonce, per generator, checked by reading `getNonce()` in each file and confirming byte-identical implementation by md5 (`2703b8e54057ff248b28ad9ca453c5e7`):** a fresh 32-character nonce is generated **once per `getHtml()` call** (i.e. once per panel open) by indexing a 62-character `A-Za-z0-9` alphabet with `Math.floor(Math.random() * chars.length)`. The nonce is bound into `script-src 'nonce-${nonce}'` and onto the single inline `<script nonce="${nonce}">` tag in the same file — checked line-by-line above at every `[SEC-01][candidate]` verdict naming `${nonce}`. **`Math.random()` is a non-cryptographic PRNG; this weakness is already recorded as `P62-D1-002` (cross-referenced below, not re-recorded) and does not create a live injection path today because — per the enumeration above — no editor-selection/document/config.bbx/workspace/message value ever reaches any of the four HTML strings for a predicted nonce to matter against.**
+
+**Panel options, per generator, checked by reading each `createWebviewPanel()` call:** all four pass `{ enableScripts: true, retainContextWhenHidden: true }` (`msgbox-composer-webview.ts:74`, `addwindow-composer-webview.ts:96`, `addchildwindow-composer-webview.ts:101`, `setopts-composer-webview.ts:64`) — checked identical by direct grep, shown above. `localResourceRoots` is **not set** in any of the four (checked: `grep -n "localResourceRoots" <all four files>` returns zero matches), leaving it at VS Code's default; this is inert because none of the four calls `asWebviewUri` (checked: `grep -n "asWebviewUri" <all four files>` also returns zero matches) — none loads a local resource through the webview at all.
+
+**Cross-generator comparison, stated explicitly per D-12: all four generators agree on every element of the CSP posture — directive set, nonce mechanism, panel options, and the absence of `localResourceRoots`/`asWebviewUri` — with the check (grep + md5) that established each agreement named above.** This is a checked-and-clean positive result, not an unchecked one, and it is the CSP-half of the same 4/4 symmetry the register's byte-equality check established for the file lists themselves. `P62-D1-002` (nonce drawn from `Math.random()`, a CSP-hardening gap rather than a live vulnerability since no injection point exists) is cross-referenced here as the owner of the nonce-source question rather than re-recorded — see `### Cross-references`.
 
 ### Findings
 
-*Filled by plan `65-01`, Task 2.*
+None. Every claim raised while sweeping SEC-01 resolved cleanly to `pass` or `n/a` with a concrete, checkable reason (see `### Verdicts` above); no claim required promotion to a `P65-D1-nnn` record. `62-COVERAGE.md`'s Surface Handoff conclusion (D-05) was tested against the whole 36-item enumerated surface, not merely summarized, and held without exception — the two findings it already owns (`P62-D1-001` for SEC-02's runtime-validation gap, `P62-D1-002` for the CSP nonce source) remain the correct owners and are cross-referenced rather than duplicated, per D-04.
 
 ### Not-reproducible dispositions
 
-*Filled by plan `65-01`, Task 2.*
+None. No candidate's safety turned on a value's provenance that required constructing an unconfirmable input — every one of the 36 enumerated items was resolved by a direct code trace (see `### Verdicts`), so no item was routed here under D-11.
 
 ### Cross-references
 
-*Filled by plan `65-01`, Task 2. Ledger rows naming SEC-01: `P62-D1-002` (1 row).*
+**`P62-D1-002`** (`bbj-vscode/src/msgbox-composer-webview.ts:366-373`, low severity, byte-identical `getNonce()` recurring in the other three files) — establishes that the CSP nonce is drawn from `Math.random()`, a non-cryptographic PRNG, which is a CSP-hardening gap rather than a live vulnerability today. **This sweep confirms it**: `### CSP Posture` above states the nonce mechanism as part of the documented posture (per-render generation, `script-src` binding, byte-identical across all four generators) and cross-references `P62-D1-002` for the nonce-source weakness itself, exactly as D-04 requires — the posture is fully answered and the finding is not re-recorded. This is the only ledger row naming SEC-01 (1 of 30; see `## Inherited Findings Ledger`'s distribution table).
 
 ### Surface closure
 
-*Filled by plan `65-01`, Task 2. States the four-part stopping rule discharged part by part, each with the count or command that evidences it, plus whether the live-derived denominator agreed with D-02's baseline of four generators.*
+**Four-part stopping rule, discharged part by part:**
+
+(i) **Every enumerated item carries a verdict, no placeholder remains.** Within this section, `grep -cE '^- \[SEC-01\]\[[a-z-]+\] .* — pending$'` prints `0`; every one of the 36 `[SEC-01]` lines above carries `pass` or `n/a`.
+
+(ii) **Every `pass` names concrete checks with `file:line` anchors; every `n/a` carries a written exclusion reason.** No `fail` or `undetermined` verdict was needed — every candidate resolved cleanly (see (iii)).
+
+(iii) **Every candidate claim raised during the sweep was either promoted to a finding or written under `### Not-reproducible dispositions`.** None needed either path: all 36 items resolved directly via code trace, with `### Findings` and `### Not-reproducible dispositions` both correctly empty rather than silently skipped.
+
+(iv) **Every ledger row whose Surfaces column names SEC-01 carries a written cross-reference.** The one such row, `P62-D1-002`, is cross-referenced in `### Cross-references` above and in `### CSP Posture`. Zero inherited items were dropped.
+
+**Live-derived denominator vs. D-02 baseline:** the live leg-1 command reproduces exactly **4** generators, agreeing with D-02's baseline of 4 with **no drift** (re-confirmed in `### Enumeration` above). Leg 2's live candidate count is **32**, matching `## Surface Enumeration Register`'s recorded value exactly (D-02 set no baseline for leg 2, so there is nothing to drift from). The 4/4 generator/handler symmetry recorded in the register (byte-identical sorted file lists) is unaffected by this sweep — SEC-01's four generator files are the same four files SEC-02 will sweep as handlers.
+
+**SEC-01 is closed.**
 
 ## SEC-02 — Webview → extension message trust
 
