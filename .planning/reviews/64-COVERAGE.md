@@ -1793,7 +1793,7 @@ Once (i)-(iv) hold the unit is done and no further reading is licensed. **`RU-64
 - D3 Performance & resource use — fail — Checked against redundant work, missing caches and unbounded growth, read in build terms, at tier `repro` satisfied by trace plus one timed measurement; where a cost is latent rather than active it is said to be so and is not promoted on volume alone. **Does the build compile the same sources twice?** Not within a single `npm run build`: `package.json:655` runs `tsc -b tsconfig.json` where `tsconfig.json:7` sets `noEmit: true`, so `tsc` type-checks and emits nothing, and `esbuild.mjs` then transpiles and bundles without type-checking — two passes with two different jobs, one emit, and that is the intended division rather than duplication. **But the whole build does run twice per CI job, and that is measurable from the manifests alone.** `package.json:653`'s `prepare` hook is `npm run langium:generate && npm run build`, and npm runs `prepare` on every `npm ci`; three workflows then invoke `npm run build` again on the line immediately following — `build.yml:27-28`, `pr-vsix.yml:49-50` and `pr-validation.yml:30-31`. Each of those jobs therefore performs Langium code generation, a full non-incremental `tsc -b` and a full esbuild bundle of both entry points, twice, on every push or pull request. The `-b` build mode buys nothing back: `tsconfig.json` declares no `composite: true` and no `incremental: true`, so there is no project-reference graph and no `.tsbuildinfo` to make the second pass cheap — every invocation is a cold full type-check. Recorded as `P64-D3-003`. **Is the test suite's discovery scoped?** No, and this is the latent half. `vitest.config.ts` (30 lines, read in full) declares **no `include` and no `exclude` for test discovery at all** — its `test` block contains only `coverage` (`:7-28`) — so which files constitute the suite is decided entirely by vitest's built-in defaults, which this repository states nowhere and which do not exclude `out/` (3.5 MB across four generated files in this checkout) or `examples/`. Measured rather than assumed: `npx vitest list --filesOnly` completes in **0.615 s** and resolves **50** files, exactly matching the 50 `*.test.ts` files present under `test/`. So the cost is latent — discovery is fast today because the tree is small and the default exclusions catch `node_modules/` — and it is recorded as latent, not promoted; the *correctness* half of the same fact, that three sources disagree about what the suite is, is D5's and is recorded there. **Is coverage collection scoped?** Yes, and tightly: `vitest.config.ts:8` sets `coverage.enabled: false` so the instrumented run is opt-in via `--coverage` (`package.json:660`'s `test:coverage`), `:12` scopes `include` to `src/**/*.ts`, and `:13-17` excludes `src/language/generated/**` (~17.5k generated LOC), `src/extension.ts` and `**/*.d.ts`. Checked positive. **Does esbuild produce a sourcemap, and is the bundle proportionate?** `esbuild.mjs:19-20` sets `sourcemap: !minify` and `minify` from `--minify`, so the default `build` path emits maps: `out/extension.cjs` is 1,265,974 bytes with a sibling `.cjs.map`, and `out/language/main.cjs` is 2,251,400 bytes — proportionate for a Langium language server that inlines its parser and its generated grammar. The disproportionate item is the 622,562-byte `out/main.js` that no configuration references, which is `P64-D2-007`'s subject and is not double-counted here. **Does any Gradle configuration force a re-resolve or disable caching?** No: `gradle.properties` is a single line (`org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8`) and declares no `--refresh-dependencies` equivalent, no `cacheChangingModulesFor`, no dynamic (`+`) or `-SNAPSHOT` version anywhere in `build.gradle.kts` or `settings.gradle.kts` — every coordinate is a fixed version, which is the cache-friendly case. It also declares no `org.gradle.caching` and no `org.gradle.parallel`, so the build cache and parallel execution are simply off by default; stated as a fact rather than as a defect, since neither is required for a single-project build.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
-- D6 Dependency health — pending
+- D6 Dependency health — fail — Checked against REQUIREMENTS.md's D6 wording — outdated or vulnerable dependencies, license issues and unpinned artifacts — at tier `inherited` resolving to **repro-equivalent for every CVE claim**, so no version-looks-old assertion appears below without a resolvable advisory reference. This is the cell that carries SEC-08; the enumerations, the triage table and the coverage limitation are recorded in full under `### SEC-08 Dependency Triage`, and this line states the method and the verdicts. **The npm half — enumerated live, pinned to its run date (D-07).** `npm audit`, run from `bbj-vscode/` on **2026-08-18**, reports **`19 vulnerabilities (7 moderate, 11 high, 1 critical)`** over an installed tree of **593 packages (296 prod, 260 dev, 96 optional)**, and exits 1. The run date is pinned because `npm audit` is a live query whose answer moves as advisories publish: a reader in six months who re-runs it and gets a different number is seeing advisory drift, not a defect in this record, and the empty case is stated so the numbers are interpretable — a tree with no vulnerable package prints `found 0 vulnerabilities` and exits 0, so `19` here is a positive result and not an absence of data. `npm audit --json` supplied the machine-readable enumeration: all 19 packages, their installed ranges, their advisory identifiers with resolvable `https://github.com/advisories/GHSA-…` URLs, and their dependency paths, every row of which is in the triage table below. **The production-versus-dev split, established from `package.json` and the lockfile's own paths rather than asserted.** `npm ls <pkg> --omit=dev --all` was run for each of the 19: **16 sit inside the production dependency closure and 3 are dev-only** (`nanoid` and `postcss` via `vitest@4.1.10 → vite@8.1.5`, `shell-quote` via `concurrently@8.2.2`). The reason the production closure is that large is a single declaration: **`package.json:670` puts `@vscode/vsce@^3.7.1`, a marketplace **publishing** CLI, under `dependencies` rather than `devDependencies`**, and 15 of the 19 flagged packages reach the tree through it and through nothing else. Recorded as `P64-D6-007`. **What actually ships is narrower than either number, and was checked against the built artefact rather than inferred.** `.vscodeignore:8` excludes `node_modules` from the VSIX (read as context; INVENTORY excludes that file from every unit, so no finding is located in it and it adds no file to this unit's list), so the only third-party code reaching an end user is what esbuild inlines. Grepping the two bundles: `vsce`, `undici`, `shell-quote`, `markdown-it`, `nanoid` and `postcss` each return **0** occurrences in `out/extension.cjs` and `out/language/main.cjs`, while `brace-expansion` returns **2** in `out/extension.cjs` and **0** in `out/language/main.cjs`. **Exactly one flagged package reaches the shipped artefact** — `brace-expansion@5.0.7` (`package-lock.json:7581-7584`), pulled in by `vscode-languageclient@10.1.0` (`:7557-7563`) through `minimatch@10.2.5`, itself outside every flagged minimatch range. Recorded as `P64-D6-008`. **The Gradle half — enumerated statically, with the gap stated rather than hidden (D-10).** Confirmed rather than trusted: `cd bbj-intellij && ./gradlew --offline -q dependencies` **exits 1 in 723 ms** with the literal output `FAILURE: Build failed with an exception. * What went wrong: 25.0.3` — Gradle 8.13's own `JavaVersion` parser rejecting the local Temurin **25.0.3** before any task is scheduled, the same failure `P63-D6-002` records. **So transitive Gradle dependencies are not enumerable in this environment, and the Gradle half of SEC-08 covers declared coordinates only.** That limitation is stated here, in the criterion-3 answer, and in the close-out, rather than being papered over with a confident-sounding verdict. What *was* enumerated statically: `build.gradle.kts:25` `intellijIdeaCommunity("2024.2")`, `:27` `plugin("com.redhat.devtools.lsp4ij:0.19.0")`, `:11-13` Java 17 source/target with **no toolchain**; `settings.gradle.kts:2` `org.jetbrains.intellij.platform.settings` version **`2.11.0`**; `gradle.properties` (one line, no version coordinate); `gradle/wrapper/gradle-wrapper.properties:3` the Gradle distribution **8.13**; plus `java-interop/build.gradle:21-23` (`org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.20.1`, `com.google.guava:guava:31.1-jre`, `org.junit.jupiter:junit-jupiter:5.9.1`) and `java-interop/settings.gradle:1`, read **once** as an additional dependency-tree source under INVENTORY's own carve-out, which adds no `java-interop/` file to this unit's list. Each was checked against OSV (`https://api.osv.dev/v1/query`, Maven ecosystem): **one** returns advisories — `com.google.guava:guava:31.1-jre`, with `GHSA-5mg8-w23w-74h3` (CVE-2020-8908) and `GHSA-7g45-4rm6-3mm3` (CVE-2023-2976), recorded as `P64-D6-011`; `org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc:0.20.1` and `org.junit.jupiter:junit-jupiter:5.9.1` return zero. `com.redhat.devtools.lsp4ij:0.19.0` and `intellijIdeaCommunity("2024.2")` are **not Maven coordinates OSV indexes at all**, so their zero result means *not answerable by this method*, which is a weaker statement than a clean bill of health and is recorded as such rather than as a pass. Staleness, which needs no advisory: Gradle **8.13** was built 2025-02-25 and the current release is **9.7.0** (2026-08-06) — one major line and roughly 18 months behind, verified against `https://services.gradle.org/versions/all`; recorded with the IntelliJ Platform and LSP4IJ pins as `P64-D6-010`. **Composed with `RU-64-01`'s finding, which is stronger than either half alone.** `P64-D6-005` records that `.github/dependabot.yml` declares only an `npm` ecosystem for `/bbj-vscode` and **no `gradle` entry**; this cell establishes that the same tree cannot be enumerated by hand here either. **The `bbj-intellij` dependency tree is therefore both unscanned by tooling and unenumerable locally — no automated process and no manual process currently produces a list of what it depends on**, which is the composed statement `RU-64-01` deliberately left to this cell, and it is what makes `P63-D6-002`'s toolchain fix worth more than its own severity suggests. **Consolidation:** the phase's other SEC-08 contributions — `RU-64-03`'s `### Vendored Binary Provenance` for the three `tools/formatter/` JARs and `RU-64-01`'s action-pinning and dependabot records — are brought together **by reference, not re-audited**, in the triage table below, so criterion 3's answer sits in one place.
 - D7 Cross-IDE parity — n/a — R-D7-CI — "This surface governs build/CI/packaging output, not end-user-observable IDE runtime behavior; there is no parity claim to make between two IDEs about a shared build pipeline or a shared vendored tool invoked identically by both."
 - D8 Comment & doc accuracy — pending
 
@@ -1806,7 +1806,7 @@ Two rows. `bbj-vscode/package-lock.json` is transcribed verbatim from INVENTORY'
 - [file-exception] bbj-vscode/package-lock.json · D3 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
 - [file-exception] bbj-vscode/package-lock.json · D4 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
 - [file-exception] bbj-vscode/package-lock.json · D5 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
-- [file-exception] bbj-vscode/package-lock.json · D6 — pending
+- [file-exception] bbj-vscode/package-lock.json · D6 — fail — In scope for **D6 only** under `R-LOCKFILE`, as the dependency-tree source SEC-08 audits; queried rather than read end to end, with every figure below produced by a recorded command rather than by walking 7,894 lines. **What the lockfile establishes.** `lockfileVersion: 3` (`:4`), npm 7+ format, so the `packages` map is the single source of truth and no legacy `dependencies` mirror exists to drift against it. `grep -c '"node_modules/' package-lock.json` prints **593**, matching `npm audit --json`'s own `metadata.dependencies.total` of 593 (296 prod, 260 dev, 96 optional) exactly — the lockfile and the installed tree agree on size, which is the precondition for treating the audit as an enumeration of *this* tree rather than of a hypothetical one. **How many of the audit's flagged packages resolve through it: all 19.** Each of the 19 was resolved with `npm ls <pkg> --all`, and every one terminates in a `node_modules/...` node present in this lockfile; the two that matter most are pinned at exact lines — `node_modules/vscode-languageclient` at `:7557-7563` (`version 10.1.0`, requiring `minimatch: ^10.2.5`) and `node_modules/vscode-languageclient/node_modules/brace-expansion` at `:7581-7584` (`version 5.0.7`, with its `resolved` URL and `integrity` hash), which is the single flagged package that reaches the shipped bundle. `node_modules/@vscode/vsce` is at `:2172`. Every entry carries a `resolved` registry URL and an `integrity` SRI hash, so the lockfile does pin content for the npm half — the contrast with the Gradle half, where nothing is content-pinned at all, is stated here because it is the same question answered oppositely by the two trees. **One drift the lockfile itself carries.** `package-lock.json:3` declares `"version": "0.11.0"` and its root package entry `packages[""].version` repeats `0.11.0`, while `package.json:3` declares `"version": "0.12.0"`. The lockfile in this repository is therefore not the file `npm install` would produce from the current manifest: it was not regenerated when the version was bumped, so any consumer that reads provenance from the lockfile — an SBOM generator, a reproducibility audit, a release-artefact comparison — sees a version this project no longer is. Recorded as `P64-D6-009`. The dependency **graph** is unaffected and in sync (the 593-entry agreement above is the evidence), which is exactly why this is a provenance defect rather than an install-breaking one, and the record says so. The file's other seven cells are `n/a` under `R-LOCKFILE`, carried forward verbatim above and untouched.
 - [file-exception] bbj-vscode/package-lock.json · D7 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
 - [file-exception] bbj-vscode/package-lock.json · D8 — n/a — R-LOCKFILE — "`package-lock.json` is a machine-generated lockfile, never hand-edited; per this document's coverage-denominator convention it is in scope for D6 only, as the dependency-tree source SEC-08 audits. It carries no logic, no comments and no IDE-specific behavior for the other seven dimensions to assess."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D1 — fail — Swept **directly**, by manifest and hash only, on the same footing plan `64-01` gave the three `tools/formatter/` JAR rows: `unzip -p <jar> META-INF/MANIFEST.MF` and `sha256sum`, no decompilation, no disassembly, no unpacking beyond the manifest, no execution (D-11). **Artifact identity.** `sha256sum` prints `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`; size is 43,583 bytes; `ls -la bbj-intellij/gradle/wrapper/` shows the directory holds exactly two entries, this JAR and the 251-byte `gradle-wrapper.properties`. **What the manifest declares, and what it does not.** The whole of `META-INF/MANIFEST.MF` is two lines — `Manifest-Version: 1.0` and `Implementation-Title: Gradle Wrapper` — with **no `Implementation-Version`, no `Implementation-Vendor`, no `Build-Jdk`, no `Created-By` and no signature entry**. The JAR's own bytes therefore cannot tell a reader which Gradle release produced it, so identity has to be established by comparing the hash against Gradle's published wrapper checksums, and that comparison was made rather than described: `https://services.gradle.org/versions/all` publishes a `wrapperChecksum` per release, and this hash matches **19 published entries spanning Gradle 8.10 through 8.12.1** (latest final match: **8.12.1**, built 2025-01-24) — while `gradle-wrapper.properties:3` declares `gradle-8.13-bin.zip`, whose published wrapper checksum is `81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f`, a different value. **The committed JAR is not the wrapper JAR of the Gradle version the file beside it declares**, and the two were committed together in a single commit (`git log -- bbj-intellij/gradle/wrapper/` returns exactly one, `e97c587 chore(01-01): initialize Gradle wrapper and build scripts`) and have never been touched since, so the pair was never produced by one `./gradlew wrapper --gradle-version 8.13` run. **Reachability — this binary executes, it is not merely stored.** `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar`, `:208-209` passes that classpath and `org.gradle.wrapper.GradleWrapperMain` to the JVM and `:244` `exec`s it; `gradlew.bat:71,75` do the same on Windows. It runs on every contributor build and in every CI job that invokes a Gradle task — `pr-validation.yml:61` (`buildPlugin`), `manual-release.yml:127,133,137` (`buildPlugin`, `verifyPlugin`, `publishPlugin`) and `preview.yml:99` (`publishPlugin`) — and three of those five sit in jobs holding `secrets.JETBRAINS_MARKETPLACE_TOKEN`. **Does anything in this repository verify it before `gradlew` runs?** No, checked three ways: `gradle-wrapper.properties` carries no `distributionSha256Sum` (all 7 lines read above); `grep -rn 'wrapper-validation\|gradle/actions\|setup-gradle' .github/workflows/` returns nothing, so Gradle's own wrapper-validation action is absent from all six workflows; and no dependency-automation config could ever flag it, because `.github/dependabot.yml` declares no `gradle` ecosystem (`RU-64-01`'s `P64-D6-005`). The bootstrap is thus a three-step unverified chain — an unpinned JAR of a version that does not match its own properties file, loading a distribution pinned by nothing but TLS. Recorded as `P64-D1-006`; the identity-and-update-path half is recorded separately on this row's D6 cell as `P64-D6-006`. **D-16 assessment, stated rather than left implicit:** this record describes an integrity gap and cites only Gradle's own public checksum metadata; it contains no exploitation path, and substituting this JAR requires write access to the repository, so the redaction tier is not triggered here.
@@ -1814,17 +1814,209 @@ Two rows. `bbj-vscode/package-lock.json` is transcribed verbatim from INVENTORY'
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D3 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D4 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D5 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
-- [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D6 — pending
+- [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D6 — fail — The one D6 cell in this phase whose question is not "is this version vulnerable" but **"can this artefact be identified at all, and does anything verify or update it"** — assessed by manifest and hash only, no decompilation and no execution (D-11). **(1) Identity.** `sha256sum` prints `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`; size 43,583 bytes; `META-INF/MANIFEST.MF` is two lines — `Manifest-Version: 1.0` and `Implementation-Title: Gradle Wrapper` — carrying **no version field, no vendor, no `Build-Jdk`, no `Created-By` and no signature**. The JAR's own bytes therefore cannot say which Gradle release produced it, so the only way to establish that is to compare the hash against Gradle's published wrapper checksums — and that reference **does** resolve and was fetched: `https://services.gradle.org/versions/all` publishes a `wrapperChecksum` per release, 521 entries at query time, and this hash matches **19 of them, spanning Gradle 8.10 through 8.12.1** (latest final match **8.12.1**, built 2025-01-24). So the artefact is identifiable after all — and what it identifies as is the problem. **(2) The checksum mechanism, which is the finding and is stated as the headline rather than as an aside.** A Gradle wrapper's integrity is normally established by `distributionSha256Sum` declared in `gradle-wrapper.properties`. **That property is absent** — all 7 lines of the 251-byte file were read and it is not among them — so nothing in this repository pins either the JAR or the distribution it fetches. Worse, the two files that `./gradlew wrapper` generates **together** disagree: the properties file declares `gradle-8.13-bin.zip` (`:3`), whose published wrapper checksum is `81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f`, while the committed JAR is the 8.10–8.12.1 one. Both were added in the single commit `e97c587` and neither has changed since (`git log -- bbj-intellij/gradle/wrapper/` returns exactly that one commit), so this pair was never the product of one wrapper regeneration. That mismatch is precisely the shape a wrapper-JAR substitution would take, and the fact that it has sat unnoticed since the initial commit is the practical demonstration that nothing here would catch one. **(3) Reachability.** `gradlew:117` sets `CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar`, `:208-209` hands it to `org.gradle.wrapper.GradleWrapperMain` and `:244` `exec`s the JVM; `gradlew.bat:71,75` are the Windows equivalents. It executes on every contributor build and in every CI Gradle job — `pr-validation.yml:61`, `manual-release.yml:127,133,137`, `preview.yml:99` — three of which hold `secrets.JETBRAINS_MARKETPLACE_TOKEN`. **(4) Update path — there is none.** `.github/dependabot.yml` declares no `gradle` ecosystem (`RU-64-01`'s `P64-D6-005`), so no automated update could ever propose a newer wrapper; `grep -rn 'wrapper-validation\|gradle/actions\|setup-gradle' .github/workflows/` returns nothing, so Gradle's own wrapper-validation action is absent from all six workflows; and the declared distribution 8.13 (2025-02-25) is one major line behind the current 9.7.0 (2026-08-06). An artefact that no tool updates, no tool validates, and whose own two halves already disagree is the whole D6 answer for this row. Recorded as `P64-D6-006`, carrying both `classification: major` and `triage: file-issue` per D-09; the integrity half of the same chain is `P64-D1-006` on this row's D1 cell. Its other six cells are `n/a` under `R-JAR-BINARY` and `R-D7-CI`, carried forward verbatim above and untouched.
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D7 — n/a — R-D7-CI — "This surface governs build/CI/packaging output, not end-user-observable IDE runtime behavior; there is no parity claim to make between two IDEs about a shared build pipeline or a shared vendored tool invoked identically by both."
 - [file-exception] bbj-intellij/gradle/wrapper/gradle-wrapper.jar · D8 — n/a — R-JAR-BINARY — "This is a compiled, vendored `.jar` binary; its bytecode cannot be read or diffed in this review, so no correctness trace, performance trace, maintainability judgement, test-coverage claim, or doc-accuracy claim can be written against it. Its provenance and pinning status are assessed under D1 and D6 instead."
 
 ### SEC-08 Dependency Triage
 
-_(pending — plan `64-03`; holds the ROADMAP criterion-3 triage table, D-09)_
+This block is the ROADMAP Phase 64 **criterion 3** answer in one place: every npm and Gradle
+dependency with a known vulnerability, enumerated and triaged. It is written here so Phase 68 does
+not have to assemble it from three unit sections.
+
+**The pinned audit run (D-07).** Command: `npm audit`, run from `bbj-vscode/`. **Run date:
+2026-08-18.** Verbatim summary line: **`19 vulnerabilities (7 moderate, 11 high, 1 critical)`**;
+exit status 1. Installed tree per `npm audit --json`'s own `metadata.dependencies`:
+`{"prod":296,"dev":260,"optional":96,"peer":0,"peerOptional":0,"total":593}`. **The date is pinned
+because `npm audit` is a live query against a registry whose advisory set changes daily.** A later
+reader who re-runs it and sees a different total is seeing advisory publication, not a defect in
+this record; the difference is the signal, and it is only readable because the date is here. **The
+empty case, stated so the totals are interpretable rather than merely present:** a tree with no
+vulnerable package prints `found 0 vulnerabilities` and exits 0. `19` is therefore a positive
+enumeration, and a future `0` would mean the tree was fixed, not that the audit failed to run.
+
+**The `triage:` vocabulary and its mapping to `classification:` (D-09), applied exactly as fixed and
+not re-derived here:**
+
+| `triage:` | Meaning | Maps to `classification:` |
+|---|---|---|
+| `fix-now` | A version bump with no API change, applicable in Phase 67 | `easy` |
+| `file-issue` | Needs a breaking upgrade, a replacement, or upstream action | `major` |
+| `accepted-with-reason` | Not reachable in this product's usage; reason stated in full | `major` (documented, not filed as a fix) |
+
+`triage:` is a **second, additive field**; it does not replace `classification:`, which drives
+Phases 67 and 68 milestone-wide, so every D6 finding below carries both. The mapping has one
+mechanical consequence worth stating up front, because it decides most rows in the table: INVENTORY
+3c test (6) forces `major` for any `critical` or `high` severity, and `major` cannot map to
+`fix-now`. **So no `critical`/`high` advisory in this table can be triaged `fix-now`, however small
+its lockfile diff would be** — that is the D-13 safety gate working as designed, routing every
+high-impact dependency change through `MAJOR-REFACTORS.md` review instead of Phase 67's unattended
+apply path.
+
+**Criterion 3 table — one row per vulnerable dependency, both trees, 20 rows.** "Path" states how
+the coordinate enters the tree, established from `package.json` and the lockfile's own dependency
+paths (`npm ls <pkg> --all` and `--omit=dev`), not asserted. Advisory references are the GitHub
+Advisory URLs `npm audit --json` itself emits, and the OSV records for the Maven coordinate; every
+one resolves. Where a package carries several advisories, the highest-severity one is cited and the
+count of the rest is given.
+
+| Package / coordinate | Ecosystem | Installed / declared | Advisory reference | Severity | `triage:` | `classification:` | Finding |
+|---|---|---|---|---|---|---|---|
+| `brace-expansion` | npm | 5.0.7 (`package-lock.json:7581-7584`) | https://github.com/advisories/GHSA-mh99-v99m-4gvg (+ GHSA-rgw5-rvv9-x895) | high | `file-issue` | `major` | `P64-D6-008` |
+| `shell-quote` | npm | 1.8.3, dev-only via `concurrently@8.2.2` | https://github.com/advisories/GHSA-w7jw-789q-3m8p (+1) | critical | `accepted-with-reason` | `major` | `P64-D6-012` |
+| `nanoid` | npm | 3.3.16, dev-only via `vitest → vite → postcss` | https://github.com/advisories/GHSA-2v37-7h3g-55p8 | high | `accepted-with-reason` | `major` | `P64-D6-012` |
+| `postcss` | npm | 8.5.19, dev-only via `vitest → vite` | https://github.com/advisories/GHSA-fxqj-rqcc-2cmp | moderate | `accepted-with-reason` | `major` | `P64-D6-012` |
+| `undici` | npm | 7.21.0, prod via `@vscode/vsce → cheerio` | https://github.com/advisories/GHSA-4cwx-7wf7-3272 (+15) | high | `file-issue` | `major` | `P64-D6-007` |
+| `minimatch` | npm | 3.1.2 + 10.1.2, prod via `@vscode/vsce` (+ dev via eslint) | https://github.com/advisories/GHSA-7r86-cg39-jmmj (+5) | high | `file-issue` | `major` | `P64-D6-007` |
+| `fast-uri` | npm | 3.1.0, prod via `@vscode/vsce → @secretlint/node → ajv` | https://github.com/advisories/GHSA-4c8g-83qw-93j6 (+4) | high | `file-issue` | `major` | `P64-D6-007` |
+| `form-data` | npm | 4.0.5, prod via `@vscode/vsce` | https://github.com/advisories/GHSA-hmw2-7cc7-3qxx | high | `file-issue` | `major` | `P64-D6-007` |
+| `js-yaml` | npm | 4.3.0, prod via `@vscode/vsce → @secretlint/node` (+ dev via eslint) | https://github.com/advisories/GHSA-5p4m-2wfm-xmqj | high | `file-issue` | `major` | `P64-D6-007` |
+| `linkify-it` | npm | 5.0.0, prod via `@vscode/vsce → markdown-it` | https://github.com/advisories/GHSA-v245-v573-v5vm (+1) | high | `file-issue` | `major` | `P64-D6-007` |
+| `picomatch` | npm | 2.3.1, prod via `@vscode/vsce → secretlint → globby` (+ dev via shx/vitest) | https://github.com/advisories/GHSA-c2c7-rcm5-vvqj (+1) | high | `file-issue` | `major` | `P64-D6-007` |
+| `tmp` | npm | 0.2.5, prod via `@vscode/vsce` | https://github.com/advisories/GHSA-ph9p-34f9-6g65 | high | `file-issue` | `major` | `P64-D6-007` |
+| `underscore` | npm | 1.13.7, prod via `@vscode/vsce → typed-rest-client` | https://github.com/advisories/GHSA-qpx9-hpmf-5gmw | high | `file-issue` | `major` | `P64-D6-007` |
+| `ajv` | npm | 8.17.1, prod via `@vscode/vsce → @secretlint/node` (+ dev via eslint) | https://github.com/advisories/GHSA-2g4f-4pwh-qvx6 | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `markdown-it` | npm | 14.1.0, prod via `@vscode/vsce` | https://github.com/advisories/GHSA-6v5v-wf23-fmfq (+1) | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `qs` | npm | 6.14.1, prod via `@vscode/vsce → typed-rest-client` | https://github.com/advisories/GHSA-q8mj-m7cp-5q26 (+1) | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `uuid` | npm | 8.3.2, prod via `@vscode/vsce → @azure/identity → @azure/msal-node` | https://github.com/advisories/GHSA-w5hq-g745-h8pq | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `@azure/msal-node` | npm | 3.8.6, prod via `@vscode/vsce → @azure/identity` | depends on vulnerable `uuid`; https://github.com/advisories/GHSA-w5hq-g745-h8pq | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `@azure/identity` | npm | 4.13.0, prod via `@vscode/vsce` | depends on vulnerable `@azure/msal-node`; https://github.com/advisories/GHSA-w5hq-g745-h8pq | moderate | `fix-now` | `easy` | `P64-D6-013` |
+| `com.google.guava:guava` | Maven (Gradle) | 31.1-jre (`java-interop/build.gradle:22`) | https://github.com/advisories/GHSA-7g45-4rm6-3mm3 (CVE-2023-2976, OSV `MODERATE`); https://github.com/advisories/GHSA-5mg8-w23w-74h3 (CVE-2020-8908, OSV `LOW`) | moderate | `file-issue` | `major` | `P64-D6-011` |
+
+**Totals:** 20 rows — 19 npm, 1 Maven. `fix-now` 6, `file-issue` 11, `accepted-with-reason` 3.
+Every row obeys D-09's mapping: all 6 `fix-now` rows are `easy` and are `moderate` severity with a
+lockfile-only remediation; all 11 `file-issue` and all 3 `accepted-with-reason` rows are `major`.
+The mapping runs one way only, and one row shows why that matters: `com.google.guava:guava` is
+`moderate` yet `file-issue`/`major`, because its remediation is a **major-version** bump of a
+coordinate declared in a build file (31.1-jre → 32.0.0+) in a project (`java-interop/`) that FUT-01
+excludes from this milestone and whose Gradle wrapper is not even committed
+(`java-interop/.gitignore:5` ignores `gradle/`), so no unattended Phase 67 apply could verify it.
+`moderate` severity permits `fix-now`; it does not compel it.
+
+**Every `accepted-with-reason` carries a written reachability argument naming the code path that
+would have to exist, and showing it does not.** A bare dev-dependency or not-shipped claim is not an
+accepted reason under RVW-06, so each of the three is argued from a specific mechanism and each was
+checked mechanically:
+
+- **`shell-quote@1.8.3`** (critical, GHSA-w7jw-789q-3m8p: `quote()` does not escape newlines in
+  object `.op` values). It enters only through `concurrently@8.2.2`, whose only consumer is
+  `package.json:656`'s `watch` script. *The code path that would have to exist* is a caller passing
+  a value it did not itself author into `concurrently`'s command construction. `watch` passes two
+  fixed string literals written in the manifest — `"tsc -b tsconfig.json --watch"` and
+  `"node ./esbuild.mjs --watch"` — with no variable, no `argv` pass-through and no environment
+  interpolation, and `grep -rn 'concurrently\|npm run watch' .github/workflows/` returns nothing, so
+  it never executes in CI at all. The vulnerable function can only ever see text a developer typed
+  into this repository's own manifest.
+- **`postcss@8.5.19`** (moderate, GHSA-fxqj-rqcc-2cmp: attacker-controlled `sourceMappingURL` reads
+  arbitrary `.map` files when `from` is unset). It enters only through `vitest@4.1.10 → vite@8.1.5`.
+  *The code path that would have to exist* is Vite's CSS pipeline processing a stylesheet whose
+  `sourceMappingURL` an attacker controls. This project has no stylesheet:
+  `find bbj-vscode/src bbj-vscode/test bbj-vscode/tools -name '*.css' -o -name '*.scss' -o -name '*.less'`
+  returns nothing, and `vitest.config.ts` declares no `css` option, so the pipeline that would call
+  postcss is never entered by any test run.
+- **`nanoid@3.3.16`** (high, GHSA-2v37-7h3g-55p8: custom generators loop indefinitely when size is
+  zero). It enters only through `vitest → vite → postcss`, which uses it for source-map identifiers.
+  *The code path that would have to exist* is a caller invoking `customAlphabet` or `customRandom`
+  with `size === 0`; postcss calls the default generator with its own fixed size, and
+  `grep -rn 'nanoid' bbj-vscode/src bbj-vscode/test bbj-vscode/tools` returns nothing, so no code in
+  this repository reaches the vulnerable entry point directly either.
+
+**Why the 15 `@vscode/vsce`-tree rows are `file-issue` rather than `accepted-with-reason`, stated
+because the distinction is the whole point of D-09's vocabulary.** It would be easy — and wrong — to
+accept them on the ground that they do not ship: `.vscodeignore:8` excludes `node_modules` from the
+VSIX and grepping the built bundles returns 0 occurrences of `vsce`, `undici`, `markdown-it` and
+`shell-quote`, so none of them reaches an end user. But they are not unreachable: every one of them
+is installed by `npm ci` in all five workflows that run it, and vsce itself executes at
+`preview.yml:62-68` and `manual-release.yml:84-90` inside jobs holding `secrets.VSCE_PAT`. **A
+package that runs in a job holding a marketplace publishing credential is reachable**, so the
+reachability argument that `accepted-with-reason` demands cannot honestly be written for them. Their
+common cause is structural and has one fix, which is why they share one finding: moving
+`@vscode/vsce` from `dependencies` to `devDependencies` (`P64-D6-007`) removes 15 of the 19 from the
+production closure in a single edit — the 16th, `brace-expansion`, stays, because
+`vscode-languageclient@10.1.0` genuinely needs it.
+
+**Why `brace-expansion` is `file-issue` and not accepted either, although it is the one that ships.**
+It is the only flagged package inlined into a shipped artefact (2 occurrences in
+`out/extension.cjs`, 0 in `out/language/main.cjs`), reached through `vscode-languageclient/node` →
+`minimatch@10.2.5` → `brace-expansion@5.0.7`. Deciding whether a *workspace-controlled* glob can
+reach `minimatch` would require reading `bbj-vscode/src/extension.ts`, which is `RU-62-01`'s surface
+and belongs to a closed phase — **so the argument that would justify acceptance cannot be completed
+from this unit's surface, and the honest triage is to file rather than to accept**. Recording
+`accepted-with-reason` on an argument this unit cannot finish is exactly the failure RVW-06 exists
+to prevent.
+
+**Consolidation of the phase's other two SEC-08 contributions — by reference, not re-audit.**
+
+- **`RU-64-03`'s `### Vendored Binary Provenance`** covers the three JARs under
+  `bbj-vscode/tools/formatter/` — `BBjCFCli.jar`, `lib/BBjCodeFomatter.jar` and
+  `lib/jcommander-1.71.jar` — including the one that cannot be triaged at all because nothing in its
+  manifest or its hash identifies a version to triage against.
+- **`RU-64-01`'s D6 records** cover GitHub Actions supply chain: `P64-D6-003` (36 of 36 action
+  references pinned to mutable tags, 0 to a commit SHA), `P64-D6-004` (`build.yml:18,20` a major
+  behind on `actions/checkout@v3` / `actions/setup-node@v3`) and `P64-D6-005` (`.github/dependabot.yml`
+  covering 1 of this repository's 4 dependency trees — no `gradle`, no `documentation/`, no
+  `github-actions`).
+- **The vendored-binary total, stated plainly while consolidating:** with D-20's adoption this
+  milestone ships and executes **four** unpinned vendored JARs, not three — the three under
+  `bbj-vscode/tools/formatter/` and `bbj-intellij/gradle/wrapper/gradle-wrapper.jar` — and
+  criterion 3's answer covers all four. The fourth is the one whose checksum question is answered
+  above rather than inferred from its neighbours.
+
+**Stated coverage limitation, repeated here because criterion 3's answer must carry it (D-10).** The
+npm half is a live, complete enumeration of the installed tree. The Gradle half is **declared
+coordinates only**: `./gradlew --offline -q dependencies` exits 1 in 723 ms with
+`* What went wrong: 25.0.3`, so no transitive Gradle dependency is enumerable in this environment,
+and this table cannot claim to list every vulnerable Gradle dependency — only every vulnerable
+*declared* one. Two of the declared coordinates (`com.redhat.devtools.lsp4ij:0.19.0` and
+`intellijIdeaCommunity("2024.2")`) are not Maven artefacts OSV indexes, so their zero result means
+*not answerable by this method*. Fixing `P63-D6-002` would close this gap retroactively; see
+`### Inherited item triage` below.
 
 ### Inherited item triage
 
-_(pending — plan `64-03`; re-triages `P63-D6-002`)_
+**The phase's single inherited item: `P63-D6-002`** — the `bbj-intellij` Gradle build JDK
+17-vs-25.0.3 toolchain mismatch at `bbj-intellij/build.gradle.kts:12-13`, routed here by
+`63-COVERAGE.md`'s close-out inheritance table. Phase 63 flagged that `location:` as its one
+deliberate exception, because INVENTORY assigns `build.gradle.kts` to `RU-64-02` for every
+dimension; re-triaging it here is what returns it to its owning unit.
+
+**Disposition: `merged` — into `P64-D6-010`, which carries it forward with this unit's own evidence.**
+The claim was re-derived rather than restated: `build.gradle.kts:11-14` sets
+`sourceCompatibility`/`targetCompatibility` to `JavaVersion.VERSION_17` and declares **no
+`toolchain` block**, so Gradle compiles with whatever JVM launched it instead of provisioning a
+JDK 17; the local JVM is Temurin **25.0.3**; and `./gradlew --offline -q dependencies` exits 1 in
+**723 ms** with the literal output `FAILURE: Build failed with an exception. * What went wrong:
+25.0.3` — Gradle 8.13's own `JavaVersion` parser rejecting a Java version it predates, before any
+task is scheduled. Phase 63 saw the same failure through `./gradlew --offline -q tasks`; this phase
+reproduces it through a different task, which is why the disposition is `merged` and not
+`not-reproducible`. **It is `merged` rather than `promoted` because it is not a second, separate
+defect:** the toolchain declaration, the 8.13 wrapper pin and the resulting inability to resolve the
+IntelliJ Platform, LSP4IJ or any transitive coordinate are one condition with one fix, and
+`P64-D6-010` records that condition with the version evidence Phase 63 explicitly left to this cell.
+`P63-D6-002` therefore remains citable by ID and is not re-recorded under a new `P64-*` number.
+
+**Where the fix belongs, and what else it closes.** Applying it is **Phase 66/67's**, not this
+phase's — Phase 64 records and does not remediate — and it is `major` in both records, so it reaches
+Phase 67 only through `MAJOR-REFACTORS.md`. The named edit is the one this repository already
+demonstrates one directory away: `java-interop/build.gradle:6-10` declares
+`java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }`, which pins the compiler
+independently of the launching JVM, and `bbj-intellij/build.gradle.kts:11-14` does not. **Worth
+stating because it makes one fix close two records:** a working `bbj-intellij` Gradle build would
+retroactively close the **D-10 enumeration gap this very cell records** — `./gradlew dependencies`
+would then produce the transitive Gradle tree that SEC-08 could not enumerate here, turning the
+Gradle half of criterion 3 from "declared coordinates only" into a real enumeration. Its value is
+therefore larger than its own `medium` severity suggests, and Phase 66's `DEBT-*` re-triage should
+read it that way. Note also that a Gradle 8.13 → 9.x bump (`P64-D6-010`) would independently resolve
+the same failure, since current Gradle releases accept JDK 25; the two fixes overlap and should be
+considered together rather than applied in sequence.
+
+**What Phase 63 left to this cell, and where it is answered.** `63-COVERAGE.md`'s D6 cell states
+that "no other Gradle, IntelliJ-Platform (`2024.2`) or LSP4IJ (`0.19.0`) version question is
+assessed in this cell — those remain `RU-64-02`/SEC-08's." Those three, plus the Gradle wrapper
+version, plus the `org.jetbrains.intellij.platform.settings` plugin at `2.11.0`, are covered by this
+unit's **static enumeration** in `### SEC-08 Dependency Triage` above and by `P64-D6-010` — **not by
+a separate ledger entry**, and the ledger's disposition column is resolved to match this block in
+the close-out's §D (D-17).
 
 ### Findings
 
@@ -2148,6 +2340,600 @@ dedup:             none — no open issue in the frozen 15-issue snapshot mentio
 disposition:       major-refactor — the edit is small but it changes what a bare `npm install`
                    leaves behind, which several documented workflows and CLAUDE.md's own quickstart
                    depend on, so it is a deliberate change rather than an unattended one.
+```
+
+```
+id:                P64-D6-006
+unit:              RU-64-02
+location:          bbj-intellij/gradle/wrapper/gradle-wrapper.jar
+dimension:         D6
+secondary:         [D1]
+severity:          high
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: the identity claim below rests on a hash comparison
+                   against a resolvable first-party reference, not on an assertion. Assessed by
+                   manifest and hash only — no decompilation, no disassembly, no unpacking beyond
+                   the manifest, no execution (D-11). `sha256sum` prints
+                   `2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046`; size 43,583
+                   bytes. `unzip -p <jar> META-INF/MANIFEST.MF` prints exactly two lines,
+                   `Manifest-Version: 1.0` and `Implementation-Title: Gradle Wrapper`, with no
+                   version, vendor, build-JDK, creator or signature entry — so the artefact cannot
+                   be identified from its own bytes. Gradle publishes a per-release `wrapperChecksum`
+                   at https://services.gradle.org/versions/all (521 entries at query time); this
+                   hash matches 19 of them, spanning releases **8.10 through 8.12.1** (latest final
+                   match 8.12.1, built 2025-01-24). The file beside it,
+                   `gradle-wrapper.properties:3`, declares `gradle-8.13-bin.zip`, whose published
+                   wrapper checksum is
+                   `81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f` — a different
+                   value, also retrievable at
+                   https://services.gradle.org/distributions/gradle-8.13-wrapper.jar.sha256. The two
+                   artefacts that `./gradlew wrapper` generates as a pair therefore do not
+                   correspond. `git log --oneline -- bbj-intellij/gradle/wrapper/` returns exactly
+                   one commit, `e97c587 chore(01-01): initialize Gradle wrapper and build scripts`,
+                   so neither file has changed since it was introduced and the mismatch is original
+                   rather than the result of a later edit. Update path, checked three ways and empty
+                   in all three: `.github/dependabot.yml` declares no `gradle` ecosystem
+                   (`RU-64-01`'s `P64-D6-005`), so no automated update could ever propose a newer
+                   wrapper; `grep -rn 'wrapper-validation\|gradle/actions\|setup-gradle'
+                   .github/workflows/` returns nothing, so Gradle's own wrapper-validation action is
+                   absent from all six workflows; and the declared distribution 8.13 (2025-02-25) is
+                   a full major line behind the current 9.7.0 (2026-08-06).
+failure_scenario:  A maintainer, auditor or downstream consumer asks the ordinary supply-chain
+                   question — "which Gradle release produced the wrapper this repository executes,
+                   and is it the one the build declares?" — and the repository cannot answer it from
+                   its own contents: the manifest names no version, no checksum is pinned, no CI
+                   step validates the JAR, and no dependency automation watches the ecosystem. When
+                   the question is answered from outside, using Gradle's published checksums, the
+                   answer is that the JAR is from the 8.10-8.12.1 line while the properties file
+                   asks for 8.13. Concretely, this is the state a wrapper-JAR substitution would
+                   produce, and it has persisted undetected since the initial commit — which is the
+                   direct demonstration that a real substitution would also persist undetected,
+                   including through `manual-release.yml:137` and `preview.yml:99`, where
+                   `./gradlew publishPlugin` runs with `secrets.JETBRAINS_MARKETPLACE_TOKEN` bound.
+classification:    major — (1) at most one file: FAIL, correcting it means regenerating the JAR and
+                   the properties file together and adding a validation step to the workflows that
+                   run `./gradlew`. (2) no public API / no grammar rule / no LSP contract change:
+                   PASS. (3) adds or upgrades no dependency in `bbj-vscode/package.json` or
+                   `bbj-intellij/build.gradle.kts`: PASS — the Gradle distribution is pinned in the
+                   wrapper properties, not in either named file. (4) regression-testable with the
+                   existing harness: FAIL — the Gradle build does not run in this environment at all
+                   (`./gradlew --offline -q dependencies` exits 1 in 723 ms) and no test asserts
+                   anything about the wrapper. (5) reviewer can name the exact edit: PASS — run
+                   `./gradlew wrapper --gradle-version <chosen release>
+                   --gradle-distribution-sha256-sum <that release's published checksum>` on a
+                   working toolchain, commit both regenerated files, and add
+                   `gradle/actions/wrapper-validation` to `pr-validation.yml`, `manual-release.yml`
+                   and `preview.yml`. (6) severity is neither critical nor high AND primary
+                   dimension is not D1: FAIL on the severity half. Tests (1), (4) and (6) fail.
+triage:            file-issue — the remediation needs a working Gradle toolchain (blocked today by
+                   `P63-D6-002`), a deliberate choice of target release, and CI changes; it is not a
+                   version bump with no API change, so D-09 routes it to Phase 68's
+                   `MAJOR-REFACTORS.md` and Phase 69's issue drafting rather than to Phase 67.
+effort:            4
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions the Gradle wrapper,
+                   checksums, vendored binaries or supply-chain provenance; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a vendored
+                   binary.
+disposition:       major-refactor — pairs with `P64-D1-006`, which records the integrity half of the
+                   same bootstrap chain; both belong in `MAJOR-REFACTORS.md` and neither is a
+                   Phase 67 unattended apply.
+```
+
+```
+id:                P64-D6-007
+unit:              RU-64-02
+location:          bbj-vscode/package.json:670
+dimension:         D6
+secondary:         [D4]
+severity:          high
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: every advisory below is cited by a resolvable
+                   GitHub Advisory URL emitted by `npm audit --json` itself, and every dependency
+                   path was resolved with `npm ls`, not asserted. `package.json:669-678` declares
+                   eight runtime `dependencies`; the first is `"@vscode/vsce": "^3.7.1"` at `:670`.
+                   `@vscode/vsce` is the Visual Studio Marketplace **publishing** CLI — a build- and
+                   release-time tool — and `grep -rn '@vscode/vsce' bbj-vscode/src` returns nothing,
+                   so no shipped code imports it. Placing it under `dependencies` puts its entire
+                   transitive closure into this package's production dependency set: `npm audit
+                   --json` reports `metadata.dependencies` as 296 prod / 260 dev / 96 optional out
+                   of 593. Running `npm ls <pkg> --all` for each of the 19 packages `npm audit`
+                   flags shows **15 of them reach the tree through `@vscode/vsce` and through
+                   nothing else** — `@azure/identity` (4.13.0), `@azure/msal-node` (3.8.6), `ajv`
+                   (8.17.1, also via dev-only eslint), `fast-uri` (3.1.0), `form-data` (4.0.5),
+                   `js-yaml` (4.3.0, also via dev-only eslint), `linkify-it` (5.0.0), `markdown-it`
+                   (14.1.0), `minimatch` (3.1.2 and 10.1.2), `picomatch` (2.3.1), `qs` (6.14.1),
+                   `tmp` (0.2.5), `underscore` (1.13.7), `undici` (7.21.0) and `uuid` (8.3.2) — with
+                   `npm ls <pkg> --omit=dev --all` confirming each is present in the production
+                   closure. Their advisories are enumerated row by row in
+                   `### SEC-08 Dependency Triage` above; the highest is `undici` with 16 advisories
+                   including https://github.com/advisories/GHSA-4cwx-7wf7-3272 (high). What does
+                   **not** follow, and is checked rather than assumed: none of them ships to an end
+                   user, because `.vscodeignore:8` excludes `node_modules` from the VSIX (read as
+                   context only — INVENTORY excludes that file from every unit, so no finding is
+                   located in it and it adds no file to this unit's list or to the file gate) and
+                   grepping the built bundles returns 0 occurrences of `vsce`, `undici`,
+                   `markdown-it` and `shell-quote` in both `out/extension.cjs` and
+                   `out/language/main.cjs`. What does follow is that they are installed and executed
+                   in CI: all five workflows that run `npm ci` install them, and vsce itself runs at
+                   `preview.yml:62-68` and `manual-release.yml:84-90` inside jobs holding
+                   `secrets.VSCE_PAT`.
+failure_scenario:  Two distinct consequences follow from the one declaration. First, every
+                   consumer of this package's metadata — an SBOM generator, a downstream
+                   dependency-policy scanner, `npm ls --omit=dev`, a corporate allow-list review —
+                   reads a production dependency set of 296 packages containing 15 flagged ones,
+                   when the extension's actual runtime surface is two esbuild bundles that import
+                   none of them; the declared contract materially overstates what runs in
+                   production, and any policy decision made from it is made on wrong data. Second,
+                   and concretely rather than hypothetically, all 15 are installed by `npm ci` and
+                   are on disk in `preview.yml` and `manual-release.yml` jobs that hold
+                   `secrets.VSCE_PAT` and `secrets.JETBRAINS_MARKETPLACE_TOKEN` — so a compromise of
+                   any one of them at install or invocation time executes beside two marketplace
+                   publishing credentials, each of which reaches every user of the published
+                   extension or plugin. That is why these rows are triaged `file-issue` rather than
+                   accepted: "does not ship" is true and is not the same as "cannot run".
+classification:    major — (1) at most one file: PASS if the edit is only to move the entry between
+                   the two blocks in `package.json`; the lockfile is regenerated as a consequence
+                   rather than hand-edited. (2) no public API / no grammar rule / no LSP contract
+                   change: PASS. (3) adds or upgrades no dependency in `bbj-vscode/package.json`:
+                   FAIL — moving an entry between `dependencies` and `devDependencies` is a change
+                   to that file's dependency declarations, which is what test (3) guards. (4)
+                   regression-testable with the existing harness: PASS — vitest runs unchanged and
+                   `npm run build` plus a `vsce package` dry run would show whether anything
+                   actually needed vsce at runtime. (5) reviewer can name the exact edit: PASS —
+                   move `"@vscode/vsce": "^3.7.1"` from `dependencies` (`:670`) to
+                   `devDependencies` (`:679-693`) and regenerate the lockfile. (6) severity is
+                   neither critical nor high AND primary dimension is not D1: FAIL on the severity
+                   half. Tests (3) and (6) fail.
+triage:            file-issue — this is the structural fix for 15 of the 20 rows in the criterion-3
+                   table, and it changes the package's declared dependency contract rather than
+                   bumping a version, so D-09 routes it to `MAJOR-REFACTORS.md` and to Phase 69's
+                   issue drafting rather than to Phase 67's apply path.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions vsce, dependency
+                   placement, packaging or the npm dependency tree; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a vendored
+                   binary. Two workflow comments (`manual-release.yml:30`, `preview.yml:28`) already
+                   assert that "vsce comes from bbj-vscode devDependencies", which the manifest
+                   contradicts — that discrepancy is referred to `RU-64-01` under
+                   `### Cross-unit referrals` rather than recorded twice.
+disposition:       major-refactor — a one-line move with a regenerated lockfile, but it changes what
+                   `npm ci --omit=dev` installs and therefore what the release workflows have
+                   available, so it needs a verified packaging run rather than an unattended apply.
+```
+
+```
+id:                P64-D6-008
+unit:              RU-64-02
+location:          bbj-vscode/package-lock.json:7581-7584
+dimension:         D6
+secondary:         [D1]
+severity:          high
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: the advisory is cited by resolvable URL and the
+                   shipping claim was checked against the built artefact rather than inferred.
+                   `npm audit --json` flags `brace-expansion` at `<=1.1.17 || 4.0.0 - 5.0.8`, with
+                   `node_modules/vscode-languageclient/node_modules/brace-expansion` among its
+                   `nodes`. `package-lock.json:7581-7584` pins that node at `"version": "5.0.7"`
+                   with its `resolved` registry URL and `integrity` SRI hash; the applicable
+                   advisories are https://github.com/advisories/GHSA-mh99-v99m-4gvg (high, DoS via
+                   unbounded expansion length causing an out-of-memory process crash, range
+                   `>=4.0.0 <5.0.8`) and https://github.com/advisories/GHSA-rgw5-rvv9-x895 (high,
+                   DoS via unbounded intermediate arrays bypassing the CVE-2026-14257 mitigation,
+                   range `>=4.0.0 <5.0.9`). Its parent is `vscode-languageclient@10.1.0`
+                   (`package-lock.json:7557-7563`), a genuine runtime dependency declared at
+                   `package.json:676` and imported at `src/extension.ts:13`, which requires
+                   `minimatch: ^10.2.5`; the installed nested `minimatch@10.2.5` is itself outside
+                   every flagged minimatch range, so `brace-expansion` is reached through a
+                   non-vulnerable intermediary. **This is the only one of the 19 flagged packages
+                   that reaches the shipped artefact**, and that was measured rather than reasoned:
+                   `grep -c` over the built bundles returns 2 occurrences of `brace-expansion` and 2
+                   of `balanced-match` in `out/extension.cjs` and 0 in `out/language/main.cjs`,
+                   against 0 occurrences of `vsce`, `undici`, `markdown-it`, `shell-quote`, `nanoid`
+                   and `postcss` in either — consistent with `esbuild.mjs:17` declaring `vscode` as
+                   its only external, so everything the entry points transitively import is inlined.
+                   `.vscodeignore:8` excludes `node_modules` from the VSIX (read as context only;
+                   INVENTORY excludes that file from every unit), so the bundle is the whole of the
+                   third-party surface that reaches a user.
+failure_scenario:  A VS Code user installs the published extension. `out/extension.cjs` — the file
+                   `package.json:651` names as `main` — contains an inlined copy of
+                   `brace-expansion@5.0.7`, reached through the language client's glob matching. If a
+                   brace pattern with sufficient nesting or expansion breadth is passed to that
+                   matcher, GHSA-mh99-v99m-4gvg's unbounded expansion exhausts memory and
+                   GHSA-rgw5-rvv9-x895's unbounded intermediate arrays do so even where the earlier
+                   mitigation applies; the extension host process the language client runs in dies,
+                   taking BBj language support down for the session. **What this record deliberately
+                   does not claim** is that a workspace-controlled value reaches that matcher:
+                   establishing which patterns the client registers requires reading
+                   `bbj-vscode/src/extension.ts`, which is `RU-62-01`'s surface and belongs to a
+                   closed phase, so this unit records the reachable presence of vulnerable code in
+                   the shipped bundle and stops there rather than asserting an input path it cannot
+                   trace. That incompleteness is why the triage is `file-issue` and not
+                   `accepted-with-reason` — the argument that would justify acceptance is precisely
+                   the one this unit cannot finish.
+classification:    major — (1) at most one file: PASS, the remediation is a lockfile-only bump of
+                   the nested `brace-expansion` to 5.0.9 or later, which `npm audit --json` reports
+                   as `fixAvailable: true`. (2) no public API / no grammar rule / no LSP contract
+                   change: PASS. (3) adds or upgrades no dependency in `bbj-vscode/package.json`:
+                   PASS — the change is transitive and touches only `package-lock.json`. (4)
+                   regression-testable with the existing harness: PASS — the 50-file vitest suite
+                   runs against the updated tree. (5) reviewer can name the exact edit: PASS. (6)
+                   severity is neither critical nor high AND primary dimension is not D1: FAIL, the
+                   advisories are `high`. Only test (6) fails — and it is the deliberate safety
+                   gate, so this is `major` despite a one-file lockfile diff, which is exactly the
+                   case D-13 was written for: the smallest possible edit on the only vulnerable
+                   package that actually ships still gets reviewed rather than auto-applied.
+triage:            file-issue — D-09 maps `major` to `file-issue`, and the mapping is not overridden
+                   by how small the diff is; the reachability question this record leaves open
+                   (`RU-62-01`'s surface) is itself something an issue should carry to whoever
+                   applies the bump.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions brace-expansion,
+                   minimatch, glob matching, the language client's dependency tree or a denial of
+                   service; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow,
+                   build configuration or a vendored binary.
+disposition:       major-refactor — recorded for `MAJOR-REFACTORS.md` with the open reachability
+                   question attached, rather than applied unattended in Phase 67.
+```
+
+```
+id:                P64-D6-009
+unit:              RU-64-02
+location:          bbj-vscode/package-lock.json:3
+dimension:         D6
+secondary:         [D8]
+severity:          low
+evidence_tier:     inherited
+evidence:          Resolves to `trace` — this is a provenance-drift claim rather than a CVE claim,
+                   so no advisory reference applies and none is offered; the evidence is a direct
+                   comparison of two committed files. `package-lock.json:3` declares
+                   `"version": "0.11.0"`, and the same value is repeated in the lockfile's root
+                   package entry (`packages[""].version`, read via
+                   `node -e 'require("./package-lock.json").packages[""]'`). `package.json:3`
+                   declares `"version": "0.12.0"`. The dependency graph itself is **not** out of
+                   sync — `grep -c '"node_modules/' package-lock.json` prints 593 and
+                   `npm audit --json`'s `metadata.dependencies.total` also prints 593, and the
+                   root entry's `dependencies`/`devDependencies` blocks match `package.json:669-693`
+                   entry for entry — so the divergence is confined to the recorded root version.
+                   `lockfileVersion` is 3 (`:4`), so there is no legacy `dependencies` mirror that
+                   could carry a third, different value.
+failure_scenario:  A release engineer, an SBOM generator, or a reproducibility audit reads the
+                   lockfile to establish what version of `bbj-lang` a given dependency graph belongs
+                   to — the ordinary reason to read a lockfile's root entry rather than the manifest
+                   — and gets `0.11.0` for a tree that is `0.12.0`. Any artefact keyed on that value
+                   (a generated SBOM, a provenance attestation, a release-note diff between two
+                   lockfiles) records the wrong version, and the error is silent because nothing in
+                   `npm ci`'s sync check compares the root `version` field. It also means the
+                   committed lockfile is not byte-identical to the one `npm install` would produce
+                   from the current manifest, so the next dependency change will carry an unrelated
+                   version-line diff that obscures the real one in review.
+classification:    easy — (1) at most one file: PASS, only `package-lock.json` changes. (2) no
+                   public API / no grammar rule / no LSP contract change: PASS. (3) adds or upgrades
+                   no dependency in `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`:
+                   PASS — the fix regenerates the lockfile's root version and touches no declared
+                   dependency. (4) regression-testable with the existing harness: PASS — the
+                   593-entry graph is unchanged, and the existing vitest suite plus `npm ci` in CI
+                   exercise the result directly. (5) reviewer can name the exact edit: PASS — run
+                   `npm install --package-lock-only` in `bbj-vscode/` and commit the resulting
+                   one-field change. (6) severity is neither critical nor high AND primary dimension
+                   is not D1: PASS, `low`/D6. All six pass.
+triage:            fix-now — a metadata regeneration with no API change and no graph change,
+                   applicable in Phase 67 exactly as D-09's `fix-now` describes.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions the lockfile,
+                   versioning or release metadata; 0 of the 15 carry the `dependencies` label and 0
+                   name CI, a workflow or build configuration.
+disposition:       easy-fix — one regenerated field, no graph change, verifiable by re-running the
+                   existing suite; this is Phase 67 apply-path work.
+```
+
+```
+id:                P64-D6-010
+unit:              RU-64-02
+location:          bbj-intellij/gradle/wrapper/gradle-wrapper.properties:3
+dimension:         D6
+secondary:         [D2]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Resolves to `trace` for the staleness half (a version comparison against
+                   first-party release metadata, not a CVE claim) and to a recorded command for the
+                   enumerability half. **Staleness, verified live rather than assumed:**
+                   `gradle-wrapper.properties:3` pins the Gradle distribution to **8.13**;
+                   `https://services.gradle.org/versions/all` records 8.13 as built **2025-02-25**,
+                   and `https://services.gradle.org/versions/current` returns **9.7.0**, built
+                   **2026-08-06** — one full major line and roughly eighteen months behind. The
+                   other declared coordinates, enumerated statically because the dynamic route does
+                   not exist here: `build.gradle.kts:25` `intellijIdeaCommunity("2024.2")`, `:27`
+                   `plugin("com.redhat.devtools.lsp4ij:0.19.0")`, `settings.gradle.kts:2`
+                   `org.jetbrains.intellij.platform.settings` version `2.11.0`, `gradle.properties`
+                   (one line, no coordinate), plus `java-interop/build.gradle:21-23` and
+                   `java-interop/settings.gradle:1` read once as an additional dependency-tree
+                   source under INVENTORY's own carve-out, which adds no `java-interop/` file to
+                   this unit's list. Each was queried against OSV
+                   (`POST https://api.osv.dev/v1/query`, Maven ecosystem):
+                   `org.jetbrains.intellij.platform:intellij-platform-gradle-plugin@2.11.0`,
+                   `org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc@0.20.1` and
+                   `org.junit.jupiter:junit-jupiter@5.9.1` return zero advisories;
+                   `com.google.guava:guava@31.1-jre` returns two and is recorded separately as
+                   `P64-D6-011`. `com.redhat.devtools.lsp4ij:0.19.0` and the IntelliJ IDEA
+                   Community platform artefact are **not Maven coordinates OSV indexes**, so their
+                   zero results mean *not answerable by this method* rather than *clean*, and that
+                   distinction is preserved here rather than flattened into a pass. **The
+                   enumerability gap, re-derived rather than trusted (D-10):**
+                   `cd bbj-intellij && ./gradlew --offline -q dependencies` exits **1** in **723 ms**
+                   with the literal output `FAILURE: Build failed with an exception. * What went
+                   wrong: 25.0.3` — Gradle 8.13's `JavaVersion` parser rejecting the local Temurin
+                   25.0.3 before scheduling any task. The cause is the toolchain declaration at
+                   `build.gradle.kts:11-14`, which sets `sourceCompatibility`/`targetCompatibility`
+                   to 17 but declares no `toolchain` block, so Gradle runs on whatever JVM launched
+                   it; `java-interop/build.gradle:6-10` shows the corrective shape one directory
+                   away. This finding **merges** the inherited `P63-D6-002`, whose disposition is
+                   recorded in `### Inherited item triage` above.
+failure_scenario:  Two failures, one immediate and one systemic. Immediately: any contributor or
+                   tool whose available JVM is newer than Gradle 8.13 supports cannot build, test or
+                   statically analyse `bbj-intellij` at all — the build dies before task selection
+                   with a message whose entire text is the JDK version string, which is close to the
+                   least actionable diagnostic possible. Systemically: because the build cannot run,
+                   `./gradlew dependencies` cannot produce the transitive dependency tree, so
+                   **nobody — no person and no tool — currently knows what `bbj-intellij` depends
+                   on transitively.** Compose that with `RU-64-01`'s `P64-D6-005`, which records
+                   that `.github/dependabot.yml` declares no `gradle` ecosystem, and the result is
+                   the strongest single statement in this phase's SEC-08 answer: **this dependency
+                   tree is both unscanned by tooling and unenumerable by hand**, so a vulnerable
+                   transitive Gradle dependency would be invisible to every process this repository
+                   operates. The IntelliJ plugin built from that tree is published to the JetBrains
+                   Marketplace at `manual-release.yml:137` and `preview.yml:99`.
+classification:    major — (1) at most one file: FAIL, the fix spans `build.gradle.kts` (add a
+                   `toolchain` block) and `gradle-wrapper.properties` plus `gradle-wrapper.jar` (move
+                   to a Gradle release that accepts current JDKs). (2) no public API / no grammar
+                   rule / no LSP contract change: PASS. (3) adds or upgrades no dependency in
+                   `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`: FAIL — a Gradle
+                   major-line move typically requires the IntelliJ Platform Gradle plugin to move
+                   with it, which is a declared-dependency change in `build.gradle.kts`. (4)
+                   regression-testable with the existing harness: FAIL — the Gradle build is exactly
+                   the harness that does not run here, so the fix cannot be verified in this
+                   environment. (5) reviewer can name the exact edit: PASS — add
+                   `java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }` to
+                   `build.gradle.kts` mirroring `java-interop/build.gradle:6-10`, and regenerate the
+                   wrapper onto a current Gradle release with its published checksum pinned. (6)
+                   severity is neither critical nor high AND primary dimension is not D1: PASS,
+                   `medium`/D6. Tests (1), (3) and (4) fail.
+triage:            file-issue — a Gradle major-line move plus a plugin bump is precisely D-09's
+                   "needs a breaking upgrade" case, so it routes to `MAJOR-REFACTORS.md` and
+                   Phase 69, not to Phase 67's apply path. Its value exceeds its severity: applying
+                   it retroactively closes this phase's own stated Gradle enumeration gap.
+effort:            8
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions Gradle, the JDK
+                   toolchain, the IntelliJ Platform version or LSP4IJ; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow, build configuration or a vendored
+                   binary. Cross-reference rather than duplicate: this record **merges**
+                   `P63-D6-002` (`63-COVERAGE.md:439`), which recorded the same toolchain condition
+                   from `RU-63-03`/D6 with an explicit `location:` exception because
+                   `build.gradle.kts` is this unit's file; that finding remains citable by ID and is
+                   not re-recorded under a new number.
+disposition:       major-refactor — spans three files and a Gradle major line, cannot be verified in
+                   this environment, and is the enabling fix for the phase's stated coverage
+                   limitation; Phase 66 should read it as `DEBT`-shaped work.
+```
+
+```
+id:                P64-D6-011
+unit:              RU-64-02
+location:          java-interop/build.gradle:22
+dimension:         D6
+secondary:         none
+severity:          medium
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: both advisories are cited by resolvable reference
+                   and were retrieved live, not recalled. `java-interop/build.gradle:22` declares
+                   `implementation 'com.google.guava:guava:31.1-jre'`. Querying OSV
+                   (`POST https://api.osv.dev/v1/query`, `{"package":{"ecosystem":"Maven",
+                   "name":"com.google.guava:guava"},"version":"31.1-jre"}`) returns two records:
+                   **GHSA-7g45-4rm6-3mm3** (CVE-2023-2976, OSV `database_specific.severity`
+                   `MODERATE`, CWE-379/CWE-552, "Guava vulnerable to insecure use of temporary
+                   directory", fixed in `32.0.0-android`,
+                   https://github.com/advisories/GHSA-7g45-4rm6-3mm3) and **GHSA-5mg8-w23w-74h3**
+                   (CVE-2020-8908, OSV severity `LOW`, CWE-200/CWE-378/CWE-732, "Information
+                   Disclosure in Guava", also fixed in `32.0.0-android`,
+                   https://github.com/advisories/GHSA-5mg8-w23w-74h3). Both concern
+                   `Files.createTempDir()` creating world-readable temporary directories on Unix-like
+                   systems. This is the **only** declared Gradle-side coordinate in the whole
+                   milestone that returns an advisory: the same query against
+                   `org.eclipse.lsp4j:org.eclipse.lsp4j.jsonrpc@0.20.1`,
+                   `org.junit.jupiter:junit-jupiter@5.9.1` and
+                   `org.jetbrains.intellij.platform:intellij-platform-gradle-plugin@2.11.0` returns
+                   zero. **Scope note, stated so this record is not mistaken for an expansion of
+                   scope:** `java-interop/build.gradle` is read **once** as an additional
+                   dependency-tree source under INVENTORY's own `java-interop/` carve-out, which
+                   states that doing so "does not add `java-interop/` source files to any unit's
+                   file list". This `location:` is that dependency-tree citation, required by RVW-06
+                   so the coordinate can be found; it adds no file to `RU-64-02`'s 15-file list, and
+                   the file gate's fixed 29-file enumeration is unchanged.
+failure_scenario:  The java-interop socket service runs on a developer or server machine. If any
+                   code path in Guava 31.1-jre's `Files.createTempDir()` is reached — directly, or
+                   through a library that calls it — the directory is created with permissions that
+                   allow other local users to read its contents, and on the CVE-2023-2976 path a
+                   local attacker can additionally place content there before the intended writer
+                   does. Whether such a path is reached in this service is **not established here**,
+                   and deliberately so: `java-interop/` is excluded from review by FUT-01 and is
+                   read by this phase only as a dependency-tree source, so this record enumerates
+                   and triages the vulnerable coordinate, which is what criterion 3 requires, and
+                   does not attempt a reachability trace into code the milestone has scoped out.
+                   That is also why it is not triaged `accepted-with-reason`: the reachability
+                   argument acceptance would demand cannot be written from this unit's surface.
+classification:    major — (1) at most one file: PASS, only `java-interop/build.gradle:22` changes.
+                   (2) no public API / no grammar rule / no LSP contract change: PASS. (3) adds or
+                   upgrades no dependency in `bbj-vscode/package.json` or
+                   `bbj-intellij/build.gradle.kts`: PASS literally — the coordinate lives in
+                   neither named file — but the edit is a **major**-version bump (31.1-jre →
+                   32.0.0+), recorded here rather than hidden behind the literal reading. (4)
+                   regression-testable with the existing harness: FAIL — the harness would be
+                   `java-interop`'s own Gradle build, and `java-interop/.gitignore:5` ignores
+                   `gradle/`, so no wrapper JAR or wrapper properties file is committed and
+                   `java-interop/gradlew` cannot bootstrap from a clean clone at all. (5) reviewer
+                   can name the exact edit: PASS — raise the coordinate to `32.0.0-jre` or later.
+                   (6) severity is neither critical nor high AND primary dimension is not D1: PASS,
+                   `moderate`/D6. Only test (4) fails, which makes this `major`.
+triage:            file-issue — the remediation is a major-version dependency bump in a project
+                   FUT-01 excludes from this milestone and whose build cannot be bootstrapped from a
+                   clean checkout, so it needs upstream action rather than a Phase 67 apply.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions Guava,
+                   java-interop's dependencies or temporary-directory permissions; 0 of the 15 carry
+                   the `dependencies` label and 0 name CI, a workflow, build configuration or a
+                   vendored binary.
+disposition:       major-refactor — a major-version bump in an out-of-milestone project with no
+                   bootstrappable build; recorded for Phase 68/69 so criterion 3's Gradle half is
+                   complete rather than silently short one row.
+```
+
+```
+id:                P64-D6-012
+unit:              RU-64-02
+location:          bbj-vscode/package.json:683,690
+dimension:         D6
+secondary:         none
+severity:          critical
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: each advisory is cited by resolvable URL and each
+                   reachability argument below rests on a recorded command. This record exists so
+                   the three `accepted-with-reason` rows in the criterion-3 table have a finding ID
+                   and so their acceptance is auditable rather than implicit; the `severity` field
+                   carries the highest of the three (`shell-quote`, critical). **`shell-quote@1.8.3`**
+                   — https://github.com/advisories/GHSA-w7jw-789q-3m8p (critical, `quote()` does not
+                   escape newlines in object `.op` values) plus
+                   https://github.com/advisories/GHSA-395f-4hp3-45gv (high, quadratic-complexity DoS
+                   in `parse()`). `npm ls shell-quote --all` shows exactly one path:
+                   `concurrently@8.2.2 → shell-quote@1.8.3`, and `concurrently` is declared at
+                   `package.json:683` with exactly one consumer, the `watch` script at `:656`.
+                   **`nanoid@3.3.16`** — https://github.com/advisories/GHSA-2v37-7h3g-55p8 (high,
+                   custom generators loop indefinitely when size is zero); `npm ls nanoid --all`
+                   shows one path, `vitest@4.1.10 → vite@8.1.5 → postcss@8.5.19 → nanoid@3.3.16`,
+                   and `npm ls nanoid --omit=dev --all` shows it absent from the production closure.
+                   **`postcss@8.5.19`** — https://github.com/advisories/GHSA-fxqj-rqcc-2cmp
+                   (moderate, attacker-controlled `sourceMappingURL` reads arbitrary `.map` files
+                   when `from` is unset); one path, `vitest@4.1.10 → vite@8.1.5`, `vitest` declared
+                   at `package.json:690`, also absent from the production closure. The reachability
+                   arguments are written out in full in `### SEC-08 Dependency Triage` above and are
+                   each backed by a command: `grep -rn 'concurrently\|npm run watch'
+                   .github/workflows/` returns nothing (so `concurrently`, and therefore
+                   `shell-quote`, never executes in CI at all, and the only values it ever sees are
+                   the two fixed string literals written at `package.json:656`);
+                   `find bbj-vscode/src bbj-vscode/test bbj-vscode/tools -name '*.css' -o -name
+                   '*.scss' -o -name '*.less'` returns nothing and `vitest.config.ts` declares no
+                   `css` option (so Vite's CSS pipeline, the only caller of postcss here, is never
+                   entered); and `grep -rn 'nanoid' bbj-vscode/src bbj-vscode/test bbj-vscode/tools`
+                   returns nothing (so no code in this repository calls `customAlphabet` or
+                   `customRandom`, the vulnerable entry points, at all). None of the three appears in
+                   either built bundle: `grep -c` returns 0 for `shell-quote`, `nanoid` and
+                   `postcss` in both `out/extension.cjs` and `out/language/main.cjs`.
+failure_scenario:  Stated as what would have to become true for any of the three to matter, since
+                   the finding's content is the acceptance rather than a defect. `shell-quote` would
+                   matter if any caller passed a value it did not author into `concurrently`'s
+                   command construction — a variable, an `argv` pass-through or an environment
+                   interpolation in the `watch` script — or if `concurrently` were ever invoked from
+                   CI; neither is true today, and either change would reopen this row. `postcss`
+                   would matter the moment a stylesheet entered the repository or `vitest.config.ts`
+                   gained a `css` option, because the Vite pipeline that calls it would then run.
+                   `nanoid` would matter if any code called a nanoid custom generator with
+                   `size === 0`, which requires importing nanoid — nothing here does. **These are
+                   the conditions under which the acceptance expires, stated explicitly so a later
+                   reader can re-check them instead of inheriting a stale judgement.**
+classification:    major — (1) at most one file: n/a, no edit is proposed; the disposition is
+                   acceptance, and D-09 maps `accepted-with-reason` to `major` (documented, not
+                   filed as a fix). (2) no public API / no grammar rule / no LSP contract change:
+                   PASS trivially. (3) adds or upgrades no dependency: PASS trivially. (4)
+                   regression-testable with the existing harness: n/a, nothing changes. (5) reviewer
+                   can name the exact edit: n/a. (6) severity is neither critical nor high AND
+                   primary dimension is not D1: FAIL — `shell-quote` is `critical` and `nanoid` is
+                   `high`, so test (6) fails on the severity half regardless of the acceptance. The
+                   `major` classification is therefore reached two ways, by D-09's mapping and by
+                   test (6), and both are recorded rather than one being assumed.
+triage:            accepted-with-reason — each of the three carries a written reachability argument
+                   naming the code path that would have to exist and showing that it does not, per
+                   D-09; none rests on a bare dev-dependency or not-shipped claim, which RVW-06 does
+                   not accept as a reason.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions shell-quote,
+                   nanoid, postcss, concurrently or vitest's dependency tree; 0 of the 15 carry the
+                   `dependencies` label and 0 name CI, a workflow or build configuration. Note that
+                   Dependabot already has an open branch for `concurrently`
+                   (`dependabot/npm_and_yarn/bbj-vscode/concurrently`, enumerated by `RU-64-01`),
+                   so the `shell-quote` row may resolve through routine automation without any
+                   action from this milestone.
+disposition:       wontfix — accepted with the reasons recorded above; documented in Phase 68's
+                   output rather than filed as a fix, and re-checkable against the three named
+                   expiry conditions.
+```
+
+```
+id:                P64-D6-013
+unit:              RU-64-02
+location:          bbj-vscode/package-lock.json:2172
+dimension:         D6
+secondary:         none
+severity:          medium
+evidence_tier:     inherited
+evidence:          Resolves to repro-equivalent: every advisory is cited by a resolvable URL emitted
+                   by `npm audit --json` in the pinned 2026-08-18 run. Six of the 19 flagged
+                   packages carry only `moderate`-severity advisories and are remediable by a
+                   transitive, lockfile-only update — `npm audit --json` reports `fixAvailable: true`
+                   for each, meaning npm can resolve them without a breaking change to any declared
+                   dependency. They are: **`ajv@8.17.1`**
+                   (https://github.com/advisories/GHSA-2g4f-4pwh-qvx6, ReDoS when using the `$data`
+                   option); **`markdown-it@14.1.0`**
+                   (https://github.com/advisories/GHSA-6v5v-wf23-fmfq quadratic-complexity DoS in
+                   the smartquotes rule, plus https://github.com/advisories/GHSA-38c4-r59v-3vqw
+                   ReDoS); **`qs@6.14.1`** (https://github.com/advisories/GHSA-q8mj-m7cp-5q26
+                   remotely triggerable DoS in `qs.stringify`, plus
+                   https://github.com/advisories/GHSA-w7fw-mjwx-w883 arrayLimit bypass, `low`);
+                   **`uuid@8.3.2`** (https://github.com/advisories/GHSA-w5hq-g745-h8pq missing buffer
+                   bounds check in v3/v5/v6); and the two packages that carry `uuid`'s advisory
+                   transitively, **`@azure/msal-node@3.8.6`** and **`@azure/identity@4.13.0`**, whose
+                   `npm audit --json` `via` chains are `uuid` and `@azure/msal-node` respectively.
+                   All six enter through `@vscode/vsce@3.7.1` (`package-lock.json:2172`); `ajv` also
+                   enters through dev-only `eslint@9.39.5`. Their dependency paths were resolved
+                   with `npm ls <pkg> --all` and are recorded row by row in
+                   `### SEC-08 Dependency Triage` above. **No command was run to apply any of this**
+                   — `npm audit fix` and every other tree-mutating command are prohibited in this
+                   phase, and `git status --porcelain bbj-vscode` is empty; the `fixAvailable` flags
+                   are read from the audit's own JSON output.
+failure_scenario:  Each of the six is a denial-of-service or bounds-check defect reachable only
+                   through `@vscode/vsce`'s own code paths, which execute during packaging and
+                   publishing — `preview.yml:62-68` and `manual-release.yml:84-90`, both inside jobs
+                   holding `secrets.VSCE_PAT`. A malformed input reaching `ajv`'s `$data` handling,
+                   `markdown-it`'s smartquotes rule (vsce renders the extension README through
+                   markdown-it), `qs.stringify`, or `uuid`'s buffer path stalls or crashes the
+                   publishing job. The practical consequence is a failed or hung release rather than
+                   a compromised one — which is why these six are `moderate` and separable from the
+                   eleven `file-issue` rows, and why leaving them unfixed is a slow accumulation
+                   rather than an acute exposure.
+classification:    easy — all six D-13 tests pass, and each is recorded rather than waved through.
+                   (1) at most one file: PASS — the remediation is confined to `package-lock.json`;
+                   every one of the six is transitive, so no declared dependency changes. (2) no
+                   public API / no grammar rule / no LSP contract change: PASS. (3) adds or upgrades
+                   no dependency in `bbj-vscode/package.json` or `bbj-intellij/build.gradle.kts`:
+                   PASS — test (3) names those two manifests specifically, and a transitive lockfile
+                   update touches neither. (4) regression-testable with the existing harness: PASS —
+                   the 50-file vitest suite plus `npm run build` run against the updated tree, and
+                   `npm ci` in CI exercises the resolved graph directly. (5) reviewer can name the
+                   exact edit: PASS — run `npm audit fix` (no `--force`) in `bbj-vscode/` and commit
+                   only the resulting `package-lock.json` diff, verifying that `package.json` is
+                   unchanged. (6) severity is neither critical nor high AND primary dimension is not
+                   D1: PASS — all six advisories bundled here are `moderate` or `low`, and the
+                   primary dimension is D6. All six tests pass, so this is `easy`.
+triage:            fix-now — a version bump with no API change, applicable in Phase 67 exactly as
+                   D-09 describes it. The eleven `high`/`critical` rows are deliberately **not**
+                   bundled here even though several have the same one-file remediation shape,
+                   because INVENTORY 3c test (6) forces `major` for those severities and `major`
+                   cannot map to `fix-now`; that separation is the D-13 safety gate working, not an
+                   oversight.
+effort:            2
+dedup:             none — no open issue in the frozen 15-issue snapshot mentions any of the six
+                   packages, npm advisories or the lockfile; 0 of the 15 carry the `dependencies`
+                   label and 0 name CI, a workflow, build configuration or a vendored binary.
+disposition:       easy-fix — the phase's one lockfile-only remediation bundle, sized for Phase 67's
+                   apply path, with an explicit instruction to verify that `package.json` is
+                   untouched by the run.
 ```
 
 ### Not-reproducible dispositions
