@@ -1120,35 +1120,77 @@ by this section; `P65-D1-002` and `P65-D1-003` are this section's own), continui
 
 ### Enumeration
 
-*Filled by plan `65-03`. Denominator from `## Surface Enumeration Register`: 36 raw candidates (25 VS Code + 8 IntelliJ + 3 tool scripts), refined in two stages, with `[extra]` lines for any real spawn site the greps did not reach.*
+Re-derived at this task's own execution time, self-contained for a reader who starts here rather
+than at the header. Three legs (identical commands to `## Surface Enumeration Register`'s SEC-05
+block):
+
+```bash
+# leg 1 — VS Code
+grep -rnE 'child_process|spawn\(|spawnSync\(|execSync\(|execFile\(|exec\(' bbj-vscode/src --include=*.ts --include=*.cjs | grep -v '/generated/'
+# leg 2 — IntelliJ
+grep -rnE 'new GeneralCommandLine|new ProcessBuilder|Runtime\.getRuntime' bbj-intellij/src
+# leg 3 — the BBj tool scripts
+ls bbj-vscode/tools/*.bbj
+```
+
+**Literal counts, re-confirmed live: leg 1 = `25`, leg 2 = `8`, leg 3 = `3`. Denominator: 25 + 8 + 3
+= 36 raw candidates — no drift from `## Surface Enumeration Register`'s own live count.**
+
+**D-02 baseline: `27`, already demoted by D-02 correction 2 to a comparison baseline rather than a
+gate, because no single grep reproduces it. Live value 36 — a drift of +9, carried forward from the
+register with its cause rather than re-derived here: the leg-1 pattern actually run is wider than
+the "naive pattern" measured at discussion time (18 raw VS Code lines, of which 7 were counted as
+`RegExp.prototype.exec` noise) — this task's own decomposition below independently confirms the
+register's arithmetic (6 `child_process` import/comment lines + 11 `RegExp.prototype.exec` lines +
+8 real-construction-or-comment lines = 25) rather than trusting it.**
+
+**The two-stage refinement shape, applied now.** Stage 1 is the 36-line raw candidate set the
+register closed before any surface was swept. This task now executes stage 2, resolving **every** candidate
+either to a real process-spawn site carrying a verdict or to `n/a` with a written exclusion reason
+on the same line. **No candidate is deleted, merged or silently narrowed** — every one of the 36
+raw candidate lines becomes exactly one enumerated line below, so the refinement is auditable rather
+than only its survivors being visible.
+
+**Broader-pattern check for missed spawn APIs, run now rather than assumed.** An additional sweep
+for spawn-adjacent surface the three legs' patterns could miss —
+`createTerminal|sendText|executeTask|shellExecution|ShellExecution` on the VS Code side and
+`ExecUtil\.` on the IntelliJ side (already inside leg 2's IntelliJ file set) — returns **no line
+outside the 36 already enumerated** (checked by re-running the widened patterns over
+`bbj-vscode/src` and `bbj-intellij/src` and diffing the result against the three legs' own output).
+**Zero `[SEC-05][extra]` lines are added.** This is stated as a checked-and-clean result, not an
+omission (D-12): the denominator can drift upward, and this task confirms — by running the wider
+search rather than skipping it — that it does not need to here.
+
+**Task 1's own leg (VS Code, 25 candidates) is resolved below.** Task 2 resolves the IntelliJ leg
+(8 candidates) and the tool-script leg (3 candidates), writes the cross-IDE comparison, and closes
+the surface.
 
 ### Verdicts
-
-- [SEC-05][candidate] bbj-vscode/src/addchildwindow-composer.ts:286 — pending
-- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:3 — pending
-- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:25 — pending
-- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:31 — pending
-- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:117 — pending
-- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:271 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-completion-provider.ts:797 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-inlay-hint-provider.ts:143 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:1 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:41 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:140 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-parser.ts:36 — pending
-- [SEC-05][candidate] bbj-vscode/src/language/bbj-scope-local.ts:89 — pending
-- [SEC-05][candidate] bbj-vscode/src/addwindow-composer.ts:121 — pending
-- [SEC-05][candidate] bbj-vscode/src/addwindow-composer.ts:385 — pending
-- [SEC-05][candidate] bbj-vscode/src/msgbox-composer.ts:510 — pending
-- [SEC-05][candidate] bbj-vscode/src/msgbox-composer.ts:529 — pending
-- [SEC-05][candidate] bbj-vscode/src/extension.ts:425 — pending
-- [SEC-05][candidate] bbj-vscode/src/extension.ts:426 — pending
-- [SEC-05][candidate] bbj-vscode/src/extension.ts:644 — pending
-- [SEC-05][candidate] bbj-vscode/src/extension.ts:645 — pending
-- [SEC-05][candidate] bbj-vscode/src/setopts-catalog.ts:261 — pending
-- [SEC-05][candidate] bbj-vscode/src/setopts-catalog.ts:267 — pending
-- [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:2 — pending
-- [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:59 — pending
+- [SEC-05][candidate] bbj-vscode/src/addchildwindow-composer.ts:286 — n/a — `re.exec(line)` inside `findAddChildWindowCalls`, matching `/addchildwindow\s*\(/gi` against the current line's text to locate `addChildWindow(...)` calls for the composer's own hover/decode UI — `RegExp.prototype.exec`, not `child_process`; no process is spawned anywhere in this file (confirmed by full read).
+- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:3 — n/a — `const { exec } = require("child_process");`, the module-level import binding the Node.js `child_process` API into scope; it invokes nothing itself.
+- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:25 — n/a — a JSDoc comment line ("Helper function to wrap child_process.exec() in a Promise for use with withProgress") documenting the `execWithProgress` helper defined immediately below; matched only because it quotes `child_process.exec()` for illustration, not because it calls anything.
+- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:31 — fail — P62-D1-003. Shell/argv: **shell** — `exec(cmd, ...)` inside the `execWithProgress` helper hands a single pre-built string to `child_process.exec()`, which always spawns via `/bin/sh -c`/`cmd.exe`. Origins: this is the one sink both `compile`'s `await execWithProgress(cmd)` (:336, `cmd` built at :328 from `home` (`bbj.home`) plus `buildCompileOptions()`'s 7 string-typed `bbj.compiler.*` settings plus `fileName`, none escaped) and `decompileReadonly`'s `await execWithProgress(\`${bbjlstBin(home)} -l "${tmpInput}"\`)` (:379, `home` from `bbj.home`, `tmpInput` built from the user's open file's own basename inside a fresh `fs.mkdtempSync` temp dir) route through — a filename containing an embedded `"` would break `tmpInput`'s own quoting the same unescaped way P62-D1-003 traces for `bbj.classpath`. Effect: shell-metacharacter reinterpretation of any of these values, up to arbitrary command execution (CWE-78) — same problem class as P62-D1-003. Shares P62-D1-003's shape: **yes** — P62-D1-003's own evidence states it checked "all six call sites" of `child_process.exec()` in this unit and found none escaped; this is one of the six (its `compile` invocation is the record's own cited `Commands.cjs:325-328`), and `decompileReadonly`'s invocation of the identical sink is traced here as sharing the same unescaped-shell-string construction, not re-recorded as a new finding.
+- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:117 — fail — P62-D1-003. Shell/argv: **shell** — `exec(cmd, ...)` (:117, inside `runWeb`, the BUI/DWC-run handler) hands the single pre-built string `cmd` (:109, interpolating `bbj`, `webRunnerWorkingDir`, `client`, `name`, `programme`, `workingDir`, `username`, `password`, `sscp`, `token`, `configPath` — all inside double quotes, none escaped) to `child_process.exec()`. Origins: `bbj` from `bbj.home`; `sscp` from `bbj.classpath`; `name` from `bbj.web.apps.<file>.name` when configured — P62-D1-003's own cited "`bbj.web.apps.<file>.name` (Commands.cjs:97-99,109, quoted but unescaped)"; `configPath` from `bbj.configPath`; `username`/`password`/`token` from EM credentials; `workingDir`/`programme` from the active file's own path. Effect: shell-metacharacter reinterpretation of any of ten interpolated segments, up to arbitrary command execution (CWE-78) — the same unescaped-shell-string construction, applied to the widest value set of the three Commands.cjs sinks. Shares P62-D1-003's shape: **yes** — P62-D1-003's own cited call site.
+- [SEC-05][candidate] bbj-vscode/src/Commands/Commands.cjs:271 — fail — P62-D1-003. Shell/argv: **shell** — `exec(cmd, ...)` (:271, inside `runCommand`, the GUI-run handler) hands the single pre-built string `cmd` (:263, `` `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"` ``) to `child_process.exec()`. Origins: `bbj` from `getBBjHome()` (`bbj.home`, truthiness-only check); `sscp` is `bbj.classpath` — this exact segment is P62-D1-003's own cited "interpolated unquoted at Commands.cjs:263" quote; `configArg` wraps `bbj.configPath` in double quotes but does not escape it; `workingDir`/`fileName` derive from the active editor's own file path. Effect: shell-metacharacter reinterpretation of `bbj.classpath` (unquoted — the strongest instance of this construction) or `bbj.configPath`, up to arbitrary command execution (CWE-78) sourced from a workspace-committed setting — P62-D1-003's own primary illustration. Shares P62-D1-003's shape: **yes** — this is the literal call site P62-D1-003's `location:` field cites (`Commands.cjs:263`).
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-completion-provider.ts:797 — n/a — `/^\s*(run|call)(?=\s|")/i.exec(beforeCursor)` inside `parseRunCallFilePathContext`, matching the RUN/CALL keyword at the start of the current line for file-path completion — `RegExp.prototype.exec` on editor text, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-inlay-hint-provider.ts:143 — n/a — `/^#?([a-zA-Z_][a-zA-Z0-9_]*)[!$%]?$/.exec(argumentText.trim())` inside `matchesParameterName`, matching an argument's text against an identifier shape to suppress a redundant inlay hint — `RegExp.prototype.exec`, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:1 — n/a — `import { spawn } from 'child_process';`, the module-level import binding Node's `spawn` into scope; it invokes nothing itself.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:41 — n/a — a JSDoc comment line ("Uses spawn() (not exec()) for streaming stdout/stderr") documenting the `compile()` method's own design decisions; matched only because it names `spawn()`/`exec()` for illustration, not because it calls anything.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-service.ts:140 — fail — P61-D1-003. Shell/argv: **argv** — `proc = spawn(bbjcplBin, ['-N', filePath])` (:140) passes the executable and each argument as separate array elements to Node's `spawn()`, which execs directly with no shell involved. Origins: `bbjcplBin` comes from `getBbjcplPath()` (:228-234), `path.join(this.wsManager.getBBjDir(), 'bin', binaryName)` — `bbj.home` gated only by a truthiness check (P61-D1-003's own citation, `:228-235`), never that the path resolves to a real, executable file; `filePath` is the document path passed in by the caller. Effect: since this is `spawn()` with an argument array, no shell-metacharacter class of injection applies to either value regardless of content — the exposure P61-D1-003 already records is an unvalidated-executable-path concern (a misconfigured or attacker-influenced `bbj.home` selects what gets spawned), not an argument-injection one. Shares P62-D1-003's shape: **no** — argv construction, not a shell string; the underlying gap is P61-D1-003's own, cross-referenced rather than re-recorded.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-cpl-parser.ts:36 — n/a — `ERROR_LINE_RE.exec(line)` inside `parseBbjcplOutput`, matching one line of `bbjcpl`'s own stderr text against the compiler's fixed diagnostic-line pattern to build an LSP `Diagnostic` — `RegExp.prototype.exec` on already-captured process output, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/language/bbj-scope-local.ts:89 — n/a — `classPattern.exec(text)` inside the local-symbols scope computation, matching a `class` declaration pattern against the document's own raw text as a parser-recovery fallback — `RegExp.prototype.exec` on document text, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/addwindow-composer.ts:121 — n/a — `/^\$([0-9A-Fa-f]*)\$$/.exec(token.trim())` inside `parseHexLiteral`, matching a `$HHHHHHHH$` hex-literal token for the addWindow composer's flag decoding — `RegExp.prototype.exec`, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/addwindow-composer.ts:385 — n/a — `re.exec(line)` inside `findAddWindowCalls`, matching `/addwindow\s*\(/gi` against the current line's text to locate `addWindow(...)` calls — `RegExp.prototype.exec`, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/msgbox-composer.ts:510 — n/a — `/^(\s*)(\d+)\s*$/.exec(line.slice(a, b))` inside `buildCallInfo`, matching a plain-integer second argument of a `MSGBOX(...)` call for the composer's reconfigurable-expression detection — `RegExp.prototype.exec`, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/msgbox-composer.ts:529 — n/a — `re.exec(line)` inside `findMsgboxCalls`, matching `/msgbox\s*\(/gi` against the current line's text to locate `MSGBOX(...)` calls — `RegExp.prototype.exec`, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/extension.ts:425 — n/a — `const { exec } = require('child_process');`, a local import binding inside `validateTokenServerSide` immediately before its own spawn call; it invokes nothing itself.
+- [SEC-05][candidate] bbj-vscode/src/extension.ts:426 — fail — P62-D1-003, P62-D1-004 (D-07 cross-reference — SEC-04 owns the token-as-process-argument question outright; not re-recorded here). Shell/argv: **shell** — `exec(emValidateCmd, { timeout: 10000 }, ...)` (:426) hands the single pre-built string `emValidateCmd` (:414, `` `"${bbj}" -q "${emValidatePath}" - "${token}" "${tmpFile}"` ``) to `child_process.exec()`. Origins: `bbj` from `bbj.home` (truthiness-only check, :397-399); `emValidatePath` from `context.asAbsolutePath(...)`, extension-internal; `token` is the raw JWT read from `getEMCredentials()`; `tmpFile` extension-internal. None of the four double-quoted segments is escaped before interpolation — the identical construction P62-D1-003 traces for this exact call site (its own `location:` cites `extension.ts:415,420,639`, the sibling EM-login call this candidate's construction mirrors). Effect: shell-metacharacter reinterpretation of `token` (or of any of the other three) reaching an executed shell command (CWE-78); separately, `token` reaching this process's own argv is the D-07 exposure question SEC-04 already owns (`P62-D1-004`). Shares P62-D1-003's shape: **yes** — one of P62-D1-003's own cited six call sites.
+- [SEC-05][candidate] bbj-vscode/src/extension.ts:644 — n/a — `const { exec } = require('child_process');`, a local import binding inside the `bbj.loginEM` command handler immediately before its own spawn call; it invokes nothing itself.
+- [SEC-05][candidate] bbj-vscode/src/extension.ts:645 — fail — P62-D1-003, P62-D1-004 (D-07 cross-reference — SEC-04 owns the token-as-process-argument question outright; not re-recorded here). Shell/argv: **shell** — `exec(emLoginCmd, { timeout: 15000 }, ...)` (:645) hands the single pre-built string `emLoginCmd` (:635, `` `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}" "${infoString}"` ``) to `child_process.exec()`. Origins: `bbj` from `bbj.home` (truthiness-only check, :599-601); `emLoginPath`/`tmpFile` extension-internal; `username`/`password` typed by the user into `showInputBox` prompts moments earlier; `infoString` built from `process.platform`/`os.userInfo().username`. None of the six double-quoted segments is escaped before interpolation — this is P62-D1-003's own cited `extension.ts:...,639` sibling of the validate call above. Effect: shell-metacharacter reinterpretation of `password` (typed by the user, but transiting an unescaped shell string) or of any other segment, up to arbitrary command execution (CWE-78); separately, `password` reaching this process's own argv is the D-07 password leg SEC-04 already owns (`P63-D1-003` covers the IntelliJ password leg; this VS Code password leg is `P62-D1-004`'s own citation of `extension.ts:635`). Shares P62-D1-003's shape: **yes** — one of P62-D1-003's own cited six call sites.
+- [SEC-05][candidate] bbj-vscode/src/setopts-catalog.ts:261 — n/a — `/^\s*SETOPTS(?=\s|$)/i.exec(line)` inside `parseSetOptsLine`, matching the `SETOPTS` keyword at the start of a `config.bbx` line for the SETOPTS composer's own hover/decode support — `RegExp.prototype.exec` on document text, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/setopts-catalog.ts:267 — n/a — `/^[ \t]+([^ \t]+)[ \t]*$/.exec(rest)` inside `parseSetOptsLine`, matching the hex-vector token following the `SETOPTS` keyword — `RegExp.prototype.exec` on document text, not a process spawn.
+- [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:2 — n/a — `import * as cp from 'child_process';`, the module-level import binding Node's `child_process` API into scope; it invokes nothing itself.
+- [SEC-05][candidate] bbj-vscode/src/document-formatter.ts:59 — fail — P62-D1-006, P64-D1-003. Shell/argv: **argv** — `const p = cp.spawn('java', formatFlags)` (:59) passes the literal string `'java'` as the executable and `formatFlags` (an array built by successive `args.push(...)`) as separate argv elements — no shell involved. Origins: `formatFlags` is built entirely from `jarPath` (`${__dirname}/../tools/formatter/BBjCFCli.jar`, extension-internal), the literal flags `-jar`/`-p`/`-i`/`-w`, `document.uri.fsPath` (the file being formatted) and `config.indentWidth`/three boolean settings coerced to fixed literal flag strings — no value here is interpolated into a shell string, so no argument-injection class applies. Effect: since `'java'` is an unqualified name, it resolves via the OS's own `PATH` search rather than an absolute, pinned interpreter — the exact gap `P62-D1-006` already records for this line; separately, the JAR this spawn executes (`BBjCFCli.jar`) is one of the three unpinned, unverified vendored JARs `P64-D1-003` records — cross-referenced rather than re-recorded, since `P64-D1-003`'s own note distinguishes the executed-artifact-provenance half of SEC-05 from this construction's argument half. Shares P62-D1-003's shape: **no** — argv construction, not a shell string; the two known gaps here (unpinned interpreter, unpinned JAR) are provenance concerns, not argument-injection ones.
 - [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:298 — pending
 - [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java:115 — pending
 - [SEC-05][candidate] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:98 — pending
