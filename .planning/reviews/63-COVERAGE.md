@@ -2453,26 +2453,231 @@ deliberate, not scope creep.
 **Owning plan:** 63-05 (also closes the phase).
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — pass — Checked all 18 files across the three sub-clusters for injection, untrusted-input, secret-exposure, integrity-gap and trust-boundary defects, matching this unit's largely declarative shape (INVENTORY's own framing): `BbjTextMateBundleProvider.java:27-48`'s `getBundles()` reads its five `BUNDLE_FILES` (`:17-23`) exclusively from this plugin's own bundled classloader resources (`getClass().getClassLoader().getResource(...)`), never from a workspace-committed or user-supplied path, and writes them to a freshly `Files.createTempDirectory`-allocated directory (`:29-30`) — no attacker-controlled filename, no path-traversal surface, no destination collision (see the D3 cell below for this same method's redundant-copy and leak concerns, which are correctness/performance, not security); checked all four notification providers (`BbjJavaInteropNotificationProvider.java`, `BbjMissingHomeNotificationProvider.java`, `BbjMissingNodeNotificationProvider.java`, `BbjWelcomeNotification.java`) line by line for any settings value, detected path, or server message interpolated into displayed text or into an offered action — none exists: every `panel.setText(...)`/`Notification(...)` call uses a hardcoded literal string, and every offered action either opens the plugin's own Settings dialog (`ShowSettingsUtil.showSettingsDialog(project, BbjSettingsConfigurable.class)`) or browses a fixed literal URL (`BrowserUtil.browse("https://nodejs.org/")`, `BbjMissingNodeNotificationProvider.java:72`) — no externally-sourced string ever reaches a notification's text or its action target; `BbjColorSettingsPage.java`'s demo text (`:96-121`) is a hardcoded literal, not externally sourced. Checked whether `BbjWordLexer.java`/`BbjParserDefinition.java` can be driven into unbounded work or a crash by hostile document content — a real trust boundary, since any opened file reaches them: `BbjWordLexer.advance()` (`:56-94`) is a single forward-only linear scan with no backtracking, no recursion and no unbounded lookahead — every branch (whitespace run, word run, single-char punctuation) advances `tokenEnd` monotonically and terminates at `bufferEnd`, so no crafted input can force quadratic or unbounded work; `BbjParserDefinition`'s parser (`:38-48`) is a flat `while (!builder.eof()) builder.advanceLexer();` loop with one root marker — no recursive descent, so no stack-depth-driven crash is possible regardless of input shape. No runnable reproduction accompanies this record beyond the trace above (D-07 — the Gradle build cannot run in this environment).
+- D2 Correctness & error handling — fail — Checked whether `BbjFileType.java`/`BbjLanguage.java`/`BbjFile.java` agree on one language instance and one extension set: all three route through the single `BbjLanguage.INSTANCE` singleton (`BbjLanguage.java:6`, private constructor, no second instantiation path anywhere in the 18 files), and the extension set is declared exactly once, in `plugin.xml`'s `<fileType extensions="bbj;bbjt;src;bbx"/>` (read as context, D-16) — no divergence. Checked `BbjParserDefinition.java`'s element-type and whitespace/comment token-set declarations against `BbjTokenTypes.java`: `getCommentTokens()`/`getStringLiteralElements()` (`:55-63`) both return `TokenSet.EMPTY`, internally consistent with `BbjTokenTypes.java` declaring no `COMMENT`/`STRING` `IElementType` at all — not a mismatch by itself, but the *cause* of the finding below, since `BbjWordLexer.java` never emits a distinguishing token for either construct. Checked `BbjPairedBraceMatcher.java`'s pair table and `isPairedBracesAllowedBeforeType` at end-of-file: the three pairs (`:16-20`) are well-formed and `isPairedBracesAllowedBeforeType` (`:27-32`) unconditionally returns `true` — safe at EOF (an unmatched bracket simply has no highlighted partner, standard platform behaviour) but, combined with the missing string-literal token set, the same unconditional `true` is what lets a bracket inside a string literal be treated as structural (**`P63-D2-015`**). Checked each notification provider's behaviour when its reported condition flips while showing, and whether any can be produced repeatedly for the same editor: all four are stateless `EditorNotificationProvider`/`StartupActivity` implementations with no cached prior-result field, so the platform's own `EditorNotifications` re-invocation on every refresh naturally reflects the current condition — no stale-banner or duplicate-banner defect found. Checked `BbjTextMateBundleProvider.java`'s behaviour on a missing, unreadable or already-present bundle file: a missing classloader resource throws `Objects.requireNonNull`'s `NullPointerException` with an explicit "Missing TextMate bundle resource: ..." message (`:35-36`) rather than failing silently; an "already present at destination" collision cannot occur in practice, since `bundleDir` (`:29-30`) is a freshly allocated, uniquely named temp directory on every call, never a fixed reused path (see `P63-D3-006` for the cost of that same freshness). Checked `BbjCommenter.java`'s line/block comment prefixes against BBj's actual comment syntax: `getLineCommentPrefix()` (`:9-11`) returns the fixed literal `"REM "`, but `bbj-vscode/src/language/bbj.langium:923`'s own `terminal COMMENT` is explicitly case-insensitive (`/([rR][eE][mM])(?!...)/`) — a lowercase or mixed-case `rem` line is valid BBj source but is not recognised as already-commented by IntelliJ's literal-prefix toggle logic (**`P63-D2-016`**). No runnable reproduction accompanies either record beyond the trace above (D-07). 2 findings recorded: P63-D2-015, P63-D2-016.
+- D3 Performance & resource use — fail — Checked `BbjWordLexer.java`'s per-keystroke cost, since it sits on the editor's re-lex path: `advance()` (`:56-94`) performs no allocation of its own per call (every returned `IElementType` is a pre-existing static final constant from `BbjTokenTypes`/`TokenType`) and is a single forward linear scan with no rescanning — pass on this specific check. Checked whether `BbjColorSettingsPage.java` rebuilds its attribute-descriptor array per call: `DESCRIPTORS` (`:56-66`) is a `private static final` array built once at class-load, not per-invocation — pass. Checked whether `BbjSpellcheckingStrategy.java` adds per-token cost: `getBundledDictionaries()` (`:12-15`) returns a static one-element array read once by the platform's spellchecker registry at startup, not invoked per token — pass. Checked whether the four notification providers do filesystem or settings work per editor-notification pass, since this framework runs often (every file/editor open and every `EditorNotifications.updateAllNotifications()` refresh): `BbjMissingHomeNotificationProvider.java`'s `BbjHomeDetector.isValidBbjHome()`/`detectBbjHome()` calls (`:33-43`) do a small, bounded number of `File.exists()`-class stats per pass — a low-cost inefficiency, not separately promoted; **`BbjMissingNodeNotificationProvider.java`'s `collectNotificationData` (`:28-59`) is materially worse** — on every pass where `nodeJsPath` is configured (the common case) or during PATH auto-detection, it calls `BbjNodeDetector.getNodeVersion(...)` (`:42`, `:50`), which spawns a real `node --version` child process via `GeneralCommandLine`/`ExecUtil.execAndReadLine` — with zero caching of the result across passes (**`P63-D3-007`**). Checked whether `BbjTextMateBundleProvider.java`'s copy work runs once or on every startup: `getBundles()` (`:27-48`) allocates a brand-new `Files.createTempDirectory` (`:29-30`) and re-copies all five `BUNDLE_FILES` on **every** invocation, with no check for an existing valid copy and no cleanup of the directory it created on a prior call (**`P63-D3-006`**). No runnable reproduction accompanies either record beyond the trace above (D-07). 2 findings recorded: P63-D3-006, P63-D3-007.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
-- D7 Cross-IDE parity — pending
+- D7 Cross-IDE parity — fail — **The direction is reversed relative to Phase 62: this phase owns the IntelliJ rows and reads `bbj-vscode/` as reference material only (D-05).** Compared the file-extension/language-ID/grammar registration set: `plugin.xml`'s `<fileType extensions="bbj;bbjt;src;bbx"/>` (read as context, D-16) matches VS Code's own `bbj-vscode/package.json` `"bbj"` language `extensions` (`[".bbj",".bbjt",".src",".bbx"]`, per `RU-62-05`'s own established D7 record) exactly, four-for-four — no divergence; both sides deliberately omit `.bbl` from this true-source-language extension list, consistent with `bbj-vscode/src/language/bbj-ws-manager.ts:189`'s own comment ("`.bbl` excluded — library files are not user-editable source (#369)") and with the fact that every `.bbl` file in this tree (`bbj-vscode/src/language/lib/*.bbl`) is a synthetic builtin-catalog document, not user-authored BBj source. **One internal-to-IntelliJ split, not a VS Code-comparison gap:** IntelliJ's own hand-authored TextMate bundle manifest (`bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json`, read as D7 comparison material per D-05) *does* list `.bbl` in its `"BBj"` language `extensions`, but that manifest governs only the TextMate highlighter, not the `<fileType>`/LSP4IJ registration that actually attaches language-server features (`plugin.xml:128-133`, `:243-245`) — the two manifests disagree with each other about `.bbl` inside the same plugin; this drives referral #6's disposition below rather than a `P63-D7-*` finding, since confirming its user-visible consequence needs a running IDE. Compared comment/brace-matching/code-style behaviour against `bbj-vscode/bbj-language-configuration.json`: brackets (`(){}`/`[]`) match on both sides; **VS Code's own `onEnterRules`/`autoClosingPairs` (`:41-54`,`:78-99`) explicitly handle both `"REM /**"` and `"rem /**"`, with every `beforeText` regex written `[Rr][Ee][Mm]` — VS Code demonstrably gets BBj's case-insensitive REM comment right where IntelliJ's `BbjCommenter.java` does not**, so `P63-D2-016` (above) carries `secondary: [D7]` rather than being restated here. Compared the editor-command surface for the four features cross-referenced from `RU-62-02`'s own D7 cell (`62-COVERAGE.md`): re-verified live rather than trusting the inherited text — `grep -rliE 'denumber|decompile|tokenized|isLineNumbered|bbjlst' bbj-intellij/src/main/java/` returns no matches, and `BbjLanguageCodeStyleSettingsProvider.java` (`:20-25`) only customises reformat *defaults*, never invoking a `BBjCFCli.jar`-equivalent — all four confirmed absent, promoted as **one** finding for the categorical gap (**`P63-D7-006`**), disposed under referral #7 below. 1 finding recorded: P63-D7-006.
 - D8 Comment & doc accuracy — pending
 
 ### Inherited referral triage
 
-pending — see ledger rows 6-7 above.
+- **Referral #6** (`RU-62-05` → `RU-63-02`, ledger row 6) — whether IntelliJ's built-in TextMate bundle importer actually *honors* the `filenames` field for the `"BBx Config"` language (vs. falling back to extension-only matching), and whether IntelliJ's own LSP4IJ file-type/language registration independently covers `.bbl` the way its TextMate bundle's `extensions` list already does. **Part 2 (the `.bbl` question) is answerable via trace, and now is**: `plugin.xml`'s `<fileType name="BBj" ... extensions="bbj;bbjt;src;bbx"/>` (`:128-133`) — the registration LSP4IJ's own `<languageMapping language="BBj" serverId="bbjLanguageServer" languageId="bbj"/>` (`:243-245`) depends on — does **not** list `.bbl`, so LSP4IJ's language-server attachment does not independently cover `.bbl`; only the TextMate bundle's own hand-authored `package.json` (`bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json:7`) lists it, for syntax highlighting only. This is consistent, not a gap: `bbj-vscode/src/language/bbj-ws-manager.ts:189`'s comment establishes `.bbl` files are deliberately excluded from BBj-source treatment on the VS Code side too (#369) — every `.bbl` file in this tree is a synthetic builtin-catalog document (`bbj-vscode/src/language/lib/*.bbl`), not user-authored source a developer would knowingly open expecting LSP features. **Part 1 (does the TextMate importer honor `filenames`) cannot be confirmed without launching the IDE** — the same deferred-infrastructure limit `RU-62-05` itself hit — and Part 2's practical consequence (does a `.bbl` file opened in IntelliJ actually render via the TextMate bundle's own independently-declared extension path, given no other `<fileType>` claims it) is likewise a runtime question this static-trace sweep cannot settle. **Disposition: not-reproducible** — see `### Not-reproducible dispositions` below for the reason; the confirmable half (Part 2's `plugin.xml` fact) is recorded here as established context, not as a promoted finding, since it establishes consistency rather than a defect.
+- **Referral #7** (`RU-62-02` → `RU-63-02`, ledger row 7) — none of format-document / denumber / tokenized-detection / decompile has any IntelliJ counterpart. Re-enumerated all four independently rather than trusting the inherited text (see the D7 cell above for the live re-grep): **format document** — `BbjLanguageCodeStyleSettingsProvider.java:20-25` only customises reformat *defaults* (REM-at-column-0), never invoking a `BBjCFCli.jar`-equivalent or spawning any process; **denumber/line-numbered detection** — no `denumber`/`lineNumber` match anywhere in this unit's 18 files; **tokenized-BBj detection** — no `tokenized`/`<<bbj>>` match anywhere; **decompile** — no `decompile`/`bbjlst` match anywhere. Open issue **#65** ("support tokenized BBj files") is checked by number as the tokenized-detection neighbour, exactly as `RU-62-02`'s own referral text frames it — #65 is already implemented on the VS Code side (`tokenized-bbj.ts`, per `RU-62-02`'s own D7 cell) and remains open only for this IntelliJ-side remainder. One finding allocated for the categorical absence across all four features, not one per feature. **Disposition: promoted — `P63-D7-006`**, with `dedup:` naming #65 explicitly as a partial-overlap covering only the tokenized-detection quarter of the four.
 
 ### Findings
 
-pending
+```
+id:                P63-D2-015
+unit:              RU-63-02
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjWordLexer.java:81-93,BbjParserDefinition.java:60-63,BbjPairedBraceMatcher.java:16-20
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction accompanies this record; a
+                    live keystroke-driven bracket-highlight harness is out of this static-trace
+                    sweep's scope): BbjWordLexer.advance()'s punctuation branch (:81-93) tokenizes
+                    '(' / ')' / '[' / ']' / '{' / '}' as BbjTokenTypes.LPAREN/RPAREN/LBRACKET/
+                    RBRACKET/LBRACE/RBRACE unconditionally by character alone, with no notion of
+                    string-literal context anywhere in the class — a '"' character falls through to
+                    the SYMBOL default (:91) with no state change. BbjParserDefinition.
+                    getStringLiteralElements() (:60-63) returns TokenSet.EMPTY, confirming no PSI
+                    layer distinguishes string content either. BbjPairedBraceMatcher's
+                    isPairedBracesAllowedBeforeType (:27-32) unconditionally returns true, with no
+                    guard consulting any string-literal token set (there is none to consult).
+failure_scenario:  A BBj line such as PRINT "value (not a bracket)" — a plain string literal
+                    containing parenthesis characters — has its two parens tokenized identically to
+                    real structural brackets by BbjWordLexer, so IntelliJ's bracket-matching
+                    highlight, Ctrl+Shift+M navigation, and auto-close-bracket behavior all treat
+                    them as a genuine matched pair inside the string, rather than inert string
+                    content. Any BBj source containing a bracket character inside a string literal
+                    (common in user-facing message text) triggers this.
+classification:    major
+                    (1) touches 1 file: FAIL — a real fix needs a STRING_LITERAL IElementType in
+                    BbjTokenTypes.java, emission of it from BbjWordLexer.java's quote-scanning logic,
+                    registration in BbjParserDefinition.getStringLiteralElements(), and a context
+                    guard in BbjPairedBraceMatcher's isPairedBracesAllowedBeforeType — four files —
+                    (2) no public API/grammar/LSP change: pass (internal to the IntelliJ plugin only)
+                    — (3) no new dependency: pass — (4) regression-testable with existing harness:
+                    FAIL — no src/test/ source set exists in bbj-intellij (P63-D5-001) — (5) reviewer
+                    can name the exact edit (add a quote-delimited scan branch to BbjWordLexer.
+                    advance(), emit a new STRING IElementType, wire it into
+                    getStringLiteralElements(), and guard isPairedBracesAllowedBeforeType against it):
+                    pass — (6) severity medium and dimension D2 (not D1): pass — two tests fail, so
+                    classification is major.
+effort:            8
+dedup:             none — #65 (tokenized BBj files), #381 (config.bbx highlighting) and #476
+                    (starter programs) are this unit's named plausible neighbours; none addresses
+                    bracket-matching inside string literals. No other frozen open issue is closer.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-016
+unit:              RU-63-02
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjCommenter.java:9-11
+dimension:         D2
+secondary:         [D7]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; a live Ctrl+/-toggle harness
+                    is out of this static-trace sweep's scope): BbjCommenter.getLineCommentPrefix()
+                    (:9-11) returns the fixed literal "REM " (uppercase, one trailing space).
+                    bbj-vscode/src/language/bbj.langium:923's terminal COMMENT is explicitly
+                    case-insensitive: /([rR][eE][mM])(?![\w!$%@])([ \t][^\n\r]*)?([\n\r]+)?/ — any
+                    case combination of "rem" is a valid BBj comment marker. IntelliJ's platform
+                    toggle-line-comment action detects an "already commented" line by a literal
+                    prefix match against Commenter.getLineCommentPrefix()'s return value; no override
+                    anywhere in this 37-line file normalizes case before that comparison, and
+                    BbjParserDefinition.getCommentTokens() (:56-58) returns TokenSet.EMPTY, confirming
+                    there is no PSI-level comment token either that could let the platform's
+                    PSI-aware commenting path bypass the raw-text check.
+failure_scenario:  A BBj source line beginning with lowercase or mixed-case "rem " (grammar-valid per
+                    bbj.langium:923, and BBj is case-insensitive per CLAUDE.md) is not recognized as
+                    already-commented when the user presses Ctrl+/ (Cmd+/) — IntelliJ inserts a
+                    second "REM " prefix instead of removing the existing one, producing
+                    "REM rem <original text>" rather than toggling the comment off.
+classification:    major
+                    (1) touches 1 file: pass (confined to BbjCommenter.java, though the deeper fix may
+                    need a case-insensitive-aware Commenter implementation) — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit (BbjCommenter.java:9-11 is the
+                    exact site; the fix direction is to make REM recognition case-insensitive,
+                    either via a lexer-level COMMENT token so the platform's PSI-aware commenting path
+                    applies instead of raw-text matching, or a custom case-insensitive commenter):
+                    pass — (6) severity medium, dimension D2 (not D1): pass — test (4) fails, so
+                    classification is major.
+effort:            4
+dedup:             none — #65, #381 and #476 (this unit's named neighbours) are unrelated; no frozen
+                    open issue names IntelliJ comment-toggle case sensitivity.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D3-006
+unit:              RU-63-02
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjTextMateBundleProvider.java:27-48
+dimension:         D3
+secondary:         [D2]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; observing this across
+                    multiple real IDE restarts is out of this static-trace sweep's scope):
+                    getBundles() (:27-48) calls Files.createTempDirectory(Path.of(PathManager.
+                    getTempPath()), "textmate-bbj") (:29-30) — a freshly, uniquely named directory —
+                    on every invocation, then re-copies all five BUNDLE_FILES (:17-23) into it from
+                    this plugin's own bundled resources, with no check for a prior valid copy and no
+                    caching of a stable target path. No call anywhere in this file deletes bundleDir,
+                    registers a shutdown hook, or calls File.deleteOnExit() on it or its contents.
+failure_scenario:  Every IDE process that loads this plugin's TextMate bundle (at minimum once per
+                    IDE launch, given the bundleProvider extension point is application-scoped)
+                    allocates a new "textmate-bbjXXXXXXXX"-named temp directory and re-copies five
+                    small files into it, and never removes the directory created by any prior launch
+                    — repeated launches accumulate abandoned directories in the plugin's temp path
+                    with no cleanup path in this code.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (cache bundleDir in a stable location, mirroring RU-63-03's own
+                    getNodeDataDirectory() pattern, and skip the copy loop when a valid prior copy is
+                    already present): pass — (6) severity low, dimension D3 (not D1): pass — test (4)
+                    fails, so classification is major.
+effort:            4
+dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names this
+                    temp-directory accumulation.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D3-007
+unit:              RU-63-02
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjMissingNodeNotificationProvider.java:28-59
+dimension:         D3
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; a live per-editor-pass
+                    process-spawn count is out of this static-trace sweep's scope):
+                    collectNotificationData (:28-59) is invoked by the platform's
+                    EditorNotificationProvider framework on every file/editor open and every
+                    EditorNotifications.updateAllNotifications() refresh. When nodeJsPath is
+                    explicitly configured (:39-44) or during PATH auto-detection (:46-52), both
+                    branches call BbjNodeDetector.getNodeVersion(...) (:42, :50), which constructs a
+                    GeneralCommandLine(nodePath, "--version") and blocks on
+                    ExecUtil.execAndReadLine(cmd) — a real child-process spawn — with no field, cache,
+                    or debounce anywhere in this class remembering the last result across calls.
+failure_scenario:  For any user with a configured or auto-detectable Node.js path (the common case),
+                    every editor-notification refresh pass — not just the first per session — spawns
+                    a fresh "node --version" child process and blocks on its output before the banner
+                    can be suppressed or shown, redundant work on a path that runs far more often than
+                    a one-time startup check.
+classification:    major
+                    (1) touches 1 file: pass (a cache field in this class, keyed by path, is
+                    sufficient) — (2) no public API/grammar/LSP change: pass — (3) no new dependency:
+                    pass — (4) regression-testable with existing harness: FAIL — no src/test/ source
+                    set exists (P63-D5-001) — (5) reviewer can name the exact edit (cache the last
+                    known-good version result per path, invalidated on settings change): pass — (6)
+                    severity medium, dimension D3 (not D1): pass — test (4) fails, so classification
+                    is major.
+effort:            4
+dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names redundant
+                    Node.js version-check spawning.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D7-006
+unit:              RU-63-02
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/
+dimension:         D7
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          Referral #7 disposition (see Inherited referral triage above): re-enumerated both
+                    surfaces live rather than trusting the inherited text. bbj-vscode implements all
+                    four features (document-formatter.ts, tokenized-bbj.ts + decompile-io.ts,
+                    denumber via extension.ts:572's 'bbj.denumber' command, per RU-62-02's own D7
+                    cell). grep -rliE 'denumber|decompile|tokenized|isLineNumbered|bbjlst'
+                    bbj-intellij/src/main/java/ returns no matches; BbjLanguageCodeStyleSettingsProvider.
+                    java:20-25 (this unit's closest related file) only customizes reformat defaults,
+                    never invoking a BBjCFCli.jar-equivalent or spawning any process. All four
+                    confirmed absent with no IntelliJ counterpart anywhere in the plugin.
+failure_scenario:  n/a in the sense that D7 records a capability gap rather than a runtime failure —
+                    IntelliJ users have no menu path to reformat a BBj file via the real
+                    BBjCFCli.jar-backed formatter (only cosmetic REM-indent defaults), to detect and
+                    denumber a line-numbered program, to detect a tokenized <<bbj>> file on open, or
+                    to decompile one — all four workflows exist only in VS Code today.
+classification:    major
+                    (1) touches 1 file: FAIL — implementing even the smallest of the four requires a
+                    new detector/action class plus a plugin.xml registration; the full set touches
+                    many more files — (2) no public API/grammar/LSP change: pass (each feature can
+                    reuse LS-side/tool-side logic already built for VS Code) — (3) no new dependency:
+                    FAIL — a real format-document feature needs the vendored BBjCFCli.jar
+                    (RU-64-03's surface) bundled into bbj-intellij, which it does not currently ship —
+                    (4) regression-testable with existing harness: FAIL — no src/test/ source set
+                    exists (P63-D5-001) — (5) reviewer can name the exact edit: FAIL — only "add four
+                    new feature implementations mirroring their VS Code counterparts" is nameable, not
+                    a single edit — (6) severity low, dimension D7 (not D1): pass — multiple tests
+                    fail, so classification is major.
+effort:            8
+dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests exactly the
+                    tokenized-detection quarter of this finding's four-feature absence; the VS Code
+                    side already implements it (RU-62-02's own D7 cell), so this finding's
+                    tokenized-detection component is #65's IntelliJ-side remainder, not a novel
+                    request. The format/denumber/decompile components are not covered by #65 or any
+                    other frozen open issue. #381 and #476 (this unit's other named neighbours) are
+                    unrelated.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
 
-pending
+- **Tier failed: `inherited` (D7).** Candidate claim: whether IntelliJ's built-in TextMate bundle importer actually honors the `"BBx Config"` language's `filenames` field (vs. falling back to extension-only matching, silently reintroducing #381's failure mode on the IntelliJ side despite the manifest declaring the fix — see `RU-62-05`'s own D7 cell), and, relatedly, whether a `.bbl` file opened in IntelliJ picks up TextMate highlighting via the bundle's own independently-declared `extensions` list even though no `<fileType>` claims that extension. **Reason not recorded as a finding:** both questions turn on how the JetBrains TextMate plugin's bundle importer behaves at runtime when it owns a language/extension mapping the platform's own file-type registry does not — confirming either requires launching the IDE and opening a `config.bbx`/`.bbl` file, which is deferred infrastructure not available in this sandbox (the same limit `RU-62-05` itself recorded). The confirmable half — that `plugin.xml`'s `<fileType>` registration omits `.bbl` while the TextMate bundle's own manifest includes it — is stated as established fact in the D7 cell and the referral triage above rather than silently dropped, per RVW-06's drop-vs-disposition rule.
 
 ### Cross-unit referrals
 
