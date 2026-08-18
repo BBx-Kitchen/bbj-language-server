@@ -1293,11 +1293,11 @@ empty-subblock register, rather than omitted.
 - D1 Security — fail — Checked what the bridge actually is, correcting INVENTORY's own risk-rank framing ("bridge to an external composer process"): `BbjComposerServer.java` (54 lines) is an LSP4J `@JsonRequest` interface extending `LanguageServer` — a typed proxy for 7 `bbj/composer/*` request methods (`composerCatalogs`, `msgboxPreview`, `addWindowPreview`, `msgboxDecodeCall`, `addWindowDecodeCall`, `addChildWindowPreview`, `addChildWindowDecodeCall`, :28-53) — not a spawned process; `BbjComposerService.java` (30 lines) resolves it via `LanguageServerManager.getInstance(project).getLanguageServer(SERVER_ID)` (:23-28), the same running BBj language server every other Phase 63 unit talks to. No `ProcessBuilder`/`Runtime.exec`/raw socket call exists anywhere in this unit's 13 files (confirmed by full read) — every composer request rides the existing LSP4IJ connection, so this unit spawns no external process at all; INVENTORY's phrasing is a description carried forward from before the bridge's actual shape was traced, corrected here rather than restated. **Document-edit path:** traced every `WriteCommandAction`/`Document` call site in `ComposerLauncher.java` back to its origin — `openMsgbox` (:107-115) inserts/replaces with `dialog.getStatement()` (the LS-computed `MsgboxPreview.statement`, itself built from dialog-typed `message`/`title`/`assignTo`/custom-button text plus catalog bit values), and `applyHexEdit` (:172-196, shared by the addWindow and addChildWindow edit flows) rewrites `flagsHex`/`eventHex` tokens the LS computed from checkbox selections — none of these sources (dialog free-text fields, catalog bit values, or the LS-composed statement string) passes through any escaping or structural validation before `Document.replaceString`/`insertString`. This mirrors Phase 62's `P62-D1-005` exactly: every affected field (`message`/`title`/`assignTo` in `MsgboxComposerDialog.java`, `receiver`/`sysgui`/`x`/`y`/`width`/`height`/`title` in `AddWindowComposerDialog.java`, `receiver`/`window`/`id`/`context`/`title`/`x`/`y`/`width`/`height` in `AddChildWindowComposerDialog.java`) is text the developer types into their own IntelliJ dialog, never document/workspace/config-sourced — self-inflicted statement-corruption surface, not attacker-controlled — recorded here as this unit's own IntelliJ-side instance (per D-05, no `P62-*` cross-reference substitutes for a Phase-63-owned record). **Dialog input handling:** none of the geometry fields (`x`/`y`/`width`/`height` in both addWindow-family dialogs) is range- or type-checked in Java or on the LS side — `composeAddWindow`/`composeAddChildWindow` (`bbj-vscode/src/addwindow-composer.ts`, `addchildwindow-composer.ts`) embed them as raw expression text with no `validate`-named function anywhere, matching Phase 62's own established design (these are BBj expressions, not constrained numerics, symmetrically unvalidated on both IDEs — not an IntelliJ-only gap). **Intention actions:** all three `Configure*Intention.isAvailable()` methods delegate to `ComposerLauncher.isCaretOnCall(editor, keyword)` (:43-55), a text-only heuristic (line-substring match, not PSI-based) that can offer the intention while the caret sits inside a comment or string literal containing the keyword; on invoke, the LS's own `decodeCall` re-parses the real call and returns `found:false` for a false positive, falling back to the blank create flow rather than crashing or corrupting anything — checked, confirmed no defect on this specific path. **DTO trust:** `ComposerModels.java`'s public mutable fields are populated by Gson from the LS response with no null/shape check at the point of use in `ComposerLauncher`/the three dialogs — the concrete downstream consequences of a missing/malformed field are traced under D2 below (not D1, since the LS is the same trusted same-process peer every other unit already treats as trusted, not an external/attacker-controlled input). No runnable reproduction accompanies this record (D-07 — the Gradle build cannot run in this environment; the document-write path is confirmed by static trace of the cited call sites plus the corresponding `composer-commands.ts` functions that produce the written values). 1 finding recorded: P63-D1-006.
 - D2 Correctness & error handling — fail — Checked every `CompletableFuture` chain returned by `BbjComposerServer`'s request methods across all 13 files (`ComposerLauncher.launch()`'s `server(...).thenAccept(...)`/`composerCatalogs().thenAccept(...)`/`*DecodeCall(...).thenAccept(...)` chain at :66-87, and each of the three dialogs' `refresh()` methods' `server.*Preview(...).thenAccept(...)` chain — `MsgboxComposerDialog.java:209-214`, `AddWindowComposerDialog.java:238-243`, `AddChildWindowComposerDialog.java:247-252`): `grep -rn "exceptionally\|whenComplete\|\.handle(\|catch\s*(" bbj-intellij/.../composer/*.java` returns zero matches across all 13 files — no chain anywhere in this unit calls `.exceptionally()`/`.handle()`/`.whenComplete()`, and no call site is wrapped in a `try`/`catch`. If any `bbj/composer/*` request completes exceptionally (LSP4IJ timeout, LS restart mid-request, connection drop), the `.thenAccept(...)` continuation simply never runs and the exception is stored on the future unobserved — for `ComposerLauncher.launch()` this means the intention/action click produces zero visible effect (no dialog opens, no error shown, no log entry); for an already-open dialog's `refresh()` this means the preview/statement/schematic silently stop updating on the next keystroke with no indication anything failed, leaving the "Generated statement" field showing stale text the user may unknowingly accept. Checked the `seq` `AtomicInteger` stale-response guard (`MsgboxComposerDialog.java:208,211`, mirrored in both other dialogs): correctly discards an out-of-order response by comparing `mySeq == seq.get()` before calling `apply(...)` — confirmed pass, no defect on this specific ordering check. Checked catalogs sub-list null-safety: `MsgboxComposerDialog.createCenterPanel()`'s `fillCombo(icon, catalogs.icons)`/`fillCombo(buttonSet, catalogs.buttonSets)`/`fillCombo(defaultButton, catalogs.defaultButtons)` (:116-118) and the flags loop (`for (CatalogItem it : catalogs.flags)`, :139) iterate their list arguments directly with no null guard; `AddWindowComposerDialog`/`AddChildWindowComposerDialog.addGroupedChecks(flags, catalogs.flags, flagChecks)`/`addGroupedChecks(eventPanel, catalogs.eventBits, eventChecks)` (:151,161 and :155,165) do the same — a malformed or partial `bbj/composer/catalogs` response with a null `icons`/`buttonSets`/`defaultButtons`/`flags`/`eventBits` field throws `NullPointerException` inside `createCenterPanel()`, called synchronously from `DialogWrapper.init()` during dialog construction on the EDT (inside the `onEdt(...)` dispatch from `ComposerLauncher`) — IntelliJ's top-level EDT handler catches it and shows an "IDE Internal Error" balloon rather than the intended "not ready" message, a poor failure mode for what `ComposerLauncher.openMsgbox`/`openAddWindow`/`openAddChildWindow` already has a graceful path for (`catalogs == null` is checked one level up, :92,120,141, but the individual sub-list fields are not). Checked `ComposerLauncher.applyHexEdit()` (:172-196): `ed.flagsRange[0]`/`ed.flagsRange[1]` (:179) and `ed.eventMaskRange[0]`/`[1]` (:185) index a non-null `int[]` with no length check — a malformed 0- or 1-element array from a future LS change throws `ArrayIndexOutOfBoundsException`; today's `composer-commands.ts` always builds these as 2-element tuples, so this is a latent, not currently observed, gap. Checked the edit-in-place staleness question the plan's own threat model names (T-63-P03-S4): `ComposerLauncher.launch()` captures `line`/`lineText`/`col` (:59-64) and decodes the call via the LS (`msgboxDecodeCall`/`addWindowDecodeCall`/`addChildWindowDecodeCall`) **before** the modal dialog is shown; `openMsgbox`/`applyAddWindowEdit`/`applyHexEdit` then apply the captured `ed.callStart`/`callEnd`/`flagsRange`/`eventMaskRange` offsets **after** `dialog.showAndGet()` returns — i.e. after the entire modal dialog session, during which the document can be mutated by a background process (file-watcher reload, another window's edit in a split-view multi-caret scenario, an LSP-driven auto-edit) — with no re-decode or offset-revalidation step anywhere between capture and apply; a shifted or deleted call at the captured line/offsets either throws (offsets now exceed the line's length) or, more concerning, silently rewrites whatever text now occupies that byte range. Checked what each decode path does with an unparseable existing statement: `decodeCall` returns `found:false`, and all three `open*` methods fall back to the blank create flow (:96,124,145) rather than crashing — confirmed pass, no defect. Checked threading discipline: every `.thenAccept(...)` continuation that touches Swing state is itself wrapped in `ApplicationManager.getApplication().invokeLater(...)` with an explicit `ModalityState` (`onEdt()` in `ComposerLauncher`, `ModalityState.any()` in all three dialogs' `refresh()`) — confirmed pass, no EDT violation found anywhere in this unit. 4 findings recorded: P63-D2-007, P63-D2-008, P63-D2-009, P63-D2-010.
 - D3 Performance & resource use — fail — Checked whether a preview request is issued per keystroke without debouncing: every text-field `DocumentListener` in all three dialogs (`SimpleDocumentListener`, identical inline record in each file) calls `refresh()` synchronously on every `insertUpdate`/`removeUpdate`/`changedUpdate` event with no `Timer`/`Alarm`/`SingleAlarm`/scheduled-executor anywhere in this unit (confirmed by grep) — unlike the language server's own document-validation pipeline (a 500ms trailing-edge debounce per `CLAUDE.md`/PROJECT.md), each keystroke in `message`/`title`/`assignTo` (Msgbox) or `receiver`/`sysgui`/`x`/`y`/`width`/`height` (addWindow) or the addChildWindow equivalents fires one full `bbj/composer/*/preview` LSP4IJ round trip. Checked whether the catalogs are fetched once per dialog session or repeatedly: `ComposerLauncher.launch()` calls `server.composerCatalogs()` (:71) fresh on every single invocation of the msgbox/addWindow/addChildWindow action or intention — the static option catalogs (button sets, icons, default buttons, window/event flags) never change at runtime (module-level `const` arrays on the LS side, per Phase 62's own `RU-62-02`/`D3` finding for the same catalogs), yet nothing in this unit caches the result across invocations within a session. Checked whether `ComposerLauncher`/`BbjComposerService` re-resolve the server on every call: `BbjComposerService.server(project)` (:23-29) calls `LanguageServerManager.getInstance(project).start(SERVER_ID)` plus a fresh `getLanguageServer(SERVER_ID)` future resolution on every `launch()` invocation, layered on top of the uncached catalogs fetch — so every single composer open incurs a server-lookup round trip plus a full catalogs round trip plus a decode round trip before the dialog even appears, none of which is cached for the editing session. Checked whether the three schematic panels repaint proportionally to the change or rebuild their whole model: `setRender(...)` just assigns the new descriptor and calls `repaint()` (:32-35 in each panel); `paintComponent` is O(number of drawn primitives), a small constant per panel — confirmed pass, no cost concern here. Checked listener/future/disposable accumulation across repeated open/close cycles: every listener is registered once per fresh dialog instance inside `createCenterPanel()` (called once per `DialogWrapper.init()`), with no static or shared registry anywhere in this unit — confirmed pass, no accumulation. 2 findings recorded: P63-D3-003, P63-D3-004.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Mechanical structural comparison, per the plan's required method: `git diff --no-index --numstat AddWindowComposerDialog.java AddChildWindowComposerDialog.java` → `37 28` (37 of 306 lines removed, 28 of 315 added — roughly 88%/85% of each file byte-identical to the other, sharing `refresh()`/`apply()`/`selected()`/`setSelected()`/`preselect()`/`addGroupedChecks()`/`setEnabledRecursive()`/`labeled()` essentially verbatim, differing only in the field set — `receiver`/`sysgui` vs. `receiver`/`window`/`id`/`context`/`title` — the schematic-panel type, and the preview/decode RPC names) — confirms the plan's own "structurally near-duplicate" framing mechanically rather than by eyeball. Ran the same comparison against `MsgboxComposerDialog.java` for both: `156 189` and `156 198` lines differing out of 273/306/315 — Msgbox diverges far more (different field set, validation/error-label UI, no event-mask section), so the strong duplication signal is specifically the addWindow/addChildWindow pair, not a three-way tie. Ran the same comparison across the three `Configure*Intention.java` files (49/50/50 lines): `ConfigureMsgboxIntention.java` vs `ConfigureAddWindowIntention.java` → `9 8` (40 of 49 lines identical), `ConfigureAddWindowIntention.java` vs `ConfigureAddChildWindowIntention.java` → `7 7` (43 of 50 identical) — all three share an identical `isAvailable`/`invoke`/`startInWriteAction`/`generatePreview` shape, differing only in the display text and the `ComposerLauncher.Kind` constant/keyword string — the near-identical triple the plan names as this unit's strongest D4 signal. Checked for duplicated small static helpers, per the plan's own explicit ask: the 14-line private static `clip(Graphics2D, String, int)` helper is duplicated near-verbatim across all three `*SchematicPanel.java` files (diff on the extracted method bodies — `MsgboxSchematicPanel.java:166-179` vs. `WindowSchematicPanel.java:118-131` differ only in a local-variable-vs-inline-call style choice; `WindowSchematicPanel.java` vs. `ChildWindowSchematicPanel.java:145-158` are byte-for-byte identical); the 6-line private static `labeled(String, JComponent)` helper is byte-for-byte identical across all three dialog files (`MsgboxComposerDialog.java:257-262`, `AddWindowComposerDialog.java:274-279`, `AddChildWindowComposerDialog.java:283-288`, confirmed via diff); the private static `setEnabledRecursive(JComponent, boolean)` helper is byte-for-byte identical between `AddWindowComposerDialog.java:181-188` and `AddChildWindowComposerDialog.java:185-192` — none of these three small helpers has a shared home anywhere in the `composer/` package. Also noted: the same `0x00010000L` "Keyboard navigation" default-flag literal is independently hardcoded in both `AddWindowComposerDialog.java:102` and `AddChildWindowComposerDialog.java:104` with no shared named constant, only a comment in each. Checked `ComposerLauncher.java` (224 lines: dispatch, server/catalogs resolution, three `open*`/`apply*` pairs, `insertAtCaret`, `notifyNotReady`, `onEdt`) for god-function/god-class shape: not crossed — each responsibility is factored into its own small, clearly-named private method, unlike `RU-63-01`'s `BbjRunActionBase.java` precedent. Checked `ComposerModels.java`'s public-mutable-field DTO shape: this is Gson's own idiomatic no-arg-constructor-plus-public-fields convention (consistent with `BbjComposerServer.java`'s `@JsonRequest` usage), not a smell — checked, not promoted. 3 findings recorded: P63-D4-007, P63-D4-008, P63-D4-009.
+- D5 Test coverage gaps — fail — Cross-references `P63-D5-001` (`RU-63-03`) rather than restating the systemic zero-test-source-set fact: `bbj-intellij` has no `src/test/` source set at all (re-confirmed here: `ls bbj-intellij/src/` → `main` only). This unit's own specific consequence: the decode-and-prefill path for an existing statement (`msgboxDecodeCall`/`addWindowDecodeCall`/`addChildWindowDecodeCall` consumption in `ComposerLauncher.open*`), the emitted-statement construction for each of the three dialogs (`dialog.getStatement()`/`getFlagsHex()`/`getEventHex()`), the DTO round-trip against the LS response shape (the field-drift this unit's own D7 cell already found, `P63-D7-004` — a round-trip test asserting every declared TS field has a Java counterpart would have caught it immediately), the three schematic panels' render-descriptor-to-pixel logic, the document-edit apply path (including the stale-range gap this unit's own D2 cell recorded, `P63-D2-010`), and the unhandled-future-failure paths (`P63-D2-007`) are all untested — every finding recorded in this unit's `### Findings` (`P63-D1-006` through `P63-D8-005`) would ship and regress silently, with no harness that would fail if any of it broke or was fixed incorrectly. Noting the asymmetry this unit's own D7 sweep already surfaced: `bbj-vscode/test/` has 4 dedicated composer test files (`msgbox-composer.test.ts`, `addwindow-composer.test.ts`, `addchildwindow-composer.test.ts`, `composer-commands.test.ts`, confirmed via `find`) exercising the exact same generated-code contract this unit's Java dialogs consume over LSP4IJ, while the IntelliJ side has zero tests for that same contract — a parity-relevant consequence of the same systemic absence. A first test suite for this unit would minimally need to cover: `ComposerModels.java`'s DTO field set against the LS-side param/result shapes (a pure structural round-trip needing no IntelliJ Platform fixture, catching `P63-D7-004`'s class of gap), and — once a fake `LanguageServer`/`BbjComposerServer` test double exists — each dialog's `refresh()`/`apply()` cycle and `ComposerLauncher`'s edit-application offset logic.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — fail — **The parity question is equivalence of the generated BBj code, not of the UI toolkit (INVENTORY's own framing for this unit).** Confirmed for msgbox/addwindow/addchildwindow, matching Phase 62's own `RU-62-04`/D7 establishment: `MsgboxComposerDialog.java:209`, `AddWindowComposerDialog.java:238` and `AddChildWindowComposerDialog.java:247` call `server.msgboxPreview(...)`/`addWindowPreview(...)`/`addChildWindowPreview(...)` — the exact same `bbj/composer/{msgbox,addwindow,addchildwindow}/preview` handlers (`composer-commands.ts:69,129,167`) the VS Code webviews call locally — so there is no second, divergent BBj-codegen implementation on the IntelliJ side to compare; the generated statement is identical by construction for all three forms. **DTO shape comparison, field-for-field, `ComposerModels.java` vs. `bbj-vscode/src/language/composer-commands.ts`'s param/result types (`msgbox-composer.ts`, `addwindow-composer.ts`, `addchildwindow-composer.ts`):** `MsgboxPreviewInput`, `MsgboxCatalogs`/`AddWindowCatalogs`, `AddWindowPreviewInput`/`AddWindowPreview`/`WindowRender`, and `AddChildWindowPreviewInput`/`AddChildWindowPreview`/`ChildWindowRender` all mirror their TypeScript counterparts field-for-field by name (confirmed field-by-field, including the `AddWindowEdit`/`MsgboxEdit`/`AddWindowInitial` edit-in-place shapes) — **with one confirmed drift:** TypeScript's `MsgboxPreview` interface (`msgbox-composer.ts:374-388`) declares an optional `exprText?: string` ("the constants form of `expr` when `useConstants` is set"), and TypeScript's msgbox `CatalogItem` (`msgbox-composer.ts:12-17`) declares an optional `constant?: string` (the `BBjMsgBox.*` constant name) — **neither field exists on Java's `ComposerModels.MsgboxPreview` or unified `CatalogItem` DTO**, so Gson silently drops both on deserialization; this is a genuine, if currently dormant, DTO-shape gap — "a silent shape drift the compiler cannot catch" per this task's own framing. Traced the actual consequence: `exprText` is computed server-side inside `msgboxPreview()` (`msgbox-composer.ts:403`) and folded into `statement` via `composeStatement({..., expr, exprText, ...})` **before** the response is serialized, so the useConstants checkbox's own promise — the *generated code* uses the constants form — holds identically on both IDEs (`p.statement`/`m.statement` both carry the correct text); checked whether either UI's own display consumes the now-dropped fields: VS Code's own webview summary line (`msgbox-composer-webview.ts:330`, `'expr = ' + m.expr + ...`) **also never reads `m.exprText`**, so this is not an active IntelliJ-only display regression — both IDEs show the raw numeric `expr` in the summary regardless of `useConstants`. Recorded as a low-severity, currently-inert DTO-completeness gap rather than an active parity bug, per the concrete trace. Checked capability reachability both directions for the three implemented forms (msgbox/addwindow/addchildwindow): every `bbj/composer/{msgbox,addwindow,addchildwindow}/{preview,decodeCall}` capability VS Code's webviews use is reachable from IntelliJ via the identical 7-method `BbjComposerServer` interface — confirmed symmetric, no defect. **Checked SETOPTS, the phase's merged inherited referral (see Inherited referral triage below):** confirmed absent from IntelliJ entirely, promoted to its own finding rather than folded into the DTO-drift finding, since it is a whole-feature absence rather than a field-level shape gap. 2 findings recorded: P63-D7-004, P63-D7-005.
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every class-level Javadoc across all 13 files against the code just read. Found two related stale-count/stale-flow doc claims, both traceable to the same root cause (the #473 addChildWindow addition landing without a doc pass over the two earlier files): `MsgboxComposerDialog.java`'s class doc (:39-44) ends "Create flow — inserts a fresh MSGBOX(...) statement" with no mention that the SAME class also supports edit-in-place (the `editMode` constructor parameter drives `assignToRow` visibility, the OK button text, and whether `ComposerLauncher.openMsgbox` applies a `replaceString` edit instead of an insert) — a reader of the class doc alone would not learn edit mode exists; `AddWindowComposerDialog.java`'s class doc (:40-45) goes further, stating "Create flow only for now — inserts a fresh addWindow(...) statement," an explicit, now-false limitation claim, since `applyAddWindowEdit`/`applyHexEdit` fully implement edit-in-place — contrast `AddChildWindowComposerDialog.java`'s own class doc (:40-45), added later alongside #473, which correctly states both flows ("Create flow inserts a fresh statement; edit flow rewrites the hex tokens in place"). The same doc-lag pattern recurs in `ComposerLauncher.java`'s own class doc (:25-31), which still says "Shared entry point for both composer UIs (#430/#433)" though the class has dispatched three `Kind` values (`MSGBOX`, `ADDWINDOW`, `ADDCHILDWINDOW`) since #473 landed. Checked `ComposerModels.java:1-14`'s "mirroring the language server's ... params and results" claim against this unit's own D7 field-comparison (`P63-D7-004` above): the claim overstates completeness — two TS-side optional fields (`MsgboxPreview.exprText`, `CatalogItem.constant`) have no Java counterpart, so "mirroring" is not exact, though the doc's core substantive claim (no flag/hex arithmetic happens on the Java side, TS is the single source of truth) remains accurate and is itself confirmed correct by this unit's own sweep (no arithmetic found anywhere in `ComposerModels.java`). Checked `BbjComposerService.java`'s "callers must handle the null case" Javadoc (:19-22) against its one call site (`ComposerLauncher.java:67`, grepped — only one call site in this unit): correctly guarded — confirmed accurate, not promoted. Checked `applyAddWindowEdit`'s "right-to-left" Javadoc claim (`ComposerLauncher.java:161`) against `applyHexEdit`'s actual sort (`Comparator.comparingInt(...).reversed()`, :191): accurate — confirmed, not promoted. Checked `CLAUDE.md` against this unit: it names no composer file anywhere (confirmed by grep), so its silence is noted per `RU-63-01`'s own precedent, not promoted. 2 findings recorded: P63-D8-004, P63-D8-005.
 
 ### Inherited referral triage
 
@@ -1638,13 +1638,241 @@ dedup:             #475 partial-overlap — #475 requests a NEW BBj-code-scoped 
 disposition:       major-refactor
 ```
 
+```
+id:                P63-D4-007
+unit:              RU-63-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/AddWindowComposerDialog.java,AddChildWindowComposerDialog.java
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Mechanical structural comparison: git diff --no-index --numstat
+                    AddWindowComposerDialog.java AddChildWindowComposerDialog.java -> 37 28 (37 of
+                    306 lines removed, 28 of 315 added — roughly 88%/85% of each file byte-identical
+                    to the other). Shared verbatim or near-verbatim: refresh()/apply()/selected()/
+                    setSelected()/preselect()/addGroupedChecks()/setEnabledRecursive()/labeled(),
+                    the eventEnabled/eventPanel wiring, and the whole createCenterPanel() layout
+                    shape. Differs only in the field set (receiver+sysgui vs.
+                    receiver+window+id+context+title), the schematic-panel field type, and the
+                    server RPC method names.
+failure_scenario:  n/a (D4 is a code-shape finding) — any future fix to the shared addWindow-family
+                    flow (e.g. P63-D2-010's stale-range revalidation, or P63-D3-003's debounce) must
+                    be applied identically in two files by hand, with drift risk if one copy is
+                    updated and the other missed.
+classification:    major
+                    (1) touches 1 file: FAIL — collapsing the duplication (e.g. a shared abstract
+                    base parametrized by field set and Kind) touches AddWindowComposerDialog.java
+                    and AddChildWindowComposerDialog.java at minimum — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    existing harness: satisfied vacuously per D-09 — a pure structural refactor
+                    changes no runtime behaviour — (5) reviewer can name the exact edit (extract a
+                    shared AddWindowFamilyComposerDialog base carrying refresh/apply/selected/
+                    setSelected/preselect/addGroupedChecks/setEnabledRecursive/labeled, with the two
+                    concrete classes supplying only their distinct field set and RPC calls): pass —
+                    (6) severity low, dimension D4 (not D1): pass — test (1) alone fails, so
+                    classification is major.
+effort:            8
+dedup:             none — checked #385 and #475 explicitly; neither names this dialog duplication.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D4-008
+unit:              RU-63-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureMsgboxIntention.java,ConfigureAddWindowIntention.java,ConfigureAddChildWindowIntention.java
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Pairwise git diff --no-index --numstat: ConfigureMsgboxIntention.java vs
+                    ConfigureAddWindowIntention.java -> 9 8 (40 of 49 lines identical);
+                    ConfigureAddWindowIntention.java vs ConfigureAddChildWindowIntention.java -> 7 7
+                    (43 of 50 identical). All three share an identical isAvailable()/invoke()/
+                    startInWriteAction()/generatePreview() shape — differing only in getText()'s
+                    display string, the ComposerLauncher.Kind constant passed to launch(), and the
+                    keyword string passed to isCaretOnCall().
+failure_scenario:  n/a (D4 is a code-shape finding) — three files exist purely to supply one
+                    differing display string, Kind constant and keyword to a shared call; a fourth
+                    composer form would add a fourth near-identical file rather than a single
+                    data-driven registration.
+classification:    major
+                    (1) touches 1 file: FAIL — collapsing three files into one parametrized
+                    IntentionAction (or a shared abstract base each subclasses with three
+                    overridden strings/Kind) touches all three files at minimum — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with existing harness: satisfied vacuously per D-09 — a
+                    structural refactor changes no runtime behaviour — (5) reviewer can name the
+                    exact edit (a single ConfigureComposerIntention(String text, Kind kind, String
+                    keyword) constructed three times via plugin.xml constructor-arg registration,
+                    mirroring RU-63-01's own P63-D4-005 disposition for the analogous three
+                    BbjCompose*Action files): pass — (6) severity low, dimension D4 (not D1): pass —
+                    test (1) alone fails, so classification is major.
+effort:            4
+dedup:             none — no frozen open issue names this intention-action duplication.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D4-009
+unit:              RU-63-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxSchematicPanel.java:166-179,WindowSchematicPanel.java:118-131,ChildWindowSchematicPanel.java:145-158,MsgboxComposerDialog.java:257-262,AddWindowComposerDialog.java:181-188,274-279,AddChildWindowComposerDialog.java:185-192,283-288
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Extracted-method diff: the 14-line private static clip(Graphics2D, String, int)
+                    helper is duplicated near-verbatim across all three *SchematicPanel.java files
+                    (WindowSchematicPanel.java and ChildWindowSchematicPanel.java are byte-for-byte
+                    identical; MsgboxSchematicPanel.java differs only in a local-variable-vs-
+                    inline-call style choice). The 6-line private static labeled(String, JComponent)
+                    helper is byte-for-byte identical across all three dialog files. The private
+                    static setEnabledRecursive(JComponent, boolean) helper is byte-for-byte
+                    identical between AddWindowComposerDialog.java and
+                    AddChildWindowComposerDialog.java. None of these three small helpers has a
+                    shared home anywhere in the composer/ package.
+failure_scenario:  n/a (D4 is a code-shape finding) — a future fix to clip()'s ellipsis-truncation
+                    logic, or to labeled()'s layout, must be applied at three (or two) separate
+                    sites by hand, with drift risk between them; this is a smaller-granularity
+                    instance of the same "no shared composer/ utility" pattern P63-D4-007/008
+                    record at the file level.
+classification:    major
+                    (1) touches 1 file: FAIL — extracting a shared utility class (e.g. a
+                    package-private ComposerSwingUtil with clip()/labeled()/setEnabledRecursive())
+                    touches at least the three schematic panels and three dialog files — (2) no
+                    public API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with existing harness: satisfied vacuously per D-09 — a
+                    pure structural extraction changes no runtime behaviour — (5) reviewer can name
+                    the exact edit (add a small static-only ComposerSwingUtil class in composer/
+                    and delegate all six call sites to it): pass — (6) severity low, dimension D4
+                    (not D1): pass — test (1) alone fails, so classification is major.
+effort:            4
+dedup:             none — no frozen open issue names this small-helper duplication.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D8-004
+unit:              RU-63-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:39-44,AddWindowComposerDialog.java:40-45,ComposerLauncher.java:25-31
+dimension:         D8
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          MsgboxComposerDialog.java's class doc (:39-44) states only "Create flow —
+                    inserts a fresh MSGBOX(...) statement," with no mention of the editMode
+                    constructor parameter and its edit-in-place behaviour (assignToRow visibility,
+                    OK-button text, replaceString vs. insert dispatch in ComposerLauncher.
+                    openMsgbox). AddWindowComposerDialog.java's class doc (:40-45) states "Create
+                    flow only for now — inserts a fresh addWindow(...) statement" — an explicit,
+                    now-false limitation claim, since applyAddWindowEdit/applyHexEdit fully
+                    implement edit-in-place. Contrast AddChildWindowComposerDialog.java's own class
+                    doc, added later alongside #473, which correctly names both flows.
+                    ComposerLauncher.java's class doc (:25-31) still says "Shared entry point for
+                    both composer UIs (#430/#433)" though the class has dispatched three Kind
+                    values since #473 landed — the same doc-lag root cause.
+failure_scenario:  A maintainer reading MsgboxComposerDialog.java's or AddWindowComposerDialog.
+                    java's class doc alone, without reading the constructor or ComposerLauncher's
+                    call sites, would not learn edit-in-place exists for either class, and would
+                    read AddWindowComposerDialog.java's doc as an accurate current limitation when
+                    it is stale.
+classification:    major
+                    (1) touches 1 file: FAIL — the fix spans MsgboxComposerDialog.java,
+                    AddWindowComposerDialog.java and ComposerLauncher.java — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with existing harness: satisfied vacuously per D-09 — a
+                    Javadoc-only edit changes no runtime behaviour — (5) reviewer can name the exact
+                    edit (update each class doc to name both create and edit-in-place flows,
+                    mirroring AddChildWindowComposerDialog.java's own accurate wording, and update
+                    ComposerLauncher.java's doc to say "all three composer UIs"): pass — (6)
+                    severity low, dimension D8 (not D1): pass — test (1) alone fails, so
+                    classification is major despite being doc-only.
+effort:            2
+dedup:             none — no frozen open issue names these stale class-doc claims.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D8-005
+unit:              RU-63-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerModels.java:1-14
+dimension:         D8
+secondary:         [D7]
+severity:          low
+evidence_tier:     trace
+evidence:          The class doc claims these DTOs are "Gson-serializable data objects mirroring
+                    the language server's bbj/composer/* request params and results." This unit's
+                    own D7 field comparison (P63-D7-004) found two TS-side optional fields
+                    (MsgboxPreview.exprText, msgbox CatalogItem.constant) with no Java counterpart —
+                    "mirroring" overstates completeness by that margin. The doc's core substantive
+                    claim (no flag/hex arithmetic happens here, TypeScript is the single source of
+                    truth) remains accurate and is independently confirmed by this unit's own sweep
+                    (no arithmetic found anywhere in the 245-line file).
+failure_scenario:  A maintainer relying on the class doc's "mirroring" claim to assume Java's DTOs
+                    are a complete field-for-field reflection of the TS-side types would be wrong by
+                    exactly the two dormant fields P63-D7-004 records — not a functional bug today,
+                    since neither field is currently consumed by any UI, but a doc-accuracy gap that
+                    would mislead a reviewer checking DTO completeness by reading the comment alone
+                    instead of diffing the two sides.
+classification:    easy
+                    (1) touches 1 file: pass (ComposerModels.java only) — (2) no public API/
+                    grammar/LSP change: pass — (3) no new dependency: pass — (4) regression-testable
+                    with existing harness: satisfied vacuously per D-09 — a doc-comment edit changes
+                    no runtime behaviour — (5) reviewer can name the exact edit (soften "mirroring"
+                    to "carrying the language server's bbj/composer/* params and results relevant to
+                    the IntelliJ dialogs" or add a one-line note naming the two intentionally-unused
+                    optional fields): pass — (6) severity low, dimension D8 (not D1): pass — all six
+                    tests pass, so classification is easy.
+effort:            2
+dedup:             none — no frozen open issue names this doc-completeness overclaim.
+disposition:       easy-fix
+```
+
 ### Not-reproducible dispositions
 
-pending
+None. This unit's sweep raised no candidate claim that failed to clear its evidence tier — every
+check that surfaced a concrete defect is recorded above as a finding, the merged SETOPTS referral
+reached a definite `promoted` disposition, and the D2/D3 checks confirmed several specific
+behaviours as correct (the `seq` stale-response guard, threading discipline, decode-of-unparseable-
+statement fallback, schematic-panel repaint cost) without any of those checks surfacing an
+unclearable candidate — stated explicitly per the per-unit stopping rule's empty-subblock register,
+rather than omitted.
 
 ### Cross-unit referrals
 
-pending
+None. This unit's sweep raised no candidate that belongs to another unit's file list — the LSP4IJ
+`LanguageServerManager` resolution this unit's D1/D3 cells trace (`BbjComposerService.server()`)
+is a read-only, idempotent call into `RU-63-05`'s wiring, not a defect in that wiring itself, and no
+finding here names a file this unit does not own — stated explicitly per the per-unit stopping
+rule's empty-subblock register, rather than omitted.
+
+### Unit closure
+
+`RU-63-04` is closed against the four-part stopping rule (D-06): **(i)** all 7 live cells (D1, D2,
+D3, D4, D5, D7, D8) carry a `fail` verdict plus a written check line above — every dimension
+surfaced at least one concrete finding or, for D5, the cross-referenced systemic absence plus this
+unit's own consequence; **(ii)** all thirteen files are named at least once inside this section —
+`AddChildWindowComposerDialog.java` (D1/D4/D7/D8 cells, referral disposition), `AddWindowComposerDialog.java`
+(D1/D2/D3/D4/D7/D8 cells, `P63-D4-007`), `BbjComposerServer.java` (D1 cell), `BbjComposerService.java`
+(D1/D3/D8 cells), `ChildWindowSchematicPanel.java` (D4 cell, `P63-D4-009`), `ComposerLauncher.java`
+(D1-D4/D8 cells, most findings' `location:`), `ComposerModels.java` (D1/D7/D8 cells, `P63-D7-004`,
+`P63-D8-005`), `ConfigureAddChildWindowIntention.java`/`ConfigureAddWindowIntention.java`/
+`ConfigureMsgboxIntention.java` (D1/D4 cells, `P63-D4-008`), `MsgboxComposerDialog.java`
+(D1-D4/D7/D8 cells), `MsgboxSchematicPanel.java` (D4 cell, `P63-D4-009`), `WindowSchematicPanel.java`
+(D4 cell, `P63-D4-009`); **(iii)** every candidate claim raised during either task is either one of
+the 14 finding records above (`P63-D1-006`, `P63-D2-007` through `P63-D2-010`, `P63-D3-003`/`004`,
+`P63-D4-007` through `P63-D4-009`, `P63-D7-004`/`005`, `P63-D8-004`/`005`) or the single explicit
+`### Not-reproducible dispositions` empty statement — none was silently dropped; **and (iv)** both
+inherited Phase 62 referrals (#4 from `RU-62-04`, #5 from `RU-62-03`) carry one written disposition
+under `### Inherited referral triage` above, promoted together to `P63-D7-005`, and the ledger's
+rows 4-5 are updated accordingly (re-confirmed by plan `63-05`).
+
+**Scope-fidelity note.** All thirteen files in this unit were swept across all 7 live dimensions,
+even though ROADMAP's Phase 63 success **criterion 1** names only "composer dialogs" from this
+unit — the Applicability Grid, not the ROADMAP criteria, is the contract, and the criteria are a
+deliberately named subset of it (D-16); the extra coverage here — the three `*SchematicPanel.java`
+files, the three `Configure*Intention.java` files, and the four bridge/model files
+(`ComposerModels.java`, `ComposerLauncher.java`, `BbjComposerServer.java`, `BbjComposerService.java`)
+— is recorded as deliberate, not scope creep.
 
 ## RU-63-05 — LSP wiring, server lifecycle & status UI
 
