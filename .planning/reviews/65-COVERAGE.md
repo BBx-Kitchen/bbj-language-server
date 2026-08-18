@@ -737,32 +737,32 @@ site, no gaps.
 
 - [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pass — `performLogin()` (:44-152) is the acquisition site: prompts for the EM username (`Messages.showInputDialog`, :56-63, defaulting to `"admin"`) and password (`Messages.showPasswordDialog`, :65-69) directly from the user, resolves `em-login.bbj` from the plugin bundle (:72-79), spawns it via `GeneralCommandLine`/`CapturingProcessHandler` (:98-115, 15s timeout) and reads the raw JWT back from the process's temp-file output (:118-123). A `stdout.startsWith("ERROR:")` failure (:125-128) surfaces the script's own error text via a dialog rather than storing anything, and an empty result (:130-136) is a distinct failure rather than a silent pass-through. Nothing is trusted unchecked: the `bbjHome`/executable check (:46-53, :88-91) and the `em-login.bbj` path resolution (:73-78) both fail closed with a dialog before any process is spawned.
 - [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — fail — `P63-D1-005`. The freshly-returned JWT is written to `Files.createTempFile("bbj-em-login-", ".tmp")` (:96) with no `FileAttribute`/POSIX-permission argument, so the file receiving the plaintext token is created with whatever default permissions the JVM/OS applies rather than an explicit owner-only grant, for the window between the spawned process writing it and the `finally`-block delete (:119-123). This is `P63-D1-005`'s own citation of this exact call site; not re-recorded here.
-- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
-- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
+- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — fail — `P63-D1-003`. Process arguments: `cmd.addParameter(password)` (:102-103) places the plaintext EM password into the spawned `em-login.bbj` process's argv, visible to any other process on the host able to enumerate it — this is the password leg of the process-argument-exposure question `65-02`/SEC-04 owns for the whole phase (D-07), discharged here by `P63-D1-003`. Logs: no log/console write of the raw password anywhere in this 169-line file (checked by full read — `Messages.showErrorDialog` surfaces only `ex.getMessage()` or the script's own `"ERROR:..."` text, never the credential itself) — clean on this sub-question. Filesystem: the temp file this site creates (`Files.createTempFile`, :96) is filled by the same shared `em-login.bbj` script VS Code also spawns (confirmed: `bbj-intellij/build.gradle.kts:103-104,125-126` copies `bbj-vscode/tools/em-login.bbj` into the plugin bundle verbatim), whose own `:41-42` write has no permission control (`P64-D1-002`); the JVM-side temp file's own missing permission attributes are the separate at-rest exposure `P63-D1-005` already records. Both cross-referenced, neither re-recorded.
+- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — fail — `P63-D1-004`. This site performs no expiry check of its own: the token it just obtained is stored via `BbjEMTokenStore.storeToken(stdout)` (:139) with no call to `isTokenExpired()` or `validateTokenServerSide()` first — exactly the gap `P63-D1-004`'s own evidence names ("`BbjEMLoginAction`'s freshly-stored token is never itself re-checked... before being written to `PasswordSafe`"). Cross-referenced, not re-recorded.
 - [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — n/a — this file is a pure storage/decode utility (`storeToken`/`getToken`/`deleteToken`/`isTokenExpired`, :31-88) with no credential prompt and no process spawn of its own; acquisition happens in `BbjEMLoginAction.performLogin()` (:44-152), which calls `storeToken(stdout)` (:139) only after the token already exists.
 - [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — fail — `P65-D1-002` (new finding below). `storeToken`/`getToken`/`deleteToken` (:31-47) delegate to `PasswordSafe.getInstance()`, keyed by `CredentialAttributesKt.generateServiceName("BBj Enterprise Manager", "jwt-token")` (:26-28) with no additional `CredentialAttributes` flag — a real improvement over a hand-rolled store, but `PasswordSafe`'s actual backend is the IDE-wide, user-configurable "Save passwords" setting (native keychain / KeePass file / memory-only, per `P63-D8-003`'s own confirmed reading of this exact setting), and nothing in this file pins or checks which backend is active. Contrasted against VS Code's fixed `SecretStorage` binding in the at-rest comparison below; the divergence is `P65-D1-002`.
-- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
-- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
+- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — n/a — this file has no argv-construction, log-write or file-write of its own anywhere in its 89 lines (confirmed by full read); it only calls `PasswordSafe.getInstance()`, whose internal implementation is outside this file's/this sweep's traced code — n/a across all three exposure sub-questions.
+- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — fail — `P63-D1-004`. `isTokenExpired()` (:56-88) returns `false` ("not expired") for a non-3-part token (:64-66), a payload with no `exp` claim (:76-77), and any decode exception (:84-86), with no signature verification anywhere in the file — `P63-D1-004`'s own citation of this exact function; not re-recorded here.
 - [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — n/a — `buildCommandLine()` (:26-135) reads an already-stored token via `BbjEMTokenStore.getToken()` (:54) and, when absent, delegates acquisition to `BbjEMLoginAction.performLogin(project)` (:63, :95) rather than acquiring one itself; this site never prompts for credentials or spawns `em-login.bbj` directly.
 - [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — n/a — this site reads the token via `BbjEMTokenStore.getToken()` (:54) but persists nothing of its own; the one temp file its own call chain creates (`BbjRunActionBase.validateTokenServerSide`'s `Files.createTempFile("bbj-em-validate-", ".tmp")`, `BbjRunActionBase.java:295`) is written to only by `em-validate-token.bbj`, which writes the fixed marker `"VALID"`/`"INVALID"` (`em-validate-token.bbj:23-27,30-34`) rather than the token value itself — unlike `BbjEMLoginAction.java`'s temp file, no secret reaches this particular file. The token's own at-rest treatment is `BbjEMTokenStore.java`'s, above.
-- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
-- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
+- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — fail — `P63-D1-003`. Process arguments: `cmd.addParameter(token)` (:127) places the raw JWT into the spawned `bbj` process's argv — the token-bearing leg of the D-07 ownership question, discharged by `P63-D1-003` and cross-referenced for `65-03`/SEC-05 by ID (see `### Cross-references`). Logs: `logError`/`logInfo` (`BbjRunActionBase.java`) take only fixed diagnostic strings, never the token itself (checked by grep across all four run-action files for a logging call passing `token`) — clean on this sub-question. Filesystem: n/a — see the at-rest verdict above; the shared `validateTokenServerSide` temp file (`BbjRunActionBase.java:295`) carries only the `VALID`/`INVALID` marker, never the token.
+- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pass — this site composes the fail-open client decode with an unconditional server round trip: `BbjEMTokenStore.isTokenExpired(token)` (:75) is checked first (fast path), but regardless of its answer, `!validateTokenServerSide(project, token)` (:81, `BbjRunActionBase.java:280-321`, a real EM round trip with a 10s timeout) is also required to pass before the token is used; either check failing calls `BbjEMTokenStore.deleteToken()` (:76, :82) and re-prompts login (:87-104). A malformed/garbage token that `isTokenExpired()` wrongly calls "not expired" is therefore still rejected here, because the server round trip is authoritative and unconditional for this site's own use of the token — the underlying decode weakness is `P63-D1-004`'s, cross-referenced, but does not compromise this site's own expiry handling.
 - [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — n/a — byte-for-byte the same delegation pattern as `BbjRunBuiAction.java` (confirmed by `diff`: the two files differ only in the `"BUI"`/`"DWC"` literal and user-facing strings); acquisition is delegated to `BbjEMLoginAction.performLogin()` identically, never acquired directly by this file.
 - [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — n/a — identical reasoning to `BbjRunBuiAction.java`: no persistence of its own, and the shared `validateTokenServerSide` temp file it triggers (`BbjRunActionBase.java:295`) carries only the non-secret `VALID`/`INVALID` marker written by `em-validate-token.bbj`, never the token itself.
-- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
-- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
+- [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — fail — `P63-D1-003`, identical reasoning to `BbjRunBuiAction.java` (byte-for-byte identical `cmd.addParameter(token)` construction at :127; `diff` confirms the two files differ only in the `"BUI"`/`"DWC"` literal).
+- [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pass — identical composition to `BbjRunBuiAction.java` (byte-for-byte identical client-decode-then-server-round-trip sequence at :75-104): the mandatory, unconditional `validateTokenServerSide` call is what makes this site's own expiry handling correct despite `isTokenExpired()`'s underlying fail-open decode (`P63-D1-004`, cross-referenced).
 - [SEC-04][acquisition] bbj-vscode/src/extension.ts — pass — the `bbj.loginEM` command handler (:597-671) is the acquisition site: prompts for the EM username via `showInputBox` (:611-616, defaulting to `"admin"`) and password via a masked `showInputBox` (:618-623, `password: true`), execs `em-login.bbj` (:626-646) with a 15s timeout, and reads the raw JWT back from the temp file the script wrote (:653,:658). An `output.startsWith('ERROR:')` result from the script itself (:654-656) is rejected rather than stored, surfaced by the outer `catch` as `showErrorMessage` (:670); a `password === undefined` cancellation (:623) aborts before any process is spawned. Nothing here is trusted unchecked: `bbjHome` is validated before any path is built (:601-608).
 - [SEC-04][at-rest] bbj-vscode/src/extension.ts — pass — `context.secrets.store('bbj.em.token', result)` (:667) persists the token via VS Code's `SecretStorage` API (`secretStorage = context.secrets`, :587), with `context.secrets.delete('bbj.em.token')` called on both the client-side-expired path (:381) and the server-side-rejected path (:473) — deletion symmetric with storage on both invalidation routes. `SecretStorage`'s backend is fixed by the VS Code platform itself, and `bbj-vscode/package.json` contributes no setting of its own that could redirect it elsewhere (checked: `grep -n 'secret\|credential' package.json` returns nothing relevant beyond an unrelated `protectPassword` compiler option). One unreachable branch noted for completeness, not as a finding: `getEMCredentials()` (:374-388) also reads a `'bbj.em.credentials'` fallback key, but nothing anywhere in this codebase ever calls `.store('bbj.em.credentials', ...)` (confirmed: `grep -rn "bbj.em.credentials"` returns only this one read) — dead code, not a persisted secret. See the at-rest comparison below for the asymmetry this contrasts against.
-- [SEC-04][exposure] bbj-vscode/src/extension.ts — pending
-- [SEC-04][expiry] bbj-vscode/src/extension.ts — pending
+- [SEC-04][exposure] bbj-vscode/src/extension.ts — fail — `P62-D1-004`. Process arguments: `emValidateCmd` (:415) and `emLoginCmd` (:635) interpolate the raw JWT and the plaintext password respectively as literal shell-command-string arguments passed to `child_process.exec()` (:426, :645) — argv-visible to any process able to enumerate the OS process table; the token leg (:415) is the process-argument-exposure question `65-02`/SEC-04 owns for the whole phase (D-07), and `65-03`/SEC-05 cross-references it rather than re-recording it. Logs: the debug-mode masking at :420/:639 (`emValidateCmd.replace(token, '***')` / `emLoginCmd.replace(`"${password}"`, '"***"')`) is `P62-D1-004`'s own documented fragility — a token or password containing a literal double-quote could break the substring match and leak the raw value into the output channel when `bbj.debug` is set; not re-recorded. Filesystem: this file's own code never writes the secret to a file directly (only argv); the JWT does reach a file, but only inside the process it spawns (`em-login.bbj:41-42`) — cross-ref `P64-D1-002`, the chain this site's spawn creates and the same shared script `BbjEMLoginAction.java` also spawns.
+- [SEC-04][expiry] bbj-vscode/src/extension.ts — fail — `P65-D1-003` (new finding below). `isTokenExpired()` (:339-366) fails open in the identical three ways `P63-D1-004` records for the IntelliJ side: a non-3-part token (:344-346) returns `false`, a payload with no `exp` claim (:355-357) returns `false`, and any parse exception (:363-365) returns `false` — no signature verification anywhere in the function. Unlike a bare decode-only site, this weakness is mitigated for the two currently-used run paths: `ensureValidToken()` (:456-479) always follows the client decode with a mandatory `validateTokenServerSide()` round trip (:471) before either `bbj.runBUI` (:676-679) or `bbj.runDWC` (:683-686) proceeds, deleting and re-prompting on rejection (:473-478) — exactly mirroring `BbjRunBuiAction`/`BbjRunDwcAction`'s own composition. The residual gap matches `BbjEMLoginAction.java`'s exactly: a freshly-acquired token is stored via `context.secrets.store` (:667) without itself being re-validated at that moment. No `P62-D1-*` record names this function as a security concern — Phase 62's own D8 check (`62-COVERAGE.md:344`) read it only for doc-accuracy, never for its fail-open security shape.
 - [SEC-04][acquisition] bbj-vscode/tools/em-login.bbj — pass — the actual authentication call: `token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)` (:39) is the acquisition itself, given `username!`/`password!` read from `ARGV(1)`/`ARGV(2)` (:10-11). A missing username or password is checked explicitly (:15-28) and routes to a written `"ERROR:..."` result rather than calling `getAuthToken` with a null credential, and an authentication failure (`err=authFailed`, :46-51) writes a distinct `"ERROR:Authentication failed..."` marker rather than any partial or default token.
 - [SEC-04][at-rest] bbj-vscode/tools/em-login.bbj — fail — `P64-D1-002`. `open(ch,mode="O_CREATE,O_TRUNC")outputFile!` / `write(ch)token!` (:41-42) writes the raw JWT to the caller-supplied path with no mode, permission or umask control — `P64-D1-002`'s own citation of these exact lines; not re-recorded here.
-- [SEC-04][exposure] bbj-vscode/tools/em-login.bbj — pending
-- [SEC-04][expiry] bbj-vscode/tools/em-login.bbj — pending
+- [SEC-04][exposure] bbj-vscode/tools/em-login.bbj — fail — `P64-D1-002`. Process arguments: this script does not itself spawn a further process (its only external call is the in-process `BBjAdminFactory.getAuthToken` API, :39) — it is the *receiving* end of the argv exposure both IDEs' launchers create (`P62-D1-004` for VS Code's `exec()`, `P63-D1-003` for IntelliJ's `GeneralCommandLine`), not a new spawn site of its own. Logs: `? 'HIDE'` (:8) suppresses console echo; no `write(ch)` call anywhere in the file emits `username!`/`password!`/`token!` to stdout or to any log — clean, per `P64-D1-002`'s own confirmed reading. Filesystem: `open(ch,mode="O_CREATE,O_TRUNC")outputFile!` / `write(ch)token!` (:41-42) writes the raw JWT to the caller-supplied path with no permission control — `P64-D1-002`'s own citation of these exact lines, the reason this site's overall verdict is `fail`.
+- [SEC-04][expiry] bbj-vscode/tools/em-login.bbj — n/a — this script has no expiry-checking responsibility of any kind; it authenticates and returns a fresh token (:39) with no reference to an existing token's validity anywhere in its 51 lines. Expiry is decided by the IDE-side decode functions (`extension.ts:339-366`, `BbjEMTokenStore.java:56-88`) and by `em-validate-token.bbj`'s server-side round trip, not here.
 - [SEC-04][acquisition] bbj-vscode/tools/em-validate-token.bbj — n/a — this script validates an already-acquired token passed in via `ARGV(1)` (:8); it contains no credential prompt and no `getAuthToken`-style acquisition call anywhere in its 34 lines (confirmed by full read) — acquisition happens upstream, in `em-login.bbj` (or the IDE-side login command that invokes it).
 - [SEC-04][at-rest] bbj-vscode/tools/em-validate-token.bbj — n/a — this script never persists the token it receives; every `write(ch)` call site (`:14`, `:25`, `:32`) writes only a fixed validation-outcome marker (`"ERROR:..."`, `"VALID"` or `"INVALID"`), never `token!` itself (confirmed by reading all three `write(ch)` call sites in the file) — the token's at-rest exposure is confined to `em-login.bbj`'s write, not duplicated here.
-- [SEC-04][exposure] bbj-vscode/tools/em-validate-token.bbj — pending
-- [SEC-04][expiry] bbj-vscode/tools/em-validate-token.bbj — pending
+- [SEC-04][exposure] bbj-vscode/tools/em-validate-token.bbj — pass — this script introduces no new exposure of its own: process arguments — like `em-login.bbj`, it spawns no further process (its only external call is the in-process `BBjAdminFactory.getBBjAdmin`, :22); it is the receiving end of the calling IDE's own argv exposure (`P62-D1-004`/`P63-D1-003`), not a second spawn site. Logs: `? 'HIDE'` (:6) suppresses console echo, and every `write(ch)` call site (:14, :25, :32) emits only the fixed `"VALID"`/`"INVALID"`/`"INVALID"` marker, never `token!` itself (confirmed by reading all three). Filesystem: for the same reason, no secret reaches disk from this script — a precision worth stating against `P64-D1-002`'s own prose, which describes `:8-9` as reading the token "the same way" (i.e. via `ARGV`, the same argument channel `em-login.bbj` itself reads from, not a second file-based read) — the token's actual filesystem exposure remains confined to `em-login.bbj`'s write alone, not duplicated here.
+- [SEC-04][expiry] bbj-vscode/tools/em-validate-token.bbj — pass — this is the authoritative server-side mechanism both client-side decoders defer to: `BBjAdminFactory.getBBjAdmin(token!, err=token_invalid)` (:22) attempts an actual admin connection using the token, rather than decoding any claim locally — a token EM itself no longer honors (expired, revoked, or malformed) reaches `token_invalid:` (:29-34) and is reported `"INVALID"` regardless of what either IDE's own `isTokenExpired()` concluded. This is the mechanism `validateTokenServerSide()` on both sides (`extension.ts:396-450`, `BbjRunActionBase.java:280-321`) spawns to get an authoritative answer.
 
 
 **The two-IDE at-rest comparison — ROADMAP criterion 3's own question.**
@@ -806,27 +806,65 @@ site, no gaps.
    concern, visible only by putting both sides' actual storage APIs side by side rather than reading
    either in isolation (D-04 justification 2).
 
+
+**The two-IDE expiry comparison — criterion 3's "end to end" clause.**
+
+1. **What each side actually does.** Both sides run the identical two-step sequence: a fast,
+   client-side JWT `exp`-claim decode (`extension.ts:339-366` / `BbjEMTokenStore.java:56-88`) that
+   fails open on anything it cannot cleanly parse, followed — for every currently-used run path on
+   both sides — by a mandatory, unconditional server round trip through the one shared script,
+   `em-validate-token.bbj`, which asks EM itself whether the token is still honored
+   (`validateTokenServerSide()`, `extension.ts:396-450` and `BbjRunActionBase.java:280-321`).
+2. **What each mechanism can and cannot detect.** The client decode can only catch a **well-formed**
+   JWT with a legible `exp` claim that has already passed; it cannot catch a malformed token, a
+   token with no `exp` claim, or a revoked-but-not-yet-expired token — all three fall through to
+   "not expired" on both sides, identically (`P63-D1-004` / `P65-D1-003`). The server round trip has
+   the opposite shape: it detects revocation and any EM-side invalidation a client-side decode could
+   never see, at the cost of a real network round trip (10s timeout on both sides) on every single
+   run, not only the first after login.
+3. **What each does with an input it cannot classify.** Identically: treat it as "not expired" and
+   defer to the server round trip. Neither side special-cases an ambiguous input by failing closed
+   at the decode step.
+4. **The combined end-to-end position.** A stale token run through either IDE reaches the same
+   outcome: the client decode alone is not authoritative and would wrongly wave through a malformed
+   or `exp`-less token, but the always-subsequent, unconditional call to the shared
+   `em-validate-token.bbj` script is the actual authority for both IDEs' run flows, and it correctly
+   rejects anything EM itself no longer honors. **Agreement is recorded as a positive result with
+   the checks that established it (D-12):** the identical decode shape (line-by-line trace above),
+   the identical mandatory-backstop composition (`BbjRunBuiAction`/`BbjRunDwcAction:75-104` vs.
+   `ensureValidToken:456-479`), and the identical residual gap on both sides — a freshly-acquired
+   token is stored without being re-validated at that moment (`BbjEMLoginAction.java`, cross-ref
+   `P63-D1-004`; `extension.ts`, `P65-D1-003`). **No divergence was found** between the two IDEs on
+   this stage; the weakness that exists is shared, not asymmetric, and each side's instance is
+   recorded under its own owning finding rather than treated as a comparison finding in its own
+   right.
+
 ### Lifecycle Matrix
 
 Stage columns in ROADMAP criterion 3's own order. Every filled cell's token matches its
 corresponding `### Verdicts` line above — the matrix is a **view** of the verdicts, never a second
-record of them. The `exposure` and `expiry` columns carry the placeholder token `pending`, completed
-by Task 2.
+record of them; re-checked cell-for-cell against `### Verdicts` before closing the surface.
 
 | Site | Acquisition | At-rest | Exposure | Expiry |
 |---|---|---|---|---|
-| `BbjEMLoginAction.java` | pass | fail (`P63-D1-005`) | pending | pending |
-| `BbjEMTokenStore.java` | n/a | fail (`P65-D1-002`) | pending | pending |
-| `BbjRunBuiAction.java` | n/a | n/a | pending | pending |
-| `BbjRunDwcAction.java` | n/a | n/a | pending | pending |
-| `extension.ts` | pass | pass | pending | pending |
-| `em-login.bbj` | pass | fail (`P64-D1-002`) | pending | pending |
-| `em-validate-token.bbj` | n/a | n/a | pending | pending |
+| `BbjEMLoginAction.java` | pass | fail (`P63-D1-005`) | fail (`P63-D1-003`) | fail (`P63-D1-004`) |
+| `BbjEMTokenStore.java` | n/a | fail (`P65-D1-002`) | n/a | fail (`P63-D1-004`) |
+| `BbjRunBuiAction.java` | n/a | n/a | fail (`P63-D1-003`) | pass |
+| `BbjRunDwcAction.java` | n/a | n/a | fail (`P63-D1-003`) | pass |
+| `extension.ts` | pass | pass | fail (`P62-D1-004`) | fail (`P65-D1-003`) |
+| `em-login.bbj` | pass | fail (`P64-D1-002`) | fail (`P64-D1-002`) | n/a |
+| `em-validate-token.bbj` | n/a | n/a | pass | pass |
 
 **At-rest comparison summary (`SecretStorage` vs. `BbjEMTokenStore`/`PasswordSafe`):** mechanism
 agreement (both platform-delegated to native-keychain-class storage), guarantee divergence (VS
 Code's binding is fixed, IntelliJ's is user-configurable down to a KeePass file or memory-only) —
-full comparison above; the divergence is `P65-D1-002`.
+full comparison above SEC-04's `### Verdicts`; the divergence is `P65-D1-002`.
+
+**Expiry comparison summary (client-side JWT decode vs. server-side round trip):** both sides run
+the identical fail-open decode followed by the identical mandatory server round trip through the one
+shared `em-validate-token.bbj` script — full comparison above; agreement recorded per D-12, no
+divergence found, and each side's residual "freshly-issued token not re-checked" gap is recorded
+under its own owning finding (`P63-D1-004` for IntelliJ, `P65-D1-003` for VS Code).
 
 ### Findings
 
@@ -893,17 +931,184 @@ disposition:       major-refactor
 ```
 
 
+```
+id:                P65-D1-003
+unit:              SEC-04
+location:          bbj-vscode/src/extension.ts:339-366 (contrasted with
+                   bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:56-88,
+                   P63-D1-004)
+dimension:         D1
+secondary:         [D2]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-11 — no runnable reproduction accompanies this record;
+                    forging a malformed JWT and driving it through the full login/run flow to
+                    observe the fail-open branch fire is exploit construction, out of this static
+                    sweep's scope). isTokenExpired() (extension.ts:339-366) returns false ("not
+                    expired") for exactly the same three inputs P63-D1-004 already records for
+                    BbjEMTokenStore.isTokenExpired(): a non-3-part token (:344-346, "Not a JWT, let
+                    server decide"), a payload with no exp claim (:355-357, "No expiration claim,
+                    can't determine"), and any exception during base64url-decode/JSON-parse
+                    (:363-365, "If any parsing fails, let server validate") — no signature
+                    verification of any kind anywhere in the function. No P62-D1-* record names this
+                    function as a security-relevant defect: Phase 62's own D8 doc-accuracy check
+                    (62-COVERAGE.md:344) read this exact function only to confirm its docstring
+                    matches its implementation ("isTokenExpired's ... docs ... both match their
+                    implementations"), never asking whether the fail-open shape itself is a security
+                    concern — a question outside a single-module review's own D1 checklist for this
+                    file (which recorded P62-D1-003/P62-D1-004 instead, neither about expiry
+                    decoding). Only this cross-cutting SEC-04 sweep, built explicitly to trace expiry
+                    handling end to end across both IDEs (ROADMAP criterion 3), surfaces that VS
+                    Code's client-side decode independently exhibits the identical weakness already
+                    recorded on the IntelliJ side — a gap between the VS-Code-scoped review (Phase
+                    62) and the IntelliJ-scoped review (Phase 63) that neither could see from its own
+                    module alone (D-04 justification 1). The practical exposure is mitigated but not
+                    eliminated by ensureValidToken()'s mandatory server round trip (:456-479, calling
+                    validateTokenServerSide at :471) for both bbj.runBUI (:676-679) and bbj.runDWC
+                    (:683-686) — mirroring BbjRunBuiAction/BbjRunDwcAction's own composition — but the
+                    residual gap matches P63-D1-004's own note for BbjEMLoginAction exactly: a
+                    freshly-acquired token is stored (context.secrets.store, :667) without itself
+                    being re-validated at that moment.
+failure_scenario:  A JWT token that is not well-formed 3-part base64url, whose decoded payload lacks
+                    an exp claim, or whose decode throws for any reason is reported "not expired"
+                    identically to a token with a genuine future exp, by getEMCredentials() (:374-388)
+                    and therefore by ensureValidToken() and getEMCredentials()'s every other caller.
+                    The freshly-issued token stored by the bbj.loginEM handler (:667) is never itself
+                    run through this or any other validator before being persisted, so a malformed or
+                    substituted token at that exact moment would be accepted into SecretStorage
+                    silently — the run flows remain protected only because ensureValidToken's separate
+                    server round trip (:471) is unconditional, not because this decode caught anything.
+classification:    major
+                    (1) touches 1 file: pass — confined to extension.ts — (2) no public API/grammar/
+                    LSP change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest: pass (isTokenExpired is a pure function over a string input; the five
+                    branches — well-formed-expired, well-formed-valid, malformed, no-exp, and
+                    parse-exception — are all directly testable with no VS Code API mock needed) —
+                    (5) reviewer can name the exact edit: pass (change the three "unable to determine"
+                    branches at :345,:356,:364 to return true — fail closed — matching the exact edit
+                    P63-D1-004 already proposes for its own IntelliJ analog) — (6) severity medium but
+                    primary dimension D1: FAIL — test (6) fails on the D1 clause alone, so
+                    classification is major regardless of the other five tests (D-13's safety gate).
+effort:            4
+dedup:             none — no frozen open issue names JWT expiry-decoding fail-open behaviour in the
+                    VS Code extension.
+disposition:       major-refactor
+```
+
+
 ### Not-reproducible dispositions
 
-*Filled by plan `65-02`.*
+None. Every claim raised while sweeping SEC-04 — including the at-rest and expiry comparisons — was
+settled by a direct code trace with concrete `file:line` citations (see `### Verdicts`, the at-rest
+comparison and the expiry comparison above); no claim required constructing an unconfirmable exploit
+(capturing another process's live argument list, racing `BbjEMLoginAction.java`'s/`em-login.bbj`'s
+temp-file permission window, forging or replaying a JWT, or changing a live IntelliJ "Save
+passwords" preference and observing `PasswordSafe`'s resulting backend). Where a reproduction was
+genuinely out of this static sweep's own scope, each finding's own `evidence:` field says so
+explicitly (`P65-D1-002`, `P65-D1-003`, per D-11) rather than promoting the claim on plausibility.
 
 ### Cross-references
 
-*Filled by plan `65-02`. Ledger rows naming SEC-04: `P62-D1-004`, `P63-D1-003`, `P63-D1-004`, `P63-D1-005`, `P64-D1-001`, `P64-D1-002` (6 rows).*
+**`P62-D1-004`** (`bbj-vscode/src/extension.ts:415,420,639`, medium severity) — establishes
+`extension.ts`'s process-argument exposure of both the JWT (`:415`) and the login password (`:635`,
+which this record's own evidence also traces) and the log-masking fragility at `:420`/`:639`.
+**Confirmed and extended**: this sweep's `extension.ts` exposure verdict cites it directly for both
+secrets and adds the filesystem half `P62-D1-004` does not itself cover — the JWT reaching a file
+via the spawned `em-login.bbj` (`P64-D1-002`), the chain this site's own spawn creates.
+
+**`P63-D1-003`** (four IntelliJ call sites, high severity) — establishes the IntelliJ half of the
+token/password-as-process-argument exposure. **Confirmed against each of its four sites
+individually** (`BbjEMLoginAction.java`'s password leg; `BbjRunActionBase.java`'s, `BbjRunBuiAction`'s
+and `BbjRunDwcAction`'s token leg) rather than at summary level. **This is the record `65-03`/SEC-05
+cross-references for the token-as-process-argument question SEC-04 owns outright per D-07** — see
+the explicit handoff line below.
+
+**`P63-D1-004`** (`BbjEMTokenStore.java:56-88`, medium severity) — establishes the IntelliJ-side
+fail-open JWT decode. **Confirmed** for its own file, unmodified, and **extended**: this sweep shows
+the identical decode shape independently present in `extension.ts`'s `isTokenExpired` — recorded as
+the new `P65-D1-003` (a different file, outside a single-module review's own scope) rather than
+folded into this ID, per D-04's rule against re-recording under a re-used owner.
+
+**`P63-D1-005`** (`BbjRunActionBase.java:295`, `BbjEMLoginAction.java:96`, medium severity) —
+establishes the IntelliJ temp-file permission gap. **Confirmed** for `BbjEMLoginAction.java`'s
+citation exactly, cited unmodified in this sweep's at-rest and exposure verdicts for that site; this
+sweep additionally notes (in the at-rest verdicts for `BbjRunBuiAction.java`/`BbjRunDwcAction.java`)
+that the record's *other* cited call site (`BbjRunActionBase.java:295`) carries only the non-secret
+`VALID`/`INVALID` marker, not the token itself — a precision on scope, not a disagreement with the
+permission-gap finding, which remains valid and unmodified at both call sites.
+
+**`P64-D1-001`** (`bbj-vscode/tools/web.bbj:30-31`, medium severity) — the hardcoded EM
+administrator credential fallback. **Not one of SEC-04's 7 enumerated sites**: `web.bbj` is not
+matched by the register's own derivation command (`grep -rl 'EMToken\|emToken\|EM_TOKEN\|em\.token'`
+— confirmed by re-running it, `web.bbj` is absent from the output). It is topically part of the same
+EM-login flow the enumerated sites belong to, so it is cross-referenced here as **context establishing
+nothing further for SEC-04's own enumerated surface** — no `[SEC-04]` line discharges it, and none
+should, since it was never enumerated.
+
+**`P64-D1-002`** (`bbj-vscode/tools/em-login.bbj:10-13,41-43`, high severity) — establishes the
+plaintext-JWT-to-file write and the shared ARGV-intake shape across `em-login.bbj`, `web.bbj` and
+`em-validate-token.bbj`. **Confirmed** for `em-login.bbj`'s write at `:41-43`, cited unmodified in
+this sweep's at-rest and exposure verdicts for that site. This sweep also states a precision (in
+`em-validate-token.bbj`'s exposure verdict): the record's own prose describing
+`em-validate-token.bbj:8-9` as reading the token "the same way" is accurate for the ARGV-channel
+claim (both lines are `ARGV(...)` reads, confirmed by direct read) but is stated more precisely as
+such here, since a literal reading of "reads the token back" could suggest a second file-based read
+that does not exist — `em-validate-token.bbj` never writes the token to disk at all (see its at-rest
+and exposure verdicts). This precision changes no severity, classification or disposition of
+`P64-D1-002`, which remains the correct, unmodified owner of the filesystem-write finding.
+
+**D-07 handoff to `65-03`/SEC-05.** The token-as-process-argument question is answered, once, in this
+surface: the `[SEC-04][exposure]` lines for `BbjRunBuiAction.java`, `BbjRunDwcAction.java` (token leg,
+discharged by `P63-D1-003`) and `extension.ts` (token leg, discharged by `P62-D1-004`), plus
+`BbjEMLoginAction.java`'s password leg (`P63-D1-003`) and `em-login.bbj`'s receiving-end exposure
+(`P64-D1-002`). `65-03`/SEC-05 cross-references these five verdict lines and their two discharging IDs
+by ID rather than re-recording them, per D-07.
 
 ### Surface closure
 
-*Filled by plan `65-02`.*
+**Four-part stopping rule, discharged part by part.**
+
+(i) **Every enumerated item carries a verdict, no placeholder remains.** Within this section,
+`grep -cE '^- \[SEC-04\]\[[a-z-]+\] .* — pending$'` prints `0`; all 28 `[SEC-04]` lines above carry
+`pass`, `fail` or `n/a` (no `undetermined` was needed anywhere on this surface).
+
+(ii) **Every `pass` names concrete checks with `file:line` anchors; every `fail` names a discharging
+ID, new (`P65-D1-002`, `P65-D1-003`) or inherited (`P62-D1-004`, `P63-D1-003`, `P63-D1-004`,
+`P63-D1-005`, `P64-D1-002`); every `n/a` carries a written reason naming where the stage happens
+instead.** No `undetermined` verdict was needed — every candidate resolved cleanly to one of the
+other three (see (iii)).
+
+(iii) **Every candidate claim raised during the sweep was either promoted to a finding or written
+under `### Not-reproducible dispositions`.** Two claims were promoted: `P65-D1-002` (the at-rest
+`SecretStorage`/`PasswordSafe` backend-guarantee asymmetry) and `P65-D1-003` (VS Code's independently
+fail-open `isTokenExpired`). `### Not-reproducible dispositions` is correctly empty — nothing on this
+surface required constructing an unconfirmable exploit.
+
+(iv) **Every ledger row whose Surfaces column names SEC-04 carries a written cross-reference.** All
+six such rows — `P62-D1-004`, `P63-D1-003`, `P63-D1-004`, `P63-D1-005`, `P64-D1-001`, `P64-D1-002` —
+are cross-referenced in `### Cross-references` above; `P64-D1-001` explicitly as context establishing
+nothing further, since `web.bbj` is not one of this surface's 7 enumerated sites. Zero inherited
+items were dropped.
+
+**Live-derived denominator vs. D-02 baseline.** The live derivation command
+(`{ grep -rln 'EMToken\|emToken\|EM_TOKEN\|em\.token' bbj-vscode/src bbj-intellij/src; ls
+bbj-vscode/tools/em-login.bbj bbj-vscode/tools/em-validate-token.bbj; } | sort -u`) reproduces exactly
+**7 sites**, agreeing with D-02's baseline of 7 with **no drift** (re-confirmed live at this task's
+own execution time, in `### Enumeration` above). The 28-item enumeration (7 sites × 4 stages) is
+fully resolved with no placeholder line remaining.
+
+**What SEC-04 hands to `65-03` and to the close-out's requirement gate.** ROADMAP criterion 3 is
+discharged: the EM token lifecycle is traced end to end across `BbjEMTokenStore`, `em-login.bbj`,
+`em-validate-token.bbj` and VS Code's `SecretStorage`, with the two comparisons criterion 3 explicitly
+names — at-rest (`SecretStorage` vs. `PasswordSafe`) and expiry (client decode vs. server round trip)
+— each answered as a comparison, one yielding a genuine asymmetry (`P65-D1-002`) and the other a
+genuine agreement (D-12, no divergence). The token-as-process-argument question is settled once, with
+its owning verdict lines and discharging IDs named above for `65-03`/SEC-05 to cross-reference under
+D-07. Three new findings in total (`P65-D1-001` carried in from `65-01`'s SEC-02 sweep is unaffected
+by this section; `P65-D1-002` and `P65-D1-003` are this section's own), continuing the phase's
+`P65-D1-nnn` sequence monotonically; the next allocation in this phase is `P65-D1-004`.
+
+**SEC-04 is closed.**
 
 ## SEC-05 — Process-spawn argument & command injection
 
