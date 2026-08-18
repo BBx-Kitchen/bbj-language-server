@@ -166,11 +166,11 @@ These two are **not** counted by any gate and are **not** rows in the ledger abo
 - D1 Security — fail — Checked against REQUIREMENTS.md's D1 wording (injection, untrusted input, secret exposure, integrity gaps, privilege/trust-boundary errors), on the four readable files. **EM credential intake:** `em-login.bbj:10-11` takes the username and password as `ARGV(1)`/`ARGV(2)` and `web.bbj:19-20` takes them as `ARGV(5)`/`ARGV(6)`, with the JWT arriving at `web.bbj:22` as `ARGV(8)` — every one of them a process argument; `em-login.bbj:41-43` then writes the raw token to the caller-supplied path `outputFile!` with `open(ch,mode="O_CREATE,O_TRUNC")` and no mode, permission or umask control, and `em-validate-token.bbj:8` takes the token the same way. Recorded as `P64-D1-002`. **Credential fallback:** `web.bbj:30-31` substitutes the literal well-known defaults `admin`/`admin123` when neither `ARGV(5)` nor `ARGV(6)` is supplied, so the script fails *open* into a privileged EM login instead of failing closed — recorded as `P64-D1-001`. **Failure/unreachable paths:** `em-login.bbj:46-51` and `em-validate-token.bbj:29-34` both write a fixed marker (`ERROR:...` / `INVALID`) rather than the exception text, so no EM diagnostic string leaks into the temp file; neither script echoes the token to stdout (`? 'HIDE'` at `em-login.bbj:8` and `em-validate-token.bbj:6`) and neither logs it. **Constructed values:** `web.bbj` builds no URL, path, command string or classpath from a value it did not itself produce — `sscp!` (`:21`) and `configFile!` (`:23`) are passed straight into `app!.setString` (`:79`, `:83`) as EM configuration values, `url!` (`:90`) comes from `getDwcUrl`/`getBuiUrl` on the EM side, and there is no string concatenation into any executable form anywhere in the file. **`run-tests.ts`:** it spawns no process at all (no `child_process` import — `:16-19` imports only `node:net`, `node:fs`, `node:path` and `node:util`), reads no environment variable, and writes exactly one file, `OUTPUT_PATH` (`:43-45`, `:1038`), whose value is either a developer-supplied `--output` or a path resolved beside the script itself; the one network connection is to `--host`/`--port`, defaulting to `127.0.0.1:5008` (`:32-33`, `:142`), an unauthenticated JSON-RPC peer whose responses are attacker-controlled if the peer is. Those responses are embedded into the generated HTML report, and the escaping order is **correct**: `escapeHtml` runs at `:706` and `:708` **before** `syntaxHighlightJson`, and every remote-derived interpolation site (`:687-698`, `:715-719`, `:729-731`, `:740-743`, `:943`) passes through `escapeHtml` (`:596-598`) into a text node or a double-quoted attribute whose value is a computed literal, so no injection path into the report exists — a positive result recorded rather than left silent. The EM token lifecycle end to end is **Phase 65's SEC-04**, and process spawning across both IDEs is **SEC-05**; this unit records its own leg with full evidence and cites that boundary rather than attempting the lifecycle here.
 - D2 Correctness & error handling — fail — Checked against null/undefined safety, unhandled rejections, swallowed exceptions, async races, off-by-one, wrong edge-case behaviour and resource leaks, across the four readable files. **`run-tests.ts` verdict reporting:** test case 14 returns a hardcoded `status: 'pass'` at `:510` and test case 17 returns one at `:579` and again at `:584`, in all three places *after* pushing assertions that the return value then ignores — so a failed assertion in either case is rendered green by the console icon (`:1016`) and by the report's status badge (`:739`) while `main`'s exit-code test at `:1042-1048` still counts `r.assertions.some(a => !a.passed)`; recorded as `P64-D2-001`. **`run-tests.ts` dead highlighting:** `generateReport:706-708` escapes before highlighting, and `escapeHtml:597` turns every `"` into `&quot;`, so the two regexes at `:602` and `:605` that require a literal `"` can never match — reproduced in isolation, 0 key spans and 0 string spans as shipped versus 4 and 1 on the same input unescaped; recorded as `P64-D2-002`. **`.bbj` error paths:** `web.bbj` declares `err=` on exactly two calls, both logins (`:27`, `:32`), and on the five `ARGV` reads (`:19-23`); the six EM/API calls that follow a successful login (`:34`, `:54`, `:70`, `:87`, `:90`, `:91`) carry none, so the only user-facing failure message the script has — the `MSGBOX` at `:97` under `login_failed:` — is unreachable from any of them; recorded as `P64-D2-003`. `em-login.bbj` and `em-validate-token.bbj` both fail closed and are caller-distinguishable (an `ERROR:` prefix or the literal `INVALID` versus a bare token or `VALID`), and every exit path closes its channel (`:19`, `:26`, `:43`, `:50` and `:15`, `:26`, `:33`), so no leaked file handle exists on any branch. **Async and resource handling in `run-tests.ts`:** every `sendRequest` is awaited inside a `try` with a matching `catch` that converts the rejection into an `error`-status result (`:163-192` and the five inline runners at `:426-453`, `:461-487`, `:495-516`, `:523-542`, `:550-564`, `:572-589`), the connect timer is cleared on both settle paths (`:140-141`), the top-level `main()` carries a `.catch` (`:1055-1058`), and `conn.dispose()` at `:1026` runs before the report write — no unhandled rejection and no un-awaited promise found. Two candidate claims did not clear the `repro` bar and are written under `### Not-reproducible dispositions` rather than dropped.
 - D3 Performance & resource use — pass — Checked against hot-path cost, quadratic walks, missing caches or debounces, redundant work and unbounded memory growth. **Connection reuse:** `main` connects once at `:994` and passes the single `conn` into `defineTests` at `:1003`, so all 17 cases share one socket — no per-case reconnect, no per-case file re-read (the harness reads no file at all). **Loop shape:** the driver at `:1010-1023` is strictly linear in the case count with no nested pass over the corpus; `buildMatrixRow` (`:224-252`) makes four `countWhere` passes and four `.some` passes over the same two arrays, i.e. O(methods + fields) per row for the 9 rows selected at `:1008`, never O(n squared); the six `results.filter` calls at `:652-654` and `:1029-1031` each walk a 17-element array. **Memory:** `results` (`:1004`) retains every response for the run — bounded by 17 responses, and only `getClassInfos('java.lang')` at `:426` is large — while report growth is explicitly capped by `truncateJson(_, 3)` at `:707`, which stops at depth 3 (`:620`) and slices arrays to the first 5 with a count marker (`:624-626`), so HTML size does not scale with response size. No spawned process exists to accumulate output from. **`.bbj` scripts:** `web.bbj:41-50` walks the registered-application list once per launch to find a name match with no cache — linear, once per user-initiated run, over an EM-sized list, so latent rather than active; `em-login.bbj` and `em-validate-token.bbj` each perform a single EM round trip and one file write. One latent division-by-zero-shaped cost at `:966-968` (`passCount / total`) is unreachable today because `defineTests` returns a fixed 17-element array; stated as latent and **not** promoted to a finding on volume alone, per the standard that a cost which is latent rather than active is said to be so.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked against duplication, god functions, dead code, tangled coupling, inconsistent patterns and missing abstractions, on a mechanical basis wherever one exists rather than on an eyeball impression. **Where the bulk of `run-tests.ts` sits:** `grep -nE '^(async )?function '` returns **18** top-level declarations; measuring their spans shows **two of them hold 666 of the file's 1,058 lines (63%)** — `defineTests` at `:256-592` (337 lines) and `generateReport` at `:651-979` (329 lines, of which `:760-978` is one unbroken 219-line HTML/CSS template literal). The remaining 16 declarations share the other ~390 lines, the largest being `main` at `:983-1053` (71) and `runGetClassInfo` at `:154-193` (40), so no third function is anywhere near god-function size — the problem is exactly two functions, which is a narrower and more actionable statement than "the file is long". **Test cases: half factored, half copy-pasted.** Cases 1-11 are one-line closures delegating to the shared `runGetClassInfo` helper (`:259`, `:295`, `:309`, `:322`, `:347`, `:364`, `:372`, `:385`, `:395`, `:406`, `:416`). Cases 12-17 (`:422`, `:457`, `:491`, `:520`, `:546`, `:568`) are six inline async closures that each re-implement the *same* scaffold the helper already provides — `performance.now()` start, `try`, `sendRequest`, assertion accumulation, a literal `TestResult` object, `catch` producing an `error`-status `TestResult` — at roughly 30 lines each, about 180 duplicated lines. The file therefore has a factored path and a copy-pasted path for one job, and that duplication is not cosmetic: it is exactly why `P64-D2-001`'s hardcoded `status: 'pass'` could diverge in two of the six copies while the other four correctly compute `failed`. Recorded as `P64-D4-001`. **Dead code:** `grep -n 'criticalFields'` over the file returns exactly **one** line — the declaration at `:659` — so the eight-element array naming the fields the report calls critical is written and never read; the code that actually decides criticality, at `:1045`, hardcodes a different, shorter list. Recorded as `P64-D4-002`. Every other helper is referenced (`typeOf` at `:113` and `:431`, `countWhere` at `:229-232` and `:317`, `statusBadge` at `:739`, `validateParameterFields` at `:265`), and no commented-out block or unreachable branch was found. **Setup/teardown:** factored once — a single `connect` at `:994` shared by all 17 cases and a single `conn.dispose()` at `:1026`; no per-case setup is repeated. **The three `.bbj` scripts:** they do share a copy-pasted output idiom — the four-line `ch=unt` / `open(ch,mode="O_CREATE,O_TRUNC")outputFile!` / `write(ch)...` / `close(ch)` block appears 4 times in `em-login.bbj` (`:16-20`, `:23-27`, `:40-44`, `:47-51`) and 3 times in `em-validate-token.bbj` (`:12-16`, `:23-27`, `:30-34`), seven copies in 85 combined lines. Recorded as an observation rather than a finding, and the judgement is stated rather than hidden: these are 34-to-51-line flat stub scripts where a shared helper would cost more indirection than the duplication does, and the copies are local, identical and bounded. **Inconsistent pattern, observed not asserted:** `em-login.bbj:33` and `em-validate-token.bbj:20` both declare `use com.basis.api.admin.BBjAdminFactory`, while `web.bbj` calls `BBjAdminFactory.getBBjAdmin` at `:27` and `:32` with no `use` statement anywhere in the file. Whether that resolves through a default import is a BBj language question this sweep cannot settle without an interpreter, so it is recorded as an inconsistency between three sibling scripts and not promoted to a correctness claim. **Coupling of the `tools/` layout:** the directory shape this unit owns is a contract reproduced by two independent consumers with no shared constant — `document-formatter.ts:10` hardcodes `${__dirname}/../tools/formatter/BBjCFCli.jar`, and `bbj-intellij/build.gradle.kts:100-107` and `:123-128` copy `web.bbj`, `em-login.bbj` and `em-validate-token.bbj` by name into `resources/main/tools` and `lib/tools`. Moving or renaming anything under `tools/` silently breaks one or both. No Phase 64 finding is located in either file — the first is `RU-62-02`'s and closed, the second is `RU-64-02`'s and swept by plan `64-03` — so the coupling is recorded here, where it is observable, and referred rather than relocated.
+- D5 Test coverage gaps — fail — Read per D-15 as "is the test surface this unit owns real and reachable", not as "is this file covered" in the abstract, and established by enumeration with each command's output recorded rather than by assumption. **Is `run-tests.ts` exercised by anything?** No. `find bbj-vscode/tools -name '*.test.ts' -o -name '*.spec.ts' | wc -l` prints `0`. A repository-wide `grep -rn 'run-tests|interop-test-harness'` excluding `node_modules/` and `.planning/` returns exactly two kinds of hit: `.gitignore:22` (which ignores the `report.html` the harness writes) and the file's own usage comment at `:11-13`. None of the 15 `bbj-vscode/package.json` scripts invokes it — `test` is `vitest run` and `test:bbj` is `RUN_BBJ_TESTS=1 vitest run`, neither of which reaches `tools/`. So a 1,058-line test harness is itself entirely untested, and is only ever run by hand. **Is it even type-checked or linted?** No, and this is the part that is new here rather than merely absent. `tsconfig.json`'s `include` is `["src/**/*.ts"]` and `tsconfig.test.json`'s is `["test/**/*"]`, so `npm run build` (`tsc -b tsconfig.json && node ./esbuild.mjs`) never compiles it; `npm run lint` is `eslint src test`, so ESLint never sees it. The whole `tools/` tree sits outside every test, type-check and lint boundary the project has. **How is it invoked, and is that path reachable in this checkout?** Only as `npx tsx tools/interop-test-harness/run-tests.ts`, documented in the file's own header at `:9-13` and **nowhere else** — not in `package.json`, not in `CLAUDE.md`, not in any workflow. Its precondition is a reachable java-interop peer, defaulting to `127.0.0.1:5008` (`:32-33`). And the invocation is **not reachable offline**: `tsx` is undeclared and absent from `node_modules/` (see `P64-D6-001`), so the one documented way to run this harness requires a live registry fetch. **Is it at least a CI subject?** No, though it is a CI *trigger*: `.github/workflows/pr-validation.yml:11` lists `bbj-vscode/tools/**` among its `paths:` filters, so editing this file starts a workflow — one that builds `bbj-vscode` and `bbj-intellij` and never executes the harness. Trigger without subject is a sharper statement than "no CI coverage" and is recorded as such; the workflow file itself is `RU-64-01`'s and plan `64-02` sweeps it. **Do the three `.bbj` scripts have any regression surface?** None. `example-files.test.ts:14-17` auto-parses every `.bbj` under `bbj-vscode/test/test-data/` only, so `tools/*.bbj` is not even in the parse-regression corpus, let alone behaviourally tested. **Already-owned debt, cross-referenced rather than re-recorded (D-15):** the 11 known-failing `linking.test.ts` tests are routed by INVENTORY's routing table to Phase 61 and belong to `RU-61-06`, and the 3 disabled `parser.test.ts` assertions are owned by **DEBT-02**. Neither is re-recorded here and neither is counted in this cell; this unit's D5 adds only what is new, which is that `tools/` is outside every quality gate the repository operates. Recorded as `P64-D5-001`.
 - D6 Dependency health — fail — Checked against outdated or vulnerable dependencies, license issues and unpinned artifacts, on the unit row's four readable files (the three JAR rows carry their own D6 cells below). **Declared third-party surface:** `run-tests.ts:16-19` imports only Node builtins (`node:net`, `node:fs`, `node:path`, `node:util`) and `:20-26` imports `vscode-jsonrpc/node`, which **is** declared — `bbj-vscode/package.json` lists `vscode-jsonrpc: ^8.2.1` under `dependencies` — and is therefore visible to `npm audit`, to the lockfile and to `.github/dependabot.yml`'s npm ecosystem entry; that is the good case and is recorded as such. The three `.bbj` scripts `use` only BBj-provided and JDK-provided types (`java.net.InetAddress` and `java.util.HashMap` at `em-login.bbj:31-32`, `com.basis.api.admin.BBjAdminFactory` at `em-login.bbj:33` and `em-validate-token.bbj:20`, implicitly at `web.bbj:27`), so they introduce no third-party artifact of their own. **Undeclared tool dependency:** the shebang at `run-tests.ts:1` and the file's own documented usage at `:11-13` both invoke `npx tsx`, and `tsx` appears in neither `dependencies` nor `devDependencies`; `grep -c '"node_modules/tsx"' bbj-vscode/package-lock.json` prints `0` and `ls bbj-vscode/node_modules/tsx` reports it absent, so the only documented way to execute this file resolves an undeclared, unpinned, unlockfiled package from the public registry at run time — invisible to `npm audit`, to the lockfile and to Dependabot alike. Recorded as `P64-D6-001`. The npm and Gradle dependency trees themselves are `RU-64-02`'s, swept in plan `64-03`; this cell stays on what these four files themselves reach for, which is D-02's ordering rationale working as intended.
 - D7 Cross-IDE parity — n/a — R-D7-CI — "This surface governs build/CI/packaging output, not end-user-observable IDE runtime behavior; there is no parity claim to make between two IDEs about a shared build pipeline or a shared vendored tool invoked identically by both."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every header comment, function comment and inline explanation in the four readable files against the code beneath it, with particular attention to any comment claiming a validation, a default, an ordering or a precondition. **`run-tests.ts` header (`:2-14`), two claims:** "exercises all 4 API methods" is **accurate** — four `RequestType`s are declared at `:53-56` and all four are exercised (`getClassInfo` by cases 1-11, `getClassInfos` by 12-14, `getTopLevelPackages` by 15, `loadClasspath` by 16-17). "validates every critical field the LS depends on" is **contradicted by the code that decides what critical means**: the eight-field list at `:659` is declared and never read (see `P64-D4-002`), while the gate at `:1045` hardcodes only `['isStatic', 'isDeprecated', 'constructors']` — three of the eight. **`run-tests.ts` usage block (`:9-13`)** documents `--host`, `--port` and `--output` but not `--timeout`, which `parseArgs` accepts at `:35` under `strict: true`, which defaults to `15000ms`, and which `main` prints back to the user at `:987` — so the harness advertises three options and honours four. Both mismatches sit in the same header block and are recorded together as `P64-D8-001`. **Inline comments, all checked and all accurate:** `:341` ("Math has a private constructor, so constructors should be empty or absent") matches the assertion at `:342-343`; `:396` ("Primitives may return a minimal object or error — both are acceptable") matches `:397-402`; `:1007` ("Classes for the field presence matrix (tests 1-8, 11)") matches `matrixTestIndices` at `:1008` exactly, indices 0-7 being tests 1-8 and index 10 being test 11; `:1043` ("Connection errors don't count as field failures") matches the `status === 'error'` early return beneath it. `:469` hedges about Guava's `ClassPath.getTopLevelClasses()` behaviour on the server side, which this sweep cannot verify and which asserts nothing about this file — noted, not recorded. `:582` and `:584` ("An error response is also acceptable for invalid paths" / "Graceful error is a pass") accurately document the catch branch, but not the success branch at `:577-579`, where the same hardcoded `pass` also swallows a failing `Returns boolean` assertion the comments say nothing about — the behaviour recorded as `P64-D2-001` is therefore under-documented as well as wrong, which is noted here rather than double-counted as a second finding. **`.bbj` headers, all checked and all accurate:** `web.bbj:1-11` lists nine parameters in order and `:15-23` reads `ARGV(1)` through `ARGV(9)` in that same order with the same meanings; `web.bbj:62-67` and `:76-77` describe the `"--"` sentinel handling and issue #382 exactly as `:68-74` and `:78-80` implement it; `em-login.bbj:1-6` and `em-validate-token.bbj:1-4` list their parameters correctly against `:10-13` and `:8-9`. One imprecision, recorded as an observation and not a finding because nothing acts on it: `em-login.bbj:1` says the stub "returns JWT token" when `:41-43` writes it to the output file rather than returning it, which the same header's own parameter 3 already makes clear. **`CLAUDE.md`, checked and stale — and routed, not claimed.** `CLAUDE.md:92` lists "Run tools: `web.bbj`, `em-login.bbj`" under what both IDEs share. That enumeration is incomplete: `bbj-intellij/build.gradle.kts:100-107` and `:123-128` copy **three** files — `web.bbj`, `em-login.bbj` **and** `em-validate-token.bbj` — into `resources/main/tools` and `lib/tools`, and all three are present in the built output. `CLAUDE.md`'s `npm test` and `npm run test:bbj` descriptions, by contrast, match `package.json` exactly. **`CLAUDE.md` is `RU-D8-01`'s file, `RU-D8-01` is owned by no sweep phase (D-18), and no Phase 64 plan may allocate a finding there** — so this is recorded as a written observation naming the row that owns it, and no `P64-*` ID is issued against it. Where `CLAUDE.md` is merely *silent* — it never mentions `run-tests.ts`, the interop harness, or the vendored formatter JARs — that silence contradicts nothing and is noted as silence rather than promoted to a finding. **Classification note:** a D8 fix that changes only comment text changes no runtime behaviour, so it can be `easy` when the other five INVENTORY 3c tests pass. `P64-D8-001` is recorded as `major` anyway, and the record states which reading was applied and why.
 
 ### File-exception cells
 
@@ -235,7 +235,7 @@ This subsection states facts against the actual artifacts — "there is no check
 
 ### Findings
 
-Eight records, all `unit: RU-64-03` including the three whose `location:` is a JAR path. Every `dedup:` is checked against INVENTORY's frozen 15-issue snapshot, in which **0 of 15** carry the `dependencies` area label and **0 of 15** name CI, a workflow, build configuration or a vendored binary — re-derived in this file's header rather than assumed.
+Twelve records, all `unit: RU-64-03` including the three whose `location:` is a JAR path. Every `dedup:` is checked against INVENTORY's frozen 15-issue snapshot, in which **0 of 15** carry the `dependencies` area label and **0 of 15** name CI, a workflow, build configuration or a vendored binary — re-derived in this file's header rather than assumed.
 
 ```
 id:                P64-D1-001
@@ -670,6 +670,205 @@ disposition:       major-refactor — **the fix this asks for is provenance, not
                    Filed by Phase 69; not applied by Phase 67.
 ```
 
+```
+id:                P64-D4-001
+unit:              RU-64-03
+location:          bbj-vscode/tools/interop-test-harness/run-tests.ts:256-592,651-979
+dimension:         D4
+secondary:         none
+severity:          low
+evidence_tier:     trace
+evidence:          Written trace naming the code shape, which is what D4's tier requires; the
+                   measurements below are mechanical rather than impressionistic.
+                   `grep -nE '^(async )?function ' run-tests.ts` returns 18 top-level declarations.
+                   Two of them hold 666 of the file's 1,058 lines: `defineTests` at `:256-592`
+                   (337 lines) and `generateReport` at `:651-979` (329 lines, `:760-978` of which is
+                   one 219-line HTML/CSS template literal). No other declaration approaches that —
+                   the next largest are `main` at `:983-1053` (71) and `runGetClassInfo` at
+                   `:154-193` (40). Inside `defineTests` the 17 cases split into two populations:
+                   cases 1-11 (`:259`, `:295`, `:309`, `:322`, `:347`, `:364`, `:372`, `:385`,
+                   `:395`, `:406`, `:416`) are one-line closures delegating to the shared
+                   `runGetClassInfo` helper, while cases 12-17 (`:422`, `:457`, `:491`, `:520`,
+                   `:546`, `:568`) are inline async closures that each re-implement that helper's
+                   whole scaffold — timing start, `try`, `sendRequest`, assertion accumulation, a
+                   literal `TestResult`, and a `catch` producing an `error`-status `TestResult` — at
+                   roughly 30 lines apiece, about 180 duplicated lines. The abstraction that would
+                   remove the duplication already exists in the file and is used by two thirds of
+                   the cases.
+failure_scenario:  A maintainer adds an eighteenth test case for a method that returns something
+                   other than a class-info object, so `runGetClassInfo` does not fit and the case is
+                   written by copying case 16 or 17 — the established pattern for that shape. The
+                   copy carries whatever the source copy got wrong. That is not hypothetical: it is
+                   exactly how `P64-D2-001` came about, with two of the six copies (`:510`, `:579`
+                   and `:584`) returning a hardcoded `status: 'pass'` while the other four compute
+                   `failed` correctly at `:446`, `:480`, `:535` and `:557`. The next divergence has
+                   the same shape and the same probability of going unnoticed, because there is no
+                   single place where the case protocol is defined.
+classification:    major — (1) at most one file: PASS. (2) no public API change: PASS. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   FAIL — `tools/` is outside `tsconfig.json`'s include (`src/**/*.ts`), outside
+                   `tsconfig.test.json`'s (`test/**/*`), outside `npm run lint` (`eslint src test`)
+                   and outside vitest's default pattern, and the module self-executes `main()` at
+                   `:1055`, so a regression test needs new infrastructure. (5) reviewer can name the
+                   exact edit: PASS — generalise `runGetClassInfo` over the request type so cases
+                   12-17 delegate to it, and split the report's template literal out of
+                   `generateReport`. (6) severity is neither critical nor high AND primary dimension
+                   is not D1: PASS. One test fails, so `major`.
+effort:            8
+dedup:             none — no issue in the frozen 15-issue snapshot concerns the interop test
+                   harness, its structure, or code organisation anywhere under `bbj-vscode/tools/`.
+disposition:       major-refactor — recorded for Phase 68's `MAJOR-REFACTORS.md`; not applied here.
+```
+
+```
+id:                P64-D4-002
+unit:              RU-64-03
+location:          bbj-vscode/tools/interop-test-harness/run-tests.ts:659
+dimension:         D4
+secondary:         none
+severity:          low
+evidence_tier:     trace
+evidence:          Written trace with a mechanical basis. `grep -n 'criticalFields' run-tests.ts`
+                   returns exactly **one** line, the declaration at `:659`:
+                   `const criticalFields = ['isStatic', 'isDeprecated', 'constructors', 'name',
+                   'returnType', 'type', 'parameters', 'packageName'];`. It is never read anywhere
+                   in the 1,058 lines. The code that actually decides what counts as a critical
+                   field is `:1045`, which hardcodes its own, different, three-element list inline.
+                   So the file contains two definitions of "critical field", one authoritative and
+                   one inert, and the inert one is the longer and more plausible-looking of the two.
+                   This is also the reason `run-tests.ts:6`'s header claim about validating "every
+                   critical field" reads as true to anyone who greps for the term — see
+                   `P64-D8-001`.
+failure_scenario:  A maintainer extends the critical-field set by editing `:659`, which is the
+                   obvious place and the only place the phrase is defined as a list. Nothing
+                   changes: the report still passes and the exit code is still decided by the three
+                   hardcoded names at `:1045`. The edit is silently inert, and the reviewer of that
+                   change has no signal that it did nothing.
+classification:    major — (1) at most one file: PASS. (2) no public API change: PASS. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   FAIL, for the same reasons as `P64-D4-001`. (5) reviewer can name the exact edit:
+                   PASS — either delete `:659` or make `:1045` derive its list from it. (6) severity
+                   is neither critical nor high AND primary dimension is not D1: PASS. One test
+                   fails, so `major`. Recorded rather than waved through as trivial precisely
+                   because the trivial reading is what leaves the inert definition in place.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about the interop harness
+                   or dead code anywhere in the repository.
+disposition:       major-refactor — small edit, `major` by INVENTORY 3c test (4); it does not enter
+                   Phase 67's `easy` apply path without a `MAJOR-REFACTORS.md` record first.
+```
+
+```
+id:                P64-D5-001
+unit:              RU-64-03
+location:          bbj-vscode/tools/interop-test-harness/run-tests.ts:1-1058
+dimension:         D5
+secondary:         none
+severity:          medium
+evidence_tier:     inherited
+evidence:          Resolves to `trace`, because what this record asserts is a missing test rather
+                   than a runtime behaviour, and the absence was established by enumeration with
+                   each command's output recorded. `find bbj-vscode/tools -name '*.test.ts' -o -name
+                   '*.spec.ts' | wc -l` prints `0`. A repository-wide grep for `run-tests` and
+                   `interop-test-harness`, excluding `node_modules/` and `.planning/`, returns only
+                   `.gitignore:22` (ignoring the harness's own `report.html` output) and the file's
+                   usage comment at `:11-13`. None of the 15 `bbj-vscode/package.json` scripts
+                   invokes it. `tsconfig.json` includes `src/**/*.ts` only and `tsconfig.test.json`
+                   includes `test/**/*` only, so `npm run build` never type-checks it; `npm run
+                   lint` is `eslint src test`, so ESLint never sees it. Its one documented
+                   invocation, `npx tsx tools/interop-test-harness/run-tests.ts` (`:9-13`), appears
+                   in no script, no workflow and no project document, and is not even reachable
+                   offline because `tsx` is undeclared and absent from `node_modules/` (see
+                   `P64-D6-001`). `.github/workflows/pr-validation.yml:11` lists
+                   `bbj-vscode/tools/**` among its `paths:` filters, so this tree is a CI *trigger*
+                   while being the subject of nothing CI runs. The three `.bbj` scripts have no
+                   surface at all: `example-files.test.ts:14-17` auto-parses only what is under
+                   `bbj-vscode/test/test-data/`.
+                   Already-owned debt is cross-referenced, not re-recorded (D-15): the 11
+                   known-failing `linking.test.ts` tests belong to `RU-61-06` by INVENTORY's routing
+                   table, and the 3 disabled `parser.test.ts` assertions to DEBT-02. Neither is
+                   restated in this record.
+failure_scenario:  Someone edits `run-tests.ts` — to add a case, to change an assertion, or to fix
+                   `P64-D2-001` — and opens a pull request. `pr-validation.yml` fires because the
+                   path filter matches, builds both projects, and passes. No type-checker has read
+                   the change, no linter has read it, no test has run it, and the only thing that
+                   would have exercised it is a manual `npx tsx` invocation that requires a live npm
+                   registry and a running java-interop peer on port 5008. A syntax-valid but
+                   semantically broken harness therefore merges green, and the breakage surfaces
+                   only the next time a human runs the harness by hand — which, as this record
+                   establishes, nothing in the project schedules or reminds anyone to do.
+classification:    major — (1) at most one file: FAIL, closing this means changing tsconfig or lint
+                   scope, adding a test entry point, and probably a `package.json` script. (2) no
+                   public API change: PASS. (3) adds or upgrades no dependency: FAIL, running the
+                   harness at all requires declaring `tsx`. (4) regression-testable with the
+                   existing harness: FAIL by definition — the gap *is* the absence of that harness
+                   for this tree. (5) reviewer can name the exact edit: FAIL, the scope of what to
+                   bring under test is a decision, not an edit. (6) severity is neither critical nor
+                   high AND primary dimension is not D1: PASS. Four tests fail.
+effort:            8
+dedup:             none — the frozen 15-issue snapshot contains no issue about test coverage, CI
+                   scope, lint scope, or the interop harness.
+disposition:       major-refactor — recorded for Phase 68's document split and Phase 69's filing.
+                   Distinct from DEBT-02 (disabled `parser.test.ts` assertions) and from
+                   `RU-61-06`'s failing `linking.test.ts` tests, both of which concern tests that
+                   exist; this record concerns a tree that has none.
+```
+
+```
+id:                P64-D8-001
+unit:              RU-64-03
+location:          bbj-vscode/tools/interop-test-harness/run-tests.ts:2-14
+dimension:         D8
+secondary:         [D4]
+severity:          low
+evidence_tier:     trace
+evidence:          Written trace against the code beneath the comment; both dimensions this record
+                   touches are `trace`-tier, so the adjacency rule leaves the bar at `trace`. Two
+                   claims in the same header block do not match the code. (a) `:6` states the
+                   harness "validates every critical field the LS depends on". The file defines
+                   "critical field" twice: an eight-element list at `:659`
+                   (`isStatic`, `isDeprecated`, `constructors`, `name`, `returnType`, `type`,
+                   `parameters`, `packageName`) which `grep -n 'criticalFields'` shows is never read
+                   (see `P64-D4-002`), and the gate that actually runs, at `:1045`, which hardcodes
+                   `['isStatic', 'isDeprecated', 'constructors']` — three of the eight. The other
+                   five are collected into `fieldChecks` and displayed in the report, but a missing
+                   `name`, `returnType`, `type`, `parameters` or `packageName` never makes the
+                   harness fail. (b) `:9-13` documents exactly three options — `--host`, `--port`,
+                   `--output` — while `parseArgs` at `:30-38` accepts a fourth, `--timeout`, under
+                   `strict: true`, with a `15000` default that `main` echoes back to the user at
+                   `:987`. Every other comment in the four readable files was checked against its
+                   code and found accurate; those checks are recorded in this unit's D8 cell line
+                   rather than duplicated here.
+failure_scenario:  A maintainer diagnosing an interop regression reads `:6`, concludes that a green
+                   run means every critical field the language server depends on is present, and
+                   stops looking. In fact a response missing `returnType` on every method — a field
+                   the LS does depend on, and one the harness explicitly checks for at `:206` —
+                   produces a green exit code, because `:1045` does not include it in the gate. The
+                   report does show the failed field check, but the header's claim is what tells the
+                   reader whether the report needs reading at all. Separately, a maintainer whose
+                   run times out against a slow peer reads `:9-13`, sees no timeout option, and
+                   concludes the 15-second limit is not adjustable, when `--timeout` has worked all
+                   along.
+classification:    major — (1) at most one file: PASS. (2) no public API change: PASS. (3) adds or
+                   upgrades no dependency: PASS. (4) regression-testable with the existing harness:
+                   FAIL — `tools/` is outside every test, type-check and lint boundary, as recorded
+                   under `P64-D5-001`. (5) reviewer can name the exact edit: PASS — correct the
+                   claim at `:6` to name the three fields the gate enforces (or widen the gate to
+                   match the claim), and add `--timeout` to `:9-13`. (6) severity is neither
+                   critical nor high AND primary dimension is not D1: PASS. **Which reading was
+                   applied, and why:** a D8 fix that changes only comment text changes no runtime
+                   behaviour and can be `easy` when the other five tests pass. Here test (4) fails
+                   regardless of how the fix is written, because nothing in this repository can
+                   regression-test anything under `tools/`. One test fails, so `major` — the `easy`
+                   reading was considered and rejected for a stated reason rather than assumed.
+effort:            2
+dedup:             none — the frozen 15-issue snapshot contains no issue about documentation
+                   accuracy in the interop harness or anywhere under `bbj-vscode/tools/`.
+disposition:       major-refactor — recorded; the widen-the-gate variant of the fix would change
+                   runtime behaviour and belongs with `P64-D4-002`, so the two are best resolved
+                   together.
+```
+
 ### Not-reproducible dispositions
 
 Two candidate claims were raised during Task 1's sweep and neither clears its tier. Both are written here with the tier they failed and why, per RVW-06's drop-vs-disposition rule, rather than being silently dropped.
@@ -685,7 +884,19 @@ Two candidate claims were raised during Task 1's sweep and neither clears its ti
 
 ### Unit closure
 
-_(pending — plan `64-01` Task 2)_
+**`RU-64-03` is closed against the four-part stopping rule, part by part.**
+
+**(i) Every live cell it owns carries a verdict plus a written check line.** Seven live unit-row cells — D1 `fail`, D2 `fail`, D3 `pass`, D4 `fail`, D5 `fail`, D6 `fail`, D8 `fail` — and six live file-exception cells across the three JAR rows: D1 `fail` on each of `tools/formatter/BBjCFCli.jar`, `tools/formatter/lib/BBjCodeFomatter.jar` and `tools/formatter/lib/jcommander-1.71.jar`, and D6 `pass`, `fail`, `pass` on the same three in that order. Thirteen live cells, thirteen verdicts, thirteen written check lines naming the concrete checks applied and phrased against each dimension's own REQUIREMENTS.md wording. No cell in this unit carries the `pending` placeholder.
+
+**(ii) Coverage is file-granular.** All seven files of the unit are named inside this section — `web.bbj`, `em-login.bbj`, `em-validate-token.bbj` and `run-tests.ts` in check lines and in finding `location:` anchors, and `BBjCFCli.jar`, `BBjCodeFomatter.jar` and `jcommander-1.71.jar` in their own file-exception cell lines, in `### Vendored Binary Provenance` and in the `location:` fields of `P64-D1-003` and `P64-D6-002`.
+
+**(iii) Every candidate claim raised is either a finding or a written disposition.** Twelve findings recorded — `P64-D1-001`, `P64-D1-002`, `P64-D1-003`, `P64-D2-001`, `P64-D2-002`, `P64-D2-003`, `P64-D4-001`, `P64-D4-002`, `P64-D5-001`, `P64-D6-001`, `P64-D6-002`, `P64-D8-001` — each with a `path:line` anchor, a primary dimension, evidence clearing its tier, a verified failure scenario and a non-blank `dedup:`; both D6 findings carry `triage:` alongside `classification:` per D-09. Two claims did not clear their tier and are written under `### Not-reproducible dispositions` with the tier they failed and why, rather than being silently dropped. Several further observations — the `.bbj` output-idiom duplication, the missing `use` statement in `web.bbj`, the `em-login.bbj:1` header imprecision, the latent division at `run-tests.ts:966-968`, and `CLAUDE.md:92`'s incomplete run-tool list — are recorded inside their dimension's check line as observations, deliberately not inflated into findings; `CLAUDE.md`'s in particular names **`RU-D8-01`** as the row that owns it, because no Phase 64 plan may allocate a finding in that file (D-18). The `### Cross-unit referrals` sub-block holds three entries and is **not** empty; the `### Not-reproducible dispositions` sub-block holds two and is **not** empty.
+
+**(iv) Every inherited item addressed to this unit carries a written disposition.** Both of the Phase 62 body-level deferrals are dispositioned, by their own line anchors. **`62-COVERAGE.md:1489`** — the `'java'`-resolved-from-`PATH` provenance boundary, plus Phase 62's note that `jarPath` provenance and pinning are `RU-64-03`'s territory: **dispositioned as addressed, promoted into `### Vendored Binary Provenance` fact (4) and cited inside `P64-D1-003`'s evidence as the runtime half of the same unverified-execution chain**, rather than allocated a second finding against `document-formatter.ts`, which is `RU-62-02`'s file and closed. **`62-COVERAGE.md:1833`** — whether `BBjCFCli.jar` honours its `-i` path argument or its stdin content: **dispositioned as not-reproducible**, with the reason recorded (settling it requires decompiling or executing the JAR, both prohibited by D-11, and the JAR's six-line manifest carries no argument metadata — checked before disposing rather than assumed). Neither is a ledger row, and D-18's arithmetic is unchanged: the inherited-item ledger still holds exactly one row.
+
+**D7 and the absence of parity work, stated so it does not read as an oversight.** This unit's D7 cell and the D7 cell of all three JAR rows are `n/a` under **`R-D7-CI`**, carried forward verbatim. **No cross-IDE parity work of any kind was performed here** — `bbj-intellij/` was opened only as read-only context for two specific facts (that `build.gradle.kts:100-107` and `:123-128` copy the three `.bbj` scripts, used for the D8 `CLAUDE.md` observation and the D4 coupling observation), never as a comparison surface, and no `P64-D7-*` ID exists anywhere in this phase.
+
+Once (i)-(iv) hold the unit is done and no further reading is licensed. **`RU-64-03` is complete.**
 
 ## RU-64-01 — GitHub Actions workflows
 
