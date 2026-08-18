@@ -1443,24 +1443,401 @@ next allocation remains `P65-D1-004`.
 
 ## Phase 65 Close-Out
 
-Stubbed by plan `65-01`; **filled by plan `65-03`**, which re-derives every gate live at its own execution time rather than restating any number from this file's header or register (D-16).
+Every gate below was re-run at execution time and its literal output recorded; none is restated from
+`65-CONTEXT.md`, from a surface section, or from an earlier plan (D-16). Where a live re-derivation
+disagreed with a figure already in this file, the disagreement would be surfaced here as a defect
+rather than reconciled by editing the section; none did.
 
-**A. Surface gate** — will carry all four denominators re-derived by their recorded commands, each printed with its literal output, and every one of the 120 enumerated items shown to carry a verdict with zero placeholder lines remaining. A denominator that drifts from `## Surface Enumeration Register` will be reported as a drift with its cause, not silently adopted.
+### A. Surface gate
 
-**B. Criterion gate** — will answer each of ROADMAP's five Phase 65 success criteria **Met / Partially Met / Not Met**, naming the section that discharges it. The five, verbatim:
+**Part 1 — all four denominators, re-derived live, each command with its literal output.**
 
-1. *Every interpolated value in composer markup and the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`) is confirmed escaped/safe or flagged, and CSP posture is documented* — discharged by `## SEC-01`'s `### Verdicts` and `### CSP Posture`.
-2. *Every webview→extension message handler validates message shape and value range before acting, with any gaps flagged* — discharged by `## SEC-02`'s `### Verdicts` and `### Runtime Validation Posture`.
-3. *The EM token lifecycle — acquisition, storage at rest, exposure via process args/logs, expiry — is traced end to end across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`, and VS Code's equivalent storage* — discharged by `## SEC-04`'s `### Verdicts` and `### Lifecycle Matrix`.
-4. *Every run/compile process-spawn path in both IDEs is checked for argument/command injection via user-controlled paths, classpath values, or config.bbx settings* — discharged by `## SEC-05`'s `### Verdicts`.
-5. *Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication* — asserted with counts over the recorded fields.
+```bash
+# SEC-01 leg 1 — generators
+grep -rln 'getHtml\|webview.html' bbj-vscode/src --include=*.ts | wc -l
+```
+**`4`**
 
-**C. Requirement gate** — will mark each of **SEC-01**, **SEC-02**, **SEC-04** and **SEC-05** complete or explicitly not complete, with the evidence named. These four are the last open `SEC-*` requirements in the milestone; SEC-03, SEC-06, SEC-07 and SEC-08 closed inside Phases 61-64.
+```bash
+# SEC-01 leg 2 — interpolation/DOM-sink candidates
+G4=$(grep -rln 'getHtml\|webview.html' bbj-vscode/src --include=*.ts | sort)
+grep -nE '\$\{|innerHTML|outerHTML|insertAdjacentHTML|document\.write' $G4 | wc -l
+```
+**`32`**
 
-**D. Finding accounting** — will carry the phase's `P65-D1-nnn` allocation in discovery order, the severity distribution, the confirmation that every record is `classification: major` and none is `easy`, the `effort` distribution on `{2,4,8}`, the `dedup:` distribution against the frozen 15, and the anchored disclosure-marker identity from `## Stopping Rule & Write Contract`.
+```bash
+# SEC-02 leg 1 — handlers
+grep -rn 'onDidReceiveMessage' bbj-vscode/src --include=*.ts | wc -l
+```
+**`4`**
 
-**E. Inherited-item accounting** — will show all 30 ledger rows dispositioned: every row whose Surfaces column names a surface cross-referenced in that surface's `### Cross-references`, every row naming none stated as such, and zero inherited items silently dropped.
+```bash
+# SEC-02 leg 2 — case arms
+H4=$(grep -rln 'onDidReceiveMessage' bbj-vscode/src --include=*.ts | sort)
+for f in $H4; do sed -n '/onDidReceiveMessage/,/^    });/p' "$f" | grep -cE "case '"; done
+# 4 4 4 4 -> sum
+```
+**`16`**
 
-**F. Scope-fidelity note** — will confirm that no source file was modified, no issue filed or drafted, no `DEBT-*` item re-triaged, and neither `INVENTORY.md` nor any of the four closed coverage files edited, evidenced by `git status --porcelain` over the reviewed trees and the five immutable records. It will also restate for Phase 68 that **Phase 65 adds surfaces, not grid cells**, leaving INVENTORY's 148-`applies` denominator and Phase 64's 147-of-148 position untouched.
+```bash
+# SEC-04 — 7 sites x 4 stages
+{ grep -rln 'EMToken\|emToken\|EM_TOKEN\|em\.token' bbj-vscode/src bbj-intellij/src; \
+  ls bbj-vscode/tools/em-login.bbj bbj-vscode/tools/em-validate-token.bbj; } | sort -u | wc -l
+```
+**`7`** sites × 4 stages = **`28`**
 
-**G. Closing confirmations** — will carry the D-11 evidence audit re-reading every `evidence:` field in this file against the show-the-mechanism rule, and the downstream-inheritance table stating what Phases 66, 67, 68 and 69 each inherit from this file.
+```bash
+# SEC-05 — three-leg raw candidate sum
+nvs=$(grep -rnE 'child_process|spawn\(|spawnSync\(|execSync\(|execFile\(|exec\(' bbj-vscode/src --include=*.ts --include=*.cjs | grep -vc '/generated/')
+nij=$(grep -rnE 'new GeneralCommandLine|new ProcessBuilder|Runtime\.getRuntime' bbj-intellij/src | wc -l)
+nsc=$(ls bbj-vscode/tools/*.bbj | wc -l)
+echo "$nvs $nij $nsc"
+```
+**`25 8 3`** → 25 + 8 + 3 = **`36`**
+
+| Surface | Derivation command | Live output | D-02 baseline | Agree/drift |
+|---|---|---|---|---|
+| SEC-01 | generators + `\$\{\|innerHTML\|outerHTML\|insertAdjacentHTML\|document\.write` over the generator set | 4 + 32 = **36** | 4 generators; no number stated for candidates | **agree** on leg 1 (4=4); leg 2 has no baseline to drift from, first recorded value |
+| SEC-02 | handlers + `case '` count inside each handler's `onDidReceiveMessage` window | 4 + 16 = **20** | 4 handlers; no number stated for arms | **agree** on leg 1 (4=4); leg 2 has no baseline to drift from |
+| SEC-04 | `EMToken\|emToken\|EM_TOKEN\|em\.token` union with the 2 `.bbj` scripts | 7 × 4 = **28** | 7 sites × 4 stages | **agree**, no drift |
+| SEC-05 | three legs (`child_process`/`spawn`/`exec`-family over VS Code, `GeneralCommandLine`/`ProcessBuilder`/`Runtime.getRuntime` over IntelliJ, `ls` over the tool scripts) | 25 + 8 + 3 = **36** | `27`, already demoted by D-02 correction 2 to a comparison baseline (no single grep reproduces it) | **drift of +9**, with its cause recorded in `## SEC-05`'s own `### Enumeration`: the leg-1 pattern actually run is wider than the "naive pattern" measured at discussion time |
+
+**A denominator that agrees and a denominator that drifts are recorded with the same shape above**,
+so agreement is visibly checked (SEC-01/02/04) and the one drift (SEC-05) is visibly reported with
+its cause rather than silently adopted, exactly as D-16.1 requires.
+
+**Part 2 — every enumerated item across all four surfaces carries a verdict.**
+
+```bash
+grep -cE '^- \[SEC-0[1245]\]\[[a-z-]+\] ' .planning/reviews/65-COVERAGE.md
+grep -cE '^- \[SEC-0[1245]\]\[[a-z-]+\] .* — (pass|fail|undetermined|n/a) — ' .planning/reviews/65-COVERAGE.md
+grep -cE '^- \[SEC-0[1245]\]\[[a-z-]+\] .* — pending$' .planning/reviews/65-COVERAGE.md
+```
+**Literal outputs: `120`, `120`, `0`.** The enumerated-line count equals the resolved-verdict count and
+the placeholder count is zero. Per-surface: SEC-01 36 (4+32), SEC-02 20 (4+16), SEC-04 28 (7×4),
+SEC-05 36 (25+8+3); 36+20+28+36 = **120**, matching both commands above.
+
+```bash
+grep -cE '^- \[SEC-0[1245]\]\[extra\] ' .planning/reviews/65-COVERAGE.md
+```
+**`0`.** Zero `[extra]` lines were recorded anywhere in the file — SEC-05's own broader-pattern check
+(`## SEC-05`'s `### Enumeration`) confirmed no real spawn site sits outside the three legs' raw
+output, and SEC-01/02/04 recorded none either. The denominator was free to drift upward and did not
+need to here; this is stated as a checked-and-clean result, not an omission (D-12).
+
+**Part 3 — the gate's own logic, in one sentence.** A reader can re-run each of the five commands
+above, obtain the same denominator this file records, and check every one of the 120 enumerated
+lines against a verdict — the same auditable property the applicability-grid cell gate gave Phases
+61-64, keyed on four security surfaces instead of INVENTORY rows (D-01).
+
+### B. Criterion gate
+
+1. **criterion 1.** *Every interpolated value in composer markup and the `setopts-composer-webview.ts` markup is
+   confirmed escaped/safe or flagged, and CSP posture is documented* — discharged by `## SEC-01`'s
+   `### Verdicts` (36/36 items, 21 `pass`/15 `n/a`, zero `fail`/`undetermined`) and `### CSP Posture`
+   (byte-identical CSP across all four generators, confirmed by grep+md5). **Met.**
+2. **criterion 2.** *Every webview→extension message handler validates message shape and value range before acting,
+   with any gaps flagged* — discharged by `## SEC-02`'s `### Verdicts` (20/20 items, 12 `fail`/8
+   `n/a`) and `### Runtime Validation Posture`, which refused the compile-time TypeScript annotation
+   as evidence (D-13) and flagged every gap it found, including the new `P65-D1-001` asymmetry. Every
+   gap is flagged, as the criterion requires — **Met.**
+3. **criterion 3.** *The EM token lifecycle is traced end to end across `BbjEMTokenStore`, `em-login.bbj`,
+   `em-validate-token.bbj`, and VS Code's equivalent storage* — discharged by `## SEC-04`'s
+   `### Verdicts` (28/28 items) and `### Lifecycle Matrix`, with both named comparisons (at-rest,
+   expiry) answered as comparisons. **Met.**
+4. **criterion 4.** *Every run/compile process-spawn path in both IDEs is checked for argument/command injection via
+   user-controlled paths, classpath values, or config.bbx settings* — discharged by `## SEC-05`'s
+   `### Verdicts` (36/36 items) and its cross-IDE comparison, with the `P62-D1-003` shape question
+   answered across the whole surface (5 of 15 real spawn sites share it, 10 do not, 0 unsettled).
+   **Met.**
+5. **criterion 5.** *Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
+   Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication* —
+   asserted with live counts below.
+
+```bash
+grep -cE '^id:' .planning/reviews/65-COVERAGE.md
+grep -cE '^location:[[:space:]]+[^ ]+:[0-9]' .planning/reviews/65-COVERAGE.md
+grep -cE '^dimension:[[:space:]]+D1$' .planning/reviews/65-COVERAGE.md
+grep -cE '^failure_scenario:' .planning/reviews/65-COVERAGE.md
+grep -cE '^dedup:[[:space:]]*$' .planning/reviews/65-COVERAGE.md
+```
+**Literal outputs: `3`, `3`, `3`, `3`, `0`.** All 3 findings carry a `path:line` anchor, `dimension:
+D1`, a `failure_scenario:`, and a non-blank `dedup:` checked against the frozen 15 (all three
+resolve to `none`, with the SEC-05 dedup paragraph in `### D` below confirming issue #231 was
+reached rather than reflexively dismissed). Criterion 5: **Met.**
+
+**A criterion whose surface carries an `undetermined` verdict or a not-reproducible disposition
+bearing on it would be Partially Met, not Met.** None of the four surfaces recorded either anywhere
+(all four `### Not-reproducible dispositions` sections are correctly empty, confirmed by reading
+each), so all five criteria are asserted **Met** above rather than partially.
+
+**Evidence audit (D-11).** Every `evidence:` field in this file re-read and confirmed to name a
+concrete `file:line` where behaviour diverges rather than a mechanism asserted in the abstract — the
+gate that would have caught `P63-D1-002`'s withdrawn claim before it reached a public issue draft.
+
+| Finding | Evidence tier | Anchor the evidence rests on | Confirmed |
+|---|---|---|---|
+| `P65-D1-001` | `repro` | `msgbox-composer-webview.ts:97-114`, `addwindow-composer-webview.ts:121-131`, `addchildwindow-composer-webview.ts:126-137` | yes |
+| `P65-D1-002` | `repro` | `BbjEMTokenStore.java:25-29`, contrasted with `extension.ts:587,667` | yes |
+| `P65-D1-003` | `repro` | `extension.ts:339-366`, contrasted with `BbjEMTokenStore.java:56-88` | yes |
+
+```bash
+grep -cE '^evidence_tier:[[:space:]]+repro$' .planning/reviews/65-COVERAGE.md
+```
+**`3`.** Count of audit rows (3) is consistent with the file's `^id:` count (3). All three findings
+name a concrete anchor where the traced behaviour diverges — none required correction, and none was
+moved to a not-reproducible disposition.
+
+### C. Requirement gate
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| **SEC-01** | Complete | `## SEC-01` closed 36/36 items (65-01), `### CSP Posture` documented, criterion 1 Met above |
+| **SEC-02** | Complete | `## SEC-02` closed 20/20 items (65-01), `### Runtime Validation Posture` documented, criterion 2 Met above |
+| **SEC-04** | Complete | `## SEC-04` closed 28/28 items (65-02), both named comparisons answered, criterion 3 Met above |
+| **SEC-05** | Complete | `## SEC-05` closed 36/36 items (65-03), cross-IDE comparison and shape question answered, criterion 4 Met above |
+
+These four are **the last open `SEC-*` requirements in the milestone**, confirmed from
+`.planning/REQUIREMENTS.md` rather than asserted:
+
+```bash
+grep -E '\*\*SEC-0[1-8]\*\*' .planning/REQUIREMENTS.md
+```
+`SEC-01`, `SEC-02`, `SEC-04` and `SEC-05` are currently `[ ]`/`[x]` per this plan's own
+`requirements.mark-complete` step below; **SEC-03** (Phase 63), **SEC-06** (Phase 61), **SEC-07**
+(Phase 64) and **SEC-08** (Phase 64) are already `[x]` and untouched by this phase. This gate is the
+milestone's security-coverage statement, not a formality: with all four marked complete here, every
+`SEC-*` requirement in the milestone is now closed.
+
+### D. Finding accounting
+
+**By severity:**
+
+| Severity | Count |
+|---|---|
+| critical | 0 |
+| high | 0 |
+| medium | 2 (`P65-D1-002`, `P65-D1-003`) |
+| low | 1 (`P65-D1-001`) |
+
+**By effort:**
+
+| Effort | Count |
+|---|---|
+| 2 | 0 |
+| 4 | 3 (`P65-D1-001`, `P65-D1-002`, `P65-D1-003`) |
+| 8 | 0 |
+
+**By disposition:** all 3 `major-refactor` — 0 `easy-fix`, 0 `duplicate`, 0 `wontfix`, 0
+`already-covered`, 0 `not-reproducible`.
+
+**By surface (`unit:`):** SEC-01 → 0, SEC-02 → 1 (`P65-D1-001`), SEC-04 → 2 (`P65-D1-002`,
+`P65-D1-003`), SEC-05 → 0.
+
+**Three explicit assertions, each with its count printed:**
+
+```bash
+grep -cE '^classification:[[:space:]]+major' .planning/reviews/65-COVERAGE.md
+grep -cE '^classification:[[:space:]]+easy' .planning/reviews/65-COVERAGE.md
+```
+**`3`, `0`.** Every one of the 3 records is `classification: major`; none is `easy` — INVENTORY 3c
+test (6) forces this for every D1-primary finding, and all 3 are D1-primary.
+
+```bash
+grep -cE '^id:[[:space:]]+P65-D[2-9]-' .planning/reviews/65-COVERAGE.md
+```
+**`0`.** No `P65-*` ID outside the D1 dimension was allocated (D-08).
+
+```bash
+grep -cE '^severity:[[:space:]]+(critical|high)' .planning/reviews/65-COVERAGE.md
+grep -cE '^evidence:[[:space:]]+Disclosure-limited per D-14' .planning/reviews/65-COVERAGE.md
+```
+**`0`, `0` — equal.** Zero `critical`/`high` records exist in this phase, so zero disclosure markers
+are required, and zero are present. This is the **anchored** comparison the header's own "Two
+self-reference hazards" section (`## Stopping Rule & Write Contract`) directs every plan in this
+phase to use in place of the unanchored `grep -cF` form, which is inflated to `3` by the header's own
+illustrative prose quoting the marker — the same substitution `65-01` and `65-02` each made explicitly
+in their own self-verification, applied here identically.
+
+**Not-reproducible-by-surface table:**
+
+| Surface | Not-reproducible dispositions |
+|---|---|
+| SEC-01 | 0 |
+| SEC-02 | 0 |
+| SEC-04 | 0 |
+| SEC-05 | 0 |
+
+Zero across the whole phase — every candidate claim raised in any surface's sweep was either
+promoted to a finding clearing INVENTORY's `repro` tier or resolved as `n/a`/cross-referenced to an
+inherited owner; none required constructing an exploit input.
+
+**Dedup-resolution paragraph.** All 3 `P65-D1-*` findings resolve `dedup: none` — 0 `duplicate`, 0
+`partial-overlap`. No issue number from the frozen 15 is touched by any new finding this phase
+recorded. **Issue #231 — the nearest neighbour to SEC-05 — was explicitly reached and checked, not
+assumed:** `## SEC-05`'s dedup discipline resolved every real spawn site to a cross-reference against
+an inherited finding rather than a new `P65-*` record, so no new SEC-05 finding exists to check
+against #231 in the first place; the *inherited* owner this surface leans on hardest, `P62-D1-003`,
+already performed that check itself (`62-COVERAGE.md`: "`#231` partial-overlap — `#231` requests
+configurable classpath/command-line settings for starting BBj programs; those settings... already
+exist, and this finding is about their existing unescaped interpolation... a security defect `#231`
+does not address"). A reflex `none` on `#231` would be exactly the RVW-07 failure D-16.2 exists to
+prevent; the check happened, at the inherited owner rather than being re-run here, and is stated so.
+
+### E. Inherited-item accounting (D-04)
+
+**Part 1 — every ledger row disposed, with counts.**
+
+```bash
+grep -cE '^\| P6[1-4]-D1-[0-9]{3} \|' .planning/reviews/65-COVERAGE.md
+```
+**`30`.** The `## Inherited Findings Ledger` table itself carries **30** rows. Of these:
+
+- **18 rows** name at least one of the four surfaces in their Surfaces column (`SEC-01`: 1,
+  `SEC-02`: 4, `SEC-04`: 6, `SEC-05`: 9, minus 2 double-counted across surfaces = 18 distinct IDs)
+  and each carries a written entry in that surface's own `### Cross-references` section — confirmed
+  live: every one of the 18 IDs (`P61-D1-003`, `P61-D1-007`, `P62-D1-001`, `P62-D1-002`,
+  `P62-D1-003`, `P62-D1-004`, `P62-D1-005`, `P62-D1-006`, `P62-D1-007`, `P63-D1-002`, `P63-D1-003`,
+  `P63-D1-004`, `P63-D1-005`, `P63-D1-006`, `P63-D1-007`, `P64-D1-001`, `P64-D1-002`, `P64-D1-003`)
+  appears more than once in this file (its own ledger row plus at least one cross-reference), verified
+  by re-grepping each ID's total occurrence count.
+- **12 rows** name `—` (no surface) in the ledger's own Surfaces column — `P61-D1-001`, `P61-D1-002`,
+  `P61-D1-004`, `P61-D1-005`, `P61-D1-006`, `P61-D1-008`, `P61-D1-009`, `P63-D1-001`, `P63-D1-008`,
+  `P64-D1-004`, `P64-D1-005`, `P64-D1-006` — and the ledger's own convention paragraph (`## Inherited
+  Findings Ledger`, "Convention for the Surfaces column") states explicitly that this `—` **is** the
+  written disposition for a row bearing on none of the four surfaces: "A row bearing on **none** of
+  the four says so with `—`, because a ledger that lists only convenient rows is not a ledger." These
+  12 rows are therefore **explicitly disposed as establishing nothing further for any of the four
+  surfaces**, by the ledger's own column, not silently dropped.
+
+**18 + 12 = 30 = the row count. Zero were silently dropped.**
+
+**Part 2 — the four (plus a fifth) inheritance facts, re-confirmed rather than restated.** All five
+are re-confirmed live in `## Inherited Findings Ledger`'s own "The five inheritance facts" subsection
+(written by `65-01`, read here rather than reproduced): `62-COVERAGE.md`'s close-out inheritance table
+has a Phase 65 row; `63-COVERAGE.md`'s does too; `64-COVERAGE.md`'s does, stating nothing flows as
+open work by design; `61-COVERAGE.md` has no downstream-inheritance table at all
+(`grep -c 'Phase 65' 61-COVERAGE.md` → `0`); and INVENTORY's routing table (D-06) has no Phase 65 row
+(`sed -n '1188,1196p' INVENTORY.md | grep -c 'Phase 65'` → `0`). Re-run now rather than trusted:
+
+```bash
+grep -c 'Phase 65' .planning/reviews/61-COVERAGE.md
+sed -n '1188,1196p' .planning/reviews/INVENTORY.md | grep -c 'Phase 65'
+```
+**`0`, `0` — both re-confirmed live, unchanged from `65-01`'s own live check.**
+
+**Part 3 — the D-07 assignment, discharged once.** The token-as-process-argument question was
+answered in `## SEC-04` (its `### Cross-references`' explicit "D-07 handoff to `65-03`/SEC-05"
+paragraph, naming the five `[SEC-04][exposure]` verdict lines and their two discharging IDs,
+`P63-D1-003` and `P62-D1-004`) and cross-referenced from `## SEC-05` (every verdict line at a token-
+or password-bearing spawn site above cites the same two IDs with the parenthetical "D-07
+cross-reference — SEC-04 owns the token-as-process-argument exposure question outright; not
+re-recorded here"). **Recorded once, with both anchors named** — a reader can see the duplicate D-07
+was written to prevent.
+
+### F. Scope-fidelity note (D-15)
+
+**Phase 65 adds surfaces, not grid cells.** It records **zero** cells against INVENTORY's 232-cell
+grid:
+
+```bash
+grep -cE '^- (D[1-8]|\[file-exception\]) ' .planning/reviews/65-COVERAGE.md
+```
+**`0`.** This file's own enumerated-line grammar (`[SEC-0N][kind]`) is disjoint from the applicability
+grid's grammar (`D[1-8]`/`[file-exception]`); zero lines in this file match the grid's own shape. Phase
+64's milestone position — **147 of INVENTORY's 148** `applies` cells recorded, remainder `RU-D8-01` —
+is therefore **unchanged by this file**, and this phase's four enumerations (120 items across
+`SEC-01`/`SEC-02`/`SEC-04`/`SEC-05`) are never blended into that denominator. Stated plainly because
+Phase 68's DOC-03 coverage claim is measured against a denominator a reader can still check against
+INVENTORY.
+
+**`RU-D8-01` remains the milestone's one unrecorded row** — `CLAUDE.md`, `bbj-vscode/VERBs.md` and
+`documentation/`, scoped by INVENTORY as cross-cutting and owned by no phase.
+
+```bash
+grep -cE '^location:[[:space:]]+(CLAUDE\.md|bbj-vscode/VERBs\.md|documentation/)' .planning/reviews/65-COVERAGE.md
+```
+**`0`.** No `P65-*` finding is located in any of `RU-D8-01`'s files.
+
+**What was read but not claimed:**
+
+```bash
+grep -cE '^location:[[:space:]]+(java-interop/|bbj-vscode/src/language/generated/|bbj-vscode-deprecated/)' .planning/reviews/65-COVERAGE.md
+```
+**`0`.** `java-interop/` (FUT-01), `bbj-vscode/src/language/generated/` and `bbj-vscode-deprecated/`
+are out of scope and hold no `P65-*` `location:`.
+
+**The boundaries this phase held, each evidenced rather than asserted:**
+
+```bash
+git log --oneline -- .planning/reviews/INVENTORY.md | head -1
+git status --porcelain .planning/reviews/INVENTORY.md .planning/reviews/61-COVERAGE.md .planning/reviews/62-COVERAGE.md .planning/reviews/63-COVERAGE.md .planning/reviews/64-COVERAGE.md
+git status --porcelain bbj-vscode bbj-intellij java-interop .github
+```
+**`1dcab8b docs(60-04): log 60-03's Langium/Chevrotain/Vitest corrections in D-15 log`, nothing,
+nothing.** `INVENTORY.md`'s most recent commit remains Phase 60's; none of the five immutable
+records carries an uncommitted change; no reviewed tree was mutated by any of this phase's three
+plans. No source file was modified anywhere, no GitHub issue was opened or drafted (ISSUE-01 is
+Phase 69's gate), and no `DEBT-*` item was re-triaged (Phase 66's).
+
+**Drift recorded vs. immutability preserved — two different facts, stated together.** This phase
+recorded two drifts against the register/discussion baseline (SEC-02's corrected `default:`-arm
+distribution in `65-01`, and SEC-05's own leg-1 pattern width in `65-03`), both written up in their
+own sections with cause; neither involved editing `INVENTORY.md` or any of the four closed coverage
+files. Recording a drift and preserving immutability are two different facts, and neither cancels
+the other.
+
+### G. Closing confirmations
+
+- **ISSUE-01 not triggered.** No GitHub issue was opened, commented on, or drafted by any of this
+  phase's three plans. The only tracker interaction anywhere in this phase is **reading**
+  INVENTORY's frozen 15-issue snapshot for `dedup:` resolution — a read of a committed document, not
+  a query. ISSUE-01 is a hard gate owned by Phase 69.
+- **`INVENTORY.md` not edited.** `git log --oneline -- .planning/reviews/INVENTORY.md` shows its most
+  recent commit as `1dcab8b docs(60-04)...` — Phase 60, nothing since — and `git status --porcelain`
+  prints nothing (§F above).
+- **`61`/`62`/`63`/`64-COVERAGE.md` not reopened or edited.** `git status --porcelain` over all four
+  prints nothing (§F above); every citation into them was by ID and `file:line`, never a modification.
+- **No source file modified and no working-tree mutation of any kind.**
+  `git status --porcelain bbj-vscode bbj-intellij java-interop .github` prints nothing (§F above),
+  checked before and after every task across all three plans.
+- **The swept-tree SHA still describes these three sweeps.** The header anchors this phase to branch
+  `v4.0-stability-and-quality` at commit `1750ad749d55c3e88d74be3ac2d561d37e8170d0`, recorded once for
+  the whole phase by `65-01` and never re-anchored. Every commit since is a `.planning/`-only commit
+  landing these three plans and this coverage file — confirmed by `git status --porcelain` returning
+  empty for every reviewed tree above — so the tree all three plans describe is the tree that SHA
+  names.
+
+**Nothing is left outstanding anywhere in the file — checked on the anchored line shapes, not on the
+bare substring, per `## Stopping Rule & Write Contract`'s own documented resolution.** That section's
+"Two self-reference hazards" paragraph states this precisely: "Every placeholder gate is therefore
+anchored on the **line shape** `^- \[SEC-0[1245]\]\[[a-z-]+\] .* — pending$` and not on a bare
+substring count of the word. ... A gate counting the token anywhere in the file would be invalidated
+by this very section." The frozen enumerated-line grammar block that same section prints (`- [SURFACE][kind]
+<anchor> — pending`) necessarily illustrates the placeholder form literally, so an **unanchored**
+`grep -cE '— pending[[:space:]]*$'` finds that one illustrative line and returns `1`, not `0` — the
+identical class of self-invalidating gate the D-14 marker hazard above already names, applied to the
+pending token instead. The **anchored** comparison is therefore authoritative, exactly as the header
+directs:
+
+```bash
+grep -cE '^- \[SEC-0[1245]\]\[[a-z-]+\] .* — pending$' .planning/reviews/65-COVERAGE.md
+grep -cE '\|[[:space:]]*pending[[:space:]]*\|' .planning/reviews/65-COVERAGE.md
+```
+**`0`, `0`.** The first command is the anchored line-shape check across all four surfaces (already
+asserted per-surface in §A Part 2 above); the second — the ledger's own disposition-column shape,
+`| ... pending ... |` — has no occurrence anywhere in this file (the Inherited Findings Ledger's own
+"What it establishes" column never carries the literal word), so both the anchored candidate-line
+check and the ledger-shape check are `0`, and the file carries no outstanding placeholder anywhere
+that either shape is capable of missing.
+
+**Downstream inheritance — what each later phase consumes from this file.**
+
+| Phase | Inherits from Phase 65 |
+|---|---|
+| **Phase 66** | Every finding whose `dedup:` names a `DEBT-*` requirement — **none does; all 3 resolve to `none`** (§D above) — so Phase 66 inherits nothing from this phase's dedup path. |
+| **Phase 67** | The **`classification: easy` set — 0 findings**, stated as a derived fact with its count: INVENTORY 3c test (6) forces `major` for every D1-primary finding, and every `P65-*` finding is D1-primary (§D above confirms `0` `easy` records), so Phase 67 inherits **nothing** from this phase's apply path. Every one of this phase's 3 findings reaches Phase 68's `MAJOR-REFACTORS.md` instead, none reaches Phase 67's easy-fix path. |
+| **Phase 68** | This whole file for the DOC-03 concatenation, plus §A's surface gate as the coverage statement for SEC-01/02/04/05, plus §F's statement that this phase adds surfaces and not cells so the 147-of-148 arithmetic (Phase 64's own figure, `INVENTORY.md`'s 232-cell grid) stands unmodified. |
+| **Phase 69** | Every `dedup:` verdict (3, all `none`) for issue drafting, gated on **ISSUE-01**, under **D-14's disclosure limits** — no `critical`/`high` record exists in this phase, so no `evidence:` field carries the `Disclosure-limited per D-14` redaction, but any issue Phase 69 later drafts touching a *cross-referenced inherited* `critical`/`high` finding (`P62-D1-003`, `P63-D1-003`) must preserve **that** finding's own disclosure limit, since this file cites but does not re-record those redactions. |
+
+**Phase 68 reads §A, §B and §C directly and does not need to re-derive this phase's scope.**
