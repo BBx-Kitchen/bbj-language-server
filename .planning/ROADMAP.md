@@ -374,7 +374,7 @@ the security of its Node.js runtime download path.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 4/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 5/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable `.planning/reviews/63-COVERAGE.md`; no source file is modified.
 
 Plans:
@@ -396,7 +396,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 63-05-PLAN.md — Sweep `RU-63-02` language registration, editor support & notifications (18 files, three sub-clusters), triage the 2 inherited referrals, and close the phase: close-out sections A-G, cross-phase observations, and all three D-17 gates re-run live
+- [x] 63-05-PLAN.md — Sweep `RU-63-02` language registration, editor support & notifications (18 files, three sub-clusters), triage the 2 inherited referrals, and close the phase: close-out sections A-G, cross-phase observations, and all three D-17 gates re-run live
 
 **UI hint**: yes
 

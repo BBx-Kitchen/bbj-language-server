@@ -34,7 +34,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **RVW-01**: `bbj-vscode/src/language/` reviewed across all 8 dimensions — grammar, lexer, scope, scope-local, linker, type inferer, validator, `validations/`, completion provider, document builder, document validator, ws-manager, CPL service/parser, java-interop client, `lib/` builtin catalogs
 - [x] **RVW-02**: `bbj-vscode/src/` extension host reviewed across all 8 dimensions — `extension.ts`, document formatter, line numbering, tokenized-BBj, decompile-io, `Commands/CompilerOptions.ts`
 - [x] **RVW-03**: All four webview composer subsystems reviewed across all 8 dimensions — 11 composer files: msgbox, addwindow, addchildwindow each split across `-composer`/`-ui`/`-webview`; SETOPTS split across `-ui`/`-webview` only (no `-composer.ts`) — plus `setopts-catalog.ts`
-- [ ] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
+- [x] **RVW-04**: `bbj-intellij/` reviewed across all 8 dimensions — run/compile/EM-login actions, settings, `BbjNodeDownloader`, LSP wiring, composer dialogs, status bar widgets, `BbjEMTokenStore`, lexer/parser definitions
 - [ ] **RVW-05**: Build and CI reviewed across all 8 dimensions — 6 GitHub Actions workflows, Gradle build, esbuild/packaging config, and the three `bbj-vscode/tools/*.bbj` scripts
 - [x] **RVW-06**: Every recorded finding carries a concrete verified failure scenario (inputs/state → wrong behavior), confirmed by tracing the code path or reproducing it; findings that cannot be verified are dropped rather than filed
 - [x] **RVW-07**: Every finding is checked against the open GitHub issues before it is recorded, so no finding duplicates existing tracker content
@@ -43,7 +43,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 - [ ] **SEC-01**: Webview HTML generation audited for injection — every interpolated value into composer markup and the `setopts-composer-webview.ts` markup (scoped to the `bbx-config` language ID by `setopts-composer-ui.ts`) is escaped or provably safe, and CSP posture is documented
 - [ ] **SEC-02**: Webview → extension message handling audited — messages from webview content are validated for shape and value range before acting on them
-- [ ] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
+- [x] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
 - [ ] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
 - [ ] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
 - [x] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
@@ -125,8 +125,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SEC-06 | Phase 61 | Complete |
 | RVW-02 | Phase 62 | Complete |
 | RVW-03 | Phase 62 | Complete |
-| RVW-04 | Phase 63 | Pending |
-| SEC-03 | Phase 63 | Pending |
+| RVW-04 | Phase 63 | Complete |
+| SEC-03 | Phase 63 | Complete |
 | RVW-05 | Phase 64 | Pending |
 | SEC-07 | Phase 64 | Pending |
 | SEC-08 | Phase 64 | Pending |
