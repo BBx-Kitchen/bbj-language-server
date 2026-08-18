@@ -185,7 +185,7 @@ findings → document the expensive findings → file them as labeled GitHub iss
 Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REFACTORS.md`.
 
 - [x] **Phase 60: Baseline Resync & Review Standards** - Resync PROJECT.md/MILESTONES.md with the 153-commit range and produce the module inventory + finding-verification standard (completed 2026-08-17)
-- [ ] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (~49 files) across all 8 dimensions, incl. java-interop client trust boundary
+- [x] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (~49 files) across all 8 dimensions, incl. java-interop client trust boundary (completed 2026-08-18)
 - [ ] **Phase 62: Extension Host & Webview Composer Review** - Review `extension.ts`/formatter/etc. and all four webview composer subsystems across all 8 dimensions
 - [ ] **Phase 63: IntelliJ Plugin Review** - Review `bbj-intellij/` (61 files) across all 8 dimensions, incl. Node.js download integrity
 - [ ] **Phase 64: Build, CI & Dependency Review** - Review GitHub Actions, Gradle/esbuild, and BBj tool scripts across all 8 dimensions, incl. CI security and dependency CVEs
