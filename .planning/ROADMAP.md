@@ -188,7 +188,7 @@ Deliverables: `.planning/reviews/EASY-FIXES.md` and `.planning/reviews/MAJOR-REF
 - [x] **Phase 61: Language Core Review** - Review `bbj-vscode/src/language/` (~49 files) across all 8 dimensions, incl. java-interop client trust boundary (completed 2026-08-18)
 - [x] **Phase 62: Extension Host & Webview Composer Review** - Review `extension.ts`/formatter/etc. and all four webview composer subsystems across all 8 dimensions (completed 2026-08-18)
 - [x] **Phase 63: IntelliJ Plugin Review** - Review `bbj-intellij/` (61 files) across all 8 dimensions, incl. Node.js download integrity (completed 2026-08-18)
-- [ ] **Phase 64: Build, CI & Dependency Review** - Review GitHub Actions, Gradle/esbuild, and BBj tool scripts across all 8 dimensions, incl. CI security and dependency CVEs
+- [x] **Phase 64: Build, CI & Dependency Review** - Review GitHub Actions, Gradle/esbuild, and BBj tool scripts across all 8 dimensions, incl. CI security and dependency CVEs (completed 2026-08-18)
 - [ ] **Phase 65: Cross-Cutting Security Audit** - Audit webview injection, webview↔extension messaging, EM token lifecycle, and process spawning across both IDEs
 - [ ] **Phase 66: Known Debt Re-triage** - Re-triage all 6 carried debt items — each fixed or filed
 - [ ] **Phase 67: Apply Easy Fixes** - Apply every easy finding as an atomic, regression-tested commit
