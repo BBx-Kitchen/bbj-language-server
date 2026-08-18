@@ -705,46 +705,193 @@ None. Every claim raised while sweeping SEC-02 — including the leg-3 `default:
 
 ### Enumeration
 
-*Filled by plan `65-02`. Denominator from `## Surface Enumeration Register`: 7 sites × 4 lifecycle stages = 28 enumerated items.*
+Re-derived at Task 1 execution time, self-contained for a reader who starts here rather than at the
+header. Command (identical to `## Surface Enumeration Register`'s SEC-04 block):
+
+```bash
+{ grep -rln 'EMToken\|emToken\|EM_TOKEN\|em\.token' bbj-vscode/src bbj-intellij/src; \
+  ls bbj-vscode/tools/em-login.bbj bbj-vscode/tools/em-validate-token.bbj; } | sort -u
+```
+
+**Literal output:**
+
+```
+bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java
+bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java
+bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java
+bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java
+bbj-vscode/src/extension.ts
+bbj-vscode/tools/em-login.bbj
+bbj-vscode/tools/em-validate-token.bbj
+```
+
+**7 sites, no drift from `## Surface Enumeration Register`'s D-02 baseline of 7** — re-confirmed live
+at this task's own execution time rather than trusted from the header.
+
+**Stage set — the four ROADMAP criterion 3 names, and the only four:** `acquisition`, `at-rest`
+(storage at rest), `exposure` (via process arguments or logs), `expiry`. **Denominator: 7 sites × 4
+stages = 28 enumerated items**, matching the 28 placeholder lines `65-01` stubbed below — four per
+site, no gaps.
 
 ### Verdicts
 
-- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
-- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
+- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pass — `performLogin()` (:44-152) is the acquisition site: prompts for the EM username (`Messages.showInputDialog`, :56-63, defaulting to `"admin"`) and password (`Messages.showPasswordDialog`, :65-69) directly from the user, resolves `em-login.bbj` from the plugin bundle (:72-79), spawns it via `GeneralCommandLine`/`CapturingProcessHandler` (:98-115, 15s timeout) and reads the raw JWT back from the process's temp-file output (:118-123). A `stdout.startsWith("ERROR:")` failure (:125-128) surfaces the script's own error text via a dialog rather than storing anything, and an empty result (:130-136) is a distinct failure rather than a silent pass-through. Nothing is trusted unchecked: the `bbjHome`/executable check (:46-53, :88-91) and the `em-login.bbj` path resolution (:73-78) both fail closed with a dialog before any process is spawned.
+- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — fail — `P63-D1-005`. The freshly-returned JWT is written to `Files.createTempFile("bbj-em-login-", ".tmp")` (:96) with no `FileAttribute`/POSIX-permission argument, so the file receiving the plaintext token is created with whatever default permissions the JVM/OS applies rather than an explicit owner-only grant, for the window between the spawned process writing it and the `finally`-block delete (:119-123). This is `P63-D1-005`'s own citation of this exact call site; not re-recorded here.
 - [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
 - [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java — pending
-- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
-- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
+- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — n/a — this file is a pure storage/decode utility (`storeToken`/`getToken`/`deleteToken`/`isTokenExpired`, :31-88) with no credential prompt and no process spawn of its own; acquisition happens in `BbjEMLoginAction.performLogin()` (:44-152), which calls `storeToken(stdout)` (:139) only after the token already exists.
+- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — fail — `P65-D1-002` (new finding below). `storeToken`/`getToken`/`deleteToken` (:31-47) delegate to `PasswordSafe.getInstance()`, keyed by `CredentialAttributesKt.generateServiceName("BBj Enterprise Manager", "jwt-token")` (:26-28) with no additional `CredentialAttributes` flag — a real improvement over a hand-rolled store, but `PasswordSafe`'s actual backend is the IDE-wide, user-configurable "Save passwords" setting (native keychain / KeePass file / memory-only, per `P63-D8-003`'s own confirmed reading of this exact setting), and nothing in this file pins or checks which backend is active. Contrasted against VS Code's fixed `SecretStorage` binding in the at-rest comparison below; the divergence is `P65-D1-002`.
 - [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
 - [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java — pending
-- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
-- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
+- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — n/a — `buildCommandLine()` (:26-135) reads an already-stored token via `BbjEMTokenStore.getToken()` (:54) and, when absent, delegates acquisition to `BbjEMLoginAction.performLogin(project)` (:63, :95) rather than acquiring one itself; this site never prompts for credentials or spawns `em-login.bbj` directly.
+- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — n/a — this site reads the token via `BbjEMTokenStore.getToken()` (:54) but persists nothing of its own; the one temp file its own call chain creates (`BbjRunActionBase.validateTokenServerSide`'s `Files.createTempFile("bbj-em-validate-", ".tmp")`, `BbjRunActionBase.java:295`) is written to only by `em-validate-token.bbj`, which writes the fixed marker `"VALID"`/`"INVALID"` (`em-validate-token.bbj:23-27,30-34`) rather than the token value itself — unlike `BbjEMLoginAction.java`'s temp file, no secret reaches this particular file. The token's own at-rest treatment is `BbjEMTokenStore.java`'s, above.
 - [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
 - [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java — pending
-- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
-- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
+- [SEC-04][acquisition] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — n/a — byte-for-byte the same delegation pattern as `BbjRunBuiAction.java` (confirmed by `diff`: the two files differ only in the `"BUI"`/`"DWC"` literal and user-facing strings); acquisition is delegated to `BbjEMLoginAction.performLogin()` identically, never acquired directly by this file.
+- [SEC-04][at-rest] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — n/a — identical reasoning to `BbjRunBuiAction.java`: no persistence of its own, and the shared `validateTokenServerSide` temp file it triggers (`BbjRunActionBase.java:295`) carries only the non-secret `VALID`/`INVALID` marker written by `em-validate-token.bbj`, never the token itself.
 - [SEC-04][exposure] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
 - [SEC-04][expiry] bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunDwcAction.java — pending
-- [SEC-04][acquisition] bbj-vscode/src/extension.ts — pending
-- [SEC-04][at-rest] bbj-vscode/src/extension.ts — pending
+- [SEC-04][acquisition] bbj-vscode/src/extension.ts — pass — the `bbj.loginEM` command handler (:597-671) is the acquisition site: prompts for the EM username via `showInputBox` (:611-616, defaulting to `"admin"`) and password via a masked `showInputBox` (:618-623, `password: true`), execs `em-login.bbj` (:626-646) with a 15s timeout, and reads the raw JWT back from the temp file the script wrote (:653,:658). An `output.startsWith('ERROR:')` result from the script itself (:654-656) is rejected rather than stored, surfaced by the outer `catch` as `showErrorMessage` (:670); a `password === undefined` cancellation (:623) aborts before any process is spawned. Nothing here is trusted unchecked: `bbjHome` is validated before any path is built (:601-608).
+- [SEC-04][at-rest] bbj-vscode/src/extension.ts — pass — `context.secrets.store('bbj.em.token', result)` (:667) persists the token via VS Code's `SecretStorage` API (`secretStorage = context.secrets`, :587), with `context.secrets.delete('bbj.em.token')` called on both the client-side-expired path (:381) and the server-side-rejected path (:473) — deletion symmetric with storage on both invalidation routes. `SecretStorage`'s backend is fixed by the VS Code platform itself, and `bbj-vscode/package.json` contributes no setting of its own that could redirect it elsewhere (checked: `grep -n 'secret\|credential' package.json` returns nothing relevant beyond an unrelated `protectPassword` compiler option). One unreachable branch noted for completeness, not as a finding: `getEMCredentials()` (:374-388) also reads a `'bbj.em.credentials'` fallback key, but nothing anywhere in this codebase ever calls `.store('bbj.em.credentials', ...)` (confirmed: `grep -rn "bbj.em.credentials"` returns only this one read) — dead code, not a persisted secret. See the at-rest comparison below for the asymmetry this contrasts against.
 - [SEC-04][exposure] bbj-vscode/src/extension.ts — pending
 - [SEC-04][expiry] bbj-vscode/src/extension.ts — pending
-- [SEC-04][acquisition] bbj-vscode/tools/em-login.bbj — pending
-- [SEC-04][at-rest] bbj-vscode/tools/em-login.bbj — pending
+- [SEC-04][acquisition] bbj-vscode/tools/em-login.bbj — pass — the actual authentication call: `token! = BBjAdminFactory.getAuthToken(host!, username!, password!, 0, payload!, err=authFailed)` (:39) is the acquisition itself, given `username!`/`password!` read from `ARGV(1)`/`ARGV(2)` (:10-11). A missing username or password is checked explicitly (:15-28) and routes to a written `"ERROR:..."` result rather than calling `getAuthToken` with a null credential, and an authentication failure (`err=authFailed`, :46-51) writes a distinct `"ERROR:Authentication failed..."` marker rather than any partial or default token.
+- [SEC-04][at-rest] bbj-vscode/tools/em-login.bbj — fail — `P64-D1-002`. `open(ch,mode="O_CREATE,O_TRUNC")outputFile!` / `write(ch)token!` (:41-42) writes the raw JWT to the caller-supplied path with no mode, permission or umask control — `P64-D1-002`'s own citation of these exact lines; not re-recorded here.
 - [SEC-04][exposure] bbj-vscode/tools/em-login.bbj — pending
 - [SEC-04][expiry] bbj-vscode/tools/em-login.bbj — pending
-- [SEC-04][acquisition] bbj-vscode/tools/em-validate-token.bbj — pending
-- [SEC-04][at-rest] bbj-vscode/tools/em-validate-token.bbj — pending
+- [SEC-04][acquisition] bbj-vscode/tools/em-validate-token.bbj — n/a — this script validates an already-acquired token passed in via `ARGV(1)` (:8); it contains no credential prompt and no `getAuthToken`-style acquisition call anywhere in its 34 lines (confirmed by full read) — acquisition happens upstream, in `em-login.bbj` (or the IDE-side login command that invokes it).
+- [SEC-04][at-rest] bbj-vscode/tools/em-validate-token.bbj — n/a — this script never persists the token it receives; every `write(ch)` call site (`:14`, `:25`, `:32`) writes only a fixed validation-outcome marker (`"ERROR:..."`, `"VALID"` or `"INVALID"`), never `token!` itself (confirmed by reading all three `write(ch)` call sites in the file) — the token's at-rest exposure is confined to `em-login.bbj`'s write, not duplicated here.
 - [SEC-04][exposure] bbj-vscode/tools/em-validate-token.bbj — pending
 - [SEC-04][expiry] bbj-vscode/tools/em-validate-token.bbj — pending
 
+
+**The two-IDE at-rest comparison — ROADMAP criterion 3's own question.**
+
+1. **What each side actually uses.** VS Code — `context.secrets` (`vscode.ExtensionContext.secrets`,
+   VS Code's `SecretStorage` API), assigned to the module-level `secretStorage` at
+   `extension.ts:587` and exercised at `:667` (store), `:381`/`:473` (delete). IntelliJ —
+   `PasswordSafe.getInstance()` (`BbjEMTokenStore.java:31-47`), the platform's shared
+   credential-storage service.
+2. **What each is backed by.** Both are, by design, delegated to an OS-native-credential-store —
+   VS Code's `SecretStorage` is documented to use the platform keychain (Keychain Access on macOS,
+   Credential Manager on Windows, a libsecret-backed keyring on Linux) with no per-extension
+   override point, and IntelliJ's `PasswordSafe` defaults to the same class of native-keychain
+   backing. **This much is a genuine parity**, checked here by reading both call sites' actual APIs
+   rather than assumed: neither file implements its own encryption or its own flat-file store; both
+   delegate to a platform service whose sole job is exactly this (D-12).
+3. **Where they diverge — the security property that matters.** IntelliJ's `PasswordSafe` backend
+   is **not fixed**: it is IntelliJ's own IDE-wide, user-facing "Save passwords" setting (Settings >
+   Appearance & Behavior > System Settings > Passwords), with three options — native keychain, a
+   local KeePass-format file, or memory-only ("Do not save") — and `BbjEMTokenStore.createAttributes()`
+   (`:25-29`) passes no flag that pins, requests or even checks which of the three is active;
+   `P63-D8-003` already established this by reading the same file for a doc-accuracy defect (its
+   class doc's "stored in the OS-native keychain" claim overclaims a guarantee the code does not
+   enforce). VS Code's `SecretStorage`, by contrast, exposes **no equivalent user-facing or
+   extension-facing choice** — no setting in `bbj-vscode/package.json` (checked in the at-rest
+   verdict above) or in the VS Code Secret Storage API itself lets a user or this extension redirect
+   storage to a weaker backend; the binding is fixed by the platform. Deletion is symmetric with
+   storage on both sides (VS Code: `:381`/`:473` delete on invalidation, matching `:667`'s store;
+   IntelliJ: `deleteToken()` at `:44-47`, called from `BbjRunBuiAction`/`BbjRunDwcAction` at
+   `:76`/`:82` on invalidation, matching `storeToken()` at `BbjEMLoginAction.java:139`). Neither side
+   has a path that persists the token anywhere else at rest — VS Code's only other reference to the
+   token is the transient temp file at `:648`,`:653`,`:658,660` (deleted immediately after read,
+   covered under `exposure`); IntelliJ's is the transient temp file at `BbjEMLoginAction.java:96`
+   (`P63-D1-005`).
+4. **Verdict on the comparison.** **The mechanism choice agrees** — both delegate to a platform
+   credential service rather than a hand-rolled store — and is recorded as a positive result with
+   the check that established it: reading both call sites' actual API surface, not their doc
+   comments. **The guarantee they provide diverges**: VS Code's binding is invariant; IntelliJ's is
+   user-selectable down to a local file or memory-only with no code-level pin or warning. This is the
+   asymmetry `P65-D1-002` records below — an asymmetry between the two IDEs on the same at-rest
+   concern, visible only by putting both sides' actual storage APIs side by side rather than reading
+   either in isolation (D-04 justification 2).
+
 ### Lifecycle Matrix
 
-*Filled by plan `65-02`. The stage × site matrix, with the `SecretStorage` versus `BbjEMTokenStore` at-rest comparison and the client-parse versus server-round-trip expiry comparison each written as comparisons.*
+Stage columns in ROADMAP criterion 3's own order. Every filled cell's token matches its
+corresponding `### Verdicts` line above — the matrix is a **view** of the verdicts, never a second
+record of them. The `exposure` and `expiry` columns carry the placeholder token `pending`, completed
+by Task 2.
+
+| Site | Acquisition | At-rest | Exposure | Expiry |
+|---|---|---|---|---|
+| `BbjEMLoginAction.java` | pass | fail (`P63-D1-005`) | pending | pending |
+| `BbjEMTokenStore.java` | n/a | fail (`P65-D1-002`) | pending | pending |
+| `BbjRunBuiAction.java` | n/a | n/a | pending | pending |
+| `BbjRunDwcAction.java` | n/a | n/a | pending | pending |
+| `extension.ts` | pass | pass | pending | pending |
+| `em-login.bbj` | pass | fail (`P64-D1-002`) | pending | pending |
+| `em-validate-token.bbj` | n/a | n/a | pending | pending |
+
+**At-rest comparison summary (`SecretStorage` vs. `BbjEMTokenStore`/`PasswordSafe`):** mechanism
+agreement (both platform-delegated to native-keychain-class storage), guarantee divergence (VS
+Code's binding is fixed, IntelliJ's is user-configurable down to a KeePass file or memory-only) —
+full comparison above; the divergence is `P65-D1-002`.
 
 ### Findings
 
-*Filled by plan `65-02`.*
+```
+id:                P65-D1-002
+unit:              SEC-04
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:25-29
+                   (contrasted with bbj-vscode/src/extension.ts:587,667)
+dimension:         D1
+secondary:         [D7]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace across both IDEs (D-07/D-11 — no runnable reproduction
+                    accompanies this record; changing an IDE-wide preference in a live IntelliJ
+                    instance and observing PasswordSafe's resulting backend is outside this
+                    static-trace sweep's scope). BbjEMTokenStore.createAttributes() (:25-29) builds a
+                    CredentialAttributes from only a generated service name
+                    (CredentialAttributesKt.generateServiceName("BBj Enterprise Manager",
+                    "jwt-token")) and passes no further flag; storeToken/getToken/deleteToken (:31-47)
+                    call PasswordSafe.getInstance() with those attributes and nothing else. Which
+                    backend PasswordSafe actually uses is governed entirely by IntelliJ's own
+                    IDE-wide "Save passwords" setting (Settings > Appearance & Behavior > System
+                    Settings > Passwords) — native keychain, a local KeePass-format file, or
+                    memory-only ("Do not save") — a fact P63-D8-003 already established by reading
+                    this same file for a doc-accuracy defect (its class doc's "stored in the
+                    OS-native keychain" claim overclaims a guarantee the code does not enforce).
+                    Contrasted against bbj-vscode/src/extension.ts:587 (secretStorage =
+                    context.secrets) and :667 (context.secrets.store(...)): VS Code's SecretStorage
+                    binding is fixed by the platform, with no setting in bbj-vscode/package.json
+                    (grep -n 'secret\|credential' returns nothing relevant) or in the extension's own
+                    code that could redirect it elsewhere. This is a genuine cross-IDE asymmetry on
+                    the at-rest security property criterion 3's "and VS Code's equivalent storage"
+                    clause asks to be compared — an asymmetry no single-module review (Phase 62 or
+                    Phase 63, each scoped to one IDE) could see, since seeing it requires reading both
+                    sides' actual storage APIs side by side.
+failure_scenario:  An organization's IT policy, or a user acting alone, sets IntelliJ's "Save
+                    passwords" preference to "In KeePass" or "Do not save" — a setting entirely
+                    outside this plugin's knowledge or control — and the EM JWT is thereafter stored
+                    in a local KeePass-format file (protected only by that file's own master
+                    password and OS file permissions, a materially weaker guarantee than an OS
+                    keychain entry) or not persisted at all across IDE restarts, forcing a silent
+                    re-login prompt with no indication to the user that their chosen preference
+                    changed this specific credential's protection. The equivalent VS Code user has no
+                    such lever available to weaken it, and no comparable warning exists on either
+                    side telling the user which backend is currently protecting this particular
+                    token.
+classification:    major
+                    (1) touches 1 file: pass — the fix (checking PasswordSafe's active backend via
+                    the IntelliJ Platform's own exposed state, or emitting a one-time warning when it
+                    is not the native keychain) is confined to BbjEMTokenStore.java — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass (PasswordSafe/
+                    CredentialAttributes are already-used IntelliJ Platform APIs) — (4)
+                    regression-testable with existing harness: FAIL — no src/test/ source set exists
+                    in bbj-intellij (P63-D5-001) — (5) reviewer can name the exact edit: pass (surface
+                    a one-time notification when PasswordSafe's resolved backend is not the native
+                    keychain, mirroring the transparency VS Code's fixed binding provides for free) —
+                    (6) severity medium but primary dimension D1: FAIL — test (6) fails on the D1
+                    clause alone, so classification is major regardless of the other five tests
+                    (D-13's safety gate).
+effort:            4
+dedup:             none — no frozen open issue names PasswordSafe, SecretStorage, or credential-
+                    backend configurability of any kind.
+disposition:       major-refactor
+```
+
 
 ### Not-reproducible dispositions
 
