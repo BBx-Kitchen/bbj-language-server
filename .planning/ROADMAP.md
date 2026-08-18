@@ -431,13 +431,17 @@ trees' vulnerability posture.
 
 One plan per review unit in INVENTORY risk-rank order, one wave each, all three appending to the
 single deliverable `.planning/reviews/64-COVERAGE.md`; no source file is modified. This is the last
-sweep phase, and the only one whose slice includes live file-exception rows in bulk — 7 grid rows,
-27 `applies` cells, 29 `n/a` cells, 28 files.
+sweep phase, and the only one whose slice includes live file-exception rows in bulk — 8 grid rows,
+29 `applies` cells, 35 `n/a` cells, 29 files. Two of those files are documented adoptions of
+artifacts INVENTORY fails to list: `.github/dependabot.yml` (D-19) and
+`bbj-intellij/gradle/wrapper/gradle-wrapper.jar` (D-20, the fourth vendored binary, executed by
+`gradlew:117`). Each is recorded as a D8 drift finding against INVENTORY *and* swept — the gate
+follows the scope, not the other way round.
 
 Plans:
 **Wave 1**
 
-- [ ] 64-01-PLAN.md — Create `64-COVERAGE.md` (skeleton, 7-row grid incl. the 4 file-exception rows, the 27/29/56 cell gate, the 28-file gate with `.github/dependabot.yml`'s D-19 adoption, all four verbatim `n/a` carry-forwards, inherited-item ledger) and sweep `RU-64-03` BBj tool scripts, vendored JARs & interop harness end to end, incl. the Vendored Binary Provenance subsection and the 3 JAR file-exception rows
+- [ ] 64-01-PLAN.md — Create `64-COVERAGE.md` (skeleton, 8-row grid incl. all 5 file-exception rows, the two-part `8 29 35 64` cell gate, the 29-file gate with both the D-19 and D-20 adoptions, all four verbatim `n/a` carry-forwards, inherited-item ledger) and sweep `RU-64-03` BBj tool scripts, vendored JARs & interop harness end to end, incl. the Vendored Binary Provenance subsection and the 3 `tools/formatter/` JAR file-exception rows
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -445,7 +449,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 64-03-PLAN.md — Sweep `RU-64-02` build, packaging & dependency manifests across the 7 live dimensions plus the lockfile file-exception row, run the SEC-08 dependency audit as its own task (pinned live `npm audit` + static Gradle enumeration with its stated gap, criterion-3 triage table, `P63-D6-002` re-triage), and close the phase: close-out sections A-G, both D-18 gates re-run live, and the milestone coverage position
+- [ ] 64-03-PLAN.md — Sweep `RU-64-02` build, packaging & dependency manifests across the 7 live dimensions plus **both** file-exception rows — the lockfile and D-20's `gradle-wrapper.jar` — run the SEC-08 dependency audit as its own task (pinned live `npm audit` + static Gradle enumeration with its stated gap, the wrapper JAR's `distributionSha256Sum` question, criterion-3 triage table, `P63-D6-002` re-triage), and close the phase: close-out sections A-G, both D-18 gates re-run live, and the milestone coverage position (147 of INVENTORY's 148 `applies` cells, with the adopted row reported outside that denominator)
 
 **UI hint**: no
 
