@@ -96,7 +96,7 @@ Reproduced from `.planning/reviews/62-COVERAGE.md` §"Phase 62 Close-Out" sectio
 **Owning plan:** 63-01 (this plan) — Task 1 (D1, D2, D3, D6 — tier `repro`/repro-equivalent, D-15's 5-dimension Task A) and Task 2 (D4, D5, D8 — tier `trace`).
 
 ### Cells
-- D1 Security — fail — Checked, on `BbjNodeDownloader.java`: the scheme/host of the download URL (`DOWNLOAD_BASE_URL = "https://nodejs.org/dist/"`, `NODE_VERSION = "v20.18.1"` at :34-35, `downloadUrl` built at :104) — HTTPS, fixed host, no redirect-following override or certificate-handling override found in the `HttpRequests.request(...).connect(...)` call (:112-117); whether the archive at the temp file (`Files.createTempFile`, :110) is verified against any checksum, signature or expected size before extraction — confirmed absent (no hash computation, no signature check, no size assertion anywhere in this 290-line file); the `extractZip` entry-name handling (:167-188) — the target file name is the hardcoded literal `"node.exe"` (:174), not `entry.getName()`, so `destDir.resolve("node.exe")` cannot be steered by a hostile entry name in this specific loop (checked, no zip-slip defect on this path); the separate `extractTarGz` path (:190-218), which shells out to a system `tar` `ProcessBuilder` (:192-196) and therefore delegates entry-path safety entirely to whatever `tar` binary is on the invoking user's `PATH` — a trust transfer, stated as a fact under SEC-03 below, not independently provable without constructing a malicious archive (see Not-reproducible dispositions); whether an empty/truncated/entry-less archive is detected before `Files.copy`/`setExecutable` — it is: `!Files.exists(extractedNode)` at :142 throws before either :149 or :153 run, for both extraction paths; the already-occupied-target-path case — `Files.copy(..., REPLACE_EXISTING)` (:149) both overwrites unconditionally with no ownership/hash check and, by not specifying `LinkOption.NOFOLLOW_LINKS`, follows a symlink if one is already present at `targetPath`; and the cancelled/concurrent-download remnant question — the `Task.Backgroundable` (:76) is cancellable, temp file/dir cleanup runs in `finally` blocks on every exit path (:157-159, :161-164), so no partial artifact is left in the shared plugin data dir on cancellation, but the `DOWNLOAD_IN_PROGRESS_KEY` guard itself (:70-74, :79, :88) is not atomic (see D2). Checked the other five files: `BbjSettings.java` persists no credential — `bbjHomePath`/`nodeJsPath`/`classpathEntry`/`configPath`/`emUrl`/`javaInteropHost` are filesystem paths and a host/URL string, none executed directly by this class; `BbjSettingsComponent.java`/`BbjSettingsConfigurable.java` validate a user-entered BBj home (`BbjHomeDetector.isValidBbjHome`, `BbjSettingsComponent.java:57`) and Node path (`BbjNodeDetector.getNodeVersion`/`meetsMinimumVersion`, `BbjSettingsComponent.java:86-92`) via `ComponentValidator` before display, but validation is advisory (a `ValidationInfo` warning, not a blocking gate — `apply()` in `BbjSettingsConfigurable.java:61-85` persists the typed value regardless of validator state); `BbjHomeDetector.java`/`BbjNodeDetector.java` trust the environment as follows: `~/BASIS/Install.properties` (`BbjHomeDetector.java:61`), a small fixed set of OS-specific literal paths (`:85-90`), and the system `PATH` via `PathEnvironmentVariableUtil.findInPath("node")` (`BbjNodeDetector.java:27`) — all read-only filesystem/PATH probes, no network or IPC trust boundary. 2 findings recorded: P63-D1-001, P63-D1-002.
+- D1 Security — fail — Checked, on `BbjNodeDownloader.java`: the scheme/host of the download URL (`DOWNLOAD_BASE_URL = "https://nodejs.org/dist/"`, `NODE_VERSION = "v20.18.1"` at :34-35, `downloadUrl` built at :104) — HTTPS, fixed host, no redirect-following override or certificate-handling override found in the `HttpRequests.request(...).connect(...)` call (:112-117); whether the archive at the temp file (`Files.createTempFile`, :110) is verified against any checksum, signature or expected size before extraction — confirmed absent (no hash computation, no signature check, no size assertion anywhere in this 290-line file); the `extractZip` entry-name handling (:167-188) — the target file name is the hardcoded literal `"node.exe"` (:174), not `entry.getName()`, so `destDir.resolve("node.exe")` cannot be steered by a hostile entry name in this specific loop (checked, no zip-slip defect on this path); the separate `extractTarGz` path (:190-218), which shells out to a system `tar` `ProcessBuilder` (:192-196) and therefore delegates entry-path safety entirely to whatever `tar` binary is on the invoking user's `PATH` — a trust transfer, stated as a fact under SEC-03 below, not independently provable without constructing a malicious archive (see Not-reproducible dispositions); whether an empty/truncated/entry-less archive is detected before `Files.copy`/`setExecutable` — it is: `!Files.exists(extractedNode)` at :142 throws before either :149 or :153 run, for both extraction paths; the already-occupied-target-path case — `Files.copy(..., REPLACE_EXISTING)` (:149) overwrites unconditionally with no ownership/hash check (a symlink already present at `targetPath` is *replaced*, not followed — the contrary claim originally recorded here was refuted by direct reproduction during verification and withdrawn; see `P63-D1-002`'s `corrected_claim`); the cache **read** path — `getCachedNodePath()` (:47-59) returns any file satisfying `Files.exists() && Files.isExecutable()` (:52) with no hash, version or provenance check, which is where `P63-D1-002` is now located; and the cancelled/concurrent-download remnant question — the `Task.Backgroundable` (:76) is cancellable, temp file/dir cleanup runs in `finally` blocks on every exit path (:157-159, :161-164), so no partial artifact is left in the shared plugin data dir on cancellation, but the `DOWNLOAD_IN_PROGRESS_KEY` guard itself (:70-74, :79, :88) is not atomic (see D2). Checked the other five files: `BbjSettings.java` persists no credential — `bbjHomePath`/`nodeJsPath`/`classpathEntry`/`configPath`/`emUrl`/`javaInteropHost` are filesystem paths and a host/URL string, none executed directly by this class; `BbjSettingsComponent.java`/`BbjSettingsConfigurable.java` validate a user-entered BBj home (`BbjHomeDetector.isValidBbjHome`, `BbjSettingsComponent.java:57`) and Node path (`BbjNodeDetector.getNodeVersion`/`meetsMinimumVersion`, `BbjSettingsComponent.java:86-92`) via `ComponentValidator` before display, but validation is advisory (a `ValidationInfo` warning, not a blocking gate — `apply()` in `BbjSettingsConfigurable.java:61-85` persists the typed value regardless of validator state); `BbjHomeDetector.java`/`BbjNodeDetector.java` trust the environment as follows: `~/BASIS/Install.properties` (`BbjHomeDetector.java:61`), a small fixed set of OS-specific literal paths (`:85-90`), and the system `PATH` via `PathEnvironmentVariableUtil.findInPath("node")` (`BbjNodeDetector.java:27`) — all read-only filesystem/PATH probes, no network or IPC trust boundary. 2 findings recorded: P63-D1-001, P63-D1-002.
 - D2 Correctness & error handling — fail — Checked the `catch (Exception e)` in the background task (:83-86): it only shows an error notification, sets no "Node available" flag, so a caller still observes `getCachedNodePath() == null` afterward — no defect there. Checked the `finally` at :87-92: restores `DOWNLOAD_IN_PROGRESS_KEY` on every path including a `ProcessCanceledException` (a `RuntimeException`, caught by the outer `catch (Exception e)`) — pass. Checked temp file/dir removal on every exit path including the throw at :142-144 — both `finally` blocks (:157-159, :161-164) run regardless of exception type — pass. Checked `getCachedNodePath()`'s swallowed `IOException` (:55, comment "Directory creation failed, return null") — **not distinguishable by the caller from "not yet cached"**: both paths return `null` identically, so a permission-denied or read-only plugin data directory looks exactly like "Node.js hasn't been downloaded yet" to every caller. Checked `extractTarGz`'s handling of a non-zero `tar` exit code (:211-213, throws with the captured output — pass), an interrupted wait (:214-217, sets the interrupt flag and rethrows — correct pattern, pass), and unbounded process output (:201-207, `StringBuilder output` has no size cap; in practice `tar xzf` emits output only on error, so this is a latent-not-active cost, not promoted as its own finding). Checked the settings round-trip for absent/empty/malformed values: `BbjSettingsConfigurable.reset()` (:88-149) null/empty-guards `configPath`/`emUrl` (:144,147) and defaults `logLevel`/`javaInteropHost` when empty (:117-119,124-126) — but `javaInteropPort` auto-detection (:130-140) is gated on `if (javaInteropPort == 5008)` — an equality-to-default check, not an "was this ever explicitly configured" check — and this auto-detection logic lives **only** in the Configurable (UI layer), never inside `BbjSettings.getState()` itself (:42-59), unlike `bbjHomePath`/`nodeJsPath` which **are** auto-detected inside `getState()` (:44-57) so every consumer benefits — a code path that reads `BbjSettings.getInstance().getState().javaInteropPort` directly, without opening the Settings UI, gets the raw stored/default value with no auto-detection ever applied. Checked `BbjHomeDetector`/`BbjNodeDetector`: both return `null` uniformly for "not found" and for a caught exception (`BbjHomeDetector.java:78-80`, `BbjNodeDetector.java:47-48`) — same not-distinguishable pattern as `getCachedNodePath()`, cited as a secondary instance rather than a separate finding. Checked the `DOWNLOAD_IN_PROGRESS_KEY` guard (:70-74) for a check-then-act race: `props.getBoolean(...)` and `props.setValue(...)` (:79) are two separate, unsynchronized calls on an application-scoped `PropertiesComponent` — two IDE windows invoking `downloadNodeAsync` within the same race window can both observe `false` before either sets `true`, launching two concurrent `Task.Backgroundable` downloads that independently `Files.copy(..., REPLACE_EXISTING)` (:149) to the same `targetPath`. 3 findings recorded: P63-D2-001, P63-D2-002, P63-D2-003.
 - D3 Performance & resource use — fail — Checked whether `getCachedNodePath()` (:47-59) is cheap enough for its documented "fast and synchronous" contract: two filesystem stats (`Files.exists`, `Files.isExecutable`, :52) plus `Files.createDirectories` inside `getNodeDataDirectory()` (:245, a write-attempt on every call, usually a fast no-op once the directory exists) — not a hot-path concern at the frequency this method is actually called (server startup / manual status checks, not per-keystroke) — pass on this specific check. Checked `BbjHomeDetector`/`BbjNodeDetector` for unbounded filesystem walks or repeated process spawns: `detectBbjHome()` reads one properties file then probes 2-3 fixed literal paths (`BbjHomeDetector.java:41-45,85-90`) — bounded, cheap; `detectNodePath()` walks the `PATH` env var once via the platform's own `PathEnvironmentVariableUtil` (`BbjNodeDetector.java:27`) — bounded. Checked the 8 KiB copy loop in `extractZip` (:177-181, bounded per-file) and the `tar` output accumulation in `extractTarGz` (:201-207, unbounded but practically inert per the D2 note above) — no unbounded-growth defect promoted separately from D2's note. Checked whether the settings UI rebuilds its model per interaction: **it does something more expensive** — `BbjSettingsComponent.java:148-164` wires two `DocumentListener`s (`bbjHomeField`, `nodeJsField`) whose `textChanged` callbacks fire on the Swing EDT on **every keystroke**. `nodeJsField`'s listener calls `updateNodeVersionLabel()` (:221-239), which — whenever the currently-typed path exists as a file — calls `BbjNodeDetector.getNodeVersion()` (:231), which spawns a `node --version` subprocess and **blocks the EDT synchronously** via `ExecUtil.execAndReadLine` (`BbjNodeDetector.java:42-46`) until the process exits, with no debounce and no background thread. `bbjHomeField`'s listener calls `updateClasspathDropdown()` (:200-216) → `BbjSettings.getBBjClasspathEntries()` (`BbjSettings.java:74-100`), a synchronous `Files.readAllLines` file read, also on the EDT, also per keystroke. 1 finding recorded: P63-D3-001.
 - D4 Maintainability & code smells — fail — Checked the `SystemInfo.isWindows` branch, repeated independently 5 times in `BbjNodeDownloader.java` (:50, :103, :125, :136-139/:148, :152) with no shared platform-strategy abstraction — each site re-derives the same Windows-vs-other decision. Checked `getPlatformName()` (:220-229) and `getArchitecture()` (:231-241): these translate `SystemInfo`/`CpuArch` booleans into Node.js's own platform/arch naming convention (`"darwin"`/`"linux"`/`"win"`, `"arm64"`/`"x64"`) — a genuine mapping, not pure duplication of what `SystemInfo`/`CpuArch` already expose, so no defect there. Checked `downloadAndExtractNode` (:97-165, 69 lines) for god-function shape: it builds the URL, downloads, dispatches by archive type, extracts, resolves the extracted binary, copies it, sets the executable bit, and cleans up — eight distinct responsibilities in one method, confined to a single file. Checked `BbjHomeDetector.java`/`BbjNodeDetector.java` for copy-pasted detection shape: their detection mechanisms differ structurally (installer-trace-file parsing vs. `PATH` lookup) — no meaningful duplication found there. Checked `BbjSettings.java`/`BbjSettingsComponent.java`/`BbjSettingsConfigurable.java` for a single settings-access convention: the three-layer split (persistent state / Swing UI / Configurable bridge) is consistent — no defect. Checked for duplicated constant/default/path strings across the six files: the literal `5008` (the java-interop default port) appears independently in `BbjSettings.java:30,107,111,116,150`, `BbjSettingsComponent.java:119,125,297,302`, and `BbjSettingsConfigurable.java:131,136` — 3 files, no shared named constant. 2 findings recorded: P63-D4-001, P63-D4-002.
@@ -115,7 +115,7 @@ This subsection states facts against the actual code — "there is no checksum" 
 
 **(3) Archive extraction path safety (zip-slip).** Two independent extraction paths exist, selected by `SystemInfo.isWindows` (:125-129). `extractZip` (:167-188, Windows) iterates `ZipInputStream` entries and writes the **first** entry whose name ends with `"node.exe"` to `destDir.resolve("node.exe")` (:174) — the resolved target is the **hardcoded literal string `"node.exe"`**, not `entry.getName()`, so a hostile entry name cannot steer the resolved path in this loop; no second entry can overwrite a different location because the loop `break`s after the first match (:183). `extractTarGz` (:190-218, macOS/Linux) shells out to a system `ProcessBuilder("tar", "xzf", ...)` (:192-196) — this path performs **no entry-name validation of its own at all**; it delegates entry-path safety entirely to whatever `tar` binary is present on the invoking user's `PATH`, which this code neither inspects nor pins a version of. Two entries resolving to the same target path is therefore governed by that external `tar` binary's own last-write-wins/overwrite semantics, not by any check in this file. Stated as a fact, not independently provable further without constructing a crafted malicious archive (see Not-reproducible dispositions below).
 
-**(4) Cache trust.** The cache location is `PathManager.getPluginsPath()/bbj-intellij-data/nodejs` (`getNodeDataDirectory()`, :243-246). Every subsequent IDE launch calls `getCachedNodePath()` (:47-59), which trusts **any** file at the resolved path that satisfies `Files.exists(...) && Files.isExecutable(...)` (:52) — no hash, no version string check, no provenance check of any kind. An existing, partial, or foreign file at that exact path is therefore either (a) treated as "the cached Node.js binary" if it happens to be executable, with no distinction from a genuinely downloaded one, or (b) silently **overwritten** on the next download attempt, since `Files.copy(extractedNode, targetPath, REPLACE_EXISTING)` (:149) unconditionally replaces whatever is there — and because `REPLACE_EXISTING` does not pass `LinkOption.NOFOLLOW_LINKS`, if that existing path is a symlink, the copy follows the link and overwrites whatever the symlink points to, not the symlink itself. Recorded as `P63-D1-002`.
+**(4) Cache trust.** The cache location is `PathManager.getPluginsPath()/bbj-intellij-data/nodejs` (`getNodeDataDirectory()`, :243-246). Every subsequent IDE launch calls `getCachedNodePath()` (:47-59), which trusts **any** file at the resolved path that satisfies `Files.exists(...) && Files.isExecutable(...)` (:52) — no hash, no version string check, no provenance check of any kind. An existing, partial, or foreign file at that exact path is therefore either (a) treated as "the cached Node.js binary" if it happens to be executable, with no distinction from a genuinely downloaded one, or (b) silently **overwritten** on the next download attempt, since `Files.copy(extractedNode, targetPath, REPLACE_EXISTING)` (:149) unconditionally replaces whatever is there. (An earlier version of this fact added that a symlink at `targetPath` would be *followed*, so the copy would overwrite the link's referent; that was refuted by direct reproduction during Phase 63 verification — `Files.copy` replaces the link itself — and is withdrawn. `LinkOption.NOFOLLOW_LINKS` governs the source of a copy, not the target. See `P63-D1-002`'s `corrected_claim`.) The load-bearing half of this fact is (a): the trust decision at :52 is `exists && isExecutable` and nothing more, so on every launch after the first the download path — and therefore fact (2)'s missing checksum — is bypassed entirely. Recorded as `P63-D1-002`.
 
 **(5) Extracted-binary path resolution and the executable bit.** `extractedNode` is resolved to `tempExtractDir.resolve("node.exe")` (Windows) or `tempExtractDir.resolve("bin").resolve("node")` (:136-139), existence-checked at :142 (throwing if absent — no silent proceed on an empty/entry-less archive), then copied to the plugin data directory (:147-149) and, on non-Windows, marked executable via `targetPath.toFile().setExecutable(true)` (:152-153) with **no verification step of any kind between the copy and the `setExecutable` call** — whatever bytes were copied are marked runnable unconditionally.
 
@@ -174,39 +174,69 @@ disposition:       major-refactor
 ```
 id:                P63-D1-002
 unit:              RU-63-03
-location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:149
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:52
 dimension:         D1
 secondary:         [D2]
 severity:          low
 evidence_tier:     repro
-evidence:          Line-by-line trace: Files.copy(extractedNode, targetPath,
-                    java.nio.file.StandardCopyOption.REPLACE_EXISTING) (:149) is called with no
-                    LinkOption.NOFOLLOW_LINKS, so if targetPath (getNodeDataDirectory().resolve(...),
-                    a per-user plugin data directory under PathManager.getPluginsPath()) is already
-                    a symbolic link at copy time, Files.copy follows it and overwrites the link's
-                    target rather than replacing the link itself. No runnable reproduction
-                    accompanies this record (D-07); establishing exploitability further would
-                    require a local pre-placed symlink, which is outside this static-trace sweep's
-                    scope.
-failure_scenario:  On a filesystem where another local process or user has write access to the
-                    plugin data directory (or can influence what getNodeDataDirectory() resolves to
-                    before this plugin's first download), a pre-placed symlink at the exact target
-                    path redirects this copy's write to an arbitrary filesystem location the current
-                    user can write to, rather than to the intended cache slot — combined with
-                    P63-D1-001's absent integrity check, the write's content is also unverified.
-                    Severity is low because the plugin data directory is normally private to the
-                    current OS user, limiting who could pre-place the symlink.
+revised:           2026-08-18 — this record previously asserted a symlink-following mechanism at
+                    :149. That mechanism is FALSE and was withdrawn during Phase 63 verification;
+                    see `corrected_claim` below. The finding is retained, not dropped, because the
+                    surface it named is genuinely unverified — the true defect is on the cache READ
+                    path, not the copy path.
+corrected_claim:   The withdrawn assertion was: "Files.copy(extractedNode, targetPath,
+                    REPLACE_EXISTING) (:149) is called with no LinkOption.NOFOLLOW_LINKS, so if
+                    targetPath is already a symbolic link at copy time, Files.copy follows it and
+                    overwrites the link's target rather than replacing the link itself."
+                    Refuted by direct reproduction on Temurin 25.0.3 (the toolchain in this
+                    environment): with victim.txt containing "ORIGINAL" and target -> victim.txt,
+                    Files.copy(src, target, REPLACE_EXISTING) yields `victim content: ORIGINAL`,
+                    `target is symlink: false`, `target content: NEWCONTENT` — the symlink itself is
+                    replaced and the pointed-to file is untouched. LinkOption.NOFOLLOW_LINKS in
+                    Files.copy(Path,Path,CopyOption...) governs the SOURCE, not the target, so the
+                    edit the old record proposed would not have addressed the problem it described
+                    either. Recorded here rather than silently deleted so that the withdrawal is
+                    auditable (RVW-06: a finding is its verified failure scenario, and this one had
+                    none).
+evidence:          Line-by-line trace on the cache READ path, which is a different code path from
+                    the download: getCachedNodePath() (:47-59) resolves
+                    getNodeDataDirectory().resolve(SystemInfo.isWindows ? "node.exe" : "node")
+                    (:50) — i.e. <PathManager.getPluginsPath()>/bbj-intellij-data/nodejs/node
+                    (:243-246) — and RETURNS that path to its callers whenever
+                    `Files.exists(nodePath) && Files.isExecutable(nodePath)` (:52) holds. Those two
+                    predicates are the entire trust decision: confirmed by reading all 290 lines,
+                    there is no hash comparison, no signature check, no size assertion, no version
+                    probe (no `--version` invocation), and no provenance marker of any kind
+                    anywhere in the file. A file satisfying only exists+executable is therefore
+                    indistinguishable, to this method, from a binary this plugin itself downloaded.
+failure_scenario:  Any local process or user able to write into the plugin data directory can place
+                    an executable file at exactly
+                    <plugins>/bbj-intellij-data/nodejs/node (or node.exe on Windows). On the next
+                    IDE launch getCachedNodePath() returns it on the strength of :52 alone, and the
+                    caller runs it as the Node.js host process for the language server for every BBj
+                    file opened. Note this path BYPASSES the download entirely — the archive is
+                    never fetched, so P63-D1-001's absent checksum is not merely insufficient here,
+                    it is never reached. This is the distinct half of the integrity gap: D1-001
+                    covers bytes that arrive over the network unverified, D1-002 covers bytes that
+                    are never verified on read, on every launch after the first. Severity is low
+                    because the plugin data directory is normally private to the current OS user,
+                    limiting who can pre-place the file; it is not `none` because the directory is
+                    a predictable, non-randomised path under a well-known IDE root, and the file is
+                    made executable by the plugin's own code (:153) on the download path.
 classification:    major
                     (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass —
-                    (3) no new dependency: pass (LinkOption is JDK-standard) — (4) regression-
+                    (3) no new dependency: pass (MessageDigest is JDK-standard) — (4) regression-
                     testable with existing harness: FAIL — no src/test/ source set exists
-                    (P63-D5-001) — (5) reviewer can name the exact edit (add
-                    LinkOption.NOFOLLOW_LINKS, or pre-check Files.isSymbolicLink(targetPath)):
+                    (P63-D5-001) — (5) reviewer can name the exact edit (record the downloaded
+                    binary's digest alongside the cache and re-verify it in getCachedNodePath()
+                    before returning, or at minimum probe `node --version` against NODE_VERSION):
                     pass — (6) severity `low` but dimension is D1: FAIL — any D1 finding is major
                     regardless of severity per D-13's safety gate; test (4) independently fails.
 effort:            2
 dedup:             none — neither #410 nor #476, nor any other frozen open issue, concerns
-                    symlink-following copy semantics in the Node.js download/cache path.
+                    verification of the cached Node.js binary on read. Distinct from P63-D1-001,
+                    which concerns verification of the archive on download; the two are separately
+                    fixable and neither subsumes the other.
 disposition:       major-refactor
 ```
 
@@ -2190,7 +2220,13 @@ classification:    major
                     open, mirroring the widgets' own updateVisibility() check, or on project-frame
                     focus/idle state): pass — (6) severity low, dimension D3 (not D1): pass — test
                     (4) alone fails, so classification is major.
-effort:            3
+effort:            2
+                    (revised 2026-08-18: recorded as 3, off INVENTORY §3d's
+                    locked {2,4,8} scale. Rounded DOWN to the nearest legal value so
+                    the finding remains labellable for ISSUE-03, which uses the effort
+                    value as the label with no translation step. Rounding down rather
+                    than up preserves the reviewer's evident intent — 3 was chosen to
+                    mean 'below the 4 bucket'. Original value retained here.)
 dedup:             none — #410/#231 checked and dismissed. No frozen open issue names java-interop
                     poll cadence/gating.
 disposition:       major-refactor
@@ -2334,7 +2370,13 @@ classification:    easy
                     record's easy-fix scope — wire the process's actual stdout/stderr into the
                     console): pass — (6) severity low, dimension D8 (not D1): pass — all six tests
                     pass under the doc-only reading, so classification is easy.
-effort:            1
+effort:            2
+                    (revised 2026-08-18: recorded as 1, off INVENTORY §3d's
+                    locked {2,4,8} scale. Rounded DOWN to the nearest legal value so
+                    the finding remains labellable for ISSUE-03, which uses the effort
+                    value as the label with no translation step. Rounding down rather
+                    than up preserves the reviewer's evident intent — 1 was chosen to
+                    mean 'below the 4 bucket'. Original value retained here.)
 dedup:             none — #410/#231 checked and dismissed. No frozen open issue names this
                     doc/behaviour gap.
 disposition:       easy-fix
@@ -2367,7 +2409,13 @@ classification:    easy
                     satisfying the doc as written): pass — (6) severity low, dimension D8 (not D1):
                     pass — all six tests pass under the doc-only reading, so classification is
                     easy.
-effort:            1
+effort:            2
+                    (revised 2026-08-18: recorded as 1, off INVENTORY §3d's
+                    locked {2,4,8} scale. Rounded DOWN to the nearest legal value so
+                    the finding remains labellable for ISSUE-03, which uses the effort
+                    value as the label with no translation step. Rounding down rather
+                    than up preserves the reviewer's evident intent — 1 was chosen to
+                    mean 'below the 4 bucket'. Original value retained here.)
 dedup:             none — #410/#231 checked and dismissed. No frozen open issue names this
                     doc/behaviour gap.
 disposition:       easy-fix
@@ -2976,20 +3024,27 @@ By effort (`grep -oE '^effort:[[:space:]]+[0-9]+' .planning/reviews/63-COVERAGE.
 
 | Effort | Count |
 |---|---|
-| `2` | 17 |
+| `2` | 20 |
 | `4` | 29 |
 | `8` | 13 |
-| **Off-scale (`1` or `3`)** | **3** |
+| **Off-scale** | **0** |
 | **Total** | **62** |
 
-**Re-derivation disagreement, surfaced per D-17.1 rather than adopted silently:** three findings —
-recorded by plan `63-04` in `RU-63-05` (`effort: 3` on the java-interop poll-cadence finding,
-`effort: 1` on two `easy`-classified doc-accuracy findings) — carry an `effort` value outside
-INVENTORY §3d's stated three-value scale (`2`, `4`, `8`). This is a genuine Finding Standard
-compliance deviation in an earlier plan's already-committed section, which this close-out is not
-authorized to reword (the write contract restricts plan `63-05` to the close-out and the ledger's
-disposition column, not another unit's `### Findings`). Stated here as a fact rather than silently
-adopted or silently corrected.
+**Re-derivation disagreement, surfaced per D-17.1 — RESOLVED 2026-08-18 during phase
+verification.** Three findings recorded by plan `63-04` in `RU-63-05` (`effort: 3` on the
+java-interop poll-cadence finding `P63-D3-005`, `effort: 1` on the two `easy`-classified
+doc-accuracy findings `P63-D8-006`/`P63-D8-007`) carried an `effort` value outside INVENTORY
+§3d's stated three-value scale (`2`, `4`, `8`). Plan `63-05` correctly declined to reword them —
+its write contract covers the close-out and the ledger's disposition column, not another unit's
+`### Findings` — and disclosed the deviation here instead.
+
+Because INVENTORY makes the `effort` value *be* the ISSUE-03 label with no translation step, three
+unlabellable findings would have reached Phase 69. Resolved by explicit decision at verification
+time: all three **rounded down** to `2` (`3 → 2`, `1 → 2`, `1 → 2`), on the reading that both
+off-scale values were chosen to mean "below the `4` bucket". Each record carries the original value
+and the rationale inline, so the revision is auditable rather than a silent normalisation. The
+effort distribution above is the post-revision count; every one of the 62 findings is now
+labellable.
 
 By disposition (`grep -oE '^disposition:[[:space:]]+[a-z-]+' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
 
