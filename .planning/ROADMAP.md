@@ -427,7 +427,27 @@ trees' vulnerability posture.
   4. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+One plan per review unit in INVENTORY risk-rank order, one wave each, all three appending to the
+single deliverable `.planning/reviews/64-COVERAGE.md`; no source file is modified. This is the last
+sweep phase, and the only one whose slice includes live file-exception rows in bulk — 7 grid rows,
+27 `applies` cells, 29 `n/a` cells, 28 files.
+
+Plans:
+**Wave 1**
+
+- [ ] 64-01-PLAN.md — Create `64-COVERAGE.md` (skeleton, 7-row grid incl. the 4 file-exception rows, the 27/29/56 cell gate, the 28-file gate with `.github/dependabot.yml`'s D-19 adoption, all four verbatim `n/a` carry-forwards, inherited-item ledger) and sweep `RU-64-03` BBj tool scripts, vendored JARs & interop harness end to end, incl. the Vendored Binary Provenance subsection and the 3 JAR file-exception rows
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 64-02-PLAN.md — Sweep `RU-64-01` GitHub Actions workflows plus `.github/dependabot.yml` across the 6 live dimensions, write the SEC-07 Workflow Security Posture table (6 workflows × 4 criterion-2 clauses, no blank cells), enumerate all 36 `uses:` references by pinning kind, and record INVENTORY's `.github/` accounting drift as a D8 finding
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 64-03-PLAN.md — Sweep `RU-64-02` build, packaging & dependency manifests across the 7 live dimensions plus the lockfile file-exception row, run the SEC-08 dependency audit as its own task (pinned live `npm audit` + static Gradle enumeration with its stated gap, criterion-3 triage table, `P63-D6-002` re-triage), and close the phase: close-out sections A-G, both D-18 gates re-run live, and the milestone coverage position
+
+**UI hint**: no
 
 ---
 
