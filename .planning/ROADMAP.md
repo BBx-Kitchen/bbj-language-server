@@ -374,7 +374,29 @@ the security of its Node.js runtime download path.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: TBD
+**Plans**: 5 plans — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+deliverable `.planning/reviews/63-COVERAGE.md`; no source file is modified.
+
+Plans:
+**Wave 1**
+
+- [ ] 63-01-PLAN.md — Create `63-COVERAGE.md` (skeleton, grid, cell-total gate, both verbatim `n/a` carry-forwards, inherited-referral ledger) and sweep `RU-63-03` settings & runtime acquisition end to end, incl. the SEC-03 Integrity Posture and the phase's only live D6 cell
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 63-02-PLAN.md — Sweep `RU-63-01` run, compile & EM actions (11 files) across the 7 live dimensions, with concrete D1 records on the spawn and EM token surfaces, and triage the 3 inherited Phase 62 referrals
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 63-03-PLAN.md — Sweep `RU-63-04` composer dialogs & bridge (13 files, largest by LOC) across the 7 live dimensions, and triage the merged SETOPTS referral (#4 + #5) as one disposition
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 63-04-PLAN.md — Sweep `RU-63-05` LSP wiring, server lifecycle & status UI (13 files) across the 7 live dimensions, incl. the bounded, measured DEBT-05 record
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 63-05-PLAN.md — Sweep `RU-63-02` language registration, editor support & notifications (18 files, three sub-clusters), triage the 2 inherited referrals, and close the phase: close-out sections A-G, cross-phase observations, and all three D-17 gates re-run live
 
 **UI hint**: yes
 
