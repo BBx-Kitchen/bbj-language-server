@@ -1838,5 +1838,240 @@ disposition:       easy-fix
 
 ## Phase 62 Close-Out
 
-_(recorded by plan 62-05)_
+Both gates below are re-run at execution time by plan `62-05`, against the tree and against
+`.planning/reviews/INVENTORY.md` — neither number is copied from a plan or from this file's own
+header. Per D-14, a disagreement between a re-derivation and a stated total would itself be
+surfaced as a defect, not adopted; none was found.
+
+### A. Gate 2 — the 22-file tree enumeration (D-14.2)
+
+Command, re-run from the tree, not from any plan's typed list:
+
+```bash
+ls bbj-vscode/src/*.ts bbj-vscode/src/Commands/* \
+   bbj-vscode/syntaxes/bbj.tmLanguage.json \
+   bbj-vscode/bbj-language-configuration.json \
+   bbj-vscode/bbx-language-configuration.json | wc -l
+```
+
+**Output:** `22`
+
+The 22 basenames the command enumerates, listed inline so a reader can audit the claim without
+re-running it: `bbj-language-configuration.json`, `bbx-language-configuration.json`,
+`addchildwindow-composer.ts`, `addchildwindow-composer-ui.ts`, `addchildwindow-composer-webview.ts`,
+`addwindow-composer.ts`, `addwindow-composer-ui.ts`, `addwindow-composer-webview.ts`,
+`Commands.cjs`, `CompilerOptions.ts`, `decompile-io.ts`, `document-formatter.ts`, `extension.ts`,
+`line-numbering.ts`, `msgbox-composer.ts`, `msgbox-composer-ui.ts`, `msgbox-composer-webview.ts`,
+`setopts-catalog.ts`, `setopts-composer-ui.ts`, `setopts-composer-webview.ts`, `tokenized-bbj.ts`,
+`bbj.tmLanguage.json`.
+
+Per-basename presence loop, re-run against this file:
+
+```bash
+for b in $(ls bbj-vscode/src/*.ts bbj-vscode/src/Commands/* bbj-vscode/syntaxes/bbj.tmLanguage.json \
+              bbj-vscode/bbj-language-configuration.json bbj-vscode/bbx-language-configuration.json \
+              | xargs -n1 basename); do
+  grep -q "$b" .planning/reviews/62-COVERAGE.md || echo "MISSING $b"
+done
+```
+
+**Output:** (empty — every one of the 22 basenames is present somewhere in this file.)
+
+Gate 2 closes with agreement: 22 files enumerated from the tree, 22 basenames confirmed present.
+
+### B. Gate 1 — the closing cell-total re-derivation (D-14.1), three sources
+
+Command, re-run against `INVENTORY.md`, not restated from plan `62-01`'s block:
+
+```bash
+awk '/^\| `RU-62-0[1-5]` \|/ {a+=gsub(/applies/,"applies"); n+=gsub(/n\/a/,"n\/a")} END{print a, n, a+n}' \
+  .planning/reviews/INVENTORY.md
+```
+
+**Output:** `35 5 40`
+
+This file's own content, counted independently (each command re-run at close-out time):
+
+| Source | Command | Output |
+|---|---|---|
+| Stated totals (this file's header, D-14 Cell-Total Gate block) | — | `35 applies, 5 n/a, 40 total` |
+| INVENTORY re-derivation (above) | `awk` over `RU-62-0[1-5]` grid rows | `35 5 40` |
+| This file's own recorded verdicts | `grep -cE '^- D[1-8] .* — (pass\|fail) — '` | `35` |
+| This file's own `n/a` carry-forwards | `grep -cE '^- D[1-8] .* — n/a — '` | `5` |
+| This file's own total cell lines | `grep -cE '^- D[1-8] '` | `40` |
+| This file's own remaining placeholders | `grep -cE '^- D[1-8] .* — pending$'` | `0` |
+
+**Verdict: all three sources agree.** The stated totals (35/5/40), the closing INVENTORY
+re-derivation (35/5/40), and this file's own content (35 verdicts + 5 `n/a` = 40 cell lines, 0
+placeholders) match exactly. No disagreement was found, so none is surfaced as a defect (D-14).
+
+### C. Finding accounting
+
+By primary dimension (`grep -oE '^dimension:[[:space:]]+D[1-8]' .planning/reviews/62-COVERAGE.md | sort | uniq -c`):
+
+| Dimension | Count |
+|---|---|
+| D1 Security | 7 |
+| D2 Correctness & error handling | 11 |
+| D3 Performance & resource use | 1 |
+| D4 Maintainability & code smells | 5 |
+| D5 Test coverage gaps | 6 |
+| D7 Cross-IDE parity | 2 |
+| D8 Comment & doc accuracy | 2 |
+| **Total** | **34** |
+
+By disposition (`grep -oE '^disposition:[[:space:]]+[a-z-]+' .planning/reviews/62-COVERAGE.md | sort | uniq -c`):
+
+| Disposition | Count |
+|---|---|
+| `easy-fix` | 14 |
+| `major-refactor` | 20 |
+| **Total** | **34** |
+
+Both tables sum to `34`, and `grep -c '^id:' .planning/reviews/62-COVERAGE.md` also prints `34` —
+the dimension count, the disposition count, and the `id:` count all agree (D-14's identity check).
+
+**Not-reproducible dispositions**, by unit — every candidate that did not clear its evidence tier
+is visible here rather than silently dropped (RVW-06):
+
+| Unit | Count | Subject |
+|---|---|---|
+| `RU-62-04` | 1 | a rapid `'insert'`/`'cancel'` message race across `await applyEdit`/`panel.dispose()` |
+| `RU-62-01` | 1 | (recorded under this unit's own section) |
+| `RU-62-03` | 1 | (recorded under this unit's own section) |
+| `RU-62-05` | 0 | none recorded |
+| `RU-62-02` | 1 | whether `BBjCFCli.jar` honors `-i <path>` or piped stdin when they diverge |
+| **Total** | **4** | |
+
+**Dedup resolutions against the 15 frozen open issues** — every finding's `dedup:` field is
+non-blank (`grep -cE '^dedup:[[:space:]]*$' .planning/reviews/62-COVERAGE.md` prints `0`); the
+issue numbers checked by name anywhere in a `dedup:` field
+(`awk '/^dedup:/{flag=1} /^disposition:/{flag=0} flag' .planning/reviews/62-COVERAGE.md | grep -oE '#[0-9]+' | sort -u`)
+are **#231, #381, #385, #475, #485, #486, #65** — exactly the seven this plan's own `key_links`
+named in advance. Of these, only one finding resolved to an actual overlap rather than `none`:
+`P62-D1-003` (`RU-62-01`, unescaped `exec()` interpolation) records `#231 partial-overlap` and
+`#485 partial-overlap` — both existing-setting overlaps, neither addressing this finding's
+injection-safety defect. Every other checked-by-name issue resolved to `none`, with the reasoning
+recorded inline in that finding's own `dedup:` field.
+
+### D. Cross-unit referral accounting
+
+**Group 1 — referrals addressed to another Phase 62 unit: 0.** `INVENTORY.md`'s Routing table
+(D-06) has no Phase 62 rows, confirmed as a fact by all five plans rather than assumed; no finding
+or observation in any of the five `## RU-62-0N` sections is addressed to another `RU-62-0N` unit —
+every cross-unit referral in this file targets Phase 63.
+
+**Group 2 — referrals addressed to `RU-63-01`/`RU-63-02`/`RU-63-04`: 7 bullets**, listed with
+target and subject. Per D-06, these are **outstanding by design** — durable records Phase 63
+inherits and re-triages whether or not it has already swept the named unit. An unanswered Phase 63
+referral is not a Phase 62 defect.
+
+| From unit | To unit | Subject |
+|---|---|---|
+| `RU-62-04` | `RU-63-04` | SETOPTS has no IntelliJ composer dialog at all |
+| `RU-62-01` | `RU-63-01` | `BbjCompileAction.java` is an unimplemented `TODO` stub, never invokes `bbjcpl` |
+| `RU-62-01` | `RU-63-01` | Six VS Code commands (`configureCompileOptions`, `denumber`, `decompile`, `decompileReadonly`, `em`) have no IntelliJ action counterpart |
+| `RU-62-01` | `RU-63-01` | `bbj.refreshJavaClasses` restarts the whole LS on IntelliJ vs. a targeted LSP request on VS Code |
+| `RU-62-03` | `RU-63-04` | Independent confirmation (logic/UI layer) of the same SETOPTS/IntelliJ absence `RU-62-04` referred |
+| `RU-62-05` | `RU-63-02` | Whether IntelliJ's TextMate importer honors `filenames`; whether IntelliJ's LSP4IJ registration independently covers `.bbl` |
+| `RU-62-02` | `RU-63-02` | None of format/denumber/tokenized-detection/decompile has any IntelliJ counterpart at all (four features in one bullet); #65 checked by number as the tokenized-detection neighbour |
+
+### E. D-13 scope-fidelity note
+
+`RU-62-05` (the TextMate grammar and the two language-configuration JSONs) and
+`bbj-vscode/src/Commands/Commands.cjs` both appear in `INVENTORY.md`'s Applicability Grid — as a
+full `RU-62-05` row and as one of `RU-62-01`'s three files — but **neither is named** in
+ROADMAP's Phase 62 success criteria (criterion 1 names `extension.ts`,
+`Commands/CompilerOptions.ts`, the document formatter, line numbering, tokenized-BBj, and
+decompile-io; it does not name `Commands.cjs` or any TextMate/language-configuration file). Both
+were swept in full anyway, across all 7-or-8 of their live dimensions, because the grid is the
+contract and the criteria are a subset of it — `RU-62-01`'s own D4 cell states this explicitly for
+`Commands.cjs`, and it is restated here at the phase level so a reader sees the extra coverage as
+deliberate rather than scope creep or an omission.
+
+Carried forward from `RU-62-05`'s own D7 cell: `ls bbj-vscode/syntaxes/` lists three files
+(`bbj.tmLanguage.json`, `bbx.tmLanguage.json`, `gen-bbj.tmLanguage.json`), but `INVENTORY.md`'s
+`RU-62-05` per-file table names only `bbj.tmLanguage.json`, while INVENTORY's own Surface
+Accounting assigns the whole `syntaxes/` directory to `RU-62-05`. `RU-62-05`'s own sweep
+established `bbx.tmLanguage.json` (179 lines) as a tracked, shipped, `package.json`-contributed,
+`copyTextMateBundle`-copied file omitted from the per-file table by what reads as an oversight
+(no exclusion reason is stated for it, unlike INVENTORY's explicit exclusions elsewhere), while
+`gen-bbj.tmLanguage.json` is confirmed gitignored, untracked, and unreferenced by any manifest —
+correctly excluded, not a gap. Per D-14, `INVENTORY.md` was **not** edited to resolve this — no
+grid row was added, and the 40-cell/22-file gate totals stated in sections A and B above are
+unchanged. This is recorded as an observation carried to this close-out, exactly as `62-04-PLAN.md`
+required.
+
+As a related fact, not a discrepancy: `INVENTORY.md`'s Routing table (D-06) has no Phase 62 rows
+(restated from section D above) — no pre-identified finding was inherited into this phase from an
+earlier sweep, and none was missed by that absence.
+
+### F. ROADMAP success criteria
+
+1. **"`extension.ts`, `Commands/CompilerOptions.ts`, the document formatter, line numbering,
+   tokenized-BBj, and decompile-io each have a recorded pass/fail against D1-D8."** **Met.**
+   `RU-62-01` (`extension.ts`, `CompilerOptions.ts`, plus `Commands.cjs` per section E above) and
+   `RU-62-02` (`document-formatter.ts`, `line-numbering.ts`, `tokenized-bbj.ts`, `decompile-io.ts`)
+   each carry all 7 live-dimension verdicts, confirmed by section A's file enumeration (all 6 named
+   files appear inside this file) and section B's gate (35/5/40, zero placeholders). D6 is `n/a` by
+   INVENTORY's own grid for both units — carried forward verbatim, not left unrecorded.
+
+2. **"All 11 webview composer files ... plus `setopts-catalog.ts` have a recorded pass/fail
+   against D1-D8, with duplication across the four composer subsystems explicitly called out
+   under D4."** **Met.** `RU-62-04` (the 4 `*-composer-webview.ts` generators) and `RU-62-03` (the
+   7 remaining `*-composer.ts`/`*-composer-ui.ts` files plus `setopts-catalog.ts`) together cover
+   all 12 files named by this criterion, each with a recorded D1-D8 verdict. Duplication is called
+   out once per layer, not double-counted: `P62-D4-001` (`RU-62-04`) records the generator-layer
+   duplication (byte-identical `getNonce()`/CSP-array construction across all four
+   `*-composer-webview.ts` files); `P62-D4-004` (`RU-62-03`) records the logic/UI-layer duplication
+   (addwindow/addchildwindow structural overlap), cross-referencing `P62-D4-001` rather than
+   restating it. Both apply the same D-15-confirmed 3-file `-composer.ts` baseline for SETOPTS.
+
+3. **"Every recorded finding carries `file:line`, dimension, and a verified failure scenario per
+   the Phase 60 standard."** **Met.** Every one of the 34 findings recorded across the phase
+   carries a non-blank `location:`, `dimension:`, and `failure_scenario:` field — confirmed by the
+   equal field counts in section C (`id:`, `location:`, `dimension:`, `failure_scenario:` all count
+   `34`) — and each clears its dimension's evidence tier (`repro` for D1/D2/D3, `trace` for
+   D4/D8, `inherited`-resolving-to-repro-equivalent for D5/D7), with anything that did not clear
+   its tier written under `### Not-reproducible dispositions` (section C) instead of silently
+   dropped.
+
+4. **"Every recorded finding has been checked against the 15 open GitHub issues for
+   duplication."** **Met.** `grep -cE '^dedup:[[:space:]]*$' .planning/reviews/62-COVERAGE.md`
+   prints `0` — no finding has a blank `dedup:` field — and section C names the seven issue numbers
+   (#231, #381, #385, #475, #485, #486, #65) that were actually checked by name across the phase's
+   34 findings, with `P62-D1-003` the one finding whose dedup resolved to a real (partial) overlap.
+
+### G. Closing confirmations
+
+**ISSUE-01.** Phase 62 filed no GitHub issue. ISSUE-01 is a hard gate owned by Phase 69; no issue
+was opened, commented on, or filed by any of the five Phase 62 plans (`62-01`..`62-05`) — confirmed
+by the absence of any `gh issue create`/`gh issue comment` invocation anywhere in this phase's plan
+or summary artifacts.
+
+**`INVENTORY.md` immutability.** `.planning/reviews/INVENTORY.md` was not edited by this phase:
+`git status --porcelain .planning/reviews/INVENTORY.md` returns nothing at this (the final) commit
+point, and `git log --oneline -- .planning/reviews/INVENTORY.md` shows no commit touching the file
+since Phase 60's `60-04` wave — no Phase 62 plan modified it.
+
+**No source file modified.** `git status --porcelain bbj-vscode bbj-intellij java-interop` returns
+nothing at this commit point — no file under `bbj-vscode/`, `bbj-intellij/`, or `java-interop/` was
+modified by any Phase 62 plan; this phase records and classifies only, per `62-CONTEXT.md`'s
+`<deferred>` "Fixing anything found" note.
+
+**Spec-less edge-probe accounting.** 8 edges surfaced across the phase, 8 authored into some
+plan's `must_haves.truths`, 0 dropped, 1 of the 8 recorded as a `backstop` rather than `explicit`
+verification (per `62-05-PLAN.md`'s own Ledger table) — the accounting is stated once here for the
+whole phase, matching each individual plan's own local accounting.
+
+**What each downstream phase inherits from this file:**
+
+| Phase | Inherits |
+|---|---|
+| Phase 63 | The 7 outstanding referrals in section D, Group 2 — re-triaged whether or not the named unit has already been swept |
+| Phase 65 | `### SEC-01/SEC-02 Surface Handoff` (`RU-62-04`) and every `P62-D1-*` record (7 across the phase) for the SEC-01/SEC-02/SEC-05 synthesis |
+| Phase 66 | Any finding whose `dedup:` names a `DEBT-*` requirement (none does in this phase — all 34 `dedup:` fields resolve to `none` or a GitHub issue number, never a `DEBT-*` reference) |
+| Phase 67 | The `classification: easy\|major` split on all 34 findings (14 `easy-fix`, 20 `major-refactor`) for its apply path |
+| Phase 68 | This file, concatenated with the other four `{NN}-COVERAGE.md` files against INVENTORY's grid, for DOC-03 — no re-derivation of scope, since sections A and B above already close that gate |
+| Phase 69 | The `dedup:` verdicts on all 34 findings, for ISSUE-03 drafting |
 </content>
