@@ -1896,18 +1896,305 @@ files, the three `Configure*Intention.java` files, and the four bridge/model fil
 **Owning plan:** 63-04.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked, across this unit's two process/network-facing surfaces: **the language-server launch path**, `lsp/BbjLanguageServer.java`'s `OSProcessStreamConnectionProvider` configuration (:28-43) — `resolveNodePath()` (:45-66) falls through settings (`BbjSettings.getInstance().getState().nodeJsPath`, :47-50) -> auto-detection (`BbjNodeDetector.detectNodePath()`, :52-56) -> the RU-63-03 download cache (`BbjNodeDownloader.getCachedNodePath()`, :58-62) -> an unqualified literal `"node"` (:65) as the final fallback with no absolute-path guarantee; `resolveServerPath()` (:68-96) resolves `main.cjs` from the installed plugin path first (:70-77) or extracts it from a classloader resource to a temp file in development mode (:80-93), throwing `RuntimeException` if neither succeeds (:92,95) rather than silently proceeding with an empty path; the constructed `GeneralCommandLine(nodePath, serverPath, "--stdio")` (:38) passes both as separate array elements with no shell involved, and `cmd.setWorkDirectory(new File(project.getBasePath()))` (:40) sets the working directory to the current project's own base path. **The java-interop probe:** `ui/BbjJavaInteropService.java`'s `checkConnection()` (:117-160) reads `host`/`port` from settings at check time (:118-124, deliberately uncached — see D3), opens `new Socket()` in a try-with-resources and calls `socket.connect(new InetSocketAddress(host, port), TCP_TIMEOUT_MS)` (:129-130) — confirmed by full read that no byte is ever written to or read from that socket anywhere in this file, and the socket closes unconditionally on every path via try-with-resources; the sole signal `InteropStatus.CONNECTED` (:132) is derived from is a bare TCP handshake succeeding, with no peer-identity check. **Status and log surfaces:** `ui/BbjServerLogToolWindowFactory.java`'s console (:20-41) and both status-bar widgets display only curated status-transition strings originating from `BbjServerService.logToConsole()`/`BbjLanguageClient.handleServerStatusChanged()` — confirmed by grep that no `Process`/`OutputStream`/`InputStream` reference exists anywhere in this unit's files, so the language server's own raw stdout/stderr never reaches these UI sinks (the doc-accuracy consequence of this same fact is `P63-D8-006`), meaning no sensitive server-output content can leak through this specific path today. **Trust in server-reported state:** `lsp/BbjLanguageClient.handleServerStatusChanged()` (:34-49) and `ui/BbjServerService.updateStatus()` (:92-168) act on LSP4IJ's own `ServerStatus` enum values only — no free-form server-sent message content is interpreted or executed anywhere in this unit. No runnable reproduction accompanies either promoted record (D-07 — the Gradle build cannot run in this environment; a live PATH/CWD-hijack or network-tamper harness is out of this static-trace sweep's scope and would itself be the trigger sequence D-13 prohibits publishing). 2 findings recorded: P63-D1-007, P63-D1-008.
+- D2 Correctness & error handling — fail — Checked the full server-lifecycle and dispose paths across `ui/BbjServerService.java` and `ui/BbjJavaInteropService.java`. **Restart during an in-flight request / concurrent restarts:** `restart()` (`BbjServerService.java:206-211`) calls `manager.stop("bbjLanguageServer")`/`manager.start("bbjLanguageServer")` unconditionally with no in-flight guard; `scheduleRestart()` (:217-220) exists as an apparent debounce (`restartAlarm.cancelAllRequests()`/`addRequest(this::restart, RESTART_DEBOUNCE_MS)`, `RESTART_DEBOUNCE_MS = 500` at :35) but `grep -rn "scheduleRestart()" bbj-intellij/src/main/java` returns zero call sites anywhere in the codebase — every one of the six real restart triggers (`ui/BbjRestartServerAction.java:27`, `ui/BbjServerCrashNotificationProvider.java:49`, `ui/BbjStatusBarWidget.java:122`, `ui/BbjJavaInteropStatusBarWidget.java:116`, `actions/BbjRefreshJavaClassesAction.java:30`, and the crash-auto-restart path itself at `BbjServerService.java:127`) calls the raw, unguarded `restart()` directly. **The status bar in between:** `BbjStatusBarWidget`/`BbjJavaInteropStatusBarWidget` both subscribe to their respective status Topics and repaint on every published event (:67-101/:65-95), so a restart's `stopping`/`stopped`/`starting`/`started` sequence is faithfully reflected — no defect on that specific path. **First-crash auto-restart blocks the EDT:** `updateStatus()`'s `crashCount == 1` branch (:115-128) calls `ApplicationManager.getApplication().invokeLater(() -> { ...; Thread.sleep(1000); ...; restart(); })` (:118-128) — `invokeLater` runnables execute on the Swing EDT, so the runnable's own `Thread.sleep(1000)` (:123) blocks the entire IDE UI for a full second on every first-crash auto-restart. **`Alarm`-driven polling disposal:** `BbjJavaInteropService.dispose()` (:203-205) calls `checkAlarm.cancelAllRequests()`, which cancels queued-but-not-yet-running requests only; `checkConnection()` (:117-160, runs on `Alarm.ThreadToUse.POOLED_THREAD`) and `broadcastStatus()` (:175-184) contain no `project.isDisposed()` check anywhere, unlike `BbjServerService.updateStatus()`, which checks it at entry (:93-95) and again inside every `invokeLater` lambda it schedules (:118-121,133-136,149-152,160-163) — a genuine asymmetry within this same unit. **Socket closure on every path:** confirmed pass — `try (Socket socket = new Socket())` (:129) closes unconditionally on success, timeout, and refusal alike. **Status listener removal:** confirmed pass — `BbjStatusBarWidget`/`BbjJavaInteropStatusBarWidget.dispose()` both call `messageBusConnection.disconnect()` (:163-165/:146-149); `BbjJavaInteropService`'s own subscription is parented to `this` via `project.getMessageBus().connect(this)` (:67), auto-disposed with the service. **Listener threading:** confirmed pass — every status-change continuation that touches Swing state is wrapped in `ApplicationManager.getApplication().invokeLater(...)` at its own call site, with no off-EDT UI touch found anywhere in this unit. **Widget enablement when no server exists:** `BbjRestartServerAction.update()` (:31-42) gates on the currently focused file's extension only, not on whether a server instance exists for the project — enabled even before first server start, though `restart()`'s `manager.stop(...)`/`manager.start(...)` calls are themselves idempotent no-ops on a never-started server per LSP4IJ's own id-based lookup, so this is not promoted as a separate defect. **Editor-tab-switch visibility:** both status-bar widgets' `updateVisibility()` (`BbjStatusBarWidget.java:103-114`, `BbjJavaInteropStatusBarWidget.java:97-108`) is called exclusively from inside `updateStatus()` (:67-101/:65-95), itself fired only by a status-Topic event or once at construction — neither file registers a `FileEditorManagerListener` or any other editor-selection hook (confirmed by grep), so a bare editor-tab switch with no intervening status change leaves the widget's visibility stale. 4 findings recorded: P63-D2-011, P63-D2-012, P63-D2-013, P63-D2-014.
+- D3 Performance & resource use — fail — Checked the java-interop poll cost and cadence: `checkConnection()` (`BbjJavaInteropService.java:117-160`) performs one TCP connect attempt per tick (`TCP_TIMEOUT_MS = 1000`, :60) at `CHECK_INTERVAL_MS = 5000` (:58) cadence, re-reading `BbjSettings.getInstance().getState()` on every call (:119) rather than caching — the code's own comment states this is deliberate ("not cached - user may change them"), so this is stated as a trade-off, not assumed to be a defect. **Whether polling continues while no BBj file is open or the project is backgrounded:** `startChecking()` (:93-96) arms once when the language-server status first reaches `started` (:70-71), and `scheduleNextCheck()` (:109-111) unconditionally re-arms itself at the end of every `checkConnection()` run (:159) — the only two states that stop it are the language server itself stopping (:72-75) or project disposal (:203-205); nothing in this file checks whether a BBj file is currently open (that gating exists only in the two widgets' own display-layer `updateVisibility()`, not in the scheduling loop) or whether the IDE window has focus, so the poll runs indefinitely at the same 5-second cadence regardless. **Status-bar repaint frequency:** both widgets recompute on status-Topic events only (:67-101/:65-95), not per editor caret/keystroke event — confirmed pass, no hot-path concern. **Server log tool window growth:** `BbjServerLogToolWindowFactory`'s `ConsoleView` (:23-25) receives only the small set of curated status-transition strings this unit logs (see D1/D8 — never the server's own raw stdout/stderr), so unbounded growth risk is low; IntelliJ's own `ConsoleView` additionally manages its own scroll-back buffer — confirmed pass, no defect promoted. **`BbjCompletionFeature` per-item cost:** `getIcon()` (`lsp/BbjCompletionFeature.java:21-56`) and `isJavaInteropCompletion()` (:62-76) perform a bounded `switch` plus up to four `String.contains()` calls per completion item — standard per-item completion-rendering cost, no scaling defect beyond what every completion-icon provider does. 1 finding recorded: P63-D3-005.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
-- D7 Cross-IDE parity — pending
+- D7 Cross-IDE parity — fail — **The direction is reversed relative to Phase 62: this phase owns the IntelliJ rows and reads `bbj-vscode/` as reference material only (D-05).** Compared server-launch mechanics: `bbj-vscode/src/extension.ts`'s `startLanguageClient()` (:840-894) launches `main.cjs` via `vscode-languageclient`'s own IPC transport inside the extension host's bundled Node.js runtime (`TransportKind.ipc`, :853-854) — VS Code performs no Node.js runtime download/detection/executable-search step at all, the asymmetry `RU-63-03`'s own D7 cell already records as `n/a — R-VSCODE-NO-DOWNLOAD`; not re-derived here. Compared server-restart handling, including `bbj.refreshJavaClasses` (`ui/BbjServerService.java`'s `restart()`, :206-211) against the VS Code side's targeted LSP request (`extension.ts:694-704`, `client.sendRequest('bbj/refreshJavaClasses')`) — **cross-referencing `RU-63-01`'s already-recorded disposition of Phase 62's referral #3 (`P63-D7-003`) by ID rather than allocating a second finding for the same divergence (D-06)**, adding only what the mechanism side contributes: `BbjServerService.restart()`'s only available primitive is `LanguageServerManager`'s id-based `stop(String)`/`start(String)` pair (:208-210) — no narrower per-request refresh call is used anywhere in this unit's own code; notably, this same plugin already demonstrates the exact typed-request mechanism a narrower `bbj/refreshJavaClasses` call would need — `com/basis/bbj/intellij/composer/BbjComposerServer.java` (`RU-63-04`'s file) is a `@JsonRequest`-annotated `LanguageServer` subinterface reached via the same `LanguageServerManager.getLanguageServer(...)` this unit's `BbjComposerService.java` also calls — so the full-restart mechanism is an implementation choice that does not reuse machinery already present in this codebase for other custom requests, not an LSP4IJ platform limitation; this observation supports, and does not re-file, `P63-D7-003`'s existing disposition. Compared status/crash/log surfaces and java-interop connection handling each IDE offers: `bbj-vscode/src/extension.ts` registers no `onDidChangeState` handler, no status-bar item reflecting language-server or java-interop connection state, and no crash-loop detection/auto-restart logic anywhere (confirmed by grep — `deactivate()`, :832-838, only calls `client.stop()`); IntelliJ's `BbjServerService`/`BbjStatusBarWidget`/`BbjJavaInteropStatusBarWidget`/`BbjServerCrashNotificationProvider`/`BbjRestartServerAction` provide all of these. This is IntelliJ offering *more* than VS Code, not an IntelliJ-side defect, so per D-05 it is recorded as a bullet in `### Cross-phase observations (VS Code side)` in the close-out rather than as a `P63-D7-*` finding here — Phase 62 is closed and this is the one narrowly scoped exception the write contract allows. No new finding ID allocated for either the mechanism cross-reference or the VS Code-side observation.
 - D8 Comment & doc accuracy — pending
 
 ### Findings
 
-pending
+```
+id:                P63-D1-007
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:32,38-43,45-66
+dimension:         D1
+secondary:         []
+severity:          high
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; a live PATH/CWD-hijack
+                    harness is out of this static-trace sweep's scope and would itself be the
+                    trigger sequence D-13 prohibits publishing): resolveNodePath() (:45-66) falls
+                    through settings (:47-50) -> auto-detection (:52-56) -> the RU-63-03 download
+                    cache (:58-62) -> an unqualified literal "node" (:65) when all three resolution
+                    paths are empty/absent. The resulting GeneralCommandLine (:38,
+                    `new GeneralCommandLine(nodePath, serverPath, "--stdio")`) is constructed with
+                    that bare, unqualified executable name with no absolute-path guarantee, and its
+                    working directory is explicitly set to the current project's own base path
+                    (:40, `cmd.setWorkDirectory(new File(project.getBasePath()))`) — the exact
+                    combination CWE-426 (Untrusted Search Path) names as hazardous on platforms
+                    whose process-creation API consults the working directory for an unqualified
+                    executable name.
+failure_scenario:  On a machine where Node.js is not configured in BBj Settings, not
+                    auto-detectable via PATH, and has never been downloaded through the RU-63-03
+                    cache, this fallback resolves the executable to the literal string "node" and
+                    launches it with the current project directory as the working directory — the
+                    same combination through which workspace-supplied content can be preferred over
+                    the genuinely intended system binary on platforms that search the working
+                    directory for an unqualified executable name, resulting in that content running
+                    as the language-server host process for every BBj file opened in the project.
+                    Per D-13, no trigger sequence or payload is stated beyond this
+                    problem-class/impact description.
+classification:    major
+                    (1) touches 1 file: pass (confined to BbjLanguageServer.java's
+                    resolveNodePath()) — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (require an absolute, existing, executable path before constructing
+                    GeneralCommandLine — fail loudly with an actionable Settings-configuration
+                    prompt instead of falling back to the bare literal "node"): pass — (6) severity
+                    high and dimension D1: FAIL — test (6) fails on its own, so classification is
+                    major regardless of the other five tests (D-13's safety gate).
+effort:            4
+dedup:             none — #410 (Zed Editor support) and #231 (custom classpath and command-line
+                    settings) both checked explicitly and dismissed — neither concerns Node.js
+                    executable resolution or search-path safety. No other frozen open issue names
+                    this launch-path fallback.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D1-008
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:117-150
+dimension:         D1
+secondary:         [D2]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: checkConnection() (:117-160) opens `new Socket()` and calls
+                    socket.connect(new InetSocketAddress(host, port), TCP_TIMEOUT_MS) (:129-130)
+                    inside a try-with-resources — no byte is written to or read from the socket at
+                    any point in this file (confirmed by full read: no OutputStream/InputStream/
+                    write/read call anywhere), and the socket is closed unconditionally on every
+                    path via try-with-resources. A bare TCP three-way handshake succeeding is the
+                    sole signal InteropStatus.CONNECTED (:132) is derived from — no peer-identity or
+                    protocol check follows it.
+failure_scenario:  Any process — not necessarily the genuine java-interop service — that accepts a
+                    TCP connection on the configured host:port (default localhost:5008) causes this
+                    probe to report "Java: Connected" in the status bar, even though no
+                    application-layer exchange confirms the listening peer is actually java-interop.
+                    The consequence is a misleading, purely cosmetic status indicator, not a state
+                    change or data exposure — no value from the socket is read or acted upon
+                    anywhere in this file.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (the limitation is inherent given java-interop exposes no LSP-visible identity
+                    or handshake to check against, per this file's own class doc, :19-23 — the
+                    nameable edit is documenting the limitation explicitly in that same doc, since a
+                    protocol-level identity check would require a java-interop change out of this
+                    unit's scope): pass — (6) severity low, dimension D1 (not high, not critical):
+                    pass — test (4) alone fails, so classification is major per D-13.
+effort:            2
+dedup:             none — #410 and #231 checked explicitly and dismissed as unrelated. No frozen
+                    open issue names java-interop probe identity verification.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-011
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java:67-114,bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropStatusBarWidget.java:65-108
+dimension:         D2
+secondary:         [D3]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: both widgets call updateVisibility() (BbjStatusBarWidget.
+                    java:99, BbjJavaInteropStatusBarWidget.java:93) exclusively from inside their
+                    own updateStatus() method (:67-101/:65-95), which itself runs only when the
+                    server-status or java-interop-status message-bus Topic fires a new value
+                    (subscribed at :58-61/:56-59) or once at construction time (:64/:62). Neither
+                    file registers a FileEditorManagerListener or any other editor-selection-change
+                    hook anywhere (confirmed by grep across both files) — updateVisibility()'s own
+                    file-extension check (:104-113/:98-107) therefore only re-runs on a status
+                    transition, never on a bare editor-tab switch.
+failure_scenario:  A user who opens a BBj file (widget becomes visible) and then switches to a
+                    non-BBj file, with no intervening server-status or java-interop-status change,
+                    keeps seeing the now-stale visible widget — and the reverse: opening a first
+                    BBj file after the server has already reached a stable "started" status (no
+                    further status event fires) leaves the widget hidden until some unrelated
+                    status transition happens to occur, if one ever does.
+classification:    major
+                    (1) touches 1 file: FAIL — the same fix (registering a FileEditorManagerListener)
+                    is needed independently in both widget files — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    existing harness: FAIL — no src/test/ source set exists (P63-D5-001) — (5)
+                    reviewer can name the exact edit (register a FileEditorManagerListener.
+                    FILE_EDITOR_MANAGER subscription via the project message bus in each widget's
+                    constructor, disposed alongside messageBusConnection, calling updateVisibility()
+                    on selection change): pass — (6) severity low, dimension D2 (not D1): pass —
+                    tests (1) and (4) both fail, so classification is major.
+effort:            4
+dedup:             none — #410 and #231 checked explicitly and dismissed. No frozen open issue
+                    names status-bar visibility staleness on editor-tab switch.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-012
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java:115-128
+dimension:         D2
+secondary:         [D3]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: on the first detected crash (crashCount == 1, :115),
+                    updateStatus() calls ApplicationManager.getApplication().invokeLater(() -> {
+                    ...; Thread.sleep(1000); ...; restart(); }) (:118-128). invokeLater runnables
+                    execute on the Swing Event Dispatch Thread; the runnable's own Thread.sleep(1000)
+                    (:123) therefore blocks the EDT — and with it every other queued UI repaint,
+                    keystroke, and menu action — for a full second on every single first-crash
+                    auto-restart.
+failure_scenario:  The moment the language server crashes for the first time within a session, the
+                    entire IntelliJ UI freezes for approximately one second while this handler
+                    sleeps on the EDT before calling restart() — the opposite of the project's own
+                    established "process launch off EDT to pooled thread" pattern (PROJECT.md Key
+                    Decisions), applied here to a purely cosmetic pre-restart delay rather than the
+                    actual restart work.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (move the delay onto restartAlarm.addRequest(this::restart, 1000) off the EDT,
+                    reusing the existing Alarm-based scheduling machinery instead of a raw
+                    Thread.sleep inside invokeLater): pass — (6) severity medium, dimension D2 (not
+                    D1): pass — test (4) alone fails, so classification is major.
+effort:            2
+dedup:             none — no frozen open issue names EDT-blocking behavior in the crash-recovery
+                    path (distinct from #486, which requests config-file watch/reload, not crash
+                    recovery). #410/#231 also checked and dismissed.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-013
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java:34-35,206-220
+secondary:         [D4]
+dimension:         D2
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace plus a repo-wide grep: scheduleRestart() (:217-220) debounces
+                    via restartAlarm.cancelAllRequests()/addRequest(this::restart,
+                    RESTART_DEBOUNCE_MS) (:218-219, RESTART_DEBOUNCE_MS = 500 at :35) — but
+                    `grep -rn "scheduleRestart()" bbj-intellij/src/main/java` returns zero call
+                    sites anywhere in the codebase. Every actual restart trigger instead calls the
+                    raw, unguarded restart() (:206-211, manager.stop(...)/manager.start(...) with no
+                    lock, flag, or debounce) directly: BbjRestartServerAction.java:27,
+                    BbjServerCrashNotificationProvider.java:49, BbjStatusBarWidget.java:122,
+                    BbjJavaInteropStatusBarWidget.java:116, BbjRefreshJavaClassesAction.java:30, and
+                    the crash-auto-restart path itself (BbjServerService.java:127, P63-D2-012's own
+                    call site) — six independent call sites, none passing through
+                    scheduleRestart()'s debounce.
+failure_scenario:  Two of these six triggers invoked within a short window of each other — e.g. a
+                    user double-clicking "Restart Server" in the status-bar popup, or clicking
+                    "Restart" on the crash notification banner while the crash-triggered 1-second
+                    auto-restart delay (P63-D2-012) is still pending — each independently call
+                    manager.stop("bbjLanguageServer")/manager.start("bbjLanguageServer") with no
+                    synchronization between the two calls, an unguarded interleaving whose outcome
+                    depends on LanguageServerManager's own internal handling of overlapping
+                    stop/start calls for the same server id, not on anything this file coordinates.
+classification:    major
+                    (1) touches 1 file: pass — the minimal fix (an in-flight guard inside restart()
+                    itself, e.g. an AtomicBoolean compare-and-set) is confined to BbjServerService.
+                    java; the six call sites need no change since they already call the single
+                    restart() entry point that would gain the guard — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    existing harness: FAIL — no src/test/ source set exists (P63-D5-001) — (5)
+                    reviewer can name the exact edit (guard restart() with an in-flight
+                    AtomicBoolean, or make the currently-unused scheduleRestart()/Alarm machinery
+                    the single entry point every caller uses): pass — (6) severity medium, dimension
+                    D2 (not D1): pass — test (4) alone fails, so classification is major.
+effort:            4
+dedup:             none — #410/#231 checked and dismissed. No frozen open issue names
+                    concurrent-restart races or the unused debounce infrastructure.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-014
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:117-184
+dimension:         D2
+secondary:         [D4]
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace, contrasted against this same unit's own established pattern:
+                    BbjServerService.updateStatus() checks project.isDisposed() at entry (:93-95)
+                    and again inside every invokeLater lambda it schedules (:118-121,133-136,
+                    149-152,160-163) before touching project.getMessageBus(). BbjJavaInteropService.
+                    checkConnection() (:117-160, runs on Alarm.ThreadToUse.POOLED_THREAD) and
+                    broadcastStatus() (:175-184) contain no project.isDisposed() check anywhere —
+                    broadcastStatus()'s invokeLater lambda (:176-183) calls project.getMessageBus().
+                    syncPublisher(...) and EditorNotifications.getInstance(project).
+                    updateAllNotifications() (:177-182) unconditionally.
+failure_scenario:  A health check already in flight on the pooled thread when the project begins
+                    disposing (dispose() at :202-205 only calls checkAlarm.cancelAllRequests(),
+                    which cancels queued-but-not-yet-running requests, not one already executing)
+                    completes after disposal has started and reaches broadcastStatus()'s
+                    invokeLater lambda, which calls project.getMessageBus()/EditorNotifications.
+                    getInstance(project) on a project that may already be disposed — a class of
+                    failure this same unit's own BbjServerService code already guards against at
+                    every equivalent call site.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (add `if (project.isDisposed()) return;` at the top of checkConnection() and
+                    inside broadcastStatus()'s invokeLater lambda, mirroring BbjServerService's own
+                    pattern): pass — (6) severity low, dimension D2 (not D1): pass — test (4) alone
+                    fails, so classification is major.
+effort:            2
+dedup:             none — no frozen open issue names this dispose-ordering gap. #410/#231 also
+                    checked and dismissed.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D3-005
+unit:              RU-63-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:93-96,109-111,117-160
+dimension:         D3
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: startChecking() (:93-96) is invoked once, when the
+                    language-server status first transitions to started (the message-bus
+                    subscription at :67-77), and thereafter scheduleNextCheck() (:109-111)
+                    unconditionally re-arms checkAlarm.addRequest(this::checkConnection,
+                    CHECK_INTERVAL_MS) (:110, every 5000ms) at the end of every checkConnection()
+                    run (:159) — with no check anywhere in this file for whether a BBj file is
+                    currently open (that gating exists only in the two status-bar widgets' own
+                    updateVisibility(), a display concern — see P63-D2-011) or whether the IDE
+                    window currently has focus. The only two states that stop the alarm are
+                    stopChecking() (:102-104, called only when the LS status itself becomes
+                    stopped/stopping) and dispose() (:203-205, project close).
+failure_scenario:  Once the language server has started, this unit performs a TCP connect attempt
+                    against the configured java-interop host:port every 5 seconds indefinitely — for
+                    the lifetime of the project — even while every open editor tab is a non-BBj file
+                    (the status widget itself is hidden per its own visibility check) and even while
+                    the IDE window is minimized or in the background, since neither condition is
+                    checked anywhere in the scheduling loop. The settings re-read on every tick
+                    (BbjSettings.getInstance().getState(), :119) is a stated, deliberate design
+                    trade-off ("not cached - user may change them") rather than a defect, so this
+                    finding is scoped to the missing visibility/focus gating only.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (gate scheduleNextCheck()/startChecking() on whether a BBj file is currently
+                    open, mirroring the widgets' own updateVisibility() check, or on project-frame
+                    focus/idle state): pass — (6) severity low, dimension D3 (not D1): pass — test
+                    (4) alone fails, so classification is major.
+effort:            3
+dedup:             none — #410/#231 checked and dismissed. No frozen open issue names java-interop
+                    poll cadence/gating.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
 
