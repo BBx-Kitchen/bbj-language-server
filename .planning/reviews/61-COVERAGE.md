@@ -1836,11 +1836,11 @@ disposition:       easy-fix
 - D1 Security — fail — Checked whether peer-supplied Java class/member/javadoc text (via `JavaInteropService`) or document content reaches rendered hover/completion markdown unescaped: it does — `bbj-hover.ts:88-106`'s `getAstNodeHoverContent` returns the peer's javadoc/method-signature text as a plain string that Langium's `AstNodeHoverProvider.getHoverContent` (langium `hover-provider.ts:58-64`) wraps into `Hover.contents = {kind:'markdown', value:...}` with no escaping; `bbj-completion-provider.ts:670-691`'s `createReferenceCompletionItem` does the same for `CompletionItem.documentation`. This settles `RU-61-06`'s open not-reproducible disposition on this question: the renderer IS explicitly configured for Markdown, so peer-supplied text CAN be interpreted as markup (link/image/emphasis injection) — recorded as `P61-D1-004`. Checked whether `bbj-code-action-provider.ts` constructs a workspace edit from untrusted text, and whether `bbj-use-insert.ts` builds an insertion from a value it does not control: both do — the quick-fix (`createUseAction`, `bbj-code-action-provider.ts:82-83`) and completion-time auto-import (`bbj-completion-provider.ts:99-113`) both interpolate an unvalidated, peer-supplied FQN string directly into a `use ${fqn}\n` `TextEdit` inserted into the user's own document via `bbj-use-insert.ts`'s `useInsertPosition`, which supplies only the insertion line and performs no content validation of its own — recorded as `P61-D1-005`. Checked whether any provider logs document content or resolved paths at a level reaching a user-visible output channel: `bbj-hover.ts:46`'s error-degrade path logs only the exception stack and numeric offset via `logger.warn`, never document content — no finding. 2 findings recorded: `P61-D1-004`, `P61-D1-005`.
 - D2 Correctness & error handling — fail — Checked the three phase-wide translated edge probes concretely and empirically (throwaway `test/__tmp_ru04_repro.test.ts`, run via `npx vitest run`, deleted before commit): touching/coinciding ranges — `bbj-hover.ts:37`'s `cstNode.offset + cstNode.length > offset` guard uses a strict inequality, so hovering exactly at a token's trailing boundary (confirmed: right after `xyz` in `LET xyz = 10`) returns `undefined` rather than the left token's hover, standard LSP boundary behavior, not a defect; `bbj-document-symbol-provider.ts`'s error-recovery branches (`getSymbol`, lines 84-103) can legitimately emit a parent `(parse error)` symbol and a child symbol sharing the identical CST range during error recovery — both are emitted (merged into the hierarchy, neither dropped), the intended behavior. Empty/single-element inputs — confirmed empirically: hover on an empty document returns `undefined` (no throw); document symbols on an empty document return `[]`; the `(` trigger for an unresolved callee returns `{items: [], isIncomplete: false}` per the shipped Phase 59 decision, not `undefined`. Order stability — completion items rely on JS's stable `Array.prototype.sort`/insertion order with no provider-added nondeterminism, and `bbj-code-action-provider.ts`'s `rankCandidates` sorts deterministically; no divergence. Two genuine divergences found: `bbj-completion-provider.ts:154-200`'s `getCompletion` only forwards its `cancelToken` parameter on the `.`-trigger branch (line 180) — the `#`, `"`, and default Ctrl+Space paths (including the network-bound `completeAutoImportClasses`) never receive or check it, so a cancelled request still runs those paths to completion with the result silently discarded — recorded as `P61-D2-013`; and `bbj-document-symbol-provider.ts`'s deep-walk-fallback dedup keys solely on each recovered symbol's *start* position (`collectPositions`, lines 173-182), so two distinct sibling nodes whose `$cstNode.range.start` coincide collide and the second is silently dropped from recovery — recorded as `P61-D2-014`. Also confirmed `bbj-inlay-hint-provider.ts:65`'s consumption of `bbj-overload-selector.ts`'s `findBestOverload` is the upstream-consumer context for `RU-61-02`'s already-recorded `P61-D2-012` — no new finding here, since that defect's `location:` is `bbj-overload-selector.ts` (`RU-61-02`'s file), not this unit's. 2 findings recorded: `P61-D2-013`, `P61-D2-014`.
 - D3 Performance & resource use — fail — Checked whether `bbj-completion-provider.ts` rebuilds candidate lists from scratch per invocation and walks the whole document versus the enclosing scope: cross-reference-based completion delegates scope resolution entirely to `RU-61-02`'s already-swept scope provider (not duplicated here, no new finding), but `completeAutoImportClasses` (lines 90-116) issues a fresh, unmemoized `javaInterop.findClassCandidatesByPrefix` call — a full scan of `completeClassIndex`/`resolvedClasses` (`java-interop.ts:382-405`) — on every qualifying keystroke (2+ typed chars, `AUTO_IMPORT_MIN_PREFIX`) in a type-reference position, with no local cache or debounce anywhere in this unit's own code; the same call also awaits `ensureCompleteClassIndex`, which serializes through `RU-61-06`'s single global resolution lock (`P61-D3-002`) and, against an unresponsive peer, can stall the interactive completion request itself for the connect timeout or longer (per `RU-61-06`'s no-timeout `loadClasspath`/`getClassInfos` finding) — cross-referencing, not duplicating, that analysis. Recorded as `P61-D3-004`. Checked `bbj-semantic-token-provider.ts` and `bbj-inlay-hint-provider.ts` for full-AST re-traversal beyond the framework's own per-request walk: both extend Langium abstract providers (`AbstractSemanticTokenProvider`, `AbstractInlayHintProvider`) that already perform one bounded `streamAst`/CST walk per request and already call `interruptAndCheck` internally; neither this unit's `highlightElement` nor `computeInlayHint` callback adds any traversal of its own — each is O(1) per visited node — no finding. 1 finding recorded: `P61-D3-004`.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Confirmed the routed item: `npm run lint` reports 2 "Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')" warnings in `bbj-document-symbol-provider.ts`, at lines 75 and 149 (both guarding an `(astNode as any).name` read that no longer trips the rule) — recorded as `P61-D4-010` with both line anchors and the exact removal edit. Checked duplication across the eleven providers: shared position-to-node resolution (`findLeafNodeAtOffset`, imported from `bbj-validator.ts`) and shared label/detail construction (`documentationHeader`/`methodSignature`/`javaTypeAdjust`, all defined once in `bbj-hover.ts` and reused by `bbj-completion-provider.ts`/`bbj-signature-help-provider.ts`) are properly factored, not duplicated — but `getFunctionReference` (resolve a `MethodCall`'s callee reference through `SymbolRef`/`MemberCall`) is defined identically in `bbj-signature-help-provider.ts:60-68` and `bbj-inlay-hint-provider.ts:93-101`, with no shared helper — recorded as `P61-D4-011`. Checked `bbj-completion-provider.ts` (818 lines, 45% of the unit's LOC) for function length/branch depth: decomposed into roughly 20 single-purpose, mostly-under-40-line methods with descriptive names; no oversized method or excessive branch nesting found — not a defect despite the file's total size. Checked `bbj-node-kind.ts` (57 lines) and `bbj-use-insert.ts` (19 lines): both are coherent, single-purpose modules, not fragments. Checked registration/cancellation consistency in `bbj-module.ts` (read as reference only, not this unit's file): all 11 providers follow the same DI-factory pattern — 9 take `(services)`, 2 (`CommentProvider`, `SignatureHelp`) take none because their respective base classes (`CommentProvider` has none; `AbstractSignatureHelpProvider` declares no constructor) require nothing to forward — consistent, not a defect. 2 findings recorded: `P61-D4-010`, `P61-D4-011`.
+- D5 Test coverage gaps — fail — Confirmed the routed item: `test/completion-test.test.ts:185`'s `test.skip('DEF FN parameters with $ suffix inside class method', ...)`, blocked by a documented Langium completion-grammar-follower limitation that produces zero completions inside class-method statement bodies — recorded as `P61-D5-010` with `dedup:` naming `DEBT-02`. Checked which of the eleven providers have no direct behavioral test: `bbj-signature-help-provider.ts`'s `getSignatureFromElement`/`findEnclosingCall`/`getActiveParameter`/`createSignatureInformation` are exercised by exactly two tests (`test/functional/lsp-features.test.ts:144-162`), both of which assert only that the provider is "registered" and that `signatureHelpOptions.triggerCharacters` contains `(`/`,` — no test anywhere calls `provideSignatureHelp`/`getSignatureFromElement` against a real method call to check the returned label, active-parameter index, or markdown documentation — recorded as `P61-D5-011`. `bbj-hover.ts`'s `getAstNodeHoverContent` (the inherited-field detection at lines 58-73, the Javadoc-provider integration at lines 87-106, and the error-degrade path at lines 40-51) is likewise never directly invoked with an assertion by any test: `test/hover.test.ts` covers only the pure `documentationHeader`/`methodSignature` formatting helpers, and `test/functional/lsp-features.test.ts:125-140`'s "Hover provider returns content for documented elements" test parses a document and asserts only that it has no parse errors, never calling `getHoverContent` — recorded as `P61-D5-012`. Confirmed `bbj-definition-provider.ts`'s custom `collectLocationLinks` override IS directly tested (`test/definition.test.ts`, 3 cases covering the `isBbjClass` navigate-to-class-name branch, including a multi-line class-with-fields case) — no gap. Confirmed the DEBT-04 FQN static-only completion-filtering gap has only a prose record in `REQUIREMENTS.md`, no dedicated regression test — noted as context, not a new finding, since the filtering logic itself (`isClassRef`) lives in `bbj-code-action-provider.ts`/scope resolution rather than being untested new logic this sweep found. Confirmed `bbj-code-action-provider.ts`, `bbj-document-symbol-provider.ts`, `bbj-comment-provider.ts`, and `bbj-inlay-hint-provider.ts` all have real per-file test suites (`code-action.test.ts`, `document-symbol.test.ts`, `comment-provider.test.ts`, `inlay-hints.test.ts`/`inlay-hints-javadoc.test.ts`) exercising their own logic, not merely registration — no gap. 3 findings recorded: `P61-D5-010`, `P61-D5-011`, `P61-D5-012`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every JSDoc block across the eleven files against what the code does: `bbj-completion-provider.ts`'s trigger-character/auto-import/file-path comments, `bbj-hover.ts`'s Javadoc-fallback comment, `bbj-document-symbol-provider.ts`'s error-recovery comments, `bbj-inlay-hint-provider.ts`'s issue #108/#478 references, and `bbj-code-action-provider.ts`'s issue #447 reference all match current behavior — no stale claim found. Checked CLAUDE.md's §Architecture "Completion" bullet (Langium Pipeline → Key services list), which names only `bbj-completion-provider.ts` among this unit's eleven files: the bullet itself is accurate for what it describes, but the surrounding "Key services" enumeration silently omits the other ten files (hover, signature help, definition, document symbol, semantic token, inlay hint, code action, comment, node-kind, use-insert providers) from the architecture overview entirely — an incomplete, though not actively wrong, enumeration. Recorded as `P61-D8-005`. 1 finding recorded: `P61-D8-005`.
 
 ### Findings
 
@@ -2047,6 +2047,219 @@ dedup:             none — cross-references, does not duplicate, RU-61-06's P61
                     finding is the global-lock serialization mechanism in java-interop.ts; this
                     finding is this unit's own missing per-keystroke memoization at its call
                     site).
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-010
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-document-symbol-provider.ts:75,149
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Confirmed via `npm run lint`: 2 "Unused eslint-disable directive (no problems
+                    were reported from '@typescript-eslint/no-explicit-any')" warnings, at lines
+                    75 and 149. Both guard a `(astNode as any).name` read (getSymbol's
+                    error-recovery path at 75-76, applyDeepWalkFallback's deep-walk at 149-150)
+                    that no longer trips the @typescript-eslint/no-explicit-any rule, making both
+                    `// eslint-disable-next-line` comments dead.
+failure_scenario:  n/a (D4 trace-tier finding — the lint warning itself is the defect, not a
+                    runtime failure): the directives no longer suppress anything, adding noise to
+                    `npm run lint`'s output and masking whether a future, genuinely-needed
+                    eslint-disable nearby is intentional or another unused leftover.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: n/a — a lint rule,
+                    not runtime behavior; `npm run lint` itself is the regression check — (5)
+                    reviewer can name the exact edit (delete both `// eslint-disable-next-line`
+                    comments at lines 75 and 149): pass — (6) severity `low`, dimension D4: pass —
+                    `easy`.
+effort:            1
+dedup:             none — lint hygiene, not tracked by any open issue.
+disposition:       easy-fix
+```
+
+```
+id:                P61-D4-011
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-signature-help-provider.ts:60-68, bbj-vscode/src/language/bbj-inlay-hint-provider.ts:93-101
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: getFunctionReference is defined identically in both files — same
+                    9-line body (`if (isSymbolRef(method)) return method.symbol; else if
+                    (isMemberCall(method)) return method.member; return undefined;`), same
+                    signature shape (`(callNode: MethodCall) => Reference<NamedElement> |
+                    undefined`), with no shared helper between them despite both files already
+                    importing shared logic from bbj-hover.ts (methodSignature).
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a
+                    runtime failure): a future change to how a MethodCall's callee reference is
+                    resolved (e.g. adding a third method-reference shape) must be applied in both
+                    files by hand, risking drift between signature help and inlay hints.
+classification:    major
+                    (1) touches 1 file: FAIL — extracting a shared helper touches at least 3
+                    files (both call sites plus the shared module they import it from, e.g.
+                    bbj-nodedescription-provider.ts, which already supplies both files' other
+                    MethodCall helpers) — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with vitest: pass — (5) reviewer
+                    can name the exact edit (extract getFunctionReference into
+                    bbj-nodedescription-provider.ts and update both call sites): pass — (6)
+                    severity `low`, dimension D4: pass — but test (1) already fails, so
+                    classification is `major` regardless of the other five tests.
+effort:            2
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-010
+unit:              RU-61-04
+location:          bbj-vscode/test/completion-test.test.ts:185
+dimension:         D5
+secondary:         [D2]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Confirmed: `test.skip('DEF FN parameters with $ suffix inside class method',
+                    ...)` at line 185, with the test's own comment (186-193) recording the root
+                    cause: "Completion provider returns 0 items inside class method bodies (even
+                    without DEF FN). The Langium DefaultCompletionProvider does not produce
+                    grammar-based completions for PRINT statements inside MethodDecl.body... the
+                    issue is NOT in the scope chain (scope debug confirmed DEF FN params ARE
+                    registered under DefFunction in localSymbols and the container chain IS
+                    correct)." The skipped assertion itself (203-213) would check that DEF FN
+                    parameters `_f$`/`_t$` appear untruncated in completion results inside a class
+                    method body.
+failure_scenario:  Any attempt to re-enable the skipped test, as currently written, against the
+                    current completion-grammar traversal fails: the completion engine's grammar
+                    follower does not produce candidate positions inside class-method statement
+                    bodies at all in this scenario, so the expected `_f$`/`_t$` parameter items
+                    are never offered — independent of DEF FN or the scope chain, both already
+                    ruled out by the recorded root-cause investigation.
+classification:    major
+                    (1) touches 1 file: FAIL — the grammar-follower limitation is inside Langium's
+                    completion engine's traversal of the grammar for MethodDecl.body statement
+                    positions, not a single-file BBj-side fix — (2) no public API/grammar/LSP
+                    change: FAIL — a real fix likely requires either a grammar restructuring of
+                    MethodDecl.body statement completion positions or an upstream Langium
+                    completion-provider change — (3)-(5): moot, already failing — (6) severity
+                    `medium`, dimension D5: would pass in isolation, but classification is
+                    already `major` from tests (1)/(2).
+effort:            8
+dedup:             DEBT-02 — Phase 66's debt item explicitly covers "the 3 disabled
+                    parser.test.ts assertions and the skipped TEST-03 case," matching this
+                    finding exactly; re-triage (enable, or document the specific blocking
+                    limitation) is DEBT-02's own stated scope. None of the 15 frozen open issues
+                    address this Langium completion-grammar-follower limitation.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-011
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-signature-help-provider.ts:17-118
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: the provider's entire custom logic — getSignatureFromElement (17-47),
+                    findEnclosingCall (49-58), getFunctionReference (60-68), getActiveParameter
+                    (70-98), createSignatureInformation (101-118) — is exercised by exactly 2
+                    tests, both in test/functional/lsp-features.test.ts:144-162 ("Signature help
+                    provider is registered and available", "Signature help provider has correct
+                    options"). Both assert only that `services.BBj.lsp.SignatureHelp` is defined
+                    and that `signatureHelpOptions.triggerCharacters` contains '(' and ','. The
+                    suite's own trailing comment (157-161) rationalizes the gap by pointing to
+                    parser.test.ts (method-call parsing) and linking.test.ts (reference
+                    resolution) — neither of which calls provideSignatureHelp or
+                    getSignatureFromElement.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                    regression in the active-parameter calculation (getActiveParameter), the
+                    rendered signature label, or the markdown documentation block would pass the
+                    full `npm test` suite undetected, because no currently-passing test exercises
+                    provideSignatureHelp/getSignatureFromElement against a real method call.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: pass — the fix IS
+                    the added test — (5) reviewer can name the exact edit (add assertions in
+                    test/functional/lsp-features.test.ts, or a new test/signature-help.test.ts,
+                    that call provideSignatureHelp on a real MethodCall and check the returned
+                    label/activeParameter/documentation): pass — (6) severity `medium`, dimension
+                    D5: pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D5-012
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-hover.ts:55-109
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Trace: getAstNodeHoverContent (55-109) — the inherited-field/method detection
+                    via referenceCstNode (58-73), the Bbj-class/member comment-header path
+                    (75-86), the JavadocProvider integration for Java elements (87-106), and the
+                    error-degrade wrapper in getHoverContent (40-51, log-and-return-undefined on
+                    any thrown error) — is never directly invoked with a content assertion by any
+                    test. test/hover.test.ts covers only the pure documentationHeader/
+                    methodSignature formatting helpers (no AstNode ever passed through
+                    getAstNodeHoverContent itself).
+                    test/functional/lsp-features.test.ts:125-140's "Hover provider returns
+                    content for documented elements" test parses a document, asserts
+                    expectNoErrors, and stops — it never calls getHoverContent and asserts nothing
+                    about hover content.
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a
+                    regression in inherited-field detection (e.g. always reporting "inherited"),
+                    the Javadoc-provider integration, or the error-degrade path silently
+                    swallowing a real hover computation error would pass the full `npm test` suite
+                    undetected.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: pass — the fix IS
+                    the added test — (5) reviewer can name the exact edit (add
+                    getHoverContent/getAstNodeHoverContent assertions to test/hover.test.ts for a
+                    documented BBj class member, an inherited field, and a thrown-error case):
+                    pass — (6) severity `medium`, dimension D5: pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-005
+unit:              RU-61-04
+location:          CLAUDE.md (repo root) §Architecture → Langium Pipeline → Key services, "Completion" bullet
+dimension:         D8
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Trace: CLAUDE.md's "Key services" bullet list under §Architecture → Langium
+                    Pipeline names only "Completion: bbj-completion-provider.ts" among this
+                    unit's eleven files. The bullet is accurate for what it describes, but the
+                    surrounding enumeration lists no bullet at all for the other ten files —
+                    bbj-hover.ts, bbj-signature-help-provider.ts, bbj-definition-provider.ts,
+                    bbj-document-symbol-provider.ts, bbj-semantic-token-provider.ts,
+                    bbj-inlay-hint-provider.ts, bbj-code-action-provider.ts,
+                    bbj-comment-provider.ts, bbj-node-kind.ts, bbj-use-insert.ts — all of which
+                    are registered LSP feature providers in bbj-module.ts alongside Completion.
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-completeness defect, not a
+                    runtime failure): a reader of CLAUDE.md's architecture overview reasonably
+                    concludes Completion is the only custom LSP feature provider of note in this
+                    codebase, when ten others exist and are equally part of the "Langium Pipeline"
+                    section's own subject matter.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: n/a —
+                    documentation accuracy is not machine-testable — (5) reviewer can name the
+                    exact edit (add one bullet, or extend the existing Completion bullet, noting
+                    the other ten LSP feature providers under bbj-module.ts's `lsp` service
+                    group): pass — (6) severity `low`, dimension D8: pass — `easy`.
+effort:            1
+dedup:             none
 disposition:       easy-fix
 ```
 
