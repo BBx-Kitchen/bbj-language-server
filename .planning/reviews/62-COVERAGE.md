@@ -1092,11 +1092,11 @@ disposition:       major-refactor
 - D1 Security — pass — Checked `bbj.tmLanguage.json`'s regular expressions for catastrophic-backtracking risk (nested/unbounded quantifiers, overlapping alternations retried on failure): the sole large pattern is the case-insensitive keyword alternation at `bbj.tmLanguage.json:15` — a flat `\b(...)\b` alternation of ~120 fixed-length per-character-bracketed literals (e.g. `[aA][dD][dD][rR]`) with no nested or unbounded repetition inside any branch, so Oniguruma tries each branch once per start position at worst-case linear cost, not exponential; the `string-character-escape` repository rule (`:68-72`) uses only bounded quantifiers (`{2}`, `{4}`, `{0,2}`, `?`) with a disjoint numeric-range alternation — no backtracking hazard. Checked `bbx.tmLanguage.json`'s 13 repository rules (read in full) on the same basis: all are single, unnested `match` patterns anchored at `^\s*` or gated by a `(?<=[\s,])` lookbehind, none contains a quantifier inside an alternation branch — no pathological pattern found in either grammar. Checked for external references: every `include` in both grammars targets only a local `#name` inside the file's own `repository` (`bbj.tmLanguage.json`: `#comments`, `#string-character-escape`; `bbx.tmLanguage.json`: `#comments`, `#alias-directive`, `#setopts-directive`, `#dsksyn-directive`, `#use-directive`, `#directives`, `#limit-setting`, `#strings`, `#option-flags`, `#option-assignment`, `#java-class`, `#numbers`, `#generic-setting`) — confirmed via grep for `"include"` in both files, no `include` resolves outside the file's own repository. Checked what capability the two language-configuration files enable beyond comment markers/bracket pairs/auto-closing pairs/surrounding pairs/folding/word patterns: neither declares a `folding` key at all (VS Code falls back to its own indentation/bracket-based default folding); `bbj-language-configuration.json` additionally declares `onEnterRules` (lines 78-100, three rules governing `REM /**` doc-comment continuation indent/appendText) — a standard, execution-free VS Code capability (indent hints and text insertion only, no command/URI/process invocation) — no capability beyond that named list found in either file. 0 findings recorded.
 - D2 Correctness & error handling — fail — Checked BBj lexical rules against `bbj.tmLanguage.json`'s patterns via live `vscode-textmate`+`vscode-oniguruma` tokenization (the same tooling `bbj-vscode/test/textmate-highlighting.test.ts` already uses), not eyeballing the source. Case-insensitivity (CLAUDE.md: "The BBj language is case-insensitive"): confirmed correctly implemented — the keyword alternation matches all ~120 keywords via per-letter `[xX]` bracket pairs throughout. String literals and the doubled-quote escape: confirmed the begin/end `"`/`"` (and `'`/`'`) pairs correctly toggle string scope at each doubled quote (`"it""s"` opens/closes/reopens/closes as expected, matching the doubled-quote convention `bbj.tmLanguage.json:70`'s own comment describes) — **but** every character inside an open string, not just actual escapes, is mis-scoped `constant.character.escape.bbj` instead of plain string content, because both string patterns unconditionally `include` the catch-all escape rule with no trigger character (P62-D2-007). Comments: `REM`/`rem` correctly starts a line comment when followed by a space or tab, and correctly does NOT fire on `REMARK`/`REM15` (matching the langium `COMMENT` terminal's `(?!\w...)` identifier-boundary guard, `bbj.langium:923`) — but a bare `REM` with nothing following (a valid, complete comment token per that same terminal, whose trailing-content group is optional) is not recognized as a comment at all by the TextMate grammar, which hard-requires a trailing space/tab (P62-D2-008); block comments (`/@@ ... @/`) tokenize correctly. Labels (`ValidName':'`, `bbj.langium:406-408`): checked and confirmed a label declaration like `mylabel:`/`START:` receives no distinct scope at all — an absence, not a mis-tokenization (no pattern incorrectly claims it) — a completeness gap, not filed as a D2 defect. Line continuations: BBj's general `:`-prefixed physical-line continuation (`bbj-lexer.ts:10-35`'s `prepareLineSplitter`, which applies to any line, not just an open string) has no dedicated TextMate handling outside the in-string case #107 already covers — the leading `:` on a continuation line goes unscoped, but the continued content itself still tokenizes correctly, a minor completeness gap, not filed separately. Validated all three files parse as JSON: `node -e "JSON.parse(require('fs').readFileSync('<file>','utf8'))"` against each of the three — `syntaxes/bbj.tmLanguage.json` and `bbx-language-configuration.json` parse cleanly; `bbj-language-configuration.json` throws `SyntaxError: Unexpected token ']'` at line 55, caused by two trailing commas (lines 54, 100) invalid in strict JSON (P62-D2-006). Also checked `bbx-language-configuration.json`'s settings are correct for a `config.bbx`-style file rather than copied from the BBj one: its `lineComment` is `"#"` (matching `bbx.tmLanguage.json`'s `#`-comment rule) and its bracket set adds `<`/`>` (for Java class generics in `ALIAS` plugin lines) — genuinely differentiated, not a copy-paste leftover. Also checked the `IOL=`/`LEN=` keyword sub-pattern (`bbj.tmLanguage.json:15`) against its realistic usage (`IOL=5`, `LEN=80`): the trailing `\B` assertion is inverted and never matches when a value is attached, the only form that occurs in real code (P62-D2-009). 4 findings recorded: P62-D2-006, P62-D2-007, P62-D2-008, P62-D2-009.
 - D3 Performance & resource use — pass — Checked `bbj.tmLanguage.json`'s pattern complexity for hot-path cost: the keyword alternation (`:15`, ~120 fixed-length per-character-bracketed literals inside one flat `\b(...)\b` alternation) has no nested or unbounded quantifier in any branch, so Oniguruma's cost per attempted start position is bounded by the number of branches tried linearly, not exponential backtracking — re-run per line per edit (as every TextMate pattern is), but with no pathological blow-up shape; the `string-character-escape` rule (`:68-72`) uses only bounded quantifiers (`{2}`, `{4}`, `{0,2}`, `?`). Checked `bbx.tmLanguage.json`'s 13 repository rules on the same basis (already read in full for D1): all are single, unnested, anchor- or lookbehind-gated matches with no risk of superlinear cost in line length. Checked whether any pattern's worst case is superlinear in line length by constructing adversarial inputs via the same `vscode-textmate` harness used for the D2 checks: a 2000-character line of repeated `a` (no keyword/string/comment trigger) tokenizes to 1 token in ~12ms; a 2000-character double-quoted string tokenizes to 2002 tokens (one per character — the P62-D2-007 mis-scoping symptom at scale) in ~17ms — both linear in line length, no exponential blow-up, no pathological pattern found. Checked the P62-D2-007 string-mis-scoping defect for a *performance*, not just correctness, angle: it produces one token per character inside every open string rather than one token for the whole run — a real per-character overhead, but bounded by string length with no retry/backtracking cost — filed as D2-primary (mis-scoping is the observable defect), not D3-primary. 0 findings recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — pass — `RU-62-05` is swept in full even though ROADMAP's Phase 62 success criteria do not name it — the grid is the contract and the criteria are a subset of it (D-13); recorded here, adjacent to the coverage claim, as `62-04-PLAN.md` requires. Ran the mandated programmatic diffs (D-12): `bbj-language-configuration.json` vs `bbx-language-configuration.json` (`git diff --no-index --numstat` -> `33 51`, of 100/82 lines) — the shared `wordPattern` string is identical (deliberate, ensures consistent word-boundary behavior for both languages, not a duplication defect, since VS Code's language-configuration.json format has no include/extends mechanism to de-duplicate it); the differences are genuinely deliberate (`lineComment` REM vs `#`, a `<`/`>` bracket pair added for bbx's Java-class generics, and an `onEnterRules` block present only in `bbj-language-configuration.json` for REM doc-comment continuation, with no bbx equivalent since bbx has no such doc-comment convention) rather than copy-paste drift; one stylistic inconsistency noted, not actionable: `bbj-language-configuration.json`'s `autoClosingPairs` uses bare 2-tuple arrays (`["{", "}"]`) while `bbx-language-configuration.json` uses `{"open":...,"close":...}` objects for the same bracket pairs — functionally equivalent, cosmetic only. `bbj.tmLanguage.json` vs `bbx.tmLanguage.json` (`git diff --no-index --numstat` -> `154 49`, of 74/179 lines) — the two grammars share almost no content (different languages, different lexical rules), so the large diff reflects near-total content difference, not duplication drift. Checked for unreachable/shadowed patterns in `bbj.tmLanguage.json`: none found (`#comments` is tried first per the `patterns` array order at every position, but its triggers — `[rR][eE][mM][ \t]`, `/@@` — never overlap with the keyword alternation's own trigger characters, so no branch is permanently shadowed). Checked scope-name consistency against TextMate convention across both grammars: consistent (`keyword.control.*`, `string.quoted.*`, `comment.line.*`/`comment.block.*`, `constant.*`, `entity.name.*`/`entity.other.*`, `support.class.*` all follow the standard TextMate scope-naming hierarchy). Checked whether `syntaxes/gen-bbj.tmLanguage.json` (19 lines, present on disk in this checkout) is a live artifact or a generated leftover, per `bbj-vscode/langium-config.json:13-15`'s `textMate.out` target (`npm run langium:generate`'s own generation, unrelated to this unit's 3 reviewed files): established as fact, not asserted — it is listed in `bbj-vscode/.gitignore:3` (`/syntaxes/gen-bbj.tmLanguage.json`, not a tracked file), it is absent from `bbj-vscode/package.json`'s `contributes.grammars` (only `bbj.tmLanguage.json` and `bbx.tmLanguage.json` are contributed), and it is absent from `BbjTextMateBundleProvider.java`'s `BUNDLE_FILES` list — confirmed inert on both IDEs; its own keyword set has also drifted substantially from the hand-maintained `bbj.tmLanguage.json` (120 vs 165 keyword tokens) and its lone `{"include": "#comments"}` (line 11) points at an empty `"repository": {}` (line 18), a dangling reference even on its own terms — none of this is a live defect since nothing loads the file, recorded here as a fact for the record. 0 findings recorded.
+- D5 Test coverage gaps — fail — Established by enumeration, not assumption: `ls bbj-vscode/test/ | grep -i textmate` -> `textmate-bbx-highlighting.test.ts`, `textmate-highlighting.test.ts` (13 tests total, confirmed passing: `npx vitest run test/textmate-highlighting.test.ts test/textmate-bbx-highlighting.test.ts` -> 2 files, 13 tests, all passed). `textmate-bbx-highlighting.test.ts` covers `bbx.tmLanguage.json` thoroughly (11 tests: every directive type, option flags, strings, SETOPTS hex, comments, plus a full-file sweep of `examples/config.bbx`/`examples/config.min`); `textmate-highlighting.test.ts` covers `bbj.tmLanguage.json` narrowly (2 tests, both scoped to the #107 multiline-string regression) and did not catch P62-D2-007/008/009, all three confirmed via the same real-tokenizer mechanism these tests already use (P62-D5-004). Separately and explicitly (the easy mistake here): `bbj-vscode/test/example-files.test.ts` parses every `.bbj` file in `test/test-data/` through `createBBjServices`'s langium chevrotain lexer/parser (`parseHelper`) — the language server's own parser, not the TextMate grammar — asserting zero lexer/parser errors; this is real, valuable regression coverage for the *language server*, but it exercises none of `bbj.tmLanguage.json`'s TextMate patterns and would not catch a grammar-side regression like #381 or any of P62-D2-006/007/008/009 — grammar-side coverage and language-server coverage are two disjoint surfaces, and only the former is this unit's concern. `grep -rl "language-configuration\|onEnterRules\|autoClosingPairs\|wordPattern" bbj-vscode/test/` returns nothing — neither `*-language-configuration.json` file has any test coverage of any kind, and `bbj-vscode/package.json` names no `@vscode/test-electron`-style integration-test dependency, so no harness in this project is even capable of exercising VS Code's own consumption of these files' declared behaviors (P62-D5-005). 2 findings recorded: P62-D5-004, P62-D5-005.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — fail — **Part 1, mechanical.** `bbj-intellij/build.gradle.kts`'s `copyTextMateBundle` task (lines 83-91) copies exactly four files from `bbj-vscode/` into `bbj-intellij/build/resources/main/textmate/bbj-bundle/`: `syntaxes/bbj.tmLanguage.json`, `syntaxes/bbx.tmLanguage.json`, `bbj-language-configuration.json`, `bbx-language-configuration.json`. A build output exists in this checkout; ran `diff -q` between each `bbj-vscode/` source and its copied counterpart for all four — all four report **identical** (byte-for-byte). The copy is byte-identical: divergence, if any, cannot live in the bytes themselves, only in how each side's manifest declares/consumes them — redirecting Part 2 as the plan requires. `BbjTextMateBundleProvider.java`'s `BUNDLE_FILES` list (lines 17-23, the IntelliJ-side consumer, read as D7 comparison material only per D-05) additionally packages a fifth file, `package.json` (its own hand-authored bundle manifest, not copied from `bbj-vscode/` — `copyTextMateBundle`'s `include(...)` globs do not match it), alongside the four copied grammar/config files. **Part 2, manifest comparison.** `bbj-vscode/package.json`'s `contributes.languages`/`contributes.grammars` (lines 23-72) vs `bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json`'s own `contributes` block (read in full, D-05): (a) language ids differ in name only — `"bbj"`/`"bbx-config"` (VS Code) vs `"BBj"`/`"BBx Config"` (IntelliJ bundle) — each side's own consumer (VS Code's `documentSelector: [{scheme:'file', language:'bbj'}]`, `extension.ts:862`; IntelliJ's TextMate bundle registry) refers to its own id consistently, so the naming mismatch by itself is not a defect. (b) `config.bbx`/`Config.bbx`/`config.min`/`Config.min` filename resolution — the literal #381 failure mode — is now **symmetric on both sides**: both manifests declare all four exact filenames under a dedicated language (`bbx-config`/`BBx Config`) pointing at `bbx.tmLanguage.json`/`source.bbx`, confirming #381's fix (commit `2489001`, ancestor of this swept tree, confirmed via `git merge-base --is-ancestor`) closed the parity gap it introduced, not just the VS Code side; a plain `.bbx` file (any name other than the four exact filenames) resolves via the `"bbj"`/`"BBj"` language's `extensions` list on both sides, also identically. (c) one genuine, newly-found divergence: VS Code's `"bbj"` language `extensions` (`bbj-vscode/package.json:30-35`) is `[".bbj", ".bbjt", ".src", ".bbx"]` — **missing `.bbl`** — while IntelliJ's `"BBj"` `extensions` (`bbj-intellij/.../package.json:7`) is `[".bbj", ".bbl", ".bbjt", ".src", ".bbx"]` — **includes `.bbl`**; `bbj.tmLanguage.json`'s own `fileTypes` field (`:4-8`) also lists `.bbl`, confirming the omission is on the VS Code manifest, not the grammar's own intent. This is a genuine, VS Code-side defect (the IntelliJ side is the more complete manifest here), recorded as `P62-D7-002` with `location:` inside `bbj-vscode/`, citing the IntelliJ manifest as the comparison point only (D-05). **`syntaxes/` enumeration re-derivation (D-14).** `ls bbj-vscode/syntaxes/` -> `bbj.tmLanguage.json`, `bbx.tmLanguage.json`, `gen-bbj.tmLanguage.json` — three files on disk, but INVENTORY's `RU-62-05` per-file table (`INVENTORY.md:508-515`) names only `bbj.tmLanguage.json`, while INVENTORY's Surface Accounting (`:951`) assigns the whole `syntaxes/` directory to `RU-62-05`. Re-derived, not adopted: `bbx.tmLanguage.json` (179 lines) **is** a tracked, shipped, `package.json`-contributed, `copyTextMateBundle`-copied file — the actual grammar `bbx-config` resolves to, directly relevant to #381 — omitted from the per-file table by what reads as an oversight, not a deliberate exclusion (nothing in INVENTORY states a reason to exclude it, unlike its explicit exclusion reasons elsewhere in the document); `gen-bbj.tmLanguage.json` is confirmed **not** part of the reviewed/shipped surface at all — it is listed in `bbj-vscode/.gitignore:3`, is not a tracked file (`git ls-files` finds no match), is absent from `package.json`'s `contributes.grammars`, and is absent from `BbjTextMateBundleProvider.java`'s `BUNDLE_FILES` — consistent with the same generated-output exclusion already applied to `src/language/generated/` elsewhere in INVENTORY, so its absence from both the per-file table and Surface Accounting's file-count is correct, not a gap. This disagreement is surfaced as an observation only; INVENTORY is not edited, no grid row is added, and the 40-cell/22-file gate totals are unchanged (D-14) — carried to plan `62-05`'s close-out per this plan's `key_links`. Whether IntelliJ's built-in TextMate bundle importer actually *honors* the `filenames` field for `"BBx Config"` (vs. falling back to extension-only matching) cannot be confirmed without launching the IDE — deferred infrastructure per `62-CONTEXT.md` — referred to `RU-63-02` below, alongside whether IntelliJ's own LSP4IJ file-type registration independently covers `.bbl` the way its TextMate bundle's `extensions` list already does. 1 finding recorded: P62-D7-002.
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked `CLAUDE.md`'s §IDE Integration claim (lines 88-92) that both IDEs share the TextMate grammar, against this unit's own D7 Part 1 `copyTextMateBundle` evidence: the claim names only `syntaxes/bbj.tmLanguage.json` under "TextMate grammar", but the mechanical copy evidence shows **four** files are actually shared byte-identically — `bbj.tmLanguage.json`, `bbx.tmLanguage.json`, `bbj-language-configuration.json`, `bbx-language-configuration.json` — so the claim names the correct file but not the full set (P62-D8-001); confirmed via `git blame`/`git log` that the claim (commit `261ab42`, 2026-07-15) predates the #381 fix commit `2489001` (2026-07-18) that added the last three files to the shared bundle, so the claim was accurate when written and has since gone stale rather than being wrong from inception. Checked whether any `package.json` description or documentation-site page describes which files get highlighted: `bbj-vscode/package.json` has no top-level `description` field referencing highlighting scope (confirmed: no such field naming file coverage), and `documentation/` (`RU-D8-01`'s own scope, not re-swept here) was not searched further, staying inside this unit's own file list per the stopping rule. Checked whether the `bbx-config` language's registration in `bbj-vscode/package.json` (lines 42-59) matches what CLAUDE.md's own §Repository Structure says about `config.bbx` support: CLAUDE.md makes no positive claim about `config.bbx`/`bbx-config` at all (confirmed: no match for `bbx-config`/`config.bbx` anywhere in `CLAUDE.md`) — its silence is not contradicted by anything found, so not promoted to a finding. 1 finding recorded: P62-D8-001.
 
 ### Findings
 
@@ -1315,6 +1315,135 @@ dedup:             none — #381 concerns config.bbx losing its dedicated gramma
                     language id's extension list missing an entry the grammar's own fileTypes
                     field already anticipates. No other frozen open issue names .bbl
                     file-association behavior.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D5-004
+unit:              RU-62-05
+location:          bbj-vscode/test/textmate-highlighting.test.ts (absence of 3 assertions) —
+                    covers bbj-vscode/syntaxes/bbj.tmLanguage.json
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          bbj-vscode/test/textmate-highlighting.test.ts already loads
+                    bbj.tmLanguage.json through real vscode-textmate+vscode-oniguruma
+                    tokenization (the same mechanism used to discover P62-D2-007/008/009) and
+                    asserts only two things: that a `:`-continued multiline string (#107) stays
+                    string-scoped, and that a normal single-line string terminates correctly — 2
+                    tests total (confirmed: `npx vitest run test/textmate-highlighting.test.ts`
+                    -> 2 passed). Neither test asserts that string content carries only
+                    string.quoted.double.bbj (would have caught P62-D2-007), neither tokenizes a
+                    bare REM line (would have caught P62-D2-008), and neither tokenizes IOL=/LEN=
+                    with a value attached (would have caught P62-D2-009) — all three defects
+                    existed undetected in a file with dedicated, real-tokenizer test coverage.
+failure_scenario:  A future edit to bbj.tmLanguage.json's string or keyword patterns can
+                    reintroduce or worsen any of these three defects (or a similar one) with
+                    `npm test` green throughout, since the existing 2 tests do not assert
+                    string-content scope purity, bare-REM recognition, or the IOL=/LEN=
+                    value-attached form.
+classification:    easy
+                    (1) touches 1 file: pass — all three missing assertions belong in the single
+                    existing textmate-highlighting.test.ts — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    existing harness: n/a (this finding *is* the missing-assertion gap, per the
+                    Finding Record Template's convention, matching RU-62-04's P62-D5-001) — (5)
+                    reviewer can name the exact edit: pass (add 3 assertions: string-content
+                    scope purity, bare-REM recognition, IOL=/LEN= with a value attached) — (6)
+                    severity `low`, dimension D5 (not D1): pass — `easy`.
+effort:            4
+dedup:             none — no frozen open issue names TextMate test coverage.
+disposition:       easy-fix
+```
+
+```
+id:                P62-D5-005
+unit:              RU-62-05
+location:          bbj-vscode/test/ (absence) — the 2 files this finding covers are
+                    bbj-vscode/bbj-language-configuration.json,
+                    bbj-vscode/bbx-language-configuration.json
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          `grep -rl "language-configuration\|onEnterRules\|autoClosingPairs\|wordPattern"
+                    bbj-vscode/test/` returns nothing — no test in the suite exercises either
+                    language-configuration file's declared behavior (comment toggling, bracket
+                    matching, auto-closing pairs, surrounding pairs, onEnterRules indent/append
+                    behavior, or wordPattern-driven word selection). bbj-vscode/package.json
+                    lists no @vscode/test-electron-style integration-test dependency (confirmed:
+                    no match for "vscode-test" in package.json), so this project has no harness
+                    capable of exercising these editor-native behaviors at all today — unlike
+                    the TextMate grammar files, which are testable in isolation via
+                    vscode-textmate (as textmate-highlighting.test.ts/
+                    textmate-bbx-highlighting.test.ts already do). This gap is also why
+                    P62-D2-006 (the invalid-JSON trailing commas) shipped undetected: no test
+                    even confirms either language-configuration file parses as valid JSON.
+failure_scenario:  A future edit to either language-configuration file — a bad
+                    autoClosingPairs entry, a broken onEnterRules regex, or (as already found)
+                    invalid JSON — ships with `npm test` green, since nothing in the suite loads
+                    or validates either file.
+classification:    major
+                    (1) touches 1 file: FAIL — closing the JSON-validity half needs one new
+                    assertion (easy, vitest-testable), but closing the behavioral half (bracket
+                    matching, auto-closing, onEnterRules as VS Code itself applies them) needs a
+                    new integration-test harness (e.g. @vscode/test-electron), which is new test
+                    infrastructure the project does not have — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: FAIL on the behavioral half (a
+                    behavioral harness would add @vscode/test-electron; the JSON-validity half
+                    adds none) — (4) regression-testable with existing harness: n/a for the gap
+                    itself (this finding *is* the missing-test gap) — (5) reviewer can name the
+                    exact edit: pass for the JSON-validity half; the behavioral half needs new
+                    infrastructure design, a larger investment than "name the exact edit" — (6)
+                    severity `low`, dimension D5 (not D1): pass — tests (1) and (3) fail on the
+                    behavioral half, so classification is `major` per D-13, even though a
+                    low-effort JSON-validity assertion alone would qualify as `easy` on its own.
+effort:            8
+dedup:             none — no frozen open issue names language-configuration.json test coverage.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D8-001
+unit:              RU-62-05
+location:          CLAUDE.md:90-92
+dimension:         D8
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          CLAUDE.md's §IDE Integration (lines 88-92, last touched by commit 261ab42,
+                    2026-07-15) states: "Both share: - TextMate grammar:
+                    syntaxes/bbj.tmLanguage.json - Run tools: web.bbj, em-login.bbj". Per this
+                    unit's own D7 Part 1 mechanical check, bbj-intellij/build.gradle.kts's
+                    copyTextMateBundle task (lines 83-91) copies four files out of bbj-vscode/
+                    into the IntelliJ TextMate bundle, all confirmed byte-identical to their
+                    bbj-vscode/ source: syntaxes/bbj.tmLanguage.json,
+                    syntaxes/bbx.tmLanguage.json, bbj-language-configuration.json, and
+                    bbx-language-configuration.json. CLAUDE.md's bullet names only the first of
+                    these four. Commit 2489001 (2026-07-18, "fix: restore dedicated highlighting
+                    for config.bbx / config.min (#381)") is what introduced
+                    bbx.tmLanguage.json/bbx-language-configuration.json into the shared bundle —
+                    three days after CLAUDE.md's IDE Integration section was last written — so
+                    the claim was accurate when written and has since gone stale, not been wrong
+                    from the start.
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime
+                    failure): a reader of CLAUDE.md reasonably concludes only
+                    bbj.tmLanguage.json is IDE-shared, and could edit bbx.tmLanguage.json or
+                    either *-language-configuration.json file believing it is VS Code-only,
+                    missing that the same edit reaches IntelliJ via copyTextMateBundle.
+classification:    easy
+                    (1) touches 1 file: pass (CLAUDE.md only) — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest: pass — (5) reviewer can name the exact edit: pass (list all four
+                    files under "TextMate grammar", not just bbj.tmLanguage.json) — (6) severity
+                    `low`, dimension D8 (not D1): pass — `easy`.
+effort:            2
+dedup:             none — #381 is the regression this doc gap indirectly traces back to (the
+                    fix is what widened the shared surface CLAUDE.md no longer fully describes),
+                    but this finding is the documentation drift itself, not a re-filing of #381
+                    (already fixed and unrelated to CLAUDE.md's own text). No other frozen open
+                    issue names CLAUDE.md's IDE Integration accuracy.
 disposition:       easy-fix
 ```
 
