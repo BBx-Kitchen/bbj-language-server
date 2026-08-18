@@ -316,11 +316,36 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 **Plans**: 5 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 62-01-PLAN.md — Create `62-COVERAGE.md` (skeleton, grid, D-14 gate, verbatim `n/a` carry-forwards) and sweep `RU-62-04` composer webview HTML generators end to end, incl. the SEC-01/SEC-02 Surface Handoff
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 62-02-PLAN.md — Sweep `RU-62-01` extension host & commands (`extension.ts`, `CompilerOptions.ts`, `Commands.cjs`) across the 7 live dimensions
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 62-03-PLAN.md — Sweep `RU-62-03` composer logic & UI layer (8 files) incl. the logic/UI-layer D4 duplication callout and the `setopts-catalog.ts` sampling protocol
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 62-04-PLAN.md — Sweep `RU-62-05` TextMate grammar & language configuration, incl. the #381 dedup neighbourhood and the two-part D7 parity method
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 62-05-PLAN.md — Sweep `RU-62-02` editor feature modules and close the phase: re-derive both D-14 gates, account for every finding and referral, answer ROADMAP's four criteria
+
+**Cross-cutting constraints:**
+
+- `62-COVERAGE.md` contains exactly one `## RU-62-0N` section per unit — five in total — and no plan's section overwrites or merges into another's
+- No `applies` cell line in `62-COVERAGE.md` records a bare verdict: every one of the 35 carries a written check line naming the concrete checks applied, and zero cell lines remain `pending` at phase close
+- Finding IDs are monotonic within each `(62, dimension)` pair with no gaps and no reuse, so two findings discovered in the same unit have a deterministic order
+- No two Phase 62 plans share a wave; each of `62-02`..`62-05` declares its predecessor in `depends_on`, so the shared `62-COVERAGE.md` is never written concurrently
+- Both D4 duplication assessments compare against a 3-file `-composer.ts` baseline (msgbox/addwindow/addchildwindow), never 4 — the SETOPTS asymmetry is stated in the cell, not silently normalized
+- The composer duplication is allocated exactly once per layer — generator-layer to `RU-62-04`, logic/UI-layer to `RU-62-03` — with the second cross-referencing the first rather than restating it, so the same duplication is never double-counted
+- Every recorded finding carries `path:line`, a primary dimension, and evidence clearing its tier; a claim that does not clear its tier appears under `### Not-reproducible dispositions` with its reason (RVW-06)
+- The unit's 1 `n/a` cell still carries INVENTORY's R-D6-CENTRAL text verbatim, the phase-wide carried-forward `n/a` count is still 5, and the phase-wide cell-line count is still 40 (D-03, D-14)
 
 **UI hint**: yes
 
