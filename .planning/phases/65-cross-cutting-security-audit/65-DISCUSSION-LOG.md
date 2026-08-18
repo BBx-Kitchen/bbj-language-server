@@ -212,3 +212,29 @@ completion gates
 - Adding runtime message-shape validation at the four webview handlers — likely motivated by this
   phase, but a new capability: recorded here, implemented in 67 if `easy`, else a future milestone
 - A CSP/webview security regression suite — new capability, not a review finding
+
+---
+
+## Post-Discussion Corrections — D-02 denominators (found during planning)
+
+Both surfaced by the planner while deriving the gates, both verified independently before CONTEXT
+was amended. Neither changes a decision; both change a *measurement* CONTEXT asserted.
+
+### SEC-04 — right number, wrong command
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Correct the command in D-02; the phase runs the corrected pattern | A denominator whose stated command doesn't reproduce it is the exact drift D-02 exists to prevent | ✓ |
+| Leave it — the number 7 was correct anyway | Ships a derivation a reader cannot reproduce | |
+
+**Notes:** `grep -rl 'EMToken\|emToken\|EM_TOKEN'` returns only the **4 IntelliJ** files. `bbj-vscode/src/extension.ts` matches it **zero** times — the VS Code side uses the storage key `'bbj.em.token'`, which contains none of those three tokens; it had originally been located by a wider grep that happened to include `em-login`. Verified: adding `\|em\.token` → 5 source files, + the 2 `.bbj` scripts = **7**, matching D-02's stated baseline. Command corrected across all three plans and in CONTEXT.
+
+### SEC-05 — "27" is not reproducible, and is demoted to a comparison baseline
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Two-stage refinement with arithmetic closure and visible upward drift | Cannot silently exclude a spawn site — the one thing criterion 4 must not allow | ✓ |
+| Pick a defensible fixed number and gate on it | Any fixed count invites narrowing the denominator to fit what was found | |
+| Keep 27 as the gate | Verified not reproducible from any single grep | |
+
+**Notes:** Verified: a naive pattern returns **18** VS Code lines of which **7** are `RegExp.prototype.exec` noise, plus 8 IntelliJ instantiations and 3 `.bbj` scripts — 27 does not fall out of any one command. `65-03` now resolves every raw candidate to exactly one line (verdict, or `n/a` with a written exclusion reason) and adds explicit `[extra]` lines so the denominator can drift upward and be seen to. 27 is reported as a comparison with its cause, never as the gate.

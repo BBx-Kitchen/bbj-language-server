@@ -68,8 +68,30 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
   |---|---|---|
   | SEC-01 | **4** webview HTML generators, plus every interpolation site within them | `grep -rln 'getHtml\|webview.html' bbj-vscode/src --include=*.ts` |
   | SEC-02 | **4** `onDidReceiveMessage` handlers, one per composer webview | `grep -rn 'onDidReceiveMessage' bbj-vscode/src --include=*.ts` |
-  | SEC-04 | **4 lifecycle stages** (acquisition, storage at rest, exposure via args/logs, expiry) × **7 sites** — `extension.ts` (VS Code `SecretStorage`), `BbjEMTokenStore.java`, `BbjEMLoginAction.java`, `BbjRunBuiAction.java`, `BbjRunDwcAction.java`, `em-login.bbj`, `em-validate-token.bbj` | file enumeration + `grep -rln 'EMToken\|emToken\|EM_TOKEN'` |
-  | SEC-05 | **27** spawn sites — 16 VS Code (`child_process`/`exec`/`spawn`), 8 IntelliJ (`new GeneralCommandLine`/`new ProcessBuilder`), 3 `tools/*.bbj` | the two greps above, counted |
+  | SEC-04 | **4 lifecycle stages** (acquisition, storage at rest, exposure via args/logs, expiry) × **7 sites** — `extension.ts` (VS Code `SecretStorage`), `BbjEMTokenStore.java`, `BbjEMLoginAction.java`, `BbjRunBuiAction.java`, `BbjRunDwcAction.java`, `em-login.bbj`, `em-validate-token.bbj` | `grep -rl 'EMToken\|emToken\|EM_TOKEN\|em\.token'` over `bbj-vscode/src` + `bbj-intellij/src` (→ 5) **+ the 2 `.bbj` scripts** |
+  | SEC-05 | see the correction below — **no single grep yields a stable denominator** | two-stage refinement, owned by `65-03` |
+
+  **Two corrections to this table, found during planning and verified — the plans hold the
+  authoritative derivations:**
+
+  1. **SEC-04's command as first written was wrong, though its number was right.**
+     `grep -rl 'EMToken\|emToken\|EM_TOKEN'` returns only the **4 IntelliJ** files;
+     `bbj-vscode/src/extension.ts` matches it **zero** times, because the VS Code side uses the
+     storage key `'bbj.em.token'` and none of those three tokens. (It was originally located by a
+     wider grep that happened to include `em-login`.) Adding `\|em\.token` yields 5 source files,
+     plus the 2 `.bbj` scripts = the **7** sites recorded above. A denominator whose stated command
+     does not reproduce it is exactly the drift D-02 exists to prevent, so the corrected pattern is
+     the one the phase runs.
+
+  2. **SEC-05's "27" does not reproduce from any single grep and is demoted to a comparison
+     baseline.** A naive pattern returns **18** VS Code lines of which **7** are
+     `RegExp.prototype.exec` noise, plus 8 IntelliJ instantiations and 3 `.bbj` scripts. Rather
+     than pick a number, `65-03` uses a **two-stage refinement with arithmetic closure**: every raw
+     candidate becomes exactly one line, resolved either to a verdict or to `n/a` with a written
+     exclusion reason, plus explicit `[extra]` lines so the denominator can drift **upward and be
+     seen to**. The 27 is reported as a comparison with its cause, never as the gate. This is
+     strictly better than a fixed count: it cannot silently exclude a spawn site, which is the one
+     thing criterion 4 must not allow.
 
   The 4/4 symmetry on SEC-01 and SEC-02 is not a coincidence to gloss over — the same four
   composer webviews generate the HTML *and* receive the messages, which is why D-06 pairs them.
@@ -111,7 +133,8 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
   1. `65-01` → **SEC-01 + SEC-02** — the same four composer webviews, HTML out and messages in.
      Splitting them would mean two plans reading the same four files. Also creates the skeleton.
   2. `65-02` → **SEC-04** — EM token lifecycle across both IDEs and the two `.bbj` scripts.
-  3. `65-03` → **SEC-05** — the 27 spawn sites across both IDEs, **plus the phase close-out**.
+  3. `65-03` → **SEC-05** — every process-spawn site across both IDEs and the `.bbj` scripts,
+     denominator refined live per D-02 correction 2, **plus the phase close-out**.
 
 - **D-07:** **SEC-04 and SEC-05 overlap on exactly one thing, and ownership is assigned up front:**
   the EM token appearing as a process argument (`P63-D1-003`) is *both* a token-lifecycle exposure
@@ -276,7 +299,7 @@ credentials helper at `:371`), `bbj-intellij/.../actions/BbjEMTokenStore.java`,
 `BbjEMLoginAction.java`, `BbjRunBuiAction.java`, `BbjRunDwcAction.java`,
 `bbj-vscode/tools/em-login.bbj`, `bbj-vscode/tools/em-validate-token.bbj`.
 
-**SEC-05 (`65-03`) — 27 sites:** VS Code `Commands/Commands.cjs` (5), `extension.ts` (4),
+**SEC-05 (`65-03`) — denominator refined live, not fixed (D-02 correction 2):** VS Code `Commands/Commands.cjs` (5), `extension.ts` (4),
 `language/bbj-cpl-service.ts` (3), `setopts-catalog.ts` (2), `msgbox-composer.ts` (2),
 `document-formatter.ts` (2), `addwindow-composer.ts` (2) and the remainder; IntelliJ
 `BbjRunActionBase.java` (4), `BbjNodeDetector.java` (3), `BbjRunGuiAction`/`BbjRunDwcAction`/
@@ -325,7 +348,7 @@ the milestone's one unrecorded row and **not** Phase 65's to close).
 | Webview panel options | all 4 use `{ enableScripts: true, retainContextWhenHidden: true }` |
 | Handler signature | `(msg: { type: string; payload?: Selection })` then `switch (msg.type)` — compile-time only (D-13) |
 | VS Code EM token storage | `context.secrets.store('bbj.em.token', …)` `extension.ts:667`, delete `:473` — a real VS Code half exists for criterion 3 |
-| Spawn sites | **27** = 16 VS Code + 8 IntelliJ + 3 `.bbj` (D-02) |
+| Spawn sites | **no stable single-grep denominator** — 18 raw VS Code lines (7 are `RegExp.exec` noise) + 8 IntelliJ + 3 `.bbj`; `65-03` refines in two stages with upward drift visible (D-02 correction 2) |
 | Inherited D1 findings | **30** = 9 + 7 + 8 + 6 (D-04) |
 
 ### Integration Points
