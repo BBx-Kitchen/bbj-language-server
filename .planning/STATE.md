@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
 status: executing
-stopped_at: Completed 61-04-PLAN.md
-last_updated: "2026-08-17T22:11:41.336Z"
-last_activity: 2026-08-17
-last_activity_desc: Roadmap created for v4.0 (Phases 60-69, 38 requirements mapped, 100% coverage)
+stopped_at: Completed 61-05-PLAN.md
+last_updated: "2026-08-18T04:46:09Z"
+last_activity: 2026-08-18
+last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
   percent: 10
 ---
 
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 61 (Language Core Review) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
-Last activity: 2026-08-17 — Phase 61 execution started
+Last activity: 2026-08-18 — Plan 61-05 (RU-61-04) complete
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Last activity: 2026-08-17 — Phase 61 execution started
 | Phase 61 P02 | ~25min | 2 tasks | 1 files |
 | Phase 61 P03 | 20min | 2 tasks | 1 files |
 | Phase 61-language-core-review P04 | 20min | 2 tasks | 1 files |
+| Phase 61-language-core-review P05 | ~45min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: P61-D2-010's redundant-AST-walk consequence folded into that finding as secondary D3 rather than a second record, sharing one root cause
 - [Phase ?]: P61-D2-011 root-causes and reproduces DEBT-03's static-method type-inference gap (bbj-type-inferer.ts missing resolvedReturnType fallback)
 - [Phase ?]: P61-D3-003 re-triages #232/DEBT-01 against current code: uncached full-index scan + unpruned scope-computation walk, with isAffected() confirmed as an existing partial mitigation
+- [Phase 61 Plan 05]: Settled RU-61-06's open not-reproducible disposition — hover/completion documentation is explicitly typed and sent as LSP Markdown (kind: 'markdown'), confirming unescaped peer javadoc/signature text CAN render as markup (P61-D1-004); no command-execution claim asserted (VS Code sanitizes untrusted MarkupContent)
+- [Phase 61 Plan 05]: Unvalidated peer-supplied FQNs interpolate unescaped into `use ${fqn}\n` TextEdits inserted into the user's source document via the missing-use quick-fix and completion auto-import, with no format validation at either call site (P61-D1-005)
+- [Phase 61 Plan 05]: TEST-03 skip recorded as P61-D5-010 with dedup naming DEBT-02 as owning requirement; signature-help provider and hover provider's core logic found to have zero direct behavioral test coverage (P61-D5-011, P61-D5-012)
 
 ### Tech Debt
 
@@ -160,8 +164,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-17T22:11:41.319Z
-Stopped at: Completed 61-04-PLAN.md
+Last session: 2026-08-18T04:46:09Z
+Stopped at: Completed 61-05-PLAN.md
 Resume file: None
 
 ---
