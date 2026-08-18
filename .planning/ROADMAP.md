@@ -374,7 +374,7 @@ the security of its Node.js runtime download path.
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 2/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
+**Plans**: 3/5 plans executed — tracer + one per INVENTORY review unit, chained one per wave (D-01..D-04). Sole
 deliverable `.planning/reviews/63-COVERAGE.md`; no source file is modified.
 
 Plans:
@@ -388,7 +388,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 63-03-PLAN.md — Sweep `RU-63-04` composer dialogs & bridge (13 files, largest by LOC) across the 7 live dimensions, and triage the merged SETOPTS referral (#4 + #5) as one disposition
+- [x] 63-03-PLAN.md — Sweep `RU-63-04` composer dialogs & bridge (13 files, largest by LOC) across the 7 live dimensions, and triage the merged SETOPTS referral (#4 + #5) as one disposition
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

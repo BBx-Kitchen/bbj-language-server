@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 63
 current_phase_name: IntelliJ Plugin Review
 status: executing
-stopped_at: Completed 63-02-PLAN.md
-last_updated: "2026-08-18T09:56:44.542Z"
+stopped_at: Completed 63-03-PLAN.md
+last_updated: "2026-08-18T10:21:45.470Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 30
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 63 (IntelliJ Plugin Review) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 63 execution started
 
@@ -95,6 +95,7 @@ Last activity: 2026-08-18 — Phase 63 execution started
 | Phase 62 P05 | 40min | 3 tasks | 4 files |
 | Phase 63 P01 | ~15min (task commits only) | 2 tasks | 1 files |
 | Phase 63 P02 | ~40min | 2 tasks | 1 files |
+| Phase 63 P03 | ~24min (task commits only) | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 63 Plan 01]: extractZip's zip-slip risk confirmed NOT exploitable (hardcoded 'node.exe' target, not entry.getName()); extractTarGz's delegation to system tar recorded as Not-reproducible rather than a finding, since confirming it would require constructing an exploit archive (D-13 prohibition)
 - [Phase ?]: [Phase 63 Plan 02]: RU-63-01 (run/compile/EM actions) swept across all 7 live dimensions — 16 findings recorded incl. P63-D2-004 (BUI/DWC buildCommandLine blocks the EDT up to ~25s via synchronous EM token validation/re-login) and P63-D1-003 (EM password/token exposed as GeneralCommandLine process arguments)
 - [Phase ?]: [Phase 63 Plan 02]: All 3 inherited Phase 62 referrals dispositioned as promoted (P63-D7-001/002/003) — corrected referral #2's stated count from six to the actually-enumerated 5 VS Code commands with no IntelliJ counterpart; outbound referral to RU-63-05 for BbjServerService.restart()'s mechanism side
+- [Phase ?]: [Phase 63 Plan 03]: RU-63-04 (composer dialogs & bridge) swept across all 7 live dimensions — 14 findings recorded incl. P63-D2-010 (stale captured document-edit range never revalidated, matching threat T-63-P03-S4) and P63-D7-004 (dormant MsgboxPreview.exprText/CatalogItem.constant DTO field gap, currently inert on both IDEs)
+- [Phase ?]: [Phase 63 Plan 03]: Corrected INVENTORY's composer-bridge risk-rank framing ('bridge to an external composer process') after tracing BbjComposerServer.java/BbjComposerService.java — it is an LSP4IJ proxy over the existing language server, spawns no external process
+- [Phase ?]: [Phase 63 Plan 03]: Merged inherited referrals #4 (RU-62-04) and #5 (RU-62-03) into one disposition per D-06 — SETOPTS has no IntelliJ composer dialog, verified against the current tree, promoted to P63-D7-005 with dedup naming #475 as a partial-overlap (porting the existing #474 config.bbx composer)
 
 ### Tech Debt
 
@@ -193,8 +197,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T09:56:44.521Z
-Stopped at: Completed 63-02-PLAN.md
+Last session: 2026-08-18T10:21:45.448Z
+Stopped at: Completed 63-03-PLAN.md
 Resume file: None
 
 ---
