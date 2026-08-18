@@ -99,11 +99,11 @@ Reproduced from `.planning/reviews/62-COVERAGE.md` §"Phase 62 Close-Out" sectio
 - D1 Security — fail — Checked, on `BbjNodeDownloader.java`: the scheme/host of the download URL (`DOWNLOAD_BASE_URL = "https://nodejs.org/dist/"`, `NODE_VERSION = "v20.18.1"` at :34-35, `downloadUrl` built at :104) — HTTPS, fixed host, no redirect-following override or certificate-handling override found in the `HttpRequests.request(...).connect(...)` call (:112-117); whether the archive at the temp file (`Files.createTempFile`, :110) is verified against any checksum, signature or expected size before extraction — confirmed absent (no hash computation, no signature check, no size assertion anywhere in this 290-line file); the `extractZip` entry-name handling (:167-188) — the target file name is the hardcoded literal `"node.exe"` (:174), not `entry.getName()`, so `destDir.resolve("node.exe")` cannot be steered by a hostile entry name in this specific loop (checked, no zip-slip defect on this path); the separate `extractTarGz` path (:190-218), which shells out to a system `tar` `ProcessBuilder` (:192-196) and therefore delegates entry-path safety entirely to whatever `tar` binary is on the invoking user's `PATH` — a trust transfer, stated as a fact under SEC-03 below, not independently provable without constructing a malicious archive (see Not-reproducible dispositions); whether an empty/truncated/entry-less archive is detected before `Files.copy`/`setExecutable` — it is: `!Files.exists(extractedNode)` at :142 throws before either :149 or :153 run, for both extraction paths; the already-occupied-target-path case — `Files.copy(..., REPLACE_EXISTING)` (:149) both overwrites unconditionally with no ownership/hash check and, by not specifying `LinkOption.NOFOLLOW_LINKS`, follows a symlink if one is already present at `targetPath`; and the cancelled/concurrent-download remnant question — the `Task.Backgroundable` (:76) is cancellable, temp file/dir cleanup runs in `finally` blocks on every exit path (:157-159, :161-164), so no partial artifact is left in the shared plugin data dir on cancellation, but the `DOWNLOAD_IN_PROGRESS_KEY` guard itself (:70-74, :79, :88) is not atomic (see D2). Checked the other five files: `BbjSettings.java` persists no credential — `bbjHomePath`/`nodeJsPath`/`classpathEntry`/`configPath`/`emUrl`/`javaInteropHost` are filesystem paths and a host/URL string, none executed directly by this class; `BbjSettingsComponent.java`/`BbjSettingsConfigurable.java` validate a user-entered BBj home (`BbjHomeDetector.isValidBbjHome`, `BbjSettingsComponent.java:57`) and Node path (`BbjNodeDetector.getNodeVersion`/`meetsMinimumVersion`, `BbjSettingsComponent.java:86-92`) via `ComponentValidator` before display, but validation is advisory (a `ValidationInfo` warning, not a blocking gate — `apply()` in `BbjSettingsConfigurable.java:61-85` persists the typed value regardless of validator state); `BbjHomeDetector.java`/`BbjNodeDetector.java` trust the environment as follows: `~/BASIS/Install.properties` (`BbjHomeDetector.java:61`), a small fixed set of OS-specific literal paths (`:85-90`), and the system `PATH` via `PathEnvironmentVariableUtil.findInPath("node")` (`BbjNodeDetector.java:27`) — all read-only filesystem/PATH probes, no network or IPC trust boundary. 2 findings recorded: P63-D1-001, P63-D1-002.
 - D2 Correctness & error handling — fail — Checked the `catch (Exception e)` in the background task (:83-86): it only shows an error notification, sets no "Node available" flag, so a caller still observes `getCachedNodePath() == null` afterward — no defect there. Checked the `finally` at :87-92: restores `DOWNLOAD_IN_PROGRESS_KEY` on every path including a `ProcessCanceledException` (a `RuntimeException`, caught by the outer `catch (Exception e)`) — pass. Checked temp file/dir removal on every exit path including the throw at :142-144 — both `finally` blocks (:157-159, :161-164) run regardless of exception type — pass. Checked `getCachedNodePath()`'s swallowed `IOException` (:55, comment "Directory creation failed, return null") — **not distinguishable by the caller from "not yet cached"**: both paths return `null` identically, so a permission-denied or read-only plugin data directory looks exactly like "Node.js hasn't been downloaded yet" to every caller. Checked `extractTarGz`'s handling of a non-zero `tar` exit code (:211-213, throws with the captured output — pass), an interrupted wait (:214-217, sets the interrupt flag and rethrows — correct pattern, pass), and unbounded process output (:201-207, `StringBuilder output` has no size cap; in practice `tar xzf` emits output only on error, so this is a latent-not-active cost, not promoted as its own finding). Checked the settings round-trip for absent/empty/malformed values: `BbjSettingsConfigurable.reset()` (:88-149) null/empty-guards `configPath`/`emUrl` (:144,147) and defaults `logLevel`/`javaInteropHost` when empty (:117-119,124-126) — but `javaInteropPort` auto-detection (:130-140) is gated on `if (javaInteropPort == 5008)` — an equality-to-default check, not an "was this ever explicitly configured" check — and this auto-detection logic lives **only** in the Configurable (UI layer), never inside `BbjSettings.getState()` itself (:42-59), unlike `bbjHomePath`/`nodeJsPath` which **are** auto-detected inside `getState()` (:44-57) so every consumer benefits — a code path that reads `BbjSettings.getInstance().getState().javaInteropPort` directly, without opening the Settings UI, gets the raw stored/default value with no auto-detection ever applied. Checked `BbjHomeDetector`/`BbjNodeDetector`: both return `null` uniformly for "not found" and for a caught exception (`BbjHomeDetector.java:78-80`, `BbjNodeDetector.java:47-48`) — same not-distinguishable pattern as `getCachedNodePath()`, cited as a secondary instance rather than a separate finding. Checked the `DOWNLOAD_IN_PROGRESS_KEY` guard (:70-74) for a check-then-act race: `props.getBoolean(...)` and `props.setValue(...)` (:79) are two separate, unsynchronized calls on an application-scoped `PropertiesComponent` — two IDE windows invoking `downloadNodeAsync` within the same race window can both observe `false` before either sets `true`, launching two concurrent `Task.Backgroundable` downloads that independently `Files.copy(..., REPLACE_EXISTING)` (:149) to the same `targetPath`. 3 findings recorded: P63-D2-001, P63-D2-002, P63-D2-003.
 - D3 Performance & resource use — fail — Checked whether `getCachedNodePath()` (:47-59) is cheap enough for its documented "fast and synchronous" contract: two filesystem stats (`Files.exists`, `Files.isExecutable`, :52) plus `Files.createDirectories` inside `getNodeDataDirectory()` (:245, a write-attempt on every call, usually a fast no-op once the directory exists) — not a hot-path concern at the frequency this method is actually called (server startup / manual status checks, not per-keystroke) — pass on this specific check. Checked `BbjHomeDetector`/`BbjNodeDetector` for unbounded filesystem walks or repeated process spawns: `detectBbjHome()` reads one properties file then probes 2-3 fixed literal paths (`BbjHomeDetector.java:41-45,85-90`) — bounded, cheap; `detectNodePath()` walks the `PATH` env var once via the platform's own `PathEnvironmentVariableUtil` (`BbjNodeDetector.java:27`) — bounded. Checked the 8 KiB copy loop in `extractZip` (:177-181, bounded per-file) and the `tar` output accumulation in `extractTarGz` (:201-207, unbounded but practically inert per the D2 note above) — no unbounded-growth defect promoted separately from D2's note. Checked whether the settings UI rebuilds its model per interaction: **it does something more expensive** — `BbjSettingsComponent.java:148-164` wires two `DocumentListener`s (`bbjHomeField`, `nodeJsField`) whose `textChanged` callbacks fire on the Swing EDT on **every keystroke**. `nodeJsField`'s listener calls `updateNodeVersionLabel()` (:221-239), which — whenever the currently-typed path exists as a file — calls `BbjNodeDetector.getNodeVersion()` (:231), which spawns a `node --version` subprocess and **blocks the EDT synchronously** via `ExecUtil.execAndReadLine` (`BbjNodeDetector.java:42-46`) until the process exits, with no debounce and no background thread. `bbjHomeField`'s listener calls `updateClasspathDropdown()` (:200-216) → `BbjSettings.getBBjClasspathEntries()` (`BbjSettings.java:74-100`), a synchronous `Files.readAllLines` file read, also on the EDT, also per keystroke. 1 finding recorded: P63-D3-001.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked the `SystemInfo.isWindows` branch, repeated independently 5 times in `BbjNodeDownloader.java` (:50, :103, :125, :136-139/:148, :152) with no shared platform-strategy abstraction — each site re-derives the same Windows-vs-other decision. Checked `getPlatformName()` (:220-229) and `getArchitecture()` (:231-241): these translate `SystemInfo`/`CpuArch` booleans into Node.js's own platform/arch naming convention (`"darwin"`/`"linux"`/`"win"`, `"arm64"`/`"x64"`) — a genuine mapping, not pure duplication of what `SystemInfo`/`CpuArch` already expose, so no defect there. Checked `downloadAndExtractNode` (:97-165, 69 lines) for god-function shape: it builds the URL, downloads, dispatches by archive type, extracts, resolves the extracted binary, copies it, sets the executable bit, and cleans up — eight distinct responsibilities in one method, confined to a single file. Checked `BbjHomeDetector.java`/`BbjNodeDetector.java` for copy-pasted detection shape: their detection mechanisms differ structurally (installer-trace-file parsing vs. `PATH` lookup) — no meaningful duplication found there. Checked `BbjSettings.java`/`BbjSettingsComponent.java`/`BbjSettingsConfigurable.java` for a single settings-access convention: the three-layer split (persistent state / Swing UI / Configurable bridge) is consistent — no defect. Checked for duplicated constant/default/path strings across the six files: the literal `5008` (the java-interop default port) appears independently in `BbjSettings.java:30,107,111,116,150`, `BbjSettingsComponent.java:119,125,297,302`, and `BbjSettingsConfigurable.java:131,136` — 3 files, no shared named constant. 2 findings recorded: P63-D4-001, P63-D4-002.
+- D5 Test coverage gaps — fail — **This cell carries the phase's single systemic finding, recorded here exactly once (D-08).** Established by enumeration, not assumption: `ls bbj-intellij/src/` prints only `main`; `grep -rn "test" bbj-intellij/build.gradle.kts` returns no matches. `bbj-intellij` declares no test dependency and configures no test task anywhere — **it has no test source set at all.** Recorded as `P63-D5-001` against `RU-63-03`, `location:` anchored at `bbj-intellij/build.gradle.kts` (the file that would declare the missing test configuration). This unit's own specific consequence: every one of this cell's own D1-D3/D6 findings above (`P63-D1-001/002`, `P63-D2-001/002/003`, `P63-D3-001`, `P63-D6-001/002`) is unenforceable by any regression test today — a silently broken download, a wrong cached path, a settings round-trip that silently loses or corrupts a stored value, or a reintroduced concurrent-download race would all ship undetected. A first test suite for this unit would minimally need to cover: `getCachedNodePath()`'s three-way outcome (cached/not-cached/directory-error), the settings round-trip (`BbjSettingsConfigurable.apply()`/`reset()`), and `BbjNodeDetector.meetsMinimumVersion()`'s pure-function version parsing (the one piece of this unit's logic that needs no IntelliJ Platform test fixture at all). The other four Phase 63 units' own D5 cells will cross-reference `P63-D5-001` by ID rather than restating this systemic fact. 1 finding recorded: P63-D5-001.
 - D6 Dependency health — fail — Checked the pinned Node.js runtime: `NODE_VERSION = "v20.18.1"` (:34), part of Node.js's "Iron" LTS line. Verified live against nodejs.org's own release index (`curl https://nodejs.org/dist/index.json`, entry for `v20.18.1`: released 2024-11-20, `"lts": "Iron"`, `"security": false`) and the official `nodejs/Release` schedule (`schedule.json`'s `v20` block: `lts: 2023-10-24`, `maintenance: 2024-10-22`, `end: 2026-04-30`). At sweep time (2026-08-18) the entire v20 "Iron" line is **past its own end-of-life date** (roughly 3.5 months past `2026-04-30`), and the pinned `v20.18.1` patch is itself 41 releases and about 21 months behind the v20 line's own final release (`v20.20.2`, 2026-03-24) — the same index flags 5 later v20.x releases as security releases the plugin's pinned build never received: `v20.18.2` (2025-01-21), `v20.19.2` (2025-05-14), `v20.19.4` (2025-07-15), `v20.20.0` (2026-01-12), `v20.20.2` (2026-03-24). Checked the routed item: INVENTORY's Routing table (D-06) sends the `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch to this cell, the only live D6 cell in Phase 63 (D-10). `bbj-intellij/build.gradle.kts:12-13` sets `sourceCompatibility`/`targetCompatibility` to `JavaVersion.VERSION_17` (confirmed by reading the file); the local JDK is Temurin 25.0.3; `./gradlew --offline -q tasks` fails in ~5s with `* What went wrong: 25.0.3` before task listing. **This finding's `location:` is `bbj-intellij/build.gradle.kts:12-13`, a file INVENTORY assigns to `RU-64-02` for every other dimension — the phase's one deliberate `location:` exception (D-10), stated here explicitly.** No other Gradle, IntelliJ-Platform (`2024.2`) or LSP4IJ (`0.19.0`) version question is assessed in this cell — those remain `RU-64-02`/SEC-08's. 2 findings recorded: P63-D6-001, P63-D6-002.
 - D7 Cross-IDE parity — n/a — "VS Code extensions execute inside VS Code's own bundled Node.js host process and never perform a Node.js runtime download/detection step; there is no missing VS Code counterpart for this IntelliJ-only mechanism to be compared against — the asymmetry is a platform necessity, not a defect."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked every class-level and method-level Javadoc in the six files against the code just read. `BbjNodeDownloader`'s class Javadoc, "Handles platform detection, download, extraction, and caching in plugin data directory" (:29-31) — accurate, the class does all four. `getCachedNodePath()`'s Javadoc, "This method is fast and synchronous — safe to call from any thread" (:42-45) — the thread-safety and synchronicity claims are accurate (no shared mutable state, no blocking I/O beyond two stat calls), but the doc's implied read-only "get" semantic omits that `getNodeDataDirectory()` (:245) performs `Files.createDirectories` as a side effect on **every** call — a write attempt, not purely a read. Checked the inline comments at :109 ("Download to temp file"), :146 ("Copy to plugin data directory"), :151 ("Set executable permission (important for Unix-like systems)"), :158/:162 (cleanup), and :172 ("We only want node.exe from the archive") against the code beneath each — all five accurately describe what the adjacent code does, including :172, which is accurate because `extractZip` (containing that comment) is only invoked on the `SystemInfo.isWindows` branch (:125-129), so the ZIP archive is Windows-only in this codebase. Checked every comment in the five settings/detector files claiming a validation, default, or ordering: `BbjHomeDetector`'s class Javadoc ("Checks the BASIS installer trace file and common installation locations") and `detectBbjHome()`'s `<ol>` doc both match the code's actual two-step order (:33-48) — accurate. Checked `CLAUDE.md`'s IDE-integration claims against these six files: `CLAUDE.md` makes no positive claim about settings, Node.js detection, or the download path specifically — its silence is noted as an observation, not promoted to a finding, since no claim it does make is contradicted here. 1 finding recorded: P63-D8-001.
 
 ### SEC-03 Integrity Posture
 
@@ -452,6 +452,148 @@ dedup:             none — no frozen open issue names the bbj-intellij Gradle/J
 disposition:       major-refactor
 ```
 
+```
+id:                P63-D4-001
+unit:              RU-63-03
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:50,103,125,136-139,148,152,97-165
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Mechanical structural check: `SystemInfo.isWindows` appears as an independent
+                    branch condition 5 times in this file (:50, :103, :125, :136-139, :148, :152 —
+                    grep count confirms 6 literal occurrences across those 5 decision sites, one
+                    site spanning two lines), with no shared platform-strategy helper. Line-count
+                    check on downloadAndExtractNode (:97-165): 69 lines performing URL
+                    construction, download, archive-type dispatch, extraction, binary resolution,
+                    copy, chmod, and cleanup — 8 responsibilities in one method.
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — the
+                    duplication is a maintainability cost: any future platform-specific fix (e.g.
+                    a sixth OS/architecture combination, or hardening one branch without the
+                    others) must be applied at up to 5 separate sites by hand, with drift risk
+                    between them; the god-function shape makes downloadAndExtractNode harder to
+                    review, test in isolation, or partially reuse (e.g. resolving just the
+                    extracted-binary path without also downloading).
+classification:    easy
+                    (1) touches 1 file: pass — confined to BbjNodeDownloader.java — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4) regression-
+                    testable with existing harness: satisfied vacuously per D-09 — extracting a
+                    shared platform-strategy helper and splitting downloadAndExtractNode into
+                    named steps changes no runtime behaviour, so there is no regression to test —
+                    (5) reviewer can name the exact edit (extract a small `Platform` helper/enum
+                    and split downloadAndExtractNode into buildUrl/download/extract/install/
+                    cleanup steps): pass — (6) severity `low`, dimension D4 (not D1): pass — all
+                    six tests pass, so classification is `easy` per D-13.
+effort:            4
+dedup:             none — no frozen open issue names code-shape duplication in the Node.js
+                    downloader.
+disposition:       easy-fix
+```
+
+```
+id:                P63-D4-002
+unit:              RU-63-03
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettings.java:30,107,111,116,150
+dimension:         D4
+secondary:         [D2]
+severity:          low
+evidence_tier:     trace
+evidence:          Mechanical grep check for the literal `5008` across the unit's settings files:
+                    BbjSettings.java:30 (`public int javaInteropPort = 5008;`), :107 (Javadoc),
+                    :111, :116, :150 (three `return 5008;` default branches);
+                    BbjSettingsComponent.java:119 (`javaInteropPortField.setText("5008")`), :125,
+                    :297, :302 (comments/`return 5008` defaults); BbjSettingsConfigurable.java:131
+                    (`if (javaInteropPort == 5008)`), :136 (`if (detected != 5008)`) — 3 files, no
+                    shared named constant (e.g. a `DEFAULT_JAVA_INTEROP_PORT` field) anywhere.
+failure_scenario:  n/a (D4 is a code-shape finding) — if the default java-interop port is ever
+                    changed (matching a future language-server default), every one of these sites
+                    across 3 files needs a coordinated, hand-synchronized edit; missing one leaves
+                    an inconsistent default between the UI's placeholder text, the persisted
+                    state's default, and the Configurable's "was this ever changed from default"
+                    check used by P63-D2-002's auto-detection gate — silently reintroducing or
+                    compounding that finding.
+classification:    major
+                    (1) touches 1 file: FAIL — a shared constant used consistently requires
+                    editing all 3 files that currently hardcode the literal — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4) regression-
+                    testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit (introduce
+                    BbjSettings.DEFAULT_JAVA_INTEROP_PORT and reference it from all 3 files):
+                    pass — (6) severity `low`, dimension D4 (not D1): pass — test (1) and test (4)
+                    both fail, so classification is `major` per D-13.
+effort:            2
+dedup:             none — no frozen open issue names this literal-duplication gap.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D5-001
+unit:              RU-63-03
+location:          bbj-intellij/build.gradle.kts
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     inherited
+evidence:          Established by enumeration, not assumption: `ls bbj-intellij/src/` -> `main`
+                    (only). `grep -rn "test" bbj-intellij/build.gradle.kts` -> no matches (no test
+                    dependency declared, no test task configured). bbj-intellij has no test source
+                    set at all — the systemic fact this finding records once for the whole phase
+                    (D-08); the other four Phase 63 units' own D5 cells cross-reference this ID by
+                    number rather than restating the enumeration.
+failure_scenario:  Every RU-63-03 behaviour recorded above — the download/extract/cache pipeline
+                    (P63-D1-001/002, P63-D6-001/002), the cache-availability/port-auto-detect/
+                    concurrent-download correctness gaps (P63-D2-001/002/003), and the EDT-
+                    blocking UI behaviour (P63-D3-001) — ships and regresses silently: there is no
+                    harness in this module that would fail if any of it broke.
+classification:    major
+                    (1) touches 1 file: n/a — this finding *is* the missing-test-infrastructure gap
+                    itself, not a behaviour fix — (2) no public API/grammar/LSP change: pass — (3)
+                    no new dependency: FAIL by D-13's own accounting for this class of finding —
+                    establishing a JVM test source set requires adding a test framework dependency
+                    (e.g. JUnit) to build.gradle.kts, which is itself a new dependency — (4)
+                    regression-testable with the existing harness, no new test infrastructure: FAIL
+                    by definition — adding a src/test/ source set *is* new test infrastructure
+                    (D-09's primary reading) — (5) reviewer can name the exact edit (add a
+                    `sourceSets.test`/JUnit dependency block to build.gradle.kts and author a first
+                    test class): pass — (6) severity `medium`, dimension D5 (not D1): pass — tests
+                    (3) and (4) both fail, so classification is `major` per D-13.
+effort:            8
+dedup:             none — no frozen open issue names bbj-intellij's absent test infrastructure.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D8-001
+unit:              RU-63-03
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:42-45
+dimension:         D8
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          getCachedNodePath()'s Javadoc (:42-45) describes it purely as a getter ("Gets
+                    the cached Node.js path if it exists and is executable... fast and
+                    synchronous"). The implementation calls getNodeDataDirectory() (:49), which
+                    performs Files.createDirectories(dataDir) (:245) on every invocation — a
+                    filesystem write attempt, not documented anywhere in this method's Javadoc,
+                    which describes only the read/existence-check semantics.
+failure_scenario:  n/a (D8 is a doc-accuracy finding) — a caller relying on the Javadoc's implied
+                    read-only contract (e.g. calling this method speculatively/defensively,
+                    assuming it cannot fail due to a write) is not warned that this "getter" can
+                    also fail for write-related reasons (permission, read-only filesystem, disk
+                    full) — which is exactly the ambiguity P63-D2-001 records as a correctness gap;
+                    this finding is the doc-accuracy half of that same code shape.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: satisfied
+                    vacuously per D-09 — a Javadoc-only edit changes no runtime behaviour — (5)
+                    reviewer can name the exact edit (add one sentence noting the directory-creation
+                    side effect to the Javadoc): pass — (6) severity `low`, dimension D8 (not D1):
+                    pass — all six tests pass, so classification is `easy` per D-13.
+effort:            2
+dedup:             none — no frozen open issue names this Javadoc omission.
+disposition:       easy-fix
+```
+
 ### Not-reproducible dispositions
 
 - **Tier failed: `repro` (D1, secondary D6).** Candidate claim: whether `extractTarGz`'s delegation to the system `tar` binary (`BbjNodeDownloader.java:190-218`) actually permits a path-traversal write via a crafted archive entry (e.g., an entry name containing `../` segments) on the `tar` implementations available on macOS/Linux. **Reason not recorded as a finding:** confirming this would require constructing and extracting a malicious `.tar.gz` archive against a live `tar` invocation — which is itself the trigger-sequence/proof-of-concept D-13 prohibits publishing for a D1-adjacent claim regardless of the outcome, and no such harness exists in this phase's scope (this sweep documents code behaviour via trace, it does not construct exploit archives). The fact that this path delegates entry-safety to the system `tar` with no validation of its own is stated as SEC-03 fact (3) instead, which is the trace-clearable claim; whether that delegation is actually exploitable on any specific `tar` build is left here, per RVW-06's drop-vs-disposition rule, rather than silently dropped.
@@ -459,6 +601,12 @@ disposition:       major-refactor
 ### Cross-unit referrals
 
 None. `RU-63-03`'s sweep raised no candidate whose defect is located outside `bbj-intellij/`'s settings/runtime-acquisition surface or inside `bbj-vscode/` — stated explicitly per the per-unit stopping rule's empty-subblock register, rather than omitted.
+
+### Unit closure
+
+`RU-63-03` is closed against the four-part stopping rule (D-06): **(i)** all 7 live cells (D1, D2, D3, D4, D5, D6, D8) carry a `pass`/`fail` verdict plus a written check line above; **(ii)** all six files are named at least once inside this section — `BbjSettings.java` (D1/D2/D4/D8 cells, `getBBjClasspathEntries`/`detectJavaInteropPort` evidence), `BbjSettingsComponent.java` (D1/D2/D3/D4 cells, `P63-D3-001`'s `location:`), `BbjSettingsConfigurable.java` (D1/D2/D4 cells, `P63-D2-002`'s `location:`), `BbjHomeDetector.java` (D1/D2/D3 cells), `BbjNodeDetector.java` (D1/D2/D3 cells), `BbjNodeDownloader.java` (D1/D2/D3/D4/D6/D8 cells and every finding's `location:` above); **(iii)** every candidate claim raised during either task is either one of the 11 finding records above or the single `### Not-reproducible dispositions` entry — none was silently dropped; **and (iv)** `RU-63-03` owns **zero** inherited Phase 62 referrals — confirmed by the Inherited referral ledger above, where no row names `RU-63-03` as a "To unit" — stated explicitly rather than left as silence, while the ledger's eighth (routed) row was dispositioned as `promoted — P63-D6-002` in Task 1.
+
+**Scope-fidelity note.** All six files in this unit were swept across all 7 live dimensions, even though ROADMAP's Phase 63 success **criterion 1** names only `BbjSettingsComponent.java` and `BbjNodeDownloader.java` from this unit (alongside files from other units) — the Applicability Grid, not the ROADMAP criteria, is the contract, and the criteria are a deliberately named subset of it (D-16); the extra coverage here (`BbjSettings.java`, `BbjSettingsConfigurable.java`, `BbjHomeDetector.java`, `BbjNodeDetector.java`) is recorded as deliberate, not scope creep.
 
 ## RU-63-01 — Run, compile & EM actions
 
