@@ -628,30 +628,433 @@ None. `RU-63-03`'s sweep raised no candidate whose defect is located outside `bb
 **Owning plan:** 63-02.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked, across the unit's process-spawning and EM-credential surfaces: every `GeneralCommandLine` construction site — `BbjRunGuiAction.buildCommandLine` (:27-52, `-q`/classpath-arg/config-arg/`-WD`+file path, all via `.addParameter(...)`), `BbjRunBuiAction`/`BbjRunDwcAction.buildCommandLine` (:115-134 each, `-q`/`-WD<webRunnerDir>`/`web.bbj`/mode literal/name/programme/workingDir/classpath/token[/configPath]), `BbjRunActionBase.validateTokenServerSide` (:298-303, `-q`/`em-validate-token.bbj`/`-`/token/tmpFile), and `BbjEMLoginAction.performLogin` (:98-112, `-q`/`em-login.bbj`/`-`/username/password/tmpFile/client-info-string) — traced every interpolated segment back to its origin: `bbjHomePath`/`classpathEntry`/`configPath` all come from `BbjSettings` (`BbjSettings.java:18-20`), an **application-level** `@State`/`@Storage` service (confirmed via `plugin.xml:174-176`'s `<applicationService serviceImplementation="...BbjSettings"/>` registration, not a `<projectService>`) — unlike VS Code's workspace-scoped `bbj.classpath`/`bbj.configPath`, this value cannot be committed into a shared repository's own config and silently supplied by an untrusted workspace; it is only ever set by the local developer through Settings > Languages & Frameworks > BBj. `file`/`workingDir`/`programme`/`name` derive from the currently-open `VirtualFile` (`CommonDataKeys.VIRTUAL_FILE`), the user's own editor selection, not a workspace-committed value or a caller-supplied `params` object (IntelliJ's run actions carry no `params`-style external-invocation surface analogous to `extension.ts`'s `runBUI(params)`). Every one of these values reaches the spawned process as a **separate array element** via `GeneralCommandLine.addParameter(...)`, executed directly by `OSProcessHandler`/`CapturingProcessHandler` with **no shell involved at any call site** (confirmed by reading all eleven files in full — no `Runtime.exec(String)`, no `ProcessBuilder("sh","-c",...)`, no string-concatenated command line anywhere) — this is the categorical safety difference Phase 62's `P62-D7-001` already established from the VS Code side: none of these interpolated values is ever subject to shell-metacharacter reinterpretation, so the unescaped-shell-injection class of defect `P62-D1-003` records for `Commands.cjs`/`extension.ts` has no equivalent surface here. This unit's own D1 surface is therefore the EM credential/token lifecycle and the temp-file/cache trust it depends on, not command-string injection: **EM credential and token handling** — `BbjEMLoginAction.java:103` passes the plaintext EM password as a `GeneralCommandLine` argument to the spawned `bbj -q em-login.bbj` process, and `BbjRunActionBase.java:302`/`BbjRunBuiAction.java:127`/`BbjRunDwcAction.java:127` each pass the JWT token the same way — process argument lists are visible to any other process on the same host capable of enumerating them (`ps`/Task Manager-class visibility), and neither value passes through an environment-variable or stdin channel instead; **token storage** — `BbjEMTokenStore.java:25-46` stores the JWT via `PasswordSafe.getInstance().set(attrs, credentials)` (:34) keyed by `CredentialAttributesKt.generateServiceName("BBj Enterprise Manager", "jwt-token")` (:27), which — unlike a plaintext settings field — delegates to IntelliJ's own encrypted-at-rest credential backend, a genuine security improvement over a hand-rolled store; **expiry decoding** — `BbjEMTokenStore.isTokenExpired()` (:56-88) decodes the JWT's `exp` claim via regex against the base64url-decoded payload with **no signature verification of any kind** (confirmed: no `Signature`/JWT-library usage anywhere in this 89-line file) and returns `false` (not expired) for every one of: a non-3-part string (:64-66), a payload missing the `exp` claim (:76-77), and any exception during decode (:84-86) — a malformed, unsigned, or `exp`-less token is therefore treated identically to a genuinely fresh one by this client-side check, though `validateTokenServerSide()` (`BbjRunActionBase.java:282-322`) provides a server-side backstop for the run flows (not for `BbjEMLoginAction` itself, which has none); **temp files** — the temp files passed as arguments at `BbjRunActionBase.java:295`/`:303` and `BbjEMLoginAction.java:96`/`:104` are created via `Files.createTempFile(prefix, ".tmp")` with **no explicit `FileAttribute`/POSIX-permission argument** at either call site, so the file — which receives the EM login's plaintext JWT output or the validate-token result — is created with whatever default permissions the JVM/OS combination applies rather than an explicit owner-only (`0600`) grant, for the window between process completion and the `finally`-block delete; **output handling** — `BbjRunActionBase.java:74-95`'s `ProcessListener.onTextAvailable` forwards only `STDERR` text to `BbjServerService.logToConsole()` (`BbjServerService.java:64-67`), which prints directly into an in-memory `ConsoleView` Tool Window and writes to no file or other persistent sink (confirmed by reading `logToConsole`'s 4-line body) — so no credential/token value that might appear in process output reaches a durable log; stdout is not captured at all by this listener (see D2). No runnable reproduction accompanies any of these records (D-07 — the Gradle build cannot run in this environment and a live process-inspection harness is out of this static-trace sweep's scope). 3 findings recorded: P63-D1-003, P63-D1-004, P63-D1-005.
+- D2 Correctness & error handling — fail — Checked `actionPerformed`'s guard clauses across all eleven actions for the no-project/no-editor/wrong-file-type/missing-BBj-home cases: `BbjRunActionBase.actionPerformed` (:43-49) returns silently if `project`/`file` is null, then calls `validateBeforeRun()` (:144-169), which checks `bbjHomePath` non-empty, the directory exists, and the executable resolves, logging a specific, actionable error for each failure via `logError()`/auto-showing the LS log window; `BbjCompileAction.actionPerformed` (:25-31) and `BbjRefreshJavaClassesAction.actionPerformed` (:22-26) both null-guard `project`; the three `BbjCompose*Action` classes null-guard both `project` and `editor` (:20-25 each) before calling `ComposerLauncher.launch(...)`, which declares no checked exception and is not locally wrapped in `try`/`catch` — the platform's own action-invocation infrastructure catches any uncaught exception from `actionPerformed` and reports it, so this is a deliberate, safe delegation, not a swallowed-exception gap. Checked `update()`/`getActionUpdateThread()` agreement across all eleven actions: `BbjRunActionBase`, `BbjCompileAction`, `BbjRefreshJavaClassesAction`, and all three `BbjCompose*Action` classes each explicitly override both, uniformly declaring `ActionUpdateThread.BGT`. **`BbjEMLoginAction` overrides neither** — it extends `AnAction` directly (:25) and defines only `actionPerformed()`, so it inherits the platform's default enablement (always enabled/visible, with no BBj-Home/server-readiness gate the other ten actions all apply) — a genuine cross-action inconsistency, though `performLogin()`'s own internal checks (:46-53) prevent a hard failure by showing an error dialog instead. More significantly: because `actionPerformed()` always executes on the EDT regardless of `getActionUpdateThread()` (which governs only where `update()`'s enablement check runs, not where `actionPerformed()` itself runs), and `BbjEMLoginAction` has no threading override to move its own body off that thread, `BbjEMLoginAction.performLogin()`'s `handler.runProcess(15000)` (:115, up to 15s) blocks the EDT synchronously end to end. The same is true, indirectly, for `BbjRunBuiAction`/`BbjRunDwcAction`: their `buildCommandLine()` override — which calls `validateTokenServerSide()` (`BbjRunActionBase.java:282-322`, up to 10s via `CapturingProcessHandler.runProcess(10000)` at :308) and, on an expired/invalid token, `BbjEMLoginAction.performLogin()` (up to another 15s) — is invoked directly from `BbjRunActionBase.actionPerformed()` at line 60, **before** the `ApplicationManager.getApplication().executeOnPooledThread(...)` dispatch at line 67, whose adjacent comment states its purpose is specifically "to avoid UI freezing"; that pooled-thread dispatch wraps only the final `OSProcessHandler` launch, not `buildCommandLine()`'s own token-validation round trip, so a "Run As BUI/DWC" click can freeze the entire IDE for up to ~25 seconds in the worst case (10s validate + 15s re-login) — precisely the class of defect the project's own "Process launch off EDT to pooled thread" decision (PROJECT.md Key Decisions) was intended to prevent, for the one flow it does not actually cover. Checked temp-file/process-handle release on every exit path: `validateTokenServerSide()`'s `finally` (:315-317) deletes its temp file on every exit including exceptions inside the `try` — correct; but `BbjEMLoginAction.performLogin()`'s temp file, created at :96, is only deleted inside the **inner** `try`/`finally` at :119-123, which wraps the read of `tmpFile` — **not** the `handler.runProcess(15000)` call at line 115, which sits between the file's creation and that inner block; an exception thrown by `runProcess` itself (a launch failure, an I/O error, or the 15s timeout being exceeded) skips the inner `try`/`finally` entirely and reaches only the outer `catch (Exception ex)` at :145, which never deletes `tmpFile` — a genuine, if minor, temp-file leak on that specific error path, potentially containing a partially-written token if `em-login.bbj` wrote before the failure. Checked concurrent-invocation collisions: `Files.createTempFile()` generates a unique random filename per call at every one of this unit's four call sites, so — unlike `RU-63-03`'s shared fixed cache path — two concurrent invocations of this unit's actions cannot collide on the same temp path. Checked `BbjEMTokenStore`'s "unknown expiry" return value against its callers: both `BbjRunBuiAction`/`BbjRunDwcAction` treat `isTokenExpired() == false` as "proceed to server-side validation" (:75-78), so a token this decoder cannot parse is not silently trusted end-to-end; this partially mitigates, but does not eliminate, the D1 finding above, since `BbjEMLoginAction`'s own freshly-issued token is never separately re-checked before being stored. 3 findings recorded: P63-D2-004, P63-D2-005, P63-D2-006.
+- D3 Performance & resource use — fail — Checked `update()`'s per-repaint cost across all eleven actions: each reads at most a `VirtualFile` extension string comparison plus one in-memory `BbjServerService.getCurrentStatus()` field read (`BbjRunActionBase.java:121-129`, `BbjCompileAction.java:55-64`, `BbjRefreshJavaClassesAction.java:34-41`) or two null checks (`BbjCompose*Action.update()`) — no filesystem access, no settings read, no process spawn on any `update()` path in this unit, unlike `RU-63-03`'s keystroke-triggered EDT subprocess spawn — pass on this specific check. Checked whether the three plugin-bundled-tool-path resolvers re-resolve on every call rather than caching: `getWebBbjPath()`/`getEmValidateBbjPath()` (`BbjRunActionBase.java:232-248,257-272`) and `getEMLoginBbjPath()` (`BbjEMLoginAction.java:158-168`) each call `PluginManager.getInstance().findEnabledPlugin(pluginId)` (an in-memory registry lookup, not a filesystem walk) plus one `Files.exists()` stat, on every invocation with no cache field — but these run at most once or twice per user-initiated Run/Login/Validate click, not per keystroke or per repaint, so the absent caching is a low-cost inefficiency, not a hot-path defect, and is not separately promoted. Checked process-output accumulation: `BbjRunActionBase.java:72-100`'s `ProcessListener` prints each `STDERR` line individually to `logToConsole()` with no local buffering of its own — bounded by whatever `ConsoleView` itself manages, not this code. Checked whether repeated runs leak processes, listeners, or temp files: each invocation constructs a fresh `OSProcessHandler`/anonymous `ProcessListener` with no static or instance-level retention across invocations, and (per the D2 cell) temp files are deleted on every exit path except the one leak noted there — no unbounded accumulation found. The one genuine hot-repetition cost: **every** "Run As BUI"/"Run As DWC" invocation — not just the first one after login — performs a full server round-trip token validation via `validateTokenServerSide()` (`BbjRunActionBase.java:282-322`, spawning a second `bbj` process with a 10-second timeout) in addition to the cheap client-side `isTokenExpired()` decode, even when the token was validated seconds earlier by the previous run; there is no cached "validated at time T, trust until expiry or N minutes" result anywhere in this unit — each run redundantly re-spawns and re-waits on the validation subprocess, and because (per `P63-D2-004`) this call happens synchronously on the EDT before the pooled-thread dispatch, this redundant cost directly compounds that finding's UI-freeze duration on every single click, not only the first. 1 finding recorded: P63-D3-002.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
-- D7 Cross-IDE parity — pending
+- D7 Cross-IDE parity — fail — Enumerated IntelliJ's action surface from this unit's eleven files against VS Code's command surface (`bbj-vscode/package.json`'s `contributes.commands`, 19 entries, and `extension.ts`'s `registerCommand` calls): `bbj.run`/`bbj.runBUI`/`bbj.runDWC`/`bbj.loginEM` map to `BbjRunGuiAction`/`BbjRunBuiAction`/`BbjRunDwcAction`/`BbjEMLoginAction` respectively, with parity confirmed on the safety-methodology axis Phase 62's `P62-D7-001` already recorded from the VS Code side (`Commands.cjs`'s `run`/`runWeb`/`compile` and `extension.ts`'s EM validate/login all build one shell-interpolated string for `child_process.exec()`; this unit's equivalents uniformly use `GeneralCommandLine.addParameter(...)` with no shell involved — see the D1 cell above for this unit's own confirmation of that same divergence). Three genuine IntelliJ-side gaps against the VS Code surface, each corresponding to one of the three inherited Phase 62 referrals disposed below: **`bbj.compile`** has an IntelliJ action (`BbjCompileAction`) that is registered, visible, and enabled, but its `actionPerformed()` (:24-39) only logs `"[Compile] Triggered for file: " + file.getName()` and never invokes `bbjcpl` — unlike VS Code's real 18-option-aware compile (`Commands.cjs:294-343` via `CompilerOptions.ts`); **`bbj.configureCompileOptions`, `bbj.denumber`, `bbj.decompile`, `bbj.decompileReadonly`, and `bbj.em`** — 5 VS Code commands (enumerated by name from `package.json`; Phase 62's own referral text describes this set as "six," but a direct enumeration of the named commands against `bbj-intellij/src/main/java/`'s full action inventory confirms exactly 5 distinct command IDs with no IntelliJ action counterpart anywhere in the module — noted here as a correction to the inherited referral's own count, not silently adopted) — have no `bbj-intellij` action at all; **`bbj.refreshJavaClasses`** exists on both sides but diverges in mechanism: `BbjRefreshJavaClassesAction.java:22-32`'s `actionPerformed` calls `BbjServerService.getInstance(project).restart()` (:30), which — per `BbjServerService.java:206-211` — stops and restarts the **entire** LSP4IJ-managed language server (`manager.stop(...)`/`manager.start(...)`), taking every language feature (diagnostics, completion, hover, Structure View) offline for the restart's duration, whereas VS Code's `bbj.refreshJavaClasses` (`extension.ts:694-704`) sends a single targeted `bbj/refreshJavaClasses` LSP request (`client.sendRequest(...)`, :700) with no server restart and no interruption to any other language feature. All three are IntelliJ-side absences/divergences, not VS Code-side defects, so per D-05 none is located inside `bbj-vscode/`; each is dispositioned under `### Inherited referral triage` below and promoted to its own `P63-D7-*` finding. 3 findings recorded: P63-D7-001, P63-D7-002, P63-D7-003.
 - D8 Comment & doc accuracy — pending
 
 ### Inherited referral triage
 
-pending — see ledger rows 1-3 above.
+- **Referral #1** (`RU-62-01` → `RU-63-01`, ledger row 1) — `BbjCompileAction.java` is an unimplemented `TODO` stub, never invokes `bbjcpl`. Verified against the code: `actionPerformed()` (`BbjCompileAction.java:24-39`) only calls `service.logToConsole("[Compile] Triggered for file: " + file.getName(), ...)` (:37-38); the `TODO: Implement language server custom notification for bbj.compile command` comment at :35 accurately names the missing mechanism, and no other code path in this file, or anywhere else in the eleven files, invokes `bbjcpl` or any compiler process. This is not a documented, deliberate scope decision — no comment, `plugin.xml` entry, or `PROJECT.md`/`ROADMAP.md` text marks compile as intentionally deferred, and the action's own `update()` (:42-65) gates it on a real BBj source file with the server started, presenting it as a working command. **Disposition: promoted — `P63-D7-001`.**
+- **Referral #2** (`RU-62-01` → `RU-63-01`, ledger row 2) — Six VS Code commands with no IntelliJ action counterpart. Enumerated both surfaces before deciding (see the D7 cell above): the named commands are `bbj.configureCompileOptions`, `bbj.denumber`, `bbj.decompile`, `bbj.decompileReadonly`, and `bbj.em` — **5** distinct command IDs, not 6; `grep -rliE 'denumber|decompile|configureCompileOptions|EnterpriseManager'` against `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/` returns no matches, confirming none has any IntelliJ action anywhere in this module. One finding allocated for the categorical absence, not one per command, so the same gap is not counted five (or six) times. **Disposition: promoted — `P63-D7-002`.**
+- **Referral #3** (`RU-62-01` → `RU-63-01`, secondary interest to `RU-63-05`, ledger row 3) — `bbj.refreshJavaClasses` restarts the whole LS on IntelliJ vs. a targeted LSP request on VS Code. Confirmed against `BbjRefreshJavaClassesAction.java:22-32`, whose `actionPerformed` calls `BbjServerService.getInstance(project).restart()` at :30, against `extension.ts:694-704`'s targeted `client.sendRequest('bbj/refreshJavaClasses')`. Location decides ownership — `BbjRefreshJavaClassesAction.java` lives in this unit, so this referral is dispositioned here — but the restart *mechanism* itself, `BbjServerService.restart()` (`ui/BbjServerService.java:206-211`, stop-then-start via `LanguageServerManager`), is `RU-63-05`'s file; a written note routes that side to `RU-63-05` (owned by plan `63-04`) rather than re-reporting it there — see `### Cross-unit referrals` below. **Disposition: promoted — `P63-D7-003`.**
 
 ### Findings
 
-pending
+```
+id:                P63-D1-003
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:103,BbjRunActionBase.java:302,BbjRunBuiAction.java:127,BbjRunDwcAction.java:127
+dimension:         D1
+secondary:         [D2]
+severity:          high
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction accompanies this record; a
+                    live process-argument-inspection harness is out of this static-trace sweep's
+                    scope): BbjEMLoginAction.java:103 (cmd.addParameter(password)) passes the
+                    plaintext EM password as a GeneralCommandLine argument to the spawned
+                    "bbj -q em-login.bbj" process; BbjRunActionBase.java:302
+                    (validateTokenServerSide's cmd.addParameter(token)) and
+                    BbjRunBuiAction.java:127/BbjRunDwcAction.java:127
+                    (cmd.addParameter(token)) each pass the stored JWT the same way. All four call
+                    sites build a GeneralCommandLine and add the secret via .addParameter(...),
+                    which places it in the child process's own argv, visible via OS process-listing
+                    APIs to any other process capable of enumerating them; none of the four passes
+                    the secret via stdin or an environment variable instead, confirmed by reading
+                    all four call sites in full.
+failure_scenario:  A local process capable of enumerating other processes' argument lists on the
+                    same host (e.g. via ps/Task Manager-class introspection, available to any other
+                    user-level process on a shared or compromised machine) can read the EM password
+                    during login and the JWT token during every run/validate invocation for as long
+                    as each spawned process remains alive — general process-argument-list exposure
+                    (CWE-214), not a scenario specific to any single call site. Per D-13, no trigger
+                    sequence or payload is stated beyond this problem-class/impact description.
+classification:    major
+                    (1) touches 1 file: FAIL — a fix (routing secrets via stdin or an environment
+                    variable instead of argv) spans at minimum BbjEMLoginAction.java and
+                    BbjRunActionBase.java (plus its two run subclasses), since each independently
+                    constructs its own GeneralCommandLine — (2) no public API/grammar/LSP change:
+                    pass — (3) no new dependency: pass (stdin/env-var argument passing needs no new
+                    library) — (4) regression-testable with existing harness: FAIL — no src/test/
+                    source set exists in bbj-intellij (P63-D5-001) — (5) reviewer can name the exact
+                    edit (switch the four call sites from addParameter(secret) to a stdin write or a
+                    process-scoped environment variable the downstream .bbj scripts are redesigned
+                    to read instead): pass — (6) severity high and dimension D1: FAIL — test (6)
+                    fails on its own, so classification is major regardless of the other five tests
+                    (D-13's safety gate).
+effort:            8
+dedup:             none — #231 (custom classpath and command-line settings for starting BBj
+                    programs) requests configurability of run arguments, not their process-argument-
+                    list observability; this finding is about an existing exposure of secret values
+                    already passed as arguments, a security defect #231 does not address. #385
+                    (Graffiti Composer launch request) is unrelated — it requests launching an
+                    external composer tool, not EM credential/token handling. Both of this unit's
+                    named plausible neighbours checked explicitly and dismissed.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D1-004
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:56-88
+dimension:         D1
+secondary:         [D2]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; see the Environment
+                    constraint above): isTokenExpired() (:56-88) returns false — "not expired" —
+                    for every one of: a non-3-part token string (:64-66, "Not a JWT, let server
+                    decide"), a payload with no exp claim (:76-77, "No exp claim, can't determine"),
+                    and any exception during base64url-decode/JSON-parse (:84-86, "let server
+                    validate"). No signature verification of any kind is performed anywhere in this
+                    89-line file (confirmed by full read — no Signature/JWT-library usage). A
+                    malformed, unsigned, or exp-less token is therefore indistinguishable from a
+                    genuinely fresh one by this client-side check alone.
+failure_scenario:  A JWT token that is not well-formed 3-part base64url, whose decoded payload lacks
+                    an exp claim, or whose decode throws for any reason is reported as "not expired"
+                    identically to a token with a genuine future exp. BbjEMLoginAction's freshly-
+                    stored token is never itself re-checked through this or any other validator
+                    before being written to PasswordSafe, so a malformed or unsigned token issued or
+                    substituted at that point would pass this client-side gate silently; the run
+                    flows are protected only by the separate validateTokenServerSide() server round
+                    trip, which BbjEMLoginAction itself never calls.
+classification:    major
+                    (1) touches 1 file: pass (confined to BbjEMTokenStore.java) — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4) regression-
+                    testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit (change the three "unable to
+                    determine" branches to return true — fail closed — or add an explicit
+                    isTokenWellFormed() gate callers must check before treating a token as usable):
+                    pass — (6) severity medium but dimension D1: FAIL — any D1 finding is major
+                    regardless of severity per D-13's safety gate; test (4) also independently
+                    fails.
+effort:            4
+dedup:             none — no frozen open issue names JWT expiry-decoding fail-open behaviour in the
+                    IntelliJ plugin.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D1-005
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:295,303,BbjEMLoginAction.java:96,104
+dimension:         D1
+secondary:         [D2]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace (D-07 — no runnable reproduction; establishing exploitability
+                    further would require a multi-user filesystem harness outside this static-trace
+                    sweep's scope): both Files.createTempFile(prefix, ".tmp") call sites
+                    (BbjRunActionBase.java:295, BbjEMLoginAction.java:96) pass no FileAttribute/
+                    PosixFilePermissions argument, so the resulting file — which receives the EM
+                    login's plaintext JWT output or the validate-token result written by the spawned
+                    bbj process — is created with whatever default permissions the JVM/OS
+                    combination applies, rather than an explicit owner-only (0600) grant, for the
+                    window between the subprocess writing it and this code's finally-block delete
+                    (BbjRunActionBase.java:315-317, BbjEMLoginAction.java:119-123).
+failure_scenario:  On a multi-user host or shared filesystem where the plugin's temp-file directory
+                    is not exclusively readable by the current user, another local process running
+                    as a different OS user could read the plaintext JWT token or the validation
+                    result during that window — a file-contents exposure channel distinct from
+                    P63-D1-003's always-open process-argument exposure, recorded separately because
+                    it is a different attack surface.
+classification:    major
+                    (1) touches 1 file: FAIL — the two Files.createTempFile call sites live in
+                    different files (BbjRunActionBase.java, BbjEMLoginAction.java) — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass
+                    (java.nio.file.attribute.PosixFilePermissions is JDK-standard) — (4) regression-
+                    testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit (pass
+                    PosixFilePermissions.asFileAttribute(EnumSet.of(OWNER_READ, OWNER_WRITE)) to
+                    both createTempFile calls, with a Windows-appropriate ACL fallback): pass —
+                    (6) severity medium but dimension D1: FAIL — any D1 finding is major per D-13;
+                    tests (1) and (4) also fail.
+effort:            4
+dedup:             none — no frozen open issue names temp-file permission handling in the EM
+                    login/validate flow.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-004
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:60,67,BbjEMLoginAction.java:34-36,115
+dimension:         D2
+secondary:         [D3]
+severity:          high
+evidence_tier:     repro
+evidence:          Control-flow trace: BbjRunActionBase.actionPerformed() (:43-108) calls
+                    buildCommandLine(file, project) synchronously at line 60, BEFORE the
+                    ApplicationManager.getApplication().executeOnPooledThread(...) dispatch at line
+                    67 that wraps only the subsequent OSProcessHandler launch. For
+                    BbjRunBuiAction/BbjRunDwcAction, buildCommandLine() (their own override) calls
+                    validateTokenServerSide() (BbjRunActionBase.java:282-322, up to a 10s
+                    CapturingProcessHandler.runProcess(10000) at :308) and, if the token is
+                    invalid/expired, BbjEMLoginAction.performLogin() (up to a further 15s
+                    handler.runProcess(15000) at :115) — both synchronously, before the
+                    pooled-thread dispatch is ever reached. actionPerformed() always executes on the
+                    EDT in the IntelliJ Platform action system regardless of getActionUpdateThread()
+                    (which governs only where update() runs), so this entire chain runs on the EDT.
+failure_scenario:  Clicking "Run As BUI"/"Run As DWC" when the stored EM token is absent, expired
+                    (client-side check), or rejected by the server-side round trip synchronously
+                    blocks the EDT for up to ~25 seconds in the worst case (10s validate + 15s
+                    re-login) before the pooled-thread dispatch at BbjRunActionBase.java:67 is ever
+                    reached — freezing the entire IDE, not just the current editor. Clicking "Login
+                    to Enterprise Manager" directly freezes the IDE for its own runProcess(15000)
+                    call every time, since BbjEMLoginAction has no pooled-thread dispatch of its own
+                    at all (see P63-D2-005).
+classification:    major
+                    (1) touches 1 file: FAIL — a fix needs to move buildCommandLine's own
+                    network/process work off the EDT in at least BbjRunActionBase.java and
+                    BbjEMLoginAction.java — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (restructure actionPerformed() so buildCommandLine()'s token-validation/login
+                    round trip runs inside the existing executeOnPooledThread(...) block rather than
+                    before it): pass — (6) severity high, dimension D2 (not D1): pass — tests (1)
+                    and (4) fail, so classification is major per D-13.
+effort:            8
+dedup:             none — no frozen open issue names EDT-blocking behaviour in the BBj run/EM-login
+                    actions (distinct from RU-63-03's P63-D3-001, which is the Settings dialog's own
+                    separate EDT-blocking finding).
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-005
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:25-36
+dimension:         D2
+secondary:         [D4]
+severity:          low
+evidence_tier:     repro
+evidence:          Structural trace: BbjEMLoginAction extends AnAction directly (:25) and defines
+                    only actionPerformed() — no update() or getActionUpdateThread() override,
+                    unlike all ten other actions in this unit, each of which explicitly declares
+                    ActionUpdateThread.BGT and gates enablement on project/file/server-readiness
+                    state.
+failure_scenario:  "Login to Enterprise Manager" remains enabled and visible in the Tools menu
+                    regardless of whether a project is open or the language server is running —
+                    inconsistent with its ten siblings. performLogin()'s own internal checks (BBj
+                    Home configured, credentials entered) prevent a hard failure, but the menu
+                    item's enabled state does not reflect the project's actual readiness the way
+                    every other action in this unit does.
+classification:    major
+                    (1) touches 1 file: pass (BbjEMLoginAction.java only) — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4) regression-
+                    testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit (add update()/
+                    getActionUpdateThread() overrides mirroring BbjRefreshJavaClassesAction's
+                    pattern): pass — (6) severity low, dimension D2 (not D1): pass — test (4) alone
+                    fails, so classification is major per D-13.
+effort:            2
+dedup:             none — no frozen open issue names action-enablement inconsistency in the EM
+                    login action.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D2-006
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:96,115,119-123,145
+dimension:         D2
+secondary:         [D1]
+severity:          low
+evidence_tier:     repro
+evidence:          Try/finally scoping trace: tmpFile is created at line 96, inside the outer try
+                    (:93-148); the inner try/finally at :119-123 deletes it but wraps only the read
+                    at :120, NOT the handler.runProcess(15000) call at line 115, which executes
+                    between the file's creation and that inner block.
+failure_scenario:  An exception thrown by handler.runProcess(15000) at line 115 — a process-launch
+                    failure, an I/O error, or an internal timeout — is caught only by the outer
+                    catch (Exception ex) at line 145, which shows an error dialog and returns false
+                    without ever reaching the inner try/finally that deletes tmpFile; the temp file
+                    (potentially containing a partially-written EM login output, including a token
+                    fragment, if em-login.bbj wrote before the process failed) is left on disk in
+                    the OS temp directory until the OS itself reclaims it.
+classification:    major
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (widen the try/finally at :119-123 to also wrap the runProcess(...) call at line
+                    115): pass — (6) severity low, dimension D2 (not D1): pass — test (4) alone
+                    fails, so classification is major per D-13.
+effort:            2
+dedup:             none — no frozen open issue names this temp-file cleanup gap.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D3-002
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:282-322,BbjRunBuiAction.java:81,BbjRunDwcAction.java:81
+dimension:         D3
+secondary:         [D2]
+severity:          medium
+evidence_tier:     repro
+evidence:          Trace: BbjRunBuiAction/BbjRunDwcAction's buildCommandLine() calls
+                    validateTokenServerSide() (BbjRunActionBase.java:282-322) on every invocation,
+                    not only the first after a fresh login — a full second bbj-process spawn with a
+                    10-second CapturingProcessHandler timeout, performed unconditionally in addition
+                    to the cheap client-side isTokenExpired() decode, with no cache field anywhere
+                    in this unit recording "validated at time T, trust until N."
+failure_scenario:  Every "Run As BUI"/"Run As DWC" invocation redundantly re-spawns and re-waits on
+                    the server-side validation subprocess even when the token was validated seconds
+                    earlier by the previous run. Because (per P63-D2-004) this call happens
+                    synchronously on the EDT before the pooled-thread dispatch, each redundant
+                    validation directly extends that finding's per-click UI-freeze window,
+                    compounding rather than merely duplicating cost.
+classification:    major
+                    (1) touches 1 file: pass (BbjRunActionBase.java, adding a short-lived cache
+                    field/timestamp) — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit
+                    (cache the last-validated token value plus a timestamp and skip re-validation
+                    within a short trust window): pass — (6) severity medium, dimension D3 (not D1):
+                    pass — test (4) alone fails, so classification is major per D-13.
+effort:            4
+dedup:             none — no frozen open issue names redundant EM token validation round-trips.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D7-001
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java:24-39
+dimension:         D7
+secondary:         [D2, D8]
+severity:          medium
+evidence_tier:     inherited
+evidence:          Referral #1 disposition (see Inherited referral triage above): actionPerformed()
+                    (:24-39) only logs "[Compile] Triggered for file: " + file.getName() and never
+                    invokes bbjcpl, confirmed against VS Code's real 18-option-aware compile
+                    (Commands.cjs:294-343 via CompilerOptions.ts). No runnable reproduction
+                    accompanies this record (D-07); the gap is confirmed by reading the full 71-line
+                    file.
+failure_scenario:  A user who clicks "Compile BBj File" on IntelliJ sees no error and no visible
+                    failure — only a console log line in the LS log Tool Window — and may reasonably
+                    believe the file was compiled, unlike VS Code's bbj.compile. The action's own
+                    update() gates it as available and enabled on any BBj source file with the
+                    server started, presenting a fully-functional-looking command that silently does
+                    nothing.
+classification:    major
+                    (1) touches 1 file: FAIL — a real compile flow requires wiring an LS custom
+                    notification/request in addition to BbjCompileAction.java itself — (2) no
+                    public API/grammar/LSP change: FAIL — this is new custom-notification wiring
+                    between the IntelliJ client and the shared language server — (3) no new
+                    dependency: pass — (4) regression-testable with existing harness: FAIL — no
+                    src/test/ source set exists (P63-D5-001) — (5) reviewer can name the exact edit:
+                    FAIL — only an architecture-level plan (mirror Commands.cjs:294-343's compile
+                    flow via a new bbj/compile LSP4IJ request/notification) is nameable, not a
+                    single line-edit — (6) severity medium, dimension D7 (not D1): pass — multiple
+                    tests fail, so classification is major per D-13.
+effort:            8
+dedup:             none — #231 (custom classpath and command-line settings for starting BBj
+                    programs) requests configurable run/compile settings, which presupposes a
+                    working compile action; it does not itself request implementing the missing
+                    bbjcpl invocation this finding records. #385 (Graffiti Composer) is unrelated.
+                    Both of this unit's named plausible neighbours checked explicitly and dismissed.
+disposition:       major-refactor
+```
+
+```
+id:                P63-D7-002
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/
+dimension:         D7
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          Referral #2 disposition (see Inherited referral triage above): both surfaces
+                    enumerated — package.json's contributes.commands names bbj.configureCompileOptions,
+                    bbj.denumber, bbj.decompile, bbj.decompileReadonly, and bbj.em; grep -rliE
+                    'denumber|decompile|configureCompileOptions|EnterpriseManager' against
+                    bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/ returns no matches —
+                    confirmed absent, no runnable reproduction beyond this enumeration is needed or
+                    claimed (D-07).
+failure_scenario:  n/a in the sense that D7 records a capability gap rather than a runtime failure —
+                    IntelliJ users have no menu path to configure compiler options with
+                    dependency/conflict validation, to denumber or decompile a tokenized/
+                    line-numbered BBj program, or to launch the Enterprise Manager URL directly from
+                    the IDE; each workflow is available only in VS Code today.
+classification:    major
+                    (1) touches 1 file: FAIL — implementing even the simplest of the five (bbj.em, a
+                    URL launcher) requires a new action class plus a plugin.xml registration; the
+                    full set touches many more files — (2) no public API/grammar/LSP change: pass
+                    (configureCompileOptions would reuse LS-side option data already served for VS
+                    Code) — (3) no new dependency: pass — (4) regression-testable with existing
+                    harness: FAIL — no src/test/ source set exists (P63-D5-001) — (5) reviewer can
+                    name the exact edit: FAIL — only "add N new action classes mirroring the VS Code
+                    command handlers" is nameable, not a single edit — (6) severity low, dimension
+                    D7 (not D1): pass — multiple tests fail, so classification is major per D-13.
+effort:            8
+dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests tokenized/
+                    line-numbered BBj file support; this finding's denumber/decompile/
+                    decompileReadonly absence is the IntelliJ-side remainder of that same request
+                    (the VS Code side is already implemented, per RU-62-02's own D7 cell), so it is
+                    not a novel gap for those three commands specifically — the
+                    configureCompileOptions and em absences are not covered by #65. #231/#385
+                    checked explicitly: #231 concerns run/compile settings configurability
+                    generally, overlapping loosely with configureCompileOptions but not requesting
+                    the other four; #385 is unrelated (Graffiti Composer).
+disposition:       major-refactor
+```
+
+```
+id:                P63-D7-003
+unit:              RU-63-01
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRefreshJavaClassesAction.java:22-32
+dimension:         D7
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          Referral #3 disposition (see Inherited referral triage above): actionPerformed
+                    (:22-32) calls BbjServerService.getInstance(project).restart() at :30, which per
+                    BbjServerService.java:206-211 stops and restarts the whole LSP4IJ-managed
+                    language server; VS Code's extension.ts:694-704 sends a single targeted
+                    bbj/refreshJavaClasses LSP request via client.sendRequest(...) at :700 with no
+                    restart. No runnable reproduction accompanies this record (D-07); confirmed by
+                    reading both call sites in full.
+failure_scenario:  Invoking "Refresh Java Classes" on IntelliJ takes every language feature offline
+                    for the duration of a full language-server restart (diagnostics, completion,
+                    hover, Structure View all unavailable), where the equivalent VS Code command
+                    completes a targeted classpath refresh with no interruption to any other
+                    feature — a more disruptive experience for functionally the same request, though
+                    not incorrect: the restart does achieve the stated goal of clearing cached Java
+                    class data.
+classification:    major
+                    (1) touches 1 file: FAIL — a lighter-weight refresh requires either a new
+                    LSP4IJ client-side request handler or a shared language-server-side
+                    bbj/refreshJavaClasses notification handler, touching at least
+                    BbjRefreshJavaClassesAction.java and the LSP wiring RU-63-05 owns — (2) no
+                    public API/grammar/LSP change: FAIL — a targeted-refresh mechanism is new
+                    LSP-facing client behaviour — (3) no new dependency: pass — (4) regression-
+                    testable with existing harness: FAIL — no src/test/ source set exists
+                    (P63-D5-001) — (5) reviewer can name the exact edit: FAIL — only nameable after
+                    RU-63-05 confirms whether LSP4IJ's client API supports issuing a custom request
+                    without a full restart, which this unit's own sweep cannot establish — (6)
+                    severity low, dimension D7 (not D1): pass — multiple tests fail/are
+                    undetermined, so classification is major per D-13.
+effort:            8
+dedup:             none — no frozen open issue names the refreshJavaClasses restart-vs-targeted-
+                    request divergence.
+disposition:       major-refactor
+```
 
 ### Not-reproducible dispositions
 
-pending
+None. This unit's sweep raised no candidate claim that failed to clear its evidence tier — every
+check that surfaced a concrete defect is recorded above as a finding, and every inherited referral
+reached a definite `promoted` disposition — stated explicitly per the per-unit stopping rule's
+empty-subblock register, rather than omitted.
 
 ### Cross-unit referrals
 
-pending
+- **RU-63-05** — `BbjRefreshJavaClassesAction.java:30`'s `BbjServerService.getInstance(project).restart()` call is the client-side half of referral #3's disposition (`P63-D7-003`, promoted above); `BbjServerService.restart()` itself (`ui/BbjServerService.java:206-211`, a `manager.stop(...)`/`manager.start(...)` pair via `LanguageServerManager`) is the mechanism side and lives in `RU-63-05`'s own file. `RU-63-05`'s sweep (plan `63-04`) should confirm whether LSP4IJ's client API offers any narrower request-response mechanism that could avoid the full stop/start cycle for this specific use, re-triaging the mechanism rather than re-reporting the client-side gap `P63-D7-003` already records.
 
 ## RU-63-04 — Composer dialogs & bridge
 
