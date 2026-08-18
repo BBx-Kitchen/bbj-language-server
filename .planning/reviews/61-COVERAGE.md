@@ -55,6 +55,28 @@ awk '/^\| `RU-61-0[1-7]` \|/ || /^\| `lib\/[a-z]+\.bbl` \|/ {a+=gsub(/applies/,"
 
 This matches the stated totals. Per D-17: if this re-derivation ever disagrees with the stated totals, that disagreement is itself a defect to surface, not a number to quietly adopt. Plan `61-07` re-runs this gate as the phase's closing check.
 
+### Closing re-derivation (plan 61-07)
+
+Re-ran the identical awk pass over `.planning/reviews/INVENTORY.md` at phase close (not restated from the block above):
+
+```bash
+awk '/^\| `RU-61-0[1-7]` \|/ || /^\| `lib\/[a-z]+\.bbl` \|/ {a+=gsub(/applies/,"applies"); n+=gsub(/n\/a/,"n\/a")} END{print a, n, a+n}' .planning/reviews/INVENTORY.md
+```
+
+**Output:** `50 38 88`
+
+Counted what `61-COVERAGE.md` itself now contains, independently of the INVENTORY re-derivation:
+
+```bash
+grep -cE ' — (pass|fail) — ' .planning/reviews/61-COVERAGE.md   # recorded verdicts
+grep -cE '^- .*n/a — ' .planning/reviews/61-COVERAGE.md          # verbatim n/a carry-forwards
+grep -cE '^- (D[1-8]|\[file-exception\])' .planning/reviews/61-COVERAGE.md  # total cell lines
+```
+
+**Output:** `50` recorded verdicts, `38` n/a carry-forwards, `88` total cell lines. Count of remaining placeholder lines (the word "pending" preceded by an em dash, searched literally) → `0`.
+
+**Verdict: AGREE.** All three sources — the stated totals (50/38/88), the closing INVENTORY re-derivation (`50 38 88`), and the coverage file's own current content (50 recorded / 38 n/a / 88 total, 0 pending) — match exactly. No disagreement to surface; the D-17 gate closes clean.
+
 ## Exclusion reasons carried forward
 
 Each block below is copied verbatim from `.planning/reviews/INVENTORY.md` §"Exclusion reasons" — not reworded, not re-derived.
@@ -3006,11 +3028,11 @@ disposition:       easy-fix
 - D1 Security — pass — Checked all four `.ts` catalogs for an unescaped backtick or `${` interpolation sequence inside catalog content that could break out of the exported template literal (`grep -n '`' lib/*.ts`, `grep -n '\${' lib/*.ts`): the only unescaped backticks are each file's own wrapper open/close lines (events.ts:1,735; functions.ts:1,996; labels.ts:1,66; variables.ts:1,87); every backtick inside catalog content is escaped (e.g. functions.ts's 132 `` \`ASC(...)\` `` -style DOCU synopses) and no `${` sequence appears anywhere — no template-literal-escape integrity defect (dismisses threat T-61-P07-S1). Checked for embedded URLs/paths/commands a consumer could act on: one documentation URL (functions.ts:189, a BASIS help link inside a DOCU comment, inert prose) and no exec/spawn/path-join pattern in any of the four files. Content is entirely repository-controlled end to end: no fetch, no external regeneration, and no build step touches these files (`grep -n '\.bbl\|copy\|assets' bbj-vscode/esbuild.mjs` finds nothing). Method: mechanical grep plus structural read (D-08). No findings.
 - D2 Correctness & error handling — fail — D2 sampling protocol (20 entries per catalog: first 5 + last 5 + 10 at `floor(i*N/11)` for i=1..10; entry counts N=146/124/12/16 for events/functions/labels/variables, measured by counting each declaration line that immediately follows its entry's closing `@/` DOCU delimiter) run against the source precedence VERBs.md → `.bbl` sibling → `bbj.langium`. `VERBs.md` catalogs BBj *verbs* (statement-form constructs — `ADDR`, `BEGIN`, `CALL`, 127 entries via `grep -oE '\[([A-Z][A-Z0-9_ /.]*?)\s*Verb\]' VERBs.md`), a namespace disjoint from these four catalogs' functions/events/labels/variables; only 3 incidental dual-usage names overlap (`CHANOPT`, `FIELD`, `FILEOPT`, each a legitimate statement-and-function BBj construct, not a discrepancy) and none of the 80 sampled entries land on one, so source (1) never adjudicates here. Source (3) (`bbj.langium`) has no enumerated list either — `SymbolicLabelName returns string: ASTERISK_EXPRESSION ValidName;` and `ValidName returns string: ID;` are free-form, carrying no closed set of special label/variable names — so source (2), the `.bbl` sibling, is the effective adjudicator for every sample. Sampled indices — events: 1-5,13,26,39,53,66,79,92,106,119,132,142-146; functions: 1-5,11,22,33,45,56,67,78,90,101,112,120-124; labels: 1-12 (all 12, N=12 < union size); variables: 1-5,7,8,10,11,12,13,14,15,16 (14 of 16). Result: no mismatch in any of the 80 sampled entries — each sampled `.ts` declaration is byte-identical to its `.bbl` counterpart; no entry went unadjudicated. Beyond the sample, checked the whole catalog (mechanically checkable, D-08) for duplicate names, empty descriptions and malformed entries: `functions.ts`, `labels.ts` and `variables.ts` have zero duplicate names and zero empty DOCU blocks (124/12/16 DOCU blocks, 0 empty, via regex scan). `events.ts` has **2 duplicate `eventtype` names**: `ON_MOUSE_ENTER` (lines 57 and 528) and `ON_MOUSE_EXIT` (lines 62 and 533), each declared twice with different DOCU text ("Window Mouse Enter" vs "Mouse Enter Event"; "Window Mouse Exit" vs "Mouse Exit Event") — identically duplicated in `events.bbl` (lines 56/527, 61/532), so this is not a transcription artifact of one format. Traced the consequence: the `LibEventType.$type` scope (`bbj-scope.ts:398-400`) is built from `indexManager.allElements(LibEventType.$type)` with no de-duplication, and both `StreamScope.getElement` (`node_modules/langium/src/references/scope.ts:80-84`) and this codebase's `StreamScopeWithPredicate.getElement` (`bbj-scope.ts:508-524`) resolve a name via `Stream.find()` — first-match order — so a reference to `ON_MOUSE_ENTER`/`ON_MOUSE_EXIT` always resolves to the first declaration (line 57/62) and the second declaration's distinct DOCU text is permanently unreachable by linking, while completion's `getAllElements()` has no dedup, so both duplicates surface as separate, indistinguishable completion items with different hover text depending on which is picked. Recorded as `P61-D2-019`. Also noted, cosmetic and non-behavioral since `WS` is a `hidden` terminal consumed regardless of position (`bbj.langium`'s `hidden terminal WS: /\s+/;`): 6 declaration lines carry trailing tab/space (events.ts:703,708,723,728,733; functions.ts:344) — not filed as a finding. 1 finding recorded: `P61-D2-019`.
 - D3 Performance & resource use — pass — Traced these catalogs' only two consumers (`grep -rn "builtinEvents\|builtinFunctions\|builtinSymbolicLabels\|builtinVariables" bbj-vscode/src`): `lib/fs-provider.ts:27-35` (VS Code's `bbjlib://` virtual filesystem — a hardcoded switch returning the raw `.ts`-exported string with no per-request parsing) and `bbj-ws-manager.ts:206-211`'s `loadAdditionalDocuments()`, which calls `documentFactory.fromString(...)` exactly once per catalog during `initializeWorkspace()` (`RU-61-05`, already swept, no D3 finding against this call site). Each of the ~1,882 total lines of `.ts` template-literal content (734+995+67+86) is parsed into a `LangiumDocument` a single time at workspace startup and then served from the index for the life of the process; neither consumer here re-parses a catalog per call or scans one linearly on a per-keystroke path — that concern, if any, belongs to `RU-61-02`'s scope/index and `RU-61-04`'s completion provider, both already swept with no cross-unit referral issued to this unit. No unbounded growth: the four exported values are constant module-level string literals, not accumulating structures. No findings.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Programmatic diff of each `.ts` file (wrapper-stripped via `sed -e '1d' -e '$d'`) against its `.bbl` sibling, run and recorded verbatim (D-08): `diff <(sed -e '1d' -e '$d' lib/$p.ts) lib/$p.bbl | wc -l` for `$p` in events/functions/labels/variables → **2, 6, 9, 2** differing diff-output lines respectively. events: 2 lines, a single trailing whitespace-only line in the `.ts` wrapper tail — content-identical after the wrapper. functions: 6 lines — one real content divergence (the DOCU markdown synopsis for CVS reads `` `CVS(string,int{,chars}{,ERR=lineref})` `` at functions.ts:167 vs `` `CVS(string,int{,ERR=lineref})` `` at functions.bbl:166; the executable declaration itself, `CVS(str:string, conversion_flags:int, ERR?!:lineref): string` at functions.ts:192/functions.bbl:191, is identical in both, so only the human-readable synopsis drifted, not the parsed signature) plus one trailing-blank-line delta. labels: 9 lines, entirely a wrapper-shape artifact — labels.ts's wrapper spans 2 lines at both head (blank, blank before `library`) and tail (blank, `` `.trimLeft();`` after `label *ENDIF`), so the 1-line strip leaves 3 extra wrapper lines mismatched against labels.bbl; the catalog content itself (`library` through `label *ENDIF`) is byte-identical. variables: 2 lines, a single trailing-blank-line delta, content-identical. Judgment: all four pairs are maintained-in-two-places duplication (content byte-identical after the wrapper is stripped, confirming INVENTORY's flagged callout), and the functions.ts/functions.bbl pair has additionally drifted (CVS's synopsis text) — worse than plain duplication, since the two formats now disagree. Recorded as `P61-D4-015`, naming the remediation shape (generate one format from the other at build time, or delete the physical `.bbl` files and treat `.ts` as sole source of truth): neither physical `.bbl` file is read by any runtime consumer — `grep -rn "builtinEvents\|builtinFunctions\|builtinSymbolicLabels\|builtinVariables" bbj-vscode/src` shows only `lib/fs-provider.ts` and `bbj-ws-manager.ts` import the `.ts`-exported constants, and the synthetic `bbjlib:///*.bbl` documents both consumers construct are built FROM that `.ts` string content (`documentFactory.fromString(builtinFunctions, URI.parse('bbjlib:///functions.bbl'))`, `bbj-ws-manager.ts:207-210`), never by reading the physical `lib/*.bbl` file from disk; confirmed no esbuild/package.json asset-copy step touches `lib/*.bbl` either. Beyond duplication: checked whether the four `.ts` modules share one consistent export shape — they do not. `events.ts` closes with a bare `` `;`` (no `.trimLeft()`, no leading blank line before `library`); `functions.ts`/`labels.ts` close with `` `.trimLeft();`` and open with an extra leading blank line before `library` that `.trimLeft()` exists to strip; `variables.ts` closes with a bare `` ` `` (no semicolon at all — syntactically valid only via ASI) and, like events.ts, has no leading blank line. Since `bbj.langium`'s `WS` terminal is `hidden` (`hidden terminal WS: /\s+/;`, consumed by the parser regardless of position), the leading blank line and the `.trimLeft()` call that removes it have no observable effect on parsing — `.trimLeft()` is dead defensive code in the two files that carry it, while the other two never needed it. Recorded as `P61-D4-016` (four inconsistent wrapper shapes, one pair containing an unnecessary no-op call). Checked dead-module status via the consumer grep above: all four `.ts` modules are imported and used by both consumers — none is dead. 2 findings recorded: `P61-D4-015`, `P61-D4-016`.
+- D5 Test coverage gaps — fail — Checked `test/` for anything asserting catalog content, entry count, or `.ts`-vs-`.bbl` equivalence, and whether the `bbjlib` virtual-filesystem path serving these catalogs is covered: only `test/builtin-functions-library.test.ts` exists, and it covers only `functions.ts` — it locates the workspace document whose URI ends in `functions.bbl` (`services.shared.workspace.LangiumDocuments`), asserts zero lexer/parser errors, and asserts 7 named functions are present. `labels.ts`, `variables.ts` and `events.ts` (and their `.bbl`-suffixed virtual documents) have **no test file at all** — `grep -rln 'labels\.bbl\|variables\.bbl\|events\.bbl\|builtinSymbolicLabels\|builtinVariables\|builtinEvents' bbj-vscode/test` returns nothing — so a malformed entry added to any of those three catalogs (e.g. a name colliding with a reserved keyword, breaking the `LibSymbolicLabel`/`LibVariable`/`LibEventType` parse) would silently disable completion/hover for that entry with no regression test catching it, unlike `functions.ts`. Separately: no test anywhere asserts `.ts`-vs-`.bbl` equivalence — the CVS docstring drift `P61-D4-015` found has no regression guard on any of the four pairs, so further drift would go unnoticed. And the physical `.bbl` files on disk have no coverage of any kind, direct or indirect: `builtin-functions-library.test.ts` parses the `.ts`-derived virtual document under a synthetic `bbjlib:///functions.bbl` URI (`bbj-ws-manager.ts:207`), never the physical `lib/functions.bbl` file — so even the one guarded catalog has zero test exposure to its physical `.bbl` sibling. Recorded as `P61-D5-017`, naming the missing assertions: a parse-guard test for `labels.ts`/`variables.ts`/`events.ts` matching `builtin-functions-library.test.ts`'s shape, and a `.ts`-vs-`.bbl` content-equivalence test for all four pairs. The four `.bbl` file-exception rows are `n/a` for D5 and stay verbatim. 1 finding recorded: `P61-D5-017`.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — fail — Checked the comments inside the four `.ts` wrappers against the content they wrap: none carry header documentation beyond the `export const ... = \`` declaration line itself, so there is no stale claim to check there — no divergence. Checked `bbj-vscode/VERBs.md`'s implementation-status claims against these catalogs: `VERBs.md` catalogs BBj *verbs* (statement-form constructs, 127 entries — see D2's unit-row precedence check), a namespace disjoint from these four catalogs' functions/events/labels/variables; only 3 names incidentally overlap (`CHANOPT`, `FIELD`, `FILEOPT`, each a legitimate dual statement-and-function BBj construct, confirmed present in both without contradiction) — `VERBs.md` makes no per-item status claim about any function/event/label/variable name, so no comparison surface exists for a mismatch to occur on; not a finding, not a gap. Checked `test/builtin-functions-library.test.ts`'s own header comment (surfaced while checking D5, `test/builtin-functions-library.test.ts:9-14`) against what the test actually verifies: the comment reads "Guards the hand-maintained builtin function library (`lib/functions.bbl` and its `lib/functions.ts` mirror)", implying both formats are exercised — but the test parses only the `.ts`-derived virtual document served at the synthetic `bbjlib:///functions.bbl` URI (`bbj-ws-manager.ts:207`); the physical `lib/functions.bbl` file on disk is never opened, read or parsed by this test or by any production code path (same consumer grep as `P61-D4-015`). Recorded as `P61-D8-007` — the same physical-`.bbl`-file-is-never-read fact as `P61-D4-015`/`P61-D5-017`, viewed from the comment-accuracy angle, matching the `P61-D2-004`/`P61-D8-001` and `P61-D2-016`/`P61-D8-006` pairing pattern `RU-61-06`/`RU-61-05` established. 1 finding recorded: `P61-D8-007`.
 
 ### Findings
 
@@ -3053,6 +3075,148 @@ dedup:             none — none of the 15 frozen open issues concern duplicate 
 disposition:       easy-fix
 ```
 
+```
+id:                P61-D4-015
+unit:              RU-61-07
+location:          bbj-vscode/src/language/lib/functions.ts:167,192
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Programmatic diff of each .ts file (wrapper-stripped via
+                    sed -e '1d' -e '$d') against its .bbl sibling: events 2, functions 6,
+                    labels 9, variables 2 differing diff-output lines (see unit-row D4 cell
+                    for the per-pair breakdown; labels' 9 and the trailing-blank deltas on
+                    events/functions/variables are wrapper-shape artifacts, not content
+                    divergence). One real content divergence: functions.ts:167's DOCU
+                    synopsis for CVS reads `CVS(string,int{,chars}{,ERR=lineref})` vs
+                    functions.bbl:166's `CVS(string,int{,ERR=lineref})`; the executable
+                    declaration (functions.ts:192/functions.bbl:191) is identical in both.
+                    Consumer grep (bbj-vscode/src) confirms neither physical .bbl file is
+                    read by fs-provider.ts or bbj-ws-manager.ts — both consumers import the
+                    .ts-exported constants and construct the synthetic bbjlib:///*.bbl
+                    documents from that .ts content.
+failure_scenario:  A maintainer edits one format (.ts or .bbl) without the other — as already
+                    happened to CVS's DOCU synopsis — and the drift is invisible to every
+                    consumer and every test, since neither runtime code path nor
+                    test/builtin-functions-library.test.ts reads the physical .bbl file.
+classification:    major
+                    (1) touches >=2 files (a build-time generation step across 4 .bbl files,
+                    or their deletion, is the only remediation that removes the duplication
+                    risk rather than patching one instance of drift): FAIL — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass — (5) reviewer can name the
+                    exact edit (generate .bbl from .ts at build time, or delete the physical
+                    .bbl files): pass — (6) severity `low`, dimension D4 (not D1): pass —
+                    test (1) fails, so classification is `major` regardless of the other five.
+effort:            4
+dedup:             none — none of the 15 frozen open issues concern .ts/.bbl catalog
+                    duplication or drift.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D4-016
+unit:              RU-61-07
+location:          bbj-vscode/src/language/lib/events.ts:1,735; functions.ts:1,996; labels.ts:1,66; variables.ts:1,87
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          Structural read of all four .ts wrappers: events.ts closes with a bare
+                    `;` (no .trimLeft(), no leading blank line before `library`); functions.ts
+                    and labels.ts close with `.trimLeft();` and open with an extra leading
+                    blank line before `library` that .trimLeft() exists to strip;
+                    variables.ts closes with a bare backtick (no semicolon at all, valid only
+                    via ASI) and, like events.ts, has no leading blank line. bbj.langium's
+                    `hidden terminal WS: /\s+/;` is consumed by the parser regardless of
+                    position, so the leading blank line and the .trimLeft() call that removes
+                    it have no observable effect on parsing.
+failure_scenario:  Not a runtime defect (WS is hidden, so all four parse identically) — a
+                    maintainability smell: .trimLeft() is dead defensive code in 2 of 4 files,
+                    present for no principled reason distinguishing them from the other 2,
+                    and a future edit to any one file's wrapper has no consistent pattern to
+                    follow.
+classification:    major
+                    (1) touches >=2 files (standardizing all four .ts wrappers on one shape
+                    edits multiple files): FAIL — (2) no public API/grammar/LSP change: pass
+                    — (3) no new dependency: pass — (4) regression-testable with vitest: pass
+                    — (5) reviewer can name the exact edit (pick one wrapper shape, apply to
+                    all four): pass — (6) severity `low`, dimension D4 (not D1): pass —
+                    test (1) fails, so classification is `major` regardless of the other five.
+effort:            2
+dedup:             none
+disposition:       major-refactor
+```
+
+```
+id:                P61-D5-017
+unit:              RU-61-07
+location:          bbj-vscode/test/builtin-functions-library.test.ts
+dimension:         D5
+secondary:         [D4]
+severity:          medium
+evidence_tier:     trace
+evidence:          grep -rln 'labels\.bbl|variables\.bbl|events\.bbl|builtinSymbolicLabels|
+                    builtinVariables|builtinEvents' bbj-vscode/test returns nothing — only
+                    test/builtin-functions-library.test.ts exists, and it covers only
+                    functions.ts (asserts zero lexer/parser errors and 7 named functions
+                    present on the functions.bbl-suffixed virtual document). No test anywhere
+                    asserts .ts-vs-.bbl equivalence for any of the four pairs. The one test
+                    that exists never reads the physical lib/functions.bbl file — it parses
+                    the .ts-derived virtual document at bbj-ws-manager.ts:207's synthetic
+                    bbjlib:///functions.bbl URI.
+failure_scenario:  A malformed entry added to labels.ts, variables.ts or events.ts (e.g. a
+                    name colliding with a reserved keyword, breaking the LibSymbolicLabel/
+                    LibVariable/LibEventType parse) silently disables completion/hover for
+                    that entry with no regression test catching it, unlike functions.ts. The
+                    CVS docstring drift (P61-D4-015) demonstrates .ts/.bbl content can already
+                    diverge with nothing noticing.
+classification:    easy
+                    (1) touches 1 file (one new test file mirroring
+                    builtin-functions-library.test.ts's shape covers labels/variables/events
+                    plus an equivalence assertion): pass — (2) no public API/grammar/LSP
+                    change: pass — (3) no new dependency: pass — (4) regression-testable with
+                    vitest (it is the test): pass — (5) reviewer can name the exact edit: pass
+                    — (6) severity `medium`, dimension D5 (not D1): pass — all six pass,
+                    classification is `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D8-007
+unit:              RU-61-07
+location:          bbj-vscode/test/builtin-functions-library.test.ts:9-14
+dimension:         D8
+secondary:         [D5]
+severity:          low
+evidence_tier:     trace
+evidence:          test/builtin-functions-library.test.ts:9-14's header comment reads
+                    "Guards the hand-maintained builtin function library (lib/functions.bbl
+                    and its lib/functions.ts mirror)", implying both formats are exercised.
+                    The test body (functionsDocument(), line 18-22) locates the workspace
+                    document whose URI ends in 'functions.bbl' — that document is the
+                    .ts-derived virtual document constructed at bbj-ws-manager.ts:207
+                    (documentFactory.fromString(builtinFunctions, URI.parse(
+                    'bbjlib:///functions.bbl'))), not the physical lib/functions.bbl file on
+                    disk, which no test or production code path ever opens.
+failure_scenario:  A reader of this test's comment reasonably concludes the physical
+                    lib/functions.bbl file is validated by CI; it is not — a syntax error
+                    introduced only into the physical file would pass this test undetected.
+classification:    easy
+                    (1) touches 1 file (reword the comment): pass — (2) no public API/
+                    grammar/LSP change: pass — (3) no new dependency: pass —
+                    (4) regression-testable with vitest: pass — (5) reviewer can name the
+                    exact edit (state the comment guards the .ts-derived virtual document,
+                    not the physical .bbl file): pass — (6) severity `low`, dimension D8
+                    (not D1): pass — all six pass, classification is `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
 ### Not-reproducible dispositions
 _(none recorded)_
 
@@ -3064,7 +3228,7 @@ _(none recorded)_
 - [file-exception] lib/events.bbl · D1 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/events.bbl · D2 — pass — Sample outcome for this file: 20 sampled `eventtype` entries (indices 1-5,13,26,39,53,66,79,92,106,119,132,142-146 of N=146) checked against `VERBs.md` (no coverage — disjoint namespace, see unit row) then the `.ts` sibling (source 2) — all 20 byte-identical to `events.ts`. Whole-file duplicate-name check: `ON_MOUSE_ENTER` (lines 56, 527) and `ON_MOUSE_EXIT` (lines 61, 532) are each declared twice, identically mirroring `events.ts`'s duplication. Same finding, `P61-D2-019` — `location:` points at `events.ts` per location-decides-ownership (the `.ts` file is the maintained source; this physical file mirrors the defect rather than independently introducing it).
 - [file-exception] lib/events.bbl · D3 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
-- [file-exception] lib/events.bbl · D4 — pending
+- [file-exception] lib/events.bbl · D4 — fail — Programmatic diff against `events.ts` (wrapper-stripped): 2 differing diff-output lines, a single trailing whitespace-only line in the `.ts` wrapper tail — content-identical after the wrapper. Maintained-in-two-places duplication with the physical file never read by any runtime consumer (see unit row). Same finding, `P61-D4-015`.
 - [file-exception] lib/events.bbl · D5 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/events.bbl · D6 — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - [file-exception] lib/events.bbl · D7 — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
@@ -3072,7 +3236,7 @@ _(none recorded)_
 - [file-exception] lib/functions.bbl · D1 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/functions.bbl · D2 — pass — Sample outcome for this file: 20 sampled entries (indices 1-5,11,22,33,45,56,67,78,90,101,112,120-124 of N=124) checked against `VERBs.md` (no coverage, see unit row) then `functions.ts` (source 2) — all 20 byte-identical. The one whole-catalog content divergence found (CVS's DOCU synopsis, entry 24, not inside the 20-entry sample) is recorded once as `P61-D4-015`, `location:` naming both `functions.ts:167` and `functions.bbl:166`.
 - [file-exception] lib/functions.bbl · D3 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
-- [file-exception] lib/functions.bbl · D4 — pending
+- [file-exception] lib/functions.bbl · D4 — fail — Programmatic diff against `functions.ts` (wrapper-stripped): 6 differing diff-output lines — the CVS DOCU-synopsis drift (`functions.bbl:166` reads `` `CVS(string,int{,ERR=lineref})` `` vs `functions.ts:167`'s `` `CVS(string,int{,chars}{,ERR=lineref})` ``; the executable declaration at `functions.bbl:191`/`functions.ts:192` is identical) plus one trailing-blank-line delta. Same finding, `P61-D4-015`.
 - [file-exception] lib/functions.bbl · D5 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/functions.bbl · D6 — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - [file-exception] lib/functions.bbl · D7 — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
@@ -3080,7 +3244,7 @@ _(none recorded)_
 - [file-exception] lib/labels.bbl · D1 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/labels.bbl · D2 — pass — Sample outcome for this file: all 12 entries sampled (N=12, the first-5/last-5/mid-10 union covers the full set) checked against `VERBs.md` (no coverage, see unit row) then `labels.ts` (source 2, since `bbj.langium`'s `SymbolicLabelName` rule is free-form `ASTERISK_EXPRESSION ValidName` with no enumerated closed list of special label names — source 3 does not apply here) — all 12 byte-identical to `labels.ts`; no duplicate names, no empty DOCU blocks.
 - [file-exception] lib/labels.bbl · D3 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
-- [file-exception] lib/labels.bbl · D4 — pending
+- [file-exception] lib/labels.bbl · D4 — fail — Programmatic diff against `labels.ts` (wrapper-stripped): 9 differing diff-output lines, entirely a wrapper-shape artifact (labels.ts's 2-line head/tail wrapper vs the 1-line strip) — catalog content byte-identical. Same finding, `P61-D4-015`.
 - [file-exception] lib/labels.bbl · D5 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/labels.bbl · D6 — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - [file-exception] lib/labels.bbl · D7 — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
@@ -3088,8 +3252,78 @@ _(none recorded)_
 - [file-exception] lib/variables.bbl · D1 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/variables.bbl · D2 — pass — Sample outcome for this file: 14 of 16 entries sampled (indices 1-5,7,8,10,11,12,13,14,15,16 of N=16) checked against `VERBs.md` (no coverage, see unit row) then `variables.ts` (source 2, since `bbj.langium`'s `ValidName` rule has no enumerated closed list of reserved variable names — source 3 does not apply here) — all 14 byte-identical to `variables.ts`; whole-catalog check found no duplicate names and no empty DOCU blocks across all 16 entries.
 - [file-exception] lib/variables.bbl · D3 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
-- [file-exception] lib/variables.bbl · D4 — pending
+- [file-exception] lib/variables.bbl · D4 — fail — Programmatic diff against `variables.ts` (wrapper-stripped): 2 differing diff-output lines, a single trailing-blank-line delta — content-identical. Same finding, `P61-D4-015`.
 - [file-exception] lib/variables.bbl · D5 — n/a — "`.bbl` files are static builtin-verb/function/label/variable data catalogs with no executable logic, no hot path, and no isolated regression-test surface of their own; content accuracy is assessed under D2 (values correct) and D4 (duplication against the `.ts` sibling), not under this dimension."
 - [file-exception] lib/variables.bbl · D6 — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - [file-exception] lib/variables.bbl · D7 — n/a — "This code is part of the single language-server binary (`out/language/main.cjs`) loaded identically by both VS Code and IntelliJ via LSP4IJ; there is no second, divergent implementation to compare it against, so no cross-IDE parity finding is obtainable here."
 - [file-exception] lib/variables.bbl · D8 — n/a — "`.bbl` catalogs are raw data files with no comments or docstrings to go stale; doc-accuracy review targets the `.ts` sibling files and `CLAUDE.md`/`VERBs.md` instead."
+
+## Phase 61 Close-Out
+
+**53-file coverage enumeration.** Enumerated the hand-written review-target files from the tree, not from a list typed into any plan:
+
+```bash
+ls bbj-vscode/src/language/*.ts bbj-vscode/src/language/*.langium \
+   bbj-vscode/src/language/validations/*.ts bbj-vscode/src/language/lib/* \
+   | xargs -n1 basename | wc -l
+```
+
+**Output: `53`.** (ROADMAP's Phase 61 goal states "~49 files" as an approximation; the tree-derived exact count is 53 — no contradiction, since ROADMAP's figure is explicitly approximate, but this is the countable number success criterion 1 is measured against.) Confirmed every one of the 53 basenames appears somewhere in this file:
+
+```bash
+for f in $(ls bbj-vscode/src/language/*.ts bbj-vscode/src/language/*.langium \
+             bbj-vscode/src/language/validations/*.ts bbj-vscode/src/language/lib/* \
+             | xargs -n1 basename); do
+  grep -q "$f" .planning/reviews/61-COVERAGE.md || echo "MISSING $f"
+done
+```
+
+**Output: nothing missing.** All 53 files — `assertions.ts`, `bbj-code-action-provider.ts`, `bbj-comment-provider.ts`, `bbj-completion-provider.ts`, `bbj-cpl-parser.ts`, `bbj-cpl-service.ts`, `bbj-definition-provider.ts`, `bbj-document-builder.ts`, `bbj-document-symbol-provider.ts`, `bbj-document-validator.ts`, `bbj-hover.ts`, `bbj-index-manager.ts`, `bbj-inlay-hint-provider.ts`, `bbj.langium`, `bbj-lexer.ts`, `bbj-linker.ts`, `bbj-module.ts`, `bbj-nodedescription-provider.ts`, `bbj-node-kind.ts`, `bbj-notifications.ts`, `bbj-overload-selector.ts`, `bbj-scope-local.ts`, `bbj-scope.ts`, `bbj-semantic-token-provider.ts`, `bbj-signature-help-provider.ts`, `bbj-token-builder.ts`, `bbj-type-inferer.ts`, `bbj-use-insert.ts`, `bbj-validator.ts`, `bbj-value-converter.ts`, `bbj-ws-manager.ts`, `composer-commands.ts`, `constants.ts`, `java-interop.ts`, `java-javadoc.ts`, `java-types.langium`, `bbj-api.ts`, `events.bbl`, `events.ts`, `fs-provider.ts`, `functions.bbl`, `functions.ts`, `labels.bbl`, `labels.ts`, `variables.bbl`, `variables.ts`, `logger.ts`, `main.ts`, `utils.ts`, `check-classes.ts`, `check-function-calls.ts`, `check-variable-scoping.ts`, `line-break-validation.ts` — are accounted for.
+
+**Finding count by dimension** (`grep -oE '^dimension:[[:space:]]+D[1-8]' | sort | uniq -c`):
+
+| Dimension | Count |
+|---|---|
+| D1 Security | 9 |
+| D2 Correctness & error handling | 19 |
+| D3 Performance & resource use | 5 |
+| D4 Maintainability & code smells | 16 |
+| D5 Test coverage gaps | 17 |
+| D8 Comment & doc accuracy | 7 |
+| **Total** | **73** |
+
+**Finding count by disposition** (`grep -oE '^disposition:[[:space:]]+[a-z-]+' | sort | uniq -c`):
+
+| Disposition | Count |
+|---|---|
+| easy-fix | 44 |
+| major-refactor | 29 |
+| **Total** | **73** |
+
+Both breakdowns sum to 73, matching `grep -c '^id:' .planning/reviews/61-COVERAGE.md`. No `disposition: duplicate`, `wontfix`, `already-covered` or `not-reproducible` was assigned to any recorded finding (those dispositions apply to claims that failed to clear their evidence tier, tracked separately below, not to recorded findings).
+
+**Not-reproducible dispositions:** 11 across the phase (`grep -c "Tier failed:" .planning/reviews/61-COVERAGE.md`) — `RU-61-06` (2), `RU-61-01` (2), `RU-61-03` (2), `RU-61-02` (2), `RU-61-04` (2), `RU-61-05` (1), `RU-61-07` (0, this plan). Each names the tier it failed and why, per RVW-06's drop-vs-disposition rule; none were silently dropped.
+
+**Cross-unit referrals:** 12 referral entries recorded across the phase's 7 unit sections (`RU-61-07` issued and received none, appropriately, since it is both the mechanically-swept lowest-risk unit and the last unit in D-02's sweep order). Every referral was resolved by its owning/target unit — confirmed by reading each referral's target unit's own `### Cells`/`### Findings` text for the resolution:
+- `RU-61-06`'s 2 referrals to `RU-61-05` (`interopHost`/`interopPort` validation gap; prefix-path-traversal candidate) — both promoted to new findings (`P61-D1-006`, `P61-D1-008`) in plan `61-06`'s own summary, explicitly confirmed resolved.
+- `RU-61-06`'s referral to `RU-61-02` (the 11 `test/linking.test.ts` failures, already self-owned as `P61-D5-001`) — a same-unit ownership note, not requiring external resolution.
+- `RU-61-01`'s referral to `RU-61-05` (hookTimeout flakiness striking `chevrotain-tokens.test.ts`) — resolved: plan `61-06` promoted this exact flakiness as `P61-D5-013` with a full cost-profile trace.
+- `RU-61-01`'s referral to `RU-61-05` (`trackBbjcplAvailability()`) — resolved: plan `61-06` traced and dismissed with evidence (does not feed the actual `bbjcpl` spawn, already covered by `RU-61-03`'s `P61-D1-003`).
+- `RU-61-03`'s referral to `RU-61-06` (self-ownership note on the linker test failures) and to `RU-61-05` (`trackBbjcplAvailability()`, duplicate of `RU-61-01`'s referral) — same resolution as above.
+- `RU-61-02`'s referral to `RU-61-06` (java-types.langium interface-shape note) — dispositioned in-place: no independent finding needed, correctly assigned entirely to `RU-61-06`'s `P61-D1-002`.
+- `RU-61-02`'s referral to `RU-61-05` (prefix-path-traversal candidate `RU-61-02` could not settle) — resolved: plan `61-06` located the actual logic in `bbj-document-builder.ts` and promoted `P61-D1-008` with a direct reproduction.
+- `RU-61-04`'s referral to `RU-61-06` (self-ownership note) and to `RU-61-02` (`findBestOverload` upstream-consumer context, no new defect) — both dispositioned in-place, no outstanding action.
+- `RU-61-05`'s referral to `RU-61-06` (interop host/port gap, resolved within the same plan as `P61-D1-006`) — self-resolved within plan `61-06`.
+
+No referral was left unresolved or silently dropped; the phase's cross-unit-referral chain closes clean.
+
+**Success criteria (ROADMAP Phase 61):**
+
+1. *"All ~49 files ... have a recorded pass/fail against each of D1-D8."* — **Met.** The tree-derived exact count is 53 files (7 units + the 4 `.bbl` file-exception files), every one named in this coverage file, each with a recorded verdict against every dimension that applies to it (50 `applies` cells, 0 pending). Evidence: this section's 53-file enumeration above, plus the D-17 gate's closing re-derivation.
+2. *"`java-interop.ts`'s trust boundary is documented..."* — **Met.** `## SEC-06 Trust Boundary` inside `## RU-61-06 — Java interop client` (this file, lines ~102-121) documents what a malicious/unresponsive peer on the configured host/port can do and the unauthenticated/unencrypted channel posture.
+3. *"Every recorded finding carries `file:line`, dimension, and a verified failure scenario..."* — **Met for all 73 findings.** Field-count check: `id`/`unit`/`location`/`dimension`/`severity`/`evidence_tier`/`evidence`/`failure_scenario`/`classification`/`effort`/`dedup`/`disposition` each appear exactly 73 times (verified above); every `evidence_tier` clears its dimension's RVW-06 bar (`repro` for D1-D3, `trace` for D4/D8, `inherited` for D5).
+4. *"Every recorded finding has been checked against the 15 open GitHub issues..."* — **Met.** `grep -cE '^dedup:[[:space:]]*$' .planning/reviews/61-COVERAGE.md` → `0` (no blank `dedup:` field across all 73 findings); each names `none`, a duplicate, or a partial-overlap against the Frozen Open-Issue Snapshot.
+
+**Phase 61 files no GitHub issue.** ISSUE-01 is a hard gate owned by Phase 69 — no issue was opened, commented on, or filed by any Phase 61 plan, including this one.
+
+**`.planning/reviews/INVENTORY.md` was not edited** by this phase — confirmed by `git status --porcelain .planning/reviews/INVENTORY.md` returning nothing at every commit point across all 7 plans, including this one.
