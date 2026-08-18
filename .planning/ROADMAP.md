@@ -313,7 +313,14 @@ all 8 dimensions, giving the cross-cutting security phase a reviewed baseline to
 
   4. Every recorded finding has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 62-01-PLAN.md — Create `62-COVERAGE.md` (skeleton, grid, D-14 gate, verbatim `n/a` carry-forwards) and sweep `RU-62-04` composer webview HTML generators end to end, incl. the SEC-01/SEC-02 Surface Handoff
+- [ ] 62-02-PLAN.md — Sweep `RU-62-01` extension host & commands (`extension.ts`, `CompilerOptions.ts`, `Commands.cjs`) across the 7 live dimensions
+- [ ] 62-03-PLAN.md — Sweep `RU-62-03` composer logic & UI layer (8 files) incl. the logic/UI-layer D4 duplication callout and the `setopts-catalog.ts` sampling protocol
+- [ ] 62-04-PLAN.md — Sweep `RU-62-05` TextMate grammar & language configuration, incl. the #381 dedup neighbourhood and the two-part D7 parity method
+- [ ] 62-05-PLAN.md — Sweep `RU-62-02` editor feature modules and close the phase: re-derive both D-14 gates, account for every finding and referral, answer ROADMAP's four criteria
 
 **UI hint**: yes
 
