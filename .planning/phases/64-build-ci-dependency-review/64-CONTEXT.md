@@ -12,9 +12,10 @@ This phase delivers **one planning artifact and no production code changes**:
 
 `.planning/reviews/64-COVERAGE.md` — Phase 64's slice of INVENTORY.md's applicability grid, filled
 in. Concretely: a recorded pass/fail for every `applies` cell across the 3 Phase 64 review units
-(`RU-64-01`..`RU-64-03`, **28 files — 25 readable totalling 11,035 LOC, plus 3 vendored binary
-JARs totalling 112,361 bytes**; the 28th is `.github/dependabot.yml`, adopted into `RU-64-01` by
-D-19 because it exists in the tree but is absent from INVENTORY's file list), every `n/a` reason
+(`RU-64-01`..`RU-64-03`, **29 files — 25 readable totalling 11,035 LOC, plus 4 vendored binary
+JARs totalling 155,944 bytes**; two of the 29 are adopted because they exist in the tree but are
+absent from INVENTORY's file lists — `.github/dependabot.yml` into `RU-64-01` by D-19, and
+`bbj-intellij/gradle/wrapper/gradle-wrapper.jar` into `RU-64-02` by D-20), every `n/a` reason
 carried forward verbatim, every finding meeting
 its RVW-06 evidence tier and checked against the frozen 15-issue snapshot, the SEC-07 workflow
 security write-up and the SEC-08 dependency triage that ROADMAP criteria 2 and 3 require, plus the
@@ -37,8 +38,11 @@ the milestone's coverage statement, because there is no fifth sweep phase to cat
 | Rows | `applies` cells | `n/a` cells | Total |
 |---|---|---|---|
 | 3 unit rows | 20 | 4 | 24 |
-| 4 file-exception rows | 7 | 25 | 32 |
-| **Total** | **27** | **29** | **56** |
+| 5 file-exception rows | 9 | 31 | 40 |
+| **Total** | **29** | **35** | **64** |
+
+The fifth file-exception row is `gradle-wrapper.jar`, adopted by **D-20**; the four INVENTORY
+names contribute 7 applies / 25 n/a / 32 cells, and D-20's row adds 2 / 6 / 8.
 
 Derivation, verified against INVENTORY's grid rather than asserted:
 
@@ -49,18 +53,21 @@ Derivation, verified against INVENTORY's grid rather than asserted:
 - `tools/formatter/BBjCFCli.jar` (parent `RU-64-03`) — D1 + D6 → 2 applies / 6 n/a
 - `tools/formatter/lib/BBjCodeFomatter.jar` (parent `RU-64-03`) — D1 + D6 → 2 applies / 6 n/a
 - `tools/formatter/lib/jcommander-1.71.jar` (parent `RU-64-03`) — D1 + D6 → 2 applies / 6 n/a
+- `bbj-intellij/gradle/wrapper/gradle-wrapper.jar` (parent `RU-64-02`, **adopted by D-20**) —
+  D1 + D6 → 2 applies / 6 n/a
 
 **Phase 64 is the first and only sweep phase that owns file-exception rows in a live capacity.**
 Phase 61 owned the four `lib/*.bbl` rows; Phase 62 and Phase 63 owned none. All four remaining
-file-exception rows in INVENTORY — the lockfile and the three JARs — belong to Phase 64 units.
-Omitting them is the single most likely way this phase silently under-counts (D-17).
+file-exception rows in INVENTORY — the lockfile and the three `tools/formatter/` JARs — belong to
+Phase 64 units, and D-20 adds a fifth. Omitting them is the single most likely way this phase
+silently under-counts (D-18).
 
 **Two structural firsts relative to Phases 61-63:**
 
-1. **D7 is dead across the entire phase.** All three unit rows and all three JAR rows carry
+1. **D7 is dead across the entire phase.** All three unit rows and all four JAR rows carry
    `n/a — R-D7-CI`. No Phase 64 plan performs cross-IDE parity work of any kind.
 2. **D6 is live in bulk for the first time.** Phase 63 had exactly one live D6 cell
-   (`RU-63-03`/D6). Phase 64 has **seven** — three unit rows plus all four file-exception rows —
+   (`RU-63-03`/D6). Phase 64 has **eight** — three unit rows plus all five file-exception rows —
    and they carry the whole of SEC-08.
 
 </domain>
@@ -68,7 +75,7 @@ Omitting them is the single most likely way this phase silently under-counts (D-
 <decisions>
 ## Implementation Decisions
 
-Decision IDs below are **phase-local** (`D-01`..`D-18` of Phase 64). Phase 60's, Phase 61's,
+Decision IDs below are **phase-local** (`D-01`..`D-20` of Phase 64). Phase 60's, Phase 61's,
 Phase 62's and Phase 63's `D-nn` IDs are separate namespaces; where one is meant it is written as
 "Phase 6N D-nn".
 
@@ -78,8 +85,8 @@ Phase 62's and Phase 63's `D-nn` IDs are separate namespaces; where one is meant
   responsibility folded into plan `64-01` rather than given a plan of its own. Phase 63 used
   tracer + one-per-unit = 5 plans for 5 units; with only 3 units here, a standalone tracer plan
   would produce a skeleton and nothing else. Plan `64-01` creates the `64-COVERAGE.md` skeleton
-  (header, grid, the 27/29/56 cell gate, all 29 verbatim `n/a` carry-forwards, the inherited-item
-  ledger, 3 stubbed unit sections) **and** sweeps its unit end to end.
+  (header, grid, the `8 29 35 64` cell gate, all 35 verbatim `n/a` carry-forwards, the
+  inherited-item ledger, 3 stubbed unit sections) **and** sweeps its unit end to end.
 
 - **D-02:** Plan order follows INVENTORY's risk rank, unchanged from the Phase 61-63 precedent:
 
@@ -321,18 +328,19 @@ tooling situations, and a criterion (3) that demands *enumeration*, not spot-che
 - **D-18:** **Two completion gates, both re-derived live in plan `64-03`'s close-out, and the
   file-exception rows are the one this phase is most likely to fail.**
 
-  1. **Cell-total gate** — the close-out re-counts the grid and must print `27 29 56`, agreeing
-     with the derivation in `<domain>` above. **All 7 rows must appear**: 3 unit rows *and* the
-     4 file-exception rows. Phase 63 closed with no file-exception rows at all and explicitly
-     noted that adding one would have broken its gate; Phase 64 is the mirror image — omitting
-     one breaks *this* gate.
+  1. **Cell-total gate** — the close-out re-counts the grid and must print `8 29 35 64` (row
+     count first, so a dropped row fails mechanically rather than looking plausible), agreeing
+     with the derivation in `<domain>` above. **All 8 rows must appear**: 3 unit rows *and* the
+     5 file-exception rows (4 from INVENTORY + D-20's). Phase 63 closed with no file-exception
+     rows at all and explicitly noted that adding one would have broken its gate; Phase 64 is the
+     mirror image — omitting one breaks *this* gate.
   2. **File gate** — enumerate the files INVENTORY assigns to `RU-64-01`..`RU-64-03` from the
      live tree and confirm every one is named in `64-COVERAGE.md`. The counts and LOC were
      re-verified during this discussion and match INVENTORY exactly: 6 workflows / 568 lines,
      4 readable tool files / 1,240 lines + 3 JARs, 14 manifest files / 9,208 lines — **27 files**.
-     Per **D-19** the gate prints **28**, the extra being `.github/dependabot.yml` (19 lines),
-     which must be named as a documented adoption at the point of the count rather than folded in
-     silently.
+     Per **D-19** and **D-20** the gate prints **29**, the extras being `.github/dependabot.yml`
+     (19 lines) and `gradle/wrapper/gradle-wrapper.jar` (43,583 bytes). Both must be named as
+     documented adoptions at the point of the count rather than folded in silently.
 
   **`RU-D8-01` is not Phase 64's.** INVENTORY scopes it as *"cross-cutting, not owned by Phases
   61-64"*. No `P64-*` finding may be located in `CLAUDE.md`, `VERBs.md` or `documentation/`, and
@@ -388,6 +396,56 @@ tooling situations, and a criterion (3) that demands *enumeration*, not spot-che
   — **Reversibility:** reversible — if a later reader disagrees with the adoption, the file moves
   to its own file-exception row or to `RU-64-02` with a one-line note; nothing downstream keys on
   which of the two units holds it.
+
+- **D-20:** **`bbj-intellij/gradle/wrapper/gradle-wrapper.jar` is adopted into `RU-64-02` as a
+  fourth vendored binary with its own file-exception row.** Surfaced during planning, verified
+  live:
+
+  ```
+  $ ls -la bbj-intellij/gradle/wrapper/
+  -rw-r--r-- 43583 gradle-wrapper.jar
+  -rw-r--r--   251 gradle-wrapper.properties
+  $ grep -n 'gradle-wrapper.jar' bbj-intellij/gradlew
+  117:CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+  $ grep -c 'gradle-wrapper.jar' .planning/reviews/INVENTORY.md
+  0
+  ```
+
+  INVENTORY assigns `gradle/wrapper/gradle-wrapper.properties` (7 lines) to `RU-64-02` but never
+  names the 43,583-byte **executable JAR sitting beside it** — the binary `gradlew:117` puts on
+  the classpath and runs on every build. That is a fourth vendored, unpinned, unscanned
+  third-party binary, in a milestone whose SEC-08 requirement exists to enumerate exactly those.
+
+  **The gate follows the scope; the scope does not follow the gate.** This decision overrides the
+  contrary reasoning that a pinned file count is a reason not to sweep a file — a count that
+  excludes a real in-scope artifact is simply a wrong count, and D-19 already established the
+  correct direction one decision earlier. Recording it only as a drift note while assessing its
+  integrity indirectly, through the two text files INVENTORY *does* assign, would leave the
+  milestone's SEC-08 claim resting on an unexamined executable.
+
+  **Treatment mirrors the three `tools/formatter/` JARs exactly** (D-11): assessed by manifest and
+  hash, never decompiled and never executed; its own file-exception row with **D1 `applies`, D6
+  `applies`**, D7 `n/a — R-D7-CI`, and D2/D3/D4/D5/D8 `n/a — R-JAR-BINARY`. Its provenance
+  question is distinctive and worth stating: a Gradle wrapper JAR's integrity is normally
+  established by the `distributionSha256Sum` / checksum mechanism declared in
+  `gradle-wrapper.properties`, so whether that property is present is the finding, not an aside.
+
+  **Both gates move, and both must be restated wherever they appear:**
+
+  | Gate | Was (D-18/D-19) | Now |
+  |---|---|---|
+  | Rows | 7 | **8** |
+  | `applies` cells | 27 | **29** |
+  | `n/a` cells | 29 | **35** |
+  | Total cells | 56 | **64** |
+  | File gate | 28 | **29** |
+
+  `R-JAR-BINARY` is now carried **20** times (4 JARs × 5 cells), not 15. The close-out re-derives
+  `8 29 35 64` and `29`; a result of `7 27 29 56` now means this row was dropped and fails
+  mechanically.
+
+  — **Reversibility:** reversible — same as D-19; the row can be re-parented or removed with a
+  one-line note, and nothing downstream keys on it beyond the two gate literals.
 
 ### Claude's Discretion
 
@@ -471,6 +529,8 @@ planner and the executing agents rather than pinned here:
   `tsconfig.test.json` (13), `vitest.config.ts` (30)
 - `bbj-intellij/build.gradle.kts` (135), `settings.gradle.kts` (5), `gradle.properties` (1),
   `gradlew` (244), `gradlew.bat` (92), `gradle/wrapper/gradle-wrapper.properties` (7)
+- `bbj-intellij/gradle/wrapper/gradle-wrapper.jar` (43,583 bytes) — **adopted into this unit by
+  D-20**; executed via `gradlew:117`, present in the tree but absent from INVENTORY's file list
 
 ### Code-truth references
 
@@ -559,7 +619,7 @@ planner and the executing agents rather than pinned here:
 <specifics>
 ## Specific Ideas
 
-- **The 27/29/56 gate is written into `64-01`'s skeleton, not computed at close-out.** Plan
+- **The `8 29 35 64` gate is written into `64-01`'s skeleton, not computed at close-out.** Plan
   `64-01` writes the expected totals into the document up front; `64-03` re-derives them and the
   two must agree. This is the shape Phase 63 used (its skeleton carried `35/5/40`) and it is what
   turns the gate into a check rather than a restatement.
