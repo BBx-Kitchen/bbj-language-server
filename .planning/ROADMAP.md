@@ -486,7 +486,7 @@ they get a dedicated phase rather than being split across the module-owning revi
   5. Every recorded finding carries `file:line`, dimension, and a verified failure scenario per the
      Phase 60 standard, and has been checked against the 15 open GitHub issues for duplication
 
-**Plans**: 2/3 plans executed — INVENTORY defines **no `RU-65-*` units**, so the grid, the cell gate and the file
+**Plans**: 3/3 plans executed — INVENTORY defines **no `RU-65-*` units**, so the grid, the cell gate and the file
 gate every prior sweep relied on are absent. They are replaced by **four closed surface enumerations**
 (D-01), one per requirement, each with a denominator derived live by a recorded command and a verdict
 on every enumerated item. Grouped by surface rather than one-per-requirement (D-06), chained one per
@@ -503,7 +503,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 65-03-PLAN.md — Sweep **SEC-05**: refine every raw spawn-site candidate across both IDEs and the tool scripts to a verdict or an explicit `n/a` exclusion (no candidate deleted, `[extra]` lines for sites the greps missed), answer shell-versus-argv at every real site, establish whether the other sites share `P62-D1-003`'s shape **either way**, and write the cross-IDE comparison — then close the phase: D-16's three gates all re-derived live (surface / criterion / requirement), the evidence audit re-reading every `evidence:` field against D-11, the accounting, and the inheritance table stating that Phase 65 adds **surfaces, not grid cells**, leaving Phase 64's 147-of-148 position untouched
+- [x] 65-03-PLAN.md — Sweep **SEC-05**: refine every raw spawn-site candidate across both IDEs and the tool scripts to a verdict or an explicit `n/a` exclusion (no candidate deleted, `[extra]` lines for sites the greps missed), answer shell-versus-argv at every real site, establish whether the other sites share `P62-D1-003`'s shape **either way**, and write the cross-IDE comparison — then close the phase: D-16's three gates all re-derived live (surface / criterion / requirement), the evidence audit re-reading every `evidence:` field against D-11, the accounting, and the inheritance table stating that Phase 65 adds **surfaces, not grid cells**, leaving Phase 64's 147-of-148 position untouched
 
 **UI hint**: no
 

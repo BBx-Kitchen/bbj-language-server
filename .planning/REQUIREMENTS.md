@@ -45,7 +45,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **SEC-02**: Webview → extension message handling audited — messages from webview content are validated for shape and value range before acting on them
 - [x] **SEC-03**: Node.js runtime download audited for integrity — transport security, checksum or signature verification, archive extraction path traversal (zip-slip), and cache trust
 - [x] **SEC-04**: EM token lifecycle audited end to end — acquisition, storage at rest, exposure via process arguments or logs, and expiry handling across `BbjEMTokenStore`, `em-login.bbj`, `em-validate-token.bbj`
-- [ ] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
+- [x] **SEC-05**: Process spawning audited for argument and command injection across every run/compile path in both IDEs, including user-controlled paths, classpath values, and config.bbx settings
 - [x] **SEC-06**: java-interop client trust boundary audited — configurable host/port implications, unauthenticated channel, and behavior against a malicious or unresponsive peer
 - [x] **SEC-07**: GitHub Actions workflows audited — secret handling, `GITHUB_TOKEN` permission scope, unpinned third-party actions, and script injection via untrusted PR-controlled inputs
 - [x] **SEC-08**: Dependency vulnerabilities enumerated for both `npm` and Gradle dependency trees, each triaged as fix-now, file-issue, or accepted-with-reason
@@ -133,7 +133,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | SEC-01 | Phase 65 | Complete |
 | SEC-02 | Phase 65 | Complete |
 | SEC-04 | Phase 65 | Complete |
-| SEC-05 | Phase 65 | Pending |
+| SEC-05 | Phase 65 | Complete |
 | DEBT-01 | Phase 66 | Pending |
 | DEBT-02 | Phase 66 | Pending |
 | DEBT-03 | Phase 66 | Pending |
