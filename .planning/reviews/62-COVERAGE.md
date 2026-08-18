@@ -337,11 +337,11 @@ disposition:       major-refactor
 - D1 Security — fail — Checked every `child_process.exec()` call site in the unit and traced each interpolated command-string segment back to its origin: `Commands.cjs`'s `run()` (classpath `sscp` at line 263, entirely unquoted), `runWeb()` (line 109, `bbj.web.apps.<file>.name` and EM credentials quoted-but-unescaped), `compile()` (line 328, `buildCompileOptions()`'s 7-flag output joined bare with no wrapping quotes at all), `decompileInPlace`/`decompileReadonly` (home-derived `bbjlstBin()`), and `extension.ts`'s EM validate (line 415) and EM login (line 635) `exec()` calls — none applies shell-escaping or content validation to any interpolated value, and `CompilerOptions.ts`'s `validateOptions()` (lines 384-431) only checks option presence/dependency/conflict, never the shell-safety of a string/number value's content, before `buildCompileOptions()` (lines 438-479) emits it bare into a would-be command line. Checked reachability: `bbj.home`, `bbj.classpath`, `bbj.configPath`, `bbj.web.apps`, and all 7 string-typed `bbj.compiler.*` options are declared `"scope": "window"` with no `restricted`/`capabilities.untrustedWorkspaces` marker anywhere in `package.json` (confirmed: `grep -c untrustedWorkspaces bbj-vscode/package.json` → `0`), so a workspace's own committed `.vscode/settings.json` can set every one of them, including in an untrusted workspace. Also checked the caller-supplied `params` surface: `bbj.runBUI`/`bbj.runDWC` (extension.ts:676,683) fall back to `params.fsPath` when no editor is focused, and any registered VS Code command is globally invocable by any other extension in the same window via `vscode.commands.executeCommand`, widening the same unescaped-interpolation surface beyond workspace settings alone. Also checked EM token/credential handling per the plan's own checklist: the raw JWT is interpolated as a literal `exec()` argument (extension.ts:415) rather than passed through a non-shell API, and the debug-mode masking that redacts it before writing to the output channel (extension.ts:420,639) is a naive substring match against the same unescaped string, sharing the identical fragility. 2 findings recorded: P62-D1-003, P62-D1-004.
 - D2 Correctness & error handling — fail — Checked whether `activate()` (extension.ts:582-830) can partially fail and leave commands registered against a client that never started: `client.start()` (line 892) is called without `await` or `.catch()`, so its rejection is unhandled while all 14 `registerCommand` calls (lines 592-707) proceed regardless of whether the language-server process actually started; `bbj.refreshJavaClasses`'s own guard (`if (!client)`, line 695) only checks that the variable was assigned, not that the client is ready. Checked whether every async `registerCommand` handler handles its own rejections: `bbj.loginEM` (line 597) and `bbj.refreshJavaClasses` (line 694) both wrap their awaited work in `try`/`catch`; `bbj.runBUI`/`bbj.runDWC` (lines 676,683) call `ensureValidToken(context)` unguarded, but its only unguarded internal throw path (`JSON.parse` on a `bbj.em.credentials` SecretStorage value, extension.ts:388) is unreachable in practice — confirmed by grep, nothing in the codebase ever writes that key, only `bbj.em.token` is ever stored (extension.ts:667). Checked whether disposables are pushed onto `context.subscriptions` or leaked: none of the 14 `registerCommand` calls, the `registerDocumentFormattingEditProvider` call (line 748), or the `client.onNotification` call (line 822) captures/pushes its returned `Disposable` — contrast with `msgbox-composer-ui.ts:27-28`/`addwindow-composer-ui.ts:18`/`addchildwindow-composer-ui.ts:19`/`setopts-composer-ui.ts:19`, which correctly push theirs via the same `context.subscriptions.push(...)` pattern used elsewhere in this same file for the status-bar items and listeners (lines 756,771,783,805,808,819,858). Checked what each command does when no workspace folder is open, no editor is focused, or `bbj.home` is missing: `getBBjHome()` (Commands.cjs:45-61) and the EM handlers correctly show an error and return early when `bbj.home` is empty, but `run()`, `runWeb()`, `decompile()`, and `compile()` (Commands.cjs:250,94,147,299) dereference `params.fsPath` with no check that `params` itself is defined when no editor is focused — while `resolveTargetFileName()` (Commands.cjs:135-141), used only by `decompileReplace`/`decompileReadonly`, already guards with `if (params && params.fsPath)`. Checked whether `exec` callbacks distinguish exit-code failure from spawn failure: `runWeb`/`run`'s bare-callback `exec()` (Commands.cjs:117,271) and `execWithProgress`'s promise wrapper (lines 29-41) both surface `err`/`stderr` uniformly via `showErrorMessage`, not distinguishing a nonexistent binary from a nonzero exit — acceptable, since both cases correctly inform the user rather than silently failing. Checked `stripSentinel` (Commands.cjs:18) against an absent/empty/malformed classpath: it returns `''` for `null`/`undefined`/`'--'` and passes through any other string — correct, no defect. Checked `CompilerOptions.ts`'s `validateOptions`/`buildCompileOptions` against an out-of-range or wrong-typed value: neither performs range/type coercion beyond the declared TypeScript type — a `number`-typed option set via a raw `settings.json` edit to a non-numeric string flows through `getOptionValue` unchanged and is interpolated as `${option.flag}${value}` (CompilerOptions.ts:473) with no `parseInt`/`isNaN` guard on this path (only the interactive `promptForValue` in extension.ts:132-136 validates numeric input) — a real but low-impact gap folded into the D1 finding's evidence rather than raised separately, since it shares the same unescaped-value-into-command-line root cause. 3 findings recorded: P62-D2-002, P62-D2-003, P62-D2-004.
 - D3 Performance & resource use — pass — Checked what `activate()` (extension.ts:582-830) does synchronously before the extension becomes usable: it registers 4 composer subsystems, 14 commands, 1 formatting provider, and a handful of listeners/status-bar items — all cheap, synchronous VS Code API calls with no filesystem or process work on the activation path itself; `startLanguageClient()` (line 840) constructs the `LanguageClient` and calls `client.start()` without blocking. Checked whether any command re-reads `config.bbx`/`BBj.properties` on every invocation rather than caching: `getBBjClasspathEntries()` (extension.ts:36-68, used only by the rarely-invoked `bbj.showClasspathEntries`) and `Commands.cjs`'s `openEnterpriseManager()` (`PropertiesReader`, line 229) both re-read `BBj.properties` fresh on each invocation — acceptable, since both are discrete, user-initiated commands, not hot-path or per-keystroke operations, and `BBj.properties` is small. Checked whether repeated command invocations accumulate output channels, watchers, listeners, or child processes: each `run`/`runWeb`/`compile` invocation spawns exactly one `exec()` child process whose callback self-completes with no retained reference or listener left attached; the activation-time disposable-registration gap found under D2 (P62-D2-003) is a one-time re-activation-lifecycle issue, not a per-invocation accumulation, so it is not double-counted here. Checked whether `CompilerOptions.ts`'s option model is rebuilt per UI interaction: `COMPILER_OPTIONS` (line 65) is a module-level `const` built once; `getOptionsGrouped()` (lines 485-495) rebuilds only an 18-entry `Map` from it on each `configureCompileOptions()` invocation — a rare, user-initiated, negligible-cost operation. 0 findings recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Checked the size and responsibility count of `extension.ts` (894 lines): `activate()` (lines 582-830, ~250 lines) registers at least 9 distinct concerns in one function body without delegating most of them to named helpers: 4 composer subsystems (`registerMsgboxComposer` et al., lines 584-587), the language client (line 589), 14 commands (lines 592-707) — several with substantial business logic embedded directly as anonymous handlers rather than extracted, most notably the ~75-line EM-login credential-prompt-plus-`exec()` flow (lines 597-672) — a document-formatting-provider registration (lines 748-751), 2 file-open-detection features with their own tab/editor listeners (lines 756-775), and 2 status-bar indicators with their own notification listeners (lines 777-828). By contrast, every one of `Commands.cjs`'s command implementations is a discrete, separately named `Commands.X` function. **D-13 scope-fidelity note:** `Commands/Commands.cjs` is swept in full in this cell and every other cell of this unit despite not appearing in ROADMAP's Phase 62 success criteria — the grid is the contract and the criteria are a subset of it. Checked whether `Commands.cjs` being CommonJS while the rest of `bbj-vscode/src/` is TypeScript ESM is deliberate: `package.json` declares `"type": "module"`, and the `.cjs` extension is the standard Node.js mechanism to opt a single file out of that default and keep `require()`/`module.exports` syntax working regardless — a deliberate interop technique, not an unmigrated remnant, though it remains the one file in this unit mixing two module systems. Checked the exec-plus-callback shape for repetition: `extension.ts`'s EM-validate (lines 412-442) and EM-login (lines 630-664) blocks each independently build a `new Promise<string>` wrapping `require('child_process').exec` plus a create-tmpfile/read-tmpfile/`try`/`finally`-unlink lifecycle — a mechanical structural diff of the two blocks (`git diff --no-index --numstat`) shows `27 23` (of 31/35 total lines) — 23 lines share the same shape, confirming substantial in-file duplication — and neither reuses `Commands.cjs`'s own `execWithProgress` helper (lines 29-41), which independently wraps the identical `exec`-to-Promise pattern a third, unshared way. Checked whether option definitions are duplicated between `CompilerOptions.ts` and `package.json`: `COMPILER_OPTIONS`'s 20 entries (`CompilerOptions.ts`, `configKey:` at lines 69-274) each has a hand-maintained twin in `package.json`'s 20 matching `bbj.compiler.*` configuration properties (lines 412-553) — same `configKey`, independently declared `default`/`description` text in both places, with no code-generation step or single source of truth linking them. Checked for dead code: `getEMCredentials()`'s fallback to `secretStorage?.get('bbj.em.credentials')` (`extension.ts:387-389`) is unreachable — confirmed by grep, nothing anywhere in the codebase ever writes that key, only `bbj.em.token` is ever stored (`extension.ts:667`); `runWeb()`'s legacy `else` branch reading `bbj.web.username`/`bbj.web.password` (`Commands.cjs:85-90`) is similarly unreachable today, since both current call sites (`bbj.runBUI`/`bbj.runDWC`, `extension.ts:676,683`) always pass a truthy `credentials` object after `ensureValidToken()`. Checked whether the three files agree on one error-surfacing convention: yes — all consistently use `vscode.window.show{Error,Warning,Information}Message`, and `CompilerOptions.ts` appropriately stays presentation-free, returning `ValidationResult` objects for its two callers to display — no inconsistency found on this specific check. 2 findings recorded: P62-D4-002, P62-D4-003.
+- D5 Test coverage gaps — fail — Established by enumeration, not assumption: `ls bbj-vscode/test/ | grep -iE 'extension|command|compiler'` -> `compiler-options.test.ts` only; `grep -rl "extension\.ts\|from '\.\./src/extension'" bbj-vscode/test/` -> nothing; `grep -rl 'Commands\.cjs\|Commands/Commands' bbj-vscode/test/` -> nothing. `CompilerOptions.ts` is thoroughly tested — `compiler-options.test.ts` (511 lines) exercises `buildCompileOptions`, `validateOptions`, `getOptionsGrouped`, `OPTION_GROUP_ORDER`, and the `COMPILER_OPTIONS` constant across ~45 cases including all 20 options, conflict/dependency detection, and grouping — but `extension.ts` (894 lines: activation, all 14 command registrations, the EM login/validate flows, the tokenized/line-numbered file prompts, both status-bar indicators) and `Commands.cjs` (405 lines: every `run`/`compile`/`decompile` `exec()`-invoking command) have **zero** test coverage — no test imports either file. Concretely untested: every P62-D1/P62-D2/P62-D7 finding recorded in this section — the unescaped shell interpolation (P62-D1-003), the argv-exposed EM token (P62-D1-004), the unguarded `params.fsPath` crash (P62-D2-002), the leaked command-registration disposables (P62-D2-003), the unhandled `client.start()` rejection (P62-D2-004), and the process-spawning safety gap relative to IntelliJ (P62-D7-001) — none would be caught by a regression run, so `npm test` staying green provides no signal about any of them. 1 finding recorded: P62-D5-002.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — fail — Enumerated the VS Code command surface from `package.json`'s `contributes.commands` (18 entries) and `extension.ts`'s `registerCommand` calls, then set it against IntelliJ's `actions/` package (`RU-63-01`): both IDEs implement Run-as-GUI/BUI/DWC and EM login/validate via a spawned `bbj`/`bbjcpl` process reading the same `bbj.home`-equivalent setting and the same `web.bbj`/`em-login.bbj`/`em-validate-token.bbj` run tools, but the two sides differ categorically in *how* they spawn: VS Code's `Commands.cjs` (`run` line 263, `runWeb` line 109, `compile` line 328) and `extension.ts` (EM validate line 415, EM login line 635) all build ONE shell-interpolated command STRING and pass it to `child_process.exec()`, which spawns via `/bin/sh -c`/`cmd.exe`, subjecting every interpolated segment to shell-metacharacter reinterpretation (traced as unescaped at every one of these sites — see P62-D1-003); IntelliJ's equivalents — `BbjRunGuiAction.java:27-52`, `BbjRunBuiAction.java:115-129`, `BbjRunDwcAction.java:115-129`, `BbjRunActionBase.validateTokenServerSide` (`BbjRunActionBase.java:282-322`), and `BbjEMLoginAction.performLogin` (`BbjEMLoginAction.java:94-152`) — uniformly build a `GeneralCommandLine` and add each argument via `.addParameter(...)`, spawned directly by `OSProcessHandler`/`CapturingProcessHandler` with no shell involved, so no argument is ever subject to metacharacter reinterpretation. Also checked pre-flight validation: IntelliJ's `validateBeforeRun()` (`BbjRunActionBase.java:144-169`) confirms BBj Home is configured, exists as a directory, and the executable is present before spawning; VS Code's `getBBjHome()` (Commands.cjs:45-61) and the EM handlers (extension.ts:401-403,601-608) only check that the setting is a non-empty string, discovering a bad path only via `exec()`'s asynchronous error callback. This categorical safety-methodology divergence is a VS Code-side defect, so it is recorded as `P62-D7-001` with `location:` inside `bbj-vscode/`, citing `BbjRunActionBase.java`/`BbjRunGuiAction.java`/`BbjRunBuiAction.java`/`BbjRunDwcAction.java`/`BbjEMLoginAction.java` as the comparison side only. Separately checked `BbjCompileAction.java` — the IntelliJ counterpart to `bbj.compile` — and found it is an unimplemented `TODO` stub that only logs "[Compile] Triggered" and never invokes `bbjcpl` at all, unlike VS Code's real 18-option-aware compile; this and three other command-surface gaps (`bbj.configureCompileOptions`, `bbj.denumber`/`bbj.decompile`/`bbj.decompileReadonly`, `bbj.em`) are IntelliJ-side absences, not VS Code defects, so per D-05 they are recorded as `### Cross-unit referrals` addressed to `RU-63-01` rather than as findings here. 1 finding recorded: P62-D7-001.
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — pass — Checked every JSDoc block in `Commands.cjs` and `CompilerOptions.ts` against the implementation just read, including any claim of validation/escaping: `stripSentinel`'s doc (`Commands.cjs:12-18`, "Strips the EM Config sentinel value '--' ... Treat it as empty") matches its one-line implementation exactly; `resolveTargetFileName`'s doc (`Commands.cjs:129-134`) accurately describes the `params`-preferred/`active`-fallback resolution it performs — and, read against P62-D2-002, actually demonstrates the author understood the "`params` may be undefined" hazard well enough to guard against it here, making its absence in `run`/`runWeb`/`decompile`/`compile` an inconsistency rather than an oversight born of ignorance; the `runWeb` config-path comment (`Commands.cjs:104-107`, citing issue #382) matches the code's actual fallback-to-installation-default behavior; `validateOptions`'s JSDoc (`CompilerOptions.ts:372-383`) accurately scopes itself to dependency/conflict checking only and makes no claim about validating value content, so it does not over-claim a safety property it doesn't provide; `isTokenExpired`'s and `ensureValidToken`'s docs (`extension.ts:336-339,452-455`) both match their implementations. Checked `CLAUDE.md`'s §Repository Structure, §Build & Test Commands, and §IDE Integration claims against this unit's code: the Build & Test Commands list (`npm test`, `npm run lint`, etc.) matches `package.json`'s actual scripts; the IDE Integration claim that both IDEs share the run tools `web.bbj`/`em-login.bbj` is accurate for the files this unit touches (both are referenced from `Commands.cjs`/`extension.ts` exactly as claimed); `CLAUDE.md` makes no positive claim about `extension.ts`'s activation structure, `Commands.cjs`'s command implementations, or `CompilerOptions.ts` specifically, so its silence on those particulars is noted but not promoted to a finding, consistent with `RU-62-04`'s own precedent. 0 findings recorded.
 
 ### Findings
 
@@ -646,6 +646,148 @@ effort:            8
 dedup:             none -- none of #231/#485/#486 concern process-spawning methodology or
                     pre-flight path validation; this is a comparative observation, not a feature
                     request.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D4-002
+unit:              RU-62-01
+location:          bbj-vscode/src/extension.ts:582-830
+dimension:         D4
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          activate() (extension.ts:582-830, ~250 lines) registers at least 9 distinct
+                    concerns in one function body without delegating most of them to named
+                    helpers: 4 composer subsystems (registerMsgboxComposer et al., lines 584-587),
+                    the language client (line 589), 14 commands (lines 592-707) -- several with
+                    substantial business logic embedded directly as anonymous handlers rather than
+                    extracted, most notably the ~75-line EM-login credential-prompt-plus-exec()
+                    flow (lines 597-672) -- a document-formatting-provider registration (lines
+                    748-751), 2 file-open-detection features with their own tab/editor listeners
+                    (lines 756-775), and 2 status-bar indicators with their own notification
+                    listeners (lines 777-828). By contrast, every one of Commands.cjs's command
+                    implementations is a discrete, separately named Commands.X function. Mechanical
+                    structural diff (D-12) of extension.ts's two independent Promise-wrapped-exec
+                    blocks: git diff --no-index --numstat between the EM-validate block (lines
+                    412-442, 31 lines) and the EM-login block (lines 630-664, 35 lines) reports
+                    `27 23` -- 23 of ~31-35 lines share the same shape (build tmp-file path, build
+                    cmd string, debug-log, new Promise<string> wrapping
+                    require('child_process').exec with a try/finally-unlink) -- confirming
+                    substantial in-file duplication; neither block reuses Commands.cjs's own
+                    execWithProgress helper (lines 29-41), which independently wraps the identical
+                    exec-to-Promise pattern a third way, so the same operation is implemented three
+                    separate times across the unit with no shared helper. Checked for dead code as
+                    a related maintainability cost: getEMCredentials()'s fallback to
+                    secretStorage?.get('bbj.em.credentials') (extension.ts:387-389) is unreachable
+                    -- confirmed by grep, nothing in the codebase ever writes that key, only
+                    bbj.em.token is ever stored (extension.ts:667); runWeb()'s legacy else branch
+                    reading bbj.web.username/bbj.web.password (Commands.cjs:85-90) is likewise
+                    unreachable today, since both current call sites (bbj.runBUI/bbj.runDWC)
+                    always pass a truthy credentials object.
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) -- the
+                    god-function shape and the triplicated exec-wrapping pattern mean a future fix
+                    to any one of them (e.g. P62-D1-003's escaping fix, or P62-D2-004's rejection
+                    handling) has to be located and re-applied independently in up to 3 places,
+                    with drift risk between them; the two dead-code branches are maintenance debt
+                    that misleads a reader into thinking a credential-storage fallback path is live
+                    when it is not.
+classification:    major
+                    (1) touches 1 file: pass (extension.ts; the dead Commands.cjs branch is a
+                    one-line deletion noted alongside, not counted against this test) -- (2) no
+                    public API/grammar/LSP change: pass -- (3) no new dependency: pass -- (4)
+                    regression-testable with the existing harness: FAIL -- extracting activate()'s
+                    inline handlers into named, independently testable functions is exactly the
+                    kind of refactor extension.ts's current zero test coverage (P62-D5-002) cannot
+                    verify without first adding the missing test infrastructure -- (5) reviewer can
+                    name the exact edit: pass (extract the EM-login handler and the exec-wrapping
+                    pattern into shared, named helpers; delete the two dead-code branches) -- (6)
+                    severity `medium`, dimension D4 (not D1): pass -- test (4) alone already fails,
+                    so classification is `major` per D-13.
+effort:            8
+dedup:             none -- none of #231/#485/#486 concern activate()'s structure, exec-wrapper
+                    duplication, or dead credential-fallback code.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D4-003
+unit:              RU-62-01
+location:          bbj-vscode/src/Commands/CompilerOptions.ts:65-282
+dimension:         D4
+secondary:         []
+severity:          low
+evidence_tier:     trace
+evidence:          COMPILER_OPTIONS's 20 entries (CompilerOptions.ts:65-282, configKey: values at
+                    lines 69,79,90,102,114,126,136,146,156,166,178,188,199,210,220,232,242,252,
+                    264,274) each declares a label/description/defaultValue that duplicates a
+                    hand-written twin in package.json's 20 matching bbj.compiler.* configuration
+                    properties (lines 412-553, e.g. bbj.compiler.typeChecking.enabled at line 412
+                    vs. configKey: 'typeChecking.enabled' at line 69, both independently stating
+                    default: false / "Enable static type checking (-t)" and description: "Enable
+                    static type checking"). No code-generation step, shared JSON source, or test
+                    asserts the two stay in sync -- confirmed by reading both declarations end to
+                    end and finding no cross-reference between them beyond the shared string key.
+failure_scenario:  n/a (D4 code-shape finding) -- adding, removing, or changing a compiler
+                    option's default/description requires a matching hand-edit in both files;
+                    missing one desyncs the configureCompileOptions() QuickPick UI (built from
+                    CompilerOptions.ts) from what a developer sees in VS Code's Settings UI (built
+                    from package.json's schema) or from what raw settings.json editing actually
+                    accepts, with nothing currently catching the drift.
+classification:    major
+                    (1) touches 1 file: FAIL -- resolving the duplication (e.g. generating one from
+                    the other, or a shared JSON source both read) necessarily touches both
+                    package.json and CompilerOptions.ts -- (2) no public API/grammar/LSP change:
+                    pass -- (3) no new dependency: pass -- (4) regression-testable with vitest:
+                    pass (a test can assert every COMPILER_OPTIONS configKey has a matching
+                    bbj.compiler.* entry with the same default) -- (5) reviewer can name the exact
+                    edit: pass -- (6) severity `low`, dimension D4 (not D1): pass -- test (1) alone
+                    already fails, so classification is `major` per D-13.
+effort:            4
+dedup:             none -- none of #231/#485/#486 concern compiler-option metadata duplication
+                    between CompilerOptions.ts and package.json.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D5-002
+unit:              RU-62-01
+location:          bbj-vscode/test/ (absence) -- the 2 files this finding covers are
+                    bbj-vscode/src/extension.ts and bbj-vscode/src/Commands/Commands.cjs
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     inherited
+evidence:          Established by enumeration: `ls bbj-vscode/test/ | grep -iE
+                    'extension|command|compiler'` -> compiler-options.test.ts only; `grep -rl
+                    "extension\.ts\|from '\.\./src/extension'" bbj-vscode/test/` and `grep -rl
+                    'Commands\.cjs\|Commands/Commands' bbj-vscode/test/` both return nothing.
+                    compiler-options.test.ts (511 lines, ~45 cases) thoroughly covers
+                    CompilerOptions.ts's pure logic, but no test imports or exercises extension.ts
+                    (activation, all 14 command registrations, EM login/validate) or Commands.cjs
+                    (every exec()-invoking command: run, runWeb, compile, decompile*).
+failure_scenario:  A regression in any of this section's findings -- the unescaped shell
+                    interpolation (P62-D1-003), the argv-exposed EM token (P62-D1-004), the
+                    unguarded params.fsPath crash (P62-D2-002), the leaked command-registration
+                    disposables (P62-D2-003), the unhandled client.start() rejection (P62-D2-004),
+                    or the process-spawning safety gap relative to IntelliJ (P62-D7-001) -- would
+                    ship silently: npm test is green today with zero assertions covering either
+                    file, so FIX-03's 'npm test clean' gate cannot detect a future regression in
+                    any of them.
+classification:    major
+                    (1) touches 1 file: FAIL -- comprehensive resolution requires new test files
+                    for both extension.ts and Commands.cjs (or a shared vscode-API mock harness
+                    both can use), touching more than 1 file -- (2) no public API/grammar/LSP
+                    change: pass -- (3) no new dependency: pass -- (4) regression-testable with
+                    existing harness: n/a (this finding *is* the missing-test gap) -- (5) reviewer
+                    can name the exact edit: pass (author extension.test.ts and commands.test.ts
+                    using a minimal vscode API mock, following whatever pattern the
+                    composer-webview D5 gap in RU-62-04 ultimately adopts) -- (6) severity
+                    `medium`, dimension D5 (not D1): pass -- test (1) alone already fails, so
+                    classification is `major` per D-13.
+effort:            8
+dedup:             none -- none of #231/#485/#486 concern test coverage for extension.ts or
+                    Commands.cjs.
 disposition:       major-refactor
 ```
 
