@@ -821,11 +821,11 @@ disposition:       major-refactor
 - D1 Security — fail — Traced the value-origin direction opposite to `RU-62-04`'s, per this unit's own charter: for msgbox-composer.ts, `message`/`title` ARE validated via `validateStringField` (msgbox-composer.ts:311-326) before `composeStatement` (lines 148-163) and the webview's Insert button is gated on the resulting `valid` flag (`msgboxPreview`, line 420) — but `assignTo` (`ComposeInput.assignTo`, line 145; used unchecked at `composeStatement` line 162, `input.assignTo ? \`${input.assignTo} = ${call}\` : call`) is never passed through `validateStringField` or folded into `valid`, so a malformed `assignTo` reaches an Insert-enabled statement even in the one composer that validates its other free-text fields. Checked addwindow-composer.ts's `composeAddWindow` (lines 275-282, `args = [input.x, input.y, input.width, input.height, input.title, formatHex(input.flags)]`) and addchildwindow-composer.ts's `composeAddChildWindow` (lines 208-215, `args = [input.id, input.x, input.y, input.width, input.height, input.title, formatHex(input.flags), input.context]`): neither file contains any `validate`-named function or call (confirmed by grep), so `x`/`y`/`width`/`height`/`title`/`sysgui`/`receiver`/`window`/`id`/`context` are embedded verbatim with zero structural or type check, and neither `AddWindowPreview` nor `AddChildWindowPreview` (addwindow-composer.ts:234-243, addchildwindow-composer.ts:161-170) carries a `valid`/error field at all — confirmed by `grep`, no `disabled`/`invalid` gating exists anywhere in the corresponding webview files' Insert-button wiring either. Checked `setopts-composer-ui.ts`/`setopts-catalog.ts`'s config.bbx-sourced input by contrast: `parseSetOptsLine`/`parseVector` are regex-gated and length-bounded (`MAX_BYTES * 2` = 32, setopts-catalog.ts:135), `setMaskChar` truncates to a single char code (line 201), and `setoptsPreview`'s `rawTail` is validated via `/^[0-9A-Fa-f]*$/` (line 323) before `setRawTail` re-validates via `parseVector` — a malformed or forged SETOPTS payload cannot corrupt or unboundedly grow the vector, unlike the addwindow/addchildwindow surface. Checked all 8 files for process/filesystem/command-execution surface: `grep` for `child_process`/`exec(`/`spawn(`/`readFile`/`writeFile` matches only `RegExp.prototype.exec()` call sites (regex matching, confirmed by reading each hit) — no such surface exists in this unit. Every affected field is text the developer types into the composer's own webview form (matching `RU-62-04`'s established fact that no editor/document/config/workspace value reaches these composers today), so this is a self-inflicted statement-corruption gap rather than an attacker-controlled injection. 1 finding recorded: P62-D1-005.
 - D2 Correctness & error handling — fail — Boundary-checked msgbox-composer.ts's `composeStatement`/`msgboxPreview` at no-option/all-options/zero-value/max-length boundaries: covered by the existing 24-case `msgbox-composer.test.ts` plus `composer-commands.test.ts`'s LS pass-through tests; `npx vitest run test/msgbox-composer.test.ts test/addwindow-composer.test.ts test/addchildwindow-composer.test.ts test/setopts-catalog.test.ts test/composer-commands.test.ts` confirms all 100 existing tests for this unit's pure-logic layer pass. Ran `setopts-catalog.ts`'s two-pass D2 value-correctness protocol against the BASIS SETOPTS documentation its own header cites by URL (both fetched live, `https://documentation.basis.cloud/BASISHelp/WebHelp/commands/setopts_verb.htm` and `.../bbj-commands/setopts_verb_bbj.htm`, HTTP 200): **structural pass, exhaustive** — all 50 `SETOPTS_BITS` entries (8+8+8+8+7+7+4 across bytes 1/2/3/4/7/8/9) have a `byte` in the documented set `{1,2,3,4,7,8,9}`, a single-power-of-two `mask` (confirmed via `grep -oE 'mask: 0x[0-9A-Fa-f]+' | sort | uniq -c`, only 0x01/0x02/0x04/0x08/0x10/0x20/0x40/0x80 occur), no duplicate `(byte, mask)` pair, and a non-empty `label`; of the 12 entries marked `bbj: 'ignored'`, exactly the 4 that carry `bbjDetail` (lines 70, 78, 90, 91) are precisely the 4 whose BASIS "BBj Meaning" column gives more than the bare phrase "Ignored in BBj." — verified against the fetched `setopts_verb_bbj.htm` line-for-line for all 12 — so the `bbjDetail`-presence pattern is a faithful mirror of source-doc richness, not a completeness gap. **Value pass, stratified sample** — sampled the first and last declared entry per byte group (14 entries: byte1 0x80/0x01, byte2 0x80/0x01, byte3 0x80/0x01, byte4 0x80/0x01, byte7 0x80/0x01, byte8 0x80/0x02, byte9 0x80/0x10) against the fetched `setopts_verb.htm`: all 14 labels/details matched the BASIS text verbatim or as an accurate paraphrase, with zero mismatches. Traced msgbox-composer-ui.ts's bare `runComposer` command flow (lines 87-133) for a document-edit-staleness hazard: both the `arg?.edit` branch (lines 100-104, replacing `exprRange` coordinates) and the `arg?.insert` branch (lines 105-108, inserting at a captured `character` offset) apply `editor.edit(...)` using line/character coordinates captured by the Code Action *before* `runWizard` (line 94) runs four sequential `await`ed QuickPick steps (lines 136-160) — no re-fetch of the line's current text and no re-validation that the captured token/position still matches. Checked `await` rejection risk across all 8 files: the only `await`s are `showQuickPick`/`createQuickPick`/`showInputBox` in msgbox-composer-ui.ts, which resolve to `undefined` on cancel rather than reject; no other file performs an `await`. Checked `setopts-catalog.ts`'s hex/vector round-trip at the boundaries: short (odd-length "ABCDE" -> pads to "ABCDE0", `encodeVector` truncates back to 5 digits, round-trips exactly), over-long (>32 hex digits rejected outright by `parseVector`, line 135), non-hex (regex-rejected), and all-zero (`"00000000"` round-trips exactly) — all four boundaries verified lossless, including the reserved byte ranges the header describes as pass-through. 1 finding recorded: P62-D2-005 (msgbox-composer.ts's `assignTo` gap is folded into `P62-D1-005` as a D2-secondary aspect of the same unvalidated-field pattern, not double-counted here).
 - D3 Performance & resource use — pass — Checked every catalog in this unit (`BUTTON_SETS`/`ICONS`/`DEFAULT_BUTTONS`/`FLAGS` in msgbox-composer.ts, `WINDOW_FLAGS`/`EVENT_MASK_BITS` in addwindow-composer.ts, `CHILD_WINDOW_FLAGS` in addchildwindow-composer.ts, `SETOPTS_BITS`/`BYTE_GROUPS` in setopts-catalog.ts): every one is a module-level `const` array built once at load, never reconstructed inside a function. Checked whether `msgboxPreview`/`addwindowPreview`/`addchildwindowPreview`/`setoptsPreview` — the four functions `RU-62-04`'s webviews call on every `'change'` message (i.e. every keystroke) — recompute unboundedly: each runs only fixed-size `.filter()`/`.reduce()`/`.map()` passes over catalogs of at most ~51 entries (setopts-catalog.ts) or ~26 (`WINDOW_FLAGS`), plus O(message-length) checks in `validateBbjExpression`/`resolvesToString`, with no loop over document or workspace content and no quadratic nesting. Checked the cost of `setopts-catalog.ts`'s hex/vector conversions relative to call frequency: bounded to at most 16 bytes (`MAX_BYTES`) per call, invoked once per preview recompute — negligible. Checked whether msgbox-composer.ts at 550 lines performs any work at module-load time beyond defining catalogs/functions: it does not — no top-level side effect runs before a function is invoked. Checked whether any of the 8 files retains a `vscode.TextEditor`/`TextDocument`/`WebviewPanel` reference beyond a single call: none does — the sole `vscode.window.activeTextEditor` read (msgbox-composer-ui.ts:88) is local to `runComposer`, never stored on module or object state. 0 findings recorded.
-- D4 Maintainability & code smells — pending
-- D5 Test coverage gaps — pending
+- D4 Maintainability & code smells — fail — Ran a programmatic structural diff (D-12), applying the D-15-confirmed asymmetric baseline (the `-composer.ts` comparison set is msgbox-composer.ts/addwindow-composer.ts/addchildwindow-composer.ts — 3 files, not 4; setopts-catalog.ts is SETOPTS's logic-layer counterpart, not a 4th `-composer.ts` row). Method 1 — normalized-identifier md5 on the three files' `findXCallAt` entry points (`findMsgboxCallAt` msgbox-composer.ts:546-550, `findAddWindowCallAt` addwindow-composer.ts:401-405, `findAddChildWindowCallAt` addchildwindow-composer.ts:301-305): after stripping each function's own type-name token, all three 5-line bodies hash identically (md5 `fa0e6220a97209e901f96f5a6c745b52`) — the same `.filter(...).reduce(...)` algorithm written out three times, 15 lines, no shared helper. Method 2 — `diff` on the top-level-argument scanner: msgbox-composer.ts's private unexported `scanArgs` (lines 470-498) is algorithmically identical to addwindow-composer.ts's exported `scanArgs` (lines 320-341, itself already reused by addchildwindow-composer.ts via `import { scanArgs, trimmedRange } from './addwindow-composer.js'`, lines 16-19) — `diff` on the two bodies shows only whitespace/statement-grouping style differences, zero control-flow differences. Method 3 — `git diff --no-index --numstat` pairwise: msgbox<->addwindow `306 451` (of 550/405 lines), msgbox<->addchildwindow `243 485` (of 550/308), addwindow<->addchildwindow `140 237` (of 405/308 — the closest pair, matching their shared hex-mask design). On the `-ui.ts` quartet: addwindow-composer-ui.ts<->addchildwindow-composer-ui.ts numstat `26 22` (of 68/72 lines — by far the closest pair) — both independently define a byte-identical-shaped `titleArg()` helper (differing only in the fallback literal `'"Window"'` vs `'"Child"'`) and the same `XCodeActionProvider`/`registerXComposer` contract, where msgbox-composer-ui.ts (193 lines: a QuickPick wizard plus a second legacy bare-command entry point) and setopts-composer-ui.ts (96 lines: `CodeLensProvider` + config.bbx line parsing) diff far more heavily (numstat 48-168 lines) against every other file in the quartet and each other — the four `-ui.ts` files do not share one register/open contract. **This is the logic/UI-layer half of the composer duplication D-12 allocates across two units — see `RU-62-04`'s `P62-D4-001` for the generator-layer half (the four `*-composer-webview.ts` files' `getNonce()`/CSP duplication); the two halves are counted once each and this record does not restate `P62-D4-001`'s evidence.** 1 finding recorded: P62-D4-004.
+- D5 Test coverage gaps — fail — Established by enumeration: `ls bbj-vscode/test/ | grep -iE 'composer|setopt'` -> `addchildwindow-composer.test.ts`, `addwindow-composer.test.ts`, `composer-commands.test.ts`, `msgbox-composer.test.ts`, `setopts-catalog.test.ts` — five files, all importing only the `*-composer.ts`/`setopts-catalog.ts`/LS `composer-commands.ts` modules; `grep -rl 'composer-ui\|msgbox-composer-ui\|addwindow-composer-ui\|addchildwindow-composer-ui\|setopts-composer-ui' bbj-vscode/test/` returns nothing. So the four `-ui.ts` files in this unit — msgbox-composer-ui.ts (193 lines), addwindow-composer-ui.ts (68 lines), addchildwindow-composer-ui.ts (72 lines), setopts-composer-ui.ts (96 lines) — have **zero** test coverage, 429 combined lines with no test importing any of them. `npx vitest run` against the five existing composer test files confirms the pure-logic layer this quartet wraps is well tested (100/100 passing), which sharpens rather than excuses the gap: the untested 429 lines are precisely the command-registration/Code-Action/CodeLens wiring, including both `P62-D1-005`'s unvalidated-field composition paths and `P62-D2-005`'s stale-edit-range hazard — both entirely inside this untested quartet. 1 finding recorded: P62-D5-003.
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
 - D7 Cross-IDE parity — pass — For msgbox/addwindow/addchildwindow, confirmed both IDEs consume the exact functions this unit defines over the shared language server rather than a second, divergent codegen: `ComposerModels.java` (`bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerModels.java`, read in full, 245 lines) mirrors this unit's `MsgboxPreviewInput`/`MsgboxPreview`, `AddWindowPreviewInput`/`AddWindowPreview`, `AddChildWindowPreviewInput`/`AddChildWindowPreview` field-for-field as Gson DTOs — notably `ComposerModels.java`'s `AddWindowPreview` has no `valid`/error field, exactly matching this unit's own interface (addwindow-composer.ts:234-243), confirming `P62-D1-005`'s validation gap is symmetric across both IDEs, not VS Code-only. `AddWindowComposerDialog.java` (grepped for the emitted-code construction) calls `server.addWindowPreview(new AddWindowPreviewParams(input))` (line 238) and applies `p.statement` (line 247) with no additional client-side validation; `AddChildWindowComposerDialog.java` calls `server.addChildWindowPreview(...)` (line 247) identically; `MsgboxComposerDialog.java` (read in full) follows the same pattern for `msgboxPreview` — all three go over LSP4IJ to the same `bbj/composer/*/preview` LS handlers this unit's functions back (`composer-commands.ts`), so there is no second BBj-codegen implementation to compare on the IntelliJ side — a shared single source of truth, matching `RU-62-04`'s own D7 finding for the generator layer. Checked SETOPTS separately, per this unit's own D-15-confirmed asymmetry: `ls bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/` lists `AddChildWindowComposerDialog.java`, `AddWindowComposerDialog.java`, `BbjComposerServer.java`, `BbjComposerService.java`, `ComposerLauncher.java`, `ComposerModels.java`, `MsgboxComposerDialog.java` — no `SetoptsComposerDialog.java`, and `ComposerModels.java` defines no `SetOpts*` DTO; `grep -in setopts` against `ComposerLauncher.java` returns zero matches (contrast its `openMsgbox`/`openAddWindow`/`openAddChildWindow` dispatch at lines 90/118/139). This confirms, from this unit's own logic/UI-layer perspective, the same absence `RU-62-04` already recorded for `setopts-catalog.ts`/`setopts-composer-ui.ts`: SETOPTS has no IntelliJ counterpart at all. This is a genuine, IntelliJ-side divergence, not a VS Code-side defect, so per D-05 it is **not** recorded as a `P62-D7-*` finding here; see Cross-unit referrals below. 0 findings recorded.
-- D8 Comment & doc accuracy — pending
+- D8 Comment & doc accuracy — pass — Verified all four of setopts-catalog.ts's header claims (lines 1-17) against the code and against Task 1's D2 evidence: (1) "the config.bbx string is absolute and stateless — no OPTS query, no IOR/AND" — accurate; contrasted against the BASIS SETOPTS-verb docs' own IOR()/AND() examples for the runtime verb (which read OPTS before mutating), confirming the header's distinction between the config.bbx line and BBj-code SETOPTS is correct; (2) "Bytes 5–6 are data..., bytes 10–16 are reserved/application use and pass through as raw hex" — `MASK_COMMA_BYTE`/`MASK_DOT_BYTE` (lines 46-47) and `FIRST_RAW_BYTE = 10`/`MAX_BYTES = 16` (lines 51-52) match; (3) "NO vscode dependency" — confirmed by grep across all four "no vscode dependency"-claiming files (msgbox-composer.ts, addwindow-composer.ts, addchildwindow-composer.ts, setopts-catalog.ts): zero matches for `from 'vscode'`/`require('vscode')` in any of the four; (4) "reusable by the IntelliJ client and by the BBj-code SETOPTS composer (#475) later" — a forward-looking claim ("later"), not contradicted by the current absence of a SETOPTS IntelliJ dialog (the D7 cell above). Checked every JSDoc block across the other seven files for a claim that a value is escaped/validated/safe, to test against Task 1's D1 trace: addwindow-composer.ts's and addchildwindow-composer.ts's own comments make no escaping/validation claim at all (their two "safe"/"escape" hits — "sign bit safe" at addwindow-composer.ts:99 about integer overflow, and `""` escapes at addwindow-composer.ts:317 about *parsing* an existing call — claim nothing about output safety), so neither's silence on validation contradicts `P62-D1-005`; msgbox-composer.ts's `validateStringField` doc (lines 306-310) accurately scopes itself to "message / title / custom button" and does not claim to cover `assignTo`, an honest scope statement that happens to match the exact gap `P62-D1-005` records. Checked `CLAUDE.md` against this unit: it makes no positive claim about any of this unit's 8 files (confirmed: no filename from this unit appears anywhere in `CLAUDE.md`), so its silence is noted, consistent with `RU-62-04`'s and `RU-62-01`'s own precedent, and not promoted to a finding. 0 findings recorded.
 
 ### Findings
 
@@ -946,6 +946,126 @@ classification:    major
 effort:            4
 dedup:             none -- no frozen open issue names composer edit-position staleness or race
                     conditions.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D4-004
+unit:              RU-62-03
+location:          bbj-vscode/src/msgbox-composer.ts:470-498,546-550, bbj-vscode/src/addwindow-composer.ts:320-341,401-405, bbj-vscode/src/addchildwindow-composer.ts:301-305, bbj-vscode/src/addwindow-composer-ui.ts, bbj-vscode/src/addchildwindow-composer-ui.ts
+dimension:         D4
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+evidence:          Mechanical structural diff (D-12), applying the D-15-confirmed asymmetric
+                    baseline (the -composer.ts comparison set is msgbox-composer.ts/
+                    addwindow-composer.ts/addchildwindow-composer.ts -- 3 files, not 4;
+                    setopts-catalog.ts is SETOPTS's logic-layer counterpart, not a 4th
+                    -composer.ts row). Method 1: normalized-identifier md5 on the three files'
+                    findXCallAt entry points (findMsgboxCallAt msgbox-composer.ts:546-550,
+                    findAddWindowCallAt addwindow-composer.ts:401-405,
+                    findAddChildWindowCallAt addchildwindow-composer.ts:301-305) -- after
+                    stripping each function's own type-name token, all three 5-line bodies hash
+                    identically (md5 fa0e6220a97209e901f96f5a6c745b52), 15 duplicated lines, no
+                    shared helper. Method 2: diff on the top-level-argument scanner --
+                    msgbox-composer.ts's private unexported scanArgs (lines 470-498) is
+                    algorithmically identical to addwindow-composer.ts's exported scanArgs
+                    (lines 320-341, already reused by addchildwindow-composer.ts via
+                    `import { scanArgs, trimmedRange } from './addwindow-composer.js'`, lines
+                    16-19) -- diff on the two bodies shows only whitespace/statement-grouping
+                    style differences, zero control-flow differences. Method 3:
+                    `git diff --no-index --numstat` pairwise: msgbox<->addwindow "306 451" (of
+                    550/405 lines), msgbox<->addchildwindow "243 485" (of 550/308),
+                    addwindow<->addchildwindow "140 237" (of 405/308, the closest pair). On the
+                    -ui.ts quartet: addwindow-composer-ui.ts<->addchildwindow-composer-ui.ts
+                    numstat "26 22" (of 68/72 lines, by far the closest pair) -- both
+                    independently define a byte-identical-shaped titleArg() helper (differing
+                    only in the fallback literal '"Window"' vs '"Child"') and the same
+                    XCodeActionProvider/registerXComposer contract, where msgbox-composer-ui.ts
+                    (193 lines) and setopts-composer-ui.ts (96 lines) diff far more heavily
+                    (numstat 48-168 lines) against every other file in the quartet. This is the
+                    logic/UI-layer half of the composer duplication D-12 allocates across two
+                    units -- see RU-62-04's P62-D4-001 for the generator-layer half (the four
+                    *-composer-webview.ts files' getNonce()/CSP duplication); the two halves are
+                    counted once each and this record does not restate P62-D4-001's evidence.
+failure_scenario:  n/a -- D4 is a code-shape finding, not a runtime failure scenario; the
+                    maintainability cost is that a future fix to the shared findXCallAt/scanArgs
+                    algorithm must currently be applied by hand in three (effectively four,
+                    counting the private msgbox copy) separate places with no shared source of
+                    truth, and the addwindow/addchildwindow -ui.ts near-duplication means most
+                    future Code-Action UX changes need a matching hand-edit in both files.
+classification:    major
+                    (1) touches 1 file: FAIL -- extracting a shared call-locator/scanner helper,
+                    or a shared UI registration helper, necessarily touches at least 3
+                    (composer.ts) or 2 (ui.ts) files at once -- (2) no public API/grammar/LSP
+                    change: pass -- (3) no new dependency: pass -- (4) regression-testable with
+                    vitest: pass (existing per-file test suites already assert each function's
+                    current behavior; a refactor extracting a shared helper is covered by the
+                    same tests) -- (5) reviewer can name the exact edit: pass -- (6) severity
+                    `medium`, dimension D4 (not D1): pass -- test (1) alone fails, so
+                    classification is `major` per D-13.
+effort:            4
+dedup:             none -- neither #475 nor #385 concerns code duplication within the composer
+                    logic/UI layer. Cross-references RU-62-04's P62-D4-001 (the generator-layer
+                    half of the same D-12 duplication callout) by ID rather than restating its
+                    evidence.
+disposition:       major-refactor
+```
+
+```
+id:                P62-D5-003
+unit:              RU-62-03
+location:          bbj-vscode/src/msgbox-composer-ui.ts (193, absence), bbj-vscode/src/addwindow-composer-ui.ts (68, absence), bbj-vscode/src/addchildwindow-composer-ui.ts (72, absence), bbj-vscode/src/setopts-composer-ui.ts (96, absence)
+dimension:         D5
+secondary:         []
+severity:          low
+evidence_tier:     inherited
+evidence:          Established by enumeration, not assumption:
+                    `ls bbj-vscode/test/ | grep -iE 'composer|setopt'` -> five files
+                    (addchildwindow-composer.test.ts, addwindow-composer.test.ts,
+                    composer-commands.test.ts, msgbox-composer.test.ts,
+                    setopts-catalog.test.ts), all importing only the *-composer.ts/
+                    setopts-catalog.ts/LS composer-commands.ts modules (confirmed by each
+                    file's own import lines); `grep -rl 'composer-ui\|msgbox-composer-ui\|
+                    addwindow-composer-ui\|addchildwindow-composer-ui\|setopts-composer-ui'
+                    bbj-vscode/test/` returns nothing. So the four -ui.ts files in this unit --
+                    msgbox-composer-ui.ts (193 lines: MsgboxCodeActionProvider, the bare
+                    runComposer/runWizard command flow, registerMsgboxComposer),
+                    addwindow-composer-ui.ts (68 lines: AddWindowCodeActionProvider,
+                    registerAddWindowComposer, titleArg), addchildwindow-composer-ui.ts
+                    (72 lines: the equivalent for addChildWindow), and setopts-composer-ui.ts
+                    (96 lines: SetOptsCodeActionProvider, SetOptsCodeLensProvider,
+                    registerSetOptsComposer) -- have zero test coverage, 429 combined lines with
+                    no test importing any of them. `npx vitest run
+                    test/msgbox-composer.test.ts test/addwindow-composer.test.ts
+                    test/addchildwindow-composer.test.ts test/setopts-catalog.test.ts
+                    test/composer-commands.test.ts` confirms the pure-logic layer this quartet
+                    wraps is well tested (100/100 passing), which sharpens rather than excuses
+                    the gap: the untested 429 lines are precisely the command-registration/
+                    Code-Action/CodeLens wiring, including both P62-D1-005's unvalidated-field
+                    composition paths and P62-D2-005's stale-edit-range hazard -- both entirely
+                    inside this untested quartet.
+failure_scenario:  A regression in either P62-D1-005's (currently absent) field validation or
+                    P62-D2-005's edit-position staleness would ship silently -- npm test is green
+                    today (100/100 in this unit's own test files) with zero assertions against
+                    any -ui.ts file, so neither finding, nor any future regression in the same
+                    four files, would be caught by the existing suite.
+classification:    major
+                    (1) touches 1 file: FAIL -- comprehensive resolution requires a new test file
+                    per -ui.ts module (or a shared vscode-mock harness covering all four),
+                    touching more than 1 file -- (2) no public API/grammar/LSP change: pass --
+                    (3) no new dependency: pass -- (4) regression-testable with existing harness:
+                    n/a -- this finding *is* the missing-test gap, and no existing test in this
+                    repository mocks vscode.window.showQuickPick/createQuickPick/
+                    registerCodeActionsProvider/registerCodeLensProvider for reuse here -- (5)
+                    reviewer can name the exact edit: pass (author a *-composer-ui.test.ts per
+                    file using a minimal vscode-API mock, mirroring the gap and remediation shape
+                    already recorded for the webview layer at RU-62-04's P62-D5-001) -- (6)
+                    severity `low`, dimension D5 (not D1): pass -- test (1) alone fails, so
+                    classification is `major` per D-13.
+effort:            8
+dedup:             none -- neither #475 nor #385 concerns test coverage for the composer
+                    UI-wiring files; no DEBT-* requirement names this gap.
 disposition:       major-refactor
 ```
 
