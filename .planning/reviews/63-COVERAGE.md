@@ -66,17 +66,17 @@ Each block below is copied verbatim from `.planning/reviews/INVENTORY.md` §"Exc
 
 ## Inherited referral ledger (D-06)
 
-Reproduced from `.planning/reviews/62-COVERAGE.md` §"Phase 62 Close-Out" section D, Group 2 (7 rows), plus an eighth row for INVENTORY's one routed item. Disposition column is `pending` for every row not yet triaged by the owning unit's own plan.
+Reproduced from `.planning/reviews/62-COVERAGE.md` §"Phase 62 Close-Out" section D, Group 2 (7 rows), plus an eighth row for INVENTORY's one routed item. Disposition column resolved by plan `63-05`'s close-out from the five unit sections' own triage.
 
 | # | From unit | To unit | Subject | Disposition |
 |---|---|---|---|---|
-| 1 | `RU-62-01` | `RU-63-01` | `BbjCompileAction.java` is an unimplemented `TODO` stub, never invokes `bbjcpl` | pending |
-| 2 | `RU-62-01` | `RU-63-01` | Six VS Code commands (`configureCompileOptions`, `denumber`, `decompile`, `decompileReadonly`, `em`) have no IntelliJ action counterpart | pending |
-| 3 | `RU-62-01` | `RU-63-01` | `bbj.refreshJavaClasses` restarts the whole LS on IntelliJ vs. a targeted LSP request on VS Code | pending |
-| 4 | `RU-62-04` | `RU-63-04` | SETOPTS has no IntelliJ composer dialog at all | pending |
-| 5 | `RU-62-03` | `RU-63-04` | Independent confirmation (logic/UI layer) of the same SETOPTS/IntelliJ absence `RU-62-04` referred | pending |
-| 6 | `RU-62-05` | `RU-63-02` | Whether IntelliJ's TextMate importer honors `filenames`; whether IntelliJ's LSP4IJ registration independently covers `.bbl` | pending |
-| 7 | `RU-62-02` | `RU-63-02` | None of format/denumber/tokenized-detection/decompile has any IntelliJ counterpart at all (four features in one bullet); #65 checked by number as the tokenized-detection neighbour | pending |
+| 1 | `RU-62-01` | `RU-63-01` | `BbjCompileAction.java` is an unimplemented `TODO` stub, never invokes `bbjcpl` | promoted — `P63-D7-001` |
+| 2 | `RU-62-01` | `RU-63-01` | Six VS Code commands (`configureCompileOptions`, `denumber`, `decompile`, `decompileReadonly`, `em`) have no IntelliJ action counterpart | promoted — `P63-D7-002` |
+| 3 | `RU-62-01` | `RU-63-01` | `bbj.refreshJavaClasses` restarts the whole LS on IntelliJ vs. a targeted LSP request on VS Code | promoted — `P63-D7-003` |
+| 4 | `RU-62-04` | `RU-63-04` | SETOPTS has no IntelliJ composer dialog at all | promoted — `P63-D7-005` |
+| 5 | `RU-62-03` | `RU-63-04` | Independent confirmation (logic/UI layer) of the same SETOPTS/IntelliJ absence `RU-62-04` referred | promoted — `P63-D7-005` (merged with row 4) |
+| 6 | `RU-62-05` | `RU-63-02` | Whether IntelliJ's TextMate importer honors `filenames`; whether IntelliJ's LSP4IJ registration independently covers `.bbl` | not-reproducible |
+| 7 | `RU-62-02` | `RU-63-02` | None of format/denumber/tokenized-detection/decompile has any IntelliJ counterpart at all (four features in one bullet); #65 checked by number as the tokenized-detection neighbour | promoted — `P63-D7-006` |
 | 8 (routed) | INVENTORY Routing table (D-06) | `RU-63-03`/D6 | `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch | promoted — `P63-D6-002` |
 
 **Countability notes.** Referrals **#4 and #5 describe the same absence from two Phase 62 vantage points and are triaged once**, as a single disposition on `RU-63-04` naming both source referrals — recording two findings for one absence would double-count. `RU-63-03` and `RU-63-05` own **zero** inherited referrals from Phase 62 — stated explicitly here rather than left as silence. This ledger's completion (all 8 rows carrying a non-`pending` disposition) is the phase's third hard gate (D-17.3), re-confirmed by plan `63-05`.
@@ -2881,34 +2881,308 @@ Filled by plan `63-05`. Both the file gate and the cell-total gate are re-run at
 
 ### A. File gate (61-file tree enumeration)
 
-pending
+Command, re-run from the tree at execution time, not from any plan's typed list:
+
+```bash
+find bbj-intellij/src/main/java -name '*.java' | wc -l
+```
+
+**Output:** `61`
+
+Basename presence loop, re-run against this file:
+
+```bash
+for b in $(find bbj-intellij/src/main/java -name '*.java' | xargs -n1 basename); do
+  grep -qF "$b" .planning/reviews/63-COVERAGE.md || echo "MISSING $b"
+done
+```
+
+**Output:** (empty — every one of the 61 basenames is present somewhere in this file.)
+
+**Unit distribution**, read from each unit's own `**Files**` header rather than re-typed: `RU-63-03`
+6, `RU-63-01` 11, `RU-63-04` 13, `RU-63-05` 13, `RU-63-02` 18. **6 + 11 + 13 + 13 + 18 = 61**,
+matching the tree enumeration exactly. The 6/18 split of the 24 files directly under
+`com/basis/bbj/intellij/` held throughout the phase: `RU-63-02`'s own Task 2 acceptance check
+(plan `63-05`) confirmed none of `RU-63-03`'s six basenames (`BbjSettings.java`,
+`BbjSettingsComponent.java`, `BbjSettingsConfigurable.java`, `BbjHomeDetector.java`,
+`BbjNodeDetector.java`, `BbjNodeDownloader.java`) appears inside the `## RU-63-02` section — no
+file is claimed as *owned* by two units.
+
+**Gate closes with agreement:** 61 files enumerated from the tree, 61 basenames confirmed present,
+unit distribution sums to 61.
 
 ### B. Cell-total gate (three-source re-derivation)
 
-pending
+Command, re-run against `INVENTORY.md` at execution time, not restated from any earlier plan's
+block:
+
+```bash
+awk '/^\| `RU-63-0[1-5]` \|/ {a+=gsub(/applies/,"applies"); n+=gsub(/n\/a/,"n\/a")} END{print a, n, a+n}' \
+  .planning/reviews/INVENTORY.md
+```
+
+**Output:** `35 5 40`
+
+This file's own content, counted independently:
+
+| Source | Command | Output |
+|---|---|---|
+| Stated totals (this file's header, Cell-Total Gate block) | — | `35 applies, 5 n/a, 40 total` |
+| INVENTORY re-derivation (above) | `awk` over `RU-63-0[1-5]` grid rows | `35 5 40` |
+| This file's own recorded verdicts | `grep -cE '^- D[1-8] .* — (pass\|fail) — '` | `35` |
+| This file's own `n/a` carry-forwards | `grep -cE '^- D[1-8] .* — n/a — '` | `5` |
+| This file's own total cell lines | `grep -cE '^- D[1-8] '` | `40` |
+| This file's own remaining placeholders | `grep -cE '^- D[1-8] .* — pending$'` | `0` |
+
+**Verdict: all three sources agree.** 35/5/40 stated, 35/5/40 re-derived from INVENTORY, and this
+file's own content (35 verdicts + 5 `n/a` = 40 cell lines, 0 placeholders) match exactly. No
+disagreement was found, so none is surfaced as a defect (D-17.1).
 
 ### C. Finding accounting
 
-pending
+By primary dimension (`grep -oE '^dimension:[[:space:]]+D[1-8]' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
+
+| Dimension | Count |
+|---|---|
+| D1 Security | 8 |
+| D2 Correctness & error handling | 16 |
+| D3 Performance & resource use | 7 |
+| D4 Maintainability & code smells | 14 |
+| D5 Test coverage gaps | 1 |
+| D6 Dependency health | 2 |
+| D7 Cross-IDE parity | 6 |
+| D8 Comment & doc accuracy | 8 |
+| **Total** | **62** |
+
+By severity (`grep -oE '^severity:[[:space:]]+[a-z]+' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
+
+| Severity | Count |
+|---|---|
+| `critical` | 0 |
+| `high` | 4 |
+| `medium` | 17 |
+| `low` | 41 |
+| **Total** | **62** |
+
+By classification (`grep -oE '^classification:[[:space:]]+[a-z]+' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
+
+| Classification | Count |
+|---|---|
+| `easy` | 10 |
+| `major` | 52 |
+| **Total** | **62** |
+
+By effort (`grep -oE '^effort:[[:space:]]+[0-9]+' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
+
+| Effort | Count |
+|---|---|
+| `2` | 17 |
+| `4` | 29 |
+| `8` | 13 |
+| **Off-scale (`1` or `3`)** | **3** |
+| **Total** | **62** |
+
+**Re-derivation disagreement, surfaced per D-17.1 rather than adopted silently:** three findings —
+recorded by plan `63-04` in `RU-63-05` (`effort: 3` on the java-interop poll-cadence finding,
+`effort: 1` on two `easy`-classified doc-accuracy findings) — carry an `effort` value outside
+INVENTORY §3d's stated three-value scale (`2`, `4`, `8`). This is a genuine Finding Standard
+compliance deviation in an earlier plan's already-committed section, which this close-out is not
+authorized to reword (the write contract restricts plan `63-05` to the close-out and the ledger's
+disposition column, not another unit's `### Findings`). Stated here as a fact rather than silently
+adopted or silently corrected.
+
+By disposition (`grep -oE '^disposition:[[:space:]]+[a-z-]+' .planning/reviews/63-COVERAGE.md | sort | uniq -c`):
+
+| Disposition | Count |
+|---|---|
+| `easy-fix` | 10 |
+| `major-refactor` | 52 |
+| **Total** | **62** |
+
+All tables sum to `62`, and `grep -c '^id:' .planning/reviews/63-COVERAGE.md` also prints `62` — the
+dimension count, severity count, classification count, effort count (including the 3 off-scale),
+disposition count, and the `id:` count all agree.
+
+**Not-reproducible dispositions**, by unit — every candidate that did not clear its evidence tier is
+visible here rather than silently dropped (RVW-06):
+
+| Unit | Count | Subject |
+|---|---|---|
+| `RU-63-03` | 1 | whether `extractTarGz`'s delegation to the system `tar` binary permits a path-traversal write via a crafted archive entry |
+| `RU-63-01` | 0 | none |
+| `RU-63-04` | 0 | none |
+| `RU-63-05` | 0 | none |
+| `RU-63-02` | 1 | whether IntelliJ's TextMate importer honors `filenames`, and whether a `.bbl` file picks up TextMate highlighting despite no `<fileType>` claiming it |
+| **Total** | **2** | |
+
+**Dedup resolution.** `grep -cE '^dedup:[[:space:]]*$' .planning/reviews/63-COVERAGE.md` prints `0`
+— no finding has a blank `dedup:` field. Of the 62 findings, **58 resolve to `none`**, **3 resolve
+to `#NNN partial-overlap`** (`P63-D7-002` → `#65`, `P63-D7-005` → `#475`, `P63-D7-006` → `#65`), and
+**1 resolves to a `DEBT-05` cross-reference** rather than a GitHub issue (`P63-D4-010`, `RU-63-05`'s
+own designated DEBT-05 evidence record) — `58 + 3 + 1 = 62`. Issue numbers checked by name across
+the phase's dedup fields (`awk '/^dedup:/{flag=1} /^disposition:/{flag=0} flag' .planning/reviews/63-COVERAGE.md | grep -oE '#[0-9]+' | sort -u`):
+**#231, #381, #385, #410, #475, #476, #486, #65** — eight of the fifteen frozen open issues, with
+**#65, #381 and #476** (this unit's named plausible neighbours per the plan) checked explicitly by
+every `RU-63-02` finding's own `dedup:` field. `#474` also appears once (`P63-D7-005`'s `dedup:`),
+cited as historical context for an already-shipped feature (the existing config.bbx SETOPTS
+composer), not as a check against one of the 15 frozen *open* issues — not counted in the eight
+above.
+
+**D-09 split.** All **52** `major`-classified findings fail INVENTORY 3c's test (4) at minimum,
+because `bbj-intellij` has no `src/test/` source set (`P63-D5-001`) — several also fail additional
+tests (touching more than one file, needing a new dependency, or no single nameable edit), but test
+(4) alone is sufficient to force `major` per D-13. All **10** `easy`-classified findings satisfy
+test (4) **vacuously**, per D-09's reading: each is either a comment/Javadoc/demo-text-only change
+(`P63-D8-001`, `P63-D8-004`, `P63-D8-007`, `P63-D8-008`, and others recorded in earlier units) or a
+dead-code removal with zero runtime-behaviour change (`P63-D4-014`'s unused `BbjIcons.CONFIG`
+constant, and its counterparts in earlier units) — no `easy` finding in this file changes observable
+behaviour. This split is what Phase 67 and Phase 68 consume.
 
 ### D. Cross-unit referral accounting (inbound, with disposition column)
 
-pending
+**Group 1 — referrals addressed to another Phase 63 unit: 1.** `RU-63-01`'s own
+`### Cross-unit referrals` raises one outbound referral to `RU-63-05`, routing
+`BbjServerService.restart()`'s mechanism side (the stop/start implementation behind
+`bbj.refreshJavaClasses`'s full-restart behaviour, `P63-D7-003`). `RU-63-05`'s own D7 cell (plan
+`63-04`) answers it in place — cross-referencing `P63-D7-003` by ID and adding the mechanism-side
+fact (no narrower LSP4IJ request-response call is used, though this same plugin demonstrates the
+`@JsonRequest` pattern elsewhere via `BbjComposerServer.java`) — rather than allocating a second
+finding or leaving the referral pending; `RU-63-05`'s own `### Cross-unit referrals` states this
+resolution explicitly. Not outstanding.
+
+**Group 2 — the 8-row inherited-work table**, per unit `from unit / to unit / subject /
+disposition`, matching the header's `## Inherited referral ledger (D-06)` (resolved by this
+close-out):
+
+| # | From unit | To unit | Subject | Disposition |
+|---|---|---|---|---|
+| 1 | `RU-62-01` | `RU-63-01` | `BbjCompileAction.java` is an unimplemented `TODO` stub, never invokes `bbjcpl` | promoted — `P63-D7-001` |
+| 2 | `RU-62-01` | `RU-63-01` | Six VS Code commands (`configureCompileOptions`, `denumber`, `decompile`, `decompileReadonly`, `em`) have no IntelliJ action counterpart | promoted — `P63-D7-002` |
+| 3 | `RU-62-01` | `RU-63-01` | `bbj.refreshJavaClasses` restarts the whole LS on IntelliJ vs. a targeted LSP request on VS Code | promoted — `P63-D7-003` |
+| 4 | `RU-62-04` | `RU-63-04` | SETOPTS has no IntelliJ composer dialog at all | promoted — `P63-D7-005` |
+| 5 | `RU-62-03` | `RU-63-04` | Independent confirmation (logic/UI layer) of the same SETOPTS/IntelliJ absence `RU-62-04` referred | promoted — `P63-D7-005` (merged with row 4) |
+| 6 | `RU-62-05` | `RU-63-02` | Whether IntelliJ's TextMate importer honors `filenames`; whether IntelliJ's LSP4IJ registration independently covers `.bbl` | not-reproducible |
+| 7 | `RU-62-02` | `RU-63-02` | None of format/denumber/tokenized-detection/decompile has any IntelliJ counterpart at all (four features in one bullet); #65 checked by number as the tokenized-detection neighbour | promoted — `P63-D7-006` |
+| 8 (routed) | INVENTORY Routing table (D-06) | `RU-63-03`/D6 | `bbj-intellij` Gradle build JDK 17-vs-25.0.3 toolchain mismatch | promoted — `P63-D6-002` |
+
+**Countability.** Rows 4 and 5 describe the same absence from two Phase 62 vantage points and
+resolve to **one** disposition (`P63-D7-005`) rather than two findings — so the 8 rows resolve to
+**7 distinct dispositions**: `P63-D7-001`, `P63-D7-002`, `P63-D7-003`, `P63-D7-005`,
+not-reproducible, `P63-D7-006`, `P63-D6-002`. This is the referral gate (D-17.3): **zero of the 8
+rows carries the placeholder `pending`** — every row above resolved in this table, matching the
+header ledger's own resolved disposition column exactly.
 
 ### E. Scope-fidelity note
 
-pending
+**All 61 files were swept**, although ROADMAP's Phase 63 success **criterion 1** names only a
+subset (`BbjRunActionBase.java` and its GUI/BUI/DWC subclasses, `BbjSettingsComponent.java`,
+composer dialogs, `BbjNodeDownloader.java`, `BbjEMTokenStore.java`, LSP wiring, status bar widgets,
+lexer/parser definitions) — the Applicability Grid, not the ROADMAP criteria, is the contract, and
+the criteria are a deliberately named subset of it (D-16). The extra surfaces swept beyond that
+named subset, by unit: the five notification-provider-shaped files across the phase
+(`BbjJavaInteropNotificationProvider.java`, `BbjMissingHomeNotificationProvider.java`,
+`BbjMissingNodeNotificationProvider.java` — `RU-63-02`; `BbjServerCrashNotificationProvider.java` —
+`RU-63-05`; `BbjWelcomeNotification.java` — `RU-63-02`), `BbjColorSettingsPage.java`,
+`BbjSpellcheckingStrategy.java`, `BbjTextMateBundleProvider.java` and `BbjCommenter.java` (all
+`RU-63-02`), and the composer bridge (`BbjComposerServer.java`, `BbjComposerService.java`,
+`ComposerLauncher.java`, `ComposerModels.java`, the three `Configure*Intention.java` files and the
+three `*SchematicPanel.java` files — all `RU-63-04`, alongside its three named composer dialogs).
+Each unit's own `### Unit closure` scope-fidelity note (`RU-63-03`, `RU-63-01`, `RU-63-04`,
+`RU-63-05`, `RU-63-02`) already states this at the unit level; this section restates it once at
+the phase level so a reader of the close-out alone sees the extra coverage as deliberate, not scope
+creep or an omission.
+
+**Two boundaries held throughout the phase:** `plugin.xml` was read as context for the registration
+sweep (`RU-63-02`) and carries no cell and no finding `location:` inside it — confirmed by
+`grep -cE '^location:.*plugin\.xml'` printing `0` (D-16); `bbj-vscode/` was read as D7 reference
+material only across every unit, with no `P63-*` finding located inside it — confirmed by
+`grep -cE '^location:[[:space:]]+bbj-vscode/'` printing `0` (D-05).
+
+**One deliberate exception, named explicitly:** `RU-63-03`'s D6 cell records `P63-D6-002` with
+`location: bbj-intellij/build.gradle.kts:12-13` — a file INVENTORY assigns to `RU-64-02` for every
+other dimension. This is the phase's one deliberate `location:` exception, because INVENTORY's own
+Routing table (D-06) names Phase 63 as this specific item's target phase (ledger row 8 above).
 
 ### F. ROADMAP success criteria
 
-pending
+1. **"All 61 files ... have a recorded pass/fail against D1-D8."** **Met.** Section A's live file
+   gate enumerates 61 files from the tree with every basename confirmed present in this file;
+   section B's live cell gate confirms all three sources agree at 35 `applies`/5 `n/a`/40 total,
+   with 0 placeholders remaining. D6 is `n/a — R-D6-CENTRAL` for four of the five units by
+   INVENTORY's own grid, carried forward verbatim, not left unrecorded.
+
+2. **"`BbjNodeDownloader.java`'s integrity posture is documented — transport security, checksum or
+   signature verification, and archive extraction path safety."** **Met.** `RU-63-03`'s
+   `### SEC-03 Integrity Posture` subsection states all five facts (transport security, checksum/
+   signature absence, zip-slip safety on both extraction paths, cache trust, and the
+   extracted-binary executable-bit step) against `BbjNodeDownloader.java`'s full 290 lines, with
+   `P63-D1-001`/`P63-D1-002` the two promoted findings. **SEC-03 closes with this phase (D-11)** —
+   nothing on it flows to Phase 65 as open work; Phase 65's own inheritance is `RU-63-01`'s D1
+   records for the SEC-04/SEC-05 synthesis, a distinct requirement, not SEC-03 continuing.
+
+3. **"Every recorded finding carries `file:line`, dimension, and a verified failure scenario per
+   the Phase 60 standard."** **Met.** Section C's field-count identity check confirms all 62
+   findings carry non-blank `location:`, `dimension:`, and `failure_scenario:` fields (each counts
+   `62`, matching `id:`). Every `repro`-tier D1/D2/D3 record clears its tier via a line-by-line
+   trace naming concrete inputs/state and the exact `file:line` where behaviour diverges, stating in
+   one clause why it carries no runnable reproduction (D-07 — the Gradle build cannot run in this
+   environment: `./gradlew --offline -q tasks` fails in ~5s on the JDK 17-vs-25.0.3 mismatch before
+   task listing). Every `trace`-tier D4/D8 record and every `inherited`-tier D5/D6/D7 record clears
+   its own tier per INVENTORY §3b. Anything that did not clear its tier is written under
+   `### Not-reproducible dispositions` instead of silently dropped — section C's 2-row table.
+
+4. **"Every recorded finding has been checked against the 15 open GitHub issues for
+   duplication."** **Met.** Section C's dedup paragraph confirms `grep -cE '^dedup:[[:space:]]*$'`
+   prints `0` — no finding has a blank `dedup:` field — and names the eight open-issue numbers
+   actually checked by name (#231, #381, #385, #410, #475, #476, #486, #65), with three findings
+   resolving to a real `partial-overlap` and the rest to `none`.
 
 ### G. Closing confirmations
 
-pending
+**ISSUE-01.** Phase 63 filed no GitHub issue. ISSUE-01 is a hard gate owned by Phase 69; no issue
+was opened, commented on, or drafted by any of the five Phase 63 plans (`63-01`..`63-05`) —
+confirmed by the absence of any `gh issue create`/`gh issue comment` invocation anywhere in this
+phase's plan or summary artifacts.
+
+**`INVENTORY.md` immutability.** `.planning/reviews/INVENTORY.md` was not edited by this phase:
+`git log --oneline -- .planning/reviews/INVENTORY.md` shows no commit since Phase 60's `60-04` wave,
+and `git status --porcelain .planning/reviews/INVENTORY.md` returns nothing at this commit point.
+
+**`62-COVERAGE.md` not reopened or edited.** `git log --oneline -- .planning/reviews/62-COVERAGE.md`
+shows no commit since Phase 62's own `62-05` close-out (`c8603a3`) — no Phase 63 plan touched it,
+consistent with D-05's prohibition.
+
+**No source file modified.** `git status --porcelain bbj-intellij bbj-vscode java-interop` returns
+nothing at this commit point — no file under `bbj-intellij/`, `bbj-vscode/`, or `java-interop/` was
+modified by any Phase 63 plan; this phase records and classifies only. The swept-tree SHA recorded
+in the header by plan `63-01` (`c3b17838879422bf20b2bcf2bf909ee86341ee1a`, branch
+`v4.0-stability-and-quality`) is therefore still the tree all five sweeps in this file describe —
+nothing under review moved beneath them mid-phase.
+
+**RVW-04 and SEC-03.** Both requirements this phase owns are answered by this file: RVW-04 by
+sections A and B together (all 61 files, all 35 live cells recorded); SEC-03 by criterion 2's answer
+above, citing `RU-63-03`'s `### SEC-03 Integrity Posture`.
+
+**What each downstream phase inherits from this file:**
+
+| Phase | Inherits |
+|---|---|
+| Phase 64 | The routed toolchain item at `build.gradle.kts:12-13` (`P63-D6-002`) to re-triage, and `RU-64-02`/SEC-08's continuing ownership of every other dependency version this phase did not touch |
+| Phase 65 | `RU-63-01`'s D1 records (`P63-D1-003`/`004`/`005`) as the IntelliJ half of the SEC-04/SEC-05 synthesis, plus the fact that SEC-03 is already closed (criterion 2 above) — nothing on SEC-03 flows to Phase 65 as open work |
+| Phase 66 | Every finding whose `dedup:` names a `DEBT-*` requirement — `P63-D4-010` in particular, this phase's designated DEBT-05 evidence record |
+| Phase 67 | The `classification: easy` set (10 findings) for its apply path, and the `major` set (52) for `MAJOR-REFACTORS.md` |
+| Phase 68 | This whole file for the DOC-03 concatenation against INVENTORY's grid, including `### Cross-phase observations (VS Code side)` below |
+| Phase 69 | The `dedup:` verdicts on all 62 findings, gated on ISSUE-01, for issue drafting |
 
 ### Cross-phase observations (VS Code side)
 
-Any plan may append a bullet here — never rewording an earlier one — for a VS Code-side observation surfaced during a D7 read that has no `RU-63-*` finding location available to it (D-05). None recorded yet.
+Confirmed against all five unit sections: **exactly one** VS Code-side observation was appended
+during this phase's D7 reads — the bullet below, from `RU-63-05` (plan `63-04`). `RU-63-02`'s own D7
+sweep raised the `.bbl`/TextMate-importer question (referral #6), but that resolved to
+not-reproducible rather than a VS Code-side observation, since it turns on IntelliJ-side runtime
+behaviour, not a defect on the VS Code side. No other unit's D7 sweep surfaced a candidate whose
+defect was plainly on the VS Code side. This subsection is retained with its one entry, per DOC-04's
+intent, rather than deleted or reduced to a bare "none" statement that would misstate what plan
+`63-04` actually found.
 
 - **`RU-63-05` (plan `63-04`).** `bbj-vscode/src/extension.ts` registers no `onDidChangeState` handler on its `LanguageClient`, creates no status-bar item reflecting language-server connection state or java-interop connection state, and implements no crash-loop detection or auto-restart logic anywhere in the file (confirmed by grep for `onDidChangeState`/`State\.`/`crash`/`restart` — the only matches are `deactivate()`, `extension.ts:832-838`, which calls `client.stop()` on extension shutdown, and the two unrelated `suppressionStatusBar`/`bbjcplStatusBar` items, :778-828, which surface diagnostic-suppression and BBjCPL-availability state, not language-server or java-interop connection health). `RU-63-05`'s own `BbjServerService`/`BbjStatusBarWidget`/`BbjJavaInteropStatusBarWidget`/`BbjServerCrashNotificationProvider`/`BbjRestartServerAction` provide all of these on the IntelliJ side. Not a Phase 63 finding per D-05 — this is a VS Code-side absence, not an IntelliJ-side defect, and Phase 62 (which owns `extension.ts`) is closed; noted here for any future VS Code parity backlog item.
