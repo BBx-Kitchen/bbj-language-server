@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 61
 current_phase_name: Language Core Review
 status: executing
-stopped_at: Completed 61-05-PLAN.md
-last_updated: "2026-08-18T04:46:09Z"
+stopped_at: Completed 61-06-PLAN.md
+last_updated: "2026-08-18T05:09:08.223Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 61 Plan 05 — RU-61-04 (LSP feature providers) swept across all 6 live dimensions
 progress:
   total_phases: 10
   completed_phases: 1
   total_plans: 11
-  completed_plans: 9
+  completed_plans: 10
   percent: 10
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 61 (Language Core Review) — EXECUTING
-Plan: 6 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-08-18 — Plan 61-05 (RU-61-04) complete
 
@@ -86,6 +86,7 @@ Last activity: 2026-08-18 — Plan 61-05 (RU-61-04) complete
 | Phase 61 P03 | 20min | 2 tasks | 1 files |
 | Phase 61-language-core-review P04 | 20min | 2 tasks | 1 files |
 | Phase 61-language-core-review P05 | ~45min | 2 tasks | 1 files |
+| Phase 61-language-core-review P06 | ~50min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 61 Plan 05]: Settled RU-61-06's open not-reproducible disposition — hover/completion documentation is explicitly typed and sent as LSP Markdown (kind: 'markdown'), confirming unescaped peer javadoc/signature text CAN render as markup (P61-D1-004); no command-execution claim asserted (VS Code sanitizes untrusted MarkupContent)
 - [Phase 61 Plan 05]: Unvalidated peer-supplied FQNs interpolate unescaped into `use ${fqn}\n` TextEdits inserted into the user's source document via the missing-use quick-fix and completion auto-import, with no format validation at either call site (P61-D1-005)
 - [Phase 61 Plan 05]: TEST-03 skip recorded as P61-D5-010 with dedup naming DEBT-02 as owning requirement; signature-help provider and hover provider's core logic found to have zero direct behavioral test coverage (P61-D5-011, P61-D5-012)
+- [Phase ?]: [Phase 61 Plan 06]: Resolved all 4 inherited cross-unit referrals for RU-61-05 — 2 promoted to new findings with direct node -e reproductions (P61-D1-006 interop host/port call-site gap, P61-D1-008 PREFIX path traversal), 1 dismissed with evidence (RU-61-03's trackBbjcplAvailability), 1 promoted as the hookTimeout flakiness cost-profile trace (P61-D5-013)
+- [Phase ?]: [Phase 61 Plan 06]: Found root cause behind #33 (multi-root workspaces broken) — initializeWorkspace() reads project.properties/config.bbx from folders[0] only (P61-D2-015); found settings never refresh on didChangeConfiguration, matching #486 exactly (P61-D2-018)
+- [Phase ?]: [Phase 61 Plan 06]: constants.ts/utils.ts dead-module candidate confirmed live (3 references) and dismissed with evidence, not asserted as a finding, per plan's explicit instruction
 
 ### Tech Debt
 
@@ -164,8 +168,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-18T04:46:09Z
-Stopped at: Completed 61-05-PLAN.md
+Last session: 2026-08-18T05:09:08.206Z
+Stopped at: Completed 61-06-PLAN.md
 Resume file: None
 
 ---
