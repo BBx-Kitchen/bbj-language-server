@@ -1833,9 +1833,9 @@ disposition:       easy-fix
 **Owning plan:** 61-05.
 
 ### Cells
-- D1 Security — pending
-- D2 Correctness & error handling — pending
-- D3 Performance & resource use — pending
+- D1 Security — fail — Checked whether peer-supplied Java class/member/javadoc text (via `JavaInteropService`) or document content reaches rendered hover/completion markdown unescaped: it does — `bbj-hover.ts:88-106`'s `getAstNodeHoverContent` returns the peer's javadoc/method-signature text as a plain string that Langium's `AstNodeHoverProvider.getHoverContent` (langium `hover-provider.ts:58-64`) wraps into `Hover.contents = {kind:'markdown', value:...}` with no escaping; `bbj-completion-provider.ts:670-691`'s `createReferenceCompletionItem` does the same for `CompletionItem.documentation`. This settles `RU-61-06`'s open not-reproducible disposition on this question: the renderer IS explicitly configured for Markdown, so peer-supplied text CAN be interpreted as markup (link/image/emphasis injection) — recorded as `P61-D1-004`. Checked whether `bbj-code-action-provider.ts` constructs a workspace edit from untrusted text, and whether `bbj-use-insert.ts` builds an insertion from a value it does not control: both do — the quick-fix (`createUseAction`, `bbj-code-action-provider.ts:82-83`) and completion-time auto-import (`bbj-completion-provider.ts:99-113`) both interpolate an unvalidated, peer-supplied FQN string directly into a `use ${fqn}\n` `TextEdit` inserted into the user's own document via `bbj-use-insert.ts`'s `useInsertPosition`, which supplies only the insertion line and performs no content validation of its own — recorded as `P61-D1-005`. Checked whether any provider logs document content or resolved paths at a level reaching a user-visible output channel: `bbj-hover.ts:46`'s error-degrade path logs only the exception stack and numeric offset via `logger.warn`, never document content — no finding. 2 findings recorded: `P61-D1-004`, `P61-D1-005`.
+- D2 Correctness & error handling — fail — Checked the three phase-wide translated edge probes concretely and empirically (throwaway `test/__tmp_ru04_repro.test.ts`, run via `npx vitest run`, deleted before commit): touching/coinciding ranges — `bbj-hover.ts:37`'s `cstNode.offset + cstNode.length > offset` guard uses a strict inequality, so hovering exactly at a token's trailing boundary (confirmed: right after `xyz` in `LET xyz = 10`) returns `undefined` rather than the left token's hover, standard LSP boundary behavior, not a defect; `bbj-document-symbol-provider.ts`'s error-recovery branches (`getSymbol`, lines 84-103) can legitimately emit a parent `(parse error)` symbol and a child symbol sharing the identical CST range during error recovery — both are emitted (merged into the hierarchy, neither dropped), the intended behavior. Empty/single-element inputs — confirmed empirically: hover on an empty document returns `undefined` (no throw); document symbols on an empty document return `[]`; the `(` trigger for an unresolved callee returns `{items: [], isIncomplete: false}` per the shipped Phase 59 decision, not `undefined`. Order stability — completion items rely on JS's stable `Array.prototype.sort`/insertion order with no provider-added nondeterminism, and `bbj-code-action-provider.ts`'s `rankCandidates` sorts deterministically; no divergence. Two genuine divergences found: `bbj-completion-provider.ts:154-200`'s `getCompletion` only forwards its `cancelToken` parameter on the `.`-trigger branch (line 180) — the `#`, `"`, and default Ctrl+Space paths (including the network-bound `completeAutoImportClasses`) never receive or check it, so a cancelled request still runs those paths to completion with the result silently discarded — recorded as `P61-D2-013`; and `bbj-document-symbol-provider.ts`'s deep-walk-fallback dedup keys solely on each recovered symbol's *start* position (`collectPositions`, lines 173-182), so two distinct sibling nodes whose `$cstNode.range.start` coincide collide and the second is silently dropped from recovery — recorded as `P61-D2-014`. Also confirmed `bbj-inlay-hint-provider.ts:65`'s consumption of `bbj-overload-selector.ts`'s `findBestOverload` is the upstream-consumer context for `RU-61-02`'s already-recorded `P61-D2-012` — no new finding here, since that defect's `location:` is `bbj-overload-selector.ts` (`RU-61-02`'s file), not this unit's. 2 findings recorded: `P61-D2-013`, `P61-D2-014`.
+- D3 Performance & resource use — fail — Checked whether `bbj-completion-provider.ts` rebuilds candidate lists from scratch per invocation and walks the whole document versus the enclosing scope: cross-reference-based completion delegates scope resolution entirely to `RU-61-02`'s already-swept scope provider (not duplicated here, no new finding), but `completeAutoImportClasses` (lines 90-116) issues a fresh, unmemoized `javaInterop.findClassCandidatesByPrefix` call — a full scan of `completeClassIndex`/`resolvedClasses` (`java-interop.ts:382-405`) — on every qualifying keystroke (2+ typed chars, `AUTO_IMPORT_MIN_PREFIX`) in a type-reference position, with no local cache or debounce anywhere in this unit's own code; the same call also awaits `ensureCompleteClassIndex`, which serializes through `RU-61-06`'s single global resolution lock (`P61-D3-002`) and, against an unresponsive peer, can stall the interactive completion request itself for the connect timeout or longer (per `RU-61-06`'s no-timeout `loadClasspath`/`getClassInfos` finding) — cross-referencing, not duplicating, that analysis. Recorded as `P61-D3-004`. Checked `bbj-semantic-token-provider.ts` and `bbj-inlay-hint-provider.ts` for full-AST re-traversal beyond the framework's own per-request walk: both extend Langium abstract providers (`AbstractSemanticTokenProvider`, `AbstractInlayHintProvider`) that already perform one bounded `streamAst`/CST walk per request and already call `interruptAndCheck` internally; neither this unit's `highlightElement` nor `computeInlayHint` callback adds any traversal of its own — each is O(1) per visited node — no finding. 1 finding recorded: `P61-D3-004`.
 - D4 Maintainability & code smells — pending
 - D5 Test coverage gaps — pending
 - D6 Dependency health — n/a — "No distinct third-party dependency of its own; dependency-tree health (npm and Gradle) is assessed once, exhaustively, at `RU-64-02`, and vendored-binary provenance at `RU-64-03`. Repeating the audit per unit would restate the same npm/Gradle audit under a different heading, not surface a new finding."
@@ -1843,13 +1843,221 @@ disposition:       easy-fix
 - D8 Comment & doc accuracy — pending
 
 ### Findings
-_(none recorded)_
+
+```
+id:                P61-D1-004
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-hover.ts:88-106, bbj-vscode/src/language/bbj-completion-provider.ts:670-691
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: bbj-hover.ts's getAstNodeHoverContent (88-106) reads
+                    documentation.docu, passes it through tryParseJavaDoc (line 91, defined
+                    138-149) with no escaping or length bound, and returns it as part of a plain
+                    string. That string is the sole input to Langium's own
+                    AstNodeHoverProvider.getHoverContent (node_modules/langium/src/lsp/
+                    hover-provider.ts:58-64), which wraps it unmodified into
+                    `Hover.contents = { kind: 'markdown', value: ... }` — sent to the client as
+                    LSP MarkupContent explicitly typed as Markdown. Separately,
+                    bbj-completion-provider.ts's createReferenceCompletionItem (670-691) builds
+                    `superImpl.documentation = { kind: 'markdown', value: parts.join('\n\n') }`
+                    from the same node.docu.javadoc field. Neither site escapes Markdown control
+                    characters (`[`, `]`, `(`, `)`, backtick, `!`) before interpolation.
+failure_scenario:  A malicious or compromised java-interop peer (SEC-06, RU-61-06) returns a
+                    getClassInfo response whose javadoc text contains Markdown link/image syntax
+                    (e.g. `![x](https://evil.example/track.png)` or `[click here](https://evil.
+                    example/phish)`); hovering over, or viewing completion documentation for, any
+                    reference to that Java class renders the injected link/image inside the IDE's
+                    hover/completion popup. This settles RU-61-06's own not-reproducible
+                    disposition on this exact question: the renderer is confirmed configured for
+                    Markdown (not plaintext), so the weaker claim (markup CAN be interpreted) is
+                    now established with file:line evidence; the stronger claim (script/command
+                    execution) is explicitly NOT asserted — see Not-reproducible dispositions
+                    below.
+classification:    major
+                    (1) touches 2 files (bbj-hover.ts, bbj-completion-provider.ts) to add a shared
+                    escaping step: FAIL — (2) no public API/grammar/LSP change: pass — (3) no new
+                    dependency: pass — (4) regression-testable with vitest: pass — (5) reviewer
+                    can name the exact edit (escape Markdown control characters in
+                    tryParseJavaDoc's output and in the javadoc/signature strings before they
+                    reach `documentation`/`contents`): pass — (6) severity `medium` but primary
+                    dimension is D1: FAIL — major regardless of the other five tests (D-13's
+                    safety gate).
+effort:            4
+dedup:             none — checked #108 (inlay hints, an unrelated feature request) and #475
+                    (SETOPTS composer decode-hover feature request, a different subsystem/phase —
+                    RU-62-04) explicitly; neither concerns markdown-escaping of javadoc/hover
+                    content in this unit's providers.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D1-005
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-code-action-provider.ts:82-83, bbj-vscode/src/language/bbj-completion-provider.ts:99-113
+dimension:         D1
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: createUseAction (bbj-code-action-provider.ts:82-83) builds
+                    `TextEdit.insert(useInsertPosition(document), \`use ${fqn}\\n\`)` where `fqn`
+                    is a candidate returned by
+                    javaInterop.resolveClassCandidatesBySimpleName(simpleName) — sourced from
+                    either completeClassIndex (built from unvalidated peer `name`/`packageName`
+                    fields, java-interop.ts:340-346) or `javaClass.packageName`/`javaClass.name`
+                    (also unvalidated peer fields, per P61-D1-002). completeAutoImportClasses
+                    (bbj-completion-provider.ts:99-113) does the same via
+                    `additionalTextEdits: [TextEdit.insert(insertPosition, \`use ${fqn}\\n\`)]`.
+                    Neither call site validates fqn's format (e.g. a legal Java identifier
+                    sequence) before interpolating it into source text inserted into the user's
+                    own document. bbj-use-insert.ts's useInsertPosition only computes the
+                    insertion line; it performs no content validation of its own.
+failure_scenario:  A malicious or compromised java-interop peer returns a class/package name
+                    containing embedded newlines or arbitrary BBj source text (e.g.
+                    "Foo\nRUN \"malicious.bbj\"") in a getClassInfo/getClassInfos response. The
+                    resulting `use` quick-fix (marked isPreferred: true for the top-ranked
+                    candidate, steering VS Code's Ctrl+. Auto Fix toward it) or auto-import
+                    completion item inserts that text verbatim into the user's source file when
+                    accepted, without any confirmation beyond the ordinary quick-fix/completion
+                    acceptance gesture.
+classification:    major
+                    (1) touches 2 files (bbj-code-action-provider.ts, bbj-completion-provider.ts)
+                    to add validation, or bbj-use-insert.ts to centralize it: FAIL — (2) no public
+                    API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                    regression-testable with vitest: pass — (5) reviewer can name the exact edit
+                    (validate fqn against a legal-identifier-sequence pattern before building the
+                    TextEdit, in both call sites or a shared helper): pass — (6) severity `medium`
+                    but primary dimension is D1: FAIL — major regardless (D-13's safety gate).
+effort:            4
+dedup:             none — checked #108 and #475 explicitly; neither concerns FQN validation on
+                    the missing-use quick-fix/auto-import insertion path.
+disposition:       major-refactor
+```
+
+```
+id:                P61-D2-013
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-completion-provider.ts:154-200
+dimension:         D2
+secondary:         [D3]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: getCompletion (154-200) receives an optional cancelToken
+                    parameter (line 154) but only forwards it once, on the '.'-trigger branch
+                    (line 180, `await super.getCompletion(document, params, cancelToken)`). The
+                    '#' branch (getFieldCompletion, no cancelToken param at all), the '"' branch
+                    (getFilePathCompletion, no cancelToken param), and the default Ctrl+Space
+                    branch (getFilePathCompletion, getConstructorCompletion,
+                    completeAutoImportClasses via completionForCrossReference — none accept or
+                    check cancelToken) never observe cancellation. completeAutoImportClasses
+                    (90-116) in particular awaits a java-interop network round trip
+                    (findClassCandidatesByPrefix) that can itself run for seconds against an
+                    unresponsive peer (RU-61-06's P61-D3-002).
+failure_scenario:  A user types quickly inside a type-reference position; the editor cancels an
+                    earlier completion request as a newer one supersedes it (standard LSP
+                    behavior on rapid keystrokes). The cancelled request's
+                    completeAutoImportClasses call is not interrupted — it continues running
+                    (including its java-interop round trip) to completion, wasting CPU and
+                    java-interop's single global resolution lock queue (RU-61-06) on a result
+                    that is discarded on arrival.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest (pass a
+                    pre-cancelled token and assert early return): pass — (5) reviewer can name the
+                    exact edit (thread cancelToken through getFieldCompletion/
+                    getFilePathCompletion/completeAutoImportClasses and check
+                    cancelToken.isCancellationRequested at each await boundary): pass — (6)
+                    severity `medium`, primary dimension D2 (D3 only secondary): pass — all six
+                    pass, `easy`.
+effort:            4
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D2-014
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-document-symbol-provider.ts:155,173-182
+dimension:         D2
+secondary:         []
+severity:          low
+evidence_tier:     repro
+evidence:          Line-by-line trace: applyDeepWalkFallback (134-171) and collectPositions
+                    (173-182) key every already-covered and newly-recovered symbol solely by its
+                    *start* position — `sym.range.start.line * 100_000 + sym.range.start.
+                    character` (line 176, and identically at line 155) — never consulting the
+                    range's end. Two distinct sibling AST nodes whose $cstNode.range.start
+                    coincide exactly (reachable via the "no $cstNode at all... recurse into
+                    children" branch at lines 102-103 combined with a broken-name wrapper
+                    collapsed onto the same starting token during error recovery) collide on this
+                    key; the second symbol's `coveredPositions.has(pos)` check (line 156) is then
+                    true, so it is silently skipped rather than added.
+failure_scenario:  In a document with parser errors under LARGE_FILE_THRESHOLD (triggering the
+                    deep-walk fallback, line 52), two distinct named nodes that happen to start at
+                    the identical line/character produce only one outline entry instead of two;
+                    the second node's symbol is dropped from recovery with no indication to the
+                    user that anything is missing from the outline.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: pass — (5)
+                    reviewer can name the exact edit (key coveredPositions on the full range —
+                    start and end — not just start): pass — (6) severity `low`, dimension D2:
+                    pass — `easy`.
+effort:            2
+dedup:             none
+disposition:       easy-fix
+```
+
+```
+id:                P61-D3-004
+unit:              RU-61-04
+location:          bbj-vscode/src/language/bbj-completion-provider.ts:90-116
+dimension:         D3
+secondary:         [D5]
+severity:          medium
+evidence_tier:     repro
+evidence:          Line-by-line trace: completeAutoImportClasses (90-116) calls
+                    `this.javaInterop.findClassCandidatesByPrefix(prefix)` on every qualifying
+                    completion invocation (2+ typed chars, AUTO_IMPORT_MIN_PREFIX = 2, line 19)
+                    in a type-reference position, with no cache or debounce keyed on `prefix` in
+                    this unit's own code. findClassCandidatesByPrefix (java-interop.ts:382-405)
+                    performs a full scan of completeClassIndex (or resolvedClasses, as fallback)
+                    each call — cost scales with total indexed classes, not the typed prefix
+                    length. The same call path also awaits ensureCompleteClassIndex, which
+                    serializes through RU-61-06's single global resolution lock (P61-D3-002); a
+                    peer that accepts the connection and never answers can stall this unit's own
+                    completion request for the connect-timeout window or longer, per RU-61-06's
+                    no-timeout loadClasspath/getClassInfos finding.
+failure_scenario:  Typing a Java class name prefix character-by-character inside a type
+                    reference (e.g. "H", "Ha", "Has", "Hash", "HashM", "HashMa", "HashMap") in a
+                    workspace with a large classpath re-runs the full completeClassIndex/
+                    resolvedClasses scan on every keystroke from the second character onward;
+                    against an unresponsive java-interop peer, the same keystrokes each risk
+                    stalling the completion popup for the connect-timeout window.
+classification:    easy
+                    (1) touches 1 file: pass — (2) no public API/grammar/LSP change: pass — (3) no
+                    new dependency: pass — (4) regression-testable with vitest: pass — (5)
+                    reviewer can name the exact edit (add a small prefix-keyed
+                    memoization/debounce cache around findClassCandidatesByPrefix in
+                    bbj-completion-provider.ts): pass — (6) severity `medium`, primary dimension
+                    D3 (D5 only secondary): pass — `easy`.
+effort:            4
+dedup:             none — cross-references, does not duplicate, RU-61-06's P61-D3-002 (that
+                    finding is the global-lock serialization mechanism in java-interop.ts; this
+                    finding is this unit's own missing per-keystroke memoization at its call
+                    site).
+disposition:       easy-fix
+```
 
 ### Not-reproducible dispositions
-_(none recorded)_
+
+- **Tier failed: `repro` (D1).** Candidate claim: the unescaped, unbounded peer-supplied text flowing into `Hover.contents`/`CompletionItem.documentation` (both explicitly `kind: 'markdown'`) achieves arbitrary script execution or LSP-command execution in the rendered IDE UI, not merely markdown/link/image injection. **Reason not recorded as a finding:** VS Code's markdown renderer for untrusted `MarkupContent` sanitizes raw HTML and does not honor `command:`-scheme URIs unless the containing `MarkdownString` is explicitly marked `isTrusted`, which neither this language server nor the LSP hover/completion response shape ever sets; IntelliJ/LSP4IJ's markdown-sanitization posture is implemented in `bbj-intellij/`, outside this unit's files and outside this phase's review surface (Phase 61 reviews `bbj-vscode/src/language/` only). The weaker, now-confirmed claim — that peer-supplied text reaches a field explicitly typed and transmitted as Markdown, unescaped — is recorded as `P61-D1-004`, which is what settles `RU-61-06`'s own not-reproducible disposition on this exact question.
+- **Tier failed: `repro` (D2).** Candidate claim: `bbj-completion-provider.ts`'s per-grammar-feature `completionForCrossReference` override could produce duplicate or conflicting completions when a type-reference position and a dot-trigger (`.`) position overlap for the same token. **Reason not recorded as a finding:** whether such an overlapping position is reachable at all depends on `RU-61-02`'s already-swept scope-provider behavior (which grammar features the scope provider predicts at a given offset), not on any logic this unit's own files add; tracing this unit's code alone does not establish reachability, and no reproduction was built for a claim rooted outside this unit's files.
 
 ### Cross-unit referrals
-_(none recorded)_
+
+- **RU-61-02** — `bbj-inlay-hint-provider.ts:65`'s sole real consumption of `bbj-overload-selector.ts`'s `findBestOverload` is the upstream-consumer context for `RU-61-02`'s already-recorded `P61-D2-012` (that finding's `location:` is `bbj-overload-selector.ts`, `RU-61-02`'s own file, per the finding-ownership rule). No new defect was found in this unit's own consumption of it, so nothing further is referred — noted here per plan `61-04`'s explicit handoff in its own Next Phase Readiness section.
 
 ## RU-61-05 — Server lifecycle, DI wiring & workspace management
 
