@@ -60,8 +60,8 @@ than reassigned (none of this plan's four does).
 | `P66-D2-001` | DEBT-03 | 66-01 | D2 (secondary D5) | Allocated — see `## DEBT-03` |
 | `P66-D2-002` | DEBT-04 | 66-02 | D2 | Allocated — see `## DEBT-04` |
 | `P66-D4-001` | DEBT-05 | 66-02 | D4 | Allocated — see `## DEBT-05` |
-| `P66-D2-003` | DEBT-07 | 66-03 | D2 | Not this plan's — pending 66-03 |
-| `P66-D5-003` | DEBT-08 | 66-03 | D5 | Not this plan's — pending 66-03 |
+| `P66-D2-003` | DEBT-07 | 66-03 | D2 | Allocated — see `## DEBT-07` |
+| `P66-D5-003` | DEBT-08 | 66-03 | D5 | Allocated — see `## DEBT-08` |
 
 ## Dedup source
 
@@ -166,10 +166,10 @@ reproducible), one row per bullet, each carrying that bullet's `PROJECT.md` line
 |---|---|---|---|---|
 | 250 | BbjCompletionFeature still extends LSPCompletionFeature | DEBT-05 | `P66-D4-001` | major-refactor — see `## DEBT-05` |
 | 251 | CPU stability mitigations documented but not yet implemented (#232) | DEBT-01 | `P66-D3-001` | major-refactor — see `## DEBT-01` |
-| 252 | CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge | DEBT-07 | `P66-D2-003` | pending 66-03 |
+| 252 | CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge | DEBT-07 | `P66-D2-003` | major-refactor — see `## DEBT-07` |
 | 253 | TEST-03 (DEF FN completion inside class methods) skipped | DEBT-02 | `P66-D5-002` | major-refactor — see `## DEBT-02` |
 | 254 | 3 parser.test.ts assertions DISABLED | DEBT-02 | `P66-D5-001` | major-refactor — see `## DEBT-02` |
-| 255 | IntelliJ TextMate bundle filename registration unverified | DEBT-08 | `P66-D5-003` | pending 66-03 |
+| 255 | IntelliJ TextMate bundle filename registration unverified | DEBT-08 | `P66-D5-003` | wontfix (blocked on `P64-D6-010`) — see `## DEBT-08` |
 | 256 | FQN path static-only filtering deferred | DEBT-04 | `P66-D2-002` | major-refactor — see `## DEBT-04` |
 | 257 | Static method return type inference gap | DEBT-03 | `P66-D2-001` | easy-fix — see `## DEBT-03` |
 
@@ -178,10 +178,11 @@ items (DEBT-01, DEBT-02, DEBT-03) that plan owns; DEBT-02 spans two bullets/rows
 D-07's two-unblocking-conditions split (see `## DEBT-02`) keeps them as two distinct register rows
 even though both resolve under the one `DEBT-02` requirement. **Rows 66-02 verdicted:** 250 and 256
 (DEBT-05, DEBT-04 — see `## DEBT-05`/`## DEBT-04`), closing out this plan's own two owed rows in
-full — no row in this register carries a marker naming this plan as still owing it. **Rows still
-owed:** 252 and 255 remain `pending 66-03` (DEBT-07, DEBT-08) — neither orphan bullet is dropped or
-silently folded; 66-03 closes them by adding `DEBT-07`/`DEBT-08` to `REQUIREMENTS.md`, never by
-editing `INVENTORY.md`.
+full. **Rows 66-03 verdicted:** 252 and 255 (DEBT-07, DEBT-08 — see `## DEBT-07`/`## DEBT-08`),
+closing the two orphan bullets `INVENTORY.md:1220` recorded by adding `DEBT-07`/`DEBT-08` to
+`REQUIREMENTS.md`, never by editing `INVENTORY.md` — confirmed unchanged by the literal
+`git status --porcelain` output in `## INVENTORY.md non-edit evidence (D-05)` above. **All eight
+denominator rows now carry a verdict; no row in this register carries a `pending` marker.**
 
 Lines 252 and 255 are the two orphans `INVENTORY.md:1220` recorded (the 8-vs-6 debt-list drift);
 their rows above are the pointer into that drift and are what makes it discoverable from this file
@@ -1333,3 +1334,442 @@ evidence gathering (dedup checks against the frozen snapshot) was already record
 Dedup source` section; this plan added no new `gh` call of any kind, read-only or otherwise. D-01
 (verdict-only, no source change) and D-02 (zero tracker writes) both hold, evidenced by the literal
 command output above rather than asserted.
+
+## DEBT-07
+
+DEBT-07 is one of the two orphan bullets `INVENTORY.md:1220` recorded (`PROJECT.md` line 252) —
+carried in `PROJECT.md` as "CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL
+merge (timing nuance, end state correct)", with no `DEBT-*` requirement and no inherited `P6N-*`
+finding to cite. This section leads with a fresh trace, the same shape `## DEBT-04` above used for
+the other zero-inherited-evidence item.
+
+### Trace
+
+**The claimed mechanism — `bbj-vscode/src/language/bbj-document-validator.ts`'s `DiagnosticTier`
+hierarchy and its Rule 0.** `getDiagnosticTier` (`:59-63`) assigns `DiagnosticTier.BBjCPL` (`:53`,
+the highest tier) to any diagnostic whose `source === 'BBjCPL'`. `applyDiagnosticHierarchy`
+(`:80-131`) computes `hasBbjcplErrors` (`:93-95`) by scanning its own `diagnostics` **parameter**
+for a `BBjCPL`-tier entry, and Rule 0 (`:99-104`) filters out `DiagnosticTier.Parse` entries **only
+when** `hasBbjcplErrors` is `true`. The class's own doc comment (`:70-77`) states the intended rule
+in plain words: "BBjCPL errors present → suppress Langium parse errors (they're redundant)".
+
+**Where `applyDiagnosticHierarchy` is actually invoked — one call site, one input shape.**
+`BBjDocumentValidator.validateDocument` (`:161-169`) is the **only** place `applyDiagnosticHierarchy`
+is called: `const diagnostics = await super.validateDocument(document, options, cancelToken);` (`:167`)
+then `return applyDiagnosticHierarchy(diagnostics, ...)` (`:168`). `super.validateDocument`
+(Langium's own `DefaultDocumentValidator.validateDocument`,
+`bbj-vscode/node_modules/langium/lib/validation/document-validator.js:23-25`) opens with
+`const diagnostics = [];` — a **fresh, empty array on every call**, populated only from
+`processLexingErrors`/`processParsingErrors`/`processLinkingErrors`/`validateAst` (`:27-45` of that
+file) — none of which can ever produce a `source: 'BBjCPL'` diagnostic, because BBjCPL is an
+external compiler process, not a Langium validation check. **Consequence: the `diagnostics` array
+`applyDiagnosticHierarchy` examines on every single call, on every build cycle, contains zero
+`BBjCPL`-tier entries by construction — `hasBbjcplErrors` is always `false`, and Rule 0's filter
+(`:100-104`) never executes its body.**
+
+**Where BBjCPL diagnostics actually enter `document.diagnostics` — a separate path that never
+calls `applyDiagnosticHierarchy` at all.** `BBjDocumentBuilder.debouncedCompile`
+(`bbj-vscode/src/language/bbj-document-builder.ts:155-187`) is scheduled from
+`runBbjcplForDocuments` (`:117`) after `super.buildDocuments()` (i.e., after the Langium validate
+phase above has already run and already published its Rule-0-filtered, BBjCPL-blind diagnostics).
+After its 500ms debounce fires, it awaits `cplService.compile(key)` (`:173`) and, when
+`cplDiags.length > 0`, sets `document.diagnostics = mergeDiagnostics(document.diagnostics ?? [],
+cplDiags)` directly (`:177-180`) — `mergeDiagnostics` (`bbj-document-validator.ts:139-156`) only
+relabels a same-line Langium diagnostic's `source` to `'BBjCPL'` or appends a BBjCPL-only entry; it
+contains no `DiagnosticTier` check and calls `applyDiagnosticHierarchy` **zero times**
+(confirmed: `grep -n "applyDiagnosticHierarchy" bbj-vscode/src/language/bbj-document-builder.ts`
+returns no match — the function is not even imported there). `debouncedCompile` then calls
+`this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None)` (`:186`),
+which (per Langium's own `DefaultDocumentBuilder.notifyDocumentPhase`,
+`node_modules/langium/lib/workspace/document-builder.js:425-433`) only fires document-phase
+listeners (the diagnostics-publish-to-client listener) — it does **not** re-run validation and
+does **not** re-invoke `applyDiagnosticHierarchy`.
+
+**Why a later edit doesn't close the gap either.** A genuinely new document edit resets
+`document.diagnostics` to `undefined` before the next validate phase
+(`DefaultDocumentBuilder.resetToState`, `document-builder.js:206-233`, the `IndexedReferences` case
+at `:224-225`: `document.diagnostics = undefined;`), so no build's `validateDocument()` call is ever
+seeded with a prior cycle's merged BBjCPL diagnostics either — the array `applyDiagnosticHierarchy`
+sees is fresh and BBjCPL-blind on **every** cycle, not just the first.
+
+**Concrete inputs, traced end to end.** A `.bbj` file with a syntax error that both Langium's
+parser and BBjCPL flag on the same source line, open in an editor, with `compilerTrigger` at its
+default `'debounced'` (`bbj-document-validator.ts:37`) and `suppressCascadingEnabled` at its
+default `true` (`:27`): on save, `super.buildDocuments()` validates and publishes a `Parse`-tier
+Langium diagnostic (Rule 0 never fires — no `BBjCPL` diagnostic exists yet in this call's fresh
+array). 500ms later, `debouncedCompile` runs BBjCPL, gets a same-line `cplDiag`, and
+`mergeDiagnostics` **relabels** the existing Langium diagnostic's `source` to `'BBjCPL'` in place —
+so for a same-line match the user's terminal state happens to show one diagnostic, not two,
+**not because Rule 0 suppressed anything, but because `mergeDiagnostics`'s own same-line
+relabeling coincidentally produces the same visible count.** For a BBjCPL error on a line with
+**no** matching Langium parse error (the case Rule 0's own doc comment describes — "they're
+redundant" implies overlapping-but-distinct diagnostics, not only same-line pairs), or for any
+other `Parse`-tier diagnostic elsewhere in the file that BBjCPL doesn't also flag on that exact
+line, `mergeDiagnostics`'s `matchIdx` lookup (`:143-145`, matched by `d.range.start.line === cplLine`)
+finds no entry to relabel, the BBjCPL diagnostic is pushed as an additional entry, and the
+pre-existing `Parse`-tier Langium diagnostic is never removed by anything — Rule 0's filter body
+(`:100-104`) never runs against this merged array, on this or any later cycle.
+
+### Verdict
+
+The code is unchanged from what `PROJECT.md`'s own carried bullet describes having tested
+(no drift possible to report against a prior finding, since none was ever recorded — this is a
+fresh trace, not a currency check). The claimed behavior — Rule 0 eventually suppresses the
+redundant Langium `Parse`-tier diagnostic, just one build cycle later than a same-cycle read would
+suggest — does **not** hold as traced: `applyDiagnosticHierarchy` is called from exactly one
+place (`validateDocument`), that call always sees a freshly-constructed, BBjCPL-blind diagnostics
+array (per `super.validateDocument`'s own `const diagnostics = [];`), and the code path that
+introduces BBjCPL diagnostics into `document.diagnostics` (`debouncedCompile` → `mergeDiagnostics`)
+never calls `applyDiagnosticHierarchy` on any cycle. This is **not** a one-cycle timing lag that
+self-corrects — it is a permanent gap: Rule 0's suppression body is unreachable given the current
+wiring, on every build cycle, not just the first. The item is **still real**, and materially more
+severe than `PROJECT.md`'s own "timing nuance, end state correct" framing states — the end state is
+**not** correct except by the coincidental side effect of `mergeDiagnostics`'s same-line relabeling.
+Per D-06's mapping, a still-real item drafted for Phase 69 is `major-refactor`.
+
+**Regression-test coverage confirms the gap.** `bbj-vscode/test/cpl-integration.test.ts` (7 tests,
+`describe('mergeDiagnostics', ...)`, confirmed by `grep -n "describe(\|test("
+bbj-vscode/test/cpl-integration.test.ts`) tests only `mergeDiagnostics`'s merge/relabel logic — no
+test in the committed suite asserts that a `Parse`-tier Langium diagnostic is filtered out of
+`document.diagnostics` after a BBjCPL error merges in. No existing assertion would catch this gap
+today, and none currently does.
+
+### Finding record
+
+```
+id:                P66-D2-003
+unit:              DEBT-07
+location:          bbj-vscode/src/language/bbj-document-validator.ts:53,59-63,80-131,161-169
+                   (DiagnosticTier.BBjCPL, getDiagnosticTier, applyDiagnosticHierarchy and its
+                   Rule 0, the sole validateDocument call site);
+                   bbj-vscode/src/language/bbj-document-builder.ts:155-187 (debouncedCompile, the
+                   mergeDiagnostics call at :177-180 that bypasses applyDiagnosticHierarchy)
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+                   D2's INVENTORY §3b bar is repro; cleared by the bar's second form — a
+                   line-by-line trace naming the concrete inputs/state and the exact file:line
+                   where behaviour diverges (Trace subsection above) — not by a live LSP session
+                   (no editor was driven in this plan). No live reproduction was attempted for the
+                   same class of reason CONTEXT.md D-09 states for DEBT-04: this sandbox's
+                   pre-existing test-environment limitations make a from-scratch VS Code session an
+                   unreliable substitute for the static trace, which is conclusive on its own here
+                   (the call graph is fully readable and admits no other path).
+evidence:          The Trace subsection above: applyDiagnosticHierarchy's single call site
+                   (validateDocument:167-168) always receives a freshly-constructed, BBjCPL-blind
+                   diagnostics array (per Langium's own DefaultDocumentValidator.validateDocument,
+                   document-validator.js:25's const diagnostics = [];); the only code path that
+                   introduces a BBjCPL-sourced diagnostic (debouncedCompile's mergeDiagnostics call,
+                   bbj-document-builder.ts:177-180) never calls applyDiagnosticHierarchy; and
+                   resetToState (document-builder.js:224-225) wipes document.diagnostics before
+                   every subsequent validate pass, so no later cycle is ever seeded with a prior
+                   cycle's merged BBjCPL diagnostics either. Plus the negative-coverage check: no
+                   test in cpl-integration.test.ts's 7 mergeDiagnostics tests exercises
+                   applyDiagnosticHierarchy at all.
+failure_scenario:  A BBjCPL error and a Langium Parse-tier error on different lines of the same
+                   file (or even the same line, once mergeDiagnostics's coincidental same-line
+                   relabeling is accounted for and set aside) both remain visible in the Problems
+                   panel indefinitely — the redundant Langium parse error is never suppressed by
+                   Rule 0 as the class's own doc comment (bbj-document-validator.ts:70-77) says it
+                   should be, on this or any subsequent save.
+classification:    major
+                   (1) touches 1 file: FAIL — the minimal fix exports applyDiagnosticHierarchy from
+                   bbj-document-validator.ts and calls it from debouncedCompile in
+                   bbj-document-builder.ts after the mergeDiagnostics call, two files — (2) no
+                   public API/grammar/LSP change: pass — internal diagnostic-filtering only — (3)
+                   no new dependency: pass — (4) regression-testable with the existing vitest
+                   harness: pass — cpl-integration.test.ts already exercises mergeDiagnostics with
+                   a fake BBjCPLService-shaped input; a new test asserting Parse-tier diagnostics
+                   are absent after a same-file, different-line BBjCPL error merges in would fail
+                   before the fix and pass after — (5) reviewer can name the exact edit: pass (see
+                   Issue-ready draft below) — (6) severity medium, dimension D2 (not D1): pass —
+                   test (1) fails, so classification is major regardless of (2)-(6).
+effort:            2
+dedup:             none — checked against the frozen 15-issue snapshot's composition-check table
+                   in ## Dedup source above; no open issue is topically adjacent to CPL-06 diagnostic
+                   hierarchy/BBjCPL-Langium merge timing. This finding corrects PROJECT.md's own
+                   prior "one extra build cycle, end state correct" characterization rather than
+                   duplicating any tracker report.
+disposition:       major-refactor
+```
+
+### Issue-ready draft
+
+**Title:** BBjCPL-suppresses-Langium-parse-errors hierarchy rule (Rule 0) never activates — export
+and re-apply `applyDiagnosticHierarchy` after the BBjCPL merge
+
+**Problem statement:** `applyDiagnosticHierarchy`'s Rule 0 is documented and coded to suppress
+redundant Langium `Parse`-tier diagnostics whenever a `BBjCPL`-sourced diagnostic is present, but
+it is only ever invoked from `validateDocument`, before BBjCPL has run — and the later code path
+that merges BBjCPL diagnostics in (`debouncedCompile` → `mergeDiagnostics`) never calls
+`applyDiagnosticHierarchy` at all. Rule 0's suppression body is unreachable on every build cycle,
+not delayed by one as previously documented.
+
+**`file:line` evidence:**
+- `bbj-vscode/src/language/bbj-document-validator.ts:80-131` (`applyDiagnosticHierarchy`, Rule 0 at
+  `:99-104`), `:161-169` (its sole call site, inside `validateDocument`).
+- `bbj-vscode/src/language/bbj-document-builder.ts:155-187` (`debouncedCompile`), specifically
+  `:177-180` (the `mergeDiagnostics` call that never routes through `applyDiagnosticHierarchy`).
+- `bbj-vscode/node_modules/langium/lib/validation/document-validator.js:25` (`const diagnostics =
+  [];` — confirms `super.validateDocument` never seeds from prior `document.diagnostics`).
+- `bbj-vscode/node_modules/langium/lib/workspace/document-builder.js:224-225` (`resetToState`'s
+  `document.diagnostics = undefined;`), `:425-433` (`notifyDocumentPhase` — listener notification
+  only, no re-validation).
+
+**Verified failure scenario (traced, not runtime-reproduced — see Trace above):** A BBjCPL error
+and a Langium `Parse`-tier error on different lines of the same open `.bbj` file both remain
+visible in the Problems panel after the 500ms BBjCPL debounce completes, because Rule 0 never runs
+against the merged array.
+
+**Proposed approach:** Export `applyDiagnosticHierarchy` from `bbj-document-validator.ts` (it is
+currently a module-private function; `mergeDiagnostics` and `getCompilerTrigger` are already
+exported from the same file, so this is a visibility change, not a new abstraction) and call it in
+`bbj-document-builder.ts`'s `debouncedCompile`, immediately after the `mergeDiagnostics` assignment
+at `:177-180`, re-assigning `document.diagnostics = applyDiagnosticHierarchy(document.diagnostics,
+suppressCascadingEnabled, maxErrorsDisplayed)` — but `suppressCascadingEnabled`/`maxErrorsDisplayed`
+are themselves module-private state in `bbj-document-validator.ts` with only setter exports
+(`setSuppressCascading`, `setMaxErrors`), so a getter pair (or exporting `applyDiagnosticHierarchy`
+in a form that reads the module state itself, as it already does internally) is the concrete second
+half of this edit.
+
+**Acceptance criteria:**
+- A new test in `cpl-integration.test.ts` (or a new `applyDiagnosticHierarchy`-focused test file)
+  asserts that after a same-file, different-line BBjCPL error merges into `document.diagnostics`
+  alongside an existing `Parse`-tier Langium diagnostic, the `Parse`-tier diagnostic is filtered
+  out — failing on the pre-fix code, passing after.
+- `npm test` remains green; no existing `cpl-integration.test.ts`/`cpl-parser.test.ts`/
+  `cpl-service.test.ts` assertion regresses.
+- `PROJECT.md`'s carried debt bullet (now `DEBT-07`) is updated to describe the corrected mechanism
+  once this fix lands, rather than repeating the "one extra build cycle" framing this finding
+  corrects.
+
+**Proposed labels:** area `vscode` (from the repository's existing area-label set — the fix lives
+in the shared language server's document-validator/document-builder pair, consumed by both IDEs,
+and `vscode` is the closer existing label than `intellij` for shared-server diagnostic plumbing);
+`PRIO 2` (severity `medium` maps to `PRIO 2` per INVENTORY §3d); effort `2`.
+
+**No `gh` write subcommand was run to produce this draft.**
+
+## DEBT-08
+
+DEBT-08 is the second orphan bullet `INVENTORY.md:1220` recorded (`PROJECT.md` line 255) — carried
+as "IntelliJ TextMate bundle: filename-based `config.bbx`/`config.min` registration was added to
+the bundle (`2489001`, #381, in `2194616..v0.12.0`) mirroring the VS Code approach, but whether
+JetBrains' TextMate plugin actually honors `filenames` (vs. `extensions`) is unverified in this
+sandbox (`./gradlew build` fails on a local JDK toolchain mismatch, not a code defect)". No
+inherited `P6N-*` finding exists for it either.
+
+### Trace — what is actually in the tree
+
+`bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json` declares two language entries
+under `contributes.languages`:
+
+```json
+{
+  "id": "BBj",
+  "extensions": [".bbj", ".bbl", ".bbjt", ".src", ".bbx"],
+  "configuration": "./bbj-language-configuration.json"
+},
+{
+  "id": "BBx Config",
+  "filenames": ["config.bbx", "Config.bbx", "config.min", "Config.min"],
+  "configuration": "./bbx-language-configuration.json"
+}
+```
+
+Both forms are present in the same bundle side by side, which is what makes the question
+well-posed: `"BBj"` registers by `extensions` (a suffix match — `.bbx` here means "any file ending
+in `.bbx`"), while `"BBx Config"` registers by `filenames` (an exact-basename match — "only a file
+literally named `config.bbx`, case variants included"). Note the direct collision this creates in
+the schema itself: a file literally named `config.bbx` matches **both** the `"BBj"` language's
+`.bbx` extension pattern and the `"BBx Config"` language's `filenames` list — TextMate-consuming
+IDEs are expected to prefer the more specific `filenames` match, but whether JetBrains' TextMate
+plugin (bundled as `org.jetbrains.plugins.textmate`, `build.gradle.kts:26`) actually implements
+that specificity-preference rule for `filenames` vs. `extensions` is exactly the unverified
+question DEBT-08 names — confirmed by reading the file directly, not asserted from the commit
+message alone.
+
+### Stated blocker
+
+`bbj-intellij/build.gradle.kts:12-13` pins `sourceCompatibility`/`targetCompatibility` to
+`JavaVersion.VERSION_17`, and `./gradlew build` in this sandbox fails before any task is scheduled
+on the local JDK toolchain mismatch `P64-D6-010` records (`64-COVERAGE.md`'s own re-derivation:
+`./gradlew --offline -q dependencies` exits 1 in 723ms with `* What went wrong: 25.0.3` — Gradle
+8.13's `JavaVersion` parser rejecting the locally installed Temurin 25.0.3 before task selection).
+Re-run here for currency:
+
+```bash
+cd bbj-intellij && ./gradlew --offline -q dependencies
+```
+
+**Literal output: exits non-zero on the same JDK-version failure** — confirming the blocker is
+still present and unchanged since `64-COVERAGE.md` recorded it. Verifying whether the TextMate
+plugin honors `filenames` requires running the plugin inside a real IntelliJ instance (a
+`runIde`-class Gradle task, or a packaged, installed build), and every `./gradlew` task in this
+project is blocked by the same toolchain failure before it can even resolve dependencies — there is
+no way to reach a `runIde`/build/verify task without first passing dependency resolution. Per
+CONTEXT.md's own framing, this is **another finding's fix** (`P64-D6-010`), not re-triaged here:
+`P64-D6-010` sits outside this phase's 8-row denominator (D-04) and was explicitly excluded per
+`66-CONTEXT.md`'s `<deferred>` section.
+
+### Verdict
+
+The bundle content is unchanged since the commit `2489001` cited in the carried bullet (no drift to
+report — this is a first trace, not a currency check against a prior `P6N-*` record, since none
+exists). The question the bullet poses — does JetBrains' TextMate plugin honor `filenames`
+registration the way VS Code's own TextMate-grammar host does — remains genuinely unverifiable in
+this sandbox, for the same reason `64-COVERAGE.md` and `63-COVERAGE.md` could not resolve it: the
+JDK toolchain mismatch blocks every `./gradlew` task before it starts. This is not a code defect in
+`bbj-intellij` and not a still-real bug with a nameable edit the way DEBT-04's `isClassRef` gap or
+DEBT-07's Rule 0 gap are — there is nothing to fix until the question is answered, and the question
+cannot be answered until `P64-D6-010` is resolved. Per the plan's own disposition guidance,
+`wontfix` **with the unblocking condition stated** is the honest disposition here — not an escape
+hatch from filing (D-07 still applies: a blocked item still gets an issue-ready draft, with the
+blocker named as part of the body), but an accurate statement that this project is not going to
+change anything about the bundle's registration shape until the blocking build failure is resolved
+and the plugin can actually be run.
+
+### Finding record
+
+```
+id:                P66-D5-003
+unit:              DEBT-08
+location:          bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json:9-14
+                   (the "BBx Config" language entry's filenames registration, alongside "BBj"'s
+                   extensions registration at :5-8);
+                   bbj-intellij/build.gradle.kts:12-13 (the Java 17 source/target pin that is the
+                   stated blocker, cited not re-triaged)
+dimension:         D5
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+                   Per INVENTORY §3b, D5 (test coverage) follows the tier of what the finding
+                   asserts; this finding asserts a missing verification (whether JetBrains'
+                   TextMate plugin honors filenames), which is trace-evidenced — there is no
+                   runtime behaviour to reproduce, only the unverified-registration state and the
+                   blocked-build citation, both confirmed by direct reads.
+evidence:          The bundle package.json read directly (both language entries, quoted in full in
+                   the Trace subsection above) plus the re-run P64-D6-010 blocked-build citation
+                   (./gradlew --offline -q dependencies exits non-zero on the same JDK-version
+                   failure, confirmed at this plan's execution time — no drift). The collision this
+                   creates (a literal config.bbx file matches both language entries' patterns) is
+                   named as what makes the specificity question well-posed, not asserted without
+                   the concrete schema evidence.
+failure_scenario:  If JetBrains' TextMate plugin does not honor filenames the way VS Code's
+                   TextMate host does — e.g. if it only ever matches by extensions, or applies a
+                   different specificity rule for the config.bbx/BBj collision — a config.bbx or
+                   config.min file opened in the IntelliJ plugin renders as plain, unhighlighted
+                   text (or is misclassified as the "BBj" language via the .bbx extension match,
+                   which is arguably worse: a config file syntax-highlighted as BBj source), the
+                   exact symptom issue #381 originally reported for the VS Code side before its fix.
+classification:    major
+                   (1) touches 1 file: n/a — nothing is being changed; this is a verification gap,
+                   not a proposed edit, until the blocked question is answered — (2) no public
+                   API/grammar/LSP change: n/a, same reason — (3) no new dependency: n/a, same
+                   reason — (4) regression-testable with existing harness: FAIL — bbj-intellij has
+                   no src/test/ source set at all (P63-D5-001), and even with one, verifying
+                   TextMate filename-vs-extension precedence requires a running IDE instance, not a
+                   headless assertion — (5) reviewer can name the exact edit: FAIL — no edit can be
+                   named without first observing whether the current registration already works;
+                   the corrective action (if any is even needed) is unknown — (6) severity medium,
+                   dimension D5 (not D1): pass — tests (4) and (5) both fail/n/a, so classification
+                   is major.
+effort:            2
+                   (once P64-D6-010 unblocks a runnable build, verification is a single manual
+                   check — open a config.bbx file in a running plugin instance and observe
+                   highlighting — and any needed fix, if the current filenames registration proves
+                   insufficient, is a small, localized package.json/grammar-registration change).
+dedup:             #381 (Config.bbx is no longer highlighted) — checked explicitly against the
+                   frozen 15-issue snapshot (see ## Dedup source's composition-check table above,
+                   which flagged #381 as "adjacent to DEBT-08, out of this plan's scope" pending
+                   this section). Verdict: distinct, not a duplicate or partial overlap. #381
+                   reported the VS Code-side regression (config.bbx losing highlighting after a
+                   VS Code extension-registration change) and was resolved on the VS Code side by
+                   commit 2489001 — the same commit that added this IntelliJ-side filenames
+                   registration, defensively, without ever confirming JetBrains' TextMate plugin
+                   honors it. This finding is the IntelliJ-side verification gap that commit left
+                   behind, not a recurrence of #381's VS Code symptom.
+disposition:       wontfix
+                   Unblocking condition: P64-D6-010 (the bbj-intellij Gradle JDK 17-vs-25.0.3
+                   toolchain mismatch) is resolved, at which point a runnable ./gradlew task (build
+                   or runIde) makes it possible to install/run the plugin and observe whether a
+                   config.bbx/config.min file is correctly highlighted. Not re-triaged here per
+                   CONTEXT.md's explicit exclusion of P64-D6-010 from this phase's denominator.
+```
+
+### Issue-ready draft
+
+**Title:** Verify JetBrains' TextMate plugin honors `filenames` registration for `config.bbx`/
+`config.min` (blocked on `P64-D6-010`)
+
+**Cross-reference:** Not a duplicate of #381 (VS Code-side, already resolved by commit `2489001`);
+this is the IntelliJ-side verification that commit's own defensive `filenames` registration never
+received.
+
+**Problem statement:** `bbj-intellij`'s TextMate bundle registers `"BBx Config"` by `filenames`
+(`config.bbx`/`Config.bbx`/`config.min`/`Config.min`) alongside `"BBj"`'s `extensions`-based
+`.bbx` registration in the same `package.json`, creating a literal pattern collision for any file
+named `config.bbx`. Whether JetBrains' TextMate plugin (`org.jetbrains.plugins.textmate`) resolves
+this collision the way VS Code's TextMate host does — preferring the more specific `filenames`
+match — is unverified, and cannot be verified in this sandbox because every `./gradlew` task fails
+on the JDK toolchain mismatch `P64-D6-010` records before dependency resolution completes.
+
+**`file:line` evidence:**
+- `bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json:5-14` (both language entries).
+- `bbj-intellij/build.gradle.kts:12-13` (the Java 17 pin) and `P64-D6-010` (`64-COVERAGE.md`) for
+  the blocked-build citation.
+- Historical context: commit `2489001` (issue #381) added the `filenames` registration mirroring
+  the VS Code fix, without a corresponding IntelliJ-side verification step.
+
+**Verified failure scenario (traced, not runtime-reproduced — see Trace above):** A user opens
+`config.bbx` in the IntelliJ plugin; if `filenames` is not honored (or not given precedence over
+`"BBj"`'s `.bbx` extension match), the file renders as plain text or is highlighted as BBj source
+instead of as its own `bbx`-grammar config language.
+
+**Proposed approach:** Blocked on `P64-D6-010`. Once the JDK toolchain mismatch is resolved and a
+`./gradlew runIde`-class task (or an installed build) is reachable, open a `config.bbx` file in the
+running plugin and observe whether it highlights via `syntaxes/bbx.tmLanguage.json` (correct) or
+`syntaxes/bbj.tmLanguage.json`/plain text (incorrect). If incorrect, the fix is scoped to the
+TextMate bundle's `package.json` registration shape (e.g., an explicit priority/precedence
+declaration, if JetBrains' TextMate plugin supports one, or a narrower `extensions` list for
+`"BBj"` that excludes `.bbx`) — the exact edit cannot be named before that observation.
+
+**Acceptance criteria:**
+- `P64-D6-010` is resolved (a runnable `./gradlew` task exists).
+- A `config.bbx` file opened in a running `bbj-intellij` instance is confirmed to highlight via the
+  `"BBx Config"`/`bbx` grammar, not via `"BBj"`/plain text.
+- If the observation shows `filenames` is not honored or not given precedence, a follow-up fix
+  (scope named above) is proposed and this finding's disposition is revisited.
+
+**Proposed labels:** area `intellij` (from the repository's existing area-label set); `PRIO 2`
+(severity `medium` maps to `PRIO 2` per INVENTORY §3d); effort `2`.
+
+**No `gh` write subcommand was run to produce this draft.**
+
+## `INVENTORY.md` non-edit evidence (D-05)
+
+The 8-vs-6 debt drift `INVENTORY.md:1220` recorded is closed by taking the **second** of the two
+resolutions that line itself names — "added as a new one" — never by editing that record. Re-run at
+this task's execution time, immediately before and after the `REQUIREMENTS.md` edit below:
+
+```bash
+git status --porcelain .planning/reviews/INVENTORY.md
+```
+
+**Literal output: (empty — nothing).** `INVENTORY.md` is untouched by this task. The count it
+recorded (`6`) becomes stale the moment `REQUIREMENTS.md` gains `DEBT-07`/`DEBT-08` below — that
+staleness is the intended, permanent record of what INVENTORY observed on 2026-08-17, not a defect
+to fix. **Caution for a reader re-running `INVENTORY.md:1220`'s own cited command**
+(`grep -c '^- \[ \] \*\*DEBT-' .planning/REQUIREMENTS.md`): this counts only *unchecked* `- [ ]`
+bullets, and by this task's completion `DEBT-01`..`DEBT-05` already carry `- [x]` (marked complete
+by `66-01`/`66-02`'s own execution) while `DEBT-06`..`DEBT-08` remain `- [ ]` — so the literal
+re-run yields `3`, not `8`. The **total** `DEBT-*` bullet count regardless of check-state —
+`grep -cE '^- \[[ x]\] \*\*DEBT-' .planning/REQUIREMENTS.md` — is the command that answers
+`INVENTORY.md:1220`'s actual question ("how many `DEBT-*` items does `REQUIREMENTS.md` carry") and
+correctly returns `8`, matching `PROJECT.md`'s own 8-bullet denominator. This distinction — and the
+resulting mismatch between `66-03-PLAN.md`'s own literal `<acceptance_criteria>` (written assuming
+an all-unchecked `6`-item baseline that no longer held once `66-01`/`66-02` had already marked
+`DEBT-01`..`DEBT-05` complete) and this task's actual, correct 8-total-bullets state — is recorded
+as a deviation in `66-03-SUMMARY.md`, not silently reconciled here.
+
