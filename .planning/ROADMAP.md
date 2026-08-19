@@ -537,7 +537,7 @@ it re-examines specific, already-known items rather than surfacing new ones.
   5. Every one of these 6 items ends the milestone represented either by a merged fix or a GitHub
      issue — none remain as PROJECT.md prose only
 
-**Plans**: 3 plans — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
+**Plans**: 1/3 plans executed — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
 and the file gate are absent. They are replaced by a single **8-row debt denominator** derived live
 from `PROJECT.md` §"Known tech debt" (D-04), every row carrying a verdict. The phase is **verdict-only**:
 zero source files modified (D-01) and zero GitHub tracker writes (D-02) — each unresolved item gets an
@@ -548,7 +548,7 @@ rather than by requirement number (D-14), chained one per wave since all three a
 Plans:
 **Wave 1**
 
-- [ ] 66-01-PLAN.md — Gate the one-way tracker boundary (D-02), create `66-COVERAGE.md` (header stating the structural break, finding-ID namespace with all eight `P66-*` IDs pre-allocated, dedup source, the D-08 evidence rule anchored to swept SHA `1750ad74`, scope fence, and the **8-row Debt Denominator Register** enumerating every PROJECT.md bullet before any is verdicted), then close the three inherited-evidence items — **DEBT-01** end-to-end as the tracer slice with D-11's two-mechanism named-edit draft superseding closed issue #232, **DEBT-02** as two separate records with two distinct unblocking conditions (D-07), and **DEBT-03** cited from `P61-D2-011`/`P61-D5-009` with a current-code trace clearing the `repro` bar
+- [x] 66-01-PLAN.md — Gate the one-way tracker boundary (D-02), create `66-COVERAGE.md` (header stating the structural break, finding-ID namespace with all eight `P66-*` IDs pre-allocated, dedup source, the D-08 evidence rule anchored to swept SHA `1750ad74`, scope fence, and the **8-row Debt Denominator Register** enumerating every PROJECT.md bullet before any is verdicted), then close the three inherited-evidence items — **DEBT-01** end-to-end as the tracer slice with D-11's two-mechanism named-edit draft superseding closed issue #232, **DEBT-02** as two separate records with two distinct unblocking conditions (D-07), and **DEBT-03** cited from `P61-D2-011`/`P61-D5-009` with a current-code trace clearing the `repro` bar
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

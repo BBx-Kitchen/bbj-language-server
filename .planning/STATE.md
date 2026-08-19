@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 66
-current_phase_name: Known Debt Re-triage
+current_phase_name: known-debt-re-triage
 status: executing
-stopped_at: Phase 66 context gathered
-last_updated: "2026-08-19T05:33:28.104Z"
-last_activity: 2026-08-18
-last_activity_desc: Phase 64 Plan 02 — RU-64-01 (6 workflows + dependabot.yml) swept across all 6 live dimensions, SEC-07 Workflow Security Posture table written, 13 findings recorded
+stopped_at: Completed 66-01-PLAN.md
+last_updated: "2026-08-19T06:10:35.922Z"
+last_activity: 2026-08-19
+last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 30
-  completed_plans: 27
+  completed_plans: 28
   percent: 60
 ---
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 65 — Cross-Cutting Security Audit
+**Current Focus:** Phase 66 — known-debt-re-triage
 
 ---
 
 ## Current Position
 
-Phase: 66 — Known Debt Re-triage
-Plan: Not started
+Phase: 66 (known-debt-re-triage) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-08-18 — Phase 65 complete, transitioned to Phase 66
+Last activity: 2026-08-19 — Phase 66 execution started
 
 ## Performance Metrics
 
@@ -104,6 +104,7 @@ Last activity: 2026-08-18 — Phase 65 complete, transitioned to Phase 66
 | Phase 65 P01 | ~40min | 3 tasks | 1 files |
 | Phase 65 P02 | 55min | 2 tasks | 1 files |
 | Phase 65 P03 | 30min | 3 tasks | 1 files |
+| Phase 66 P01 | 12min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -205,6 +206,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: SEC-04 closed: at-rest asymmetry between VS Code SecretStorage (fixed OS-native binding) and IntelliJ PasswordSafe (user-configurable backend) recorded as P65-D1-002; expiry handling recorded as genuine cross-IDE agreement (identical fail-open decode + mandatory server round-trip) per D-12, with VS Code's own previously-unowned instance of the decode weakness recorded as P65-D1-003
 - [Phase ?]: SEC-05 closed with zero new findings — every real spawn site's shape, including the cross-IDE shell-vs-argv asymmetry, traces to an inherited owner (P61/62/63/64-D1-*, plus P62-D7-001)
 - [Phase ?]: Phase 65 closed: all four SEC-01/02/04/05 requirements complete, D-16's surface/criterion/requirement gates re-derived live, zero cells recorded against INVENTORY's grid
+- [Phase ?]: Resume signal drafts-only recorded (D-02): zero gh write subcommands anywhere in Phase 66
+- [Phase ?]: DEBT-03 verdicts easy-fix not major-refactor: both inherited P61 records already established all six D-13 tests pass
+- [Phase ?]: DEBT-02 split into two finding records/drafts per D-07: repo-local vs upstream unblocking conditions
 
 ### Tech Debt
 
@@ -229,11 +233,11 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T05:01:40.464Z
-Stopped at: Phase 66 context gathered
+Last session: 2026-08-19T06:10:35.897Z
+Stopped at: Completed 66-01-PLAN.md
 Resume file: 
 
-.planning/phases/66-known-debt-re-triage/66-CONTEXT.md
+None
 
 ## Milestone History
 
