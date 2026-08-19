@@ -1054,14 +1054,14 @@ location:          bbj-vscode/src/document-formatter.ts:63-67
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  If cp.spawn('java', formatFlags) (line 59) emits 'error' with any code other than 'ENOENT' (a permissions error on the java binary being the most realistic case, e.g. after a botched local JDK reinstall), the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at c10e7a9 — `npx vitest run test/document-formatter.test.ts` times out after 5000ms ("Test timed out in 5000ms") on the P62-D2-010 case: the format promise never settles when the mocked spawn emits a non-ENOENT 'error' event.
+failure_scenario:  If cp.spawn('java', formatFlags) (line 59) emits 'error' with any code other than 'ENOENT' (a permissions error on the java binary being the most realistic case, e.g. after a botched local JDK reinstall), the runFormatter Promise never settles: the format request awaiting it hangs indefinitely, with no error message, no timeout, and no way for the user to tell the formatter is stuck versus merely slow.
+fix_applied:       Added an else branch to the spawn 'error' handler that calls reject(err) for any error code other than ENOENT, so every spawn-level error now settles the promise instead of only the ENOENT case.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-formatter.test.ts (8/8 pass, includes the P62-D2-010 case with an explicit 5000ms test timeout so a regression would fail cleanly rather than hang the suite)
+commit:            c10e7a9 (red) + c05fd57 (green)
 notes:             
 ```
 
@@ -1073,15 +1073,15 @@ location:          bbj-vscode/src/decompile-io.ts:69-82
 dimension:         D2
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  If a prior decompileInPlace attempt against the same file already left a stale <input>.lst on disk (e.g. the extension crashed or the user closed VS Code between the exec() completing and the rename step), and
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 57c8ada — `npx vitest run test/decompile-io.test.ts` fails: "expected 'print \"stale\"\n' to be 'print \"fresh\"\n'" — a stale .lst of matching size is returned before the fresh write ever happens.
+failure_scenario:  If a prior decompileInPlace attempt against the same file already left a stale <input>.lst on disk (e.g. the extension crashed or the user closed VS Code between the exec() completing and the rename step), and a subsequent retry's fresh bbjlst output happens to settle at the same byte size as the stale file, the first two 150ms-spaced polls can both observe that stale size before the new write has begun, causing waitForDecompileOutput to resolve immediately with the STALE .lst's content rather than the fresh run's output — the user would see outdated decompiled source with no error.
+fix_applied:       Replaced the size-only statSize helper with statSizeAndMtime and captured a call-start timestamp (callStartMs) at function entry; resolution now requires both the size to settle across two polls AND the file's mtimeMs to be at or after callStartMs, so a stale .lst written before the call started can never satisfy the gate even if its size coincidentally matches.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/decompile-io.test.ts test/tokenized-bbj.test.ts (15/15 pass, 3 consecutive runs, including the stale-.lst-of-matching-size case)
+commit:            57c8ada (red) + 73aadc8 (test-timing fix, see notes) + 806acb5 (green)
+notes:             The red test's original 45ms fresh-write delay produced a flaky false pass after the fix landed: the stale .lst was written in the same tick as the wait call, so its mtime could round to at-or-after the call-start timestamp, satisfying the new mtime gate for the wrong reason. Commit 73aadc8 adds a real 100ms gap before starting the wait so the stale write's mtime is unambiguously earlier — documented as a Rule 1 auto-fix (own test bug found while verifying the green fix), not a change to the finding's scope.
 ```
 
 ```
@@ -1092,14 +1092,14 @@ location:          bbj-vscode/src/document-formatter.ts:9-50,52-84
 dimension:         D3
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D3)
-fail_before:       TBD
-failure_scenario:  Saving several open BBj documents together (VS Code's "Save All", or format-on-save firing while a manual format request from the same document is still in flight) spawns one independent JVM per request
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at 0a8a14b — `npx vitest run test/document-formatter.test.ts` fails: "expected \"vi.fn()\" to be called 1 times, but got 2 times" — two concurrent format requests for the same document URI spawn two independent processes.
+failure_scenario:  Saving several open BBj documents together (VS Code's "Save All", or format-on-save firing while a manual format request from the same document is still in flight) spawns one independent JVM per request with no upper bound on concurrency — on a machine with several BBj files open, this can transiently spawn several concurrent JVMs, each with the ~750ms+ startup cost the code's own warning threshold already flags, worsening perceived editor responsiveness during a bulk save.
+fix_applied:       Added a module-level Map<string, Promise<string>> (inFlightFormats) keyed by document URI. provideDocumentFormattingEdits now checks the map before spawning: a concurrent request for the same URI reuses the in-flight promise; the entry is deleted once the promise settles on both the resolve and reject paths, so a later request for the same URI still spawns a fresh process.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-formatter.test.ts (8/8 pass, including same-URI dedup, different-URI non-dedup, and resolve/reject cleanup cases)
+commit:            0a8a14b (red) + a425924 (green)
 notes:             
 ```
 
@@ -1111,15 +1111,15 @@ location:          bbj-vscode/src/decompile-io.ts:10,bbj-vscode/src/tokenized-bb
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — if the magic-byte sequence were ever revised (e.g. a future tokenized-file format version), a fix applied to only one of the two constants inside
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D-11 classifies D4 as no-behaviour-change, so there is no failing state to observe
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — if the magic-byte sequence were ever revised (e.g. a future tokenized-file format version), a fix applied to only one of the two constants inside this unit would silently desynchronize isTokenizedBBjHeader and isTokenizedFile, causing the two detection paths to disagree about whether the same file is tokenized.
+fix_applied:       Imported TOKENIZED_BBJ_MAGIC from ./tokenized-bbj.js and wrapped it with Buffer.from(...) in place of decompile-io.ts's own hand-typed local const. tokenized-bbj.ts is unchanged — it remains the single source of truth for the magic byte sequence.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/decompile-io.test.ts test/tokenized-bbj.test.ts (15/15 pass, both files' existing cases continue to pass unchanged); git diff --stat for commit e6fc4fe touches only bbj-vscode/src/decompile-io.ts
+commit:            e6fc4fe
+notes:             tokenized-bbj.ts confirmed untouched by this commit (git diff --stat bbj-vscode/src/tokenized-bbj.ts is empty for e6fc4fe), matching the record's own test-5 clause that the edit stays inside decompile-io.ts.
 ```
 
 ```
@@ -1149,15 +1149,15 @@ location:          bbj-vscode/src/document-formatter.ts (whole file; no test cou
 dimension:         D5
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
-failure_scenario:  A regression in the exit-code handling, the P62-D2-010 hang path, or the P62-D3-001 concurrent-spawn behavior would ship silently — `npm test` staying green today provides no signal about any of them, since no test
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D5 test-coverage gaps land as one commit per D-13; the test passes the moment it is written, no red state is possible
+failure_scenario:  A regression in the exit-code handling, the P62-D2-010 hang path, or the P62-D3-001 concurrent-spawn behavior would ship silently — `npm test` staying green today provides no signal about any of them, since no test imports document-formatter.ts at all.
+fix_applied:       Authored bbj-vscode/test/document-formatter.test.ts, mocking vscode and child_process.spawn. Covers all four required cases: ENOENT, a non-zero process exit, a non-ENOENT spawn error, and the unsaved-content-map fallback taking precedence over document.getText(). The non-ENOENT-error case is the same test already committed for P62-D2-010 — deliberately not duplicated here, only the remaining three new cases were added.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-formatter.test.ts (8/8 pass); grep -c "vi.mock" test/document-formatter.test.ts returns 2 (vscode and child_process)
+commit:            4afa828
+notes:             Overlap with P62-D2-010: the "non-ENOENT spawn error" case this row's coverage requirement names is the exact test P62-D2-010 already committed (test/document-formatter.test.ts's first test, commit c10e7a9) — recorded here rather than re-asserted, per this row's own classification test (1) noting the file needs only ONE new test file, unlike the phase's other D5 findings.
 ```
 
 ```
@@ -1206,15 +1206,15 @@ location:          bbj-vscode/src/document-formatter.ts:5-6,29-30,88-96
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 is a comment-accuracy finding) — the map, its onDidChangeTextDocument writer (lines 88-91), and its onDidCloseTextDocument cleanup (lines 94-96) add a per-keystroke write
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D-11 classifies D8 as no-behaviour-change, so there is no failing state to observe
+failure_scenario:  n/a (D8 is a comment-accuracy finding) — the map, its onDidChangeTextDocument writer (lines 88-91), and its onDidCloseTextDocument cleanup (lines 94-96) add a per-keystroke write and 9 of this file's 96 lines for no confirmed behavioral difference, while the comment's inaccurate framing would mislead a future maintainer into believing the map is load-bearing.
+fix_applied:       Corrected the three comments at unsavedContentMap's declaration, its use-site fallback, and the two listeners: they now state that document.getText() always returns VS Code's live in-memory buffer (never a disk read), so the map's tracked value and document.getText() are the same content for the document object provideDocumentFormattingEdits receives. Took the comment-correction branch, not the map-removal branch (see notes).
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-formatter.test.ts (8/8 pass, unchanged); git show --stat b8dd31a touches only bbj-vscode/src/document-formatter.ts
+commit:            b8dd31a
+notes:             The record's test-5 clause offers two branches: correct the comment, or remove unsavedContentMap and its two listeners in favour of calling document.getText() directly. Removing the map is a behaviour change (however small) and is outside a D8 easy fix's no-behaviour-change scope, so the comment-correction branch was taken.
 ```
 
 ```
