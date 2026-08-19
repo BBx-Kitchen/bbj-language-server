@@ -51,7 +51,7 @@ The language server follows Langium's architecture with custom service overrides
 
 - **Grammar**: `src/language/bbj.langium` — complete BBj syntax definition. Changes here require `npm run langium:generate` to regenerate `src/language/generated/` (AST types in `ast.ts`, grammar in `grammar.ts`, DI module in `module.ts`). Never edit generated files directly.
 - **Scope/Linking**: `bbj-scope.ts` (name provider + scope provider), `bbj-scope-local.ts` (scope computation/LocalSymbols), `bbj-linker.ts` (cross-file reference linking)
-- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus `validations/check-classes.ts`, `validations/check-variable-scoping.ts`, `validations/line-break-validation.ts`
+- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus `validations/check-classes.ts`, `validations/check-function-calls.ts`, `validations/check-variable-scoping.ts`, `validations/line-break-validation.ts`
 - **Completion**: `bbj-completion-provider.ts`
 - **Type inference**: `bbj-type-inferer.ts`
 - **Java interop**: `java-interop.ts` — connects to the java-interop socket service to resolve Java classes/methods/fields for completion and hover
