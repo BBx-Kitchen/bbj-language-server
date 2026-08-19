@@ -13,6 +13,7 @@ import { logger } from '../src/language/logger.js';
 vi.mock('../src/language/bbj-notifications.js', () => ({
     notifyBbjcplAvailability: vi.fn(),
 }));
+import { notifyBbjcplAvailability } from '../src/language/bbj-notifications.js';
 
 /**
  * Regression harness for RU-61-05's `BBjDocumentBuilder` findings (P61-D2-017, P61-D3-005,
@@ -70,6 +71,7 @@ type BuilderPrivates = {
 
 afterEach(() => {
     vi.restoreAllMocks();
+    vi.clearAllMocks();
     vi.useRealTimers();
 });
 
@@ -128,5 +130,38 @@ describe('revalidateUseFilePathDiagnostics scans the index a bounded number of t
         // the still-unresolved one survives — same outcome the per-lookup scan produced.
         expect(doc1.diagnostics?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
         expect(doc2.diagnostics?.map(d => d.message)).toEqual([unresolvedDiagMessage]);
+    });
+});
+
+describe('trackBbjcplAvailability dedup and debouncedCompile timing (P61-D5-016)', () => {
+    test('trackBbjcplAvailability only notifies once across repeated calls (lazy, once-only guard)', () => {
+        const { builder } = buildHarness();
+        const privates = builder as unknown as BuilderPrivates;
+
+        // wsManager.getBBjDir() is "" by default in this harness, so both calls take the
+        // "unavailable" branch — the dedup guard under test is bbjcplAvailable !== undefined,
+        // not the notification module's own value-change dedup.
+        privates.trackBbjcplAvailability();
+        privates.trackBbjcplAvailability();
+
+        expect(privates.bbjcplAvailable).toBe(false);
+        expect(vi.mocked(notifyBbjcplAvailability)).toHaveBeenCalledOnce();
+    });
+
+    test('debouncedCompile coalesces rapid successive calls into one compile after the debounce window', async () => {
+        vi.useFakeTimers();
+        const { builder, compileMock } = buildHarness();
+        compileMock.mockResolvedValue([]);
+
+        const doc = fakeDocument('/proj/rapid.bbj');
+        const privates = builder as unknown as BuilderPrivates;
+        // Simulate 3 rapid saves of the same file before the debounce window elapses.
+        privates.debouncedCompile(doc);
+        privates.debouncedCompile(doc);
+        privates.debouncedCompile(doc);
+
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(compileMock).toHaveBeenCalledOnce();
     });
 });
