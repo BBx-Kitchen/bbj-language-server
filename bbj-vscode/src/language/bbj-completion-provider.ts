@@ -31,6 +31,15 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      */
     protected dotTriggerActive = false;
 
+    /**
+     * The cancellation token for the completion request currently being served (P61-D2-013).
+     * `completionForCrossReference` is invoked deep inside the base provider's own completion
+     * algorithm without a cancellation token in its signature, so this instance field is how
+     * {@link completeAutoImportClasses} — called from there — still observes cancellation; it is
+     * set at the very start of {@link getCompletion} for every request.
+     */
+    protected activeCancelToken?: CancellationToken;
+
     protected readonly documentFactory: LangiumDocumentFactory;
     protected readonly javaInterop: JavaInteropService;
     protected readonly fileSystemProvider: FileSystemProvider;
@@ -52,7 +61,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         await super.completionForCrossReference(context, next, recording);
 
         if (!this.dotTriggerActive && this.isClassCrossReference(next.feature) && this.isTypeReferencePosition(context)) {
-            await this.completeAutoImportClasses(context, offered, acceptor);
+            await this.completeAutoImportClasses(context, offered, acceptor, this.activeCancelToken);
         }
     }
 
@@ -87,12 +96,18 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * (issue #447). Coverage depends on the class index (complete when the augmented bbj-ls is
      * present, otherwise classes already resolved this session).
      */
-    protected async completeAutoImportClasses(context: CompletionContext, alreadyOffered: Set<string>, acceptor: CompletionAcceptor): Promise<void> {
+    protected async completeAutoImportClasses(context: CompletionContext, alreadyOffered: Set<string>, acceptor: CompletionAcceptor, cancelToken?: CancellationToken): Promise<void> {
+        if (cancelToken?.isCancellationRequested) {
+            return;
+        }
         const prefix = context.textDocument.getText().substring(context.tokenOffset, context.offset);
         if (prefix.length < BBjCompletionProvider.AUTO_IMPORT_MIN_PREFIX) {
             return;
         }
-        const fqns = await this.javaInterop.findClassCandidatesByPrefix(prefix);
+        const fqns = await this.javaInterop.findClassCandidatesByPrefix(prefix, undefined, cancelToken);
+        if (cancelToken?.isCancellationRequested) {
+            return;
+        }
         if (fqns.length === 0) {
             return;
         }
@@ -152,8 +167,13 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        // Threaded through to getFieldCompletion/getFilePathCompletion (direct parameter) and to
+        // completeAutoImportClasses (via this field — see its own doc comment) so a request the
+        // client has already superseded stops at the next await boundary instead of running to
+        // completion (P61-D2-013).
+        this.activeCancelToken = cancelToken;
         if (params.context?.triggerCharacter === '#') {
-            return this.getFieldCompletion(document, params);
+            return this.getFieldCompletion(document, params, cancelToken);
         }
         if (params.context?.triggerCharacter === '(') {
             // '(' auto-trigger: return constructor items or an empty list — NEVER fall through
@@ -164,7 +184,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             // '"' auto-trigger: the opening quote of a RUN/CALL file id (`RUN "`, `CALL "`). Offer
             // reachable file paths, or an empty list for any other string literal — NEVER fall
             // through to the default provider, which would offer irrelevant keywords inside a string.
-            return await this.getFilePathCompletion(document, params) ?? { items: [], isIncomplete: false };
+            return await this.getFilePathCompletion(document, params, cancelToken) ?? { items: [], isIncomplete: false };
         }
         if (params.context?.triggerCharacter === '.') {
             // '.' is the member-access operator (MemberCall). The grammar makes the member
@@ -186,7 +206,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         // `::...::` file-path segment of a `use`/`declare` only a plain Ctrl+Space reaches here.
         // Offer reachable `.bbj` files / subdirectories there — the grammar treats the path as a
         // single opaque terminal, so the default completion engine has nothing to offer.
-        const filePathCompletion = await this.getFilePathCompletion(document, params);
+        const filePathCompletion = await this.getFilePathCompletion(document, params, cancelToken);
         if (filePathCompletion) {
             return filePathCompletion;
         }
@@ -232,7 +252,10 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * Fail-safe: any file-system/resolution error yields an empty list rather than a thrown
      * exception, so a broken prefix never breaks completion.
      */
-    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         const text = document.textDocument.getText();
         const cursorOffset = document.textDocument.offsetAt(params.position);
         const lineStartOffset = document.textDocument.offsetAt({ line: params.position.line, character: 0 });
@@ -253,6 +276,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         const replaceRange = { start: prefixStart, end: params.position };
 
         const items = await this.collectFilePathItems(document.uri, pathContext, replaceRange);
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         // isIncomplete so the client re-queries as the path is typed further (e.g. crossing into a
         // subdirectory after a '/'), rather than filtering the first directory's list forever.
         return { items, isIncomplete: true };
@@ -336,7 +362,10 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         return items;
     }
 
-    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         // Get cursor position (the # has already been typed)
         const offset = document.textDocument.offsetAt(params.position);
         const rootNode = document.parseResult.value;
@@ -367,6 +396,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
         if (!method || !klass) {
             // Not inside a class method — don't provide field completion
+            return undefined;
+        }
+        if (cancelToken?.isCancellationRequested) {
+            // Recovery above may have reparsed a throwaway document copy; don't build items for a
+            // request the client has already superseded.
             return undefined;
         }
 
