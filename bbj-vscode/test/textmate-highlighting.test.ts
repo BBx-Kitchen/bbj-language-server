@@ -80,4 +80,19 @@ describe('TextMate highlighting (#107)', () => {
         expect(yToken, 'y$ token present').toBeDefined();
         expect(yToken!.scopes.includes(STRING_SCOPE), 'text after the closed string is not string-scoped').toBe(false);
     });
+
+    // P62-D2-007: string content must carry only the string scope, never
+    // constant.character.escape.bbj — BBj has no character-escape syntax inside strings.
+    test('P62-D2-007 — string content carries no character-escape scope', () => {
+        const [tokens] = tokenizeLines(['x$ = "hello" + y$']);
+        // Every token whose text is (part of) the string's inner content "hello" — excludes the
+        // quote delimiters (separate begin/end punctuation tokens) and the surrounding code.
+        const contentTokens = tokens.filter(t => t.text.length > 0 && 'hello'.includes(t.text));
+        expect(contentTokens.length, 'at least one content token found inside the string').toBeGreaterThan(0);
+        for (const t of contentTokens) {
+            expect(t.scopes.includes(STRING_SCOPE), `"${t.text}" carries the string scope`).toBe(true);
+            expect(t.scopes.includes('constant.character.escape.bbj'), `"${t.text}" must not carry the escape scope`).toBe(false);
+        }
+    });
+
 });
