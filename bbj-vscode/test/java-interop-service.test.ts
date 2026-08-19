@@ -219,7 +219,23 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
         });
     });
 
-});
+    describe('_resolvedClasses is bounded by an LRU size cap (P61-D3-001)', () => {
+        // Must match RESOLVED_CLASSES_CACHE_LIMIT in src/language/java-interop.ts.
+        const CACHE_LIMIT = 5000;
 
-// Referenced by later findings' tests appended to this describe block in subsequent commits.
-void minimalJavaClass;
+        test('resolving more distinct classes than the cap evicts the least-recently-used entry', async () => {
+            const service = createInteropService();
+            const resolutions: Promise<JavaClass>[] = [];
+            for (let i = 0; i <= CACHE_LIMIT; i++) {
+                resolutions.push(service.testResolveClass(minimalJavaClass(`test.Class${i}`)));
+            }
+            await Promise.all(resolutions);
+
+            // The very first class resolved must have been evicted as least-recently-used...
+            expect(service.getResolvedClass('test.Class0')).toBeUndefined();
+            // ...while the most recently resolved class is still present.
+            expect(service.getResolvedClass(`test.Class${CACHE_LIMIT}`)).toBeDefined();
+        });
+    });
+
+});
