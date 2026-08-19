@@ -692,7 +692,7 @@ against the 15 issues open at milestone start, only after the user has approved 
   4. No filed issue duplicates any of the 15 issues open at milestone start
   5. MAJOR-REFACTORS.md is updated with the filed issue number next to each corresponding finding
 
-**Plans**: 13 plans — the phase is inherently sequential (one approval gate, one append-target document,
+**Plans**: 1/13 plans executed — the phase is inherently sequential (one approval gate, one append-target document,
 one tracker), so only the six body-rendering shards run in parallel. Filing order throughout is
 `MAJOR-REFACTORS.md` §"Index (severity-sorted, for Phase 69 filing order)". No tracker write happens
 before plan `69-08`'s ISSUE-01 approval gate.
@@ -700,7 +700,7 @@ before plan `69-08`'s ISSUE-01 approval gate.
 Plans:
 **Wave 1**
 
-- [ ] 69-01-PLAN.md — The drafting contract and its end-to-end proof: create `69-ISSUE-DRAFT.md`'s frame (derivation, the two-field advisory route predicate, `144 = 135 public + 9 advisories` reconciliation, the settled `P66-D4-001`/`P63-D4-010` supersedes routing, the D-10 title-shape discrepancy, the `#497`–`#500` dedup baseline, the D-03 grouping of all 33 D1 records), render index rows 1 and 3 as the tracer proving both routes, then the remaining 15 wave-1 records into shard `69-BODIES-01.md`, plus `COVERAGE.md`
+- [x] 69-01-PLAN.md — The drafting contract and its end-to-end proof: create `69-ISSUE-DRAFT.md`'s frame (derivation, the two-field advisory route predicate, `144 = 135 public + 9 advisories` reconciliation, the settled `P66-D4-001`/`P63-D4-010` supersedes routing, the D-10 title-shape discrepancy, the `#497`–`#500` dedup baseline, the D-03 grouping of all 33 D1 records), render index rows 1 and 3 as the tracer proving both routes, then the remaining 15 wave-1 records into shard `69-BODIES-01.md`, plus `COVERAGE.md`
 
 **Wave 2** *(blocked on Wave 1 completion — six independent shards, zero file overlap)*
 
