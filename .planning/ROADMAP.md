@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 10/12 plans executed
+**Plans**: 11/12 plans executed
 
 Plans:
 **Wave 1**
@@ -623,7 +623,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 67-11-PLAN.md — The 9 `bbj-intellij/` fixes (review-only, D-14) and the `P63-D7-004` deferral (D-15)
+- [x] 67-11-PLAN.md — The 9 `bbj-intellij/` fixes (review-only, D-14) and the `P63-D7-004` deferral (D-15)
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
