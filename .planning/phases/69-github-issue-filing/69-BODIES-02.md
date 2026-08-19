@@ -14,6 +14,17 @@
 | 27 | P64-D3-001 | public issue | BBj integration and infrastructure: five of six CI workflows omit dependency caching, repeating a full install and rebuild on every run | BBj integration and infrastructure, PRIO 2, 2 |
 | 28 | P64-D5-002 | public issue | vscode: vitest.config.ts declares no include or exclude, leaving the test-discovery boundary undefined | vscode, PRIO 2, 2 |
 | 29 | P64-D6-001 | public issue | dependencies: interop test harness's documented npx tsx invocation installs an unpinned, undeclared dependency at run time | dependencies, PRIO 2, 2 |
+| 30 | P64-D6-011 | public issue | dependencies: java-interop pins Guava 31.1-jre, which carries two published temporary-directory-permission advisories | dependencies, PRIO 2, 2 |
+| 31 | P66-D2-003 | public issue | vscode: debouncedCompile's diagnostic merge bypasses applyDiagnosticHierarchy, leaving redundant Parse-tier errors visible | vscode, PRIO 2, 2 |
+| 32 | P61-D1-002 | public issue | vscode: java-interop peer response fields reach hover/completion markdown with no schema validation, size limit or escaping | vscode, PRIO 2, 4 |
+| 33 | P61-D1-004 | public issue | vscode: hover and completion documentation render java-interop peer javadoc as Markdown with no control-character escaping | vscode, PRIO 2, 4 |
+| 34 | P61-D1-005 | public issue | vscode: missing-use quick-fix and auto-import completion insert a java-interop peer's class name into source text unvalidated | vscode, PRIO 2, 4 |
+| 35 | P61-D1-008 | public issue | vscode: USE-statement import path resolution allows path traversal outside the configured PREFIX root | vscode, PRIO 2, 4 |
+| 36 | P61-D2-007 | public issue | vscode: BBjFilePath terminal's greedy ::.*:: regex corrupts parsing when two qualified references share one line | vscode, PRIO 2, 4 |
+| 37 | P61-D5-003 | public issue | javascript: three parser.test.ts validation assertions stay disabled, needing a classpath-resolvable EmptyFileSystem test environment | javascript, PRIO 2, 4 |
+| 38 | P62-D1-004 | public issue | vscode: EM validate/login tokens are passed as literal exec() arguments, visible in the process table and masked only by substring match | vscode, PRIO 2, 4 |
+| 39 | P62-D2-001 | public issue | vscode: four composer webviews leak a message-handler closure per open/close because none disposes its listener per-panel | vscode, PRIO 2, 4 |
+| 40 | P62-D2-003 | public issue | vscode: 16 of extension.ts's command and provider registrations are never disposed, throwing on any re-activation | vscode, PRIO 2, 4 |
 
 ## Bodies rows 18-40
 
@@ -542,3 +553,493 @@ appearing in `npm ls tsx`'s output after the change.
 
 Finding `P64-D6-001` · dimension D6 · severity medium · effort 2. `dedup: none`.
 <!-- BODY-END P64-D6-001 -->
+
+### 30. P64-D6-011 — dependencies: java-interop pins Guava 31.1-jre, which carries two published temporary-directory-permission advisories
+**Route:** public issue
+**Labels:** dependencies, PRIO 2, 2
+
+<!-- BODY-BEGIN P64-D6-011 -->
+## Problem
+
+`java-interop/build.gradle:22` declares `com.google.guava:guava:31.1-jre`. An OSV query against
+that coordinate and version returns two advisories, both concerning `Files.createTempDir()` creating
+world-readable temporary directories on Unix-like systems, fixed in `32.0.0-android`.
+
+## Evidence
+
+`java-interop/build.gradle:22`
+
+Surface: the single Gradle dependency declaration at `:22`; an OSV query for
+`com.google.guava:guava@31.1-jre` returns GHSA-7g45-4rm6-3mm3 (CVE-2023-2976, moderate) and
+GHSA-5mg8-w23w-74h3 (CVE-2020-8908, low), both against `Files.createTempDir()`. Problem class: a
+declared dependency version carrying two published, fixed advisories. Impact: if any code path in
+`java-interop`'s dependency tree reaches `Files.createTempDir()`, the created directory is
+world-readable, and on the CVE-2023-2976 path a local attacker can place content there before the
+intended writer does.
+
+## Failure scenario
+
+The java-interop socket service runs on a developer or server machine. If any code path in Guava 31.1-jre's `Files.createTempDir()` is reached — directly, or through a library that calls it — the directory is created with permissions that allow other local users to read its contents, and on the CVE-2023-2976 path a local attacker can additionally place content there before the intended writer does. Whether such a path is reached in this service is **not established here**, and deliberately so: `java-interop/` is excluded from review by FUT-01 and is read by this phase only as a dependency-tree source, so this record enumerates and triages the vulnerable coordinate, which is what criterion 3 requires, and does not attempt a reachability trace into code the milestone has scoped out. That is also why it is not triaged `accepted-with-reason`: the reachability argument acceptance would demand cannot be written from this unit's surface.
+
+## Proposed approach
+
+Raise the coordinate to `32.0.0-jre` or later.
+
+## Acceptance criteria
+
+`java-interop/build.gradle:22` declares `com.google.guava:guava` at `32.0.0-jre` or later. An OSV
+query against the new coordinate and version returns no advisory matching either
+GHSA-7g45-4rm6-3mm3 or GHSA-5mg8-w23w-74h3.
+
+## Traceability
+
+Finding `P64-D6-011` · dimension D6 · severity medium · effort 2. `dedup: none`.
+<!-- BODY-END P64-D6-011 -->
+
+### 31. P66-D2-003 — vscode: debouncedCompile's diagnostic merge bypasses applyDiagnosticHierarchy, leaving redundant Parse-tier errors visible
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 2
+
+<!-- BODY-BEGIN P66-D2-003 -->
+## Problem
+
+`applyDiagnosticHierarchy`'s single call site, `validateDocument`, always receives a freshly
+constructed diagnostics array with no BBjCPL-sourced entries; the only code path that introduces a
+BBjCPL diagnostic, `debouncedCompile`'s `mergeDiagnostics` call, never calls
+`applyDiagnosticHierarchy`. Rule 0's own doc comment says a BBjCPL diagnostic should suppress a
+redundant Langium Parse-tier diagnostic on the same finding, but no code path applies it.
+
+## Evidence
+
+`bbj-vscode/src/language/bbj-document-validator.ts:53,59-63,80-131,161-169`
+
+Surface: `applyDiagnosticHierarchy` and its Rule 0 (`bbj-document-validator.ts:80-131`), whose sole
+call site is `validateDocument` (`:161-169`); `mergeDiagnostics` (`bbj-document-builder.ts:155-187`,
+call at `:177-180`) never calls it. Problem class: a documented suppression rule that no live code
+path invokes. Impact: a BBjCPL error and a redundant Langium Parse-tier error on the same finding
+both remain visible in the Problems panel indefinitely, contrary to Rule 0's own doc comment.
+
+## Failure scenario
+
+A BBjCPL error and a Langium Parse-tier error on different lines of the same file (or even the same line, once mergeDiagnostics's coincidental same-line relabeling is accounted for and set aside) both remain visible in the Problems panel indefinitely — the redundant Langium parse error is never suppressed by Rule 0 as the class's own doc comment (bbj-document-validator.ts:70-77) says it should be, on this or any subsequent save.
+
+## Proposed approach
+
+The minimal fix exports applyDiagnosticHierarchy from bbj-document-validator.ts and calls it from debouncedCompile in bbj-document-builder.ts after the mergeDiagnostics call, two files.
+
+## Acceptance criteria
+
+`applyDiagnosticHierarchy` is exported from `bbj-document-validator.ts` and called from
+`debouncedCompile` in `bbj-document-builder.ts` after the `mergeDiagnostics` call, so a BBjCPL
+diagnostic suppresses its redundant Langium Parse-tier counterpart per Rule 0. A regression test in
+`cpl-integration.test.ts` asserts that a same-file, different-line BBjCPL error merge results in the
+Parse-tier diagnostic being absent, where it would have failed before the fix.
+
+## Traceability
+
+Finding `P66-D2-003` · dimension D2 · severity medium · effort 2. `dedup: none`.
+<!-- BODY-END P66-D2-003 -->
+
+### 32. P61-D1-002 — vscode: java-interop peer response fields reach hover/completion markdown with no schema validation, size limit or escaping
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D1-002 -->
+## Problem
+
+`resolveClass()` copies every peer-supplied field (fields, methods, constructors, error,
+isDeprecated, parameter types/names) directly onto the `JavaClass` AST node with no schema
+validation, size limit, or content filtering, and interpolates peer-supplied types/names into a
+method-signature string with no escaping.
+
+## Evidence
+
+`bbj-vscode/src/language/java-interop.ts:598-644`
+
+Surface: `resolveClass()` (`java-interop.ts:543-596`) assigning unvalidated peer fields to the AST
+node, and the hand-built method-signature string (`:632-637`) interpolating peer-supplied types and
+names with no escaping. Problem class: missing schema validation, size bound, and escaping on
+externally-sourced data before it reaches IDE-rendered output. Impact: the resulting values are
+stored on the AST node and consumed by hover/completion providers with no further sanitization in
+this unit.
+
+## Failure scenario
+
+A malicious or compromised peer on interopHost:interopPort returns a getClassInfo/getClassInfos response with an oversized or Markdown-control-character-laden method.returnType, parameter name, or a multi-megabyte doc string; the value flows unmodified into the IDE-rendered hover/completion markdown built from this unit's output.
+
+## Proposed approach
+
+Validate/bound/escape before assignment.
+
+## Acceptance criteria
+
+`resolveClass()` validates peer-supplied field shapes, bounds their length, and escapes Markdown
+control characters before assigning them to the `JavaClass` AST node or building the method-signature
+string. A regression test feeding an oversized or Markdown-control-character-laden peer response
+into `resolveClass()` asserts the resulting AST node's fields are bounded and escaped rather than
+passed through unmodified.
+
+## Traceability
+
+Finding `P61-D1-002` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P61-D1-002 -->
+
+### 33. P61-D1-004 — vscode: hover and completion documentation render java-interop peer javadoc as Markdown with no control-character escaping
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D1-004 -->
+## Problem
+
+`bbj-hover.ts`'s `getAstNodeHoverContent` reads `documentation.docu`, passes it through
+`tryParseJavaDoc` with no escaping or length bound, and returns it as part of a plain string that
+Langium's own hover provider wraps unmodified into LSP `MarkupContent` explicitly typed as Markdown.
+`bbj-completion-provider.ts`'s `createReferenceCompletionItem` builds the same kind of
+`{ kind: 'markdown', value: ... }` object from the same field. Neither site escapes Markdown control
+characters before interpolation.
+
+## Evidence
+
+`bbj-vscode/src/language/bbj-hover.ts:88-106, bbj-vscode/src/language/bbj-completion-provider.ts:670-691`
+
+Surface: `getAstNodeHoverContent` (`bbj-hover.ts:88-106`) and `createReferenceCompletionItem`
+(`bbj-completion-provider.ts:670-691`), both building unescaped Markdown from `node.docu.javadoc`.
+Problem class: missing Markdown-control-character escaping on externally-sourced data rendered by an
+IDE component explicitly configured for Markdown. Impact: injected Markdown link/image syntax
+renders inside the IDE's hover or completion popup when a developer views documentation for a
+Java class resolved through a compromised peer.
+
+## Failure scenario
+
+A malicious or compromised java-interop peer (SEC-06, the java-interop peer-response handling unit) returns a getClassInfo response whose javadoc text contains Markdown link/image syntax (e.g. `![x](https://evil.example/track.png)` or `[click here](https://evil. example/phish)`); hovering over, or viewing completion documentation for, any reference to that Java class renders the injected link/image inside the IDE's hover/completion popup. This settles the java-interop peer-response handling unit's own not-reproducible disposition on this exact question: the renderer is confirmed configured for Markdown (not plaintext), so the weaker claim (markup CAN be interpreted) is now established with file:line evidence; the stronger claim (script/command execution) is explicitly NOT asserted — see Not-reproducible dispositions below. [The java-interop peer-response handling unit referenced above is bbj-vscode/src/language/java-interop.ts.]
+
+## Proposed approach
+
+Escape Markdown control characters in tryParseJavaDoc's output and in the javadoc/signature strings before they reach `documentation`/`contents`.
+
+## Acceptance criteria
+
+`tryParseJavaDoc`'s output, and the javadoc/signature strings built in `bbj-hover.ts` and
+`bbj-completion-provider.ts`, have Markdown control characters (`[`, `]`, `(`, `)`, backtick, `!`)
+escaped before they reach `documentation`/`contents`. A regression test feeding a javadoc string
+containing Markdown link/image syntax into either provider asserts the rendered output no longer
+contains an interpretable link or image.
+
+## Traceability
+
+Finding `P61-D1-004` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P61-D1-004 -->
+
+### 34. P61-D1-005 — vscode: missing-use quick-fix and auto-import completion insert a java-interop peer's class name into source text unvalidated
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D1-005 -->
+## Problem
+
+`createUseAction` and `completeAutoImportClasses` both build a `use ${fqn}\n` text edit from an
+`fqn` sourced from unvalidated peer `name`/`packageName` fields, with no check that `fqn` is a legal
+Java identifier sequence before it is interpolated into source text inserted into the user's own
+document.
+
+## Evidence
+
+`bbj-vscode/src/language/bbj-code-action-provider.ts:82-83, bbj-vscode/src/language/bbj-completion-provider.ts:99-113`
+
+Surface: `createUseAction` (`bbj-code-action-provider.ts:82-83`), marking its top-ranked candidate
+`isPreferred: true`, and `completeAutoImportClasses` (`bbj-completion-provider.ts:99-113`), both
+building a `use ${fqn}\n` `TextEdit` with no `fqn` format validation. Problem class: unvalidated,
+externally-sourced data interpolated directly into source text inserted by an IDE quick-fix or
+completion. Impact: accepting the quick-fix or completion inserts the peer-supplied text verbatim
+into the user's source file.
+
+## Failure scenario
+
+A malicious or compromised java-interop peer returns a class/package name containing embedded newlines or arbitrary BBj source text (e.g. "Foo\nRUN \"malicious.bbj\"") in a getClassInfo/getClassInfos response. The resulting `use` quick-fix (marked isPreferred: true for the top-ranked candidate, steering VS Code's Ctrl+. Auto Fix toward it) or auto-import completion item inserts that text verbatim into the user's source file when accepted, without any confirmation beyond the ordinary quick-fix/completion acceptance gesture.
+
+## Proposed approach
+
+Validate fqn against a legal-identifier-sequence pattern before building the TextEdit, in both call sites or a shared helper.
+
+## Acceptance criteria
+
+`createUseAction` and `completeAutoImportClasses` both validate `fqn` against a legal
+Java-identifier-sequence pattern before building the `use ${fqn}\n` `TextEdit`, rejecting or
+dropping the candidate rather than inserting unvalidated text. A regression test feeding an `fqn`
+containing an embedded newline or BBj source text asserts the resulting quick-fix/completion is
+rejected or sanitized rather than inserted verbatim.
+
+## Traceability
+
+Finding `P61-D1-005` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P61-D1-005 -->
+
+### 35. P61-D1-008 — vscode: USE-statement import path resolution allows path traversal outside the configured PREFIX root
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D1-008 -->
+## Problem
+
+`addImportedBBjDocuments` resolves each USE statement's untrusted `importPath` text against a
+configured `prefixPath` via `resolve(prefixPath, importPath)`, with no check that the result stays
+under `prefixPath`. Both `..`-traversal and an absolute `importPath` escape the PREFIX root entirely
+via Node's own `path.resolve()` semantics, and any file found is read and indexed.
+
+## Evidence
+
+`bbj-vscode/src/language/bbj-document-builder.ts:303-317`
+
+Surface: `addImportedBBjDocuments` (`:303-317`), computing `resolve(prefixPath, importPath)` at
+`:306` and calling `fsProvider.readFile()` at `:308` with no containment check; `importPath` is
+matched only against `BBjPathPattern = /^::(.*)::$/` (`bbj-scope.ts`), which places no restriction on
+the captured group. Problem class: path traversal (missing containment check on a resolved
+filesystem path). Impact: an arbitrary local file read triggered purely by source-file content,
+independent of any workspace setting, with the result added to the workspace index as a parsed BBj
+document.
+
+## Failure scenario
+
+A malicious or careless .bbj source file inside a PREFIX-resolved directory contains `use ::../../../../etc/passwd::SomeClass` (or an absolute-path variant). The next buildDocuments() cycle resolves that path outside the configured PREFIX root, reads whatever file exists there, and adds it to the workspace index as a parsed BBj document — an arbitrary local file read triggered purely by source-file content, independent of any workspace setting.
+
+## Proposed approach
+
+After resolve(), verify the result stays under prefixPath before calling readFile, e.g. via a relative()-based containment check.
+
+## Acceptance criteria
+
+`addImportedBBjDocuments` verifies, after `resolve()`, that the result stays under `prefixPath`
+(for example via a `relative()`-based containment check) before calling `readFile`, rejecting an
+`importPath` that resolves outside the PREFIX root. A regression test asserts that both a
+`..`-traversal `importPath` and an absolute-path `importPath` are rejected rather than read.
+
+## Traceability
+
+Finding `P61-D1-008` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P61-D1-008 -->
+
+### 36. P61-D2-007 — vscode: BBjFilePath terminal's greedy ::.*:: regex corrupts parsing when two qualified references share one line
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D2-007 -->
+## Problem
+
+The `BBjFilePath` terminal's greedy `::.*::` regex backtracks from the end of the line to the last
+`::` occurrence rather than the nearest one, consuming a second, independent qualified reference on
+the same physical line into the first token.
+
+## Evidence
+
+`bbj-vscode/src/language/bbj.langium:941`
+
+Surface: the `BBjFilePath` terminal (`bbj.langium:941`), feeding `QualifiedBBjClassName`
+(`:869-870`), reachable inside a `;`-separated compound `Statement` (`:22-23`), so two
+`BBjFilePath`-qualified references can legally appear on one physical line. Problem class: a greedy
+regex terminal misparsing legal input. Impact: a line with two independent qualified-file-path
+class references corrupts the parse of both statements.
+
+## Failure scenario
+
+A line containing two independent qualified-file-path class references joined by `;` — e.g. `declare ::lib1::ClassA a; declare ::lib2::ClassB b` — tokenizes the first BBjFilePath as spanning through the second declaration's opening `::`, corrupting the parse of both statements (the second `declare` loses its own file-path token, and the first's `ID` production is fed garbled trailing text).
+
+## Proposed approach
+
+E.g. `/::[^:]*(:[^:][^:]*)*::/` or an explicit non-greedy/negated-character-class rewrite, verified against legitimate paths containing single colons.
+
+## Acceptance criteria
+
+The `BBjFilePath` terminal in `bbj.langium:941` no longer matches past the nearest closing `::`,
+verified against legitimate paths containing single colons. A regression test parsing
+`declare ::lib1::ClassA a; declare ::lib2::ClassB b` asserts both declarations parse with their own
+correct file-path token, with no validation error from either.
+
+## Traceability
+
+Finding `P61-D2-007` · dimension D2 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P61-D2-007 -->
+
+### 37. P61-D5-003 — javascript: three parser.test.ts validation assertions stay disabled, needing a classpath-resolvable EmptyFileSystem test environment
+**Route:** public issue
+**Labels:** javascript, PRIO 2, 4
+
+<!-- BODY-BEGIN P61-D5-003 -->
+## Problem
+
+Three `expectNoValidationErrors` assertions in `parser.test.ts` are commented out — for a
+substring-parse case, a `BBjAPI()` global-namespace method-chain case, and a `String[]`/`byte[]`
+Java-typed class-field case — each noted as blocked because the Java class it exercises cannot be
+resolved under Langium's `EmptyFileSystem` test context.
+
+## Evidence
+
+`bbj-vscode/test/parser.test.ts:530-533,811-815,860-864`
+
+Surface: three commented-out `expectNoValidationErrors(result)` calls at `:533`, `:815`, and `:864`,
+each following a parse of Java-classpath-dependent BBj source. Problem class: disabled regression
+assertions, not code defects. Impact: any regression in Java-classpath-dependent validation for
+these three scenarios would pass the full `npm test` suite undetected, because the only assertions
+that would catch it are commented out rather than executed.
+
+## Failure scenario
+
+Any regression in Java-classpath-dependent validation for these three scenarios — new String() substring validation, BBjAPI() global-namespace method-chain resolution, and String[]/byte[] Java-typed class fields — would pass the full npm test suite undetected, because the only assertions that would catch it are commented out rather than executed.
+
+## Proposed approach
+
+Like P61-D5-001, no single code edit closes this gap because the missing piece is an environment capability, not a defect: the three disabled `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts` (lines 533, 815, 864) need a Java classpath resolvable under Langium's `EmptyFileSystem` test context, which today only a live, classpath-loaded java-interop peer on port 5008 can supply, and a bare listener on that port (Phase 64 D-06) does not supply one. If that peer cannot be provisioned for the test environment, the alternative is documenting these three assertions as blocked-pending-classpath rather than leaving them silently commented out, so DEBT-02's re-triage has an honest record to close against.
+
+## Acceptance criteria
+
+Either the three `expectNoValidationErrors` assertions at `parser.test.ts:533,815,864` are
+re-enabled against a classpath-resolvable test environment, or each is documented in place with the
+specific blocking limitation (no Java classpath resolvable under `EmptyFileSystem`) and what would
+unblock it, so the gap is an honest, visible record rather than a silent comment-out.
+
+## Traceability
+
+Finding `P61-D5-003` · dimension D5 (secondary D2) · severity medium · effort 4.
+
+This finding is one of a small group of disabled test assertions tracked together internally for
+re-triage; the related work also covers a fourth disabled assertion elsewhere in the test suite,
+outside this finding's own scope. This finding adds the reproduction detail and exact file:line
+locations for the three assertions listed above, plus the specific environment-capability blocker —
+a Java classpath resolvable under Langium's `EmptyFileSystem` test context — that would need to be
+closed before they can be re-enabled.
+<!-- BODY-END P61-D5-003 -->
+
+### 38. P62-D1-004 — vscode: EM validate/login tokens are passed as literal exec() arguments, visible in the process table and masked only by substring match
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P62-D1-004 -->
+## Problem
+
+`extension.ts` builds `emValidateCmd` with the raw JWT token interpolated directly as a literal
+command-line argument, passed to `child_process.exec()`; while the process runs, the full command
+line — including the token — is visible in the OS process table. A debug-log masking step and the EM
+login password masking both rely on a literal substring match that a value containing a
+double-quote character can defeat.
+
+## Evidence
+
+`bbj-vscode/src/extension.ts:415,420,639`
+
+Surface: `emValidateCmd`'s token interpolation (`:415`), passed to `child_process.exec()` at `:426`;
+the debug-log mask at `:420` (`emValidateCmd.replace(token, '***')`); the EM login password mask at
+`:639` (`.replace(`"${password}"`, '"***"')`). Problem class: a secret passed via shell-interpolated
+`argv` rather than a non-argv channel, plus a masking step whose substring match can fail to match.
+Impact: any co-resident process with process-list visibility can read the plaintext token or
+password from the process arguments; a token or password containing a double-quote could also
+bypass the debug-log/output-channel mask.
+
+## Failure scenario
+
+Any local process running while the EM validate/login exec() call is in flight -- another process owned by the same user, a monitoring/diagnostic tool, or another account with process-list visibility in a shared environment -- can read the plaintext EM token or password directly from the child process's argument list. Separately, a developer running with bbj.debug: true whose stored token or typed password contains a double-quote would have the unmasked raw secret written into the (extension-visible, sometimes shared-in-bug-reports) Output Channel instead of the intended *** redaction.
+
+## Proposed approach
+
+(switch to execFile/spawn with an argument array so secrets never appear in a shell-interpolated string, and mask by position rather than substring match).
+
+## Acceptance criteria
+
+The EM validate/login `exec()` calls pass the token/password via `execFile`/`spawn` with an argument
+array (or an equivalent non-argv channel) rather than a shell-interpolated string, and the debug-log
+and output-channel masking replace the secret by its known position rather than by a substring match.
+A regression test asserts that a token or password value containing a double-quote character is
+still fully masked in the resulting log/output-channel text.
+
+## Traceability
+
+Finding `P62-D1-004` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P62-D1-004 -->
+
+### 39. P62-D2-001 — vscode: four composer webviews leak a message-handler closure per open/close because none disposes its listener per-panel
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P62-D2-001 -->
+## Problem
+
+`panel.webview.onDidReceiveMessage(handler, undefined, context.subscriptions)` registers the
+message-handler `Disposable` on the extension's own `context.subscriptions` array — drained only on
+extension deactivation — rather than on a per-panel scope, and none of the four composer files calls
+`panel.onDidDispose(...)`. The same pattern recurs identically across all four composer webviews.
+
+## Evidence
+
+`bbj-vscode/src/msgbox-composer-webview.ts:82,112,116`
+
+Surface: `msgbox-composer-webview.ts:82,112,116`, and the identical pattern at
+`addwindow-composer-webview.ts:108,131,135`, `addchildwindow-composer-webview.ts:113,136,140`, and
+`setopts-composer-webview.ts:70,101,105` — confirmed by zero matches for `onDidDispose` across all
+four files. Problem class: a message-handler closure registered on a session-scoped array with no
+per-panel disposal. Impact: each open/close cycle of any of the four composers leaks a closure
+holding a reference to a disposed `WebviewPanel` and, in EDIT mode, a captured document
+`Uri`/position, for the rest of the session.
+
+## Failure scenario
+
+Opening and closing any of the four composers N times over a VS Code session accumulates N leaked closures on context.subscriptions with no bound; each holds a reference to a now-disposed vscode.WebviewPanel and, in EDIT mode, a captured document Uri/position. Session-scoped memory growth, worse for developers who use the Code-Action-driven edit flow (`Edit MSGBOX` / `Edit addWindow flags` / `Edit addChildWindow flags` / `Edit SETOPTS`) repeatedly against the same or different files in one session.
+
+## Proposed approach
+
+The identical pattern recurs in all 4 files, and a comprehensive fix (add panel.onDidDispose(() => {...}, undefined, context.subscriptions) or scope the message-listener disposable to the panel itself) needs to touch all 4, so test (1) fails on its own.
+
+## Acceptance criteria
+
+Each of the four composer webview files (`msgbox-composer-webview.ts`, `addwindow-composer-webview.ts`,
+`addchildwindow-composer-webview.ts`, `setopts-composer-webview.ts`) either registers a
+`panel.onDidDispose(...)` that disposes the message-handler listener or scopes the listener
+disposable to the panel itself, so no closure survives past the panel's own disposal. A regression
+test asserts that `context.subscriptions`'s length is unchanged after an open-then-dispose cycle of
+each composer.
+
+## Traceability
+
+Finding `P62-D2-001` · dimension D2 (secondary D3) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P62-D2-001 -->
+
+### 40. P62-D2-003 — vscode: 16 of extension.ts's command and provider registrations are never disposed, throwing on any re-activation
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P62-D2-003 -->
+## Problem
+
+None of 16 registrations in `activate()` — 14 `vscode.commands.registerCommand()` calls, the
+`registerDocumentFormattingEditProvider` call, and the `client.onNotification` call — captures or
+pushes its returned `Disposable` onto `context.subscriptions`, unlike every other registration in the
+same file, which correctly uses the push pattern.
+
+## Evidence
+
+`bbj-vscode/src/extension.ts:592-707`
+
+Surface: 14 `registerCommand()` calls (`:592-707`), the formatting-provider registration (`:748`),
+and the notification handler (`:822`) — none disposed — contrasted with the correctly-disposed
+composer command registrations (`:584-587`) and the file's own status-bar items, file watcher, and
+listeners (`:756,771,783,805,808,819,858`). Problem class: missing disposal of a returned handle
+whose contract requires it. Impact: a second `activate()` call within the same extension-host
+process throws on every one of the 16 undisposed registrations.
+
+## Failure scenario
+
+VS Code's documented contract for registerCommand requires the caller to dispose the returned handle; registering the same command ID twice without disposing the first throws Error: command 'X' already exists. Because none of these 16 registrations is disposed, and deactivate() (extension.ts:833-837) only calls client.stop(), a second activate() call within the same extension-host process -- triggered by certain workspace-trust transitions, or by a test harness that activates the extension repeatedly -- throws on every one of the 16 registrations.
+
+## Proposed approach
+
+(wrap each registration in context.subscriptions.push(...)).
+
+## Acceptance criteria
+
+All 16 registrations in `activate()` (the 14 `registerCommand()` calls, the
+`registerDocumentFormattingEditProvider` call, and the `client.onNotification` call) push their
+returned `Disposable` onto `context.subscriptions`, matching the pattern already used elsewhere in
+the same file. A regression test simulating a second `activate()` call within the same process
+asserts no `command already exists` error is thrown.
+
+## Traceability
+
+Finding `P62-D2-003` · dimension D2 (secondary D4) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P62-D2-003 -->
