@@ -736,6 +736,79 @@ account of why the fix's actual scope exceeded the six packages the finding reco
 `P62-D7-002` client-side `.bbl` extension entry is VS Code-only (`bbj-vscode/package.json`), and the
 lockfile changes are npm-only.
 
+### Plan 67-11 gradle re-check
+
+**Verdict: identical to baseline.** Plan 67-11 applied nine `bbj-intellij/` easy-fix findings
+(one control-flow refactor, eight doc/comment corrections, one dead-code removal) and deferred a
+tenth (`P63-D7-004`, D-15). Re-ran `./gradlew build` from `bbj-intellij/` after all nine commits:
+
+```
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+25.0.3
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 827ms
+```
+
+Identical failure shape to the phase-start baseline recorded above (`FAILURE: Build failed with an
+exception. * What went wrong: 25.0.3 ... BUILD FAILED in <N>s`) — same build-script Java version
+check (`build.gradle.kts`'s `sourceCompatibility`/`targetCompatibility` set to
+`JavaVersion.VERSION_17`), same rejected value (`25.0.3`, this machine's only installed JDK,
+Temurin 25.0.3 at `/opt/java/default`). The `BUILD FAILED in <N>s` duration line varies run to run
+(5s at phase start, 827ms here, both well under a timeout) — not a signal, since a version-check
+failure short-circuits before any compilation work. This plan's nine commits (BbjNodeDownloader.java
+control-flow split, BbjIcons.java + two `.svg` deletions, and six Javadoc/comment corrections across
+BbjCompileAction.java/BbjEMTokenStore.java/ComposerModels.java/BbjServerLogToolWindowFactory.java/
+BbjServerService.java/BbjColorSettingsPage.java) did not touch `build.gradle.kts` and did not change
+the toolchain gap — none of them could have, and the re-check confirms none did.
+
+### Plan 67-11 delta
+
+**Verdict: identical.** No `bbj-vscode/` file was changed by this plan — all nine applied edits and
+the one deferral are confined to `bbj-intellij/` and this phase's own `.planning/` ledger/baseline
+files. Ran from `bbj-vscode/`: `npm run lint` (exit `0`, zero warnings, unchanged) and three full
+`npm test` runs (D-08):
+
+- Run 1: `11 failed | 930 passed | 17 skipped (958)`
+- Run 2: `11 failed | 939 passed | 8 skipped (958)`
+- Run 3: `11 failed | 943 passed | 4 skipped (958)`
+
+The failing-test NAME set was identical and set-equal to the phase-start gate set across all three
+runs — the same 11 `test/linking.test.ts > ... Interop related tests > ...` names recorded at phase
+start, none added, none removed:
+
+1. All BBj classes extends Object
+2. Import and declare simple Java class without using FQNs
+3. Import Java class
+4. Declare with direct import
+5. Class definition with direct import in extends
+6. Class definition with direct import in implements
+7. Unloaded Java FQN access - test for #6
+8. Java FQN access - test for #6
+9. Linked List is resolved
+10. Resolve nested class in use statement
+11. Resolve nested class FQN
+
+Beyond these 11, each run showed a different 0-1 additional `FAIL`, every one a `beforeAll Error:
+Hook timed out in 10000ms.` in a pre-existing suite this plan does not touch (Run 1:
+`test/run-call-file-resolution.test.ts`; Run 2: same; Run 3: `test/lazy-prefix-loading.test.ts`) —
+load-dependent flakiness matching the 5 suites already named under `## Flaky exclusions (D-08)`
+above, excluded per D-08. Total test count `958` across all three runs, unchanged from the Plan
+67-10 delta's `958`, confirming this plan added no new test cases (expected — it touches no
+`bbj-vscode/` file).
+
+**`./gradlew build`:** re-run and recorded above under `### Plan 67-11 gradle re-check`, per this
+plan's own action step (this is the one plan in the phase whose entire scope is `bbj-intellij/`).
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*

@@ -93,16 +93,16 @@ Two derived counts, and the arithmetic connecting them:
 | 56 | P62-D7-002 | applied | 906c07b (test) + bee185d (fix) |
 | 57 | P62-D8-001 | applied | 2fa0264 |
 | 58 | P62-D8-002 | pending | pending |
-| 59 | P63-D4-001 | pending | pending |
-| 60 | P63-D4-014 | pending | pending |
-| 61 | P63-D7-004 | deferred | none — deferred, no JDK 17 available |
-| 62 | P63-D8-001 | pending | pending |
-| 63 | P63-D8-002 | pending | pending |
-| 64 | P63-D8-003 | pending | pending |
-| 65 | P63-D8-005 | pending | pending |
-| 66 | P63-D8-006 | pending | pending |
-| 67 | P63-D8-007 | pending | pending |
-| 68 | P63-D8-008 | pending | pending |
+| 59 | P63-D4-001 | applied | 7816c7d |
+| 60 | P63-D4-014 | applied | 2cf09a6 |
+| 61 | P63-D7-004 | deferred | none — deferred per D-15 |
+| 62 | P63-D8-001 | applied | 281f62c |
+| 63 | P63-D8-002 | applied | 40da059 |
+| 64 | P63-D8-003 | applied | b57d98b |
+| 65 | P63-D8-005 | applied | 6ca6c49 |
+| 66 | P63-D8-006 | applied | 46a8d8c |
+| 67 | P63-D8-007 | applied | 18d5cc0 |
+| 68 | P63-D8-008 | applied | 97a2e6b |
 | 69 | P64-D2-004 | applied | d6e0dee (fix) |
 | 70 | P64-D4-004 | applied | b816116 (chore) |
 | 71 | P64-D6-004 | applied | ad3dfa7 (chore) |
@@ -1235,15 +1235,28 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDown
 dimension:         D4
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — the duplication is a maintainability cost: any future platform-specific fix (e.g. a sixth OS/architecture combination, or hardening one branch without the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
+fix_applied:       Added a private `Platform` enum (WINDOWS/UNIX) with `current()`, `archiveExtension()` and `nodeExecutableName()` members, replacing the five repeated `SystemInfo.isWindows` decision sites (including getCachedNodePath's :50). Split downloadAndExtractNode into buildDownloadUrl/download/extract/install/cleanup private methods invoked in the original order.
+user_facing:       no — internal refactor of BbjNodeDownloader; no plugin-visible behaviour, UI text, or icon changes
+verification:      review-only — no compile, no test ran (D-14). Statement-by-statement ordering trace (this row carries more behavioural risk than the other eight per the plan's own flagged-assumption #1):
+                    1. platform=getPlatformName()/arch=getArchitecture()/fileName/extension/downloadUrl construction — moved into buildDownloadUrl(Platform), called once at the top of downloadAndExtractNode; the reconstructed `fileName` (String.substring on downloadUrl between the last '/' and the extension suffix) is algebraically identical to the original literal fileName since downloadUrl = BASE+VERSION+"/"+fileName+extension by construction — same statements, same order, same values.
+                    2. indicator.setText/setFraction(0.1) — unchanged position, immediately after step 1, same as original.
+                    3. tempFile = Files.createTempFile(...) — same statement, same extension value (now via platform.archiveExtension(), semantically identical to the original isWindows-conditional expression for every platform branch).
+                    4. outer try { download(...) } — same HttpRequests.request(...).productNameAsUserAgent().connect(saveToFile) call, moved into download() unchanged, still inside the same try block position.
+                    5. setFraction(0.7)/setText("Extracting...") — unchanged position.
+                    6. tempExtractDir = createTempDirectory(...) — unchanged position, still inside the outer try, before the inner try.
+                    7. inner try { extract(...) } — same if(isWindows)/else branch dispatch to extractZip/extractTarGz, now via platform==Platform.WINDOWS, same order, same arguments.
+                    8. setFraction(0.9)/setText("Installing...") — unchanged position, still inside inner try, after extract() returns.
+                    9. install(...) — same extractedNode path-resolution if/else, same Files.exists guard + throw, same getNodeDataDirectory()/targetPath/Files.copy(REPLACE_EXISTING)/conditional setExecutable(true) statements, in the same order.
+                    10. setFraction(1.0) — unchanged position, after install() returns, still inside inner try, before its finally.
+                    11. inner finally { cleanup(tempExtractDir) } — same deleteDirectory(tempExtractDir.toFile()) call, unchanged position — runs on every path the inner try can exit, including exceptions thrown by extract()/install(), identical to before.
+                    12. outer finally { Files.deleteIfExists(tempFile) } — unchanged position, runs on every path the outer try can exit (including an exception propagating out of the inner try/finally), identical to before.
+                    URL-form check (T-67-11-02): downloadUrl = DOWNLOAD_BASE_URL+NODE_VERSION+"/"+"node-"+NODE_VERSION+"-"+platformName+"-"+arch+extension is unchanged for every platform×arch branch (darwin/linux/win × arm64/x64) since buildDownloadUrl computes it with the exact same concatenation and the exact same extension mapping (WINDOWS→".zip", else ".tar.gz") as the original inline code.
+                    Divergence from D-14: D-14 characterises this row as "cannot change bytecode behaviour," but a five-way method split plus a new Platform helper is a control-flow restructuring, not a rename or comment edit — recorded here per the plan's flagged-assumption #1 rather than adjusted silently. The trace above is the mitigation; no compiler or test confirms it in this environment.
+commit:            7816c7d
+notes:             getPlatformName()/getArchitecture() are now each called twice (once inside buildDownloadUrl, once again for the indicator.setText progress message) instead of once — both are pure/deterministic (SystemInfo/CpuArch checks with no side effects), so this is a minor redundancy, not a behaviour change. getCachedNodePath's own isWindows branch (BbjNodeDownloader.java:50) was also routed through Platform.current().nodeExecutableName() for consistency, reducing the duplication the finding's evidence names at that exact site.
 ```
 
 ```
@@ -1254,14 +1267,13 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjIcons.ja
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a in the sense that D4 records dead code, not a runtime failure — the bbj-config.svg/bbj-config_dark.svg resource pair is bundled into every plugin build and referenced by nothing, a small but genuine maintenance/packaging-size
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
+fix_applied:       Deleted the BbjIcons.CONFIG constant (BbjIcons.java:14) and its two backing resource files, bbj-intellij/src/main/resources/icons/bbj-config.svg and bbj-config_dark.svg. Pre-deletion check: `grep -rn 'CONFIG\|bbj-config' bbj-intellij/src/` returned only the declaration itself; `grep -n 'icon\|CONFIG' bbj-intellij/src/main/resources/META-INF/plugin.xml` named no CONFIG/bbj-config reference — no surviving reference, so the deletion is unconditional, not a reasoned partial.
+user_facing:       no — CONFIG was never referenced by any action, tool window, or plugin.xml entry, so no icon that a user could ever see is removed; only dead code/resources are removed
+verification:      review-only — no compile, no test ran (D-14). Post-commit checks: `test ! -f bbj-config.svg && test ! -f bbj-config_dark.svg` → ICONS_REMOVED; `grep -rn 'bbj-config' bbj-intellij/src/` → no hits (exit 1); `git ls-files bbj-intellij/src/main/resources/icons/ | wc -l` → 16, exactly two fewer than the pre-deletion count of 18; brace-balance check on all tracked bbj-intellij Java files → no UNBALANCED line.
+commit:            2cf09a6
 notes:             
 ```
 
@@ -1278,9 +1290,9 @@ test_required:     yes (D-11 D7)
 fail_before:       inapplicable — deferred, not applied (D-15)
 failure_scenario:  Currently zero observable impact — both IDEs display the raw numeric expr in their summary line regardless of useConstants, and the actually-inserted statement text is correct on both sides. The latent risk is that a future
 fix_applied:       not applied — deferred
-user_facing:       n/a — deferred, not applied
-verification:      none — no JDK 17 on this machine, so no Gradle test can run (D-15)
-commit:            none — deferred, no JDK 17 available
+user_facing:       no — deferred, not applied (no edit made)
+verification:      review-only — no compile, no test ran (D-14); no JDK 17 on this machine, so no Gradle test can run either (D-15)
+commit:            none — deferred per D-15
 notes:             Deferred per D-15: D-11 requires a regression test for D7; no Gradle test can run in this environment (no JDK 17 — only Temurin 25.0.3 is installed). Rather than apply it untested or reclassify it, it is held. The test that would prove it once a supported JDK exists: a Gradle/Java unit test (or, absent Gradle test infra here, a manual round-trip) constructing a MsgboxPreview/CatalogItem JSON payload carrying exprText/constant and asserting Gson deserializes both fields onto ComposerModels.java's DTOs without silent drop. Applies unchanged once a JDK 17 is available. The only easy-fix record excluded for a reason this phase originates (D-03's two exclusions are on the reviewer's own recorded reason).
 ```
 
@@ -1292,14 +1304,16 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDown
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 is a doc-accuracy finding) — a caller relying on the Javadoc's implied read-only contract (e.g. calling this method speculatively/defensively, assuming it cannot fail due to a write) is not warned that this "getter" can
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Added one sentence to getCachedNodePath()'s Javadoc noting it creates the plugin's Node.js data directory (via getNodeDataDirectory()'s Files.createDirectories) as a side effect if it does not already exist.
+user_facing:       no — Javadoc-only edit
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof (`git show <sha> -U0 -- BbjNodeDownloader.java | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'`):
+                    + * Note: as a side effect, this creates the plugin's Node.js data directory
+                    + * if it does not already exist.
+                    Both printed lines begin `*` — comment-only confirmed.
+commit:            281f62c
 notes:             
 ```
 
@@ -1311,14 +1325,16 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/Bbj
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 is a doc-accuracy finding) — a future maintainer skimming the class Javadoc or a user reading the action's tooltip text ("Compile the current BBj file") receives no signal that this is unimplemented, unlike the honest inline
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Appended a "Not yet implemented — see referral P63-D7-001" sentence to the class Javadoc, naming that actionPerformed() currently only logs a message and does not send a compile command to the language server (confirmed by reading actionPerformed()'s body, lines 24-39). Took the Javadoc branch, not the constructor's description-string branch, to avoid a user-visible tooltip-text change.
+user_facing:       no — class Javadoc only; the action's displayed name/description text ("Compile BBj File" / "Compile the current BBj file") is unchanged
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
+                    + * Not yet implemented — see referral P63-D7-001; actionPerformed() currently only logs that
+                    + * compile was triggered and does not send a compile command to the language server.
+                    Both printed lines begin `*` — comment-only confirmed.
+commit:            40da059
 notes:             
 ```
 
@@ -1330,14 +1346,17 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/Bbj
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 is a doc-accuracy finding) — a reader relying on the Javadoc's specific "OS-native keychain" claim to reason about at-rest exposure or persistence- across-restart would be wrong on any install where the user has selected KeePass
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Softened the class Javadoc's "stored in the OS-native keychain" claim to "stored via IntelliJ's PasswordSafe, backed by whichever credential store the user has configured (a native keychain, KeePass, or none)" — matches PasswordSafe.getInstance().set(...) (:34) exactly, without overstating the replacement guarantee either.
+user_facing:       no — Javadoc-only edit
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
+                    - * Tokens are keyed by a service name, stored in the OS-native keychain.
+                    + * Tokens are keyed by a service name and stored via IntelliJ's PasswordSafe, backed by
+                    + * whichever credential store the user has configured (a native keychain, KeePass, or none).
+                    All three printed lines begin `*` — comment-only confirmed.
+commit:            b57d98b
 notes:             
 ```
 
@@ -1349,14 +1368,27 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/Co
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  A maintainer relying on the class doc's "mirroring" claim to assume Java's DTOs are a complete field-for-field reflection of the TS-side types would be wrong by exactly the two dormant fields P63-D7-004 records — not a functional bug today,
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Softened "mirroring" to "carrying ... relevant to the IntelliJ dialogs" and added a one-line note naming the two intentionally-unused TS-side optional fields (MsgboxPreview.exprText, msgbox CatalogItem.constant) that P63-D7-004 traced. Took both branches the record offers rather than choosing one, since neither alone fully removed the overstatement. P63-D7-004 itself is deferred per D-15 — no field added; verified via `git diff <plan-start>..HEAD -- ComposerModels.java`, which shows comment-line changes only (see row 61 and this row's verification).
+user_facing:       no — class comment only, no field/method change
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof (single-commit diff):
+                    - * Gson-serializable data objects mirroring the language server's {@code bbj/composer/*} request
+                    - * params and results (see {@code bbj-vscode/src/language/composer-commands.ts}). The BBj-side
+                    - * TypeScript is the single source of truth for the flag/hex arithmetic (#433); these classes only
+                    - * carry the JSON across LSP4IJ. Field names must match the JSON keys exactly.
+                    + * Gson-serializable data objects carrying the language server's {@code bbj/composer/*} request
+                    + * params and results relevant to the IntelliJ dialogs (see
+                    + * {@code bbj-vscode/src/language/composer-commands.ts}). The BBj-side TypeScript is the single
+                    + * source of truth for the flag/hex arithmetic (#433); these classes only carry the JSON across
+                    + * LSP4IJ. Field names must match the JSON keys exactly.
+                    + *
+                    + * Note: two TypeScript-side optional fields are intentionally not mirrored here —
+                    + * {@code MsgboxPreview.exprText} and msgbox {@code CatalogItem.constant} — since neither is
+                    + * currently consumed by either IDE's UI; Gson silently drops them on deserialization.
+                    All printed lines begin `*` — comment-only confirmed. `git diff --stat HEAD~4..HEAD -- ComposerModels.java` (run from Task 3) additionally confirms this is the only ComposerModels.java touch across the whole plan's 4-commit window ending at this plan's HEAD.
+commit:            6ca6c49
 notes:             
 ```
 
@@ -1368,14 +1400,19 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServe
 dimension:         D8
 severity:          low
 effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 1 was chosen to mean 'below the 4 bucket'. Original value retained here.)
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  A developer who opens this tool window expecting to see the language server's own diagnostic stdout/stderr output — the exact promise the class doc and the window's own initial message ("BBj Language Server log initialized") make —
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Corrected the class Javadoc to describe what the window actually shows — curated status-transition messages logged via BbjServerService#logToConsole (server status changes, auto-restart, crash notifications) — rather than raw server stdout/stderr, which createToolWindowContent() never attaches to. Took the Javadoc-correction branch; the record's own behaviour-changing alternative (wiring the process's real stdout/stderr into the console) is out of this easy-fix's scope per the record itself.
+user_facing:       no — Javadoc-only edit; the console's actual displayed content is unchanged
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
+                    - * Creates a console view that displays real-time server stdout/stderr.
+                    + * Creates a console view that displays curated status-transition messages logged via
+                    + * {@link BbjServerService#logToConsole} (e.g. server status changes, auto-restart, crash
+                    + * notifications) — not the raw stdout/stderr of the spawned language server process itself,
+                    + * which this window does not attach to.
+                    All printed lines begin `*` — comment-only confirmed.
+commit:            46a8d8c
 notes:             
 ```
 
@@ -1387,15 +1424,22 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServe
 dimension:         D8
 severity:          low
 effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 1 was chosen to mean 'below the 4 bucket'. Original value retained here.)
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  A reader of this class's own doc reasonably assumes rapid repeated restart triggers are already deduplicated somewhere in this class, when in fact — per P63-D2-013 — none of the six real trigger paths goes through that debouncing at
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       DEVIATION FROM PLAN, recorded per this row's own must_haves obligation to verify every corrected Javadoc claim against the code as read: the plan instructed removing the "debounced restart scheduling" claim outright, on the premise (inherited from P63-D2-013's evidence) that scheduleRestart() has "zero call sites anywhere in the codebase." Verification found this premise false — `grep -rn "\.restart()\|scheduleRestart()" bbj-intellij/src/main/java/` shows exactly one scheduleRestart() call site, BbjSettingsConfigurable.apply():83, present since v1.2 (commit 35c916b, `git log -S scheduleRestart`), predating the Phase 63 review. Applied a corrected-not-removed edit instead: the class doc now names the one real debounced path (settings-apply) and the six direct-restart() bypass sites P63-D2-013 itself enumerated (manual restart action, crash notification, both status bar widgets, refresh Java classes, crash auto-restart), which remains accurate. This is a documented divergence, not a silent adjustment.
+user_facing:       no — Javadoc-only edit
+verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
+                    - * Centralizes server start/stop/restart operations, debounced restart scheduling,
+                    - * crash recovery with auto-restart logic, and status broadcast to UI components.
+                    + * Centralizes server start/stop/restart operations, crash recovery with auto-restart logic,
+                    + * and status broadcast to UI components. {@link #scheduleRestart()} offers a debounced restart
+                    + * path, but only the settings-apply flow ({@code BbjSettingsConfigurable#apply()}) uses it — the
+                    + * other restart triggers (manual restart action, crash notification, status bar widgets, refresh
+                    + * Java classes, crash auto-restart) call {@link #restart()} directly with no debounce.
+                    All printed lines begin `*` — comment-only confirmed.
+commit:            18d5cc0
+notes:             P63-D2-013's own evidence text is inaccurate on this one point (the "zero call sites" claim) even though its broader conclusion — most restart triggers bypass the debounce — remains correct and independently reverified above. Not raised as a new finding since P63-D2-013 is already a filed major-refactor record and this is a narrow evidence correction within its own scope, not a new defect; flagged here so the phase-close reviewer sees it rather than re-deriving it.
 ```
 
 ```
@@ -1406,15 +1450,17 @@ location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjColorSet
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 is a doc-accuracy finding) — a developer who copies the Settings > Color Scheme demo pane's block-comment syntax as a template for a real BBj documentation comment writes an invalid delimiter that the grammar's own DOCU
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+fix_applied:       Changed the block-comment opener in getDemoText()'s sample from "/@" to "/@@" at line 117, matching bbj.langium:953's DOCU terminal (`/\/@@[\s\S]*?@\//`) and bbj.tmLanguage.json's comment.block.bbj rule, both verified by reading. Confirmed against both files before editing.
+user_facing:       yes — this text renders in the visible preview pane of Settings > Editor > Color Scheme > BBj
+verification:      review-only — no compile, no test ran (D-14). `git show -U0` output:
+                    -                <bc>/@
+                    +                <bc>/@@
+                    CAVEAT (recorded rather than glossed): unlike the other eight rows in this plan, this edit is inside getDemoText()'s Java text-block String literal — sample data representing BBj source, not a Java-source comment. The changed line's content after the leading +/- ("                <bc>/@") does not begin with `*`, `/**`, `*/` or `//`, so the phase_conventions mechanical comment-only-proof syntax check does not literally pass here, even though the edit is confined to exactly one character of demo-text data and changes no Java code semantics. Read-verified instead: the diff touches only this one line inside the getDemoText() text block; getHighlighter() (the method actually driving live highlighting) is unaffected, per P63-D4-012's existing finding that getHighlighter() is a no-op.
+commit:            97a2e6b
+notes:             The plan's Task 2 acceptance criteria requires the comment-only proof for this row alongside the other three D8 commits in that task; this row's own nature (data content, not Java comment syntax) makes that specific check inapplicable as literally worded. Recorded as a plan-convention discrepancy per this phase's established practice (see row 59's D-14 divergence) rather than fabricating a passing proof.
 ```
 
 ```
