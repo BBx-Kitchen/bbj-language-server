@@ -2209,7 +2209,7 @@ classification:    major — (1) at most one file: FAIL, the argument contract i
 effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about EM authentication, token handling, credential storage or process arguments; issue #231 is the nearest neighbour by subject area (custom classpath and command-line settings for starting BBj programs) and is a feature request about classpath configuration, sharing no defect with this record.
 disposition:       major-refactor — this is one leg of SEC-04 (EM token lifecycle, end to end across `BbjEMTokenStore`, `em-login.bbj` and `em-validate-token.bbj`) and touches SEC-05 (process spawning). Phase 65 owns the synthesis; this record supplies the `RU-64-03` leg with full evidence and does not attempt the lifecycle here.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The concrete files are `bbj-vscode/tools/em-login.bbj:10-13,41-43`, `em-validate-token.bbj:8-9,29-34` and `web.bbj:19-20,22` — all three read a credential or a JWT off `ARGV`, the only intake channel each script has, and `em-login.bbj` writes the returned token back to disk with no permission control. Closing this needs a design decision, not a nameable edit: replacing the argument-vector channel with one not readable via `/proc/<pid>/cmdline` (an environment variable scoped to the child process, a named pipe, or a short-lived file the caller creates with restrictive permissions before invocation), and constraining the token file's permissions at write time. This record supplies RU-64-03's leg of SEC-04 with full evidence; Phase 65 owns synthesizing the fix across this leg, `BbjEMTokenStore`, and SEC-05's process-spawning half, so this approach does not attempt that synthesis.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 1; effort 8
 issue:             
 ```
@@ -2228,7 +2228,7 @@ classification:    major — (1) at most one file: FAIL, a fix means adding a ve
 effort:            8
 dedup:             none — no issue in the frozen 15-issue snapshot concerns the formatter, the vendored JARs, extension packaging or artifact integrity; 0 of the 15 carry the `dependencies` area label.
 disposition:       major-refactor — recorded here, routed to `MAJOR-REFACTORS.md` by Phase 68 and to Phase 69 for filing. Phase 67 does not apply it.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The concrete files are `bbj-vscode/src/document-formatter.ts:10,14-15,59` (the unverified spawn site) and the three vendored artifacts it loads — `tools/formatter/BBjCFCli.jar`, `lib/jcommander-1.71.jar`, `lib/BBjCodeFomatter.jar`. What would close this record is a verification step at the call site that compares each resolved JAR path's SHA-256 against a committed expected hash before `document-formatter.ts:59` spawns `java -jar`, for the two artifacts whose provenance is at least nameable (`BBjCFCli.jar`, `jcommander-1.71.jar`) — `BBjCodeFomatter.jar`'s own hash-pin has to wait on `P64-D6-002` answering what that artifact actually is, since pinning a hash for an unidentified binary records only that it has not changed, not that it is safe. No decompilation or execution of any of the three artifacts is part of this approach or is needed to add the hash check.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 1; effort 8
 issue:             
 ```
@@ -2361,7 +2361,7 @@ classification:    major — (1) at most one file: FAIL, `manual-release.yml` an
 effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about releases, versioning, tags or publication; 0 of the 15 carry the `dependencies` label and 0 name CI.
 disposition:       major-refactor — the change reorders two live publishing pipelines across two marketplaces and can only be validated by an actual release, so Phase 67 does not apply it unilaterally.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The manifest files are `.github/workflows/manual-release.yml:69-90,135-137,167-186` and `.github/workflows/preview.yml:53-68,96-102`, which share the same twelve-line version-bump-commit-push procedure (`P64-D4-003`). The observable that has to change is that a failed `vsce publish` (an expired PAT, the ordinary failure mode) no longer leaves a pushed commit and tag on `main` with no corresponding marketplace release — closing this is a design decision between three shapes: publish before writing anything durable (tag/push only after every marketplace publish succeeds), an explicit compensating rollback step that deletes the tag and reverts the commit on a later-job failure, or collapsing the three jobs into one so a mid-pipeline failure cannot leave partial state. Whichever shape is chosen has to be applied to both workflows, since they are the same procedure duplicated, not two independent ones.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
@@ -2380,7 +2380,7 @@ classification:    major — (1) at most one file: PASS, `preview.yml` alone. (2
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about preview builds, versioning or CI concurrency.
 disposition:       major-refactor — the fix is small in lines but is a release-policy decision about how the preview version is derived, so it belongs on `MAJOR-REFACTORS.md` rather than in Phase 67's apply path.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The manifest file is `.github/workflows/preview.yml:34-60`. Adding a bare `concurrency:` group is not sufficient in either cancel mode, as the record's own evidence traces: the defect is in the read-modify-write shape of the version bump, not in run overlap alone. The observable that has to change is that two pushes to `main` within the same window no longer both compute the same `NEW_VERSION` from a stale checkout — closing this means deciding how the bump reads `main`'s current version: fetch-and-rebase immediately before bumping, derive the version from the tag list instead of the checked-out `package.json`, or move the bump to run after publication succeeds rather than before.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 3; effort 2
 issue:             
 ```
@@ -2475,7 +2475,7 @@ classification:    major — (1) at most one file: PASS in the narrowest reading
 effort:            4
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI duration, redundant builds or workflow triggers.
 disposition:       major-refactor — the decision changes what protects `main`, so it is documented for review rather than applied by Phase 67.
-proposed_approach: PENDING-APPROACH — Reciprocal note: its `build.yml` `on:`-block sibling (`P64-D4-004`) already landed in Phase 67 as a recorded D-06 departure — whoever implements this record should expect that change is already applied (Phase 67 close-out §"Recorded departures").
+proposed_approach: The manifest file is `.github/workflows/build.yml:3-9`, and the decision it turns on is what protects `main`: whether `build.yml` gains a `paths:` filter (bringing it in line with every other scoped workflow), is merged into `pr-vsix.yml` so the two stop running the same install-build-test-package sequence twice per pull request, or deliberately stays the one unconditional gate that runs on every PR regardless of what changed — the wrong choice removes the only check `main` currently has on every pull request, which is why this is a review decision rather than a nameable edit. The sibling `on:`-block change is already applied: `P64-D4-004` landed in Phase 67 as a recorded D-06 departure, removing the dead `push: branches: [typefox-dev]` trigger and leaving `on:` with `pull_request` alone — an implementer starts from that state, not the pre-Phase-67 one (Phase 67 close-out §"Recorded departures").
 proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 4
 issue:             
 ```
@@ -2551,7 +2551,7 @@ classification:    major — (1) at most one file: FAIL, the abstraction has to 
 effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI structure, workflow maintenance or build configuration; 0 of the 15 carry the `dependencies` area label and 0 name a workflow.
 disposition:       major-refactor — a structural change across six workflow files that only a real run of each can validate; Phase 67 does not apply it, and it carries `P64-D3-001`, `P64-D1-005` and `P64-D6-004` with it as the reason each of those is a multi-file edit rather than a one-line one.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The manifest files are the six workflows under `.github/workflows/` that duplicate the checkout/Node-setup/`npm ci` preamble (`build.yml`, `pr-validation.yml`, `pr-vsix.yml`, `preview.yml`, `manual-release.yml`, `deploy-docs.yml`), with no `.github/actions/` directory to hold a shared version. The observable that changes once this is done is that the six measured drift axes this record counts — step indentation, `working-directory:` usage, `shell:` declarations, action majors, caching, and step naming for the identical step — converge to one value each instead of diverging further. Closing this is a structural decision between a composite action, a reusable workflow, and leaving the preambles inline but normalised to one convention; whichever is chosen carries `P64-D3-001` (caching), `P64-D1-005` (permissions) and `P64-D6-004` (action-major staleness) with it, since each of those is a multi-file edit only because this preamble was never factored out.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
@@ -2608,7 +2608,7 @@ classification:    major — (1) at most one file: FAIL, closing this means chan
 effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about test coverage, CI scope, lint scope, or the interop harness.
 disposition:       major-refactor — recorded for Phase 68's document split and Phase 69's filing. Distinct from DEBT-02 (disabled `parser.test.ts` assertions) and from `RU-61-06`'s failing `linking.test.ts` tests, both of which concern tests that exist; this record concerns a tree that has none.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The concrete file is `bbj-vscode/tools/interop-test-harness/run-tests.ts:1-1058`, which sits outside both `tsconfig.json`'s `src/**/*.ts` include and `tsconfig.test.json`'s `test/**/*` include, and outside `npm run lint`'s `eslint src test` scope, so nothing type-checks or lints it despite `pr-validation.yml:11` triggering on changes under `bbj-vscode/tools/**`. The observable that changes once this is closed is that `npm run build` and `npm run lint` begin covering this file, and running it at all requires declaring `tsx` as a dependency it currently uses undeclared. What is not nameable as a single edit is the scope decision itself — whether the harness gets its own `tsconfig`, is folded into the existing `test/` tree, or gets a dedicated `package.json` script as its test entry point — which is why classification records this as a decision, not an edit.
 proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
@@ -2665,7 +2665,7 @@ classification:    major — (1) at most one file: FAIL, resolving this means ad
 effort:            8
 dedup:             none — no issue in the frozen 15-issue snapshot names the formatter, a vendored binary, or dependency provenance; 0 of the 15 carry the `dependencies` area label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — **the fix this asks for is provenance, not a version bump.** What is needed is a statement of what the artifact is, where it came from, which version it is, and a recorded hash to pin it — after which it becomes triageable at all. Filed by Phase 69; not applied by Phase 67.
-proposed_approach: PENDING-APPROACH
+proposed_approach: Nobody in this repository can name the edit because nobody in this repository can say what `bbj-vscode/tools/formatter/lib/BBjCodeFomatter.jar` actually is: its manifest carries no version, vendor, SCM reference or licence — only `Manifest-Version: 1.0` — and the filename's own typo (`Fomatter`) corroborates a hand-copied artifact rather than a build-produced one. The provenance question that has to be answered first is what library this JAR contains and which upstream project or internal build produced it and at what version; that question is not answerable from this repository alone — it needs whoever originally vendored the file (a BASIS-internal build process, or an external project this checkout does not reference) to say what was copied in and from where. Once that provenance is established, the artifact becomes triageable the way its sibling `jcommander-1.71.jar` already is — checkable against an advisory database and pinnable by a recorded hash — but establishing it is a provenance investigation this record's evidence cannot substitute a plausible-sounding version-pin edit for.
 proposed_labels:   area=dependencies; PRIO 1; effort 8
 issue:             
 ```
@@ -2684,7 +2684,7 @@ classification:    major — (1) at most one file: FAIL, all six workflows carry
 effort:            4
 dedup:             none — no open issue in the frozen 15-issue snapshot concerns GitHub Actions, pinning, supply-chain provenance or CI dependencies; 0 of the 15 carry the `dependencies` area label at all, which was re-derived in this file's header rather than assumed.
 disposition:       major-refactor — routed to Phase 68's `MAJOR-REFACTORS.md` with the enumeration above attached, so the pin set does not have to be re-derived; the separate one-file `@v3` staleness at `P64-D6-004` is the part Phase 67 can apply.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The manifest files are the six workflows under `.github/workflows/`, whose 36 `uses:` references cover 9 distinct actions and resolve entirely to mutable major-version tags (`grep -nE 'uses:.*@[0-9a-f]{40}' .github/workflows/*.yml` returns `0`). The edit is to pin each of the 36 references to the commit SHA its current tag currently resolves to, appending a `# vX.Y.Z` comment per GitHub's own convention so the human-readable version stays visible, and to adopt an update mechanism so the pins do not go stale — a `github-actions` Dependabot ecosystem entry (`P64-D6-005` names the same gap) is the natural fit since Dependabot already resolves SHA bumps for pinned actions. The tool-native check that proves the result is the same grep against all six files reporting `36` SHA-pinned references and `0` remaining mutable-tag references.
 proposed_labels:   area=dependencies; PRIO 2; effort 4
 issue:             
 ```
@@ -2703,7 +2703,7 @@ classification:    major — (1) at most one file: PASS, `.github/dependabot.yml
 effort:            4
 dedup:             none — 0 of the frozen 15 open issues carry the `dependencies` area label and none names Dependabot, dependency automation, Gradle dependencies or the documentation site's dependencies; this was re-derived from the snapshot's own `Area` column in this file's header rather than assumed.
 disposition:       major-refactor — the npm and `github-actions` additions are mechanical, but the Gradle decision is criterion-3 triage that plan `64-03` consolidates, so the whole is documented rather than applied.
-proposed_approach: PENDING-APPROACH
+proposed_approach: The manifest file is `.github/dependabot.yml:3-7`. Two of the three uncovered trees are nameable edits: add a `github-actions` ecosystem entry (`directory: "/"`) to close the 36-reference gap `P64-D6-003` enumerates, and add a second `npm` entry for `directory: "/documentation"` to cover the Docusaurus tree's own `package-lock.json`. The third — whether `bbj-intellij`'s Gradle tree is covered by a `gradle` ecosystem entry, a different scanner, or accepted with a written reason — is not part of this approach: it is `RU-64-02`'s own criterion-3 triage decision under SEC-08, referred rather than pre-empted here, per this record's own evidence. The tool-native check that proves the mechanical half is a YAML parse of `dependabot.yml` reporting three `updates:` entries once the Gradle decision is also recorded (two if it is deferred as a documented exception).
 proposed_labels:   area=dependencies; PRIO 2; effort 4
 issue:             
 ```
