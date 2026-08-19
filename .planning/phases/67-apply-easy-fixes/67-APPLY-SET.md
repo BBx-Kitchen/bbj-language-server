@@ -66,7 +66,7 @@ Two derived counts, and the arithmetic connecting them:
 | 29 | P61-D5-006 | pending | pending |
 | 30 | P61-D5-007 | pending | pending |
 | 31 | P61-D5-008 | pending | pending |
-| 32 | P61-D5-009 | pending | pending |
+| 32 | P61-D5-009 | applied | 2b121ee |
 | 33 | P61-D5-011 | pending | pending |
 | 34 | P61-D5-012 | pending | pending |
 | 35 | P61-D5-015 | pending | pending |
@@ -712,14 +712,14 @@ location:          bbj-vscode/src/language/bbj-type-inferer.ts:73-78
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a fix to P61-D2-011 without an accompanying regression test would leave this specific gap open independently — the underlying bug and the missing test are two
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fix_applied:       Added a committed test asserting the inferred type of a static Java method call (String.valueOf(2) infers to java.lang.String) via the type inferer service directly — distinct from P61-D2-011/P66-D2-001's diagnostic-message assertion. No source change; the test-is-the-fix per D-13.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/method-return-java-type.test.ts — 13/13 pass
+commit:            2b121ee
 notes:             
 ```
 

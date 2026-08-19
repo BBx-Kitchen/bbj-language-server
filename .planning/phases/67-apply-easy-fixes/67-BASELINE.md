@@ -114,6 +114,47 @@ this is a build-script version check, not a bootstrap rejection.
 See `### Flaky, excluded from the gate (D-08)` above under `## npm test` — all 5 exclusions are
 recorded there with suite name, quoted timeout, and reproduction status.
 
+- `test/variable-scoping.test.ts > Variable Scoping` — `Error: Hook timed out in 10000ms.` at
+  `test/variable-scoping.test.ts:47`, observed again during plan 67-01's baseline delta below.
+  Already named among the 5 suites recorded above; reproduction confirms the flakiness is
+  load-dependent (not every run hits every suite), consistent with the original observation.
+
+### Plan 67-01 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm test 2>&1 | tail -40` and `npm run lint`, on HEAD after plan 67-01's
+three commits (`382a068` test, `32faeff` fix, `2b121ee` test — the P61-D2-011/P66-D2-001 red/green
+pair and the P61-D5-009 regression test; no `bbj-intellij/` file changed, so `./gradlew build` is
+not re-run per D-09).
+
+**`npm test`:** `Test Files  2 failed | 48 passed (50)` / `Tests  11 failed | 845 passed | 32
+skipped (888)`. The failing-test NAME set compared against `### Deterministic failures (gate set)`
+above:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set — same 11 names, none added, none removed. The one failed
+suite beyond these 11 (`test/variable-scoping.test.ts > Variable Scoping`) is the flaky
+`beforeAll` hook-timeout exclusion recorded above, not a test failure, and contributes 0 tests to
+the deterministic gate set (all 29 of its tests reported `skipped`).
+
+**`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
+warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet
+applied) — unchanged from the phase-start baseline.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*
