@@ -41,6 +41,8 @@ public final class BbjNodeDownloader {
     /**
      * Gets the cached Node.js path if it exists and is executable.
      * This method is fast and synchronous — safe to call from any thread.
+     * Note: as a side effect, this creates the plugin's Node.js data directory
+     * if it does not already exist.
      *
      * @return Path to cached node executable, or null if not cached
      */
