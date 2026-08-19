@@ -4,17 +4,17 @@ milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 67
 current_phase_name: apply-easy-fixes
-status: executing
-stopped_at: Completed 67-11-PLAN.md
-last_updated: "2026-08-19T15:15:27.107Z"
+status: verifying
+stopped_at: Completed 67-12-PLAN.md
+last_updated: "2026-08-19T15:34:31.037Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 42
-  completed_plans: 41
-  percent: 70
+  completed_plans: 42
+  percent: 80
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 Phase: 67 (apply-easy-fixes) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-19 — Phase 67 execution started
 
 ## Performance Metrics
@@ -118,6 +118,7 @@ Last activity: 2026-08-19 — Phase 67 execution started
 | Phase 67 P09 | ~9min | 3 tasks | 8 files |
 | Phase 67 P10 | ~30min | 3 tasks | 8 files |
 | Phase 67 P11 | ~14min | 3 tasks | 10 files |
+| Phase 67 P12 | 18min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 67 Plan 11]: P63-D8-007's underlying finding P63-D2-013 has a factual evidence error (scheduleRestart() claimed zero callers, but BbjSettingsConfigurable.apply() has called it since v1.2) — applied a corrected-not-removed Javadoc edit instead of the plan's literal instruction, recorded as a divergence
 - [Phase ?]: [Phase 67 Plan 11]: P63-D8-008's comment-only-proof check doesn't literally apply since its edit is inside a Java text-block String literal (demo sample data), not comment syntax — ran the check anyway and recorded the honest non-matching output rather than fabricating conformance
 - [Phase ?]: [Phase 67 Plan 11]: FIX-01..04 left Pending in REQUIREMENTS.md, continuing 67-01/05/06/07/08/09/10 precedent, deferred to 67-12 phase close
+- [Phase ?]: FIX-03 verdict: not achieved as written — lint clean and D-07 baseline-delta gate passes, but interop test failures and IntelliJ JDK-version-check failure persist for documented environmental reasons
+- [Phase ?]: FIX-04 verdict: not literally true at phase end — EASY-FIXES.md is deliberately not created (Phase 68's DOC-01 deliverable); all 77 ledger rows carry the fields DOC-01 needs
+- [Phase ?]: Close-out correction: Index/Rows drift was six rows, not seven — P62-D4-005 was one of the original six, and the phantom P64-D4-005 (an unrelated Phase-64 finding) was removed from the reconciliation prose
 
 ### Tech Debt
 
@@ -283,8 +287,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T15:15:27.076Z
-Stopped at: Completed 67-11-PLAN.md
+Last session: 2026-08-19T15:34:31.010Z
+Stopped at: Completed 67-12-PLAN.md
 Resume file: 
 
 None

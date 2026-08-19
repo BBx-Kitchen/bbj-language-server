@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 11/12 plans executed
+**Plans**: 12/12 plans executed
 
 Plans:
 **Wave 1**
@@ -627,7 +627,7 @@ Plans:
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
-- [ ] 67-12-PLAN.md — Phase-close baseline delta, ledger completeness audit, and the FIX-03 / FIX-04 shortfall statements
+- [x] 67-12-PLAN.md — Phase-close baseline delta, ledger completeness audit, and the FIX-03 / FIX-04 shortfall statements
 
 ---
 
