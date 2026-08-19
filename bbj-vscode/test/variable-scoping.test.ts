@@ -1,9 +1,9 @@
 import { AstNode, AstUtils, EmptyFileSystem, LangiumDocument } from 'langium';
 import { beforeAll, describe, expect, test } from 'vitest';
-import { expectError, expectIssue, validationHelper, ValidationResult } from 'langium/test';
+import { expectError, expectIssue, parseHelper, validationHelper, ValidationResult } from 'langium/test';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import { createBBjServices } from '../src/language/bbj-module.js';
-import { Program, isVariableDecl } from '../src/language/generated/ast.js';
+import { isFieldDecl, isSymbolRef, isVariableDecl, Model, Program } from '../src/language/generated/ast.js';
 import { initializeWorkspace } from './test-helper.js';
 
 /**
@@ -418,6 +418,46 @@ PRINT x
                 /Could not resolve.*x/i.test(d.message)
             );
             expect(unresolvedErrors.length).toBeGreaterThan(0);
+        });
+    });
+
+    // ========================================================================
+    // P61-D5-008: local shadows same-named field (bbj-scope.ts:253-292)
+    // ========================================================================
+    describe('P61-D5-008: local shadows a same-named field', () => {
+
+        test('a DECLAREd local resolves in preference to a same-named class field', async () => {
+            const parse = parseHelper<Model>(services.BBj);
+            const document = await parse(`
+class public ShadowTest
+    field public java.lang.String x!
+
+    method public void test()
+        DECLARE java.lang.String x!
+        PRINT x!
+    methodend
+classend
+            `, { validation: true });
+
+            const fieldDecl = AstUtils.streamAllContents(document.parseResult.value).find(isFieldDecl);
+            // isVariableDecl also matches FieldDecl/ArrayDecl/ParameterDecl (VariableDecl's
+            // $type union covers all four grammar rules) — narrow to the plain DECLARE's
+            // own concrete $type to get the local, not the field.
+            const localDecl = AstUtils.streamAllContents(document.parseResult.value)
+                .find((n): n is AstNode => isVariableDecl(n) && n.$type === 'VariableDecl');
+            expect(fieldDecl, 'field declaration must be present').toBeDefined();
+            expect(localDecl, 'local DECLARE must be present').toBeDefined();
+            expect(localDecl).not.toBe(fieldDecl);
+
+            // `PRINT x!` is the only plain (non-DECLARE, non-field) reference to x! in the
+            // method body — find its SymbolRef and confirm it resolved to the local, not
+            // the field.
+            const printRef = AstUtils.streamAllContents(document.parseResult.value)
+                .filter(isSymbolRef)
+                .find(ref => ref.symbol.$refText === 'x!' && ref !== fieldDecl);
+            expect(printRef, 'PRINT x! reference must be present').toBeDefined();
+            expect(printRef!.symbol.ref).toBe(localDecl);
+            expect(printRef!.symbol.ref).not.toBe(fieldDecl);
         });
     });
 });
