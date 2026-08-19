@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 67
-current_phase_name: Apply Easy Fixes
+current_phase_name: apply-easy-fixes
 status: executing
-stopped_at: Phase 67 context gathered
-last_updated: "2026-08-19T09:49:17.808Z"
+stopped_at: Completed 67-01-PLAN.md
+last_updated: "2026-08-19T10:11:44.530Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 42
-  completed_plans: 30
+  completed_plans: 31
   percent: 70
 ---
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 66 — known-debt-re-triage
+**Current Focus:** Phase 67 — apply-easy-fixes
 
 ---
 
 ## Current Position
 
-Phase: 67 — Apply Easy Fixes
-Plan: Not started
+Phase: 67 (apply-easy-fixes) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-08-19 — Phase 66 complete, transitioned to Phase 67
+Last activity: 2026-08-19 — Phase 67 execution started
 
 ## Performance Metrics
 
@@ -107,6 +107,7 @@ Last activity: 2026-08-19 — Phase 66 complete, transitioned to Phase 67
 | Phase 66 P01 | 12min | 3 tasks | 1 files |
 | Phase 66 P02 | ~55min | 2 tasks | 1 files |
 | Phase 66 P03 | ~45min | 3 tasks | 3 files |
+| Phase 67 P01 | ~14min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: DEBT-07 verdicted major-refactor: traced Rule 0 (BBjCPL suppresses Langium parse errors) as unreachable on every build cycle, not delayed by one as PROJECT.md previously claimed — the merge path that introduces BBjCPL diagnostics never calls applyDiagnosticHierarchy
 - [Phase ?]: DEBT-08 verdicted wontfix (unblocking condition P64-D6-010 stated): IntelliJ TextMate filenames-vs-extensions verification remains blocked on the JDK toolchain mismatch, still drafted for Phase 69 per D-07
 - [Phase ?]: Criteria 3 and 5 of Phase 66's ROADMAP success criteria answered Partially Met, not Met — neither DEBT-03/DEBT-04 nor the six original carried items are literally 'fixed or filed'/'represented by a GitHub issue' on the strength of a draft; the Phase 69 dependency is named explicitly
+- [Phase ?]: [Phase 67 Plan 01]: D-04 merge realized as two ledger rows (P61-D2-011, P66-D2-001), not one combined row, both closed against the same red+green commit pair
+- [Phase ?]: [Phase 67 Plan 01]: FIX-01..04 left Pending in REQUIREMENTS.md after this plan — only 3 of 77 apply-set rows applied; marking complete deferred to 67-12 phase close
 
 ### Tech Debt
 
@@ -241,11 +244,11 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T08:48:37.638Z
-Stopped at: Phase 67 context gathered
+Last session: 2026-08-19T10:11:44.505Z
+Stopped at: Completed 67-01-PLAN.md
 Resume file: 
 
-.planning/phases/67-apply-easy-fixes/67-CONTEXT.md
+None
 
 ## Milestone History
 

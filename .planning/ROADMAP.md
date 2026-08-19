@@ -578,12 +578,12 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 12 plans
+**Plans**: 1/12 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 67-01-PLAN.md — Baseline capture, the derived 77-row apply-set ledger, and the D-04 merged fix end-to-end (tracer)
+- [x] 67-01-PLAN.md — Baseline capture, the derived 77-row apply-set ledger, and the D-04 merged fix end-to-end (tracer)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
