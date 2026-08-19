@@ -1358,6 +1358,82 @@ function extractSubsection(text, heading) {
     return nextHeadingIdx === -1 ? rest : rest.slice(0, nextHeadingIdx);
 }
 
+/** Return the text of the top-level (`## `) section starting at a line matching `heading` exactly
+ *  (heading included), up to (not including) the next line that is itself a top-level `## `
+ *  heading, or the end of the string. Unlike `extractSubsection` (which stops at the first `##` OR
+ *  `###` line and so cannot span a section that itself contains `###` sub-headings), this only
+ *  treats a genuine `## ` line as a boundary — `/^## /m` does not match a `### ` line because its
+ *  third character is `#`, not a space. Used by the DOC-03 assertion group (Task 3) to extract the
+ *  whole `## Coverage` section (its `### Scope` and `### Gaps` sub-headings included) as one block. */
+function extractTopLevelSection(text, heading) {
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const startMatch = text.match(new RegExp(`^${escaped}$`, 'm'));
+    if (!startMatch) return null;
+    const contentStart = startMatch.index;
+    const rest = text.slice(contentStart);
+    const afterHeadingLine = rest.indexOf('\n') + 1;
+    const tail = rest.slice(afterHeadingLine);
+    const nextMatch = tail.match(/^## /m);
+    const body = nextMatch ? tail.slice(0, nextMatch.index) : tail;
+    return `${heading}\n${body}`;
+}
+
+/** The fixed final section order this plan's `<phase_conventions>` establishes: `# ` title (not a
+ *  `##` heading, so not part of this list), `## Coverage`, `## Derivation`, `## Reconciliation`,
+ *  the index tables, the record blocks, `## Other Dispositions` (`MAJOR-REFACTORS.md` only), then
+ *  `## Close-out`. Each canonical slot lists every literal heading text this phase's plans emit for
+ *  that slot — `## Index` covers both `EASY-FIXES.md`'s bare `## Index` and
+ *  `MAJOR-REFACTORS.md`'s `## Index (severity-sorted, for Phase 69 filing order)` via a prefix
+ *  match; `## Rows` (EASY-FIXES.md) and `## Records` (MAJOR-REFACTORS.md) share the "record blocks"
+ *  slot. Not every slot need be present in a given document at every point in the phase (e.g.
+ *  `## Close-out` is not written until a later plan) — the check below verifies only that whichever
+ *  headings ARE present appear in non-decreasing canonical order, not that every slot is filled. */
+const CANONICAL_HEADING_ORDER = [
+    ['## Coverage'],
+    ['## Derivation'],
+    ['## Reconciliation'],
+    ['## Index'],
+    ['## Rows', '## Records'],
+    ['## Other Dispositions'],
+    ['## Close-out']
+];
+
+/** The canonical slot index (into `CANONICAL_HEADING_ORDER`) a literal `## ` heading line belongs
+ *  to, matched by exact equality or by prefix (so `## Index (severity-sorted, for Phase 69 filing
+ *  order)` matches the `## Index` slot). Returns -1 for a heading this phase's conventions do not
+ *  name — a document carrying one is a hard failure, not silently ignored. */
+function canonicalSlotForHeading(heading) {
+    for (let i = 0; i < CANONICAL_HEADING_ORDER.length; i++) {
+        for (const candidate of CANONICAL_HEADING_ORDER[i]) {
+            if (heading === candidate || heading.startsWith(`${candidate} `)) return i;
+        }
+    }
+    return -1;
+}
+
+/** Verify a document's `## `-heading sequence is consistent with `CANONICAL_HEADING_ORDER` — every
+ *  heading resolves to a known slot, and slot indices are non-decreasing (a document need not carry
+ *  every slot, but whichever it carries must appear in the fixed order). Returns
+ *  `{ ok: boolean, message: string }`; on failure `message` names the unrecognized heading or
+ *  prints the whole observed heading sequence, per Task 3's acceptance criteria. */
+function checkCanonicalSectionOrder(docLabel, text) {
+    const headings = text.match(/^## .+$/gm) || [];
+    const slots = [];
+    for (const h of headings) {
+        const slot = canonicalSlotForHeading(h);
+        if (slot === -1) {
+            return { ok: false, message: `${docLabel}: heading "${h}" is not in the phase's fixed section order — observed sequence: [${headings.join(' | ')}]` };
+        }
+        slots.push(slot);
+    }
+    for (let i = 1; i < slots.length; i++) {
+        if (slots[i] < slots[i - 1]) {
+            return { ok: false, message: `${docLabel}: section order violated — observed sequence: [${headings.join(' | ')}]` };
+        }
+    }
+    return { ok: true, message: `${docLabel}: observed sequence [${headings.join(' | ')}] is consistent with the fixed order` };
+}
+
 /** The set of finding IDs each entry in `text` leads with, in the "**`P<id>`**" shape
  *  `renderWontfixSection`/`renderAlreadyCoveredSection` render (Task 3's set-comparison assertions
  *  — matching only the entry's own lead-in avoids picking up a finding ID mentioned in passing
@@ -1855,6 +1931,75 @@ function runCheck() {
                     console.log('PASS: DOC-04 EASY-FIXES.md carries a pointer to "Other Dispositions" and no second copy of the section');
                 }
             }
+        }
+    }
+
+    // --- 10. DOC-03 "## Coverage" preamble assertion group (Task 3): the two documents' copies
+    //         must be byte-identical to each other and to what renderCoveragePreamble() produces
+    //         live, and the section order fixed by this plan's <phase_conventions> must hold, so a
+    //         hand edit to either document fails the gate instead of silently forking the pair. ---
+    {
+        // 1. Exactly one "## Coverage" heading in each document, and it is the first "##" heading.
+        const easyCoverageCount = (easyText.match(/^## Coverage$/gm) || []).length;
+        const majorCoverageCount = (majorText.match(/^## Coverage$/gm) || []).length;
+        const easyFirstHeading = (easyText.match(/^## .+$/m) || [null])[0];
+        const majorFirstHeading = (majorText.match(/^## .+$/m) || [null])[0];
+        if (easyCoverageCount !== 1 || majorCoverageCount !== 1 || easyFirstHeading !== '## Coverage' || majorFirstHeading !== '## Coverage') {
+            console.log(`FAIL: DOC-03 heading presence — EASY-FIXES.md: count=${easyCoverageCount} first="${easyFirstHeading}"; MAJOR-REFACTORS.md: count=${majorCoverageCount} first="${majorFirstHeading}" (expected count=1, first="## Coverage" in both)`);
+            ok = false;
+        } else {
+            console.log('PASS: DOC-03 — both documents carry exactly one "## Coverage" heading, and it is the first "##" heading in each');
+        }
+
+        // 2. The two documents' Coverage sections are byte-identical.
+        const easyCoverage = extractTopLevelSection(easyText, '## Coverage') ?? '';
+        const majorCoverage = extractTopLevelSection(majorText, '## Coverage') ?? '';
+        if (easyCoverage !== majorCoverage) {
+            const easyLines = easyCoverage.split('\n');
+            const majorLines = majorCoverage.split('\n');
+            let diffLine = -1;
+            const maxLen = Math.max(easyLines.length, majorLines.length);
+            for (let i = 0; i < maxLen; i++) {
+                if (easyLines[i] !== majorLines[i]) { diffLine = i + 1; break; }
+            }
+            console.log(`FAIL: DOC-03 — the two documents' "## Coverage" sections are not byte-identical; first differing line ${diffLine}: EASY-FIXES.md="${easyLines[diffLine - 1] ?? '(missing)'}" MAJOR-REFACTORS.md="${majorLines[diffLine - 1] ?? '(missing)'}"`);
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-03 — both documents' "## Coverage" sections are byte-identical (${easyCoverage.split('\n').length} lines)`);
+        }
+
+        // 3. Both copies equal what renderCoveragePreamble() produces at check time (T-68-14) — a
+        //    hand edit to either document's own copy fails here even if the two documents still
+        //    agree with each other (agreement alone would not catch a coordinated edit to both).
+        const livePreamble = renderCoveragePreamble().replace(/\n+$/, '');
+        const easyCoverageTrimmed = easyCoverage.replace(/\n+$/, '');
+        const majorCoverageTrimmed = majorCoverage.replace(/\n+$/, '');
+        if (easyCoverageTrimmed !== livePreamble || majorCoverageTrimmed !== livePreamble) {
+            console.log(`FAIL: DOC-03 — a document's "## Coverage" text does not equal what renderCoveragePreamble() currently produces (easy matches=${easyCoverageTrimmed === livePreamble}, major matches=${majorCoverageTrimmed === livePreamble}); a hand edit forked the document from the producer`);
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-03 — both documents' "## Coverage" text equals the live renderCoveragePreamble() output (${livePreamble.split('\n').length} lines)`);
+        }
+
+        // 4. Both "### Scope" and "### Gaps" exist inside it, in that order.
+        const scopeIdx = easyCoverage.indexOf('### Scope');
+        const gapsIdx = easyCoverage.indexOf('### Gaps');
+        if (scopeIdx === -1 || gapsIdx === -1 || scopeIdx >= gapsIdx) {
+            console.log(`FAIL: DOC-03 — "### Scope" and "### Gaps" must both exist inside "## Coverage", in that order (scopeIdx=${scopeIdx}, gapsIdx=${gapsIdx})`);
+            ok = false;
+        } else {
+            console.log('PASS: DOC-03 — "### Scope" then "### Gaps" both present inside "## Coverage", in order');
+        }
+
+        // 5. Section order fixed by this plan's <phase_conventions> — checked independently per
+        //    document (whichever headings a document carries must appear in the fixed order).
+        const easyOrder = checkCanonicalSectionOrder('EASY-FIXES.md', easyText);
+        const majorOrder = checkCanonicalSectionOrder('MAJOR-REFACTORS.md', majorText);
+        if (!easyOrder.ok || !majorOrder.ok) {
+            console.log(`FAIL: DOC-03 section order — ${!easyOrder.ok ? easyOrder.message : 'EASY-FIXES.md order OK'}; ${!majorOrder.ok ? majorOrder.message : 'MAJOR-REFACTORS.md order OK'}`);
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-03 section order — ${easyOrder.message}; ${majorOrder.message}`);
         }
     }
 
