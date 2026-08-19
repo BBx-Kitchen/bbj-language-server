@@ -888,7 +888,13 @@ function startLanguageClient(context: vscode.ExtensionContext): LanguageClient {
         clientOptions
     );
 
-    // Start the client. This will also launch the server
-    client.start();
+    // Start the client. This will also launch the server. Surface (not silently swallow) a
+    // start failure -- otherwise every command stays registered as though the server had
+    // started, and the rejection becomes an unhandled promise rejection in the extension host.
+    client.start().catch(error => {
+        const detail = error instanceof Error ? error.message : String(error);
+        console.error('BBj language server failed to start:', error);
+        vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
+    });
     return client;
 }
