@@ -413,6 +413,63 @@ the 11-name deterministic failure set and the 916 total never move.
 
 **`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
 
+### Plan 67-06 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm run lint` and `npm test` (three full runs, per D-08), on HEAD after
+this plan's nine commits (P61-D4-006, P61-D4-008, P61-D4-009, P61-D4-012, P61-D8-004, P61-D8-003,
+P61-D8-005, P62-D8-001, plus P61-D8-002's no-op with zero commits). No `bbj-intellij/` file changed
+directly by this plan — `bbj-language-configuration.json` and `bbx-language-configuration.json`
+are documented in CLAUDE.md's TextMate bullet but not themselves modified — so `./gradlew build` is
+not re-run per D-09.
+
+This plan deletes a file (`assertions.ts`) and extracts three helpers
+(`resolveWorkspaceRoot`/`formatSourceLocation` in `bbj-linker.ts`, `reloadJavaClassesAndRevalidate`
+in `main.ts`) with no new regression tests behind them (D-11: D4/D8 dimensions require none) — this
+delta is the only evidence the plan's "no behaviour change" claim held.
+
+**`npm run lint`: exit code `0`, zero warnings.** Unchanged from the `P61-D4-010` lint-clean
+milestone; none of this plan's nine edits touches an eslint directive.
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time — the
+same 11 names as the phase-start gate set:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set on all three runs — same 11 names, none added, none removed.
+The formatted `[in <file>.bbj:<line>]` location suffix embedded in each of these 11 messages is
+produced by `bbj-linker.ts`'s newly-extracted `formatSourceLocation` helper (P61-D4-008); its
+byte-identical output across all three runs is the direct evidence that extraction preserved the
+formatting exactly.
+
+Beyond these 11, each run showed a different 0-3 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.`, never an assertion failure: run 1 (none beyond the 11 — 2
+failed test files, 888 passed, 17 skipped), run 2 (none beyond the 11, same shape), run 3
+(`test/run-call-file-resolution.test.ts > RUN/CALL file resolution is inert without project
+context`, `test/validation.test.ts > BBj validation`, `test/variable-scoping.test.ts > Variable
+Scoping` — 4 failed test files, 828 passed, 77 skipped). All three of run 3's extra failures are
+the same load-dependent `beforeAll initializeWorkspace()` hookTimeout pattern already named in
+`## Flaky exclusions (D-08)` above; none touches a file this plan modifies (`bbj-validator.ts`,
+`bbj-linker.ts`, `assertions.ts`, `main.ts`, `bbj-cpl-service.ts`, `bbj.langium`, `CLAUDE.md`) —
+`validation.test.ts` exercises checks registered in `bbj-validator.ts`, but this plan's only edit
+to that file deleted a dead, never-registered method pair, so the hook-timeout there is consistent
+with — not caused by — the change. Excluded per D-08. Every test in a timed-out suite reports
+`skipped`, not `failed`, which is why the total passed/skipped counts vary run to run (828-888
+passed, 17-77 skipped) while the 11-name deterministic failure set and the 916 total never move.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*

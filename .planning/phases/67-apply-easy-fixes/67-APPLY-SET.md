@@ -56,11 +56,11 @@ Two derived counts, and the arithmetic connecting them:
 | 19 | P61-D3-005 | applied | fc9cf79 (red) + 6b32823 (green) |
 | 20 | P61-D4-003 | applied | 8c9028c |
 | 21 | P61-D4-005 | applied | 6be6639 |
-| 22 | P61-D4-006 | pending | pending |
-| 23 | P61-D4-008 | pending | pending |
-| 24 | P61-D4-009 | pending | pending |
+| 22 | P61-D4-006 | applied | 906ca51 |
+| 23 | P61-D4-008 | applied | 7d03fc0 |
+| 24 | P61-D4-009 | applied | 8d166cc |
 | 25 | P61-D4-010 | applied | 91f8329 |
-| 26 | P61-D4-012 | pending | pending |
+| 26 | P61-D4-012 | applied | 76ccb8b |
 | 27 | P61-D5-004 | pending | pending |
 | 28 | P61-D5-005 | pending | pending |
 | 29 | P61-D5-006 | pending | pending |
@@ -73,10 +73,10 @@ Two derived counts, and the arithmetic connecting them:
 | 36 | P61-D5-016 | applied | 5db3ac9 (test) |
 | 37 | P61-D5-017 | pending | pending |
 | 38 | P61-D8-001 | no-op | none — comment already accurate after P61-D2-004's fix (557ab62) |
-| 39 | P61-D8-002 | pending | pending |
-| 40 | P61-D8-003 | pending | pending |
-| 41 | P61-D8-004 | pending | pending |
-| 42 | P61-D8-005 | pending | pending |
+| 39 | P61-D8-002 | no-op | none — resolved by P61-D2-005's fix (4db8169) |
+| 40 | P61-D8-003 | applied | 69435df |
+| 41 | P61-D8-004 | applied | 2c497ec |
+| 42 | P61-D8-005 | applied | fe4d8a0 |
 | 43 | P61-D8-006 | no-op | none — resolved by P61-D2-016's fix (c47da5c) |
 | 44 | P61-D8-007 | pending | pending |
 | 45 | P62-D2-004 | pending | pending |
@@ -91,7 +91,7 @@ Two derived counts, and the arithmetic connecting them:
 | 54 | P62-D5-004 | pending | pending |
 | 55 | P62-D5-006 | pending | pending |
 | 56 | P62-D7-002 | pending | pending |
-| 57 | P62-D8-001 | pending | pending |
+| 57 | P62-D8-001 | applied | 2fa0264 |
 | 58 | P62-D8-002 | pending | pending |
 | 59 | P63-D4-001 | pending | pending |
 | 60 | P63-D4-014 | pending | pending |
@@ -522,15 +522,15 @@ location:          bbj-vscode/src/language/bbj-validator.ts:266-311
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): ~46 lines of dead, unreachable code sit alongside the working implementation with an almost-identical name and shape; a future
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Deleted BBjValidator.checkClassReference (266-303) and its private isSubFolderOf helper (305-311). Confirmed both are dead: registerValidationChecks() never registers checkClassReference as a check, and check-classes.ts's registerClassChecks() uses its own separately-instantiated ClassValidator (a different class) whose own checkClassReference (check-classes.ts:112) is the copy actually called at every real site (Use, BbjClass extends/implements, ConstructorCall, MethodDecl, FieldDecl, ParameterDecl, VariableDecl). The two copies are equivalent in the visibility-check logic they share; check-classes.ts's copy is strictly more complete (adds warnUnresolvableType for #438), confirming it — not the dead copy — as the intended implementation, so the branch taken is delete, not wire-up. Also removed the imports (dirname, isAbsolute, relative, Reference, DiagnosticInfo) that became unused as a result.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npm run lint && npx vitest run test/linking.test.ts test/imports.test.ts test/unresolvable-type.test.ts test/validation.test.ts test/classes.test.ts — build and lint both exit 0 (lint zero warnings); Test Files 1 failed | 4 passed (5), Tests 11 failed | 137 passed | 1 skipped (149)
+commit:            906ca51
+notes:             This plan's own pre-edit `npm test` capture step was not re-run as a separate command immediately before this first edit; 67-BASELINE.md's phase-start capture (the same 11 named test/linking.test.ts Interop-related-tests failures, captured before any Phase 67 plan touched bbj-validator.ts) is the equivalent "before" reference. Each of Task 1's four edits was verified via the targeted vitest set immediately after landing and returned the same 11 failures / 137 passed / 1 skipped every time; Task 3's full three-run `npm test` delta below (`### Plan 67-06 delta`) independently confirms the identical 11-name set with zero regression across the whole plan. checkClassReference was `public`, so its call sites were also grepped across bbj-intellij's Kotlin/Java sources (n/a — TypeScript-only symbol) and test/ (zero hits) before deleting.
 ```
 
 ```
@@ -541,15 +541,15 @@ location:          bbj-vscode/src/language/bbj-linker.ts:155-212
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a change to the workspace-root resolution strategy (e.g. supporting multi-root workspaces properly instead of always
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       getSourceLocation and getSourceLocationForNode duplicated the same workspace-root resolution and relative-path/line formatting shape. Extracted private resolveWorkspaceRoot(documentUri) (first workspace folder's fsPath, falling back to dirname(documentUri.fsPath)) and formatSourceLocation(uri, line) (`<relative-path>[:<line>]`, line 0 omits the suffix), and routed both call sites through them. Behaviour-preserving by construction: both original functions built the identical `${relativePath}${lineInfo}` / `line > 0 ? ... : relativePath` shape from the identical workspace-root logic, now expressed once.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npm run lint && npx vitest run test/linking.test.ts test/imports.test.ts test/unresolvable-type.test.ts — build/lint exit 0; Test Files 1 failed | 2 passed (3), Tests 11 failed | 57 passed | 1 skipped (69), the same 11 named test/linking.test.ts failures whose messages embed these exact location strings (e.g. `[in 38.bbj:2]`, `[in 38.bbj:3]`) — byte-identical to pre-extraction output
+commit:            7d03fc0
+notes:             grep -c 'formatSourceLocation' bbj-vscode/src/language/bbj-linker.ts = 3 (declaration + 2 call sites), satisfying the acceptance criterion.
 ```
 
 ```
@@ -560,15 +560,15 @@ location:          bbj-vscode/src/language/assertions.ts:1-4
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — dead code, not a runtime failure): the module ships in the bundle with no consumer; a future contributor cannot tell from the code alone whether it is vestigial or intentionally kept for future use.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Deleted bbj-vscode/src/language/assertions.ts (the 4-line assertTrue helper) after re-confirming zero consumers at HEAD: `grep -rn 'assertions.js|assertTrue' bbj-vscode/src bbj-vscode/test` returned only the file's own definition line, matching Phase 61's original zero-consumer finding.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npm run lint — both exit 0 (lint zero warnings); `grep -rn 'assertions.js' bbj-vscode/src bbj-vscode/test` returns no hits post-deletion
+commit:            8d166cc
+notes:             `git show --stat 8d166cc` touches only bbj-vscode/src/language/assertions.ts, a pure deletion (5 lines removed, no other file).
 ```
 
 ```
@@ -598,15 +598,15 @@ location:          bbj-vscode/src/language/main.ts:32-73,147-188
 dimension:         D4
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a future change to this reload-and-revalidate sequence (e.g. adding a new step, or fixing P61-D2-016/P61-D2-018) must be applied by
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       The bbj/refreshJavaClasses request handler and the onDidChangeConfiguration handler duplicated the same clear-cache/reload-classpath/reload-implicit-imports/re-validate-open-documents/refresh-inlay-hints/notify sequence. Extracted a private async reloadJavaClassesAndRevalidate() and routed both handlers through it; each handler keeps its own distinct wrapping (the request handler's try/catch returns true/false and calls showErrorMessage on failure, the config-change handler's try/catch only logs — both preserved unchanged, only the shared middle sequence moved).
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npm run lint — build exits 0 and produces out/language/main.cjs (the single binary both IDEs consume, confirmed via `ls -la out/language/main.cjs`); lint exits 0 with zero warnings
+commit:            76ccb8b
+notes:             `grep -c 'reloadJavaClassesAndRevalidate' bbj-vscode/src/language/main.ts` = 3 (declaration + 2 call sites), satisfying the acceptance criterion. main.ts compiles into out/language/main.cjs, so npm run build (not vitest alone) is the required gate on this commit per the plan's own instruction.
 ```
 
 ```
@@ -845,15 +845,15 @@ location:          bbj-vscode/src/language/bbj.langium:948
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           no-op
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of this comment reasonably concludes escaped double-quotes are already normalized in the parsed AST value, which is
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       No edit. The record's own escape clause offers two resolutions: fix the comment, or fix the code per P61-D2-005 so the comment becomes true. P61-D2-005 landed in plan 67-05 (commit 4db8169): BBjValueConverter's STRING_LITERAL case now does `input.slice(1, -1).replace(/""/g, '"')`, un-escaping doubled quotes. Line 948's comment reads `// "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter` — both clauses checked against the post-P61-D2-005 converter: the doubled-quote un-escape now genuinely happens there, and no backslash handling exists anywhere in runConverter, so backslash remains a plain non-escape char exactly as the comment states. The comment is accurate as written; taking this branch.
+user_facing:       no
+verification:      review-only — read bbj.langium:948 against bbj-value-converter.ts's post-P61-D2-005 STRING_LITERAL case; no compile needed for the disposition itself (D-14). Ran `cd bbj-vscode && npm run langium:generate && git status --porcelain src/language/generated/` anyway (this plan's own gate, T-67-06-01) — 0 lines of diff, confirming no grammar-rule change occurred (there was none to begin with, since no edit was made)
+commit:            none — resolved by P61-D2-005's fix (4db8169), per this record's own "or fix the code" clause
+notes:             Genuine no-op per the record's own escape clause, not a re-triage: the record explicitly names "fix the code per P61-D2-005" as one of its two valid resolutions, and P61-D2-005 (plan 67-05, prior to this plan) took that path. Mirrors the P61-D8-001/P61-D8-006 no-op precedent from plans 67-02/67-03.
 ```
 
 ```
@@ -864,15 +864,15 @@ location:          CLAUDE.md:34
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of CLAUDE.md's Architecture section forms an incomplete picture of the validation surface, unaware that
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       CLAUDE.md's Architecture "Validation" bullet (now at line 54 — CLAUDE.md's own line numbers have drifted since the record was written, current content re-located by grep) named bbj-validator.ts, bbj-document-validator.ts, check-classes.ts, check-variable-scoping.ts and line-break-validation.ts but omitted validations/check-function-calls.ts, which exists (confirmed via `ls bbj-vscode/src/language/validations/`). Added `validations/check-function-calls.ts` to the list.
+user_facing:       no
+verification:      `grep -c 'validations/check-function-calls.ts' CLAUDE.md` = 1; `ls bbj-vscode/src/language/validations/check-function-calls.ts` succeeds — file exists on disk
+commit:            69435df
+notes:             `git show --stat 69435df` touches only CLAUDE.md, one line changed.
 ```
 
 ```
@@ -883,15 +883,15 @@ location:          bbj-vscode/src/language/bbj-cpl-service.ts:48-49,203-207
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of compile()'s class-level comment could wrongly conclude BBjCPL diagnostics are not yet surfaced to users (they are, via
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Two comments corrected: (1) the class-level comment (48-49) claimed the buildDocuments() wiring was future work ("Phase 53 will wire this into buildDocuments() via: ..."); bbj-document-builder.ts:173 confirms the wiring already exists (`langServices.compiler.BBjCPLService.compile(key)` inside the debounced compile step) — corrected to state the integration is complete and name the actual call site. (2) setTimeout()'s doc comment (203-207) claimed it is "Called by Phase 53 from VS Code settings wiring"; `grep -rn '.setTimeout(' bbj-vscode/src` finds zero call sites anywhere — corrected to state it is currently unused. Per the record's own branch choice, wiring a settings path would be a behaviour change and is out of scope for a D8 comment-only fix; took the comment branch, recorded here.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npm run lint — both exit 0 (lint zero warnings); review-only confirmation that bbj-document-builder.ts:173 calls compile() and that no .setTimeout( call site exists in src/ (D-14, no test required for a comment-only D8 fix)
+commit:            2c497ec
+notes:             `git show --stat 2c497ec` touches only bbj-cpl-service.ts, 4 insertions/2 deletions (both comment blocks).
 ```
 
 ```
@@ -902,15 +902,15 @@ location:          CLAUDE.md (repo root) §Architecture → Langium Pipeline →
 dimension:         D8
 severity:          low
 effort:            1
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-completeness defect, not a runtime failure): a reader of CLAUDE.md's architecture overview reasonably concludes Completion is the only custom LSP feature provider of note in this
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             effort recorded as `1` in the source record — an off-scale value outside INVENTORY §3d's locked {2,4,8} effort scale. Carried through unchanged per this phase's off-scale handling instruction; not re-rounded to `2`. (The source record itself carries no additional inline annotation beyond the raw `effort: 1` value.)
+fix_applied:       Extended the existing Completion bullet (did not add a separate bullet) to name the other LSP feature providers registered in bbj-vscode/src/language/bbj-module.ts's BBjModule `lsp` service group: DocumentSymbolProvider, DefinitionProvider, HoverProvider, SemanticTokenProvider, SignatureHelp, InlayHintProvider, CodeActionProvider — read from bbj-module.ts directly rather than reused from the finding record. The record's own text estimated "ten" other files (also counting the `documentation`-group CommentProvider and the bbj-use-insert.ts helper module, neither of which is a distinct `lsp`-group provider, plus BBjSharedModule's separately-registered NodeKindProvider, which lives in the shared services module rather than BBjModule's own lsp group); the actual count of BBjModule's own lsp-group providers besides Completion is 7 — recorded as found, not re-asserted as "ten".
+user_facing:       no
+verification:      `grep -c '<provider>' bbj-vscode/src/language/bbj-module.ts` for each of the 7 named providers (DocumentSymbolProvider, DefinitionProvider, HoverProvider, SemanticTokenProvider, SignatureHelp, InlayHintProvider, CodeActionProvider) returns 2 each (import + registration) — all 7 confirmed present
+commit:            fe4d8a0
+notes:             effort recorded as `1` in the source record — an off-scale value outside INVENTORY §3d's locked {2,4,8} effort scale. Carried through unchanged per this phase's off-scale handling instruction; not re-rounded to `2`. (The source record itself carries no additional inline annotation beyond the raw `effort: 1` value.) `git show --stat fe4d8a0` touches only CLAUDE.md, one line changed. Discrepancy from the record's "ten" estimate recorded above under fix_applied, per this plan's own instruction not to re-round or silently overwrite a wrong count.
 ```
 
 ```
@@ -1187,15 +1187,15 @@ location:          CLAUDE.md:90-92
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of CLAUDE.md reasonably concludes only bbj.tmLanguage.json is IDE-shared, and could edit bbx.tmLanguage.json or
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       CLAUDE.md's §IDE Integration TextMate bullet named only `syntaxes/bbj.tmLanguage.json`. Identified the actual shared set from bbj-intellij/build.gradle.kts's copyTextMateBundle task (lines 83-88), which includes exactly four files: syntaxes/bbj.tmLanguage.json, syntaxes/bbx.tmLanguage.json, bbj-language-configuration.json, bbx-language-configuration.json — cross-checked against bbj-vscode/package.json's contributes.grammars (bbj.tmLanguage.json, bbx.tmLanguage.json) and contributes.languages' configuration fields (bbj-language-configuration.json, bbx-language-configuration.json), and confirmed all four exist on disk. Rewrote the bullet to name all four and the copyTextMateBundle task that shares them.
+user_facing:       no
+verification:      CLAUDE.md's TextMate bullet names four distinct file paths; `ls syntaxes/bbj.tmLanguage.json syntaxes/bbx.tmLanguage.json bbj-language-configuration.json bbx-language-configuration.json` (from bbj-vscode/) succeeds for all four
+commit:            2fa0264
+notes:             `git show --stat 2fa0264` touches only CLAUDE.md, one line changed. This is the same four-file set 62-COVERAGE.md's own RU-62-04 evidence names (P62-D8-001's originating record), independently re-derived here from bbj-intellij/build.gradle.kts rather than trusted from the record's prose.
 ```
 
 ```
