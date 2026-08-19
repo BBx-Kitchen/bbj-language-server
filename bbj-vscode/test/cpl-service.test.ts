@@ -1,3 +1,4 @@
+import path from 'path';
 import { describe, test, expect, vi } from 'vitest';
 import { BBjCPLService } from '../src/language/bbj-cpl-service.js';
 
@@ -128,6 +129,34 @@ describe('BBjCPLService', () => {
         // Spy on logger — INFO is suppressed at default WARN level, so we check indirectly
         const result = await svc.compile('/tmp/test.bbj');
         expect(result).toEqual([]);
+    }, 10000);
+
+    /**
+     * P61-D5-005: characterises how BBjCPLService resolves and consumes the compiler
+     * binary. bbjHome is pointed at a controlled fixture directory this repo owns
+     * (never an external path, never a temp dir writable by another process, never an
+     * env-var-derived path - T-67-07-02), containing a substitute "bbjcpl" script that
+     * echoes a fixed marker line to stderr. The test pins today's behaviour: compile()
+     * runs the script that getBbjcplPath() resolves at bbjHome/bin/bbjcpl and parses its
+     * output as bbjcpl diagnostics.
+     */
+    test('P61-D5-005: compile() runs the binary resolved at bbjHome/bin/bbjcpl and parses its output', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
+        const svc = new BBjCPLService(services as any);
+
+        const result = await svc.compile('/some/fake.bbj');
+
+        // The substitute script's output was spawned, read, and parsed as a
+        // diagnostic, pinning how the path at bbjHome/bin/bbjcpl is resolved and
+        // consumed today.
+        expect(result).toHaveLength(1);
+        expect(result[0].message).toContain('PIN TEST MARKER');
     }, 10000);
 
 });
