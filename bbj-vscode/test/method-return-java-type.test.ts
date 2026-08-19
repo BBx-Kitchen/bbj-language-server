@@ -3,7 +3,7 @@ import { beforeAll, afterEach, describe, expect, test } from 'vitest';
 import { validationHelper } from 'langium/test';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { initializeWorkspace } from './test-helper.js';
-import { Program } from '../src/language/generated/ast.js';
+import { JavaMethod, Program } from '../src/language/generated/ast.js';
 import { setTypeResolutionWarnings } from '../src/language/bbj-validator.js';
 
 // Uses the test module's FAKE Java classes (java.util.HashMap, java.lang.String,
@@ -170,5 +170,42 @@ class public Test
 classend
 `);
         expect(diagnostics).toHaveLength(0);
+    });
+});
+
+describe('P61-D2-011,P66-D2-001 — unresolved JavaMethod.resolvedReturnType falls back to raw returnType', () => {
+    beforeAll(async () => { await initializeWorkspace(shared); });
+    afterEach(() => setTypeResolutionWarnings(true));
+
+    test('a JavaMethod whose resolvedReturnType was never populated still produces the incompatible-type diagnostic', async () => {
+        // Simulate the exact shape produced whenever java-interop.ts's async Phase 2
+        // (which alone populates resolvedReturnType) has not completed for a given method:
+        // push a synthetic static 'valueOf' JavaMethod onto the fake java.lang.String class
+        // with resolvedReturnType intentionally left unset.
+        const stringClass = BBj.java.JavaInteropService.getResolvedClass('java.lang.String')!;
+        stringClass.methods.push({
+            $type: JavaMethod.$type,
+            name: 'valueOf',
+            $containerProperty: 'methods',
+            $container: stringClass,
+            isStatic: true,
+            deprecated: false,
+            returnType: 'java.lang.String',
+            parameters: []
+            // resolvedReturnType intentionally left unset
+        } as unknown as JavaMethod);
+
+        const diagnostics = await returnTypeDiagnostics(`
+use java.lang.String
+use java.util.HashMap
+class public Test
+  method public java.util.HashMap doSomething()
+    methodret String.valueOf(2)
+  methodend
+classend
+`);
+        expect(diagnostics).toEqual([
+            `Method 'doSomething' declares return type 'java.util.HashMap' but returns a value of incompatible type 'java.lang.String'.`
+        ]);
     });
 });
