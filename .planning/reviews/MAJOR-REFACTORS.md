@@ -24,6 +24,157 @@ Severity distribution of the `144`: `1` critical, `16` high, `70` medium, `57` l
 
 Effort distribution after INVENTORY §3d normalisation: `40` × `2`, `59` × `4`, `45` × `8`. Three records — `P63-D3-005`, `P66-D2-002`, `P66-D4-001` — carry an in-record annotation on the `effort:` value that is carried through verbatim rather than stripped to the bare number.
 
+## Index (severity-sorted, for Phase 69 filing order)
+
+Phase 69 files in severity order (highest first); the record blocks below stay in originating-phase order so this document keeps diffing against `67-APPLY-SET.md` (D-10) — the 1 `critical` and 16 `high` records surface first here rather than being buried at whatever phase they came from.
+
+| # | severity | PRIO | effort | finding_id | location | area |
+|---|---|---|---|---|---|---|
+| 1 | critical | PRIO 1 | 8 | P62-D1-003 | bbj-vscode/src/Commands/Commands.cjs:263 | vscode |
+| 2 | high | PRIO 1 | 2 | P64-D1-004 | .github/workflows/preview.yml:96-102 | BBj integration and infrastructure |
+| 3 | high | PRIO 1 | 2 | P64-D6-007 | bbj-vscode/package.json:670 | dependencies |
+| 4 | high | PRIO 1 | 2 | P64-D6-008 | bbj-vscode/package-lock.json:7581-7584 | dependencies |
+| 5 | high | PRIO 1 | 4 | P61-D1-003 | bbj-vscode/src/language/bbj-cpl-service.ts:82-155 | vscode |
+| 6 | high | PRIO 1 | 4 | P63-D1-007 | bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:32 | intellij |
+| 7 | high | PRIO 1 | 4 | P64-D1-006 | bbj-intellij/gradle/wrapper/gradle-wrapper.properties:3-5 | intellij |
+| 8 | high | PRIO 1 | 4 | P64-D6-006 | bbj-intellij/gradle/wrapper/gradle-wrapper.jar | dependencies |
+| 9 | high | PRIO 1 | 8 | P61-D3-002 | bbj-vscode/src/language/java-interop.ts:42-46 | vscode |
+| 10 | high | PRIO 1 | 8 | P61-D3-003 | bbj-vscode/src/language/bbj-scope.ts:308-331 | vscode |
+| 11 | high | PRIO 1 | 8 | P63-D1-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:34-35 | intellij |
+| 12 | high | PRIO 1 | 8 | P63-D1-003 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:103 | intellij |
+| 13 | high | PRIO 1 | 8 | P63-D2-004 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:60 | intellij |
+| 14 | high | PRIO 1 | 8 | P64-D1-002 | bbj-vscode/tools/em-login.bbj:10-13 | BBj integration and infrastructure |
+| 15 | high | PRIO 1 | 8 | P64-D1-003 | bbj-vscode/tools/formatter/BBjCFCli.jar | BBj integration and infrastructure |
+| 16 | high | PRIO 1 | 8 | P64-D6-002 | bbj-vscode/tools/formatter/lib/BBjCodeFomatter.jar | dependencies |
+| 17 | high | PRIO 1 | 8 | P66-D3-001 | bbj-vscode/src/language/bbj-scope.ts:308-330 (getBBjClassesFromFile); bbj-vscode/src/language/bbj-scope-local.ts:106-118 (collectLocalSymbols) | vscode |
+| 18 | medium | PRIO 2 | 2 | P61-D1-001 | bbj-vscode/src/language/java-interop.ts:116-120 | vscode |
+| 19 | medium | PRIO 2 | 2 | P61-D1-006 | bbj-vscode/src/language/bbj-ws-manager.ts:53-55 | vscode |
+| 20 | medium | PRIO 2 | 2 | P61-D1-007 | bbj-vscode/src/language/bbj-ws-manager.ts:118-126 | vscode |
+| 21 | medium | PRIO 2 | 2 | P62-D2-002 | bbj-vscode/src/Commands/Commands.cjs:250 | vscode |
+| 22 | medium | PRIO 2 | 2 | P63-D2-012 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java:115-128 | intellij |
+| 23 | medium | PRIO 2 | 2 | P64-D2-001 | bbj-vscode/tools/interop-test-harness/run-tests.ts:510 | BBj integration and infrastructure |
+| 24 | medium | PRIO 2 | 2 | P64-D2-007 | bbj-vscode/package.json:654 | vscode |
+| 25 | medium | PRIO 2 | 2 | P64-D2-008 | bbj-vscode/tsconfig.test.json:7-9 | vscode |
+| 26 | medium | PRIO 2 | 2 | P64-D2-009 | bbj-intellij/build.gradle.kts:93-98 | intellij |
+| 27 | medium | PRIO 2 | 2 | P64-D3-001 | .github/workflows/build.yml:19-22 | BBj integration and infrastructure |
+| 28 | medium | PRIO 2 | 2 | P64-D5-002 | bbj-vscode/vitest.config.ts:4-29 | vscode |
+| 29 | medium | PRIO 2 | 2 | P64-D6-001 | bbj-vscode/tools/interop-test-harness/run-tests.ts:1 | dependencies |
+| 30 | medium | PRIO 2 | 2 | P64-D6-011 | java-interop/build.gradle:22 | dependencies |
+| 31 | medium | PRIO 2 | 2 | P66-D2-003 | bbj-vscode/src/language/bbj-document-validator.ts:53 | vscode |
+| 32 | medium | PRIO 2 | 4 | P61-D1-002 | bbj-vscode/src/language/java-interop.ts:598-644 | vscode |
+| 33 | medium | PRIO 2 | 4 | P61-D1-004 | bbj-vscode/src/language/bbj-hover.ts:88-106 | vscode |
+| 34 | medium | PRIO 2 | 4 | P61-D1-005 | bbj-vscode/src/language/bbj-code-action-provider.ts:82-83 | vscode |
+| 35 | medium | PRIO 2 | 4 | P61-D1-008 | bbj-vscode/src/language/bbj-document-builder.ts:303-317 | vscode |
+| 36 | medium | PRIO 2 | 4 | P61-D2-007 | bbj-vscode/src/language/bbj.langium:941 | vscode |
+| 37 | medium | PRIO 2 | 4 | P61-D5-003 | bbj-vscode/test/parser.test.ts:530-533 | javascript |
+| 38 | medium | PRIO 2 | 4 | P62-D1-004 | bbj-vscode/src/extension.ts:415 | vscode |
+| 39 | medium | PRIO 2 | 4 | P62-D2-001 | bbj-vscode/src/msgbox-composer-webview.ts:82 | vscode |
+| 40 | medium | PRIO 2 | 4 | P62-D2-003 | bbj-vscode/src/extension.ts:592-707 | vscode |
+| 41 | medium | PRIO 2 | 4 | P62-D2-005 | bbj-vscode/src/msgbox-composer-ui.ts:87-133 | vscode |
+| 42 | medium | PRIO 2 | 4 | P62-D4-001 | bbj-vscode/src/msgbox-composer-webview.ts:366-373 (getNonce) | vscode |
+| 43 | medium | PRIO 2 | 4 | P62-D4-004 | bbj-vscode/src/msgbox-composer.ts:470-498 | vscode |
+| 44 | medium | PRIO 2 | 4 | P63-D1-004 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:56-88 | intellij |
+| 45 | medium | PRIO 2 | 4 | P63-D1-005 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:295 | intellij |
+| 46 | medium | PRIO 2 | 4 | P63-D2-003 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:70-79 | intellij |
+| 47 | medium | PRIO 2 | 4 | P63-D2-007 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:66-87 | intellij |
+| 48 | medium | PRIO 2 | 4 | P63-D2-013 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java:34-35 | intellij |
+| 49 | medium | PRIO 2 | 4 | P63-D2-016 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjCommenter.java:9-11 | intellij |
+| 50 | medium | PRIO 2 | 4 | P63-D3-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java:148-164 | intellij |
+| 51 | medium | PRIO 2 | 4 | P63-D3-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:282-322 | intellij |
+| 52 | medium | PRIO 2 | 4 | P63-D3-007 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjMissingNodeNotificationProvider.java:28-59 | intellij |
+| 53 | medium | PRIO 2 | 4 | P63-D4-010 | bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java | intellij |
+| 54 | medium | PRIO 2 | 4 | P63-D6-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:34 | dependencies |
+| 55 | medium | PRIO 2 | 4 | P64-D1-001 | bbj-vscode/tools/web.bbj:30-31 | BBj integration and infrastructure |
+| 56 | medium | PRIO 2 | 4 | P64-D1-005 | .github/workflows/preview.yml:8-10 | BBj integration and infrastructure |
+| 57 | medium | PRIO 2 | 4 | P64-D2-003 | bbj-vscode/tools/web.bbj:34 | BBj integration and infrastructure |
+| 58 | medium | PRIO 2 | 4 | P64-D3-002 | .github/workflows/build.yml:3-9 | BBj integration and infrastructure |
+| 59 | medium | PRIO 2 | 4 | P64-D6-003 | .github/workflows/manual-release.yml:18-162 | dependencies |
+| 60 | medium | PRIO 2 | 4 | P64-D6-005 | .github/dependabot.yml:3-7 | dependencies |
+| 61 | medium | PRIO 2 | 4 | P65-D1-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:25-29 (contrasted with bbj-vscode/src/extension.ts:587 | intellij |
+| 62 | medium | PRIO 2 | 4 | P65-D1-003 | bbj-vscode/src/extension.ts:339-366 (contrasted with bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:56-88 | vscode |
+| 63 | medium | PRIO 2 | 4 | P66-D4-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java:19 | intellij |
+| 64 | medium | PRIO 2 | 4 | P66-D5-001 | bbj-vscode/test/parser.test.ts:530 | javascript |
+| 65 | medium | PRIO 2 | 8 | P61-D2-012 | bbj-vscode/src/language/bbj-type-inferer.ts:47-48 | vscode |
+| 66 | medium | PRIO 2 | 8 | P61-D2-018 | bbj-vscode/src/language/main.ts:140-155 | vscode |
+| 67 | medium | PRIO 2 | 8 | P61-D4-001 | bbj-vscode/src/language/java-interop.ts:37-831 | vscode |
+| 68 | medium | PRIO 2 | 8 | P61-D5-001 | bbj-vscode/test/linking.test.ts:295-450 | javascript |
+| 69 | medium | PRIO 2 | 8 | P61-D5-002 | bbj-vscode/test/bbj-test-module.ts:108-123 | javascript |
+| 70 | medium | PRIO 2 | 8 | P61-D5-010 | bbj-vscode/test/completion-test.test.ts:185 | javascript |
+| 71 | medium | PRIO 2 | 8 | P61-D5-013 | bbj-vscode/src/language/bbj-ws-manager.ts:106-184 | vscode |
+| 72 | medium | PRIO 2 | 8 | P61-D5-014 | bbj-vscode/src/language/main.ts:1-190 | vscode |
+| 73 | medium | PRIO 2 | 8 | P62-D4-002 | bbj-vscode/src/extension.ts:582-830 | vscode |
+| 74 | medium | PRIO 2 | 8 | P62-D5-002 | bbj-vscode/test/ (absence) -- the 2 files this finding covers are bbj-vscode/src/extension.ts and bbj-vscode/src/Commands/Commands.cjs | javascript |
+| 75 | medium | PRIO 2 | 8 | P62-D7-001 | bbj-vscode/src/Commands/Commands.cjs:117 | vscode |
+| 76 | medium | PRIO 2 | 8 | P63-D2-010 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:57-159 | intellij |
+| 77 | medium | PRIO 2 | 8 | P63-D2-015 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjWordLexer.java:81-93 | intellij |
+| 78 | medium | PRIO 2 | 8 | P63-D5-001 | bbj-intellij/build.gradle.kts | intellij |
+| 79 | medium | PRIO 2 | 8 | P63-D6-002 | bbj-intellij/build.gradle.kts:12-13 | dependencies |
+| 80 | medium | PRIO 2 | 8 | P63-D7-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java:24-39 | intellij |
+| 81 | medium | PRIO 2 | 8 | P64-D2-005 | .github/workflows/manual-release.yml:69-82 | BBj integration and infrastructure |
+| 82 | medium | PRIO 2 | 8 | P64-D4-003 | .github/workflows/build.yml:16-34 | BBj integration and infrastructure |
+| 83 | medium | PRIO 2 | 8 | P64-D4-005 | bbj-vscode/eslint.config.js:16 | vscode |
+| 84 | medium | PRIO 2 | 8 | P64-D5-001 | bbj-vscode/tools/interop-test-harness/run-tests.ts:1-1058 | BBj integration and infrastructure |
+| 85 | medium | PRIO 2 | 8 | P64-D6-010 | bbj-intellij/gradle/wrapper/gradle-wrapper.properties:3 | dependencies |
+| 86 | medium | PRIO 2 | 8 | P66-D2-002 | bbj-vscode/src/language/bbj-scope.ts:191-234 (getScope's member-completion branch; isClassRef detection at :199-208); bbj-vscode/src/language/bbj-completion-provider.ts (consumes the scope with no independent isClassRef-aware filtering of its own); bbj-vscode/src/language/java-interop.ts:572-588 (the isStatic ?? false default that is the stated blocker) | vscode |
+| 87 | medium | PRIO 2 | 8 | P66-D5-002 | bbj-vscode/test/completion-test.test.ts:185 | javascript |
+| 88 | low | PRIO 3 | 2 | P61-D1-009 | bbj-vscode/src/language/bbj-ws-manager.ts:231-241 | vscode |
+| 89 | low | PRIO 3 | 2 | P61-D4-011 | bbj-vscode/src/language/bbj-signature-help-provider.ts:60-68 | vscode |
+| 90 | low | PRIO 3 | 2 | P61-D4-013 | bbj-vscode/src/language/bbj-ws-manager.ts:53-54 | vscode |
+| 91 | low | PRIO 3 | 2 | P61-D4-014 | bbj-vscode/src/language/composer-commands.ts:1-13 | vscode |
+| 92 | low | PRIO 3 | 2 | P61-D4-016 | bbj-vscode/src/language/lib/events.ts:1 | vscode |
+| 93 | low | PRIO 3 | 2 | P62-D1-002 | bbj-vscode/src/msgbox-composer-webview.ts:366-373 | vscode |
+| 94 | low | PRIO 3 | 2 | P62-D1-007 | bbj-vscode/src/decompile-io.ts:15-27 | vscode |
+| 95 | low | PRIO 3 | 2 | P63-D1-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:52 | intellij |
+| 96 | low | PRIO 3 | 2 | P63-D1-008 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:117-150 | intellij |
+| 97 | low | PRIO 3 | 2 | P63-D2-001 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:47-59 | intellij |
+| 98 | low | PRIO 3 | 2 | P63-D2-005 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:25-36 | intellij |
+| 99 | low | PRIO 3 | 2 | P63-D2-006 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java:96 | intellij |
+| 100 | low | PRIO 3 | 2 | P63-D2-009 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:179 | intellij |
+| 101 | low | PRIO 3 | 2 | P63-D2-014 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:117-184 | intellij |
+| 102 | low | PRIO 3 | 2 | P63-D3-005 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:93-96 | intellij |
+| 103 | low | PRIO 3 | 2 | P63-D4-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettings.java:30 | intellij |
+| 104 | low | PRIO 3 | 2 | P63-D8-004 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:39-44 | documentation |
+| 105 | low | PRIO 3 | 2 | P64-D2-002 | bbj-vscode/tools/interop-test-harness/run-tests.ts:706-708 | BBj integration and infrastructure |
+| 106 | low | PRIO 3 | 2 | P64-D2-006 | .github/workflows/preview.yml:3-8 | BBj integration and infrastructure |
+| 107 | low | PRIO 3 | 2 | P64-D3-003 | bbj-vscode/package.json:653 | vscode |
+| 108 | low | PRIO 3 | 2 | P64-D4-002 | bbj-vscode/tools/interop-test-harness/run-tests.ts:659 | BBj integration and infrastructure |
+| 109 | low | PRIO 3 | 2 | P64-D4-006 | bbj-vscode/package.json:629-650 | vscode |
+| 110 | low | PRIO 3 | 2 | P64-D8-001 | bbj-vscode/tools/interop-test-harness/run-tests.ts:2-14 | documentation |
+| 111 | low | PRIO 3 | 4 | P61-D4-004 | bbj-vscode/src/language/bbj.langium:513-521 | vscode |
+| 112 | low | PRIO 3 | 4 | P61-D4-015 | bbj-vscode/src/language/lib/functions.ts:167 | vscode |
+| 113 | low | PRIO 3 | 4 | P62-D1-001 | bbj-vscode/src/msgbox-composer-webview.ts:82-119 | vscode |
+| 114 | low | PRIO 3 | 4 | P62-D1-006 | bbj-vscode/src/document-formatter.ts:59 | vscode |
+| 115 | low | PRIO 3 | 4 | P62-D4-003 | bbj-vscode/src/Commands/CompilerOptions.ts:65-282 | vscode |
+| 116 | low | PRIO 3 | 4 | P63-D1-006 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:107-115 | intellij |
+| 117 | low | PRIO 3 | 4 | P63-D2-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsConfigurable.java:130-140 | intellij |
+| 118 | low | PRIO 3 | 4 | P63-D2-008 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:116-118 | intellij |
+| 119 | low | PRIO 3 | 4 | P63-D2-011 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java:67-114 | intellij |
+| 120 | low | PRIO 3 | 4 | P63-D3-003 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:268-272 | intellij |
+| 121 | low | PRIO 3 | 4 | P63-D3-004 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:66-71 | intellij |
+| 122 | low | PRIO 3 | 4 | P63-D3-006 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjTextMateBundleProvider.java:27-48 | intellij |
+| 123 | low | PRIO 3 | 4 | P63-D4-003 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:231-248 | intellij |
+| 124 | low | PRIO 3 | 4 | P63-D4-004 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java | intellij |
+| 125 | low | PRIO 3 | 4 | P63-D4-005 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjComposeAddChildWindowAction.java | intellij |
+| 126 | low | PRIO 3 | 4 | P63-D4-006 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:250-272 | intellij |
+| 127 | low | PRIO 3 | 4 | P63-D4-008 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureMsgboxIntention.java | intellij |
+| 128 | low | PRIO 3 | 4 | P63-D4-009 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxSchematicPanel.java:166-179 | intellij |
+| 129 | low | PRIO 3 | 4 | P63-D4-011 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java | intellij |
+| 130 | low | PRIO 3 | 4 | P63-D4-012 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjColorSettingsPage.java:29-66 | intellij |
+| 131 | low | PRIO 3 | 4 | P63-D4-013 | bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjJavaInteropNotificationProvider.java:22-57 | intellij |
+| 132 | low | PRIO 3 | 4 | P65-D1-001 | bbj-vscode/src/addwindow-composer-webview.ts:121-131 | vscode |
+| 133 | low | PRIO 3 | 8 | P61-D4-002 | bbj-vscode/src/language/java-javadoc.ts:16-36 | vscode |
+| 134 | low | PRIO 3 | 8 | P61-D4-007 | bbj-vscode/src/language/validations/check-classes.ts:89-548 | vscode |
+| 135 | low | PRIO 3 | 8 | P62-D1-005 | bbj-vscode/src/addwindow-composer.ts:195-282 | vscode |
+| 136 | low | PRIO 3 | 8 | P62-D5-001 | bbj-vscode/test/ (absence) — the 4 files this finding covers are bbj-vscode/src/msgbox-composer-webview.ts | javascript |
+| 137 | low | PRIO 3 | 8 | P62-D5-003 | bbj-vscode/src/msgbox-composer-ui.ts (193 | vscode |
+| 138 | low | PRIO 3 | 8 | P62-D5-005 | bbj-vscode/test/ (absence) — the 2 files this finding covers are bbj-vscode/bbj-language-configuration.json | javascript |
+| 139 | low | PRIO 3 | 8 | P63-D4-007 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/AddWindowComposerDialog.java | intellij |
+| 140 | low | PRIO 3 | 8 | P63-D7-002 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/ | intellij |
+| 141 | low | PRIO 3 | 8 | P63-D7-003 | bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRefreshJavaClassesAction.java:22-32 | intellij |
+| 142 | low | PRIO 3 | 8 | P63-D7-005 | bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ | intellij |
+| 143 | low | PRIO 3 | 8 | P63-D7-006 | bbj-intellij/src/main/java/com/basis/bbj/intellij/ | intellij |
+| 144 | low | PRIO 3 | 8 | P64-D4-001 | bbj-vscode/tools/interop-test-harness/run-tests.ts:256-592 | BBj integration and infrastructure |
+
 ## Records
 
 ```
