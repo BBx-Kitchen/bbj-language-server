@@ -37,6 +37,12 @@ export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 export class JavaInteropService {
 
     private connection?: MessageConnection;
+    /**
+     * In-flight `connect()` promise shared by same-tick callers (P61-D2-001): without it, two
+     * concurrent callers that both observe no existing connection each open their own socket,
+     * and the second silently overwrites/leaks the first.
+     */
+    private connectingPromise?: Promise<MessageConnection>;
     private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
     /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
@@ -86,12 +92,31 @@ export class JavaInteropService {
     }
 
     /**
-     * Establishes connection to the Java backend service
+     * Establishes connection to the Java backend service. Concurrent same-tick callers share the
+     * single in-flight {@link connectingPromise} instead of each opening their own socket
+     * (P61-D2-001).
      */
     protected async connect(): Promise<MessageConnection> {
         if (this.connection) {
             return this.connection;
         }
+        if (this.connectingPromise) {
+            return this.connectingPromise;
+        }
+        this.connectingPromise = this.establishConnection();
+        try {
+            return await this.connectingPromise;
+        } finally {
+            this.connectingPromise = undefined;
+        }
+    }
+
+    /**
+     * Opens a fresh socket and message connection, and registers `close`/`error` listeners that
+     * drop {@link connection} so a peer disconnect forces the next {@link connect} call to
+     * reconnect instead of handing back the dead reference (P61-D2-001).
+     */
+    private async establishConnection(): Promise<MessageConnection> {
         let socket: Socket;
         try {
             socket = await this.createSocket();
@@ -99,9 +124,11 @@ export class JavaInteropService {
             const detail = e instanceof Error ? e.message : String(e);
             notifyJavaConnectionError(detail);
             console.error('Failed to connect to the Java service.', e);
-            return Promise.reject(e);
+            throw e;
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+        connection.onClose(() => { this.connection = undefined; });
+        connection.onError(() => { this.connection = undefined; });
         connection.listen();
         this.connection = connection;
         return connection;
