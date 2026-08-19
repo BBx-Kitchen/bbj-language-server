@@ -807,6 +807,10 @@ export class JavaInteropService {
         // Clear java.lang.Object cache
         this.JAVA_LANG_OBJECT = undefined;
 
+        // Clear the complete class index so it is rebuilt against the new classpath instead of
+        // continuing to answer auto-import suggestions with stale FQNs (P61-D2-004)
+        this.clearCompleteClassIndex();
+
         // Reset lock state
         this.lockQueue = [];
         this.lockHeld = false;
