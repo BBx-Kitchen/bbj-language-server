@@ -3194,24 +3194,65 @@ resolution:        landed — this entry is itself the confirmation: `P61-D5-013
 **Phase 62 (7 referrals):**
 
 13. **[from `62-COVERAGE.md:323`]** **RU-63-04** — `setopts-composer-webview.ts` (321 lines, `bbj-vscode/src/`) has no IntelliJ counterpart: `grep -c setopts bbj-vscode/src/language/composer-commands.ts` returns `0` (no `bbj/composer/setopts/*` LS command exists, unlike msgbox/addwindow/addchildwindow which are all LS-shared per the D7 cell above), no `SetoptsComposerDialog.java` exists under `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/` (confirmed via directory listing), and `ComposerLauncher.java` — grepped for `Setopts`/`SetOpts` — has zero references anywhere in its dispatch logic (contrast with its `openMsgbox`/`openAddWindow`/`openAddChildWindow` handlers at lines 90,118,139). `RU-63-04`'s own sweep should confirm whether this is a deliberate, documented scope decision or an unaddressed feature gap, and record its own D7 finding if the latter — this unit's own coverage records the divergent VS Code-side evidence above but locates no finding inside `bbj-intellij/` (D-05).
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P63-D7-005` (`RU-63-04`, major-refactor) records this exact subject:
+                    porting the existing #474 config.bbx SETOPTS composer
+                    (`setopts-composer-webview.ts`) to IntelliJ. `dedup:` names `#475` as a
+                    related-but-different feature request (a new BBj-code-scoped tri-state
+                    composer) and states this finding is about the existing #474 port, not #475 —
+                    the same subject as this referral, confirmed same not different, so it is not
+                    an open gap despite the neighbouring `#475` mention.
 14. **[from `62-COVERAGE.md:800`]** **RU-63-01** — `BbjCompileAction.java` (`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java:24-37`) is an unimplemented `TODO` stub: `actionPerformed` only logs `"[Compile] Triggered for file: " + file.getName()` to the console and never invokes `bbjcpl` or any compiler process — unlike VS Code's `bbj.compile` (`Commands.cjs:294-343`), which builds and runs a real `bbjcpl` command line from 18 configurable options via `CompilerOptions.ts`/`buildCompileOptions()`. `RU-63-01`'s own sweep should confirm whether this is a documented, deliberate scope decision (e.g. compile-on-save is expected to be driven by the language server instead) or an unaddressed feature gap, and record its own finding if the latter.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P63-D7-002` (`RU-63-01`, major-refactor) is explicitly recorded as
+                    "Referral #2 disposition": all five commands (`bbj.configureCompileOptions`,
+                    `bbj.denumber`, `bbj.decompile`, `bbj.decompileReadonly`, `bbj.em`) confirmed
+                    absent from `bbj-intellij/` with no deliberate-scope statement found — an
+                    unaddressed feature gap, not a documented decision.
 15. **[from `62-COVERAGE.md:801`]** **RU-63-01** — Six VS Code commands in this unit have no IntelliJ action counterpart anywhere in `bbj-intellij/src/main/java/com/basis/bbj/intellij/` (confirmed via `ls`/`grep` across the module — no `Denumber`/`Decompile`/`ConfigureCompileOptions`/`EnterpriseManager` action class exists): `bbj.configureCompileOptions` (compiler-options UI with dependency/conflict validation), `bbj.denumber`/`bbj.decompile`/`bbj.decompileReadonly` (tokenized/line-numbered program decompilation, issues #64/#65), and `bbj.em` (Enterprise Manager URL launcher reading `BBj.properties`' jetty host/port). `RU-63-01`'s sweep should confirm whether these are deliberate VS Code-only features or unaddressed IntelliJ gaps.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P63-D7-001` (`RU-63-01`, major-refactor) is explicitly recorded as
+                    "Referral #1 disposition": `BbjCompileAction.java`'s `actionPerformed()`
+                    confirmed as an unimplemented TODO stub with no deliberate-scope statement
+                    found — an unaddressed feature gap, not a documented decision.
 16. **[from `62-COVERAGE.md:802`]** **RU-63-01** (secondary interest to `RU-63-05`) — `BbjRefreshJavaClassesAction.java:21-30` performs a full `BbjServerService.getInstance(project).restart()` (restarting the whole language server) where VS Code's `bbj.refreshJavaClasses` (`extension.ts:694-704`) sends a targeted `bbj/refreshJavaClasses` LSP request without restarting the server — a behavioral divergence worth confirming as deliberate (LSP4IJ architecture constraint) or a missed optimization.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P63-D7-003` (`RU-63-01`, major-refactor) is explicitly recorded as
+                    "Referral #3 disposition": the full-restart-vs-targeted-request divergence is
+                    confirmed and filed; `RU-63-05`'s own D7 cell (referral 20 below)
+                    cross-references this same finding by ID rather than allocating a second one
+                    for the mechanism side.
 17. **[from `62-COVERAGE.md:1078`]** **RU-63-04** — Independently confirms, from this unit's own logic/UI-layer perspective, the same SETOPTS/IntelliJ absence `RU-62-04` already referred: `setopts-catalog.ts` (335 lines) and `setopts-composer-ui.ts` (96 lines, `bbj-vscode/src/`) have no IntelliJ counterpart — `ls bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/` lists no `SetoptsComposerDialog.java` and `ComposerModels.java` defines no `SetOpts*` DTO, and `ComposerLauncher.java` — grepped for `setopts`/`Setopts` — has zero matches anywhere in its dispatch logic (contrast `openMsgbox`/`openAddWindow`/`openAddChildWindow` at lines 90/118/139). `RU-63-04`'s own sweep should treat this as corroborated from two independent Phase 62 units (`RU-62-04`'s generator-layer view and this unit's logic/UI-layer view) when it confirms whether the absence is a deliberate, documented scope decision or an unaddressed feature gap.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — same finding as referral 13 above: `P63-D7-005` (`RU-63-04`). Its
+                    `dedup:` field itself notes the logic/UI-layer (`setopts-catalog.ts`,
+                    `setopts-composer-ui.ts`) and generator-layer views are corroborating evidence
+                    for the one port-to-IntelliJ finding, not two separate subjects.
 18. **[from `62-COVERAGE.md:1456`]** **RU-63-02** — Two follow-ups for the IntelliJ-side language-registration/editor-support sweep, neither confirmable without launching the IDE (deferred infrastructure per `62-CONTEXT.md`), so neither is asserted as a `P62-D7-*` finding here (D-05): (1) `.planning/STATE.md`'s tech-debt note "IntelliJ TextMate bundle cannot exclude config.bbx at filename level" was recorded 2026-02-20 (`f252ad9`), **before** commit `2489001` (2026-07-18) added `"filenames": ["config.bbx", "Config.bbx", "config.min", "Config.min"]` to `bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json`'s `"BBx Config"` language entry — the manifest now declares filename-level exclusion; `RU-63-02` should confirm at runtime whether IntelliJ's built-in TextMate bundle importer actually honors a VS-Code-style `filenames` field (vs. silently falling back to extension-only matching, which would reintroduce #381's failure mode IntelliJ-side despite the manifest declaring the fix) and update or retire the STATE.md tech-debt note accordingly. (2) IntelliJ's TextMate bundle manifest's `"BBj"` language already lists `.bbl` in its `extensions` array (`bbj-intellij/.../package.json:7`), unlike VS Code's own `package.json` (`P62-D7-002`, this unit's own fix target) — `RU-63-02` should confirm whether IntelliJ's LSP4IJ file-type/language registration (a separate mechanism from the TextMate bundle's own `extensions` field, per this plan's own D-05 boundary) independently attaches BBj language support to `.bbl` files end-to-end, since if so, IntelliJ's `.bbl` handling is the correct reference behavior VS Code's `package.json` should be brought in line with.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — `RU-63-02`'s own "Referral #6"
+                    cross-unit-referral triage note (`63-COVERAGE.md`, §RU-63-02) answers both
+                    follow-ups without filing a `P63-D7-*` finding: Part 2 (does IntelliJ's LSP4IJ
+                    registration independently cover `.bbl`) is settled by trace — `plugin.xml`'s
+                    `<fileType>` omits `.bbl`, so it does not, and this is recorded as deliberate
+                    consistency with VS Code's own `.bbl` exclusion (#369), not a gap. Part 1
+                    (does the TextMate bundle importer honor the `filenames` field at runtime)
+                    cannot be confirmed without launching the IDE and is recorded in `###
+                    Not-reproducible dispositions` as a `Tier failed: inherited (D7)` entry rather
+                    than as an open gap, since RU-63-02 investigated and stated the reason rather
+                    than recording nothing.
 19. **[from `62-COVERAGE.md:1837`]** **RU-63-02** — None of this unit's four editor features has any IntelliJ counterpart, confirmed by grep across `bbj-intellij/src/main/java/` (see the D7 cell above for the per-feature commands and their empty results): (1) **format document** — `BbjLanguageCodeStyleSettingsProvider.java` only customizes reformat *defaults* (REM-at-column-0); it never invokes a `BBjCFCli.jar`-equivalent tool or spawns any process, so the actual jar-backed reformat feature `document-formatter.ts` implements is absent. (2) **line-numbered/denumber detection** — no `isLineNumberedSource`/denumber-prompt equivalent exists anywhere in the plugin. (3) **tokenized-BBj detection** — no magic-byte/tokenized-file detection exists anywhere in the plugin; this is #65's ("support tokenized BBj files") IntelliJ-side remainder — the VS Code side (this unit) already implements the feature #65 requests; #65 itself stays open until IntelliJ gets an equivalent. (4) **decompile** — no `bbjlst`-invoking decompile action exists anywhere in the plugin. `RU-63-02`'s own sweep should confirm, for each of the four, whether the absence is a deliberate scope decision (IntelliJ may rely on external tooling for some of these) or an unaddressed feature gap, and record its own D7 finding if the latter — this unit's own coverage records the divergent VS Code-side evidence above but locates no finding inside `bbj-intellij/` (D-05).
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P63-D7-006` (`RU-63-02`, major-refactor) is explicitly recorded as
+                    "disposed under referral #7": all four editor features (format document,
+                    denumber, tokenized-BBj detection, decompile) re-verified live and confirmed
+                    absent, promoted as one categorical finding.
 
 **Phase 63 (1 referral):**
 
 20. **[from `63-COVERAGE.md:1293`]** **RU-63-05** — `BbjRefreshJavaClassesAction.java:30`'s `BbjServerService.getInstance(project).restart()` call is the client-side half of referral #3's disposition (`P63-D7-003`, promoted above); `BbjServerService.restart()` itself (`ui/BbjServerService.java:206-211`, a `manager.stop(...)`/`manager.start(...)` pair via `LanguageServerManager`) is the mechanism side and lives in `RU-63-05`'s own file. `RU-63-05`'s sweep (plan `63-04`) should confirm whether LSP4IJ's client API offers any narrower request-response mechanism that could avoid the full stop/start cycle for this specific use, re-triaging the mechanism rather than re-reporting the client-side gap `P63-D7-003` already records.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — `RU-63-05`'s own D7 Cross-IDE parity cell
+                    (`63-COVERAGE.md`, §RU-63-05) states it explicitly: it "cross-referenc[es]
+                    `RU-63-01`'s already-recorded disposition of Phase 62's referral #3
+                    (`P63-D7-003`) by ID rather than allocating a second finding for the same
+                    divergence," adding only that `BbjComposerServer.java` (`RU-63-04`'s file)
+                    already demonstrates the `@JsonRequest` typed-request mechanism a narrower
+                    `bbj/refreshJavaClasses` call would need, unused for this purpose — an
+                    implementation choice, not an LSP4IJ platform limitation. No new finding
+                    filed; the observation supports `P63-D7-003`'s existing disposition.
 
 **Phase 64 (10 referrals):**
 
