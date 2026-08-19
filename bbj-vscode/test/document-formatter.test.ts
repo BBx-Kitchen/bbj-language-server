@@ -2,7 +2,9 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'events';
 
 // 'vscode' is not resolvable outside the extension host, and document-formatter.ts calls
-// vscode.workspace.* at import time — mock it before importing the module under test.
+// vscode.workspace.* at import time — mock it before importing the module under test. The
+// registered onDidChangeTextDocument callback is captured on __testState so tests can drive it
+// directly to populate the module's unsaved-content map.
 vi.mock('vscode', () => {
     class TextEdit {
         constructor(public range: unknown, public newText: string) { }
@@ -10,6 +12,7 @@ vi.mock('vscode', () => {
     class Range {
         constructor(public startLine: number, public startChar: number, public endLine: number, public endChar: number) { }
     }
+    const __testState: { onDidChangeTextDocument?: (event: unknown) => void } = {};
     return {
         workspace: {
             getConfiguration: vi.fn(() => ({
@@ -20,11 +23,15 @@ vi.mock('vscode', () => {
                     splitSingleLineIF: false,
                 },
             })),
-            onDidChangeTextDocument: vi.fn(() => ({ dispose: () => { } })),
+            onDidChangeTextDocument: vi.fn((cb: (event: unknown) => void) => {
+                __testState.onDidChangeTextDocument = cb;
+                return { dispose: () => { } };
+            }),
             onDidCloseTextDocument: vi.fn(() => ({ dispose: () => { } })),
         },
         TextEdit,
         Range,
+        __testState,
     };
 });
 
@@ -33,6 +40,7 @@ vi.mock('child_process', () => ({
 }));
 
 import * as cp from 'child_process';
+import * as vscodeMocked from 'vscode';
 import { DocumentFormatter } from '../src/document-formatter.js';
 
 /** A minimal fake ChildProcess: an EventEmitter with stdout/stderr/stdin. */
@@ -134,6 +142,56 @@ describe('DocumentFormatter', () => {
 
             DocumentFormatter.provideDocumentFormattingEdits(doc);
             expect(cp.spawn).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('P62-D5-006: full formatter coverage (test-is-the-fix, D-13)', () => {
+        // The non-ENOENT-error case is already covered above by P62-D2-010's regression test —
+        // deliberately not duplicated here (see this row's `notes:` in 67-APPLY-SET.md).
+
+        test('rejects with the underlying error when java is not found (ENOENT)', async () => {
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/d5-enoent.bbj', 'rem x');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            const err: NodeJS.ErrnoException = new Error('java not found');
+            err.code = 'ENOENT';
+            proc.emit('error', err);
+
+            await expect(formatPromise).rejects.toBeTruthy();
+        });
+
+        test('rejects when the formatter process exits with a non-zero code', async () => {
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/d5-nonzero.bbj', 'rem x');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            proc.stderr.emit('data', 'syntax error at line 1');
+            proc.emit('close', 1);
+
+            await expect(formatPromise).rejects.toBeTruthy();
+        });
+
+        test('formats the unsaved buffer content tracked via onDidChangeTextDocument, not document.getText()', async () => {
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/d5-unsaved.bbj', 'saved-on-disk text');
+            // Simulate VS Code reporting an in-memory edit for this same document before format runs.
+            (vscodeMocked as any).__testState.onDidChangeTextDocument({
+                document: { uri: doc.uri, getText: () => 'unsaved edited text' },
+            });
+
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+            proc.stdout.emit('data', 'formatted');
+            proc.emit('close', 0);
+            await formatPromise;
+
+            expect(proc.stdin.end).toHaveBeenCalledWith('unsaved edited text');
         });
     });
 });
