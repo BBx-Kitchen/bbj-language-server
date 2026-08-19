@@ -66,6 +66,14 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
 
     private spliceToken(tokens: TokenType[], name: string) {
         const nextTokenIndex = tokens.findIndex(type => type.name === name);
+        if (nextTokenIndex === -1) {
+            // A missing name previously reached tokens.splice(-1, 1), which silently removes and
+            // reorders the LAST token instead of the intended one — a silent stream corruption
+            // (P61-D2-008). Fail loudly instead: buildTokens() calls this with 14 hardcoded
+            // terminal names, and a future grammar edit renaming/removing one of them should be a
+            // visible error, not a corrupted token vocabulary.
+            throw new Error(`spliceToken: no token named '${name}' found in the token list.`);
+        }
         const nextToken = tokens.splice(nextTokenIndex, 1)[0];
         tokens.splice(1, 0, nextToken);
     }
