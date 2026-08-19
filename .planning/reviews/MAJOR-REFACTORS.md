@@ -1525,7 +1525,7 @@ classification:    major (1) touches 1 file: FAIL — a fix needs a re-decode-an
 effort:            8
 dedup:             none — no frozen open issue names this stale-captured-range gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The general shape is nameable even though no single-file edit is: add a shared re-decode-and-validate helper reachable from all three apply paths in `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:57-159` (`openMsgbox`, `applyAddWindowEdit`, `applyHexEdit`), each re-decoding the call at the captured line/offsets immediately before `WriteCommandAction.replaceString` and comparing the fresh decode against the offsets captured before `dialog.showAndGet()`. What has to be established before this is finished is a UX decision this record's own evidence does not settle — whether a mismatch prompts the user to re-open the dialog against the current document state or silently aborts the edit — and that choice is the first thing an implementer needs, not evidence this sweep can supply.
 proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
@@ -1943,7 +1943,7 @@ classification:    major (1) touches 1 file: n/a — this record documents an ex
 effort:            4
 dedup:             DEBT-05 — this is the phase's designated DEBT-05 evidence record; Phase 66 re-triages it, not re-derives it. #410 and #231 also checked explicitly and dismissed as unrelated to LSP4IJ API coupling.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: P66-D4-001 supersedes this record — its own `dedup:` states so directly. It re-triages this same coupling-shape evidence with a live jar measurement (the nine-row `RuntimeInvisibleAnnotations -> ApiStatus$Experimental` annotation table against the cached `lsp4ij-0.19.0.jar`) and names its own approach: a new `bbj-intellij/src/test/` source set exercising `BbjCompletionFeature.java` and `BbjLanguageServerFactory.java`, currently blocked by the same JDK toolchain gap `P63-D6-002` records. An implementer should read `P66-D4-001` as the live record for this coupling surface; this block stays in the document as the phase's designated DEBT-05 evidence handoff, not collapsed into its successor.
 proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
@@ -2057,7 +2057,7 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            8
 dedup:             none — no frozen open issue names the bbj-intellij Gradle/JDK toolchain mismatch. `dedup:` additionally notes: RU-64-02 owns bbj-intellij/build.gradle.kts for every dimension other than this routed D6 cell (D-10) — Phase 64's own sweep re-triages this item rather than re-deriving it; this record is the full evidence handoff, not a duplicate.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: n/a at this recording stage — resolution requires RU-64-02's own broader toolchain and IntelliJ-Platform-version work (D-10's location exception is why this evidence lives here rather than in RU-64-02's own records): RU-64-02 owns `bbj-intellij/build.gradle.kts`'s JDK/Gradle toolchain triage for every dimension other than this routed D6 cell, and the `JavaVersion.VERSION_17`-vs.-Temurin-25.0.3 mismatch this record evidences is resolved as part of that unit's broader work, not as an independent single-file edit from this record's evidence alone.
 proposed_labels:   area=dependencies; PRIO 2; effort 8
 issue:             
 ```
@@ -2076,7 +2076,7 @@ classification:    major (1) touches 1 file: FAIL — a real compile flow requir
 effort:            8
 dedup:             none — #231 (custom classpath and command-line settings for starting BBj programs) requests configurable run/compile settings, which presupposes a working compile action; it does not itself request implementing the missing bbjcpl invocation this finding records. #385 (Graffiti Composer) is unrelated. Both of this unit's named plausible neighbours checked explicitly and dismissed.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The missing side is IntelliJ: `BbjCompileAction.java:24-39` only logs and never invokes bbjcpl. The work travels through a new shared language-server surface — a `bbj/compile` LSP4IJ request/notification mirroring VS Code's real compile flow in `Commands.cjs:294-343` (via `CompilerOptions.ts`) — and what would have to exist on the IntelliJ side is a handler in `BbjCompileAction.java` that sends that request and surfaces its result (success/diagnostics) to the user, replacing the current silent log line.
 proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
@@ -2095,7 +2095,7 @@ classification:    major (1) touches 1 file: FAIL — implementing even the simp
 effort:            8
 dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests tokenized/ line-numbered BBj file support; this finding's denumber/decompile/ decompileReadonly absence is the IntelliJ-side remainder of that same request (the VS Code side is already implemented, per RU-62-02's own D7 cell), so it is not a novel gap for those three commands specifically — the configureCompileOptions and em absences are not covered by #65. #231/#385 checked explicitly: #231 concerns run/compile settings configurability generally, overlapping loosely with configureCompileOptions but not requesting the other four; #385 is unrelated (Graffiti Composer).
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The missing side is IntelliJ for all five VS Code commands (`bbj.configureCompileOptions`, `bbj.denumber`, `bbj.decompile`, `bbj.decompileReadonly`, `bbj.em`), none of which has an action class under `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/`. `configureCompileOptions` can travel through the shared surface — it reuses LS-side compiler-option data already served to VS Code — while the other four are IDE-native action classes with no shared LS path, each needing a new class plus a `plugin.xml` registration mirroring its VS Code command handler. Beyond `#65`, which covers only the tokenized/denumber/decompile IntelliJ-side remainder, this record additionally names the `configureCompileOptions` and `bbj.em` gaps that `#65` does not request.
 proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
@@ -2114,7 +2114,7 @@ classification:    major (1) touches 1 file: FAIL — a lighter-weight refresh r
 effort:            8
 dedup:             none — no frozen open issue names the refreshJavaClasses restart-vs-targeted- request divergence.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The missing capability is a targeted classpath refresh on IntelliJ: `BbjRefreshJavaClassesAction.java:22-32` calls `BbjServerService.restart()`, taking every language feature offline, where VS Code's `extension.ts:694-704` sends a single targeted `bbj/refreshJavaClasses` LSP request with no interruption. The work would travel through either a new LSP4IJ client-side request handler or a shared language-server-side `bbj/refreshJavaClasses` notification handler, touching at least `BbjRefreshJavaClassesAction.java` and the LSP wiring RU-63-05 owns — but which of those two is buildable is an open question this unit's own sweep could not settle: RU-63-05 first has to confirm whether LSP4IJ's client API supports issuing a custom request without a full server restart before a single edit can be named.
 proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
@@ -2133,7 +2133,7 @@ classification:    major (1) touches 1 file: FAIL — porting requires a new LS 
 effort:            8
 dedup:             #475 partial-overlap — #475 requests a NEW BBj-code-scoped SETOPTS capability (decode hovers + tri-state composer with IOR/AND-aware codegen for SETOPTS calls inside BBj source) that neither IDE has today; this finding is about porting the EXISTING #474 config.bbx SETOPTS composer (already shipped in VS Code) to IntelliJ — related but not identical. setopts-catalog.ts's own header, quoted in RU-62-03's D8 cell, names IntelliJ reuse of its byte/bit logic as a stated future intention — exactly the reuse surface #475's tri-state composer would also need — so this finding's fix is a natural prerequisite subset of #475's fuller scope, not a duplicate of it. #385 (Graffiti Composer, an unrelated external tool) checked explicitly and dismissed.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The missing side is IntelliJ: no visual SETOPTS composer exists at all for `config.bbx` files, unlike VS Code's CodeLens-launched composer (`#474`, shipped 0.12.0). The work travels through a new shared surface that does not exist yet — SETOPTS has no `bbj/composer/setopts/*` LS command today, unlike msgbox/addwindow/addchildwindow — plus a new `SetoptsComposerDialog.java`, new `ComposerModels` DTOs, and `ComposerLauncher` action wiring on the IntelliJ side. Beyond `#475`, which requests a new BBj-code-scoped SETOPTS capability (decode hovers plus a tri-state composer with IOR/AND-aware codegen for SETOPTS calls inside BBj source), this record is narrower: porting the EXISTING shipped `#474` config.bbx composer to IntelliJ, which `setopts-catalog.ts`'s own header already names as a stated future intention and which is a natural prerequisite subset of `#475`'s fuller scope, not a duplicate of it.
 proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
@@ -2152,7 +2152,7 @@ classification:    major (1) touches 1 file: FAIL — implementing even the smal
 effort:            8
 dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests exactly the tokenized-detection quarter of this finding's four-feature absence; the VS Code side already implements it (RU-62-02's own D7 cell), so this finding's tokenized-detection component is #65's IntelliJ-side remainder, not a novel request. The format/denumber/decompile components are not covered by #65 or any other frozen open issue. #381 and #476 (this unit's other named neighbours) are unrelated.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The missing side is IntelliJ for all four VS Code capabilities (real formatter, denumber, tokenized-file detection, decompile) — `BbjLanguageCodeStyleSettingsProvider.java:20-25` only customizes cosmetic reformat defaults and never invokes a compiler-backed formatter. Format-document is blocked on a new dependency this unit's classification already names: the vendored `BBjCFCli.jar` (RU-64-03's surface) is not currently bundled into `bbj-intellij`, so a real fix needs a `build.gradle.kts` bundling task analogous to the existing `copyTextMateBundle` task before a detector/action class can use it; denumber, tokenized-detection and decompile can each reuse LS-side/tool-side logic already built for VS Code without that new dependency. Beyond `#65`, which covers only the tokenized-detection quarter of this four-feature gap (the VS Code side already implemented per RU-62-02's own D7 cell), this record additionally names the format/denumber/decompile components, none of which `#65` or any other frozen open issue covers.
 proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
