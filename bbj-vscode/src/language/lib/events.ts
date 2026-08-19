@@ -52,12 +52,12 @@ Window Mouse Button Down
 eventtype ON_MOUSE_DOWN
 
 /@@
-Window Mouse Enter
+Window Mouse Enter / Mouse Enter Event
 @/
 eventtype ON_MOUSE_ENTER
 
 /@@
-Window Mouse Exit
+Window Mouse Exit / Mouse Exit Event
 @/
 eventtype ON_MOUSE_EXIT
 
@@ -521,16 +521,6 @@ eventtype ON_LIST_SELECT
 Control Focus Gained/Lost Event
 @/
 eventtype ON_LOST_FOCUS
-
-/@@
-Mouse Enter Event
-@/
-eventtype ON_MOUSE_ENTER
-
-/@@
-Mouse Exit Event
-@/
-eventtype ON_MOUSE_EXIT
 
 /@@
 Native JavaScript Event
