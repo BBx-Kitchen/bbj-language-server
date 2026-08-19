@@ -122,6 +122,33 @@ recorded there with suite name, quoted timeout, and reproduction status.
   Hook timed out in 10000ms.` at `test/functional/chevrotain-tokens.test.ts:17`, observed during
   plan 67-02's baseline delta above. Already named among the 5 suites recorded above; reproduction
   confirms the flakiness is load-dependent, not caused by this plan's changes.
+- `test/classes.test.ts > Inheritance chain resolution` — `Error: Hook timed out in 10000ms.` at
+  `test/classes.test.ts:104`, observed during plan 67-03's baseline delta below. Already named
+  among the 5 suites recorded above; reproduction confirms the flakiness is load-dependent.
+- `test/declare-in-class.test.ts > DECLARE in class body (#380)` — `Error: Hook timed out in
+  10000ms.` at `test/declare-in-class.test.ts:16`, observed during plan 67-03's baseline delta
+  below. Not among the original 5; a new suite hitting the same load-dependent `beforeAll
+  initializeWorkspace()` hookTimeout pattern (per P61-D5-013's cost-profile trace). Reproduced on
+  a same-day re-run (see plan 67-03 delta below) — confirmed flaky, not a one-off.
+- `test/variable-scoping.test.ts > Variable Scoping` — `Error: Hook timed out in 10000ms.` at
+  `test/variable-scoping.test.ts:47`, observed during plan 67-03's baseline delta below. Already
+  named among the 5 suites recorded above; reproduction confirms the flakiness is load-dependent.
+- `test/lazy-prefix-loading.test.ts > Lazy PREFIX loading (#32)` — `Error: Hook timed out in
+  10000ms.` at `test/lazy-prefix-loading.test.ts:58`, observed during plan 67-03's baseline delta
+  below. Not among the original 5; a new suite hitting the same pattern. Did not reproduce on the
+  immediately following re-run in this same delta (contention-dependent, per D-08).
+- `test/use-project-root.test.ts > USE resolves relative to the project root (#378)` — `Error:
+  Hook timed out in 10000ms.` at `test/use-project-root.test.ts:28`, observed twice during plan
+  67-03's baseline delta below (two separate re-runs). Not among the original 5; a new suite
+  hitting the same pattern, reproduced across runs — confirmed flaky.
+- `test/builtin-functions-library.test.ts > builtin functions library` — `Error: Hook timed out in
+  10000ms.` at `test/builtin-functions-library.test.ts:16`, observed during plan 67-03's baseline
+  delta below. Already named among the 5 suites recorded above; reproduction confirms the
+  flakiness is load-dependent.
+- `test/run-call-file-resolution.test.ts > RUN/CALL file resolution (#173)` — `Error: Hook timed
+  out in 10000ms.` at `test/run-call-file-resolution.test.ts:23`, observed twice during plan
+  67-03's baseline delta below (two separate re-runs). Not among the original 5; a new suite
+  hitting the same pattern, reproduced across runs — confirmed flaky.
 
 ### Plan 67-01 delta
 
@@ -195,6 +222,61 @@ of the 5 known load-dependent `beforeAll` hook-timeout exclusions already named 
 `### Flaky, excluded from the gate (D-08)` above; reproduced again here (contention-dependent,
 consistent with the original observation), contributing 0 tests to the deterministic gate set (its
 tests report `skipped`, not `failed`). Appended below under `## Flaky exclusions (D-08)`.
+
+**`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
+warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet
+applied) — unchanged from the phase-start baseline.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
+### Plan 67-03 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm test 2>&1 | tail -100` (four times, per D-08 — this plan touches a
+service on the build hot path, so the delta was checked more than the usual two runs before
+accepting it) and `npm run lint`, on HEAD after plan 67-03's nine commits (the P61-D2-015,
+P61-D2-016, P61-D2-017, P61-D3-005 red/green pairs, the P61-D5-016 test-is-the-fix commit, and the
+P61-D8-006 no-op; no `bbj-intellij/` file changed, so `./gradlew build` is not re-run per D-09).
+
+**`npm test`:** across all four runs, the failing-test NAME set was identical every time:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set — same 11 names, none added, none removed, on every one of
+the four runs. `test/ws-manager.test.ts` (3 tests) and `test/document-builder.test.ts` (4 tests),
+the two new suites this plan adds, passed in full on every run and contribute 0 failures.
+
+Beyond these 11, each run showed 2-3 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.` — never an assertion failure. Two were already-known members
+of the 5-suite flaky list (`test/classes.test.ts > Inheritance chain resolution`,
+`test/variable-scoping.test.ts > Variable Scoping`, `test/builtin-functions-library.test.ts >
+builtin functions library`, across the four runs); four were new suites hitting the identical
+load-dependent pattern for the first time in this phase
+(`test/declare-in-class.test.ts > DECLARE in class body (#380)`,
+`test/lazy-prefix-loading.test.ts > Lazy PREFIX loading (#32)`,
+`test/use-project-root.test.ts > USE resolves relative to the project root (#378)`,
+`test/run-call-file-resolution.test.ts > RUN/CALL file resolution (#173)`). All are appended above
+under `## Flaky exclusions (D-08)` with suite name, quoted timeout, and reproduction status. None
+contributes a test to the deterministic gate set — every test in a timed-out suite reports
+`skipped`, not `failed`. This plan touches `bbj-ws-manager.ts` (the exact file whose
+`initializeWorkspace()` P61-D5-013 already identified as the routing-table's flakiness source) and
+adds two new `beforeAll`-driven suites of its own, so the wider spread of suites hitting the same
+pre-existing hookTimeout under contention is consistent with — not caused by — this plan's changes:
+every affected suite's `beforeAll` calls the same shared, pre-existing
+`WorkspaceManager.initializeWorkspace()` path this plan's own new test file avoids exercising via
+`createBBjTestServices` specifically to sidestep this cost (see `test/ws-manager.test.ts`'s and
+`test/document-builder.test.ts`'s header comments).
 
 **`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
 warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet

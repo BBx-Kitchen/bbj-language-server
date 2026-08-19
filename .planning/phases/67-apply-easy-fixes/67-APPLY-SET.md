@@ -47,13 +47,13 @@ Two derived counts, and the arithmetic connecting them:
 | 10 | P61-D2-011 | applied | 382a068 (red) + 32faeff (green) |
 | 11 | P61-D2-013 | pending | pending |
 | 12 | P61-D2-014 | pending | pending |
-| 13 | P61-D2-015 | pending | pending |
-| 14 | P61-D2-016 | pending | pending |
-| 15 | P61-D2-017 | pending | pending |
+| 13 | P61-D2-015 | applied | c6bef67 (red) + 1f5e824 (green) |
+| 14 | P61-D2-016 | applied | d0b1666 (red) + c47da5c (green) |
+| 15 | P61-D2-017 | applied | 26576ae (red) + 38dea2e (green) |
 | 16 | P61-D2-019 | pending | pending |
 | 17 | P61-D3-001 | applied | 7a4448d (red) + 6d7be38 (green) |
 | 18 | P61-D3-004 | pending | pending |
-| 19 | P61-D3-005 | pending | pending |
+| 19 | P61-D3-005 | applied | fc9cf79 (red) + 6b32823 (green) |
 | 20 | P61-D4-003 | applied | 8c9028c |
 | 21 | P61-D4-005 | pending | pending |
 | 22 | P61-D4-006 | pending | pending |
@@ -70,14 +70,14 @@ Two derived counts, and the arithmetic connecting them:
 | 33 | P61-D5-011 | pending | pending |
 | 34 | P61-D5-012 | pending | pending |
 | 35 | P61-D5-015 | pending | pending |
-| 36 | P61-D5-016 | pending | pending |
+| 36 | P61-D5-016 | applied | 5db3ac9 (test) |
 | 37 | P61-D5-017 | pending | pending |
 | 38 | P61-D8-001 | no-op | none — comment already accurate after P61-D2-004's fix (557ab62) |
 | 39 | P61-D8-002 | pending | pending |
 | 40 | P61-D8-003 | pending | pending |
 | 41 | P61-D8-004 | pending | pending |
 | 42 | P61-D8-005 | pending | pending |
-| 43 | P61-D8-006 | pending | pending |
+| 43 | P61-D8-006 | no-op | none — resolved by P61-D2-016's fix (c47da5c) |
 | 44 | P61-D8-007 | pending | pending |
 | 45 | P62-D2-004 | pending | pending |
 | 46 | P62-D2-006 | pending | pending |
@@ -351,15 +351,15 @@ location:          bbj-vscode/src/language/bbj-ws-manager.ts:106-141
 dimension:         D2
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A multi-root VS Code workspace has folder A (with project.properties defining PREFIX/classpath) and folder B (a second root, e.g. a shared library project with its own project.properties). If folder A is listed
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at c6bef67 — AssertionError: expected [ '/prefix-a/' ] to include '/prefix-b/'
+failure_scenario:  A multi-root VS Code workspace has folder A (with project.properties defining PREFIX/classpath) and folder B (a second root, e.g. a shared library project with its own project.properties). If folder A is listed first, folder B's PREFIX/classpath settings are never read; if folder B is listed first, folder A's settings are ignored instead — either way, one root's Java classpath/PREFIX configuration is silently dropped, matching #33's report that VS Code multi-root workspaces "don't work".
+fix_applied:       initializeWorkspace() previously read project.properties from folders[0] only and assigned this.settings from that single read. Restructured to loop over every workspace folder, read each one's project.properties, run each through parseSettings() (still passing the same shared config.bbx-derived prefixfromconfig, which is not per-folder), and push each folder's resulting prefixes/classpath into two accumulator arrays; this.settings is then assigned once from the merged arrays. The single-folder case is provably unchanged — with one folder, the loop's single iteration produces the exact same parseSettings() call and result the old code produced directly — and the zero-folder case still calls parseSettings("", undefined) exactly as before.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/ws-manager.test.ts test/use-project-root.test.ts test/imports.test.ts
+commit:            c6bef67 (red) + 1f5e824 (green)
+notes:             T-67-03-05 in this plan's threat model records the elevation-of-privilege angle (classpath merged from a second, less-trusted folder) as accepted risk, not mitigated — merging all folders is the documented intent of a multi-root workspace and is what this finding requires.
 ```
 
 ```
@@ -370,15 +370,15 @@ location:          bbj-vscode/src/language/bbj-ws-manager.ts:179-182
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A malformed project.properties file, or an unexpected synchronous throw inside parseSettings()/collectPrefixes(), causes initializeWorkspace() to exit its try block early. `this.settings` is left undefined or
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at d0b1666 — AssertionError: expected "error" to be called at least once
+failure_scenario:  A malformed project.properties file, or an unexpected synchronous throw inside parseSettings()/collectPrefixes(), causes initializeWorkspace() to exit its try block early. this.settings is left undefined or partially-populated; later calls to getSettings() (consumed by bbj-document-builder.ts and main.ts) silently receive that partial/undefined state, with no signal to the user beyond a raw console.error line — no logger.error, no connection.window.showErrorMessage.
+fix_applied:       Removed the misleading `// all fine` comment and the bare console.error(e) call. The catch block now reads `logger.error(\`Workspace initialization failed: ${e}\`)`, so any exception thrown during setup (settings/javadoc/classpath/implicit-import) reaches the language server's own logger instead of a raw, easy-to-miss console line. Chose logger.error alone over bbj-notifications.ts's client-notification path: bbj-ws-manager.ts does not already import bbj-notifications.ts, and the finding's own test-5 clause accepts logger.error as sufficient.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/ws-manager.test.ts test/use-project-root.test.ts test/imports.test.ts
+commit:            d0b1666 (red) + c47da5c (green)
+notes:             This same commit's comment removal also resolves P61-D8-006 (row 43, closed no-op against this commit) — the misleading "all fine" comment its record complains about is the exact comment this fix deletes.
 ```
 
 ```
@@ -389,15 +389,15 @@ location:          bbj-vscode/src/language/bbj-document-builder.ts:155-190
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  `cplService.compile(key)` (or `notifyDocumentPhase`) rejects — e.g. an unexpected error inside BBjCPLService's process-spawn/parse path. The async setTimeout callback's returned promise rejects with no attached handler,
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 26576ae — AssertionError: expected "error" to be called at least once, plus an actual unhandled promise rejection ("Error: cpl compile boom") reported by vitest for the same run
+failure_scenario:  cplService.compile(key) (or notifyDocumentPhase) rejects — e.g. an unexpected error inside BBjCPLService's process-spawn/parse path. The async setTimeout callback's returned promise rejects with no attached handler, surfacing as an unhandledRejection at the Node process level rather than being caught and logged in-context.
+fix_applied:       Wrapped the entire debouncedCompile() setTimeout callback body (diagnostic clearing, BBjCPLService resolution, compile(), diagnostic merging, notifyDocumentPhase()) in a try/catch. On failure, logs `logger.error(\`BBjCPL debounced compile failed for ${key}: ${e}\`)` and returns, so one bad compile no longer escapes as an unhandled rejection and the rest of the build continues.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-builder.test.ts test/lazy-prefix-loading.test.ts
+commit:            26576ae (red) + 38dea2e (green)
+notes:             The red commit's test run is the direct evidence for T-67-03-03 in this plan's threat model (an unhandled callback throw aborting/destabilizing the document build).
 ```
 
 ```
@@ -465,15 +465,15 @@ location:          bbj-vscode/src/language/bbj-document-builder.ts:359-411
 dimension:         D3
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D3)
-fail_before:       TBD
-failure_scenario:  A workspace with a large indexed class count and several documents each carrying multiple unresolved USE-file diagnostics triggers, on every incremental rebuild touching those documents, one full pass over the entire
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at fc9cf79 — AssertionError: expected 4 to be less than or equal to 1
+failure_scenario:  A workspace with a large indexed class count and several documents each carrying multiple unresolved USE-file diagnostics triggers, on every incremental rebuild touching those documents, one full pass over the entire workspace's BbjClass index per unresolved diagnostic — cost scales with total indexed classes x unresolved diagnostics per rebuild, not with the size of the file(s) actually being edited.
+fix_applied:       revalidateUseFilePathDiagnostics() called indexManager.allElements(BbjClass.$type) inside the per-diagnostic .some() filter callback — once per unresolved-USE diagnostic in the batch. Now builds a `Map<string, AstNodeDescription>` (normalized lowercase fsPath -> the BbjClass description) once per call, before the per-document loop, and the per-diagnostic check becomes a Map.has() lookup against that same Map. Result equivalence is structural: both the old and new checks compare the same normalized/lowercased fsPath values for equality, just against a Set-backed Map instead of a fresh linear scan.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-builder.test.ts test/lazy-prefix-loading.test.ts
+commit:            fc9cf79 (red) + 6b32823 (green)
+notes:             This is the direct fix for T-67-03-01 in this plan's threat model (denial-of-service via the per-lookup allElements() rescan); the regression test asserts both the bounded call count and result equivalence, per that threat's stated mitigation.
 ```
 
 ```
@@ -788,15 +788,15 @@ location:          bbj-vscode/src/language/bbj-document-builder.ts:90-222
 dimension:         D5
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
-failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the debounce timing, the lazy-availability-check's once-only guard, or the trigger-mode dispatch (P61-D2-017's unhandled-
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
+failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the debounce timing, the lazy-availability-check's once-only guard, or the trigger-mode dispatch (P61-D2-017's unhandled-rejection gap included) would pass npm test undetected.
+fix_applied:       Added two direct assertions against a BBjDocumentBuilder constructed with a mocked ServiceRegistry (BBjCPLService.compile as a vi.fn()) and mocked TextDocuments, reusing the same harness the P61-D2-017/P61-D3-005 tests in this same file build: (1) trackBbjcplAvailability() called twice only calls the (mocked) notifyBbjcplAvailability once, proving the bbjcplAvailable !== undefined once-only guard; (2) debouncedCompile() called three times rapidly for the same document, then the 500ms debounce window advanced once via vitest fake timers, only calls compile() once, proving the clearTimeout-on-resave trailing-edge debounce. Both assertions passed immediately against the unmodified implementation — no source change, per D-13.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-builder.test.ts test/lazy-prefix-loading.test.ts
+commit:            5db3ac9 (test)
+notes:             D-13 test-is-the-fix: both assertions passed on the first run against the existing implementation, confirming the trigger/debounce/availability-detection logic already behaves correctly — the gap this record closes is purely the missing direct test coverage.
 ```
 
 ```
@@ -921,15 +921,15 @@ location:          bbj-vscode/src/language/bbj-ws-manager.ts:180
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           no-op
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of this comment reasonably concludes that any exception caught here has no consequence, which is false — it silently leaves setup
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D8 trace-tier finding, documentation-accuracy only
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of this comment reasonably concludes that any exception caught here has no consequence, which is false — it silently leaves setup half-completed.
+fix_applied:       No separate code change. The record's test-5 clause offers two resolutions: "remove/replace the misleading comment, or fix the underlying handling per P61-D2-016 so the comment becomes true." P61-D2-016 landed in this same plan (commit c47da5c) and its own fix deleted the misleading `// all fine` comment at bbj-ws-manager.ts:180 as part of routing the catch through logger.error — re-read against the post-fix catch block and confirmed the comment is gone entirely (not just corrected), so there is no remaining misleading clause to edit.
+user_facing:       no
+verification:      review-only — read the catch block at bbj-ws-manager.ts:179-184 (post-P61-D2-016) and confirmed no misleading comment remains; no compile, no test ran beyond what P61-D2-016's own verification already covers (D-14)
+commit:            none — resolved by P61-D2-016's fix (c47da5c), per this record's own alternative resolution
+notes:             Genuine no-op per the record's own escape clause, not a re-triage: the record explicitly names "fix the underlying handling per P61-D2-016" as one of its two valid resolutions, and P61-D2-016 (this same plan, same file) took that path and removed the comment outright.
 ```
 
 ```
