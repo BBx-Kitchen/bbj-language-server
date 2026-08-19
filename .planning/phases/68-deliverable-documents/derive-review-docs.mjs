@@ -49,6 +49,9 @@ import { dirname, join } from 'node:path';
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REVIEWS_DIR = join(SCRIPT_DIR, '..', '..', 'reviews');
+// The repository root (three levels up from this script: phase dir -> phases -> .planning -> root)
+// — used only by the read-only D-12 write-boundary git status check (plan 68-07, Task 3).
+const REPO_ROOT = join(SCRIPT_DIR, '..', '..', '..');
 const EASY_PATH = join(REVIEWS_DIR, 'EASY-FIXES.md');
 const MAJOR_PATH = join(REVIEWS_DIR, 'MAJOR-REFACTORS.md');
 const APPLY_SET_PATH = join(SCRIPT_DIR, '..', '67-apply-easy-fixes', '67-APPLY-SET.md');
@@ -1532,8 +1535,9 @@ function checkCredentialScan(label, text) {
     return failures;
 }
 
-/** Placeholder census (informational, not a failure until plan 68-07 hardens it): count each
- *  placeholder marker's occurrences per document. */
+/** Placeholder census: count each placeholder marker's occurrences per document. Hardened by plan
+ *  68-07 from an informational count into the gate's input — `runCheck` now treats any non-zero
+ *  count as a hard failure (a remaining placeholder is a defect, not a progress report). */
 function placeholderCensus(text) {
     const counts = {};
     for (const marker of PLACEHOLDER_MARKERS) {
@@ -1544,6 +1548,31 @@ function placeholderCensus(text) {
     return counts;
 }
 
+/** The nearest preceding `id:`/`finding_id:` value before a given text offset — used to name
+ *  "the block" a stray placeholder sits in (plan 68-07, Task 3 acceptance criteria). Falls back to
+ *  a line-number-only description when no enclosing id can be found (e.g. inside a prose
+ *  sub-section such as the referral list, which has no `id:` field of its own). */
+function nearestPrecedingId(text, index) {
+    const before = text.slice(0, index);
+    const matches = [...before.matchAll(/^(?:id|finding_id):\s*(\S+)/gm)];
+    return matches.length ? matches[matches.length - 1][1] : '(no enclosing id — see line number)';
+}
+
+/** Every occurrence of every placeholder marker in `text`, each naming its 1-based line number and
+ *  its nearest enclosing block id, for the hard-gate failure message (plan 68-07, Task 3). */
+function placeholderOccurrences(text) {
+    const occurrences = [];
+    for (const marker of PLACEHOLDER_MARKERS) {
+        const re = new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        let m;
+        while ((m = re.exec(text)) !== null) {
+            const lineNum = text.slice(0, m.index).split('\n').length;
+            occurrences.push({ marker, lineNum, blockId: nearestPrecedingId(text, m.index) });
+        }
+    }
+    return occurrences;
+}
+
 /** Determinism assertion (must_haves.truths): two in-process renders of each emit produce
  *  identical strings. */
 function checkDeterminism(selection, applySetMap, phaseFileTexts) {
@@ -1552,6 +1581,57 @@ function checkDeterminism(selection, applySetMap, phaseFileTexts) {
     const major1 = selection.major.map(rec => renderMajorBlock(rec, phaseFileTexts)).join('\n\n');
     const major2 = selection.major.map(rec => renderMajorBlock(rec, phaseFileTexts)).join('\n\n');
     return { easyOk: easy1 === easy2, majorOk: major1 === major2 };
+}
+
+/** D-12 write-boundary assertion (plan 68-07, Task 3): the only place besides commit-sha
+ *  resolvability this script invokes git, and it is read-only (`git status --porcelain`, no
+ *  mutating subcommand). Fails if `.planning/reviews/` shows more than the two documents this
+ *  phase creates, or names a path outside that pair, or if any modification exists under the five
+ *  named source directories or the protected planning files (INVENTORY.md, a `6N-COVERAGE.md`,
+ *  REQUIREMENTS.md).
+ *
+ *  Deliberately "at most 2, and only the allowed pair" rather than "exactly 2" — the plan's own
+ *  D-12 records the boundary check "at phase close", the one moment this document pair is
+ *  necessarily mid-edit and thus dirty; once this phase's own commits land, the same invariant
+ *  (nothing outside the two files was ever touched) holds with zero dirty entries. Requiring
+ *  exactly 2 forever would make `check` fail permanently the moment this phase finishes committing
+ *  — the same class of bug plan 68-05 fixed in the placeholder-subset assertion (7c). */
+function checkWriteBoundary() {
+    const failures = [];
+    let reviewsStatus;
+    try {
+        reviewsStatus = execFileSync('git', ['status', '--porcelain', '.planning/reviews/'], { cwd: REPO_ROOT, encoding: 'utf8' });
+    } catch (e) {
+        return { ok: false, failures: [`git status --porcelain .planning/reviews/ failed: ${e.message}`] };
+    }
+    const reviewsLines = reviewsStatus.split('\n').filter(l => l.trim().length > 0);
+    const allowedBasenames = new Set(['EASY-FIXES.md', 'MAJOR-REFACTORS.md']);
+    const disallowed = reviewsLines.filter(l => !allowedBasenames.has(l.slice(3).trim().split('/').pop()));
+    if (reviewsLines.length > 2 || disallowed.length > 0) {
+        failures.push(`.planning/reviews/ shows an entry outside the D-12 boundary — expected at most 2, naming only EASY-FIXES.md and MAJOR-REFACTORS.md: [${reviewsLines.join(' | ')}]`);
+    }
+
+    const protectedPaths = [
+        'bbj-vscode', 'bbj-intellij', 'java-interop', 'documentation', 'examples',
+        '.planning/reviews/INVENTORY.md',
+        '.planning/reviews/61-COVERAGE.md', '.planning/reviews/62-COVERAGE.md',
+        '.planning/reviews/63-COVERAGE.md', '.planning/reviews/64-COVERAGE.md',
+        '.planning/reviews/65-COVERAGE.md', '.planning/reviews/66-COVERAGE.md',
+        '.planning/REQUIREMENTS.md'
+    ];
+    let protectedStatus;
+    try {
+        protectedStatus = execFileSync('git', ['status', '--porcelain', ...protectedPaths], { cwd: REPO_ROOT, encoding: 'utf8' });
+    } catch (e) {
+        failures.push(`git status --porcelain over the protected paths failed: ${e.message}`);
+        protectedStatus = '';
+    }
+    const protectedLines = protectedStatus.split('\n').filter(l => l.trim().length > 0);
+    if (protectedLines.length > 0) {
+        failures.push(`unexpected modification outside the D-12 write boundary: [${protectedLines.join(' | ')}]`);
+    }
+
+    return { ok: failures.length === 0, failures, reviewsLines };
 }
 
 function runCheck() {
@@ -1679,12 +1759,24 @@ function runCheck() {
         }
     }
 
-    // --- 6. Placeholder census (informational) ---
+    // --- 6. Placeholder census — hard gate (plan 68-07 promotes this from informational; a
+    //        remaining placeholder of any family, in either document, is now a hard failure). ---
     {
         const easyCensus = placeholderCensus(easyText);
         const majorCensus = placeholderCensus(majorText);
-        console.log(`INFO: placeholder census — EASY-FIXES.md: ${JSON.stringify(easyCensus)}`);
-        console.log(`INFO: placeholder census — MAJOR-REFACTORS.md: ${JSON.stringify(majorCensus)}`);
+        const easyTotal = Object.values(easyCensus).reduce((a, b) => a + b, 0);
+        const majorTotal = Object.values(majorCensus).reduce((a, b) => a + b, 0);
+        if (easyTotal > 0 || majorTotal > 0) {
+            console.log('FAIL: placeholder census — a remaining placeholder is a hard failure:');
+            for (const [label, text] of [['EASY-FIXES.md', easyText], ['MAJOR-REFACTORS.md', majorText]]) {
+                for (const occ of placeholderOccurrences(text)) {
+                    console.log(`  - ${label} line ${occ.lineNum}: marker "${occ.marker}" in block "${occ.blockId}"`);
+                }
+            }
+            ok = false;
+        } else {
+            console.log(`PASS: placeholder census — EASY-FIXES.md: ${JSON.stringify(easyCensus)}, MAJOR-REFACTORS.md: ${JSON.stringify(majorCensus)} — every census is zero`);
+        }
     }
 
     // --- 7. Determinism ---
@@ -2026,6 +2118,105 @@ function runCheck() {
             ok = false;
         } else {
             console.log(`PASS: DOC-03 section order — ${easyOrder.message}; ${majorOrder.message}`);
+        }
+    }
+
+    // --- 11. DOC-completeness assertion group (Task 3): one assertion per requirement, each
+    //         naming the document section that satisfies it. DOC-03 and DOC-04 re-derive against
+    //         the same corpus the dedicated groups above (9, 10) already checked in detail; this
+    //         group restates the verdict under its requirement ID so a reader (and a future CI
+    //         run) can see all four requirements asserted in one place. ---
+    {
+        // DOC-01 — every one of the 77 easy rows carries a non-empty finding ID, location:,
+        // dimension: and failure_scenario:; an `applied` row additionally carries a non-empty
+        // fix_applied: and commit:, and a non-applied row's own verdict reason stands in for both
+        // (D-03) — checked by requiring `fix_applied:`/`commit:` to be non-empty for every verdict,
+        // since every row (applied or not) carries its resolution in those two fields either way.
+        const doc01AlwaysRequired = ['finding_id', 'location', 'dimension', 'failure_scenario'];
+        const doc01Failures = [];
+        for (const fields of easyBlocks) {
+            const id = joined(fields.finding_id) || '(unknown)';
+            for (const key of doc01AlwaysRequired) {
+                if (!fullJoined(fields[key] || []).trim()) doc01Failures.push(`${id}: \`${key}:\` is empty`);
+            }
+            if (!fullJoined(fields.fix_applied || []).trim()) doc01Failures.push(`${id}: \`fix_applied:\` is empty (verdict reason must stand in for non-applied rows)`);
+            if (!fullJoined(fields.commit || []).trim()) doc01Failures.push(`${id}: \`commit:\` is empty (verdict reason must stand in for non-applied rows)`);
+        }
+        if (doc01Failures.length) {
+            console.log(`FAIL: DOC-01 — ${doc01Failures.length} problem(s) (satisfied by "## Rows"):`);
+            for (const f of doc01Failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-01 — all ${easyBlocks.length} easy rows carry non-empty finding ID, location:, dimension:, failure_scenario:, fix_applied: and commit: (satisfied by "## Rows")`);
+        }
+
+        // DOC-02 — every one of the 144 major blocks carries a non-empty id:, location:,
+        // dimension:, failure_scenario:, proposed_approach:, effort: and proposed_labels:.
+        const doc02Required = ['id', 'location', 'dimension', 'failure_scenario', 'proposed_approach', 'effort', 'proposed_labels'];
+        const doc02Failures = [];
+        for (const fields of majorBlocks) {
+            const id = joined(fields.id) || '(unknown)';
+            for (const key of doc02Required) {
+                if (!fullJoined(fields[key] || []).trim()) doc02Failures.push(`${id}: \`${key}:\` is empty`);
+            }
+        }
+        if (doc02Failures.length) {
+            console.log(`FAIL: DOC-02 — ${doc02Failures.length} problem(s) (satisfied by "## Records"):`);
+            for (const f of doc02Failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-02 — all ${majorBlocks.length} major blocks carry non-empty id:, location:, dimension:, failure_scenario:, proposed_approach:, effort: and proposed_labels: (satisfied by "## Records")`);
+        }
+
+        // DOC-03 — both documents carry an identical "## Coverage" block containing "### Scope"
+        // and "### Gaps" (re-derived independently of the DOC-03 group above, section 10).
+        const doc03Easy = extractTopLevelSection(easyText, '## Coverage') ?? '';
+        const doc03Major = extractTopLevelSection(majorText, '## Coverage') ?? '';
+        const doc03Ok = doc03Easy.length > 0 && doc03Easy === doc03Major && doc03Easy.includes('### Scope') && doc03Easy.includes('### Gaps');
+        if (!doc03Ok) {
+            console.log('FAIL: DOC-03 — "## Coverage" is not identical across both documents, or is missing "### Scope"/"### Gaps" (see the dedicated DOC-03 group above for the line-level detail)');
+            ok = false;
+        } else {
+            console.log('PASS: DOC-03 — both documents carry an identical "## Coverage" block containing "### Scope" and "### Gaps" (satisfied by "## Coverage")');
+        }
+
+        // DOC-04 — "## Other Dispositions" holds the reconciled 3 + 24 + 0 + 14 populations and
+        // the 30 resolved referrals (re-derived independently of the DOC-04 group above, section 9).
+        const doc04HeadingMatch = majorText.match(/^## Other Dispositions$/m);
+        let doc04Ok = false;
+        if (doc04HeadingMatch) {
+            const doc04Text = majorText.slice(doc04HeadingMatch.index);
+            const doc04Prose = loadProseSubBlocks(corpus.phaseFileTexts);
+            const doc04AlreadyCovered = alreadyCoveredRecords(corpus.records);
+            const wontfixIds = extractEntryLeadIds(extractSubsection(doc04Text, '### wontfix') ?? '');
+            const notReproCount = countNumberedItems(extractSubsection(doc04Text, '### not-reproducible') ?? '');
+            const alreadyCoveredIds = extractEntryLeadIds(extractSubsection(doc04Text, '### already-covered') ?? '');
+            const referralCount = countNumberedItems(extractSubsection(doc04Text, '### Cross-unit referrals and their resolution') ?? '');
+            const notReproLive = PHASES.reduce((s, p) => s + doc04Prose.notRepro[p].length, 0);
+            doc04Ok = wontfixIds.size === EXPECTED_WONTFIX_TOTAL
+                && notReproCount === EXPECTED_NOT_REPRODUCIBLE_TOTAL && notReproCount === notReproLive
+                && alreadyCoveredIds.size === EXPECTED_ALREADY_COVERED_TOTAL && alreadyCoveredIds.size === doc04AlreadyCovered.length
+                && referralCount === EXPECTED_REFERRAL_TOTAL;
+        }
+        if (!doc04Ok) {
+            console.log('FAIL: DOC-04 — "## Other Dispositions" does not hold the reconciled 3 + 24 + 0 + 14 populations and 30 resolved referrals (see the dedicated DOC-04 group above for the per-category detail)');
+            ok = false;
+        } else {
+            console.log(`PASS: DOC-04 — "## Other Dispositions" holds the reconciled ${EXPECTED_WONTFIX_TOTAL} + ${EXPECTED_NOT_REPRODUCIBLE_TOTAL} + 0 + ${EXPECTED_ALREADY_COVERED_TOTAL} populations and ${EXPECTED_REFERRAL_TOTAL} resolved referrals (satisfied by "## Other Dispositions")`);
+        }
+    }
+
+    // --- 12. D-12 write-boundary assertion (Task 3): read-only git status check — see
+    //         checkWriteBoundary's own doc comment for why this is "at most 2, allowed pair only"
+    //         rather than "exactly 2 forever". ---
+    {
+        const wb = checkWriteBoundary();
+        if (!wb.ok) {
+            console.log(`FAIL: write-boundary (D-12) — ${wb.failures.length} problem(s):`);
+            for (const f of wb.failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log(`PASS: write-boundary (D-12) — git status --porcelain .planning/reviews/ shows only the two documents this phase creates (${wb.reviewsLines.length} entr${wb.reviewsLines.length === 1 ? 'y' : 'ies'} currently dirty), no modification elsewhere in the D-12 boundary`);
         }
     }
 

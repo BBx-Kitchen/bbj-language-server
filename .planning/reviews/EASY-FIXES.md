@@ -1718,13 +1718,23 @@ discrepancies that belong to that document alone.
 
 ### Write-boundary check
 
-`git status --porcelain .planning/reviews/` output at the time this section was written (interim —
-only this document had an uncommitted change; Task 3 records the phase's final state in both
-documents):
+**Final state, recorded by plan `68-07`'s Task 3** — `git status --porcelain .planning/reviews/`
+output at phase close, immediately before this task's own commit (both documents carry this
+task's edit to their own Write-boundary check sub-section, so both show modified):
 
 ```
  M .planning/reviews/EASY-FIXES.md
+ M .planning/reviews/MAJOR-REFACTORS.md
 ```
 
-D-12's boundary held: one file modified (this document, mid-assembly), no `INVENTORY.md` or
-`6N-COVERAGE.md` touched, and no tracker write.
+D-12's boundary held: exactly two files modified, both this phase's own two deliverables; no
+`INVENTORY.md` or `6N-COVERAGE.md` touched (`git diff --quiet` over all seven files exits `0`); no
+modification under `bbj-vscode/`, `bbj-intellij/`, `java-interop/`, `documentation/` or
+`examples/`; and no tracker write — none of the three GitHub CLI issue-mutation subcommands this
+document is forbidden from invoking (create, edit, comment) appear anywhere in this document,
+`MAJOR-REFACTORS.md`, or the phase directory's own script and SUMMARY files (the sole hit anywhere
+in the phase directory is `68-07-PLAN.md`'s own authored prohibition, which names those three
+subcommands as the ones this document must never contain). `node derive-review-docs.mjs check`
+exits `0`, including the placeholder census (now a hard gate, every count zero), the
+DOC-completeness group (DOC-01 through DOC-04, each naming its satisfying section) and this same
+write-boundary assertion run inside the script itself.
