@@ -7,10 +7,16 @@ import { initializeWorkspace } from './test-helper.js';
 const services = createBBjServices(EmptyFileSystem);
 
 /**
- * Guards the hand-maintained builtin function library (lib/functions.bbl and its
- * lib/functions.ts mirror). Every signature must parse under the Library grammar,
- * so a malformed entry (e.g. a param name that collides with a keyword) fails here
- * instead of silently disabling completion/hover for that function.
+ * Guards the hand-maintained builtin function library — specifically the .ts-derived
+ * virtual document served at the synthetic `bbjlib:///functions.bbl` URI
+ * (bbj-ws-manager.ts's loadAdditionalDocuments), built from `builtinFunctions` in
+ * lib/functions.ts. Every signature must parse under the Library grammar, so a
+ * malformed entry (e.g. a param name that collides with a keyword) fails here instead
+ * of silently disabling completion/hover for that function.
+ *
+ * This does NOT read or guard the physical lib/functions.bbl file on disk — no
+ * production code path reads it either (P61-D5-017's .ts-vs-.bbl equivalence test in
+ * builtin-library-members.test.ts is what compares the two).
  */
 describe('builtin functions library', () => {
     beforeAll(async () => { await initializeWorkspace(services.shared); });
