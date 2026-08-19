@@ -349,3 +349,201 @@ correctness, pruning correctness) rather than a wall-clock target.
 
 **No `gh` write subcommand was run to produce this draft.**
 
+## DEBT-02
+
+### Inherited evidence
+
+Cites two `P61-*` records by ID, per D-07's two-unblocking-conditions split:
+
+- **`P61-D5-003`** (`61-COVERAGE.md`, D5 cell narrative ~line 661, record ~line 900) — the three
+  disabled `parser.test.ts` assertions: `'Check substring other cases'` (line 530), `'Release
+  usage'` (line 811), and the `OutputHandler` array-type-ref test (line 860), each a commented-out
+  `expectNoValidationErrors(result)` call blocked on Java classpath resolution being unavailable
+  under `EmptyFileSystem`.
+- **`P61-D5-010`** (`61-COVERAGE.md`, D5 cell narrative ~line 1862, record ~line 2139) — the
+  `completion-test.test.ts:185` `test.skip('DEF FN parameters with $ suffix inside class
+  method', ...)`, root-caused to a Langium completion-grammar-follower limitation that produces
+  zero completions anywhere inside `MethodDecl.body` statement positions — independently of DEF FN
+  and independently of the scope chain (both explicitly ruled out by the recorded investigation).
+
+Neither trace is restated here.
+
+### Currency check
+
+```bash
+grep -c 'DISABLED' bbj-vscode/test/parser.test.ts
+```
+**Literal output: `3`.**
+
+```bash
+grep -c 'test.skip' bbj-vscode/test/completion-test.test.ts
+```
+**Literal output: `1`.**
+
+Both match the recorded counts exactly — no drift in either file's disabled/skipped count.
+
+| Anchor | Recorded location | Current location | Construct | Result |
+|---|---|---|---|---|
+| Substring/`new String()` DISABLED assertion | `parser.test.ts:530` | `parser.test.ts:530` | `// DISABLED: 'String' is a Java class that cannot be resolved in EmptyFileSystem test context.` | **current** — identical line |
+| `BBjAPI()` method-chain DISABLED assertion | `parser.test.ts:811` | `parser.test.ts:811` | `// DISABLED: BBjAPI() method chain (getGlobalNamespace, getValue, release) cannot be resolved` | **current** — identical line |
+| `OutputHandler` array-type DISABLED assertion | `parser.test.ts:860` | `parser.test.ts:860` | `// DISABLED: 'String' and 'byte' are Java types that cannot be resolved in EmptyFileSystem` | **current** — identical line |
+| TEST-03 `test.skip` | `completion-test.test.ts:185` | `completion-test.test.ts:185` | `test.skip('DEF FN parameters with $ suffix inside class method', async () => {` | **current** — identical line, identical root-cause comment (186-193) |
+
+All four sites are at the exact recorded lines — zero drift.
+
+### Verdict
+
+Both angles are unresolved and unchanged since the swept SHA. Per D-07, DEBT-06 outranks DEBT-02's
+own doc-only escape hatch: the documentation becomes the issue body, not an alternative to filing
+one. Per D-06's mapping, both still-real items are `major-refactor`, drafted for Phase 69. Per the
+plan's own instruction, these are recorded as **two** finding records with **two** issue-ready
+drafts, because their unblocking conditions differ in kind (repo-local vs. upstream) — collapsing
+them into one record would blur two different unblocking conditions into a false single one.
+
+### Finding record
+
+**Record 1 — the `parser.test.ts` trio:**
+
+```
+id:                P66-D5-001
+unit:              DEBT-02
+location:          bbj-vscode/test/parser.test.ts:530,811,860
+dimension:         D5
+secondary:         [D2]
+severity:          medium
+evidence_tier:     trace
+evidence:          Per INVENTORY §3b, D5 (test coverage) follows the tier of what the finding
+                   asserts; these three are a missing/disabled-assertion gap, which is
+                   trace-evidenced (not repro — there is no runtime behaviour to reproduce, only
+                   the disabled state of the assertions themselves). Cites P61-D5-003 by ID (the
+                   original trace of all three DISABLED sites and their stated blockers) plus
+                   this plan's currency re-read (see Currency check above), confirming all three
+                   sites are unchanged at their recorded lines with their recorded blocking
+                   comments intact.
+failure_scenario:  Any regression in Java-classpath-dependent validation for these three
+                   scenarios — new String() substring validation, BBjAPI() global-namespace
+                   method-chain resolution, and String[]/byte[] Java-typed class fields — would
+                   pass the full npm test suite undetected, because the only assertions that
+                   would catch it are commented out rather than executed.
+classification:    major
+                   (1) touches 1 file: n/a — this is an environment/test-infrastructure gap (no
+                   Java classpath under EmptyFileSystem), not a single code edit — (2)-(5): n/a
+                   for the same reason — (6) severity medium, primary dimension D5: the six D-13
+                   tests are built for code-fix findings; per D-14 this is routed conservatively
+                   as `major`, matching P61-D5-003's own precedent (and RU-61-06's P61-D5-001)
+                   for the same class of environment-dependent gap.
+effort:            4
+dedup:             none — checked against the frozen 15-issue snapshot; no open issue concerns
+                   these three disabled parser.test.ts assertions. #83/#90/#466 (this plan's
+                   other checked neighbours) are unrelated dimensions/mechanisms.
+disposition:       major-refactor
+```
+
+**Record 2 — the TEST-03 skip:**
+
+```
+id:                P66-D5-002
+unit:              DEBT-02
+location:          bbj-vscode/test/completion-test.test.ts:185
+dimension:         D5
+secondary:         [D2]
+severity:          medium
+evidence_tier:     trace
+evidence:          Per INVENTORY §3b's D5 rule (as above), this is trace-evidenced. Cites
+                   P61-D5-010 by ID (the original root-cause trace: the Langium completion
+                   engine's grammar follower produces zero candidate positions anywhere inside
+                   MethodDecl.body statement positions, independently of DEF FN and independently
+                   of the scope chain) plus this plan's currency re-read confirming the skip and
+                   its root-cause comment are unchanged at the recorded line.
+failure_scenario:  Any attempt to re-enable the skipped test, as currently written, against the
+                   current completion-grammar traversal fails: the completion engine's grammar
+                   follower does not produce candidate positions inside class-method statement
+                   bodies at all, so the expected _f$/_t$ parameter items are never offered —
+                   independent of DEF FN or the scope chain, both already ruled out by the
+                   recorded root-cause investigation.
+classification:    major
+                   (1) touches 1 file: FAIL — the grammar-follower limitation is inside Langium's
+                   completion engine's traversal of the grammar for MethodDecl.body statement
+                   positions, not a single-file BBj-side fix — (2) no public API/grammar/LSP
+                   change: FAIL — a real fix likely requires either a grammar restructuring of
+                   MethodDecl.body statement completion positions or an upstream Langium
+                   completion-provider change — (3)-(5): moot, already failing — (6) severity
+                   medium, dimension D5: would pass in isolation, but classification is already
+                   major from tests (1)/(2).
+effort:            8
+dedup:             none — checked against the frozen 15-issue snapshot; no open issue addresses
+                   this Langium completion-grammar-follower limitation.
+disposition:       major-refactor
+```
+
+### Issue-ready draft
+
+**Draft 1 — the `parser.test.ts` trio. Unblocking condition: repo-local, actionable in this
+repository.**
+
+**Title:** Enable 3 disabled `parser.test.ts` assertions under a Java-classpath-backed test
+fixture
+
+**Problem statement:** Three validation assertions are disabled (commented out) because they
+depend on Java classpath resolution (`String`, `BBjAPI()`, `String[]`/`byte[]`) that the current
+`EmptyFileSystem` test context cannot provide.
+
+**`file:line` evidence:** `bbj-vscode/test/parser.test.ts:530` (`new String()(1)` substring
+case), `:811` (`BBjAPI().getGlobalNamespace().getValue().release()` chain), `:860`
+(`OutputHandler` class with `String[]`/`byte[]`-typed field/method).
+
+**Verified failure scenario:** A regression in any of the three Java-classpath-dependent
+validation paths above passes `npm test` undetected, since the only assertions covering them are
+commented out.
+
+**Proposed approach:** Run these three tests under a **repo-local Java classpath** available under
+a non-`EmptyFileSystem` fixture — i.e., `createBBjTestServices` (`bbj-vscode/test/bbj-test-module.ts`)
+extended with real classpath data (or a richer `JavaInteropTestService` fixture covering `String`,
+`BBjAPI`'s namespace/semaphore methods, and Java array types) rather than the current fake-class
+stub. This is the **unblocking condition**: nothing outside this repository needs to change.
+
+**Acceptance criteria:** These three assertions run (uncommented) and pass under the new fixture;
+no other test in `parser.test.ts` regresses.
+
+**Proposed labels:** area `validation` (the three disabled calls are all `expectNoValidationErrors`);
+`PRIO 2` (severity `medium`); effort `4`.
+
+**Draft 2 — the TEST-03 skip. Unblocking condition: upstream, outside this repository.**
+
+**Title:** TEST-03 (`DEF FN` params inside class methods) blocked on Langium's completion grammar
+follower
+
+**Problem statement:** The completion provider offers zero completions anywhere inside
+`MethodDecl.body` statement positions — not a DEF FN-specific or scope-chain bug, but a Langium
+completion-engine grammar-traversal limitation.
+
+**`file:line` evidence:** `bbj-vscode/test/completion-test.test.ts:185` (`test.skip`), with the
+root-cause investigation recorded in the test's own comment (lines 186-193).
+
+**Verified failure scenario:** Re-enabling the test as written fails against the current grammar
+traversal, because the completion engine never produces candidate positions inside class-method
+statement bodies — independent of DEF FN and independent of the scope chain (both already
+eliminated by the recorded investigation).
+
+**Proposed approach:** Track Langium's completion grammar follower resolving inside
+`MethodDecl.body` — this is the **unblocking condition**, and it is upstream, in Langium itself,
+not in this repository's grammar or scope code.
+
+**Acceptance criteria:** When the upstream Langium completion-grammar follower resolves candidate
+positions inside `MethodDecl.body` statement positions, this skip is removed and the test passes
+as written. This repository cannot close this issue alone — the acceptance criteria intentionally
+do not imply otherwise.
+
+**Proposed labels:** area `grammar` (the root cause is Langium's grammar-traversal behavior for
+completion); `PRIO 2` (severity `medium`); effort `8`.
+
+**Deliberately out of this phase's denominator:** `bbj-vscode/test/linking.test.ts:85`'s third
+`test.skip('Link to string template array members', ...)` is named by **no** `DEBT-*` item
+(confirmed: `grep -n "test.skip" bbj-vscode/test/linking.test.ts` returns exactly this one line,
+and no `DEBT-NN` bullet in `PROJECT.md` references it) and is deliberately outside this phase's
+8-row denominator per `66-CONTEXT.md`'s `<deferred>` section — a reader counting three skipped
+tests across the suite (this one, plus the two above) is not left wondering why only two are
+verdicted here.
+
+**No `gh` write subcommand was run to produce either draft.**
+
