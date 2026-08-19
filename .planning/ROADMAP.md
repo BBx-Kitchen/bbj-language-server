@@ -578,7 +578,21 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: TBD
+**Plans**: 12 plans
+
+Plans:
+- [ ] 67-01-PLAN.md — Baseline capture, the derived 77-row apply-set ledger, and the D-04 merged fix end-to-end (tracer)
+- [ ] 67-02-PLAN.md — The 7 `java-interop.ts` findings: connection lifecycle, cache invalidation, unbounded cache
+- [ ] 67-03-PLAN.md — `bbj-ws-manager.ts` (3) and `bbj-document-builder.ts` (3): multi-folder workspaces, swallowed errors, per-lookup rescan
+- [ ] 67-04-PLAN.md — Completion, document-symbol and token-builder providers (6), plus the D-10 lint-clean gate
+- [ ] 67-05-PLAN.md — The 5 remaining language-core D2 fixes: value converter, lexer, CPL parser, variable scoping, events library
+- [ ] 67-06-PLAN.md — 4 maintainability + 2 source comment fixes, and the 3 `CLAUDE.md` corrections
+- [ ] 67-07-PLAN.md — The 9 D5 test-coverage additions plus the one D8 comment fix in the test tree
+- [ ] 67-08-PLAN.md — `document-formatter.ts` (4) and `decompile-io.ts` (2): hangs, duplicate spawns, stale artefacts
+- [ ] 67-09-PLAN.md — TextMate grammar (3 + coverage row), extension activation, and the language-configuration JSON
+- [ ] 67-10-PLAN.md — Build/CI/dependency fixes and `.bbl` registration, behind a package-legitimacy checkpoint
+- [ ] 67-11-PLAN.md — The 9 `bbj-intellij/` fixes (review-only, D-14) and the `P63-D7-004` deferral (D-15)
+- [ ] 67-12-PLAN.md — Phase-close baseline delta, ledger completeness audit, and the FIX-03 / FIX-04 shortfall statements
 
 ---
 
