@@ -61,24 +61,24 @@ Two derived counts, and the arithmetic connecting them:
 | 24 | P61-D4-009 | applied | 8d166cc |
 | 25 | P61-D4-010 | applied | 91f8329 |
 | 26 | P61-D4-012 | applied | 76ccb8b |
-| 27 | P61-D5-004 | pending | pending |
-| 28 | P61-D5-005 | pending | pending |
-| 29 | P61-D5-006 | pending | pending |
-| 30 | P61-D5-007 | pending | pending |
-| 31 | P61-D5-008 | pending | pending |
+| 27 | P61-D5-004 | applied | 6af46c8 |
+| 28 | P61-D5-005 | applied | 500001d |
+| 29 | P61-D5-006 | applied | d080471 |
+| 30 | P61-D5-007 | applied | 64c9d1e |
+| 31 | P61-D5-008 | applied | 1b8e786 |
 | 32 | P61-D5-009 | applied | 2b121ee |
-| 33 | P61-D5-011 | pending | pending |
-| 34 | P61-D5-012 | pending | pending |
-| 35 | P61-D5-015 | pending | pending |
+| 33 | P61-D5-011 | applied | e0acbbf |
+| 34 | P61-D5-012 | applied | 42b8881 |
+| 35 | P61-D5-015 | applied | 540232c |
 | 36 | P61-D5-016 | applied | 5db3ac9 (test) |
-| 37 | P61-D5-017 | pending | pending |
+| 37 | P61-D5-017 | applied | f3ba5c5 |
 | 38 | P61-D8-001 | no-op | none — comment already accurate after P61-D2-004's fix (557ab62) |
 | 39 | P61-D8-002 | no-op | none — resolved by P61-D2-005's fix (4db8169) |
 | 40 | P61-D8-003 | applied | 69435df |
 | 41 | P61-D8-004 | applied | 2c497ec |
 | 42 | P61-D8-005 | applied | fe4d8a0 |
 | 43 | P61-D8-006 | no-op | none — resolved by P61-D2-016's fix (c47da5c) |
-| 44 | P61-D8-007 | pending | pending |
+| 44 | P61-D8-007 | applied | 40d3af1 |
 | 45 | P62-D2-004 | pending | pending |
 | 46 | P62-D2-006 | pending | pending |
 | 47 | P62-D2-007 | pending | pending |
@@ -617,15 +617,15 @@ location:          bbj-vscode/test/example-files.test.ts:16-20
 dimension:         D5
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  A future .bbj file added to test/test-data/ that fails to lex or parse would NOT fail this test, silently defeating the regression-test guarantee CLAUDE.md's Testing Pattern section states: "Every .bbj file in
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Replaced the fire-and-forget `.forEach(async file => ...)` with a `for...of` loop that awaits each parse and asserts sequentially, so a lexer/parser error in any test/test-data/*.bbj file now fails the test instead of becoming an unhandled rejection the resolved promise swallowed. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/example-files.test.ts — 1/1 pass
+commit:            6af46c8
+notes:             anti-vacuous: blast-radius check performed per the plan's own <behavior> clause — added a deliberately malformed .bbj file to test/test-data/ locally, ran the fixed test, observed it fail with a lexer error ("expected [ { offset: 63, line: 3, ... } ] to be empty"), deleted the fixture, confirmed the test passed again (1/1). The fixed test also passed cleanly against the existing, already-committed test-data/ fixtures on the first run — no pre-existing parse defect was uncovered, so there is nothing to carry forward to Phase 68. `git status --porcelain bbj-vscode/test/test-data/` is empty at HEAD.
 ```
 
 ```
@@ -636,15 +636,15 @@ location:          bbj-vscode/test/cpl-service.test.ts:1-133
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a future change to getBbjcplPath()/compile()'s path-validation behavior (e.g. a fix for P61-D1-003) has no existing regression test to confirm it
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Branch taken: the record's test-5 clause offers two branches — assert the spawn is rejected once P61-D1-003 is fixed, or document the current unvalidated behaviour explicitly. P61-D1-003 is classified major-refactor by INVENTORY §3c test 6 and routes to Phase 68, so the "assert rejection" branch is unavailable in this phase; took the "document current behaviour" branch. Added a new controlled fixture, test/test-data/cpl-fixture-bbjhome/bin/bbjcpl (a shell script this repo owns, never an external path or writable temp dir per threat T-67-07-02), and a test in cpl-service.test.ts pointing bbjHome at it and asserting compile() spawns and trusts the substitute binary unvalidated — pinning that getBbjcplPath() applies no signature/checksum/path validation today. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/cpl-service.test.ts — 9/9 pass
+commit:            500001d
+notes:             names P61-D1-003 as the finding that will change this behaviour, per the record's own branch-choice instruction. anti-vacuous: getBbjcplPath() temporarily forced to `return undefined` locally (simulating a P61-D1-003 validation rejection), ran the test, observed it fail ("expected [] to have a length of 1 but got +0"), reverted, confirmed the test passed again (9/9).
 ```
 
 ```
@@ -655,15 +655,15 @@ location:          bbj-vscode/src/language/validations/line-break-validation.ts:
 dimension:         D5
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in hasLinebreakBefore/hasLinebreakAfter's CRLF or final-line handling would pass the full npm test suite undetected, because no test
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       New file bbj-vscode/test/line-break-validation.test.ts (Shared Pattern A), covering CRLF line endings, a missing trailing newline at EOF, and both combined, asserting no spurious "needs to start in a new line" diagnostic in any case. `test/validation.test.ts` is shared by several plans' targets, so a dedicated file keeps this row's diff attributable, per the plan's own instruction. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/line-break-validation.test.ts — 3/3 pass
+commit:            d080471
+notes:             anti-vacuous: lineStartRegex temporarily broken to `/^NEVERMATCH$/` locally, ran the test, observed 2/3 fail ("expected [ {...}, {...} ] to have a length of +0 but got 2"), reverted, confirmed 3/3 passed again.
 ```
 
 ```
@@ -674,15 +674,15 @@ location:          bbj-vscode/src/language/bbj-overload-selector.ts:32-52
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future change to the tie-break comparison (e.g. `>` to `>=` on line 46) would silently flip which overload wins ties with no test catching the regression.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       New file bbj-vscode/test/overload-selector.test.ts, driving findBestOverload directly (its one production call site is bbj-inlay-hint-provider.ts:65) against two real MethodDecl overloads of foo() parsed from a live class, both scoring identically against an unknown-typed argument — an exact tie — asserting the linked declaration (passed first) wins over the equally-scored sibling. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/overload-selector.test.ts — 1/1 pass
+commit:            64c9d1e
+notes:             anti-vacuous: the tie comparison temporarily changed from `score > bestScore` to `score >= bestScore` locally, ran the test, observed it fail (expected the linked String overload, received the sibling Object overload), reverted, confirmed the test passed again.
 ```
 
 ```
@@ -693,15 +693,15 @@ location:          bbj-vscode/src/language/bbj-scope.ts:253-292
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future change to the local-vs-member scope nesting order in this branch would go undetected by the existing test suite.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Added a P61-D5-008 describe block to the existing test/variable-scoping.test.ts (the established home for scoping assertions, per the plan). Declares a class field and a same-named DECLAREd local in one method, then confirms a plain reference to the name resolves to the local VariableDecl, not the FieldDecl. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/variable-scoping.test.ts — 31/31 pass
+commit:            1b8e786
+notes:             isVariableDecl's $type union also matches FieldDecl/ArrayDecl/ParameterDecl, so the test narrows to node.$type === 'VariableDecl' to distinguish the local from the field — documented inline. anti-vacuous: local-scope registration for DECLARE statements temporarily disabled locally (bbj-scope-local.ts's addToScope call gated behind `&& false`), ran the test, observed it fail (the reference resolved to undefined instead of the local), reverted, confirmed 31/31 passed again.
 ```
 
 ```
@@ -731,15 +731,15 @@ location:          bbj-vscode/src/language/bbj-signature-help-provider.ts:17-118
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the active-parameter calculation (getActiveParameter), the rendered signature label, or the markdown documentation block would pass the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Added a "Signature help (P61-D5-011)" describe block to the EXISTING test/functional/lsp-features.test.ts — that file already existed, so per the record's own escape clause no new test/signature-help.test.ts was created. Calls provideSignatureHelp on a real MethodCall (a class method call via `#add(1, 2)`), asserting the returned label, parameter labels, markdown documentation content, and activeParameter for both the first- and second-argument cursor positions. No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/functional/lsp-features.test.ts — 19/19 pass
+commit:            e0acbbf
+notes:             home decision: test/functional/lsp-features.test.ts used (not a new file) because it already existed at plan-execution time — recorded per the plan's own instruction. anti-vacuous: getActiveParameter() temporarily hardcoded to `return 0;` locally, ran the test, observed it fail (expected activeParameter 1, received 0), reverted, confirmed 19/19 passed again.
 ```
 
 ```
@@ -750,15 +750,15 @@ location:          bbj-vscode/src/language/bbj-hover.ts:55-109
 dimension:         D5
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in inherited-field detection (e.g. always reporting "inherited"), the Javadoc-provider integration, or the error-degrade path silently
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Added three cases to the existing test/hover.test.ts, calling getHoverContent directly: (1) a documented BBj class member (REM /** */ doc comment) renders as markdown; (2) an inherited field is marked "inherited from Base" — empirically found this branch only fires when the hovered field's own CST node is itself the receiver of an outer MemberCall (a chained access like `d!.x.y`, not a direct one-hop `d!.x`), and the field must itself be BbjClass-typed for isBbjClass(receiverType) to hold, both documented inline in the test; (3) a mocked typeInferer.getType throw during hover computation degrades to undefined instead of rejecting, per the outer try/catch (with a passing baseline call proving the mock is what changes the outcome). No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/hover.test.ts — 7/7 pass
+commit:            42b8881
+notes:             discovered during test construction (not a new finding, just documented so a future reader doesn't assume a simple one-hop repro works): the inherited-field check's `referenceNode.$container` test only matches nested/chained member access, not the more intuitive direct one-hop case — recorded inline in the test's own comment, no ledger action taken since the code's documented/observed behaviour is what the test pins. anti-vacuous: all three cases broken and reverted independently (comment lookup replaced with `undefined`, the inheritance `if` condition forced `false`, and the outer try/catch removed) — each observed RED, then reverted; 7/7 passed again after each revert.
 ```
 
 ```
@@ -769,15 +769,15 @@ location:          bbj-vscode/src/language/bbj-notifications.ts:1-53
 dimension:         D5
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the dedup guard (e.g. always sending, or never sending after the first call) would pass `npm test` undetected.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       New file bbj-vscode/test/notifications.test.ts, mocking a Connection-shaped object and asserting: notifyBbjcplAvailability/notifyJavaConnectionError are no-ops before initNotifications() is called; notifyBbjcplAvailability only sends when the available value actually changes (dedup guard); notifyJavaConnectionError interpolates the error detail into its window/showMessage call. Each test resets the module registry and dynamically re-imports (`vi.resetModules()`), isolating each test from the module's own singleton state (_connection, bbjcplAvailableState). No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/notifications.test.ts — 3/3 pass
+commit:            540232c
+notes:             anti-vacuous: two independent breaks performed and reverted — (1) the dedup guard's `if (bbjcplAvailableState !== available)` forced to `if (true)`, observed the dedup test fail (expected 1 call, got 3), reverted; (2) the null-check `_connection?.sendNotification` changed to a non-null assertion `_connection!.sendNotification`, observed the no-op-before-init test fail with a TypeError, reverted. 3/3 passed again after each revert.
 ```
 
 ```
@@ -807,15 +807,15 @@ location:          bbj-vscode/test/builtin-functions-library.test.ts
 dimension:         D5
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  A malformed entry added to labels.ts, variables.ts or events.ts (e.g. a name colliding with a reserved keyword, breaking the LibSymbolicLabel/ LibVariable/LibEventType parse) silently disables completion/hover for
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       New file bbj-vscode/test/builtin-library-members.test.ts mirroring builtin-functions-library.test.ts's shape: parse-guard + named-entry assertions for labels.ts/variables.ts/events.ts's virtual documents. Also added the record's named .ts-vs-.bbl content-equivalence assertion for all three: the physical lib/*.bbl file is parsed independently and its UNIQUE declared name set (not raw count) compared against the .ts-derived virtual document actually served to the language server. Unique-set comparison specifically so the never-read events.bbl's pre-P61-D2-019 duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT leftovers (that fix, landed in plan 67-05, correctly only touched the consumed events.ts file, leaving the dead .bbl sibling untouched — out of that fix's scope) are not mistaken for new drift. Functions.ts/.bbl was NOT included (already covered by builtin-functions-library.test.ts and P61-D8-007's comment fix in this same task). No source change.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/builtin-library-members.test.ts — 9/9 pass
+commit:            f3ba5c5
+notes:             labels.ts/labels.bbl and variables.ts/variables.bbl are trim-content-identical (only leading/trailing whitespace differs); events.ts/events.bbl diverge in raw entry count (146 vs 144) due to the pre-P61-D2-019 duplicate leftover described above — the unique-name-set equivalence still holds (144 unique names in both). anti-vacuous: performed against all three catalogs — renamed `*PROCEED` in labels.ts (known-labels test failed), renamed `ON_MOUSE_ENTER` to `ON_MOUSE_ENTER_RENAMED` in events.ts (equivalence test failed with a real diff), each reverted and reconfirmed 9/9 green.
 ```
 
 ```
@@ -940,15 +940,15 @@ location:          bbj-vscode/test/builtin-functions-library.test.ts:9-14
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D8)
-fail_before:       TBD
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  A reader of this test's comment reasonably concludes the physical lib/functions.bbl file is validated by CI; it is not — a syntax error introduced only into the physical file would pass this test undetected.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Corrected the header comment to state explicitly that it guards the .ts-derived virtual document served at the synthetic `bbjlib:///functions.bbl` URI (bbj-ws-manager.ts's loadAdditionalDocuments), built from `builtinFunctions` in lib/functions.ts — and that it does NOT read or guard the physical lib/functions.bbl file on disk, which no production code path reads either. Points to builtin-library-members.test.ts's P61-D5-017 equivalence test (this same task, committed just before this row) as what actually compares the .ts and physical .bbl content.
+user_facing:       no
+verification:      cd bbj-vscode && npx vitest run test/builtin-functions-library.test.ts — 3/3 pass (comment-only change, no assertion touched)
+commit:            40d3af1
+notes:             `git show --stat 40d3af1` touches only test/builtin-functions-library.test.ts, comment lines only.
 ```
 
 ```

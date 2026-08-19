@@ -470,6 +470,73 @@ passed, 17-77 skipped) while the 11-name deterministic failure set and the 916 t
 
 **`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
 
+### Plan 67-07 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm run lint` and `npm test` (three full runs, per D-08), on HEAD after
+this plan's ten commits (P61-D5-006, P61-D5-007, P61-D5-008, P61-D5-011, P61-D5-012, P61-D5-015,
+P61-D5-004, P61-D5-005, P61-D5-017, P61-D8-007). This plan adds ten new test cases across five
+new/extended test files and no source file under `bbj-vscode/src/` is modified — the *passing*
+count is expected to rise (recorded as an observation below, never as gate criteria per D-08), and
+the gate itself (the failing-test NAME set) is expected to stay unchanged. No `bbj-intellij/` file
+touched, so `./gradlew build` is not re-run per D-09.
+
+**`npm run lint`: exit code `0`, zero warnings.** Unchanged from the `P61-D4-010` lint-clean
+milestone; none of this plan's ten commits touches an eslint directive (this plan only adds/edits
+test files and one code comment).
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time — the
+same 11 names as the phase-start gate set:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set on all three runs — same 11 names, none added, none removed.
+
+Beyond these 11, each run showed a different 0-4 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.`, never an assertion failure:
+
+- Run 1: two additional suites hit the timeout — `test/hover.test.ts > Hover content: documented
+  members, inheritance, and error resilience (P61-D5-012)` (`test/hover.test.ts:51`) and
+  `test/overload-selector.test.ts > Overload selector: linked declaration wins an exact tie
+  (P61-D5-007)` (`test/overload-selector.test.ts:32`). Both are this plan's own new test files.
+  Re-ran each in isolation immediately after (`npx vitest run test/hover.test.ts
+  test/overload-selector.test.ts`): both passed cleanly, 8/8 tests, in 8.7s total — well under the
+  10s hookTimeout when not competing with the rest of the suite for `WorkspaceManager`
+  initialization. Confirms the load-dependent `beforeAll initializeWorkspace()` pattern already
+  named in `## Flaky exclusions (D-08)` above, not a defect in either new test file. Excluded per
+  D-08.
+- Run 2: four additional suites hit the timeout — `test/line-break-validation.test.ts` (this
+  plan's own new file, `:25`), `test/parser.test.ts` (`:28`), `test/run-call-file-resolution.test.ts`
+  (`:86`), `test/use-project-root.test.ts` (`:28`). All four are the same `beforeAll
+  initializeWorkspace()` hookTimeout; `test/parser.test.ts`, `run-call-file-resolution.test.ts` and
+  `use-project-root.test.ts` are pre-existing files this plan does not touch. Excluded per D-08.
+- Run 3: no additional `FAIL` lines beyond the 11 — 1 failed test file, 925 passed, 3 skipped.
+
+Every test in a timed-out suite reports `skipped`, not `failed`, which is why the total
+passed/skipped counts vary run to run (706-925 passed, 3-222 skipped) while the 11-name
+deterministic failure set never moves.
+
+**Total test count observation (not gate criteria, D-08):** `939` total tests across all three
+runs (`11 failed | N passed | M skipped (939)`), up from `916` recorded in the Plan 67-06 delta —
+the +23 matches this plan's ten new/extended test cases across `line-break-validation.test.ts` (3),
+`overload-selector.test.ts` (1), `variable-scoping.test.ts` (+1), `test/functional/
+lsp-features.test.ts` (+2), `hover.test.ts` (+3), `notifications.test.ts` (3),
+`builtin-library-members.test.ts` (9, new file), `example-files.test.ts` (0 net — same 1 test,
+loop body rewritten) and `cpl-service.test.ts` (+1).
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed by this plan (D-09).
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*
