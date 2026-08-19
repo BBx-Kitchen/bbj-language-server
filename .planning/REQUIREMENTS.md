@@ -57,7 +57,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **DEBT-03**: Static method return-type inference gap (`String.valueOf(2)` assigns no type) re-triaged — fixed or filed
 - [x] **DEBT-04**: FQN path static-only completion filtering re-triaged — fixed or filed, with the JAR-redeployment dependency stated
 - [x] **DEBT-05**: LSP4IJ experimental API usage (19 sites) and `BbjCompletionFeature` coupling re-triaged — current risk assessed against the installed LSP4IJ version
-- [ ] **DEBT-06**: Every carried debt item ends this milestone either fixed or represented by a GitHub issue — none remain recorded only as prose in PROJECT.md
+- [x] **DEBT-06**: Every carried debt item ends this milestone either fixed or represented by a GitHub issue — none remain recorded only as prose in PROJECT.md
 - [ ] **DEBT-07**: CPL-06 hierarchy suppression takes one extra build cycle after the BBjCPL merge (timing nuance, end state correct) re-triaged against current code
 - [ ] **DEBT-08**: IntelliJ TextMate bundle's filename-based `config.bbx`/`config.min` registration (`2489001`, #381) — whether JetBrains' TextMate plugin honors `filenames` re-triaged against current code
 
@@ -141,7 +141,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DEBT-03 | Phase 66 | Complete |
 | DEBT-04 | Phase 66 | Complete |
 | DEBT-05 | Phase 66 | Complete |
-| DEBT-06 | Phase 66 | Pending |
+| DEBT-06 | Phase 66 | Complete |
 | DEBT-07 | Phase 66 | Pending |
 | DEBT-08 | Phase 66 | Pending |
 | FIX-01 | Phase 67 | Pending |
