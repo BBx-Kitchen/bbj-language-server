@@ -1648,3 +1648,83 @@ verification:      cd bbj-vscode && npm run build && npx vitest run test/method-
 commit:            382a068 (red) + 32faeff (green)
 notes:             D-04 merge — see the P61-D2-011 row for the shared edit and shared commit pair. P66-D2-001 is Phase 66's DEBT-03 re-triage citing P61-D2-011 by ID as the original reproduction; neither record was rewritten to fit the merge.
 ```
+
+## Close-out
+
+### FIX-04 verdict
+
+**FIX-04 is true as of this document.** `FIX-04` reads: "No applied fix changes user-facing
+behavior without that change being recorded in EASY-FIXES.md." `67-APPLY-SET.md` §"Close-out"
+§"FIX-04 verdict" recorded, at the end of Phase 67, that `.planning/reviews/EASY-FIXES.md` did not
+exist yet — confirmed absent there (`test ! -f .planning/reviews/EASY-FIXES.md` succeeded) — and
+stated plainly that FIX-04 "becomes true when Phase 68 assembles the document." Phase 68 was the
+phase that deferred nothing further: it assembled this document by lifting the 77 ledger rows whole
+from `67-APPLY-SET.md` (D-04), and FIX-04 discharges here rather than remaining a Phase 67 debt
+carried silently forward.
+
+**`29` of the `77` rows carry `user_facing: yes`.** Those are the rows that record a user-facing
+behaviour change against its fix and its commit — the exact obligation FIX-04's wording names.
+**The remaining `48` rows are internal-only edits**, recorded with the same field set
+(`finding_id:`, `location:`, `dimension:`, `failure_scenario:`, `fix_applied:`, `commit:`) so a
+reader does not have to guess which category a row without `user_facing: yes` falls into.
+
+This close-out does not edit `.planning/REQUIREMENTS.md` — the traceability matrix's `FIX-04`
+checkbox is that file's own concern, ticked by whichever phase owns it, not this one.
+
+### Discrepancy Register
+
+Every departure this phase found between a source artifact's claim and the derived corpus,
+reported with both numbers rather than silently absorbed:
+
+1. **`68-CONTEXT.md` D-02 vs. the corpus — the two off-scale `effort: 1` records.** D-02 states the
+   two off-scale `effort: 1` values are "already annotated in-record as rounded down." Neither
+   `P61-D4-010` nor `P61-D8-005` carries such an annotation — Phase 67's own close-out
+   §"Recorded departures" found the same absence before this phase re-checked it. **Claimed:** an
+   in-record rounding annotation exists on both records. **Derived:** no such annotation exists on
+   either record; both values are carried through unrounded, off INVENTORY §3d's locked `{2,4,8}`
+   scale, and the discrepancy is stated here rather than an annotation being fabricated to match
+   the claim.
+
+2. **`67-CONTEXT.md`'s per-phase finding counts vs. the `disposition:` record counts.**
+   `67-CONTEXT.md` cites "73 / 34 / 65 / 45 / 37 / 18 findings" for Phases 61–66. **Claimed:**
+   those six figures are the per-phase `disposition:` record counts. **Derived:** the actual
+   `disposition:` record counts are `73 / 34 / 62 / 44 / 3 / 8` — the larger cited figures count
+   items *enumerated or swept*, not records recorded, and the gap is widest for Phase 65 (37 items
+   swept, 3 recorded). `67-CONTEXT.md`'s totals (`224` / `144` / `3` / `77`) and its per-phase
+   *easy-fix* counts (`44` / `14` / `10` / `8` / `0` / `1`) are correct and match; only the
+   per-phase all-findings figures are the departure.
+
+3. **Plan `68-05`'s SUMMARY — `P61-D5-014`'s classification-clause shape.** Unlike the seven other
+   Task-1 records in that plan, whose classification clause's test (5) reads `FAIL`/`n/a`/`moot`,
+   `P61-D5-014`'s test (5) reads `pass` and names a concrete edit (extract the
+   `bbj/refreshJavaClasses` and `onDidChangeConfiguration` handler bodies out of `main.ts` into
+   named, exported functions) directly. **Claimed (by the surrounding pattern):** every Task-1
+   record's own `proposed_approach:` is drafted fresh because its classification clause carries no
+   named edit. **Derived:** `P61-D5-014` already names its own edit; the approach was lifted
+   verbatim from that clause rather than authored fresh, and plan `68-05` recorded the shape
+   difference rather than silently treating it as one more no-named-edit case.
+
+4. **Plan `68-06`'s SUMMARY — the SETOPTS composer referral's `dedup:` field.** `P63-D7-005`'s own
+   `dedup:` field names the neighbouring GitHub issue `#475` as its nearest match. **Claimed
+   (by proximity):** referrals 13 and 17 (`62-COVERAGE.md:323`, `62-COVERAGE.md:1078`) resolve
+   against `#475`. **Derived:** `P63-D7-005`'s own evidence states its subject is porting the
+   *existing* `#474` composer to IntelliJ — a different subject from `#475`'s *new* tri-state
+   composer request — so both referrals resolve against `P63-D7-005` itself, confirmed
+   same-subject rather than assumed, and not against the neighbouring `#475` issue its `dedup:`
+   field names.
+
+`MAJOR-REFACTORS.md` §"Close-out" §"Discrepancy Register" carries this same register plus the two
+discrepancies that belong to that document alone.
+
+### Write-boundary check
+
+`git status --porcelain .planning/reviews/` output at the time this section was written (interim —
+only this document had an uncommitted change; Task 3 records the phase's final state in both
+documents):
+
+```
+ M .planning/reviews/EASY-FIXES.md
+```
+
+D-12's boundary held: one file modified (this document, mid-assembly), no `INVENTORY.md` or
+`6N-COVERAGE.md` touched, and no tracker write.
