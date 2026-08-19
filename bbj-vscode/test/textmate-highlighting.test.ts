@@ -109,4 +109,18 @@ describe('TextMate highlighting (#107)', () => {
         expect(remToken, 'REM token present').toBeDefined();
         expect(remToken!.scopes.some(s => s.startsWith('comment.line.bbj')), 'REM with text is comment-scoped').toBe(true);
     });
+
+    // P62-D2-009: IOL=/LEN= immediately followed by a value must scope as a keyword — the
+    // realistic, overwhelmingly common form in real BBj code.
+    test('P62-D2-009 — IOL= and LEN= with a value attached are scoped as keywords', () => {
+        const [tokens] = tokenizeLines(['OPEN(1)"file",IOL=5']);
+        const iolToken = tokens.find(t => t.text === 'IOL=');
+        expect(iolToken, 'IOL= token present').toBeDefined();
+        expect(iolToken!.scopes.includes('keyword.control.bbj'), 'IOL= scoped as keyword').toBe(true);
+
+        const [tokens2] = tokenizeLines(['x=LEN=10']);
+        const lenToken = tokens2.find(t => t.text === 'LEN=');
+        expect(lenToken, 'LEN= token present').toBeDefined();
+        expect(lenToken!.scopes.includes('keyword.control.bbj'), 'LEN= scoped as keyword').toBe(true);
+    });
 });
