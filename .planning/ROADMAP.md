@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 2/12 plans executed
+**Plans**: 3/12 plans executed
 
 Plans:
 **Wave 1**
@@ -591,7 +591,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 67-03-PLAN.md — `bbj-ws-manager.ts` (3) and `bbj-document-builder.ts` (3): multi-folder workspaces, swallowed errors, per-lookup rescan
+- [x] 67-03-PLAN.md — `bbj-ws-manager.ts` (3) and `bbj-document-builder.ts` (3): multi-folder workspaces, swallowed errors, per-lookup rescan
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
