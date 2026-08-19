@@ -5,6 +5,13 @@ import { logger } from './language/logger.js';
 // Store unsaved content in memory
 const unsavedContentMap = new Map<string, string>();
 
+// One in-flight format Promise per document URI, so concurrent format requests for the same
+// document (e.g. "Save All", or a manual format racing format-on-save) share a single spawned
+// process instead of each starting its own `java` invocation. Entries are removed once the
+// shared promise settles, on both the resolve and reject paths, so a later request for the same
+// URI spawns again.
+const inFlightFormats = new Map<string, Promise<string>>();
+
 export const DocumentFormatter = {
   provideDocumentFormattingEdits(document: vscode.TextDocument): Thenable<vscode.TextEdit[] | undefined> {
     const jarPath = `${__dirname}/../tools/formatter/BBjCFCli.jar`;
@@ -29,7 +36,20 @@ export const DocumentFormatter = {
     // Use unsaved content if available, otherwise read from the file system
     const documentContent = unsavedContentMap.get(document.uri.toString()) || document.getText();
 
-    return this.runFormatter(args, documentContent).then(
+    const uriKey = document.uri.toString();
+    let formatPromise = inFlightFormats.get(uriKey);
+    if (!formatPromise) {
+      formatPromise = this.runFormatter(args, documentContent) as Promise<string>;
+      inFlightFormats.set(uriKey, formatPromise);
+      const clearInFlight = () => {
+        if (inFlightFormats.get(uriKey) === formatPromise) {
+          inFlightFormats.delete(uriKey);
+        }
+      };
+      formatPromise.then(clearInFlight, clearInFlight);
+    }
+
+    return formatPromise.then(
       (formattedContent: string) => {
         // Create a single edit that replaces the entire document content
         const edit = new vscode.TextEdit(
