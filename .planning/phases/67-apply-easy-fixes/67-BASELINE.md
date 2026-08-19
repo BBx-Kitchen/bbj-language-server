@@ -811,4 +811,178 @@ plan's own action step (this is the one plan in the phase whose entire scope is 
 
 ## Phase-close delta
 
-*(To be filled by plan 67-12 at phase close.)*
+## close_commit
+
+```
+56d6e85dde977939f62986a7db5ed91eac6b444c
+```
+
+This is the last commit plan 67-11 made (`docs(67-11): complete IntelliJ easy-fixes plan`). All 77
+ledger rows' fixes are landed at or before this commit; plan 67-12's own commits (this file's
+phase-close delta, `67-APPLY-SET.md`'s close-out, and the SUMMARY) land after it.
+
+### Close capture
+
+Ran from `bbj-vscode/`: `npm run lint` once and `npm test` twice, per D-08. Ran from
+`bbj-intellij/`: `./gradlew build` once.
+
+**`npm test` run 1:** `Test Files  3 failed | 58 passed (61)` / `Tests  11 failed | 938 passed | 9
+skipped (958)`. Failing-test names beyond the 11 interop tests: `test/hover.test.ts > Hover
+content: documented members, inheritance, and error resilience (P61-D5-012)` and
+`test/line-break-validation.test.ts > Line break validation: CRLF and missing trailing newline
+(P61-D5-006)`.
+
+**`npm test` run 2:** `Test Files  1 failed | 60 passed (61)` / `Tests  11 failed | 944 passed | 3
+skipped (958)`. No FAIL beyond the 11 interop tests.
+
+The 11 failing-test NAMES, identical across both runs:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Each of the 11 fails with `expected 'Could not resolve reference to Java…' to be ''` — a
+`Could not resolve reference to JavaPackageLike/NamedElement named '<X>'` linking error — the same
+unreachable-java-interop-peer cause (`No bbjdir set. No classpath and prefixes loaded.` on stderr)
+recorded at phase start, unchanged.
+
+**`npm run lint`:**
+
+```
+> bbj-lang@0.12.0 lint
+> eslint src test
+```
+
+Exit code `0`, zero warnings — the `P61-D4-010` lint-clean milestone holds through phase close.
+
+**`./gradlew build`:**
+
+```
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/home/coder/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+25.0.3
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 821ms
+```
+
+Identical failure shape to the phase-start baseline and to plan 67-11's own gradle re-check — same
+build-script Java version check (`build.gradle.kts`'s `sourceCompatibility`/`targetCompatibility`
+set to `JavaVersion.VERSION_17`), same rejected value (`25.0.3`, this machine's only installed JDK).
+The `--enable-native-access` warnings are Gradle wrapper/daemon noise unrelated to the version
+check; they do not appear in the phase-start capture only because that capture's `tail -20` did not
+happen to include them — Gradle itself starts and runs fine, as recorded at phase start.
+
+### Flaky exclusions at close (D-08)
+
+Two suites failed in run 1 only, both a `beforeAll` hook timeout, never an assertion failure:
+
+- `test/hover.test.ts > Hover content: documented members, inheritance, and error resilience
+  (P61-D5-012)` — `Error: Hook timed out in 10000ms.` at `test/hover.test.ts:51`, inside
+  `beforeAll(async () => { await initializeWorkspace(services.shared); })`. Did not reproduce on
+  run 2 (passed cleanly). Already named among the load-dependent flaky suites observed during the
+  Plan 67-07 delta above.
+- `test/line-break-validation.test.ts > Line break validation: CRLF and missing trailing newline
+  (P61-D5-006)` — `Error: Hook timed out in 10000ms.` at `test/line-break-validation.test.ts:25`,
+  inside the identical `beforeAll(async () => { await initializeWorkspace(services.shared); })`
+  pattern. Did not reproduce on run 2. Already named among the load-dependent flaky suites observed
+  during the Plan 67-08 delta above.
+
+Both are the same shared `WorkspaceManager.initializeWorkspace()` cost path every other exclusion
+in this file names; no suite is excluded for any other reason. Nothing else failed beyond the 11
+deterministic interop tests on either run.
+
+### Gate comparison
+
+**Phase-start deterministic gate set** (11 names, `### Deterministic failures (gate set)` above):
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+**Phase-close set** (11 names, both runs, `### Close capture` above): the identical 11 names listed
+above, same order, same wording.
+
+**Set difference:** start − close = ∅ (nothing dropped). close − start = ∅ (nothing added).
+
+**Verdict: identical.** Every one of the 11 plan-by-plan deltas (67-01 through 67-11) already
+recorded `identical` against this same set on every intermediate run; the phase-close capture is
+the 12th and final confirmation. The D-07 gate passes.
+
+### Observations (not gate criteria)
+
+Per D-08, these vary run-to-run with no source change and are not gate criteria:
+
+- **Phase start:** run 1 — 3 failed suites, 47 skipped, 828 passed (886 total). Run 2 — 5 failed
+  suites, 87 skipped, 788 passed (886 total).
+- **Phase close:** run 1 — 3 failed suites, 9 skipped, 938 passed (958 total). Run 2 — 1 failed
+  suite, 3 skipped, 944 passed (958 total).
+- **Total test count grew from 886 to 958 (+72)** across the phase — consistent with the
+  plan-by-plan running total already recorded in this file (916 after 67-06, 939 after 67-07, 948
+  after 67-08, 956 after 67-09, 958 after 67-10 and 67-11 — no further growth in 67-11, which
+  touches no `bbj-vscode/` file). The +72 is the sum of every plan's own new/extended test cases,
+  not a gate signal.
+- **`npm audit`:** 0 vulnerabilities, unchanged from the Plan 67-10 delta (down from the
+  phase-start 19).
+
+### FIX-03 verdict
+
+**FIX-03 as written ("`npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew
+build` succeeds in `bbj-intellij/`") was not achieved.**
+
+- `npm test` is not clean: the same 11 deterministic failures in `test/linking.test.ts > Linking
+  Tests > Interop related tests` that were present at phase start are still present at phase
+  close. Their cause is unchanged — the java-interop peer is unreachable in this environment (no
+  `bbjdir` configured; every failure traces back to `No bbjdir set. No classpath and prefixes
+  loaded.`), and opening a listener on port 5008 does not fix them, per Phase 64 D-06.
+- `./gradlew build` still fails: `build.gradle.kts` sets `sourceCompatibility`/
+  `targetCompatibility` to `JavaVersion.VERSION_17`, and the only JDK installed in this environment
+  is Temurin `25.0.3` at `/opt/java/default`. Gradle 8.13 itself starts and runs the daemon fine —
+  this is a build-script version check rejecting the installed JDK, not a bootstrap rejection.
+
+**What *was* achieved:** `npm run lint` is genuinely clean — exit `0`, zero warnings, held since
+plan 67-04 (`P61-D4-010`) through phase close. And the failure set the gate can actually measure —
+the deterministic `npm test` failing-test NAME set — is **identical**, not larger, to the
+phase-start baseline: the gate D-07 substitutes for literal cleanliness (baseline delta,
+identical-or-smaller) passes.
+
+**Verified by CI evidence stronger than this local baseline (draft PR #496, head `97a2e6b`, which
+includes every code commit through plan 67-11):** all four checks pass — `BBj CI`, `Build test
+VSIX`, `build-vscode`, `validate-intellij`. `Build test VSIX` packages the extension with the
+`P64-D6-013`-updated lockfile through the real `vsce` path, which no local run in this environment
+covers. `validate-intellij` compiles all nine of plan 67-11's IntelliJ changes on a proper JDK,
+closing the gap plan 67-11 had to record as "unverifiable" locally (D-14) — that gap is now closed
+by CI evidence, not by a local `./gradlew build` run (which is expected to keep failing here on the
+same JDK-25-vs-17 version check; it was not re-attempted for that reason). This CI run does not
+cover this plan's own trailing commits (this file, `67-APPLY-SET.md`'s close-out, and the
+SUMMARY) — those are docs-only and touch no compiled source.
+
+**`REQUIREMENTS.md`'s FIX-03 text is not edited by this task or any other in this phase.** The
+requirement stands as written; this section is where the honest discharge is recorded, per D-07.
