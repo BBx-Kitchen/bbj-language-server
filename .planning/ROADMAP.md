@@ -655,7 +655,7 @@ explicitly.
   4. Findings that were duplicate, wontfix, already-covered, or not-reproducible are listed with
      their disposition and reason, not silently dropped
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans executed
 
 Plans:
 
@@ -665,7 +665,7 @@ Plans:
 - [x] 68-04-PLAN.md — DOC-03 coverage preamble: the scope half and the gap half, generated once and emitted byte-identically into both documents
 - [x] 68-05-PLAN.md — The 26 authored `proposed_approach:` entries for records whose classification clause named no single edit
 - [x] 68-06-PLAN.md — The 30 cross-unit referral resolutions, each naming a finding ID, a check line, or an open gap, with a census that sums to 30
-- [ ] 68-07-PLAN.md — Close-out: FIX-04 discharged by name, the Phase 69 handoff and regeneration hazard, the Discrepancy Registers, and the D-12 write-boundary proof
+- [x] 68-07-PLAN.md — Close-out: FIX-04 discharged by name, the Phase 69 handoff and regeneration hazard, the Discrepancy Registers, and the D-12 write-boundary proof
 
 ---
 
