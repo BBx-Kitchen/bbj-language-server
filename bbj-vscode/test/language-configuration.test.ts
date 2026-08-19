@@ -30,3 +30,30 @@ describe('bbj-language-configuration.json (P62-D2-006)', () => {
         expect(config.onEnterRules).toHaveLength(3);
     });
 });
+
+/**
+ * Regression for P62-D7-002: bbj-vscode/package.json's "bbj" language contribution
+ * (contributes.languages) is the client-side source of truth for which files VS Code
+ * assigns language id "bbj" to -- not bbj.tmLanguage.json's own fileTypes field. That
+ * grammar-level fileTypes list already includes ".bbl", but package.json's "bbj"
+ * language entry's own "extensions" array did not, so a .bbl file opened directly in
+ * VS Code got no language id, no TextMate highlighting, no language-configuration
+ * behavior and was never sent to the language server via documentSelector.
+ */
+
+describe('bbj-vscode/package.json "bbj" language contribution (P62-D7-002)', () => {
+    test('lists .bbl among its extensions', () => {
+        const raw = readFileSync('package.json', 'utf8');
+        const pkg = JSON.parse(raw);
+        const bbjLanguage = pkg.contributes.languages.find((l: { id: string }) => l.id === 'bbj');
+        expect(bbjLanguage).toBeDefined();
+        expect(bbjLanguage.extensions).toContain('.bbl');
+    });
+
+    test('every extension already listed is still listed', () => {
+        const raw = readFileSync('package.json', 'utf8');
+        const pkg = JSON.parse(raw);
+        const bbjLanguage = pkg.contributes.languages.find((l: { id: string }) => l.id === 'bbj');
+        expect(bbjLanguage.extensions).toEqual(expect.arrayContaining(['.bbj', '.bbjt', '.src', '.bbx']));
+    });
+});
