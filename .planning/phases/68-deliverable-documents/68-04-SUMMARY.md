@@ -123,3 +123,13 @@ Both documents now open with an identical, mechanically-verified coverage statem
 ---
 *Phase: 68-deliverable-documents*
 *Completed: 2026-08-19*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/68-deliverable-documents/derive-review-docs.mjs`
+- FOUND: `.planning/reviews/EASY-FIXES.md`
+- FOUND: `.planning/reviews/MAJOR-REFACTORS.md`
+- FOUND: `.planning/phases/68-deliverable-documents/68-04-SUMMARY.md`
+- FOUND commit `d9f17bc` (Task 1+2)
+- FOUND commit `60a1588` (Task 3)
+- FOUND commit `b5b8ee1` (this SUMMARY)
