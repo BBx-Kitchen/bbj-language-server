@@ -166,6 +166,27 @@ describe('DocumentSymbol Tests', async () => {
         // Symbols should be 0 or a very small number (recovered tokens)
         expect(symbols.length).toBeLessThanOrEqual(5);
     })
+
+    test('P61-D2-014: sibling symbols sharing a start position but differing in extent are both recorded', () => {
+        // applyDeepWalkFallback (the error-recovery path that scans the whole AST for symbols
+        // streamContents missed) uses collectPositions to skip nodes already represented in the
+        // outline, keyed by CST range. Two sibling nodes that happen to share the exact same
+        // range.start (line/character) but differ in range.end (e.g. a broken container and a
+        // node error-recovery reinserted at the same offset) must be tracked as two distinct
+        // covered positions, not collapsed into one by a start-only key.
+        const provider = documentSymbolProvider as unknown as {
+            collectPositions(symbols: { range: { start: { line: number; character: number }; end: { line: number; character: number } }; children?: unknown[] }[], positions: Set<unknown>): void
+        };
+        const sameStart = { line: 3, character: 4 };
+        const symbols = [
+            { name: 'outer', range: { start: sameStart, end: { line: 3, character: 10 } } },
+            { name: 'inner', range: { start: sameStart, end: { line: 3, character: 40 } } }
+        ];
+        const positions = new Set<unknown>();
+        provider.collectPositions(symbols, positions);
+        // One entry per distinct (start, end) pair — the two symbols must not collapse into one.
+        expect(positions.size).toBe(2);
+    })
 });
 
 /**
