@@ -14,6 +14,8 @@ import org.jetbrains.annotations.NotNull;
  * Action to compile the current BBj file.
  * Only visible when a BBj source file (.bbj, .bbx, .src) is open and language server is ready.
  * Excludes .bbl files (library files, not user source code per Phase 41 requirements).
+ * Not yet implemented — see referral P63-D7-001; actionPerformed() currently only logs that
+ * compile was triggered and does not send a compile command to the language server.
  */
 public final class BbjCompileAction extends AnAction {
 
