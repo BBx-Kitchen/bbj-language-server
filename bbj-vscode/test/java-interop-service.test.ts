@@ -16,7 +16,7 @@ import { DeepPartial, EmptyFileSystem, inject, Module } from 'langium';
 import { createDefaultModule, createDefaultSharedModule, LangiumSharedServices, PartialLangiumServices } from 'langium/lsp';
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { CancellationToken, MessageConnection } from 'vscode-jsonrpc/node.js';
 import { BBjAddedServices, BBjModule, BBjServices, BBjSharedModule } from '../src/language/bbj-module.js';
 import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/generated/module.js';
@@ -152,6 +152,39 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
             const second = await service.testConnect();
             expect(service.socketFactoryCalls).toBe(2);
             expect(second).not.toBe(first);
+        });
+    });
+
+    describe('raced getRawClass request never produces an unhandled promise rejection (P61-D2-002)', () => {
+        // NOTE on this test's shape (see 67-02-SUMMARY.md "Deviations" for the full writeup):
+        // Empirical verification against the real vscode-jsonrpc SocketMessageReader/Writer +
+        // createMessageConnection (not just a hand-rolled Promise.race repro) found that
+        // Promise.race([sendRequest(...), timeoutPromise]) already attaches a rejection handler
+        // to BOTH array entries synchronously (per the Promise.race spec), so a losing branch
+        // that rejects later is never "unhandled" — with or without an extra .catch(). This test
+        // therefore cannot show a genuine failing-before state; it asserts the invariant the
+        // record's fix is meant to defend (no unhandledRejection across a realistic timeout race,
+        // and the rejection still reaches the awaiting caller), and stays green on both sides of
+        // the P61-D2-002 fix. fail_before is recorded as `inapplicable` in 67-APPLY-SET.md, not
+        // fabricated as an observed red.
+        test('a request that times out is surfaced to the caller with no unhandled rejection', async () => {
+            vi.useFakeTimers();
+            const unhandled: unknown[] = [];
+            const onUnhandledRejection = (reason: unknown) => unhandled.push(reason);
+            process.on('unhandledRejection', onUnhandledRejection);
+            try {
+                const service = createInteropService();
+                await service.testConnect();
+                const pending = service.testGetRawClass('does.not.Matter');
+                const assertion = expect(pending).rejects.toThrow(/timeout/i);
+                await vi.advanceTimersByTimeAsync(10_000);
+                await assertion;
+                await vi.advanceTimersByTimeAsync(0);
+            } finally {
+                process.off('unhandledRejection', onUnhandledRejection);
+                vi.useRealTimers();
+            }
+            expect(unhandled).toEqual([]);
         });
     });
 
