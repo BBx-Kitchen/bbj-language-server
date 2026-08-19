@@ -31,7 +31,7 @@
     "comments": {
       "patterns": [
         {
-          "begin": "[rR][eE][mM][ \\t]",
+          "begin": "[rR][eE][mM]([ \\t]|(?=$))",
           "beginCaptures": {
             "1": {
               "name": "punctuation.whitespace.comment.leading.bbj"
