@@ -114,7 +114,7 @@ public class BbjColorSettingsPage implements ColorSettingsPage {
 
                 <kw>CLASSEND</kw>
 
-                <bc>/@
+                <bc>/@@
                  * Block comment example
                  * Describes the program
                 @/</bc>
