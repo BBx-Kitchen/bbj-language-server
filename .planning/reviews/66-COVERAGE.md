@@ -58,8 +58,8 @@ than reassigned (none of this plan's four does).
 | `P66-D5-001` | DEBT-02 (parser.test.ts trio) | 66-01 | D5 | Allocated — see `## DEBT-02` |
 | `P66-D5-002` | DEBT-02 (TEST-03 skip) | 66-01 | D5 | Allocated — see `## DEBT-02` |
 | `P66-D2-001` | DEBT-03 | 66-01 | D2 (secondary D5) | Allocated — see `## DEBT-03` |
-| `P66-D2-002` | DEBT-04 | 66-02 | D2 | Not this plan's — pending 66-02 |
-| `P66-D4-001` | DEBT-05 | 66-02 | D4 | Not this plan's — pending 66-02 |
+| `P66-D2-002` | DEBT-04 | 66-02 | D2 | Allocated — see `## DEBT-04` |
+| `P66-D4-001` | DEBT-05 | 66-02 | D4 | Allocated — see `## DEBT-05` |
 | `P66-D2-003` | DEBT-07 | 66-03 | D2 | Not this plan's — pending 66-03 |
 | `P66-D5-003` | DEBT-08 | 66-03 | D5 | Not this plan's — pending 66-03 |
 
@@ -164,13 +164,13 @@ reproducible), one row per bullet, each carrying that bullet's `PROJECT.md` line
 
 | PROJECT.md line | Bullet (leading text) | Owner | Pre-allocated ID | Verdict |
 |---|---|---|---|---|
-| 250 | BbjCompletionFeature still extends LSPCompletionFeature | DEBT-05 | `P66-D4-001` | pending 66-02 |
+| 250 | BbjCompletionFeature still extends LSPCompletionFeature | DEBT-05 | `P66-D4-001` | major-refactor — see `## DEBT-05` |
 | 251 | CPU stability mitigations documented but not yet implemented (#232) | DEBT-01 | `P66-D3-001` | major-refactor — see `## DEBT-01` |
 | 252 | CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge | DEBT-07 | `P66-D2-003` | pending 66-03 |
 | 253 | TEST-03 (DEF FN completion inside class methods) skipped | DEBT-02 | `P66-D5-002` | major-refactor — see `## DEBT-02` |
 | 254 | 3 parser.test.ts assertions DISABLED | DEBT-02 | `P66-D5-001` | major-refactor — see `## DEBT-02` |
 | 255 | IntelliJ TextMate bundle filename registration unverified | DEBT-08 | `P66-D5-003` | pending 66-03 |
-| 256 | FQN path static-only filtering deferred | DEBT-04 | `P66-D2-002` | pending 66-02 |
+| 256 | FQN path static-only filtering deferred | DEBT-04 | `P66-D2-002` | major-refactor — see `## DEBT-04` |
 | 257 | Static method return type inference gap | DEBT-03 | `P66-D2-001` | easy-fix — see `## DEBT-03` |
 
 **Rows this plan (66-01) verdicts:** 251, 253, 254, 257 — four `PROJECT.md`-line rows, covering
@@ -738,3 +738,273 @@ No `gh` write subcommand ran anywhere in this plan — only the read-only `gh is
 `gh issue view 466` queries recorded above (`## Dedup source`, `## DEBT-01`, `## DEBT-03`'s dedup
 field). D-01 (verdict-only, no source change) and D-02 (zero tracker writes) both hold, evidenced
 by literal command output rather than asserted.
+
+## DEBT-05
+
+DEBT-05 arrives with a designated inherited evidence record — `P63-D4-010` — but 63-COVERAGE.md
+explicitly could not resolve PROJECT.md's "19 experimental API usages" figure from this tree and
+said so. This is the one item where Phase 66 can do something no sweep could: measure directly
+against the locally cached LSP4IJ 0.19.0 artifact, the version actually shipped (D-10).
+
+### Baseline re-derivation
+
+63-COVERAGE.md's own two counts, re-run live at this plan's execution time, each command with its
+literal output:
+
+```bash
+grep -rn "ApiStatus.Experimental\|@Experimental" bbj-intellij/src/main/java | wc -l
+```
+**Literal output: `0`.**
+
+```bash
+grep -rln "com.redhat.devtools.lsp4ij" bbj-intellij/src/main/java | wc -l
+```
+**Literal output: `11`.**
+
+```bash
+grep -rn "com.redhat.devtools.lsp4ij" bbj-intellij/src/main/java | wc -l
+```
+**Literal output: `20`.**
+
+All three match the recorded baseline exactly — **no drift to report.** The 11 files: this unit's
+own 7 (`lsp/BbjCompletionFeature.java`, `lsp/BbjLanguageClient.java`,
+`lsp/BbjLanguageServerFactory.java`, `lsp/BbjLanguageServer.java`, `ui/BbjJavaInteropService.java`,
+`ui/BbjServerService.java`, `ui/BbjStatusBarWidget.java`) plus `RU-63-01`'s
+`BbjCompileAction.java`/`BbjRefreshJavaClassesAction.java`/`BbjRunActionBase.java` and
+`RU-63-04`'s `composer/BbjComposerService.java` — re-confirmed present by name in the live `grep
+-rln` output above.
+
+The first count is about **our** source carrying `@ApiStatus.Experimental`/`@Experimental` —
+zero, as recorded. The annotations that actually matter for DEBT-05's question are on **LSP4IJ's
+own** classes, which no grep over `bbj-intellij/src/main/java` can see. That is what the next
+subsection measures directly, against the jar itself — the thing 63-COVERAGE.md said it could not
+do from this tree.
+
+### Jar measurement (D-10)
+
+**Jar path** (verified readable before this measurement began, per this task's `<precondition>`):
+
+```
+~/.gradle/caches/8.13/transforms/adf3542fc53c5acc20d2eaa00b91d526/transformed/com.redhat.devtools.lsp4ij-0.19.0/lsp4ij/lib/lsp4ij-0.19.0.jar
+```
+
+`test -r "$JAR"` exited `0`; `ls -la "$JAR"` showed a 2,225,085-byte file dated `2026-07-19`.
+`javap -version` exited `0` (JDK 25.0.3's bundled `javap`). This jar's own pinned version matches
+what `bbj-intellij` actually declares:
+
+```
+bbj-intellij/build.gradle.kts:27:        plugin("com.redhat.devtools.lsp4ij:0.19.0")
+```
+
+so the measurement below is against the artifact this plugin actually ships against, not an
+assumed or unpinned version.
+
+**Method.** `javap -v -cp "$JAR" <FQN>` against each of the nine targets, reading the
+`RuntimeInvisibleAnnotations:` block attached to the class declaration itself (printed by `javap`
+near the end of its output, after `SourceFile:` and before `NestMembers:`/`BootstrapMethods:` —
+this is where `javap -v` places class-level annotations, not immediately after the `public class
+...` header line) for the class-level annotation, and the same block attached to each specific
+overridden/called member for the member-level annotation. Confirmed first, via `unzip -l "$JAR"`,
+that all nine target `.class` files exist inside the jar under their expected package paths —
+none is absent. All nine `javap -v` invocations exited `0` — no target was truncated, missing, or
+unreadable, so the **all-or-nothing rule** is satisfied with every target individually cited below
+(none needed the `unreadable` fallback).
+
+**Result table** — one row per target, the class-level annotation, the specific member(s) our
+code overrides or calls, and that member's own annotation:
+
+| # | Target (FQN) | Our coupling | Class-level annotation | Member(s) touched | Member-level annotation |
+|---|---|---|---|---|---|
+| 1 | `client.features.LSPCompletionFeature` | `BbjCompletionFeature extends` it, `@Override getIcon(CompletionItem)` (`lsp/BbjCompletionFeature.java:19,21`) | **`@ApiStatus.Experimental`** | `getIcon(CompletionItem)` | none — only `@Nullable`/`@NotNull` on the method itself. (A sibling method, `addLookupItem(...)`, carries `@ApiStatus.Internal` — not overridden by our code.) |
+| 2 | `LanguageServerFactory` | `BbjLanguageServerFactory implements` it (`lsp/BbjLanguageServerFactory.java:21`) | none — no `ApiStatus` reference anywhere in this class file | `createConnectionProvider`, `createLanguageClient`, `getServerInterface`, `createClientFeatures` (all `@Override`, `:23-64`) | none |
+| 3 | `client.features.LSPClientFeatures` | anonymous subclass returned by `createClientFeatures()`, `@Override initializeParams(InitializeParams)` (`lsp/BbjLanguageServerFactory.java:41-52`), plus `.setDocumentLinkFeature(...)`/`.setCompletionFeature(...)` builder calls (`:58,64`) | **`@ApiStatus.Experimental`** | `initializeParams(InitializeParams)`, `setDocumentLinkFeature(...)`, `setCompletionFeature(...)` | none on any of the three — only `@NotNull` parameter annotations. (`setServerWrapper`/`getServerWrapper`, a different pair this code never calls, carry `@ApiStatus.Internal`.) |
+| 4 | `client.features.LSPDocumentLinkFeature` | anonymous subclass, `@Override isSupported(PsiFile)` (`lsp/BbjLanguageServerFactory.java:58-62`) | **`@ApiStatus.Experimental`** | `isSupported(PsiFile)` | none |
+| 5 | `server.StreamConnectionProvider` | return type of `createConnectionProvider(Project)` (`lsp/BbjLanguageServerFactory.java:23-24`); implemented (via `OSProcessStreamConnectionProvider`, target 7) | none — no `ApiStatus` reference anywhere in this interface's class file | (interface type only, no member override at this level) | n/a |
+| 6 | `client.LanguageClientImpl` | `BbjLanguageClient extends` it, `@Override createSettings()` and `@Override handleServerStatusChanged(ServerStatus)` (`lsp/BbjLanguageClient.java:18,24-25,34-35`) | none — this class's own disassembly ends after `SourceFile:`/`BootstrapMethods:` with no class-level `RuntimeInvisibleAnnotations:` block | `createSettings()`, `handleServerStatusChanged(ServerStatus)` | none on either — only `@Nullable`/`@NotNull`. (`setServerWrapper(LanguageServerWrapper)`, not called by our code, carries `@ApiStatus.Internal`.) |
+| 7 | `server.OSProcessStreamConnectionProvider` | `BbjLanguageServer extends` it, calls `super.setCommandLine(...)` from its constructor (`lsp/BbjLanguageServer.java:28,40`) | none — no `ApiStatus` reference anywhere in this class file | constructor path / `setCommandLine(GeneralCommandLine)` | none |
+| 8 | `LanguageServerManager` | `ui/BbjServerService.java:208` — `LanguageServerManager.getInstance(project)`, then `manager.stop("bbjLanguageServer")`/`manager.start("bbjLanguageServer")` (`:209-210`) | none — no `ApiStatus` reference anywhere in this class file | `getInstance(Project)`, `start(String)`, `stop(String)` | none on any of the three |
+| 9 | `ServerStatus` | consumed as enum values (`.started`/`.stopped`/`.stopping`/`.starting`) across `ui/BbjServerService.java`, `ui/BbjJavaInteropService.java`, `ui/BbjStatusBarWidget.java` — never subclassed | none — no `ApiStatus` reference anywhere in this class file | enum constants (plain value comparisons, no override) | none |
+
+**Reading the table.** Three of the nine targets — `LSPCompletionFeature`, `LSPClientFeatures`,
+`LSPDocumentLinkFeature` — carry `@ApiStatus.Experimental` at the **class** level; these are
+exactly the three that `BbjCompletionFeature`/`BbjLanguageServerFactory` subclass or anonymously
+implement, PROJECT.md's own named coupling of concern. `LSPCompletionFeature`'s
+`addLookupItem(...)` and `LSPClientFeatures`'/`LanguageClientImpl`'s `setServerWrapper`/
+`getServerWrapper` carry `@ApiStatus.Internal` individually, but **none of these three is a member
+our code overrides or calls** — the specific override points our code actually depends on
+(`getIcon`, `initializeParams`, `setDocumentLinkFeature`, `setCompletionFeature`, `isSupported`,
+`createSettings`, `handleServerStatusChanged`) carry **no annotation of their own** on any of the
+nine targets; their instability exposure comes entirely from their *enclosing class* being marked
+experimental, not from the members themselves. The remaining six targets
+(`LanguageServerFactory`, `StreamConnectionProvider`, `OSProcessStreamConnectionProvider`,
+`LanguageServerManager`, `ServerStatus`, and `LanguageClientImpl` itself at the class level) carry
+**zero** `ApiStatus` references anywhere in their class files — confirmed by an empty `grep -c
+"org.jetbrains.annotations.ApiStatus"` result over each of their full `javap -v` outputs, not
+merely an absence noticed by inspection.
+
+### The "19", settled or retired
+
+PROJECT.md's "19 experimental API usages" figure does **not** come from a grep or `javap` count
+over a specific class set the way this task's own table does — its real provenance, traced back
+through this project's own history (`git log --all -S "19 experimental" -- .planning/PROJECT.md`
+and neighbouring `-S "experimental API"` history), is the **JetBrains IntelliJ Plugin Verifier's**
+own compatibility report, run at v3.6 Phase 49 and recorded verbatim in
+`.planning/milestones/v3.6-phases/49-fix-deprecated-apis-and-verify/49-01-VERIFICATION.md:84`:
+
+> All versions report "Compatible. 19 usages of experimental API" — the experimental API usages
+> are from LSP4IJ and are expected per requirements EXP-01/EXP-02.
+
+— across all 6 target IDE versions checked that day (2026-02-10). This **is** a measured figure,
+with a real, named, citable source; it is not an unsourced number invented for PROJECT.md. But it
+is a **different kind of measurement** than this task's own table: the Plugin Verifier counts
+**usage sites** across the plugin's entire compiled bytecode against LSP4IJ's *and the IntelliJ
+Platform's* full experimental-API surface (every call site into any `@ApiStatus.Experimental`
+member, anywhere in the plugin, not limited to nine hand-picked extension points), whereas this
+task's table counts **class-level declarations** across exactly the nine classes/interfaces our
+code touches. The two numbers are not directly comparable and this record does not force them to
+be: **`19` is settled as to provenance** — it is the Plugin Verifier's own count, dated
+2026-02-10 — but it is **not re-derived live in this sandbox**, because doing so requires running
+`./gradlew` (a `verifyPlugin` or `buildPlugin` task), and `./gradlew build` in this environment
+fails on the JDK 17-vs-25.0.3 local toolchain mismatch (`P64-D6-010`) before any such task can
+run. Restating `19` here as if this task had freshly measured it would be exactly the fabricated-
+measurement failure this plan is bound not to commit; instead, the number is **settled by naming
+its real source** (the Feb 10, 2026 Plugin Verifier run) rather than by this task's own jar
+inspection, and this task's own 3-of-9-classes-experimental count is recorded above as
+independent, narrower, freshly-measured corroborating evidence — consistent with, but not a
+recomputation of, the Verifier's figure.
+
+### Verdict
+
+The measurement answers the question directly: `BbjCompletionFeature`'s subclassing of
+`LSPCompletionFeature`, and `BbjLanguageServerFactory`'s anonymous implementation of
+`LSPClientFeatures`/`LSPDocumentLinkFeature`, are **not** an accepted, stable extension point —
+LSP4IJ itself marks all three classes `@ApiStatus.Experimental` at the class level in the exact
+0.19.0 artifact this plugin ships against, meaning JetBrains explicitly disclaims API stability
+for precisely the surface this plugin's completion-icon and document-link wiring depends on. This
+is a genuine, still-open upgrade hazard, matching `P63-D4-010`'s own disposition. Per D-06's
+mapping, a still-real item drafted for Phase 69 is `major-refactor`. The concrete, actionable edit
+this phase can name (unlike `P63-D4-010`, which recorded the coupling shape without a fix) is a
+regression-catching **contract test** for the three experimentally-marked extension points —
+`bbj-intellij` has no `src/test/` source set at all (`P63-D5-001`), so nothing today would catch a
+breaking LSP4IJ release before it ships.
+
+### Finding record
+
+```
+id:                P66-D4-001
+unit:              DEBT-05
+location:          bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java:19,21
+                   (extends LSPCompletionFeature; @Override getIcon(CompletionItem));
+                   bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java:39-64
+                   (anonymous LSPClientFeatures with a nested LSPDocumentLinkFeature override);
+                   bbj-intellij/build.gradle.kts:27 (the pinned 0.19.0)
+dimension:         D4
+secondary:         []
+severity:          medium
+evidence_tier:     trace
+                   D4's tier per INVENTORY §3b — cleared by the jar-measurement annotation table
+                   above (a written trace naming the exact class-level RuntimeInvisibleAnnotations
+                   block on each of the three coupled classes), not by a runtime reproduction.
+evidence:          The jar path, the three re-derived baseline commands with literal outputs (0,
+                   11, 20 — no drift), and the nine-row annotation table in the Jar measurement
+                   subsection above: LSPCompletionFeature, LSPClientFeatures and
+                   LSPDocumentLinkFeature — the three classes BbjCompletionFeature/
+                   BbjLanguageServerFactory actually subclass or anonymously implement — each
+                   carry a class-level RuntimeInvisibleAnnotations -> ApiStatus$Experimental block
+                   in the cached lsp4ij-0.19.0.jar, read directly via javap -v (not asserted from
+                   documentation or a changelog). The specific overridden/called members
+                   (getIcon, initializeParams, setDocumentLinkFeature, setCompletionFeature,
+                   isSupported) carry no annotation of their own; their exposure is inherited from
+                   the enclosing class's own Experimental marking.
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — a breaking
+                   signature or semantics change to LSPCompletionFeature.getIcon(),
+                   LSPClientFeatures's initializeParams()/setDocumentLinkFeature()/
+                   setCompletionFeature() builder chain, or LSPDocumentLinkFeature.isSupported()
+                   in a future LSP4IJ release (explicitly permitted by their own
+                   @ApiStatus.Experimental contract) would surface as a compile failure or a
+                   silent behaviour change across BbjCompletionFeature.java and
+                   BbjLanguageServerFactory.java at plugin-update time, with no regression test
+                   anywhere in this module (P63-D5-001) to catch a silent one before release.
+classification:    major
+                   (1) touches 1 file: FAIL — a complete fix needs a new bbj-intellij/src/test/
+                   source set exercising both BbjCompletionFeature.java and
+                   BbjLanguageServerFactory.java, two files, and per P64-D6-010 even running that
+                   suite locally is currently blocked by the JDK toolchain mismatch — (2) no
+                   public API/grammar/LSP change: pass — (3) no new dependency: n/a — records an
+                   existing dependency's coupling shape, adds nothing — (4) regression-testable
+                   with existing harness: FAIL — no src/test/ source set exists (P63-D5-001) —
+                   (5) reviewer can name the exact edit: pass — see Issue-ready draft below,
+                   which P63-D4-010 itself did not attempt (it recorded the coupling shape only,
+                   deferring the re-triage to this phase) — (6) severity medium, dimension D4
+                   (not D1): pass — tests (1) and (4) both fail, so classification is major
+                   regardless of (2)/(3)/(5)/(6).
+effort:            4
+                   (matches P63-D4-010's own recorded effort — no departure; the added
+                   contract-test scope is bounded to the three already-identified extension
+                   points, not a open-ended investigation).
+dedup:             supersedes P63-D4-010 (63-COVERAGE.md, this phase's designated DEBT-05
+                   evidence record) — not re-derived, re-triaged with this plan's own live jar
+                   measurement in place of P63-D4-010's coupling-shape-only trace. #410 (Zed
+                   Editor support request) and #231 (custom classpath/CLI settings request)
+                   re-checked against this file's `## Dedup source` composition-check table above
+                   — both remain unrelated to LSP4IJ API coupling, consistent with P63-D4-010's
+                   own dedup finding.
+disposition:       major-refactor
+```
+
+### Issue-ready draft
+
+**Title:** Add a regression-catching contract test for the 3 LSP4IJ extension points
+`bbj-intellij` depends on that are marked `@ApiStatus.Experimental`
+
+**Problem statement:** `LSPCompletionFeature` (subclassed by `BbjCompletionFeature`),
+`LSPClientFeatures` and `LSPDocumentLinkFeature` (both anonymously implemented in
+`BbjLanguageServerFactory.createClientFeatures()`) are marked `@ApiStatus.Experimental` at the
+class level in the locally cached LSP4IJ 0.19.0 jar — verified by reading each class's
+`RuntimeInvisibleAnnotations` block directly via `javap -v`. JetBrains explicitly disclaims API
+stability for exactly the extension points this plugin's completion-icon and document-link wiring
+depends on, and `bbj-intellij` has no `src/test/` source set (`P63-D5-001`) to catch a breaking
+change before a plugin-version bump ships it.
+
+**`file:line` evidence:**
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java:19` (`extends
+  LSPCompletionFeature`), `:21` (`@Override getIcon(CompletionItem)`).
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java:39-64`
+  (anonymous `LSPClientFeatures` overriding `initializeParams`, with a nested
+  `LSPDocumentLinkFeature` override of `isSupported`).
+- `bbj-intellij/build.gradle.kts:27` (the pinned `0.19.0`).
+- This plan's own `javap -v` output over
+  `com/redhat/devtools/lsp4ij/client/features/{LSPCompletionFeature,LSPClientFeatures,LSPDocumentLinkFeature}.class`
+  in the cached jar — each carries a class-level `RuntimeInvisibleAnnotations` ->
+  `org.jetbrains.annotations.ApiStatus$Experimental` block (recorded in the annotation table
+  above).
+
+**Verified failure scenario (traced, not runtime-reproduced — a code-shape finding, per D4's
+`trace` tier):** Any LSP4IJ release that changes `getIcon(CompletionItem)`'s signature, or
+removes/renames `initializeParams`/`setCompletionFeature`/`setDocumentLinkFeature`/`isSupported`,
+either fails `bbj-intellij`'s compile (caught immediately, low risk) or silently changes runtime
+behaviour (not caught at all today — no test exercises any of these override points).
+
+**Proposed approach:** Add a first `bbj-intellij/src/test/` source set (closing part of
+`P63-D5-001`'s zero-test-source-set gap for this specific surface) asserting: (1)
+`BbjCompletionFeature` still compiles as a subtype of `LSPCompletionFeature` and its
+`getIcon(CompletionItem)` override signature still matches its base declaration; (2)
+`BbjLanguageServerFactory.createClientFeatures()`'s anonymous `LSPClientFeatures`/
+`LSPDocumentLinkFeature` overrides (`initializeParams`, `isSupported`) still match their base
+signatures. A compile-time signature-shape assertion is sufficient to convert "silent behaviour
+change" into "compile failure", which is the acceptance bar this draft sets.
+
+**Acceptance criteria:**
+- A `bbj-intellij/src/test/` source set exists, exercising at minimum the three override points
+  named above.
+- `./gradlew build` — once `P64-D6-010`'s JDK 17-vs-25.0.3 toolchain mismatch is resolved — passes
+  with the new test.
+- No claim is made about the "19 experimental API usages" Plugin Verifier figure beyond what this
+  issue's own body states (settled by provenance, not re-derived here).
+
+**Proposed labels:** area `intellij` (from the repository's existing area-label set — the closer
+match; this is a plugin-internal coupling concern, not a general dependency-version-bump request)
+— `dependencies` is a secondary candidate; `PRIO 2` (severity `medium` maps to `PRIO 2` per
+INVENTORY §3d); effort `4`.
+
+**No `gh` write subcommand was run to produce this draft.**
