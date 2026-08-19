@@ -270,6 +270,28 @@ export class JavaInteropService {
     }
 
     /**
+     * Sends a request to the Java backend service, returning `fallback` and logging the error
+     * instead of throwing if connecting or the request itself fails (P61-D4-003). Shared by
+     * request paths whose error handling is exactly "connect, send, log-and-return-fallback on
+     * failure" — {@link loadClasspath} today; paths with additional success/error-branch logic
+     * (e.g. {@link ensureCompleteClassIndex}'s METHOD_NOT_FOUND latch, or {@link getRawClass}'s
+     * timeout race) are not routed through this helper since they don't fit the plain shape.
+     * @param request the JSON-RPC request type to send
+     * @param params request parameters
+     * @param fallback value returned when connecting or the request fails
+     * @param token cancellation token for request cancellation
+     */
+    private async sendRequestSafe<P, R>(request: RequestType<P, R, null>, params: P, fallback: R, token?: CancellationToken): Promise<R> {
+        try {
+            const connection = await this.connect();
+            return await connection.sendRequest(request, params, token);
+        } catch (e) {
+            console.error(e)
+            return fallback;
+        }
+    }
+
+    /**
      * Loads the Java classpath from the specified entries.
      * @param classPath array of classpath entries (file paths or BBj classpath notation)
      * @param token cancellation token for request cancellation
@@ -277,21 +299,15 @@ export class JavaInteropService {
      */
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         logger.debug(() => "Load classpath from: " + classPath.join(', '))
-        try {
-            const entries = classPath.filter(entry => entry.length > 0).map(entry => {
-                // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
-                // Otherwise, add 'file:' prefix for regular file paths
-                if (entry.startsWith('[') && entry.endsWith(']')) {
-                    return entry;
-                }
-                return 'file:' + entry;
-            });
-            const connection = await this.connect();
-            return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
-        } catch (e) {
-            console.error(e)
-            return false;
-        }
+        const entries = classPath.filter(entry => entry.length > 0).map(entry => {
+            // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
+            // Otherwise, add 'file:' prefix for regular file paths
+            if (entry.startsWith('[') && entry.endsWith(']')) {
+                return entry;
+            }
+            return 'file:' + entry;
+        });
+        return this.sendRequestSafe(loadClasspathRequest, { classPathEntries: entries }, false, token);
     }
 
     /**
