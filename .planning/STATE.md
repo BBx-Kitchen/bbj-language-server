@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 67
 current_phase_name: apply-easy-fixes
 status: executing
-stopped_at: Completed 67-01-PLAN.md
-last_updated: "2026-08-19T10:11:44.530Z"
+stopped_at: Completed 67-02-PLAN.md
+last_updated: "2026-08-19T10:38:57.924Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 42
-  completed_plans: 31
+  completed_plans: 32
   percent: 70
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 67 (apply-easy-fixes) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 67 execution started
 
@@ -108,6 +108,7 @@ Last activity: 2026-08-19 — Phase 67 execution started
 | Phase 66 P02 | ~55min | 2 tasks | 1 files |
 | Phase 66 P03 | ~45min | 3 tasks | 3 files |
 | Phase 67 P01 | ~14min | 3 tasks | 5 files |
+| Phase 67 P02 | ~9min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: Criteria 3 and 5 of Phase 66's ROADMAP success criteria answered Partially Met, not Met — neither DEBT-03/DEBT-04 nor the six original carried items are literally 'fixed or filed'/'represented by a GitHub issue' on the strength of a draft; the Phase 69 dependency is named explicitly
 - [Phase ?]: [Phase 67 Plan 01]: D-04 merge realized as two ledger rows (P61-D2-011, P66-D2-001), not one combined row, both closed against the same red+green commit pair
 - [Phase ?]: [Phase 67 Plan 01]: FIX-01..04 left Pending in REQUIREMENTS.md after this plan — only 3 of 77 apply-set rows applied; marking complete deferred to 67-12 phase close
+- [Phase ?]: [Phase 67 Plan 02]: P61-D2-002's fail_before recorded as inapplicable (empirically verified against the real vscode-jsonrpc library that Promise.race already handles both race branches synchronously) rather than a fabricated observed-red claim
+- [Phase ?]: [Phase 67 Plan 02]: P61-D3-001's LRU cap (RESOLVED_CLASSES_CACHE_LIMIT=5000) is a discretionary named-constant choice; P61-D4-003's sendRequestSafe helper routed through 1 of 4 candidate call sites, the other 3 documented as not fitting the plain shape
+- [Phase ?]: [Phase 67 Plan 02]: P61-D8-001 closed no-op per its own record's escape clause — clearCache()'s doc comment became accurate once P61-D2-004 landed in this same plan
 
 ### Tech Debt
 
@@ -244,8 +248,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T10:11:44.505Z
-Stopped at: Completed 67-01-PLAN.md
+Last session: 2026-08-19T10:38:57.897Z
+Stopped at: Completed 67-02-PLAN.md
 Resume file: 
 
 None

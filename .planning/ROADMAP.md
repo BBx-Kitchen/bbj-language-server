@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 1/12 plans executed
+**Plans**: 2/12 plans executed
 
 Plans:
 **Wave 1**
@@ -587,7 +587,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 67-02-PLAN.md — The 7 `java-interop.ts` findings: connection lifecycle, cache invalidation, unbounded cache
+- [x] 67-02-PLAN.md — The 7 `java-interop.ts` findings: connection lifecycle, cache invalidation, unbounded cache
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
