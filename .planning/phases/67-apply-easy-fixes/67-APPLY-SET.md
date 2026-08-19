@@ -39,18 +39,18 @@ Two derived counts, and the arithmetic connecting them:
 | 2 | P61-D2-002 | applied | 7ae80a2 (test) + b0696aa (fix) |
 | 3 | P61-D2-003 | applied | 2770752 (red) + 4c92662 (green) |
 | 4 | P61-D2-004 | applied | e82f9c2 (red) + 557ab62 (green) |
-| 5 | P61-D2-005 | pending | pending |
-| 6 | P61-D2-006 | pending | pending |
+| 5 | P61-D2-005 | applied | 1b619cc (red) + 4db8169 (green) |
+| 6 | P61-D2-006 | applied | 112c9bb (red) + e57b15a (green) |
 | 7 | P61-D2-008 | applied | 83375d4 (red) + 664670f (green) |
-| 8 | P61-D2-009 | pending | pending |
-| 9 | P61-D2-010 | pending | pending |
+| 8 | P61-D2-009 | applied | 5528665 (red) + 7b6eff9 (green) |
+| 9 | P61-D2-010 | applied | 869a330 (red) + b83d3e8 (green) |
 | 10 | P61-D2-011 | applied | 382a068 (red) + 32faeff (green) |
 | 11 | P61-D2-013 | applied | 1b85860 (red) + eb7d843 (green) |
 | 12 | P61-D2-014 | applied | 6b8c2db (red) + 84373a6 (green) |
 | 13 | P61-D2-015 | applied | c6bef67 (red) + 1f5e824 (green) |
 | 14 | P61-D2-016 | applied | d0b1666 (red) + c47da5c (green) |
 | 15 | P61-D2-017 | applied | 26576ae (red) + 38dea2e (green) |
-| 16 | P61-D2-019 | pending | pending |
+| 16 | P61-D2-019 | applied | d1e86e6 (red) + 3b18ac9 (green) |
 | 17 | P61-D3-001 | applied | 7a4448d (red) + 6d7be38 (green) |
 | 18 | P61-D3-004 | applied | a1a90cd (red) + 0aaece2 (green) |
 | 19 | P61-D3-005 | applied | fc9cf79 (red) + 6b32823 (green) |
@@ -199,15 +199,15 @@ location:          bbj-vscode/src/language/bbj-value-converter.ts:14
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A BBj source string literal containing a doubled-quote escape (e.g. `"He said ""hi"""`) parses without error, but StringLiteral.value retains the literal `""` sequence instead of the single embedded `"` the language's own
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 1b619cc — `npx vitest run test/value-converter.test.ts` failed 1/3: `expected 'He said ""hi""' to be 'He said "hi"'` (the doubled-quote case), confirming the converter left the doubled quotes uncollapsed
+failure_scenario:  A BBj source string literal containing a doubled-quote escape (e.g. `"He said ""hi"""`) parses without error, but StringLiteral.value retains the literal `""` sequence instead of the single embedded `"` the language's own escape convention specifies, so every consumer of `.value` sees a semantically wrong string.
+fix_applied:       BBjValueConverter's STRING_LITERAL case now applies `.replace(/""/g, '"')` after slicing off the outer quote delimiters, matching bbj.langium:948's own documented doubled-quote escape contract. No other rule's conversion changed.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/value-converter.test.ts test/lexer.test.ts test/cpl-parser.test.ts test/parser.test.ts test/example-files.test.ts — build succeeds, all 5 suites pass (234 passed, 1 pre-existing skip)
+commit:            1b619cc (red) + 4db8169 (green)
+notes:             New dedicated test/value-converter.test.ts created per plan instruction, rather than extending test/parser.test.ts (which carries the 3 DEBT-02-tracked disabled assertions).
 ```
 
 ```
@@ -218,15 +218,15 @@ location:          bbj-vscode/src/language/bbj-lexer.ts:11-34
 dimension:         D2
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A .bbj file containing mixed line endings (at least one \r\n line and at least one bare \n line — plausible when a repository lacks .gitattributes EOL normalization, or a file is edited across Windows/Unix tooling) is
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 112c9bb — `npx vitest run test/lexer.test.ts` failed 1/6: mixed-CRLF/LF token offsets `[0, 9, 18]` did not equal `[0, 9, 17]`, confirming the global-eol join shifted the offset of every token after the first drifted line
+failure_scenario:  A .bbj file containing mixed line endings (at least one \r\n line and at least one bare \n line — plausible when a repository lacks .gitattributes EOL normalization, or a file is edited across Windows/Unix tooling) is retokenized by BbjLexer.tokenize; prepareLineSplitter's uniform-EOL normalization changes the transformed text's length relative to the original document text, shifting every downstream token offset and therefore every diagnostic/hover/completion/go-to-definition range for the remainder of the file.
+fix_applied:       Branch taken: track and re-emit each line's own original EOL. prepareLineSplitter now captures each line's original delimiter via a capturing split (`text.split(/(\r\n|\r|\n)/)`) and re-joins each line with its own captured delimiter instead of the single globally-detected `eol`; the final line still falls back to the detected `eol` (unchanged from prior behavior) so single-EOL-style files and files with no trailing newline tokenize byte-for-byte identically to before. The continuation-line splicing logic is untouched and stays length-preserving (proved algebraically: padding cancels the stripped ':' characters exactly).
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/value-converter.test.ts test/lexer.test.ts test/cpl-parser.test.ts test/parser.test.ts test/example-files.test.ts — build succeeds, all 5 suites pass (234 passed, 1 pre-existing skip)
+commit:            112c9bb (red) + e57b15a (green)
+notes:             Branch taken: per-line original EOL tracking (not the reject/normalize-before-parse alternative). `git show --stat e57b15a` touches only bbj-vscode/src/language/bbj-lexer.ts.
 ```
 
 ```
@@ -256,14 +256,14 @@ location:          bbj-vscode/src/language/bbj-cpl-parser.ts:40-46
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  bbjcpl emits (or a future compiler version emits, or a malformed/truncated compiler invocation produces) an error line reporting physical line 0, or a line number exceeding the LSP client's document's actual line count;
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at 5528665 — `npx vitest run test/cpl-parser.test.ts` failed 1/10: `expected -1 to be 0` for a diagnostic reporting physical line 0
+failure_scenario:  bbjcpl emits (or a future compiler version emits, or a malformed/truncated compiler invocation produces) an error line reporting physical line 0, or a line number exceeding the LSP client's document's actual line count; parseBbjcplOutput returns a Diagnostic with a negative range.start.line, outside the LSP Position contract (zero-based, non-negative), which can be rejected, clamped unpredictably, or cause a client-side rendering exception.
+fix_applied:       bbj-cpl-parser.ts now computes `physicalLine = Math.max(0, parseInt(match[1], 10) - 1)`, clamping at zero instead of letting it go negative. A diagnostic on line 5 still maps to 4, unchanged.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/value-converter.test.ts test/lexer.test.ts test/cpl-parser.test.ts test/parser.test.ts test/example-files.test.ts — build succeeds, all 5 suites pass (234 passed, 1 pre-existing skip)
+commit:            5528665 (red) + 7b6eff9 (green)
 notes:             
 ```
 
@@ -275,15 +275,15 @@ location:          bbj-vscode/src/language/validations/check-variable-scoping.ts
 dimension:         D2
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  Any BBj program containing a class/method whose body assigns and then reads a local variable, where an unrelated Program-scope (or enclosing-method-scope) variable happens to share the same case-insensitive
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 869a330 — `npx vitest run test/variable-scoping.test.ts` failed 1/30: a class method's own correctly-ordered `x = 1` / `PRINT x` produced a spurious `'x' used before assignment (first assigned at line 9)` hint because a later program-scope `x = 99` existed
+failure_scenario:  Any BBj program containing a class/method whose body assigns and then reads a local variable, where an unrelated Program-scope (or enclosing-method-scope) variable happens to share the same case-insensitive name and is assigned later in document order, produces a spurious "used before assignment" Hint on the method-local variable's perfectly valid read — a false positive traceable to the outer scope's traversal reaching into a nested scope it was documented not to enter.
+fix_applied:       Branch taken: use the TreeStream iterator's `prune()` method directly (obtained via `.iterator()`, since `prune()` is only reachable on the iterator object, not through the for...of sugar). Pass 2's loop now calls `contentsIterator.prune()` for excluded MethodDecl/BbjClass/DefFunction subtrees instead of a bare `continue`, so no node inside an excluded subtree is visited.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/variable-scoping.test.ts test/builtin-functions-library.test.ts test/validation.test.ts — build succeeds, all 3 suites pass (76 passed)
+commit:            869a330 (red) + b83d3e8 (green)
+notes:             Branch taken: prune() over a manual recursive walk (smaller edit, no duplicated traversal logic). test/variable-scoping.test.ts pass count: 29 passing pre-fix (existing) + 1 failing (new) = 30 total pre-fix; 30/30 passing post-fix — no diagnostic set regression. `git show --stat b83d3e8` touches only check-variable-scoping.ts.
 ```
 
 ```
@@ -408,15 +408,15 @@ location:          bbj-vscode/src/language/lib/events.ts:57,528,62,533
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A reference to ON_MOUSE_ENTER or ON_MOUSE_EXIT always resolves to the first declaration (line 57/62); the second declaration's distinct DOCU text is permanently unreachable by linking. Completion's getAllElements()
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at d1e86e6 — `npx vitest run test/builtin-functions-library.test.ts` failed 1/3: found duplicate event names `ON_MOUSE_ENTER, ON_MOUSE_EXIT`
+failure_scenario:  A reference to ON_MOUSE_ENTER or ON_MOUSE_EXIT always resolves to the first declaration (line 57/62); the second declaration's distinct DOCU text is permanently unreachable by linking. Completion's getAllElements() has no dedup, so a user completing an ON_MOUSE_ENTER/ON_MOUSE_EXIT handler sees the same label offered twice, indistinguishable except by which duplicate's hover text happens to be shown.
+fix_applied:       Branch taken: merge (the two declarations differ in DOCU text only — "Window Mouse Enter"/"Window Mouse Exit" vs "Mouse Enter Event"/"Mouse Exit Event" — so both phrasings are preserved as a union, e.g. "Window Mouse Enter / Mouse Enter Event", in the kept line-57/62 declaration). The duplicate eventtype block at lines 525-533 is removed. events.bbl (the physical catalog mirror) is unchanged — confirmed dead per Phase 61 Plan 07 (RU-61-07): not read by any runtime consumer or test, only the .ts-exported string is used.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/variable-scoping.test.ts test/builtin-functions-library.test.ts test/validation.test.ts — build succeeds, all 3 suites pass (76 passed)
+commit:            d1e86e6 (red) + 3b18ac9 (green)
+notes:             Red test added to test/builtin-functions-library.test.ts directly (not a new test/events-library.test.ts) — that file's existing harness (createBBjServices + initializeWorkspace) already loads the bbjlib:///events.bbl document via the same WorkspaceManager.loadAdditionalDocuments path that loads functions.bbl, so it reaches lib/events.ts's content. `git show --stat 3b18ac9` touches only lib/events.ts.
 ```
 
 ```

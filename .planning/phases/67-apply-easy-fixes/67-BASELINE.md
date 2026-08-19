@@ -363,6 +363,56 @@ exclusion argued per occurrence above. Every test in a timed-out suite reports `
 
 **`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
 
+### Plan 67-05 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm run lint` and `npm test 2>&1` (three full runs, per D-08), on HEAD
+after plan 67-05's ten commits (the P61-D2-005, P61-D2-006, P61-D2-009 red/green pairs from Task 1,
+and the P61-D2-010, P61-D2-019 red/green pairs from Task 2; no `bbj-intellij/` file changed, so
+`./gradlew build` is not re-run per D-09).
+
+**`npm run lint`: exit code `0`, zero warnings.** Unchanged from the `P61-D4-010` lint-clean
+milestone plan 67-04 reached — no later plan may regress it, and none of this plan's five edits
+touches an eslint directive.
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set — same 11 names, none added, none removed, on every one of
+the three runs. `test/value-converter.test.ts`, `test/lexer.test.ts`, `test/cpl-parser.test.ts`,
+`test/variable-scoping.test.ts` and `test/builtin-functions-library.test.ts` — the five suites this
+plan's two tasks touch directly — passed in full (234, then 76, passing respectively across their
+own scoped runs) on every run.
+
+Beyond these 11, each run showed a different 1-3 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.`, never an assertion failure: run 1
+(`test/class-validations-issues.test.ts`, `test/classes.test.ts > Inheritance chain resolution`,
+`test/run-call-file-resolution.test.ts`, `test/functional/chevrotain-tokens.test.ts`), run 2
+(`test/run-call-file-resolution.test.ts > RUN/CALL file resolution (#173)`), run 3
+(`test/classes.test.ts > Classes access-levels`, `test/declare-in-class.test.ts`,
+`test/use-project-root.test.ts`). All are already named in `## Flaky exclusions (D-08)` above
+(same files, load-dependent `beforeAll initializeWorkspace()` hookTimeout pattern) or are the same
+pattern recurring in a different describe block of an already-named file; none touches any file
+this plan modifies (`bbj-value-converter.ts`, `bbj-lexer.ts`, `bbj-cpl-parser.ts`,
+`check-variable-scoping.ts`, `lib/events.ts`), so they are consistent with — not caused by — this
+plan's changes; excluded per D-08. Every test in a timed-out suite reports `skipped`, not `failed`,
+which is why the total passed/skipped counts vary run to run (895-897 passed, 8-10 skipped) while
+the 11-name deterministic failure set and the 916 total never move.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*
