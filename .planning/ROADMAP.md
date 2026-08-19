@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 8/12 plans executed
+**Plans**: 9/12 plans executed
 
 Plans:
 **Wave 1**
@@ -615,7 +615,7 @@ Plans:
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
-- [ ] 67-09-PLAN.md — TextMate grammar (3 + coverage row), extension activation, and the language-configuration JSON
+- [x] 67-09-PLAN.md — TextMate grammar (3 + coverage row), extension activation, and the language-configuration JSON
 
 **Wave 10** *(blocked on Wave 9 completion)*
 

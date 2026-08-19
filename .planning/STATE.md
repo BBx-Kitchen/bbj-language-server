@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 67
 current_phase_name: apply-easy-fixes
 status: executing
-stopped_at: Completed 67-08-PLAN.md
-last_updated: "2026-08-19T14:08:03.780Z"
+stopped_at: Completed 67-09-PLAN.md
+last_updated: "2026-08-19T14:24:37.776Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 42
-  completed_plans: 38
+  completed_plans: 39
   percent: 70
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 67 (apply-easy-fixes) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 67 execution started
 
@@ -115,6 +115,7 @@ Last activity: 2026-08-19 — Phase 67 execution started
 | Phase 67 P06 | ~35min | 3 tasks | 8 files |
 | Phase 67 P07 | ~33min | 3 tasks | 13 files |
 | Phase 67 P08 | ~13min | 3 tasks | 6 files |
+| Phase 67 P09 | ~9min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 67 Plan 07]: P61-D5-017's .ts-vs-.bbl equivalence compares unique name sets, not raw counts, so events.bbl's pre-P61-D2-019 duplicate leftovers aren't mistaken for new drift
 - [Phase ?]: [Phase 67 Plan 08]: P62-D8-002 comment-correction branch taken over map removal; P62-D5-006's non-ENOENT-error case reuses P62-D2-010's own test rather than duplicating it; P62-D2-011's stale-fixture test lives under bbj-vscode/test/test-data/ rather than os.tmpdir(), read as binding on new tests this plan adds
 - [Phase ?]: [Phase 67 Plan 08]: Own-test-bug found and fixed mid-fix — P62-D2-011's red test lacked a real gap before the wait call, letting the stale write's mtime coincidentally satisfy the new mtime gate; fixed with a 100ms gap, landed as its own test(P62-D2-011) commit
+- [Phase ?]: [Phase 67 Plan 09]: P62-D2-009 branch taken: dropped trailing \B entirely rather than substituting (?=\d), preserving the pre-existing space/end-of-line-terminated IOL=/LEN= form
+- [Phase ?]: [Phase 67 Plan 09]: P62-D5-004 closed no-op — its three named assertions landed as the P62-D2-007/008/009 regression tests in the same file the record names
 
 ### Tech Debt
 
@@ -272,8 +275,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T14:08:03.752Z
-Stopped at: Completed 67-08-PLAN.md
+Last session: 2026-08-19T14:24:37.747Z
+Stopped at: Completed 67-09-PLAN.md
 Resume file: 
 
 None
