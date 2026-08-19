@@ -1821,3 +1821,240 @@ gate. Phase 66 supplies the ID-and-disposition pointer; Phase 69 supplies the tr
 `(drafted; issue number backfilled by Phase 69)` parenthetical on each `PROJECT.md` bullet states
 this explicitly, so a reader of `PROJECT.md` alone (without opening `66-COVERAGE.md`) knows the
 issue is not yet filed. No `gh` write subcommand ran to produce this section.
+
+## DEBT-06 closure
+
+DEBT-06 asks that every carried debt item ends the milestone either fixed or represented by a
+GitHub issue, with none remaining recorded only as prose in `PROJECT.md`. It has two halves, and
+this section states how Phase 66 discharges each — plainly, where it does not.
+
+**The prose half is discharged.** Task 2's rewrite (`## PROJECT.md rewrite (D-13)` above) makes
+every one of `PROJECT.md`'s eight "Known tech debt" bullets a pointer into `66-COVERAGE.md`,
+carrying a `P66-*` finding ID, a `DEBT-NN` requirement, and a disposition — not a bare prose
+description. The acceptance arithmetic: `sed -n '/^\*\*Known tech debt:/,/^## /p' .planning/PROJECT.md
+| grep -c '^- '` still returns `8` (no bullet added or deleted); every one of those eight extracted
+bullets carries a `DEBT-0[1-8]` token (`grep -cE 'DEBT-0[1-8]'` over the same range returns `8`);
+zero bullets carry "not yet mapped" wording (`grep -ci 'not yet mapped'` returns `0`). No item
+remains recorded only as prose — each is recorded as a pointer to a specific finding record with a
+specific disposition, checkable independently of this file.
+
+**The tracker half is not literally true at the end of Phase 66.** Every unresolved item (all
+eight — none resolved `already-covered`/`not-reproducible` this phase) carries a complete
+issue-ready draft in this file, but **none is filed** — D-02 reserves every tracker write to Phase
+69, gated on `ISSUE-01`'s single approval. No bullet, no finding record, and no section of this
+file states that any item "is represented by a GitHub issue" — each `PROJECT.md` bullet's
+`(drafted; issue number backfilled by Phase 69)` parenthetical, and each finding record's own
+`### Issue-ready draft` closing line ("No `gh` write subcommand was run to produce this draft."),
+says the opposite explicitly. DEBT-06 is **not** declared complete on the strength of these drafts.
+What makes it true: Phase 69 filing the eight drafts below and backfilling each filed issue number
+into its `PROJECT.md` bullet (D-13's stated remaining Phase 69 obligation).
+
+**Every draft produced by this phase**, one row per item, the handoff Phase 69 acts on:
+
+| Item | Finding ID | Proposed area | `PRIO` | Effort | `dedup:` result |
+|---|---|---|---|---|---|
+| DEBT-01 (CPU stability, supersedes closed #232) | `P66-D3-001` | `scoping` | `PRIO 1` | `8` | none — #232 CLOSED, absent from frozen snapshot |
+| DEBT-02, draft 1 (parser.test.ts trio) | `P66-D5-001` | `validation` | `PRIO 2` | `4` | none |
+| DEBT-02, draft 2 (TEST-03 skip) | `P66-D5-002` | `grammar` | `PRIO 2` | `8` | none |
+| DEBT-03 (type-inference fallback) | `P66-D2-001` | `types` | `PRIO 2` | `4` | none — #466 checked, unrelated mechanism |
+| DEBT-04 (FQN static-only completion) | `P66-D2-002` | `scoping` (secondary `types`) | `PRIO 2` | `8` | none — #466 checked, unrelated mechanism |
+| DEBT-05 (LSP4IJ experimental-API contract test) | `P66-D4-001` | `intellij` (secondary `dependencies`) | `PRIO 2` | `4` | supersedes `P63-D4-010`; #410/#231 checked, unrelated |
+| DEBT-07 (BBjCPL hierarchy Rule 0 unreachable) | `P66-D2-003` | `vscode` | `PRIO 2` | `2` | none |
+| DEBT-08 (IntelliJ TextMate filenames verification) | `P66-D5-003` | `intellij` | `PRIO 2` | `2` | distinct from #381 (VS Code-side, already resolved) |
+
+## Phase 66 Close-Out
+
+Every gate below was re-run at execution time and its literal output recorded; none is restated
+from `66-CONTEXT.md`, from an item section, or from an earlier plan. Where a live re-derivation
+disagrees with a figure already in this file, the disagreement is surfaced here as a defect rather
+than reconciled by editing the section — none did.
+
+### A. Denominator gate
+
+```bash
+sed -n '/^\*\*Known tech debt:/,/^## /p' .planning/PROJECT.md | grep -c '^- '
+```
+
+**Literal output: `8`.** Matches D-04's discussion-time count and every prior plan's re-derivation
+of the same command — no drift to report. Because the count is `8`, DEBT-06's prose half can be
+(and, per `## DEBT-06 closure` above, is) declared discharged on this denominator; a count other
+than `8` would have been reported here as a drift with its cause, and DEBT-06 would not have been
+declared discharged on it.
+
+**Closing table — every row, source order, one row per `PROJECT.md` bullet, every cell filled with
+a verdict, none left blank or awaiting a later plan:**
+
+| `PROJECT.md` line | Owner requirement | Finding ID | Disposition |
+|---|---|---|---|
+| 250 | DEBT-05 | `P66-D4-001` | major-refactor |
+| 251 | DEBT-01 | `P66-D3-001` | major-refactor |
+| 252 | DEBT-07 | `P66-D2-003` | major-refactor |
+| 253 | DEBT-02 | `P66-D5-002` | major-refactor |
+| 254 | DEBT-02 | `P66-D5-001` | major-refactor |
+| 255 | DEBT-08 | `P66-D5-003` | wontfix (blocked on `P64-D6-010`) |
+| 256 | DEBT-04 | `P66-D2-002` | major-refactor |
+| 257 | DEBT-03 | `P66-D2-001` | easy-fix |
+
+The register's row order is `PROJECT.md` source order — deterministic and reproducible: a reader
+re-running the D-04 command above gets the same eight lines in the same order and can check each
+row against this table one by one. Every disposition cell above carries a real verdict from
+INVENTORY line 154's vocabulary — none is a placeholder, none names a still-owing plan.
+
+### B. Criterion gate
+
+Each of `ROADMAP.md`'s five Phase 66 success criteria, answered from the actual verdicts above:
+
+1. **criterion 1** ("CPU stability in multi-project workspaces (#232) has either a landed
+   mitigation or an issue update with a concrete implementation plan") — discharged by `## DEBT-01`:
+   `P66-D3-001`'s issue-ready draft names the exact edit for both mechanisms (a cache for
+   `getBBjClassesFromFile`, an `isExternalDocument`-aware `treeIter.prune()` for
+   `collectLocalSymbols`), satisfying "issue update with a concrete implementation plan" — no
+   mitigation is landed (D-01, verdict-only). **Met.**
+2. **criterion 2** ("the 3 disabled `parser.test.ts` assertions and the skipped TEST-03 case are
+   each either re-enabled or documented with the specific blocker and unblocking condition") —
+   discharged by `## DEBT-02`: both `P66-D5-001` and `P66-D5-002` document their own distinct
+   unblocking condition (a repo-local Java classpath fixture; Langium's upstream completion-grammar
+   follower) in both the finding record and the issue-ready draft. Neither is re-enabled. **Met** —
+   the criterion's own wording is satisfied by documentation, with no tracker-filing requirement in
+   its text.
+3. **criterion 3** ("the static method return-type inference gap and the FQN static-only completion
+   filtering gap are each either fixed or filed") — discharged in part by `## DEBT-03`
+   (`P66-D2-001`, easy-fix) and `## DEBT-04` (`P66-D2-002`, major-refactor): both are verdicted with
+   complete issue-ready drafts naming the exact edit, but neither is **fixed** (D-01, verdict-only,
+   zero source change) nor literally **filed** (D-02, zero tracker writes — the draft is not yet on
+   the tracker). Per the same honesty this file applies to criterion 5 below, the literal
+   "fixed or filed" bar is not met by a draft alone. **Partially Met** — the analytical work
+   (verdict, evidence, named edit) is complete for both items; what remains is Phase 69 filing the
+   drafts under `ISSUE-01`.
+4. **criterion 4** ("LSP4IJ's 19 experimental API usages and the `BbjCompletionFeature` coupling
+   have a current risk assessment against the installed LSP4IJ version") — discharged by
+   `## DEBT-05`: the nine-target `javap -v` annotation table measured directly against the cached
+   LSP4IJ `0.19.0` jar (the version actually pinned in `build.gradle.kts:27`), plus the "19"
+   figure's provenance settled against the 2026-02-10 Plugin Verifier report. No tracker-filing
+   language in this criterion's text. **Met.**
+5. **criterion 5** ("every one of these 6 items ends the milestone represented either by a merged
+   fix or a GitHub issue — none remain as `PROJECT.md` prose only") — discharged in part by
+   `## DEBT-06 closure` above: the prose half is fully discharged (every item is a pointer, not bare
+   prose), but the "merged fix or a GitHub issue" half is not — zero items are fixed (D-01) and zero
+   are filed (D-02) at the end of Phase 66; every item has a drafted, unfiled issue. **Partially
+   Met** — the Phase 69 dependency is named explicitly in `## DEBT-06 closure`, and this file does
+   not answer **Met** on the strength of a draft.
+
+### C. Requirement gate
+
+One row per requirement, `DEBT-01` through `DEBT-08`, each marked complete or explicitly not, with
+the evidence named. Eight rows, none omitted — `DEBT-07`/`DEBT-08` (Task 1 of this plan) are gated
+identically to the other six.
+
+| Requirement | Status | Evidence |
+|---|---|---|
+| **DEBT-01** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-01` — `P66-D3-001`, major-refactor, criterion 1 **Met** above |
+| **DEBT-02** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-02` — `P66-D5-001`/`P66-D5-002`, major-refactor ×2, criterion 2 **Met** above |
+| **DEBT-03** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-03` — `P66-D2-001`, easy-fix, criterion 3 **Partially Met** above |
+| **DEBT-04** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-04` — `P66-D2-002`, major-refactor, criterion 3 **Partially Met** above |
+| **DEBT-05** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-05` — `P66-D4-001`, major-refactor, criterion 4 **Met** above |
+| **DEBT-06** | **Not complete** — prose half discharged, tracker half depends on Phase 69 | `## DEBT-06 closure` above; criterion 5 **Partially Met** |
+| **DEBT-07** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-07` — `P66-D2-003`, major-refactor, added to `REQUIREMENTS.md` (Task 1) |
+| **DEBT-08** | Re-triage complete; tracker filing pending Phase 69 | `## DEBT-08` — `P66-D5-003`, wontfix (blocked on `P64-D6-010`), added to `REQUIREMENTS.md` (Task 1) |
+
+Every requirement's re-triage work (verdict, evidence, disposition, issue-ready draft) is complete;
+`DEBT-06` itself is the one row explicitly **not** marked complete, because its own text requires
+the tracker half this phase deliberately does not perform (D-02).
+
+### D. Boundary gate
+
+The gate that makes D-01 and D-02 checkable rather than asserted. Three commands, each with its
+literal output, re-run at this task's execution time:
+
+```bash
+git status --porcelain bbj-vscode bbj-intellij java-interop .github
+```
+**Literal output: (empty — nothing).**
+
+```bash
+git status --porcelain .planning/reviews/INVENTORY.md .planning/reviews/61-COVERAGE.md .planning/reviews/62-COVERAGE.md .planning/reviews/63-COVERAGE.md .planning/reviews/64-COVERAGE.md .planning/reviews/65-COVERAGE.md
+```
+**Literal output: (empty — nothing).**
+
+```bash
+git log --oneline -- .planning/reviews/INVENTORY.md | head -1
+```
+**Literal output: `1dcab8b docs(60-04): log 60-03's Langium/Chevrotain/Vitest corrections in D-15
+log`** — still Phase 60's own commit; nothing in this phase touched the file.
+
+**Narrated:** empty, empty, `1dcab8b` (Phase 60's own commit, unchanged). No file under
+`bbj-vscode`, `bbj-intellij`, `java-interop`, or `.github` carries an uncommitted change from any
+of this phase's three plans — D-01 (verdict-only, zero source change) holds. `INVENTORY.md` and all
+five closed `6N-COVERAGE.md` files carry zero uncommitted changes and `INVENTORY.md`'s own commit
+history shows no Phase 66 touch — the immutable-records boundary holds. **No GitHub issue was
+created, commented on, labelled, reopened, or closed by any of this phase's three plans** — D-02
+holds, stated positively rather than as a bare denial: the only `gh` invocations across all three
+plans were **read-only** — `gh issue view 232 --json number,state,title,labels` (confirming #232's
+`CLOSED` state, the reason DEBT-01's draft supersedes rather than comments on it — `## Dedup
+source` above) and `gh issue view 466 --json ...`-shaped dedup checks (`## DEBT-03`'s `dedup:`
+field, confirming #466 is an unrelated mechanism) — both queries the frozen Open-Issue Snapshot's
+own `dedup:` discipline required, not tracker-state mutations.
+
+### E. Finding accounting
+
+Every `P66-*` ID pre-allocated by the phase (eight, `## Finding-ID namespace`'s pre-allocation
+table), all eight allocated — none resolved `already-covered`/`not-reproducible`, so no
+pre-allocated ID went unassigned or was reassigned:
+
+| Finding ID | Item | Dimension | Classification | Disposition |
+|---|---|---|---|---|
+| `P66-D3-001` | DEBT-01 | D3 | major | major-refactor |
+| `P66-D5-001` | DEBT-02 (trio) | D5 | major | major-refactor |
+| `P66-D5-002` | DEBT-02 (TEST-03) | D5 | major | major-refactor |
+| `P66-D2-001` | DEBT-03 | D2 (secondary D5) | easy | easy-fix |
+| `P66-D2-002` | DEBT-04 | D2 | major | major-refactor |
+| `P66-D4-001` | DEBT-05 | D4 | major | major-refactor |
+| `P66-D2-003` | DEBT-07 | D2 | major | major-refactor |
+| `P66-D5-003` | DEBT-08 | D5 | major | wontfix |
+
+**Per-dimension breakdown:** D2 — 3 (`P66-D2-001`, `P66-D2-002`, `P66-D2-003`); D5 — 3
+(`P66-D5-001`, `P66-D5-002`, `P66-D5-003`); D3 — 1 (`P66-D3-001`); D4 — 1 (`P66-D4-001`).
+
+**Classification split:** 7 `major`, 1 `easy` (`P66-D2-001`, DEBT-03). Phase 67 inherits exactly
+**one** `classification: easy` apply candidate from this phase — matching `ROADMAP.md`'s own
+prediction ("expect it to be small... four of the eight items are structural or
+blocked-on-environment, and the two orphans are a timing nuance and an unverifiable bundle
+registration").
+
+### F. Downstream inheritance
+
+| Phase | Inherits from Phase 66 |
+|---|---|
+| **Phase 67** | Exactly one `classification: easy` apply candidate — `P66-D2-001` (DEBT-03, the `bbj-type-inferer.ts` `isJavaMethod` fallback). Phase 66 landed no source change (D-01), so nothing is pre-applied; Phase 67 starts from `P66-D2-001`'s named edit and acceptance criteria as written in `## DEBT-03`'s issue-ready draft. |
+| **Phase 68** | `66-COVERAGE.md` in full for DOC-03's concatenation walk; the seven `major`-classified `P66-*` findings (`P66-D3-001`, `P66-D5-001`, `P66-D5-002`, `P66-D2-002`, `P66-D4-001`, `P66-D2-003`, `P66-D5-003`) for `MAJOR-REFACTORS.md` assembly; `P66-D2-001` for `EASY-FIXES.md` once Phase 67 applies it; the `DOC-04` dispositions captured at triage time in each finding record (none of this phase's eight resolved `duplicate`/`already-covered`/`not-reproducible`, so `DOC-04`'s dispositioned-away bucket receives nothing from Phase 66); and the new `DEBT-07`/`DEBT-08` requirement rows its own coverage statement must now pick up (`REQUIREMENTS.md`'s totals moved to 40/40/0 in Task 1). |
+| **Phase 69** | All eight issue-ready drafts (`## DEBT-06 closure`'s handoff table above) to file under `ISSUE-01`; the `dedup:` results recorded in each finding record, feeding `ISSUE-04`'s re-query immediately before filing; and the `PROJECT.md` issue-number backfill (D-13) — the step that finally makes `DEBT-06` and criteria 3/5 literally true, once completed. |
+
+### G. Closing confirmations
+
+- **`ISSUE-01` not triggered.** No GitHub issue was opened, commented on, or drafted-and-filed by
+  any of this phase's three plans — eight drafts exist in this file's text only.
+- **`INVENTORY.md` not edited.** Confirmed by `### D. Boundary gate` above — empty `git status
+  --porcelain`, unchanged `git log` HEAD.
+- **The five closed `6N-COVERAGE.md` files not edited.** Same boundary-gate evidence.
+- **No source file modified anywhere.** `git status --porcelain bbj-vscode bbj-intellij java-interop
+  .github` — empty, confirmed above.
+- **No invented review-unit token for this phase.** This file's `unit:` field carries every
+  finding's `DEBT-NN` requirement ID instead — per `## Two recording-shape resolutions the
+  structural break forces` at the top of this file, INVENTORY defines no per-phase review-unit
+  namespace for Phase 66, and none is minted here.
+- **Phase 64's `triage:` field is absent by decision, not oversight.** `grep -cE '^triage:'
+  .planning/reviews/66-COVERAGE.md` returns `0` — the field does not apply to a phase Phase 64 was
+  never scoped to touch (D-06).
+- **Every `effort:` in this file lands on INVENTORY §3d's three-value scale.** All eight `effort:`
+  lines match `^effort: *(2|4|8)$` after whitespace stripping — confirmed: `2`, `4`, `4`, `4`, `4`,
+  `8`, `8`, `8` across the eight records (no off-scale value, unlike Phase 63's recorded `3`/`1`/`1`
+  mistake).
+- **Every `disposition:` in this file is one of INVENTORY line 154's six values.** Confirmed across
+  all eight finding records: `major-refactor` (six), `easy-fix` (one), `wontfix` (one) — no
+  off-vocabulary value.
+
+**Total tech debt this phase leaves for the milestone:** zero source-file changes, zero tracker
+writes, eight verdicted debt items each with a complete issue-ready draft, one requirement
+(`DEBT-06`) whose tracker half is explicitly and honestly left open for Phase 69, and two new
+requirements (`DEBT-07`, `DEBT-08`) added to close a drift `INVENTORY.md` recorded and never
+edited.
