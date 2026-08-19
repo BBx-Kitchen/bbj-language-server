@@ -1185,6 +1185,90 @@ function collapseWhitespace(s) {
     return s.replace(/\s+/g, ' ').trim();
 }
 
+/** `emit-other` (plan 68-03): derive and print the `## Other Dispositions` section — the single
+ *  home for DOC-04's population (3 wontfix + 24 not-reproducible + 0 duplicate + 14
+ *  already-covered + 30 cross-unit referrals). Shares the corpus hard-fail gate (`assertCounts`)
+ *  with `emit-easy`/`emit-major`, plus its own two denominators: the prose-sub-block gate
+ *  (`assertProseSubBlockCounts`) and the already-covered count. `--write` splices the section into
+ *  MAJOR-REFACTORS.md, replacing any prior `## Other Dispositions` section so a re-run is
+ *  idempotent (the regeneration guard from `emit-major`/`emit-easy` applies here too — T-68-03). */
+function runEmitOther({ force, write }) {
+    const guard = checkRegenerationGuard(force);
+    if (guard.blocked) {
+        process.stderr.write(guard.message);
+        process.exitCode = 1;
+        return;
+    }
+
+    const corpus = loadCorpus();
+    const selection = selectByDisposition(corpus.records);
+    if (!assertCounts(selection)) {
+        process.exitCode = 1;
+        return;
+    }
+
+    const prose = loadProseSubBlocks(corpus.phaseFileTexts);
+    if (!assertProseSubBlockCounts(prose)) {
+        process.exitCode = 1;
+        return;
+    }
+
+    const alreadyCovered = alreadyCoveredRecords(corpus.records);
+    if (alreadyCovered.length !== EXPECTED_ALREADY_COVERED_TOTAL) {
+        process.stderr.write(
+            `ERROR: already-covered (dedup != none) count ${alreadyCovered.length} !== expected ` +
+            `${EXPECTED_ALREADY_COVERED_TOTAL} — treat as a finding, do not adjust silently.\n`
+        );
+        process.exitCode = 1;
+        return;
+    }
+
+    const section = renderOtherDispositions(selection, prose, alreadyCovered);
+    process.stdout.write(section + '\n');
+
+    if (write) {
+        const existing = existsSync(MAJOR_PATH) ? readFileSync(MAJOR_PATH, 'utf8') : '';
+        writeAtomic(MAJOR_PATH, composeMajorWithOtherDispositions(existing, section));
+    }
+}
+
+/** Return the text of the sub-section starting at a line matching `heading` exactly, up to (not
+ *  including) the next line starting with `##` (one or two hashes — covers both `## ` and `### `
+ *  headings) or the end of the string. Used by the DOC-04 assertion group (Task 3) to scope its
+ *  checks to one named sub-section of `## Other Dispositions` without re-parsing the whole file. */
+function extractSubsection(text, heading) {
+    // Two-step rather than one combined regex with a `(?=\n##|$)` lookahead: under the `m` flag
+    // `$` matches end-of-*line*, not end-of-string, so a lazy `[\s\S]*?` capture stops dead at the
+    // section's own first blank line instead of running to the next heading. Finding the heading's
+    // own start with a small anchored regex, then searching for the next `\n##` in plain text from
+    // there, sidesteps the ambiguity entirely.
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const startMatch = text.match(new RegExp(`^${escaped}\\n`, 'm'));
+    if (!startMatch) return null;
+    const contentStart = startMatch.index + startMatch[0].length;
+    const rest = text.slice(contentStart);
+    const nextHeadingIdx = rest.indexOf('\n##');
+    return nextHeadingIdx === -1 ? rest : rest.slice(0, nextHeadingIdx);
+}
+
+/** The set of finding IDs each entry in `text` leads with, in the "**`P<id>`**" shape
+ *  `renderWontfixSection`/`renderAlreadyCoveredSection` render (Task 3's set-comparison assertions
+ *  — matching only the entry's own lead-in avoids picking up a finding ID mentioned in passing
+ *  inside a `dedup:`/disposition value). */
+function extractEntryLeadIds(text) {
+    const re = /^\*\*`(P\d+-D\d+-\d+)`\*\*/gm;
+    const ids = new Set();
+    let m;
+    while ((m = re.exec(text)) !== null) ids.add(m[1]);
+    return ids;
+}
+
+/** Count of lines starting with a numbered-list marker (`\d+.` at line start) in `text` — used to
+ *  re-count the not-reproducible and referral sub-sections' own entries at check time. */
+function countNumberedItems(text) {
+    return (text.match(/^\d+\.\s/gm) || []).length;
+}
+
 /** Field-presence assertion: every block in `blocks` (each a parsed-fields map, tagged with its
  *  own identifying finding ID) carries every key in `requiredKeys`. A key present with an empty
  *  value is not a failure (INVENTORY requires optional fields to be written, never dropped); a
@@ -1545,6 +1629,125 @@ function runCheck() {
             ok = false;
         } else {
             console.log('PASS: both documents\' §Reconciliation arithmetic matches what the corpus currently derives');
+        }
+    }
+
+    // --- 9. DOC-04 "## Other Dispositions" assertion group (Task 3): re-derive the population
+    //        from the corpus at check time and compare it against the assembled section, so a
+    //        hand edit that loses an item fails the gate instead of shrinking the population
+    //        unnoticed. ---
+    {
+        // Line-anchored search (not plain indexOf): the Reconciliation section's own prose cites
+        // "`## Other Dispositions`" as a backtick-quoted section name before the real heading
+        // appears, so a bare indexOf would match that citation instead of the actual heading line.
+        const otherHeadingMatch = majorText.match(/^## Other Dispositions$/m);
+        const otherIdx = otherHeadingMatch ? otherHeadingMatch.index : -1;
+        if (otherIdx === -1) {
+            console.log('FAIL: DOC-04 — MAJOR-REFACTORS.md is missing "## Other Dispositions"');
+            ok = false;
+        } else {
+            const otherText = majorText.slice(otherIdx);
+            const prose = loadProseSubBlocks(corpus.phaseFileTexts);
+            const alreadyCovered = alreadyCoveredRecords(corpus.records);
+
+            // 1. `### wontfix` holds exactly the 3 finding IDs whose disposition: begins wontfix.
+            {
+                const wontfixText = extractSubsection(otherText, '### wontfix') ?? '';
+                const docIds = extractEntryLeadIds(wontfixText);
+                const corpusIds = new Set(selection.wontfix.map(r => r.id));
+                const missing = [...corpusIds].filter(id => !docIds.has(id));
+                const extra = [...docIds].filter(id => !corpusIds.has(id));
+                if (missing.length || extra.length || docIds.size !== EXPECTED_WONTFIX_TOTAL) {
+                    console.log(`FAIL: DOC-04 wontfix set mismatch (${docIds.size} found, expected ${EXPECTED_WONTFIX_TOTAL}) — missing: [${missing.join(', ')}]; extra: [${extra.join(', ')}]`);
+                    ok = false;
+                } else {
+                    console.log('PASS: DOC-04 wontfix — exactly the 3 corpus wontfix finding IDs');
+                }
+            }
+
+            // 2. `### not-reproducible` holds exactly 24 entries and the per-phase split matches
+            //    the live extraction.
+            {
+                const nrText = extractSubsection(otherText, '### not-reproducible') ?? '';
+                const docCount = countNumberedItems(nrText);
+                const liveTotal = PHASES.reduce((s, p) => s + prose.notRepro[p].length, 0);
+                if (docCount !== EXPECTED_NOT_REPRODUCIBLE_TOTAL || docCount !== liveTotal) {
+                    console.log(`FAIL: DOC-04 not-reproducible — document has ${docCount} numbered entries, expected ${EXPECTED_NOT_REPRODUCIBLE_TOTAL} (live extraction: ${liveTotal})`);
+                    ok = false;
+                } else {
+                    console.log(`PASS: DOC-04 not-reproducible — exactly ${docCount} entries, matching the live per-phase extraction (61=${prose.notRepro[61].length} 62=${prose.notRepro[62].length} 63=${prose.notRepro[63].length} 64=${prose.notRepro[64].length} 65=${prose.notRepro[65].length} 66=${prose.notRepro[66].length})`);
+                }
+            }
+
+            // 3. `### already-covered` holds exactly the finding IDs whose dedup: field is not
+            //    `none`, compared as sets.
+            {
+                const acText = extractSubsection(otherText, '### already-covered') ?? '';
+                const docIds = extractEntryLeadIds(acText);
+                const corpusIds = new Set(alreadyCovered.map(r => r.id));
+                const missing = [...corpusIds].filter(id => !docIds.has(id));
+                const extra = [...docIds].filter(id => !corpusIds.has(id));
+                if (missing.length || extra.length || docIds.size !== EXPECTED_ALREADY_COVERED_TOTAL) {
+                    console.log(`FAIL: DOC-04 already-covered set mismatch (${docIds.size} found, expected ${EXPECTED_ALREADY_COVERED_TOTAL}) — missing: [${missing.join(', ')}]; extra: [${extra.join(', ')}]`);
+                    ok = false;
+                } else {
+                    console.log('PASS: DOC-04 already-covered — exactly the 14 corpus dedup≠none finding IDs');
+                }
+            }
+
+            // 4. `### duplicate` exists and states a count.
+            {
+                const dupText = extractSubsection(otherText, '### duplicate') ?? '';
+                if (!/^### duplicate$/m.test(otherText) || !/\b0\b/.test(dupText)) {
+                    console.log('FAIL: DOC-04 duplicate — "### duplicate" heading or its stated 0 count is missing');
+                    ok = false;
+                } else {
+                    console.log('PASS: DOC-04 duplicate — heading present and states the count 0');
+                }
+            }
+
+            // 5. The referral sub-section holds exactly 30 entries with exactly 30 resolution:
+            //    keys.
+            {
+                const refText = extractSubsection(otherText, '### Cross-unit referrals and their resolution') ?? '';
+                const entryCount = countNumberedItems(refText);
+                const resolutionCount = (majorText.match(/^resolution:/gm) || []).length;
+                if (entryCount !== EXPECTED_REFERRAL_TOTAL || resolutionCount !== EXPECTED_REFERRAL_TOTAL) {
+                    console.log(`FAIL: DOC-04 referrals — ${entryCount} entries, ${resolutionCount} resolution: keys, expected ${EXPECTED_REFERRAL_TOTAL} of each`);
+                    ok = false;
+                } else {
+                    console.log(`PASS: DOC-04 referrals — exactly ${EXPECTED_REFERRAL_TOTAL} entries, each with its own resolution: key`);
+                }
+            }
+
+            // 6. `### Category reconciliation`'s table counts equal the live-derived 3, 24, 0, 14.
+            {
+                const reconText = extractSubsection(otherText, '### Category reconciliation') ?? '';
+                const cellRe = /\|\s*(wontfix|not-reproducible|duplicate|already-covered)\s*\|[^|]*\|\s*(\d+)\s*\|/g;
+                const found = {};
+                let m;
+                while ((m = cellRe.exec(reconText)) !== null) found[m[1]] = Number(m[2]);
+                const expectedCounts = { wontfix: 3, 'not-reproducible': 24, duplicate: 0, 'already-covered': 14 };
+                const bad = Object.keys(expectedCounts).filter(k => found[k] !== expectedCounts[k]);
+                if (bad.length) {
+                    console.log(`FAIL: DOC-04 category reconciliation table — mismatched counts for: ${bad.map(k => `${k}(found ${found[k]}, expected ${expectedCounts[k]})`).join(', ')}`);
+                    ok = false;
+                } else {
+                    console.log('PASS: DOC-04 category reconciliation table — 3/24/0/14, matching the live-derived counts');
+                }
+            }
+
+            // 7. EASY-FIXES.md contains a pointer to the section and no second copy of it.
+            {
+                const hasPointer = /Other Dispositions/.test(easyText);
+                const hasOwnHeading = /^## Other Dispositions$/m.test(easyText);
+                if (!hasPointer || hasOwnHeading) {
+                    console.log(`FAIL: DOC-04 EASY-FIXES.md pointer — hasPointer=${hasPointer} hasOwnHeading=${hasOwnHeading} (expected true/false)`);
+                    ok = false;
+                } else {
+                    console.log('PASS: DOC-04 EASY-FIXES.md carries a pointer to "Other Dispositions" and no second copy of the section');
+                }
+            }
         }
     }
 
