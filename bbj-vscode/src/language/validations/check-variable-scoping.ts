@@ -201,21 +201,26 @@ function checkUseBeforeAssignment(
 
     });
 
-    // Pass 2: Walk all SymbolRef usages and check if before first assignment
-    for (const child of AstUtils.streamAllContents(node)) {
-        // Do NOT traverse into nested MethodDecl, BbjClass, or DefFunction bodies
-        // AstUtils.streamAllContents visits everything, so we need to filter
-        if (isMethodDecl(child) && child !== node) {
-            continue; // Skip nested methods (they have their own scope)
-        }
-        if (isBbjClass(child)) {
-            continue; // Skip class bodies
-        }
-        if (isDefFunction(child)) {
-            continue; // Skip DEF function bodies
+    // Pass 2: Walk all SymbolRef usages and check if before first assignment.
+    // Use the TreeStream iterator directly (instead of a plain for...of) so nested
+    // MethodDecl/BbjClass/DefFunction bodies can be pruned from the traversal itself --
+    // a bare `continue` only skips processing the matched node, it does not stop
+    // AstUtils.streamAllContents from still descending into that node's children (P61-D2-010).
+    const contentsIterator = AstUtils.streamAllContents(node).iterator();
+    let contentsResult = contentsIterator.next();
+    while (!contentsResult.done) {
+        const child = contentsResult.value;
+
+        // Do NOT traverse into nested MethodDecl, BbjClass, or DefFunction bodies --
+        // they have their own dedicated validation pass.
+        if ((isMethodDecl(child) && child !== node) || isBbjClass(child) || isDefFunction(child)) {
+            contentsIterator.prune();
+            contentsResult = contentsIterator.next();
+            continue;
         }
 
         if (!isSymbolRef(child)) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
@@ -223,37 +228,44 @@ function checkUseBeforeAssignment(
         const varName = child.symbol.$refText?.toLowerCase();
 
         if (usageOffset === undefined || varName === undefined) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip unresolved references -- linking warnings handle those
         if (child.symbol.ref === undefined) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip DECLARE variables -- they have whole-scope visibility
         // Only skip actual DECLARE ($type === 'VariableDecl'), NOT ArrayDecl/FieldDecl/ParameterDecl
         if (child.symbol.ref.$type === 'VariableDecl') {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip class fields (FieldDecl inside a BbjClass)
         if (child.symbol.ref.$type === 'FieldDecl' && child.symbol.ref.$container && isBbjClass(child.symbol.ref.$container)) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip method parameters
         if (isParameterDecl(child.symbol.ref)) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip if this SymbolRef is the LHS target of an assignment (not a read)
         if (isAssignment(child.$container) && child.$container.variable === child) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
         // Skip if the variable is not in our declaration map (global/library/imported symbol)
         if (!declPositions.has(varName)) {
+            contentsResult = contentsIterator.next();
             continue;
         }
 
@@ -267,6 +279,8 @@ function checkUseBeforeAssignment(
                 node: child,
             });
         }
+
+        contentsResult = contentsIterator.next();
     }
 }
 
