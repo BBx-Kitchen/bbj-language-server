@@ -4,6 +4,7 @@ import { WorkspaceFolder } from 'vscode-languageserver';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module.js';
 import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
+import { logger } from '../src/language/logger.js';
 
 /**
  * Regression harness for RU-61-05's workspace-lifecycle findings against
@@ -41,6 +42,24 @@ class InMemoryFileSystemProvider implements FileSystemProvider {
         return [...this.files.keys()]
             .filter(p => p.startsWith(dirPath) && !p.slice(dirPath.length).includes('/'))
             .map(p => this.node(URI.file(p), true));
+    }
+}
+
+/** A FileSystemProvider whose readDirectory always throws, simulating a setup-time failure. */
+class ThrowingFileSystemProvider implements FileSystemProvider {
+    async stat(): Promise<FileSystemNode> { throw new Error('not implemented'); }
+    statSync(): FileSystemNode { throw new Error('not implemented'); }
+    async exists(): Promise<boolean> { return false; }
+    existsSync(): boolean { return false; }
+    async readBinary(): Promise<Uint8Array> { throw new Error('not implemented'); }
+    readBinarySync(): Uint8Array { throw new Error('not implemented'); }
+    async readFile(): Promise<string> { throw new Error('not implemented'); }
+    readFileSync(): string { throw new Error('not implemented'); }
+    async readDirectory(): Promise<FileSystemNode[]> {
+        throw new Error('simulated project.properties read failure');
+    }
+    readDirectorySync(): FileSystemNode[] {
+        throw new Error('simulated project.properties read failure');
     }
 }
 
@@ -85,5 +104,20 @@ describe('multi-folder workspace merges prefixes and classpath from every folder
         const settings = wsManager.getSettings();
         expect(settings?.prefixes).toEqual(['/prefix-single/']);
         expect(settings?.classpath).toEqual(['/cp-single.jar']);
+    });
+});
+
+describe('a workspace setup failure is surfaced, not silently swallowed (P61-D2-016)', () => {
+    test('a throw inside initializeWorkspace reaches logger.error', async () => {
+        const services = createBBjTestServices({ fileSystemProvider: () => new ThrowingFileSystemProvider() });
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => { });
+
+        const folders: WorkspaceFolder[] = [
+            { uri: URI.file('/root-fail').toString(), name: 'root-fail' },
+        ];
+        await wsManager.initializeWorkspace(folders);
+
+        expect(errorSpy).toHaveBeenCalled();
     });
 });
