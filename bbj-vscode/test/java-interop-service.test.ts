@@ -188,6 +188,25 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
         });
     });
 
+    describe('resolveClass tolerates a classpath response missing fields/methods (P61-D2-003)', () => {
+        test('defaults missing fields and methods to empty arrays instead of throwing', async () => {
+            const service = createInteropService();
+            const malformed = {
+                $type: 'JavaClass',
+                name: 'test.Malformed',
+                packageName: 'test',
+                classes: [],
+                constructors: []
+                // fields/methods intentionally omitted, as a malformed getClassInfo response would
+            } as unknown as JavaClass;
+
+            const resolved = await service.testResolveClass(malformed);
+
+            expect(resolved.fields).toEqual([]);
+            expect(resolved.methods).toEqual([]);
+        });
+    });
+
 });
 
 // Referenced by later findings' tests appended to this describe block in subsequent commits.
