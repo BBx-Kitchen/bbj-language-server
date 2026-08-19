@@ -184,8 +184,11 @@ export class JavaInteropService {
             throw e;
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
-        connection.onClose(() => { this.connection = undefined; });
-        connection.onError(() => { this.connection = undefined; });
+        // Guard on identity: an old connection's close/error can be delivered after a newer
+        // connect() already installed a healthy replacement, and an unguarded clear would drop
+        // that live reference and force a spurious reconnect (P67-WR-02).
+        connection.onClose(() => { if (this.connection === connection) this.connection = undefined; });
+        connection.onError(() => { if (this.connection === connection) this.connection = undefined; });
         connection.listen();
         this.connection = connection;
         return connection;

@@ -12,7 +12,11 @@ export class BbjLexer extends DefaultLexer {
         // Split into (line, delimiter) pairs so each line's own original EOL can be re-emitted
         // below instead of a single globally-detected one — using one global EOL for every line
         // corrupts every downstream token offset on mixed CRLF/LF input (P61-D2-006).
-        const parts = text.split(/(\r\n|\r|\n)/);
+        // Deliberately does NOT split on a bare `\r`: the prior splitter (/\r?\n/g) left a lone
+        // `\r` embedded inside its line, and widening that here would change what the
+        // colon-continuation loop below sees as a line boundary — beyond this fix's CRLF/LF
+        // scope (P67-WR-04).
+        const parts = text.split(/(\r\n|\n)/);
         const lines: string[] = [];
         const delimiters: string[] = [];
         for (let i = 0; i < parts.length; i += 2) {

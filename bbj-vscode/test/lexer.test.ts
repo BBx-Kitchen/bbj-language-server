@@ -86,6 +86,23 @@ PRINT "After"
         expect(printTokens[1].startOffset).toBe(afterIndex);
     });
 
+    test('P67-WR-04: a lone \\r is not a line boundary and cannot trigger colon-continuation joining', () => {
+        // The pre-P61-D2-006 splitter (/\r?\n/g) never split on a bare `\r` — it stayed embedded
+        // in its line. P61-D2-006's capturing split briefly widened that to also break on a lone
+        // `\r`, which fed an extra boundary into the colon-continuation loop below: a `:` that
+        // merely followed a stray `\r` mid-line would be read as a continuation and silently
+        // rewrite the content. The split must stay scoped to CRLF/LF.
+        const text = 'PRINT 1\r:PRINT 2\nPRINT "After"\n';
+        const prepared = (lexer as TestableBBjLexer).prepareLineSplitter(text);
+        // The `\r` survives inside its line rather than being consumed as a delimiter.
+        expect(prepared).toContain('PRINT 1\r:PRINT 2');
+        const result = lexer.tokenize(text);
+        expect(result.errors).toHaveLength(0);
+        const printTokens = result.tokens.filter(t => t.tokenType.name === 'PRINT');
+        expect(printTokens).toHaveLength(3);
+        expect(printTokens[2].startOffset).toBe(text.indexOf('PRINT "After"'));
+    });
+
     test('P61-D2-008: spliceToken throws instead of silently corrupting the stream when the named token is absent', () => {
         // spliceToken is called with 14 hardcoded terminal names during buildTokens(). If any of
         // them is ever absent from the token list (e.g. a future grammar edit renames/removes one),
