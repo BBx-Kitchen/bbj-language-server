@@ -537,7 +537,7 @@ it re-examines specific, already-known items rather than surfacing new ones.
   5. Every one of these 6 items ends the milestone represented either by a merged fix or a GitHub
      issue — none remain as PROJECT.md prose only
 
-**Plans**: 1/3 plans executed — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
+**Plans**: 2/3 plans executed — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
 and the file gate are absent. They are replaced by a single **8-row debt denominator** derived live
 from `PROJECT.md` §"Known tech debt" (D-04), every row carrying a verdict. The phase is **verdict-only**:
 zero source files modified (D-01) and zero GitHub tracker writes (D-02) — each unresolved item gets an
@@ -552,7 +552,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 66-02-PLAN.md — The two live-investigation items: **DEBT-05** measured against the locally cached LSP4IJ **0.19.0** jar (D-10) — 63-COVERAGE's `0` / `11 files` / `20 refs` baselines re-derived live, `@ApiStatus.Experimental`/`@ApiStatus.Internal` read off all nine classes and methods our code actually touches, and PROJECT.md's unsourced "19" explicitly settled or retired; and **DEBT-04** by static trace (D-09) recording both the working USE-alias path and the diverging MemberCall `isClassRef` path with the JAR-redeployment blocker stated and the non-attempt of live reproduction explained rather than hidden
+- [x] 66-02-PLAN.md — The two live-investigation items: **DEBT-05** measured against the locally cached LSP4IJ **0.19.0** jar (D-10) — 63-COVERAGE's `0` / `11 files` / `20 refs` baselines re-derived live, `@ApiStatus.Experimental`/`@ApiStatus.Internal` read off all nine classes and methods our code actually touches, and PROJECT.md's unsourced "19" explicitly settled or retired; and **DEBT-04** by static trace (D-09) recording both the working USE-alias path and the diverging MemberCall `isClassRef` path with the JAR-redeployment blocker stated and the non-attempt of live reproduction explained rather than hidden
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

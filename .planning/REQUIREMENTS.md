@@ -55,8 +55,8 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **DEBT-01**: CPU stability in multi-project workspaces (#232) re-triaged against current code — mitigation implemented, or issue updated with a concrete implementation plan
 - [x] **DEBT-02**: The 3 disabled `parser.test.ts` assertions and the skipped TEST-03 case re-triaged — enabled, or documented with the specific blocking limitation and what would unblock them
 - [x] **DEBT-03**: Static method return-type inference gap (`String.valueOf(2)` assigns no type) re-triaged — fixed or filed
-- [ ] **DEBT-04**: FQN path static-only completion filtering re-triaged — fixed or filed, with the JAR-redeployment dependency stated
-- [ ] **DEBT-05**: LSP4IJ experimental API usage (19 sites) and `BbjCompletionFeature` coupling re-triaged — current risk assessed against the installed LSP4IJ version
+- [x] **DEBT-04**: FQN path static-only completion filtering re-triaged — fixed or filed, with the JAR-redeployment dependency stated
+- [x] **DEBT-05**: LSP4IJ experimental API usage (19 sites) and `BbjCompletionFeature` coupling re-triaged — current risk assessed against the installed LSP4IJ version
 - [ ] **DEBT-06**: Every carried debt item ends this milestone either fixed or represented by a GitHub issue — none remain recorded only as prose in PROJECT.md
 
 ### Easy Fixes
@@ -137,8 +137,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DEBT-01 | Phase 66 | Complete |
 | DEBT-02 | Phase 66 | Complete |
 | DEBT-03 | Phase 66 | Complete |
-| DEBT-04 | Phase 66 | Pending |
-| DEBT-05 | Phase 66 | Pending |
+| DEBT-04 | Phase 66 | Complete |
+| DEBT-05 | Phase 66 | Complete |
 | DEBT-06 | Phase 66 | Pending |
 | FIX-01 | Phase 67 | Pending |
 | FIX-02 | Phase 67 | Pending |

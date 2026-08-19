@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 66
 current_phase_name: known-debt-re-triage
 status: executing
-stopped_at: Completed 66-01-PLAN.md
-last_updated: "2026-08-19T06:10:35.922Z"
+stopped_at: Completed 66-02-PLAN.md
+last_updated: "2026-08-19T06:26:30.297Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 30
-  completed_plans: 28
+  completed_plans: 29
   percent: 60
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 66 (known-debt-re-triage) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 66 execution started
 
@@ -105,6 +105,7 @@ Last activity: 2026-08-19 — Phase 66 execution started
 | Phase 65 P02 | 55min | 2 tasks | 1 files |
 | Phase 65 P03 | 30min | 3 tasks | 1 files |
 | Phase 66 P01 | 12min | 3 tasks | 1 files |
+| Phase 66 P02 | ~55min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: Resume signal drafts-only recorded (D-02): zero gh write subcommands anywhere in Phase 66
 - [Phase ?]: DEBT-03 verdicts easy-fix not major-refactor: both inherited P61 records already established all six D-13 tests pass
 - [Phase ?]: DEBT-02 split into two finding records/drafts per D-07: repo-local vs upstream unblocking conditions
+- [Phase ?]: DEBT-05's '19 experimental API usages' figure settled by provenance (traced via git log -S to the IntelliJ Plugin Verifier's 2026-02-10 compatibility report), not re-derived or discarded
+- [Phase ?]: DEBT-05 verdicts major-refactor (superseding P63-D4-010): 3 of 9 LSP4IJ classes bbj-intellij touches carry class-level @ApiStatus.Experimental, with a contract-test issue draft as the actionable in-repo fix
+- [Phase ?]: DEBT-04 verdicts major-refactor with P66-D2-002 (evidence_tier repro via INVENTORY §3b's second form): the USE-alias completion path works, the MemberCall FQN path is the traced gap, java-interop JAR redeployment is the stated blocker
 
 ### Tech Debt
 
@@ -233,8 +237,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T06:10:35.897Z
-Stopped at: Completed 66-01-PLAN.md
+Last session: 2026-08-19T06:26:30.273Z
+Stopped at: Completed 66-02-PLAN.md
 Resume file: 
 
 None
