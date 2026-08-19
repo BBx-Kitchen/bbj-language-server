@@ -31,6 +31,63 @@ const autoImportCandidatePackages = ['java.util', 'java.util.concurrent', 'java.
 export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
+ * Maximum number of resolved Java classes kept in {@link JavaInteropService._resolvedClasses}
+ * before the least-recently-used entry is evicted (P61-D3-001) — an open-ended editor session
+ * against a large/varied classpath must not grow this cache without bound. No specific number is
+ * named by the finding record; 5000 is a discretionary choice, large enough to comfortably hold a
+ * typical project's resolved classpath while still bounding steady-state memory growth.
+ */
+export const RESOLVED_CLASSES_CACHE_LIMIT = 5000;
+
+/**
+ * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
+ * exceeded (P61-D3-001). Recency is refreshed on both `get` and `set` by deleting and
+ * re-inserting the key, relying on `Map`'s insertion-order iteration to find the oldest entry.
+ */
+class LruMap<K, V> {
+    private readonly map = new Map<K, V>();
+
+    constructor(private readonly limit: number) { }
+
+    get size(): number {
+        return this.map.size;
+    }
+
+    has(key: K): boolean {
+        return this.map.has(key);
+    }
+
+    get(key: K): V | undefined {
+        const value = this.map.get(key);
+        if (value !== undefined) {
+            // Refresh recency: delete + re-insert moves the key to the end of iteration order.
+            this.map.delete(key);
+            this.map.set(key, value);
+        }
+        return value;
+    }
+
+    set(key: K, value: V): void {
+        this.map.delete(key);
+        this.map.set(key, value);
+        if (this.map.size > this.limit) {
+            const oldestKey = this.map.keys().next().value;
+            if (oldestKey !== undefined) {
+                this.map.delete(oldestKey);
+            }
+        }
+    }
+
+    values(): IterableIterator<V> {
+        return this.map.values();
+    }
+
+    clear(): void {
+        this.map.clear();
+    }
+}
+
+/**
  * Manages Java interop operations including class resolution, classpath loading,
  * and communication with the Java backend service.
  */
@@ -43,7 +100,7 @@ export class JavaInteropService {
      * and the second silently overwrites/leaks the first.
      */
     private connectingPromise?: Promise<MessageConnection>;
-    private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
+    private readonly _resolvedClasses = new LruMap<string, JavaClass>(RESOLVED_CLASSES_CACHE_LIMIT);
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
     /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
     private lockQueue: Array<() => void> = [];
@@ -76,7 +133,7 @@ export class JavaInteropService {
         }, URI.parse(JavaSyntheticDocUri));
     }
 
-    private get resolvedClasses(): Map<string, JavaClass> {
+    private get resolvedClasses(): LruMap<string, JavaClass> {
         return this._resolvedClasses;
     }
 

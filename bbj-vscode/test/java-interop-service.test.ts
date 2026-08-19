@@ -23,7 +23,7 @@ import { BBjGeneratedModule, BBjGeneratedSharedModule } from '../src/language/ge
 import { registerValidationChecks } from '../src/language/bbj-validator.js';
 import { JavaClass } from '../src/language/generated/ast.js';
 import { JavadocProvider } from '../src/language/java-javadoc.js';
-import { JavaInteropService } from '../src/language/java-interop.js';
+import { JavaInteropService, RESOLVED_CLASSES_CACHE_LIMIT } from '../src/language/java-interop.js';
 
 /**
  * A minimal in-memory stand-in for `net.Socket`, implementing only what vscode-jsonrpc's
@@ -220,8 +220,7 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
     });
 
     describe('_resolvedClasses is bounded by an LRU size cap (P61-D3-001)', () => {
-        // Must match RESOLVED_CLASSES_CACHE_LIMIT in src/language/java-interop.ts.
-        const CACHE_LIMIT = 5000;
+        const CACHE_LIMIT = RESOLVED_CLASSES_CACHE_LIMIT;
 
         test('resolving more distinct classes than the cap evicts the least-recently-used entry', async () => {
             const service = createInteropService();
