@@ -404,4 +404,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-17 — Phase 60 (Baseline Resync & Review Standards) complete; planning baseline resynced to `v0.12.0` and `.planning/reviews/INVENTORY.md` established as the review authority for Phases 61-65*
+*Last updated: 2026-08-19 — Phase 66 (Known Debt Re-triage) complete; all 8 PROJECT.md known-tech-debt bullets verdicted in `.planning/reviews/66-COVERAGE.md` and rewritten as pointers carrying their `P66-*` finding ID, requirement and disposition. `DEBT-07`/`DEBT-08` added to REQUIREMENTS.md, closing the 8-vs-6 drift `INVENTORY.md:1220` recorded. Verdict-only phase: zero source files modified, zero GitHub tracker writes — issue-ready drafts await filing in Phase 69 under ISSUE-01*
