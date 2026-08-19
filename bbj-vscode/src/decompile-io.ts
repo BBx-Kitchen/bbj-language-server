@@ -26,11 +26,17 @@ export async function isTokenizedFile(file: string): Promise<boolean> {
     }
 }
 
-async function statSize(file: string): Promise<number> {
+interface SizeAndMtime {
+    size: number;
+    mtimeMs: number;
+}
+
+async function statSizeAndMtime(file: string): Promise<SizeAndMtime | undefined> {
     try {
-        return (await fs.promises.stat(file)).size;
+        const stat = await fs.promises.stat(file);
+        return { size: stat.size, mtimeMs: stat.mtimeMs };
     } catch {
-        return -1;
+        return undefined;
     }
 }
 
@@ -59,21 +65,26 @@ export interface WaitOptions {
  * output is actually ready and reports where the decompiled source landed.
  *
  * When `<input>.lst` is used, it waits until the file's size settles across two
- * polls so a partially-written listing is never consumed. Rejects on timeout.
+ * polls, AND the settled file was written at or after this call started — so a stale
+ * `.lst` left on disk by an earlier (possibly crashed) run is never mistaken for fresh
+ * output, even if it coincidentally matches the new run's final byte size. Rejects on
+ * timeout.
  */
 export async function waitForDecompileOutput(inputPath: string, opts: WaitOptions = {}): Promise<DecompileOutput> {
     const { timeoutMs = 20000, pollMs = 150, canRewriteInPlace = false } = opts;
     const lstPath = inputPath + '.lst';
-    const deadline = Date.now() + timeoutMs;
+    const callStartMs = Date.now();
+    const deadline = callStartMs + timeoutMs;
     let lastLstSize = -2;
     while (Date.now() < deadline) {
-        const lstSize = await statSize(lstPath);
-        if (lstSize >= 0) {
-            // `.lst` exists — wait until its size settles so we never read a partial file.
-            if (lstSize === lastLstSize) {
+        const lstStat = await statSizeAndMtime(lstPath);
+        if (lstStat) {
+            // `.lst` exists — wait until its size settles across two polls AND its mtime is at
+            // or after this call started, so a stale `.lst` of matching size is never accepted.
+            if (lstStat.size === lastLstSize && lstStat.mtimeMs >= callStartMs) {
                 return { sourcePath: lstPath, inPlace: false };
             }
-            lastLstSize = lstSize;
+            lastLstSize = lstStat.size;
         } else if (canRewriteInPlace && !(await isTokenizedFile(inputPath))) {
             // No `.lst`, and a once-tokenized input is no longer tokenized → rewritten in place.
             return { sourcePath: inputPath, inPlace: true };
