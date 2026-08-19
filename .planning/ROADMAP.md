@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 5/12 plans executed
+**Plans**: 6/12 plans executed
 
 Plans:
 **Wave 1**
@@ -603,7 +603,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 67-06-PLAN.md — 4 maintainability + 2 source comment fixes, and the 3 `CLAUDE.md` corrections
+- [x] 67-06-PLAN.md — 4 maintainability + 2 source comment fixes, and the 3 `CLAUDE.md` corrections
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
