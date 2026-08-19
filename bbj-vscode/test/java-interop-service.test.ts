@@ -207,6 +207,18 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
         });
     });
 
+    describe('clearCache() also clears the complete class index (P61-D2-004)', () => {
+        test('hasCompleteClassIndex() is false after clearCache()', () => {
+            const service = createInteropService();
+            service.testBuildCompleteClassIndex(['java.lang.String']);
+            expect(service.hasCompleteClassIndex()).toBe(true);
+
+            service.clearCache();
+
+            expect(service.hasCompleteClassIndex()).toBe(false);
+        });
+    });
+
 });
 
 // Referenced by later findings' tests appended to this describe block in subsequent commits.
