@@ -1755,13 +1755,17 @@ Task 1 commit, `docs(67): record the phase-close baseline delta and the FIX-03 v
 built on `56d6e85` (plan 67-11's last commit) — see `67-BASELINE.md`'s `close_commit`.
 
 **Index/Rows reconciliation performed first (T-67-12-04-adjacent, not itself a threat register
-item):** the Index table above had **seven** rows still reading `pending | pending` — the six the
-orchestrator named (`P62-D2-010`, `P62-D3-001`, `P62-D5-006`, `P62-D8-002`, `P62-D2-011`,
-`P64-D4-005`) plus a seventh the same drift produced, `P62-D4-005` (row 53), whose Rows-section
-verdict was `applied` (commit `e6fc4fe`) while its Index entry still read `pending`. All seven are
-corrected above to match their Rows-section verdict and commit. A row-by-row Index-vs-Rows diff run
-against the corrected file (comparing all 77 `finding_id` → `verdict` pairs in both sections)
-returns zero mismatches — the drift is fully reconciled, not just the six originally named.
+item):** the Index table above had **six** rows still reading `pending | pending` — exactly the six
+the orchestrator named (`P62-D2-010`, `P62-D3-001`, `P62-D5-006`, `P62-D8-002`, `P62-D2-011`,
+`P62-D4-005`), whose Rows-section verdicts were all `applied` (e.g. `P62-D4-005`, row 53, commit
+`e6fc4fe`) while their Index entries still read `pending`. All six are corrected above to match
+their Rows-section verdict and commit. A row-by-row Index-vs-Rows diff run against the corrected
+file (comparing all 77 `finding_id` → `verdict` pairs in both sections) returns zero mismatches —
+the drift is fully reconciled. (An earlier draft of this paragraph misstated the count as seven and
+listed a nonexistent `P64-D4-005` alongside the genuine `P62-D4-005` — `P64-D4-005` is an unrelated
+Phase-64 eslint finding, not a row in this ledger; see `64-VERIFICATION.md`. `P62-D4-005` was one of
+the original six, not a seventh discovery. No row, verdict, commit, or count changed by this
+correction — only the prose.)
 
 **Row completeness gap found and fixed during this audit:** ten rows —
 `P63-D4-001`, `P63-D4-014`, `P63-D8-001`, `P63-D8-002`, `P63-D8-003`, `P63-D8-005`, `P63-D8-006`,
@@ -1971,6 +1975,9 @@ COVERAGE file and not INVENTORY.md was touched by this phase).
 
 - **Row-completeness fix applied during this close-out audit** (see the callout above the
   `### Denominator` heading): ten rows were missing their `failure_scenario:` field entirely and
-  the Index table had seven (not six) rows drifted from their Rows-section verdict. Both are
-  corrected in this same commit, sourced from the originating COVERAGE.md records and the Rows
-  section itself respectively — no verdict, commit, or fix content was altered.
+  the Index table had six rows drifted from their Rows-section verdict — exactly the six the
+  orchestrator named, no seventh. Both are corrected in this same commit, sourced from the
+  originating COVERAGE.md records and the Rows section itself respectively — no verdict, commit, or
+  fix content was altered. (A prior draft of the callout above `### Denominator` miscounted this as
+  seven rows and cited a nonexistent `P64-D4-005`; corrected in the same commit as this note — see
+  that callout for the full correction.)
