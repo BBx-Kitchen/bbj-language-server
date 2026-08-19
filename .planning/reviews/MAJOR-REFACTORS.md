@@ -3135,29 +3135,61 @@ resolution is guessed here — the whole point of D-07 is that guessing would hi
 **Phase 61 (12 referrals):**
 
 1. **[from `61-COVERAGE.md:640`]** **RU-61-05** — `bbj-ws-manager.ts:53-55` and `main.ts:151-152` supply `interopHost`/`interopPort` from `initializationOptions`/`didChangeConfiguration` with only a falsy-check default (`|| 'localhost'`, `|| 5008`), the same gap this unit's `setConnectionConfig` (`java-interop.ts:116-120`, `P61-D1-001`) does not close. `RU-61-05`'s own D1/D2 sweep should confirm whether either call site adds validation this unit does not see, or record its own finding if not.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — RU-61-05 confirmed and promoted the gap as `P61-D1-006`
+                    (`bbj-ws-manager.ts:53-55`, medium/major), explicitly resolving this referral;
+                    see the answering referral entry below (`61-COVERAGE.md:2989`, item 9 in this
+                    list).
 2. **[from `61-COVERAGE.md:641`]** **RU-61-02** — the 11 `test/linking.test.ts` "Interop related tests" failures (`P61-D5-001` above) are recorded here as already-owned: their *subject* is the linker (`RU-61-02` resolves `NamedElement`/`JavaPackageLike` references), but their *cause* is this unit's unreachable/non-functional peer, per D-06's routing table and the finding-ownership rule ("a finding's `location:` decides which unit owns it, not which unit discovered it"). `RU-61-02` (plan `61-04`) must not re-record this item.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — already-owned by `P61-D5-001` (`RU-61-06`,
+                    `test/linking.test.ts:295-450`) per D-06's routing rule; `RU-61-02` correctly
+                    recorded nothing on this subject because the finding already had an owner,
+                    which is not an open gap.
 3. **[from `61-COVERAGE.md:1022`]** **RU-61-06** — java-types.langium's `JavaClass`/`JavaField`/`JavaMethod` interfaces (java-types.langium:33-58) are the AST type-shape declarations that RU-61-06's java-interop.ts populates from unauthenticated, unvalidated JSON-RPC peer data (already recorded there as `P61-D1-002`). No independent finding is recorded here since java-types.langium contains no parsing, validation, or peer-data-handling logic of its own — it is purely the interface shape those interop values are assigned into; the unvalidated-assignment defect belongs entirely to `RU-61-06`'s files.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — the unvalidated peer-data assignment this referral flags is already
+                    recorded as `P61-D1-002` (`RU-61-06`, `java-interop.ts:598-644`);
+                    `java-types.langium` itself carries no independent defect and `RU-61-01`
+                    correctly filed nothing here.
 4. **[from `61-COVERAGE.md:1023`]** **RU-61-05** — the `beforeAll` `WorkspaceManager.initializeWorkspace()` hookTimeout flakiness (root-caused and owned by `RU-61-05` per D-14/the routing table) intermittently strikes this unit's own `test/functional/chevrotain-tokens.test.ts` suite — INVENTORY's "Flaky suite-level failures" table records that suite 21/21-skipped on run 1. Noted here per this plan's explicit instruction; not re-recorded as an `RU-61-01` finding. `RU-61-05`'s own D5 sweep (plan 61-06) owns dispositioning it.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — resolved as `P61-D5-013` (`RU-61-05`, `bbj-ws-manager.ts:106-184`),
+                    the routing-table item covering the `WorkspaceManager.initializeWorkspace()`
+                    hookTimeout flakiness; see the answering referral entry below
+                    (`61-COVERAGE.md:3006`, item 12 in this list).
 5. **[from `61-COVERAGE.md:1492`]** **RU-61-05** — `bbj-document-builder.ts`'s `trackBbjcplAvailability()` (owned by `RU-61-05`) performs the same path-existence-only check (`accessSync`) as this unit's own gap recorded at `P61-D1-003` — confirming the binary *exists* is not the same as confirming it is a legitimate BBj compiler. `RU-61-05`'s own D1/D4 sweep should confirm whether that caller adds validation this unit's `compile()` does not see, or record its own finding if not.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — RU-61-05 confirmed (see the answering referral entry below,
+                    `61-COVERAGE.md:2992`, item 10 in this list) that its own `accessSync()`
+                    existence check has no execution consequence of its own and filed no
+                    additional finding; the actual spawn-path validation gap is fully covered by
+                    `P61-D1-003` (`RU-61-03`, `bbj-cpl-service.ts:82-155,228-235`).
 6. **[from `61-COVERAGE.md:1835`]** **RU-61-06** — this unit does **not** re-record the 11 `test/linking.test.ts` "Interop related tests" failures; they are already owned by `RU-61-06` as `P61-D5-001` (their *subject* is the linker, but their *cause* is the unreachable java-interop peer, per D-06's routing table and the finding-ownership rule). Also per the plan's explicit instruction, this unit does not file a finding for the SEC-06/boundary edge probe (whether an unresolved reference caused by an unavailable java-interop peer is distinguishable in code from a genuine resolution failure) — `bbj-scope-local.ts:158-165`'s uniform `javaClass.error` handling is stated in the D2 cell text above as context for `RU-61-06`'s own sweep, not filed here.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — same subject and same owner as referral 2 above: already recorded as
+                    `P61-D5-001` (`RU-61-06`); `RU-61-02` correctly recorded nothing.
 7. **[from `61-COVERAGE.md:1836`]** **RU-61-05** — the prefix-path-traversal candidate above (Not-reproducible dispositions, D1) depends on whether `bbj-ws-manager.ts`'s document-loading logic constrains file discovery from `prefixes` to a safe root; `RU-61-05` owns that file and should confirm or record its own finding.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — RU-61-05 confirmed and promoted the gap as `P61-D1-008`
+                    (`bbj-document-builder.ts:303-317`; `addImportedBBjDocuments` applies no
+                    containment check to PREFIX-resolved paths); see the answering referral entry
+                    below (`61-COVERAGE.md:3001`, item 11 in this list).
 8. **[from `61-COVERAGE.md:2295`]** **RU-61-02** — `bbj-inlay-hint-provider.ts:65`'s sole real consumption of `bbj-overload-selector.ts`'s `findBestOverload` is the upstream-consumer context for `RU-61-02`'s already-recorded `P61-D2-012` (that finding's `location:` is `bbj-overload-selector.ts`, `RU-61-02`'s own file, per the finding-ownership rule). No new defect was found in this unit's own consumption of it, so nothing further is referred — noted here per plan `61-04`'s explicit handoff in its own Next Phase Readiness section.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — no new defect was found in this unit's own consumption; the subject
+                    is already recorded as `P61-D2-012` (`RU-61-02`,
+                    `bbj-type-inferer.ts:47-48,77-78`), noted here per plan `61-04`'s own handoff.
 9. **[from `61-COVERAGE.md:2989`]** **RU-61-06** — the `interopHost`/`interopPort` falsy-check-only validation gap this unit owns at `bbj-ws-manager.ts:53-55` and `main.ts:151-152` is confirmed and promoted as `P61-D1-006` above, resolving `RU-61-06`'s referral (`61-COVERAGE.md:618`, `P61-D1-001`'s evidence).
-resolution:        PENDING-RESOLUTION
+resolution:        landed — this entry is itself the confirmation: `P61-D1-006` (`RU-61-05`,
+                    `bbj-ws-manager.ts:53-55`) promotes and resolves the gap `RU-61-06` referred
+                    above (referral 1 in this list).
 10. **[from `61-COVERAGE.md:2992`]** **RU-61-03** — `bbj-document-builder.ts`'s `trackBbjcplAvailability()` (`bbj-document-builder.ts: 199-222`) performs only an `accessSync()` existence check on the resolved `<bbjHome>/bin/bbjcpl` path, and its result is used solely to set the `bbjcplAvailable` boolean gate and fire the `bbj/bbjcplAvailability` notification — the resolved path is never itself passed onward to `bbj-cpl-service.ts`'s `compile()`, which independently resolves and spawns its own `bbjcpl` path (already recorded, with a runnable reproduction, as `P61-D1-003` in `RU-61-03`). Dismissed: this unit's own `accessSync()` check has no execution consequence of its own, so no additional `RU-61-05` finding is filed; `P61-D1-003` already fully covers the actual spawn-path validation gap.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — this entry is itself the dismissal: `RU-61-05`'s own `accessSync()`
+                    check has no execution consequence, so no additional finding was filed;
+                    `P61-D1-003` (`RU-61-03`) already fully covers the spawn-path validation gap
+                    referred above (referral 5 in this list).
 11. **[from `61-COVERAGE.md:3001`]** **RU-61-02** — the prefix-path-traversal candidate `RU-61-02` could not settle (`61-COVERAGE.md: 1808`, `1814`) is confirmed and promoted as `P61-D1-008` above: `bbj-document-builder.ts`'s `addImportedBBjDocuments` (not `bbj-ws-manager.ts` itself, which only stores the `prefixes` list) is the code that actually opens files from PREFIX-resolved paths, and it applies no containment check before reading whatever `path.resolve()` produces.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — this entry is itself the confirmation: `P61-D1-008` (`RU-61-05`,
+                    `bbj-document-builder.ts:303-317`) promotes and resolves the
+                    prefix-path-traversal candidate `RU-61-02` referred above (referral 7 in this
+                    list).
 12. **[from `61-COVERAGE.md:3006`]** **RU-61-01** — the `beforeAll` `WorkspaceManager.initializeWorkspace()` hookTimeout flakiness this unit owns (`61-COVERAGE.md:1001`) is resolved as `P61-D5-013` in Task 2 of this plan (D5, the tier the routing table assigns it), cross-referencing this section's D3 cost-profile trace above.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — this entry is itself the confirmation: `P61-D5-013` (`RU-61-05`,
+                    `bbj-ws-manager.ts:106-184`) resolves the hookTimeout flakiness `RU-61-01`
+                    referred above (referral 4 in this list).
 
 **Phase 62 (7 referrals):**
 
