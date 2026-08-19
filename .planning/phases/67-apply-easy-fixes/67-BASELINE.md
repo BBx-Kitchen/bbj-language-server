@@ -118,6 +118,10 @@ recorded there with suite name, quoted timeout, and reproduction status.
   `test/variable-scoping.test.ts:47`, observed again during plan 67-01's baseline delta below.
   Already named among the 5 suites recorded above; reproduction confirms the flakiness is
   load-dependent (not every run hits every suite), consistent with the original observation.
+- `test/functional/chevrotain-tokens.test.ts > Chevrotain Token Runtime Verification` — `Error:
+  Hook timed out in 10000ms.` at `test/functional/chevrotain-tokens.test.ts:17`, observed during
+  plan 67-02's baseline delta above. Already named among the 5 suites recorded above; reproduction
+  confirms the flakiness is load-dependent, not caused by this plan's changes.
 
 ### Plan 67-01 delta
 
@@ -148,6 +152,49 @@ Set-equal to the phase-start gate set — same 11 names, none added, none remove
 suite beyond these 11 (`test/variable-scoping.test.ts > Variable Scoping`) is the flaky
 `beforeAll` hook-timeout exclusion recorded above, not a test failure, and contributes 0 tests to
 the deterministic gate set (all 29 of its tests reported `skipped`).
+
+**`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
+warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet
+applied) — unchanged from the phase-start baseline.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
+### Plan 67-02 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm test 2>&1 | tail -100` and `npm run lint`, on HEAD after plan 67-02's
+commits (the P61-D2-001/002/003/004, P61-D3-001, P61-D4-003 fixes on `java-interop.ts` plus the
+new `test/java-interop-service.test.ts`; no `bbj-intellij/` file changed, so `./gradlew build` is
+not re-run per D-09).
+
+**`npm test`:** `Test Files  2 failed | 49 passed (51)` / `Tests  11 failed | 879 passed | 4
+skipped (894)`. The failing-test NAME set compared against `### Deterministic failures (gate set)`
+above:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set — same 11 names, none added, none removed. The new
+`test/java-interop-service.test.ts` suite (18 tests, mock-socket-driven, never touching port 5008)
+passed in full and contributes 0 failures.
+
+One additional suite-level FAIL beyond these 11:
+`test/functional/chevrotain-tokens.test.ts > Chevrotain Token Runtime Verification` —
+`Error: Hook timed out in 10000ms.` at `test/functional/chevrotain-tokens.test.ts:17`. This is one
+of the 5 known load-dependent `beforeAll` hook-timeout exclusions already named in
+`### Flaky, excluded from the gate (D-08)` above; reproduced again here (contention-dependent,
+consistent with the original observation), contributing 0 tests to the deterministic gate set (its
+tests report `skipped`, not `failed`). Appended below under `## Flaky exclusions (D-08)`.
 
 **`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
 warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet
