@@ -38,6 +38,7 @@
 // script must never clobber them. --force bypasses the guard explicitly.
 
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -45,6 +46,34 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const REVIEWS_DIR = join(SCRIPT_DIR, '..', '..', 'reviews');
 const EASY_PATH = join(REVIEWS_DIR, 'EASY-FIXES.md');
 const MAJOR_PATH = join(REVIEWS_DIR, 'MAJOR-REFACTORS.md');
+const APPLY_SET_PATH = join(SCRIPT_DIR, '..', '67-apply-easy-fixes', '67-APPLY-SET.md');
+
+const PLACEHOLDER_APPROACH = 'PENDING-APPROACH';
+const PLACEHOLDER_AREA = 'PENDING-AREA';
+const PLACEHOLDER_RESOLUTION = 'PENDING-RESOLUTION';
+const PLACEHOLDER_MARKERS = [PLACEHOLDER_APPROACH, PLACEHOLDER_AREA, PLACEHOLDER_RESOLUTION];
+const SEVERITY_PRIO = { critical: 'PRIO 1', high: 'PRIO 1', medium: 'PRIO 2', low: 'PRIO 3' };
+
+const EASY_REQUIRED_KEYS = [
+    'row', 'finding_id', 'unit', 'location', 'dimension', 'severity', 'effort', 'verdict',
+    'failure_scenario', 'fix_applied', 'user_facing', 'verification', 'commit', 'notes'
+];
+const MAJOR_REQUIRED_KEYS = [
+    'id', 'unit', 'location', 'dimension', 'secondary', 'severity', 'evidence_tier', 'evidence',
+    'failure_scenario', 'classification', 'effort', 'dedup', 'disposition',
+    'proposed_approach', 'proposed_labels', 'issue'
+];
+// Verdicts whose `commit:` field carries a prose reason instead of a sha — exempted from
+// sha-resolvability by verdict, not by pattern (Task 2's spec).
+const SHA_EXEMPT_VERDICTS = new Set(['no-op', 'excluded', 'deferred']);
+const SHA_TOKEN_RE = /\b[0-9a-f]{7,40}\b/g;
+const CREDENTIAL_PATTERNS = [
+    { name: 'GitHub PAT (ghp_)', re: /ghp_[A-Za-z0-9]+/ },
+    { name: 'GitHub fine-grained PAT (github_pat_)', re: /github_pat_[A-Za-z0-9_]+/ },
+    { name: 'AWS access key (AKIA)', re: /AKIA[0-9A-Z]{16}/ },
+    { name: 'Twitter/OAuth token (xox)', re: /xox[a-z0-9-]+/i },
+    { name: 'PEM private key header', re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/ }
+];
 
 // Phase order fixed here (not alphabetical/numeric-sorted at runtime) so the expected splits
 // below stay legible next to the phase list they describe.
@@ -122,6 +151,31 @@ function fullJoined(fieldLines) {
 /** Render one `key:` field line, value starting at FIELD_COLUMN. */
 function field(key, value) {
     return `${(key + ':').padEnd(FIELD_COLUMN)}${value}`;
+}
+
+/** Split 67-APPLY-SET.md's raw text into fenced ```...``` row blocks whose first non-empty line
+ *  is a `row:` field (D-04's lift source for EASY-FIXES.md — see loadApplySetMap). */
+function extractApplySetRows(fileText) {
+    const rows = [];
+    const fenceRe = /```\n(row: *\d+[\s\S]*?)\n```/g;
+    let match;
+    while ((match = fenceRe.exec(fileText)) !== null) {
+        rows.push(match[1]);
+    }
+    return rows;
+}
+
+/** Read 67-APPLY-SET.md's 77 ledger rows and index them by finding_id (D-04: EASY-FIXES.md's row
+ *  content — verdict, fix_applied, user_facing, verification, commit, notes, and every other
+ *  field — is lifted from this file, not re-derived from source or COVERAGE). */
+function loadApplySetMap() {
+    const text = readFileSync(APPLY_SET_PATH, 'utf8');
+    const map = new Map();
+    for (const block of extractApplySetRows(text)) {
+        const fields = parseFields(block);
+        map.set(joined(fields.finding_id), fields);
+    }
+    return map;
 }
 
 /** Read and parse all 224 corpus records from the six closed COVERAGE files. */
@@ -213,28 +267,64 @@ function assertCounts(selection) {
     return true;
 }
 
-/** EASY-FIXES.md row: the mechanical scaffold only (row, finding_id, unit, location, dimension,
- *  severity, effort, failure_scenario). Judgment content (verdict/fix_applied/user_facing/
- *  verification/commit/notes, lifted from 67-APPLY-SET.md) is authored directly into the
- *  assembled document, not emitted here. */
-function renderEasyRow(rowNumber, rec) {
+/** EASY-FIXES.md row: unit/location/dimension/severity/effort/failure_scenario come from the
+ *  record's own COVERAGE source (rec.fields) so `failure_scenario:` stays byte-identical to
+ *  COVERAGE after whitespace-collapse (a must_haves.truths requirement) — derive-apply-set.mjs's
+ *  own `firstThreeLines` truncation left 67-APPLY-SET.md's copy of this field shorter than the
+ *  COVERAGE original for many rows, so COVERAGE, not the ledger, is this field's fidelity source.
+ *  verdict/fix_applied/user_facing/verification/commit/notes have no COVERAGE equivalent and are
+ *  lifted from 67-APPLY-SET.md by finding_id (D-04). A missing match is a hard error (a departure
+ *  from the proven 77=77 ID-set equality), not silently skipped. */
+function renderEasyRow(rowNumber, rec, applySetMap) {
+    const applyFields = applySetMap.get(rec.id);
+    if (!applyFields) {
+        throw new Error(`No 67-APPLY-SET.md row found for ${rec.id} — D-04 lift requires an exact ID match.`);
+    }
     const f = rec.fields;
     return [
         '```',
         field('row', String(rowNumber)),
         field('finding_id', rec.id),
         field('unit', joined(f.unit)),
-        field('location', joined(f.location)),
+        field('location', fullJoined(f.location)),
         field('dimension', joined(f.dimension)),
         field('severity', joined(f.severity)),
         field('effort', joined(f.effort)),
+        field('verdict', joined(applyFields.verdict)),
         field('failure_scenario', fullJoined(f.failure_scenario)),
+        field('fix_applied', fullJoined(applyFields.fix_applied)),
+        field('user_facing', fullJoined(applyFields.user_facing)),
+        field('verification', fullJoined(applyFields.verification)),
+        field('commit', fullJoined(applyFields.commit)),
+        field('notes', fullJoined(applyFields.notes)),
         '```'
     ].join('\n');
 }
 
-/** MAJOR-REFACTORS.md block: INVENTORY's frozen 13-field order, verbatim. The four Phase-69-
- *  facing fields (proposed_approach, proposed_labels, issue) are not part of this task's scaffold. */
+/** Locked-scale PRIO label for a severity value (INVENTORY §3d) — mechanical, not judgment. */
+function prioForSeverity(severity) {
+    return SEVERITY_PRIO[severity] ?? 'PRIO ?';
+}
+
+/** Area label for a finding's proposed_labels — genuine judgment (which module/component this
+ *  belongs to for Phase 69's issue labels), not derivable from a locked scale. Scaffolded as a
+ *  placeholder here; a later plan in this phase authors the real area per record. */
+function areaForRecord(_fields) {
+    return PLACEHOLDER_AREA;
+}
+
+/** Compose the `proposed_labels:` value: area (judgment, placeholder for now) + PRIO (locked
+ *  severity scale, mechanical) + effort (already-recorded locked scale, mechanical). */
+function proposedLabels(fields) {
+    const severity = joined(fields.severity);
+    const effort = joined(fields.effort);
+    return `${areaForRecord(fields)}, ${prioForSeverity(severity)}, effort ${effort}`;
+}
+
+/** MAJOR-REFACTORS.md block: INVENTORY's frozen 13-field order, verbatim, plus the four
+ *  Phase-69-facing fields (D-09): proposed_approach (judgment, placeholder for now),
+ *  proposed_labels (area placeholder + mechanically-derived PRIO/effort), and an empty issue:
+ *  slot Phase 69 fills under ISSUE-05. */
 function renderMajorBlock(rec) {
     const f = rec.fields;
     return [
@@ -252,6 +342,9 @@ function renderMajorBlock(rec) {
         field('effort', fullJoined(f.effort)),
         field('dedup', fullJoined(f.dedup)),
         field('disposition', fullJoined(f.disposition)),
+        field('proposed_approach', PLACEHOLDER_APPROACH),
+        field('proposed_labels', proposedLabels(f)),
+        field('issue', ''),
         '```'
     ].join('\n');
 }
@@ -341,7 +434,8 @@ function runEmit(kind, { force, write }) {
 
     let body, header, targetPath, sectionHeading;
     if (kind === 'easy') {
-        body = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec)).join('\n\n');
+        const applySetMap = loadApplySetMap();
+        body = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
         header = easyHeader();
         sectionHeading = '## Rows';
         targetPath = EASY_PATH;
@@ -359,6 +453,112 @@ function runEmit(kind, { force, write }) {
     }
 }
 
+function collapseWhitespace(s) {
+    return s.replace(/\s+/g, ' ').trim();
+}
+
+/** Field-presence assertion: every block in `blocks` (each a parsed-fields map, tagged with its
+ *  own identifying finding ID) carries every key in `requiredKeys`. A key present with an empty
+ *  value is not a failure (INVENTORY requires optional fields to be written, never dropped); a
+ *  key absent entirely is. Returns the list of "<id>: missing <key>" failure strings. */
+function checkFieldPresence(blocks, requiredKeys, idKey) {
+    const failures = [];
+    for (const fields of blocks) {
+        const id = joined(fields[idKey]) || '(unknown)';
+        for (const key of requiredKeys) {
+            if (!Object.prototype.hasOwnProperty.call(fields, key)) {
+                failures.push(`${id}: missing \`${key}:\` (key absent, not merely empty)`);
+            }
+        }
+    }
+    return failures;
+}
+
+/** Verbatim-fidelity assertion: each document record's `failure_scenario:` equals its COVERAGE
+ *  source's `failure_scenario:` after collapsing whitespace runs to a single space; and no field
+ *  value in the block contains a triple-backtick sequence that would terminate the fence. */
+function checkVerbatimFidelity(docBlocks, corpusById, idKey) {
+    const failures = [];
+    for (const fields of docBlocks) {
+        const id = joined(fields[idKey]);
+        const corpusRec = corpusById.get(id);
+        if (corpusRec) {
+            const docFS = collapseWhitespace(fullJoined(fields.failure_scenario));
+            const corpusFS = collapseWhitespace(fullJoined(corpusRec.fields.failure_scenario));
+            if (docFS !== corpusFS) {
+                failures.push(`${id}: failure_scenario does not match its COVERAGE source after whitespace-collapse`);
+            }
+        }
+        for (const [key, lines] of Object.entries(fields)) {
+            if (fullJoined(lines).includes('```')) {
+                failures.push(`${id}: field \`${key}:\` contains a triple-backtick sequence`);
+            }
+        }
+    }
+    return failures;
+}
+
+/** Commit-sha resolvability (T-68-05): every 7-40 char lowercase hex token in an EASY-FIXES.md
+ *  `commit:` field, for rows whose verdict is not in SHA_EXEMPT_VERDICTS, resolves via
+ *  `git cat-file -e <sha>^{commit}`, checked once per unique sha. Returns { failures, uniqueCount }. */
+function checkCommitShaResolvability(easyBlocks) {
+    const failures = [];
+    const shaToIds = new Map();
+    for (const fields of easyBlocks) {
+        const id = joined(fields.finding_id);
+        const verdict = joined(fields.verdict);
+        if (SHA_EXEMPT_VERDICTS.has(verdict)) continue;
+        const commitText = fullJoined(fields.commit);
+        const shas = commitText.match(SHA_TOKEN_RE) ?? [];
+        for (const sha of shas) {
+            if (!shaToIds.has(sha)) shaToIds.set(sha, []);
+            shaToIds.get(sha).push(id);
+        }
+    }
+    for (const [sha, ids] of shaToIds) {
+        try {
+            execFileSync('git', ['cat-file', '-e', `${sha}^{commit}`], { cwd: SCRIPT_DIR, stdio: 'ignore' });
+        } catch {
+            failures.push(`sha ${sha} (from ${ids.join(', ')}) does not resolve via git cat-file -e`);
+        }
+    }
+    return { failures, uniqueCount: shaToIds.size };
+}
+
+/** Credential-shaped-literal scan (T-68-02): neither document contains a GitHub PAT, AWS access
+ *  key, Slack/OAuth token, or PEM private-key header. */
+function checkCredentialScan(label, text) {
+    const failures = [];
+    for (const pattern of CREDENTIAL_PATTERNS) {
+        if (pattern.re.test(text)) {
+            failures.push(`${label} contains a ${pattern.name}-shaped literal`);
+        }
+    }
+    return failures;
+}
+
+/** Placeholder census (informational, not a failure until plan 68-07 hardens it): count each
+ *  placeholder marker's occurrences per document. */
+function placeholderCensus(text) {
+    const counts = {};
+    for (const marker of PLACEHOLDER_MARKERS) {
+        const re = new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+        const matches = text.match(re);
+        counts[marker] = matches ? matches.length : 0;
+    }
+    return counts;
+}
+
+/** Determinism assertion (must_haves.truths): two in-process renders of each emit produce
+ *  identical strings. */
+function checkDeterminism(selection, applySetMap) {
+    const easy1 = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
+    const easy2 = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
+    const major1 = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
+    const major2 = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
+    return { easyOk: easy1 === easy2, majorOk: major1 === major2 };
+}
+
 function runCheck() {
     let ok = true;
     const corpus = loadCorpus();
@@ -370,25 +570,34 @@ function runCheck() {
     }
     console.log('PASS: corpus hard-fail gate (224 = 144 + 77 + 3, all per-phase splits match)');
 
-    // --- EASY-FIXES.md: count + ID-set equality ---
-    if (!existsSync(EASY_PATH)) {
-        console.log(`FAIL: ${EASY_PATH} does not exist`);
+    if (!existsSync(EASY_PATH) || !existsSync(MAJOR_PATH)) {
+        if (!existsSync(EASY_PATH)) console.log(`FAIL: ${EASY_PATH} does not exist`);
+        if (!existsSync(MAJOR_PATH)) console.log(`FAIL: ${MAJOR_PATH} does not exist`);
+        process.exitCode = 1;
+        return;
+    }
+
+    const easyText = readFileSync(EASY_PATH, 'utf8');
+    const majorText = readFileSync(MAJOR_PATH, 'utf8');
+    const easyBlocks = extractFencedBlocks(easyText).map(parseFields).filter(f => f.finding_id);
+    const majorBlocks = extractFencedBlocks(majorText).map(parseFields).filter(f => f.id);
+    const corpusEasyById = new Map(selection.easy.map(r => [r.id, r]));
+    const corpusMajorById = new Map(selection.major.map(r => [r.id, r]));
+
+    // --- 1. Counts + ID-set equality ---
+    const easyDocIds = easyBlocks.map(f => joined(f.finding_id));
+    const easyCorpusIds = selection.easy.map(r => r.id);
+    if (easyBlocks.length !== EXPECTED_EASY_TOTAL) {
+        console.log(`FAIL: EASY-FIXES.md has ${easyBlocks.length} finding_id blocks, expected ${EXPECTED_EASY_TOTAL}`);
         ok = false;
     } else {
-        const text = readFileSync(EASY_PATH, 'utf8');
-        const blocks = extractFencedBlocks(text).map(parseFields).filter(f => f.finding_id);
-        const docIds = blocks.map(f => joined(f.finding_id));
-        const corpusIds = selection.easy.map(r => r.id);
-        if (blocks.length !== EXPECTED_EASY_TOTAL) {
-            console.log(`FAIL: EASY-FIXES.md has ${blocks.length} finding_id blocks, expected ${EXPECTED_EASY_TOTAL}`);
-            ok = false;
-        } else {
-            console.log(`PASS: EASY-FIXES.md has exactly ${EXPECTED_EASY_TOTAL} finding_id blocks`);
-        }
-        const docSet = new Set(docIds);
-        const corpusSet = new Set(corpusIds);
-        const inDocNotCorpus = docIds.filter(id => !corpusSet.has(id));
-        const inCorpusNotDoc = corpusIds.filter(id => !docSet.has(id));
+        console.log(`PASS: EASY-FIXES.md has exactly ${EXPECTED_EASY_TOTAL} finding_id blocks`);
+    }
+    {
+        const docSet = new Set(easyDocIds);
+        const corpusSet = new Set(easyCorpusIds);
+        const inDocNotCorpus = easyDocIds.filter(id => !corpusSet.has(id));
+        const inCorpusNotDoc = easyCorpusIds.filter(id => !docSet.has(id));
         if (inDocNotCorpus.length || inCorpusNotDoc.length) {
             console.log(`FAIL: EASY-FIXES.md ID-set mismatch — in document not in corpus: [${inDocNotCorpus.join(', ')}]; in corpus not in document: [${inCorpusNotDoc.join(', ')}]`);
             ok = false;
@@ -397,30 +606,101 @@ function runCheck() {
         }
     }
 
-    // --- MAJOR-REFACTORS.md: count + ID-set equality ---
-    if (!existsSync(MAJOR_PATH)) {
-        console.log(`FAIL: ${MAJOR_PATH} does not exist`);
+    const majorDocIds = majorBlocks.map(f => joined(f.id));
+    const majorCorpusIds = selection.major.map(r => r.id);
+    if (majorBlocks.length !== EXPECTED_MAJOR_TOTAL) {
+        console.log(`FAIL: MAJOR-REFACTORS.md has ${majorBlocks.length} id blocks, expected ${EXPECTED_MAJOR_TOTAL}`);
         ok = false;
     } else {
-        const text = readFileSync(MAJOR_PATH, 'utf8');
-        const blocks = extractFencedBlocks(text).map(parseFields).filter(f => f.id);
-        const docIds = blocks.map(f => joined(f.id));
-        const corpusIds = selection.major.map(r => r.id);
-        if (blocks.length !== EXPECTED_MAJOR_TOTAL) {
-            console.log(`FAIL: MAJOR-REFACTORS.md has ${blocks.length} id blocks, expected ${EXPECTED_MAJOR_TOTAL}`);
-            ok = false;
-        } else {
-            console.log(`PASS: MAJOR-REFACTORS.md has exactly ${EXPECTED_MAJOR_TOTAL} id blocks`);
-        }
-        const docSet = new Set(docIds);
-        const corpusSet = new Set(corpusIds);
-        const inDocNotCorpus = docIds.filter(id => !corpusSet.has(id));
-        const inCorpusNotDoc = corpusIds.filter(id => !docSet.has(id));
+        console.log(`PASS: MAJOR-REFACTORS.md has exactly ${EXPECTED_MAJOR_TOTAL} id blocks`);
+    }
+    {
+        const docSet = new Set(majorDocIds);
+        const corpusSet = new Set(majorCorpusIds);
+        const inDocNotCorpus = majorDocIds.filter(id => !corpusSet.has(id));
+        const inCorpusNotDoc = majorCorpusIds.filter(id => !docSet.has(id));
         if (inDocNotCorpus.length || inCorpusNotDoc.length) {
             console.log(`FAIL: MAJOR-REFACTORS.md ID-set mismatch — in document not in corpus: [${inDocNotCorpus.join(', ')}]; in corpus not in document: [${inCorpusNotDoc.join(', ')}]`);
             ok = false;
         } else {
             console.log('PASS: MAJOR-REFACTORS.md finding-ID set equals the corpus major-refactor selection');
+        }
+    }
+
+    // --- 2. Required-field presence per block ---
+    {
+        const failures = [
+            ...checkFieldPresence(easyBlocks, EASY_REQUIRED_KEYS, 'finding_id'),
+            ...checkFieldPresence(majorBlocks, MAJOR_REQUIRED_KEYS, 'id')
+        ];
+        if (failures.length) {
+            console.log(`FAIL: required-field presence — ${failures.length} problem(s):`);
+            for (const f of failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log('PASS: every block in both documents carries every required field key');
+        }
+    }
+
+    // --- 3. Verbatim fidelity ---
+    {
+        const failures = [
+            ...checkVerbatimFidelity(easyBlocks, corpusEasyById, 'finding_id'),
+            ...checkVerbatimFidelity(majorBlocks, corpusMajorById, 'id')
+        ];
+        if (failures.length) {
+            console.log(`FAIL: verbatim fidelity — ${failures.length} problem(s):`);
+            for (const f of failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log('PASS: every failure_scenario matches its COVERAGE source verbatim (whitespace-collapsed); no fence-terminating field value');
+        }
+    }
+
+    // --- 4. Commit-sha resolvability ---
+    {
+        const { failures, uniqueCount } = checkCommitShaResolvability(easyBlocks);
+        if (failures.length) {
+            console.log(`FAIL: commit-sha resolvability — ${failures.length} problem(s) (${uniqueCount} unique shas checked):`);
+            for (const f of failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log(`PASS: commit-sha resolvability — ${uniqueCount} unique shas checked, all resolve via git cat-file -e`);
+        }
+    }
+
+    // --- 5. Credential-shaped-literal scan ---
+    {
+        const failures = [
+            ...checkCredentialScan('EASY-FIXES.md', easyText),
+            ...checkCredentialScan('MAJOR-REFACTORS.md', majorText)
+        ];
+        if (failures.length) {
+            console.log(`FAIL: credential-shaped-literal scan — ${failures.length} problem(s):`);
+            for (const f of failures) console.log(`  - ${f}`);
+            ok = false;
+        } else {
+            console.log('PASS: credential-shaped-literal scan — neither document contains a ghp_/github_pat_/AKIA/xox/PEM-header literal');
+        }
+    }
+
+    // --- 6. Placeholder census (informational) ---
+    {
+        const easyCensus = placeholderCensus(easyText);
+        const majorCensus = placeholderCensus(majorText);
+        console.log(`INFO: placeholder census — EASY-FIXES.md: ${JSON.stringify(easyCensus)}`);
+        console.log(`INFO: placeholder census — MAJOR-REFACTORS.md: ${JSON.stringify(majorCensus)}`);
+    }
+
+    // --- 7. Determinism ---
+    {
+        const applySetMap = loadApplySetMap();
+        const { easyOk, majorOk } = checkDeterminism(selection, applySetMap);
+        if (!easyOk || !majorOk) {
+            console.log(`FAIL: determinism — easyOk=${easyOk} majorOk=${majorOk}`);
+            ok = false;
+        } else {
+            console.log('PASS: determinism — two in-process renders of each emit produce identical strings');
         }
     }
 
