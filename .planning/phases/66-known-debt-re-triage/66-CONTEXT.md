@@ -81,8 +81,8 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
   — **Reversibility:** one-way — an issue filed early cannot be un-filed from a public repository,
   and would permanently corrupt Phase 69's ISSUE-01 "nothing filed before approval" claim.
 
-- **D-03: Every unresolved item is recorded as a `P66-D{n}-nnn` finding in INVENTORY's frozen
-  record format** — same required fields, evidence tiers, `dedup:`, `disposition:`, the `{2,4,8}`
+- **D-03: Every unresolved item is recorded as a `P66-D{n}-nnn` finding** — in INVENTORY's
+  frozen record format: same required fields, evidence tiers, `dedup:`, `disposition:`, the `{2,4,8}`
   effort scale (§3d), and the easy-vs-major rule. It then flows through Phase 68 → Phase 69
   identically to the sweep findings. Nothing bespoke is invented; ROADMAP already makes Phase 68
   depend on Phase 66, and this is the shape Phase 68 already knows how to assemble.
@@ -237,8 +237,8 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
   way.** The header states plainly that this file's completeness construct is an 8-row debt
   denominator and not a cell grid, so no reader expects a gate that is not there.
 
-- **D-13: Phase 66 rewrites `PROJECT.md`'s debt list to carry IDs; Phase 69 backfills issue
-  numbers.** Each surviving bullet gains its `P66-*` finding ID, its `DEBT-NN` requirement, and its
+- **D-13: Phase 66 rewrites `PROJECT.md`'s debt list to carry IDs** — Phase 69 backfills issue
+  numbers. Each surviving bullet gains its `P66-*` finding ID, its `DEBT-NN` requirement, and its
   disposition — so the prose becomes a **pointer into the evidence base** rather than being the
   record itself, which is what "recorded only as prose" actually forbids. Items resolved or found
   not-reproducible are struck from the list with their evidence named.
@@ -249,8 +249,8 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
 
   — **Reversibility:** reversible — the file is planning prose under version control.
 
-- **D-14: Three plans, grouped by the kind of work each item needs rather than by requirement
-  number:**
+- **D-14: Three plans** — grouped by the kind of work each item needs rather than by requirement
+  number:
 
   1. **`66-01`** — inherited-evidence items (**DEBT-01, DEBT-02, DEBT-03**) via D-08's
      cite-plus-currency-check, including D-11's named-edit plan. Creates the `66-COVERAGE.md`
@@ -260,7 +260,7 @@ separate namespaces; where one is meant it is written as "Phase 6N D-nn".
   3. **`66-03`** — the orphans (**DEBT-07, DEBT-08**), the `REQUIREMENTS.md` edit (D-05), the
      `PROJECT.md` rewrite (D-13), **DEBT-06** closure and **the four gates** (D-15).
 
-- **D-15: Four completion gates, re-derived live in `66-03`'s close-out:**
+- **D-15: Four completion gates** — re-derived live in `66-03`'s close-out:
 
   1. **Denominator gate** — `PROJECT.md`'s list re-counted by the D-04 command with its literal
      output printed, and every row shown to carry a verdict. A drift from 8 is reported with its
