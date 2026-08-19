@@ -250,5 +250,5 @@ None — no external service configuration required.
 
 ## Self-Check: PASSED
 
-All 13 created/modified files confirmed present on disk; all 11 commit hashes confirmed present
-in `git log --oneline --all`.
+All 13 created/modified files confirmed present on disk; all 11 task/close commit hashes plus this
+SUMMARY's own commit (`ade492b`) confirmed present in `git log --oneline --all`.
