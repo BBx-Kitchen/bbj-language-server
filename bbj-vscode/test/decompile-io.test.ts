@@ -114,8 +114,13 @@ describe('decompile-io', () => {
                 expect(freshContent.length).toBe(staleContent.length); // the coincidental-size premise
 
                 // A stale .lst already on disk before the wait starts, e.g. left over from a
-                // crashed prior decompile attempt against the same file.
+                // crashed prior decompile attempt against the same file. A real gap before the
+                // call starts is required so the stale write's mtime is unambiguously earlier
+                // than the call-start timestamp the fix captures — writing it in the same tick
+                // as the call would let filesystem mtime rounding coincidentally satisfy the
+                // mtime gate on the very first poll.
                 fs.writeFileSync(lst, staleContent);
+                await new Promise((resolve) => setTimeout(resolve, 100));
 
                 const resultPromise = waitForDecompileOutput(input, { pollMs: 15, timeoutMs: 2000 });
                 // The fresh run's output lands well after two 15ms-spaced polls have already
