@@ -45,7 +45,7 @@ interface CompileHandle {
  * - ENOENT graceful degradation: returns [] if bbjcpl not installed
  * - Never rejects: all errors logged and resolved with []
  *
- * Phase 53 will wire this into buildDocuments() via:
+ * Wired into buildDocuments() (bbj-document-builder.ts's debounced BBjCPL compile step) via:
  *   services.compiler.BBjCPLService.compile(filePath)
  */
 export class BBjCPLService {
@@ -201,7 +201,9 @@ export class BBjCPLService {
 
     /**
      * Set the timeout in milliseconds for bbjcpl compilations.
-     * Called by Phase 53 from VS Code settings wiring.
+     * Currently unused: no settings path (VS Code or IntelliJ) calls this method, so
+     * {@link timeoutMs} always stays at its default. Wiring a settings path would be a
+     * behaviour change, outside this comment-only correction.
      *
      * @param ms Timeout in milliseconds (e.g. 30000 for 30 seconds).
      */
