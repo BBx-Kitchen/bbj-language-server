@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - 'bbj-intellij/**'
-      - 'bbj-vscode/out/language/**'
+      - 'bbj-vscode/src/language/**'
       - 'bbj-vscode/tools/**'
       - 'bbj-vscode/syntaxes/**'
       - '.github/workflows/pr-validation.yml'
