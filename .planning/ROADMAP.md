@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 3/12 plans executed
+**Plans**: 4/12 plans executed
 
 Plans:
 **Wave 1**
@@ -595,7 +595,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 67-04-PLAN.md — Completion, document-symbol and token-builder providers (6), plus the D-10 lint-clean gate
+- [x] 67-04-PLAN.md — Completion, document-symbol and token-builder providers (6), plus the D-10 lint-clean gate
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
