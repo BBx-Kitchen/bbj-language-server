@@ -605,6 +605,10 @@ export class JavaInteropService {
         // raw Java DTO data before any async awaits. This is the data that the static-method
         // filter in bbj-scope.ts depends on, and it must be present before getResolvedClass()
         // can return this class to external callers.
+        // A malformed/older classpath response may omit fields/methods entirely (P61-D2-003) —
+        // default them like classes/constructors above so the loops below don't throw.
+        javaClass.fields ??= [];
+        javaClass.methods ??= [];
         for (const field of javaClass.fields) {
             (field as Mutable<JavaField>).$type = JavaField.$type;
             field.deprecated = (field as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
