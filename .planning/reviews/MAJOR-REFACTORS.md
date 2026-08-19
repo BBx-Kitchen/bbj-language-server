@@ -3355,3 +3355,101 @@ Phase 65's four `### Cross-references` blocks hold prose cross-references — it
 
 `66-COVERAGE.md` carries no `### Cross-unit referrals` block — its own sweep referred nothing onward.
 
+## Close-out
+
+### Phase 69 handoff
+
+Field by field, what each of Phase 69's requirements reads from this document:
+
+- **ISSUE-02** ("Each filed issue is self-contained — problem statement, evidence with
+  `file:line`, verified failure scenario, proposed approach, and acceptance criteria — readable
+  without the review documents") reads `failure_scenario:` and `proposed_approach:` from each of
+  the 144 record blocks — both fields are written to stand alone, so an issue body can be built
+  from them without this document or a `6N-COVERAGE.md` file open. `location:` supplies the
+  `file:line` evidence half.
+- **ISSUE-03** ("Each filed issue carries area, `PRIO 1/2/3`, and effort (`2`/`4`/`8`) labels drawn
+  from the repository's existing label set") reads `proposed_labels:`, whose `area=` value is
+  drawn from the repository's own existing fifteen-label set (`check`'s area-label-set-validity
+  assertion enforces this), whose `PRIO` is `INVENTORY.md` §3d's mapping of each record's
+  `severity:`, and whose effort is the same `{2,4,8}` value as the record's own `effort:` field
+  with no translation step between them.
+- **ISSUE-04** ("No filed issue duplicates an existing open issue") is served by the `dedup:`
+  field: `210` of the `224` corpus records carry `none`, and the other `14` carry a named overlap
+  — Phase 69's dedup check reads this field rather than re-checking the tracker from scratch.
+- **ISSUE-05** ("MAJOR-REFACTORS.md cross-references the filed issue numbers, so each documented
+  finding is traceable to its tracker entry") writes the filed issue number into the empty
+  `issue:` slot already present on each of the 144 blocks — Phase 69 fills the slot; it does not
+  create it.
+
+Phase 69 files in severity order; point it at `## Index (severity-sorted, for Phase 69 filing
+order)` above as its filing order — the `1` `critical` and `16` `high` records lead it, matching
+`ROADMAP.md` §"Phase 69: GitHub Issue Filing"'s own stated goal of filing every major finding as a
+labeled, deduped issue.
+
+**This document records `144` proposed refactors; implementing them is `FUT-04`, out of scope for
+this milestone.** Each is resolved in its own future milestone or PR. A reader should not mistake a
+`proposed_approach:` value for scheduled work — it is the starting point Phase 69 lifts into an
+issue body, not a commitment this milestone makes.
+
+### Regeneration hazard
+
+Once Phase 69 writes issue numbers under ISSUE-05, re-running `derive-review-docs.mjs` to
+regenerate this document would clobber every one of them: `runEmit`'s `--write` path overwrites
+`MAJOR-REFACTORS.md` wholesale from a fresh `emit-major` render, whose `issue:` field is always
+emitted empty — there is no merge step that reads a filed issue number back in before overwriting.
+The field set therefore had to be right *before* Phase 69 ran, which is why the `issue:` slot
+exists now rather than being added later.
+
+The script refuses to emit when any `issue:` value is non-empty unless an explicit `--force` flag
+is passed (`checkRegenerationGuard`) — a future maintainer who genuinely needs to regenerate must
+first preserve every filed `issue:` value (for example by copying each finding ID's current
+`issue:` number out of the committed file) before passing `--force`, because the regenerated
+scaffold does not carry them forward on its own.
+
+### Discrepancy Register
+
+The same register `EASY-FIXES.md` §"Close-out" §"Discrepancy Register" carries (the D-02
+`effort: 1` annotation claim, the `67-CONTEXT.md` per-phase finding-count claim, plan `68-05`'s
+`P61-D5-014` clause-shape discrepancy, and plan `68-06`'s SETOPTS-referral `dedup:` discrepancy),
+plus the two that belong to this document alone:
+
+5. **`68-CONTEXT.md` D-09 vs. the frozen field order — the appended-field count.** D-09 states
+   each of the 144 records is "INVENTORY's frozen field order, plus four Phase-69-facing fields" —
+   `proposed_approach:`, `effort:`, `proposed_labels:` and an empty `issue:` slot. **Claimed:**
+   four fields are appended. **Derived:** `INVENTORY.md` §"Finding Record Template" already
+   carries `effort:` as field 11 of its frozen 13-field order (confirmed against every record
+   block in `## Records` above, where `effort:` sits between `classification:` and `dedup:` in the
+   inherited position) — so only **three** fields are genuinely appended: `proposed_approach:`,
+   `proposed_labels:` and `issue:`. `effort:` is retained in its original, inherited place rather
+   than being a fourth addition.
+
+6. **The open-gap referrals from plan `68-06`'s census — the only places this milestone's review
+   handed something over and cannot show where it landed**, listed by source anchor:
+   - `64-COVERAGE.md:881` (referral 21) — `RU-64-02` never independently confirmed
+     `RU-64-03`'s undeclared-`tsx`-tool-dependency referral anywhere in its own `### SEC-08
+     Dependency Triage` text.
+   - `64-COVERAGE.md:1747` (referral 27) — targets Phase 69, which has not yet executed, so no
+     disposition exists yet for the `P64-D1-004` issue-drafting instruction it carries.
+   - `64-COVERAGE.md:3365` (referral 28) — `RU-64-01` closed before `RU-64-02` raised the
+     stale-workflow-comment referral; `RU-64-01`'s own earlier D8 record still asserts the
+     comments are accurate, uncorrected.
+   - `64-COVERAGE.md:3372` (referral 29) — `RU-64-01` closed before `RU-64-02` raised the
+     no-test-run referral; `RU-64-01`'s D5 cell is structurally `n/a` for workflow files under
+     `R-D5-CI`, so no finding was ever going to land there for this specific fact.
+   - `64-COVERAGE.md:3378` (referral 30) — targets `RU-62-01`, closed since Phase 62; the
+     `brace-expansion` reachability question is attached to `P64-D6-008` and carried into Phase
+     69's issue draft rather than answered here.
+
+### Write-boundary check
+
+`git status --porcelain .planning/reviews/` output at the time this section was written (interim
+— EASY-FIXES.md's own Close-out was already committed by Task 1; this document's edit is the only
+uncommitted change; Task 3 records the phase's final state in both documents):
+
+```
+ M .planning/reviews/MAJOR-REFACTORS.md
+```
+
+D-12's boundary held: one file modified (this document, mid-assembly), no `INVENTORY.md` or
+`6N-COVERAGE.md` touched, and no tracker write.
+
