@@ -23,19 +23,24 @@
 //                fields are authored directly in the assembled document, not emitted here)
 //   emit-major   print MAJOR-REFACTORS.md's record blocks to stdout (INVENTORY's frozen 13-field
 //                order, verbatim)
+//   emit-other   print MAJOR-REFACTORS.md's `## Other Dispositions` section to stdout — DOC-04's
+//                whole population (3 wontfix + 24 not-reproducible + 0 duplicate + 14
+//                already-covered + 30 cross-unit referrals), extracted from the six COVERAGE
+//                files' own prose sub-blocks (plan 68-03). --write splices it in as this
+//                document's last section, replacing any prior copy of it.
 //   check        validate the two assembled documents in .planning/reviews/ against the corpus
 //
 // Flags:
-//   --force      bypass the regeneration guard (see below) for emit-easy / emit-major
+//   --force      bypass the regeneration guard (see below) for emit-easy / emit-major / emit-other
 //   --write      in addition to printing to stdout, atomically compose and overwrite the target
 //                document in .planning/reviews/ (writeAtomic — write to a sibling .tmp path, then
 //                renameSync into place, so an interrupted run cannot leave a half-written file)
 //
-// Regeneration guard (T-68-03, D-09's `costly` reversibility): before emit-easy or emit-major
-// writes or emits, if .planning/reviews/MAJOR-REFACTORS.md already exists and carries any `issue:`
-// line with a non-empty value, the command refuses (prints why, exits non-zero, emits nothing) —
-// Phase 69 writes filed issue numbers into that file under ISSUE-05, and a plain re-run of this
-// script must never clobber them. --force bypasses the guard explicitly.
+// Regeneration guard (T-68-03, D-09's `costly` reversibility): before emit-easy, emit-major or
+// emit-other writes or emits, if .planning/reviews/MAJOR-REFACTORS.md already exists and carries
+// any `issue:` line with a non-empty value, the command refuses (prints why, exits non-zero, emits
+// nothing) — Phase 69 writes filed issue numbers into that file under ISSUE-05, and a plain re-run
+// of this script must never clobber them. --force bypasses the guard explicitly.
 
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -121,6 +126,19 @@ const EXPECTED_EASY_TOTAL = 77;
 const EXPECTED_EASY_SPLIT = { 61: 44, 62: 14, 63: 10, 64: 8, 65: 0, 66: 1 };
 const EXPECTED_WONTFIX_TOTAL = 3;
 const EXPECTED_WONTFIX_IDS = ['P64-D8-002', 'P64-D6-012', 'P66-D5-003'];
+
+// DOC-04 denominators (68-CONTEXT.md D-05/D-06/D-07, plan 68-03): the two categories the corpus's
+// `disposition:` field does not carry — `### Not-reproducible dispositions` prose sub-blocks and
+// `### Cross-unit referrals` / `### Cross-references` prose sub-blocks — extracted by
+// `extractProseSubBlocks` below. Per-phase splits are the plan's own literal expected numbers;
+// a departure is a finding (assertProseSubBlockCounts), never silently adjusted.
+const EXPECTED_NOT_REPRODUCIBLE_TOTAL = 24;
+const EXPECTED_NOT_REPRODUCIBLE_SPLIT = { 61: 11, 62: 4, 63: 2, 64: 7, 65: 0, 66: 0 };
+const EXPECTED_REFERRAL_TOTAL = 30;
+const EXPECTED_REFERRAL_SPLIT = { 61: 12, 62: 7, 63: 1, 64: 10, 65: 0, 66: 0 };
+// The 14 records whose `dedup:` field is not `none` (68-CONTEXT.md's domain table) — DOC-04's
+// `already-covered` category.
+const EXPECTED_ALREADY_COVERED_TOTAL = 14;
 
 // Column the value starts at for every rendered `key:` field, matching 67-APPLY-SET.md's and
 // INVENTORY.md's Finding Record Template row shape.
@@ -650,6 +668,318 @@ function severityIndexTable(selection) {
     ].join('\n');
 }
 
+/** Walk a COVERAGE file's raw text line by line and pull the items out of its
+ *  `### Not-reproducible dispositions` and `### Cross-unit referrals` / `### Cross-references`
+ *  prose sub-blocks (plan 68-03 Task 1). A heading line matching either target phrase (re)opens
+ *  the corresponding mode; any other heading line at any level closes whichever mode is open. A
+ *  file carries the not-reproducible/referral heading pair once per plan-level section, so this
+ *  walk accumulates across every occurrence in the file, not just the first. Inside an open mode,
+ *  an item starts at a line whose first non-space characters are a list marker — a digit + `.` +
+ *  space, or `-` + space, or `*` + space — and continues (whitespace-collapsed) until the next
+ *  item or the mode's close; both Phase 64's numbered markers and Phases 61-63's dash markers are
+ *  handled by the same regex, so neither marker style silently loses items. Returns
+ *  `{ notRepro: [{line, text}], referrals: [{line, text}] }`, `line` being the 1-based source line
+ *  the item started on (used for the referral section's source anchor). */
+function extractProseSubBlocks(fileText) {
+    const lines = fileText.split('\n');
+    const notRepro = [];
+    const referrals = [];
+    let mode = null;
+    let currentList = null;
+    let currentItem = null;
+    let currentLine = null;
+
+    const flush = () => {
+        if (currentItem !== null) {
+            const text = collapseWhitespace(currentItem);
+            if (text.length) currentList.push({ line: currentLine, text });
+        }
+        currentItem = null;
+    };
+
+    lines.forEach((rawLine, idx) => {
+        const lineNo = idx + 1;
+        const trimmed = rawLine.trim();
+        if (trimmed === '### Not-reproducible dispositions') {
+            flush();
+            mode = 'notrepro';
+            currentList = notRepro;
+            return;
+        }
+        if (trimmed === '### Cross-unit referrals' || trimmed === '### Cross-references') {
+            flush();
+            mode = 'referral';
+            currentList = referrals;
+            return;
+        }
+        if (/^#+\s/.test(trimmed)) {
+            flush();
+            mode = null;
+            currentList = null;
+            return;
+        }
+        if (!mode) return;
+        const itemMatch = trimmed.match(/^(?:\d+\.|-|\*)\s+(.*)$/);
+        if (itemMatch) {
+            flush();
+            currentItem = itemMatch[1];
+            currentLine = lineNo;
+        } else if (currentItem !== null && trimmed.length) {
+            currentItem += ' ' + trimmed;
+        }
+    });
+    flush();
+    return { notRepro, referrals };
+}
+
+/** Run `extractProseSubBlocks` over all six COVERAGE files' already-loaded text, keyed by phase. */
+function loadProseSubBlocks(phaseFileTexts) {
+    const notRepro = {};
+    const referrals = {};
+    for (const phase of PHASES) {
+        const { notRepro: nr, referrals: rf } = extractProseSubBlocks(phaseFileTexts[phase]);
+        notRepro[phase] = nr;
+        referrals[phase] = rf;
+    }
+    return { notRepro, referrals };
+}
+
+/** Hard-fail gate for the two prose-sub-block denominators (24 not-reproducible, 30 referrals),
+ *  mirroring `assertCounts`'s honesty pattern: print the full derived breakdown to stderr and
+ *  return false without emitting anything on any departure from the expected total or per-phase
+ *  split — never silently adjusted. */
+function assertProseSubBlockCounts(prose) {
+    const nrCounts = {};
+    const refCounts = {};
+    let nrTotal = 0;
+    let refTotal = 0;
+    for (const phase of PHASES) {
+        nrCounts[phase] = prose.notRepro[phase].length;
+        refCounts[phase] = prose.referrals[phase].length;
+        nrTotal += nrCounts[phase];
+        refTotal += refCounts[phase];
+    }
+    process.stderr.write(
+        `derived prose sub-blocks: not-reproducible total=${nrTotal} (${PHASES.map(p => `${p}=${nrCounts[p]}`).join(' ')}) ` +
+        `| referrals total=${refTotal} (${PHASES.map(p => `${p}=${refCounts[p]}`).join(' ')})\n`
+    );
+    const problems = [];
+    if (nrTotal !== EXPECTED_NOT_REPRODUCIBLE_TOTAL) problems.push(`not-reproducible total ${nrTotal} !== expected ${EXPECTED_NOT_REPRODUCIBLE_TOTAL}`);
+    if (refTotal !== EXPECTED_REFERRAL_TOTAL) problems.push(`referral total ${refTotal} !== expected ${EXPECTED_REFERRAL_TOTAL}`);
+    for (const p of PHASES) {
+        if (nrCounts[p] !== EXPECTED_NOT_REPRODUCIBLE_SPLIT[p]) problems.push(`phase ${p} not-reproducible ${nrCounts[p]} !== expected ${EXPECTED_NOT_REPRODUCIBLE_SPLIT[p]}`);
+        if (refCounts[p] !== EXPECTED_REFERRAL_SPLIT[p]) problems.push(`phase ${p} referral ${refCounts[p]} !== expected ${EXPECTED_REFERRAL_SPLIT[p]}`);
+    }
+    if (problems.length > 0) {
+        process.stderr.write(
+            'ERROR: derived prose sub-block counts departed from the expected denominator — treat as a finding, do not adjust silently.\n' +
+            problems.map(p => `  - ${p}\n`).join('')
+        );
+        return false;
+    }
+    return true;
+}
+
+/** DOC-04's `already-covered` category: every corpus record whose `dedup:` field does not begin
+ *  `none`, ordered by originating phase then finding ID like every other selection in this
+ *  script. Currently 14 (11 major-refactor, 2 easy-fix, 1 wontfix — 68-CONTEXT.md's domain table). */
+function alreadyCoveredRecords(records) {
+    return records
+        .filter(r => {
+            const d = fullJoined(r.fields.dedup);
+            return d.length > 0 && !d.startsWith('none');
+        })
+        .slice()
+        .sort((a, b) => (a.phase !== b.phase ? a.phase - b.phase : a.id.localeCompare(b.id)));
+}
+
+/** `## Other Dispositions` §"Category reconciliation" (D-05): states, in prose, that the corpus's
+ *  `disposition:` field carries three values rather than DOC-04's four named categories, and that
+ *  two of those categories live outside that field — then the table with the four live counts. */
+function renderCategoryReconciliation() {
+    return `The corpus's \`disposition:\` field carries three values — \`major-refactor\`, \`easy-fix\` and
+\`wontfix\` — not the four category names DOC-04 uses (\`duplicate\`, \`wontfix\`,
+\`already-covered\`, \`not-reproducible\`). Two of DOC-04's categories live outside that field
+entirely: \`not-reproducible\` is the six COVERAGE files' own \`### Not-reproducible dispositions\`
+prose blocks, and \`already-covered\` is the non-\`none\` \`dedup:\` field annotations. This section
+states that mapping plainly and carries the whole population each category points to, so no
+category reads as populated when it is not — including the one that is genuinely empty.
+
+### Category reconciliation
+
+| DOC-04 category | Where it actually lives | Count |
+|---|---|---|
+| wontfix | \`disposition:\` field | 3 |
+| not-reproducible | \`### Not-reproducible dispositions\` prose blocks | 24 |
+| duplicate | nowhere — no finding was dropped as a duplicate | 0 |
+| already-covered | non-\`none\` \`dedup:\` field annotations | 14 |
+`;
+}
+
+/** `## Other Dispositions` §"wontfix" (D-05, D-09's Analog D): the 3 records whose
+ *  `disposition:` field begins `wontfix`, each carrying its own recorded reasoning verbatim —
+ *  `P64-D6-012`'s own text names Phase 68 as where it is documented, honoured as written rather
+ *  than re-argued (68-CONTEXT.md `<specifics>`). Rendered as plain prose (no fenced ``` block),
+ *  deliberately — the corpus record-extraction regexes key off a fenced block whose first field
+ *  is `id:`/`row:`/`finding_id:`; fencing these entries would make `extractFencedBlocks` and the
+ *  144/77 counts pick them up as if they were corpus records. */
+function renderWontfixSection(selection) {
+    const entries = selection.wontfix.map(rec => {
+        const f = rec.fields;
+        return `**\`${rec.id}\`** — unit: \`${joined(f.unit)}\`, location: \`${fullJoined(f.location)}\`, dimension: \`${joined(f.dimension)}\`, severity: \`${joined(f.severity)}\`.
+> disposition: ${fullJoined(f.disposition)}`;
+    }).join('\n\n');
+    return `### wontfix
+
+3 records whose \`disposition:\` field begins \`wontfix\` — the corpus's own zero-edit disposition —
+transcribed with each record's own recorded reasoning carried verbatim rather than re-argued.
+
+${entries}
+`;
+}
+
+/** `## Other Dispositions` §"not-reproducible" (D-05, Analog E): the 24 items extracted from the
+ *  six COVERAGE files' own `### Not-reproducible dispositions` prose blocks, grouped by
+ *  originating phase and numbered continuously (1..24) so the section reads as one closed list.
+ *  Phase 65's and Phase 66's zero-item groups each carry a written reason rather than an omitted
+ *  heading (T-68-12). */
+function renderNotReproducibleSection(prose) {
+    const zeroReason = {
+        65: 'Phase 65\'s `### Not-reproducible dispositions` blocks say "None" explicitly — roughly ' +
+            '36 items enumerated during its sweep were settled by direct code trace rather than left ' +
+            'open, so the zero here is a stated fact, not a missing section.',
+        66: '`66-COVERAGE.md` carries no `### Not-reproducible dispositions` block at all — its 8 ' +
+            "records left no candidate claim unresolved during the sweep."
+    };
+    const lines = [];
+    let n = 0;
+    for (const phase of PHASES) {
+        const items = prose.notRepro[phase];
+        lines.push(`**Phase ${phase} (${items.length} item${items.length === 1 ? '' : 's'}):**`, '');
+        if (items.length === 0) {
+            lines.push(zeroReason[phase] ?? 'No items were recorded in this phase\'s sweep.');
+        } else {
+            for (const item of items) {
+                n++;
+                lines.push(`${n}. ${item.text}`);
+            }
+        }
+        lines.push('');
+    }
+    return `### not-reproducible
+
+24 items extracted verbatim from the six COVERAGE files' own \`### Not-reproducible dispositions\`
+prose sub-blocks (61→11, 62→4, 63→2, 64→7, 65→0, 66→0), grouped by originating phase and numbered
+continuously, each keeping its source's own tier-failed / candidate-claim / reason-not-recorded
+shape.
+
+${lines.join('\n').trim()}
+`;
+}
+
+/** `## Other Dispositions` §"duplicate" (D-05): the count is 0, stated in words with the RVW-07
+ *  reason, rather than the category being omitted. */
+function renderDuplicateSection() {
+    return `### duplicate
+
+**Count: 0.** RVW-07 required every finding to be checked against the 15 frozen open issues before
+being recorded; where overlap existed it was annotated in-record as \`partial-overlap\` or
+\`supersedes\` and the finding was still recorded — nothing was discarded for duplicating a tracker
+entry. The category is written as a zero, with this reason, rather than omitted, because an omitted
+category would read as an oversight rather than a checked, honest empty set.
+`;
+}
+
+/** `## Other Dispositions` §"already-covered" (D-05): the 14 records whose `dedup:` field is not
+ *  `none`, each naming the finding ID, that record's own disposition, and the `dedup:` text
+ *  verbatim — the 14 split 11 major-refactor, 2 easy-fix, 1 wontfix, so a record can appear here
+ *  and in its own document's own records without contradiction (stated explicitly, per the plan). */
+function renderAlreadyCoveredSection(alreadyCovered) {
+    const entries = alreadyCovered.map(rec => {
+        const f = rec.fields;
+        const dispToken = fullJoined(f.disposition).split(/\s+/)[0];
+        return `**\`${rec.id}\`** (${dispToken}) — dedup: ${fullJoined(f.dedup)}`;
+    }).join('\n\n');
+    return `### already-covered
+
+14 records whose \`dedup:\` field is not \`none\` — 11 \`major-refactor\`, 2 \`easy-fix\`
+(\`P61-D2-015\`, \`P66-D2-001\`) and 1 \`wontfix\` (\`P66-D5-003\`). An entry here can also appear in
+its own document's own records (\`EASY-FIXES.md\` or this document's \`## Records\` section) without
+contradiction — the two facts, "this finding overlaps a tracker entry" and "this finding was still
+recorded and dispositioned", are both true at once, and that overlap is stated here rather than left
+for a reader to reconcile.
+
+${entries}
+`;
+}
+
+/** `## Other Dispositions` §"Cross-unit referrals and their resolution" (D-07, Analog F): the 30
+ *  referrals extracted from the six COVERAGE files' own `### Cross-unit referrals` /
+ *  `### Cross-references` prose blocks, each carrying its source phase/line anchor and an
+ *  unfilled `resolution:` slot — plan `68-06` fills all 30; no resolution is guessed here. */
+function renderReferralsSection(prose) {
+    const zeroReason = {
+        65: "Phase 65's four `### Cross-references` blocks hold prose cross-references — its " +
+            '`P62-D1-002` CSP-nonce cross-reference is the example — rather than unit-to-unit ' +
+            'handoffs, so they contribute zero enumerated referrals here; the zero is a shape ' +
+            'difference, not a gap that went uncounted.',
+        66: '`66-COVERAGE.md` carries no `### Cross-unit referrals` block — its own sweep referred ' +
+            'nothing onward.'
+    };
+    const lines = [];
+    let n = 0;
+    for (const phase of PHASES) {
+        const items = prose.referrals[phase];
+        lines.push(`**Phase ${phase} (${items.length} referral${items.length === 1 ? '' : 's'}):**`, '');
+        if (items.length === 0) {
+            lines.push(zeroReason[phase] ?? 'No referrals were recorded in this phase\'s sweep.');
+        } else {
+            for (const item of items) {
+                n++;
+                lines.push(`${n}. **[from \`${phase}-COVERAGE.md:${item.line}\`]** ${item.text}`);
+                lines.push(field('resolution', PLACEHOLDER_RESOLUTION));
+            }
+        }
+        lines.push('');
+    }
+    return `### Cross-unit referrals and their resolution
+
+30 referrals extracted verbatim from the six COVERAGE files' own \`### Cross-unit referrals\` /
+\`### Cross-references\` prose blocks (61→12, 62→7, 63→1, 64→10, 65→0, 66→0), each carrying the
+source phase and line anchor it came from and an unfilled \`resolution:\` slot — plan \`68-06\` fills
+all 30. This is inside DOC-04's intent, not beyond it: a referral whose receiving unit recorded
+nothing is exactly a finding dropped silently, which is what DOC-04 exists to prevent. A referral
+that landed is \`already-covered\` with a citation; either way the reader can check it. No
+resolution is guessed here — the whole point of D-07 is that guessing would hide a silent drop.
+
+${lines.join('\n').trim()}
+`;
+}
+
+/** Compose the full `## Other Dispositions` section (D-06's single home for DOC-04's population). */
+function renderOtherDispositions(selection, prose, alreadyCovered) {
+    return [
+        '## Other Dispositions',
+        '',
+        renderCategoryReconciliation(),
+        renderWontfixSection(selection),
+        renderNotReproducibleSection(prose),
+        renderDuplicateSection(),
+        renderAlreadyCoveredSection(alreadyCovered),
+        renderReferralsSection(prose)
+    ].join('\n');
+}
+
+/** Splice a freshly rendered `## Other Dispositions` section into `existingText` (MAJOR-
+ *  REFACTORS.md's current content), replacing any prior `## Other Dispositions` section (everything
+ *  from that heading to EOF — it is always this document's last section) so re-running `emit-other
+ *  --write` is idempotent rather than appending a second copy. */
+function composeMajorWithOtherDispositions(existingText, otherSectionText) {
+    const idx = existingText.indexOf('\n## Other Dispositions');
+    const base = idx === -1 ? existingText.replace(/\n+$/, '') : existingText.slice(0, idx);
+    return `${base}\n\n${otherSectionText}\n`;
+}
+
 /** Write `text` to `path` without ever leaving a half-written file: write to a sibling `.tmp`
  *  path first, then renameSync into place (same filesystem, so the rename is atomic). */
 function writeAtomic(path, text) {
@@ -784,7 +1114,7 @@ function easyReconciliationText(selection, applySetMap) {
 
 \`${offScaleEffortIds.length}\` records — ${offScale} — carry \`effort: 1\`, off INVENTORY §3d's locked \`{2,4,8}\` scale. Phase 67's close-out §"Recorded departures" found no in-record annotation for either despite 68-CONTEXT.md D-02 asserting one exists; the value is carried through unrounded and the discrepancy is stated here rather than an annotation being fabricated.
 
-Findings that are neither easy-fix nor major-refactor are recorded in \`MAJOR-REFACTORS.md\` §"Other Dispositions" (D-06); this document is not duplicated there.
+Findings that are neither easy-fix nor major-refactor are recorded in \`MAJOR-REFACTORS.md\` §"Other Dispositions" (D-06) — 3 wontfix + 24 not-reproducible + 0 duplicate + 14 already-covered + 30 cross-unit referrals = 71 items; this document is not duplicated there.
 
 `;
 }
@@ -1233,10 +1563,12 @@ function main() {
         runEmit('easy', { force, write });
     } else if (command === 'emit-major') {
         runEmit('major', { force, write });
+    } else if (command === 'emit-other') {
+        runEmitOther({ force, write });
     } else if (command === 'check') {
         runCheck();
     } else {
-        process.stderr.write('Usage: node derive-review-docs.mjs <emit-easy|emit-major|check> [--force] [--write]\n');
+        process.stderr.write('Usage: node derive-review-docs.mjs <emit-easy|emit-major|emit-other|check> [--force] [--write]\n');
         process.exitCode = 1;
     }
 }

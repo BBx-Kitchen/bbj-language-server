@@ -20,7 +20,7 @@ safe overwrite of this assembled file once that content has been added.
 
 `2` records — `P61-D4-010` and `P61-D8-005` — carry `effort: 1`, off INVENTORY §3d's locked `{2,4,8}` scale. Phase 67's close-out §"Recorded departures" found no in-record annotation for either despite 68-CONTEXT.md D-02 asserting one exists; the value is carried through unrounded and the discrepancy is stated here rather than an annotation being fabricated.
 
-Findings that are neither easy-fix nor major-refactor are recorded in `MAJOR-REFACTORS.md` §"Other Dispositions" (D-06); this document is not duplicated there.
+Findings that are neither easy-fix nor major-refactor are recorded in `MAJOR-REFACTORS.md` §"Other Dispositions" (D-06) — 3 wontfix + 24 not-reproducible + 0 duplicate + 14 already-covered + 30 cross-unit referrals = 71 items; this document is not duplicated there.
 
 ## Index
 
