@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 7/12 plans executed
+**Plans**: 8/12 plans executed
 
 Plans:
 **Wave 1**
@@ -611,7 +611,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 67-08-PLAN.md — `document-formatter.ts` (4) and `decompile-io.ts` (2): hangs, duplicate spawns, stale artefacts
+- [x] 67-08-PLAN.md — `document-formatter.ts` (4) and `decompile-io.ts` (2): hangs, duplicate spawns, stale artefacts
 
 **Wave 9** *(blocked on Wave 8 completion)*
 

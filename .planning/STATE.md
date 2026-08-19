@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 67
 current_phase_name: apply-easy-fixes
 status: executing
-stopped_at: Completed 67-07-PLAN.md
-last_updated: "2026-08-19T13:49:15.262Z"
+stopped_at: Completed 67-08-PLAN.md
+last_updated: "2026-08-19T14:08:03.780Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 42
-  completed_plans: 37
+  completed_plans: 38
   percent: 70
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 67 (apply-easy-fixes) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 67 execution started
 
@@ -114,6 +114,7 @@ Last activity: 2026-08-19 — Phase 67 execution started
 | Phase 67 P05 | ~13min | 3 tasks | 11 files |
 | Phase 67 P06 | ~35min | 3 tasks | 8 files |
 | Phase 67 P07 | ~33min | 3 tasks | 13 files |
+| Phase 67 P08 | ~13min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -245,6 +246,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 67 Plan 07]: P61-D5-011 extended existing test/functional/lsp-features.test.ts rather than creating a new signature-help.test.ts, per the plan's own escape clause
 - [Phase ?]: [Phase 67 Plan 07]: P61-D5-012's inherited-field hover only fires for chained member access (d!.x.y), not one-hop d!.x — documented inline, not filed as a new finding
 - [Phase ?]: [Phase 67 Plan 07]: P61-D5-017's .ts-vs-.bbl equivalence compares unique name sets, not raw counts, so events.bbl's pre-P61-D2-019 duplicate leftovers aren't mistaken for new drift
+- [Phase ?]: [Phase 67 Plan 08]: P62-D8-002 comment-correction branch taken over map removal; P62-D5-006's non-ENOENT-error case reuses P62-D2-010's own test rather than duplicating it; P62-D2-011's stale-fixture test lives under bbj-vscode/test/test-data/ rather than os.tmpdir(), read as binding on new tests this plan adds
+- [Phase ?]: [Phase 67 Plan 08]: Own-test-bug found and fixed mid-fix — P62-D2-011's red test lacked a real gap before the wait call, letting the stale write's mtime coincidentally satisfy the new mtime gate; fixed with a 100ms gap, landed as its own test(P62-D2-011) commit
 
 ### Tech Debt
 
@@ -269,8 +272,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T13:49:08.322Z
-Stopped at: Completed 67-07-PLAN.md
+Last session: 2026-08-19T14:08:03.752Z
+Stopped at: Completed 67-08-PLAN.md
 Resume file: 
 
 None
