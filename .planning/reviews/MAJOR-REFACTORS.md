@@ -40,8 +40,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — none of the 15 frozen open issues concern the java-interop connection-destination validation; #231 (custom classpath/CLI settings for starting BBj programs) is the closest area match but concerns run-command classpath/CLI args, not the interop client's host/port.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Add type/range validation in setConnectionConfig.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -59,8 +59,8 @@ classification:    major (1) touches ~2 files (validation helper alongside java-
 effort:            4
 dedup:             none — no frozen open issue addresses peer-response validation on the java-interop channel.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Validate/bound/escape before assignment.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -78,8 +78,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — checked against #231 (Support Custom Classpath and Command Line Settings for starting BBj Programs), the closest area match — it requests ADDING configurable classpath/CLI args for RUN commands, not validating the bbjcpl binary path already spawned here; #466 and #90 (this unit's flagged plausible neighbours) do not concern process-spawn path validation either. No frozen open issue addresses bbjcpl binary-path validation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 4
+proposed_approach: Validate that the resolved bbjcpl path exists and is confined to an expected layout before spawning, or warn/gate on an unusual bbjHome.
+proposed_labels:   area=vscode; PRIO 1; effort 4
 issue:             
 ```
 
@@ -97,8 +97,8 @@ classification:    major (1) touches 2 files (bbj-hover.ts, bbj-completion-provi
 effort:            4
 dedup:             none — checked #108 (inlay hints, an unrelated feature request) and #475 (SETOPTS composer decode-hover feature request, a different subsystem/phase — RU-62-04) explicitly; neither concerns markdown-escaping of javadoc/hover content in this unit's providers.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Escape Markdown control characters in tryParseJavaDoc's output and in the javadoc/signature strings before they reach `documentation`/`contents`.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -116,8 +116,8 @@ classification:    major (1) touches 2 files (bbj-code-action-provider.ts, bbj-c
 effort:            4
 dedup:             none — checked #108 and #475 explicitly; neither concerns FQN validation on the missing-use quick-fix/auto-import insertion path.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Validate fqn against a legal-identifier-sequence pattern before building the TextEdit, in both call sites or a shared helper.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -135,8 +135,8 @@ classification:    major (1) touches 1 file (validation can be centralized insid
 effort:            2
 dedup:             none — checked against #33 (multi-root breakage, unrelated mechanism), #231 (closest area match — requests configurable classpath/CLI args for RUN commands, not interop client host/port), #385, #485 and #486 — none address interop-destination validation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Add type/range validation in setConnectionConfig, or duplicate it at both call sites.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -154,8 +154,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             #485 partial-overlap — #485 requests honoring a custom-named/located config file "everywhere"; that capability is already implemented here via configPath. This finding is about that implementation's missing path-containment check, not about adding the capability #485 requests.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Resolve configPath relative to the workspace root and reject paths that escape it.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -173,8 +173,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — checked against #33, #231, #385, #485 and #486 — none concern USE-statement path traversal into PREFIX-resolved directories.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: After resolve(), verify the result stays under prefixPath before calling readFile, e.g. via a relative()-based containment check.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -192,8 +192,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — checked against #33 (multi-root breakage — a different mechanism, root-folder handling rather than prefix-string collision), #231, #385, #485 and #486 — none concern prefix-based document classification.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Compare against `prefix + path.sep`, or use a proper relative()-based containment check.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -211,8 +211,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — no frozen open issue concerns BBjFilePath tokenization.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: E.g. `/::[^:]*(:[^:][^:]*)*::/` or an explicit non-greedy/negated-character-class rewrite, verified against legitimate paths containing single colons.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -230,8 +230,8 @@ classification:    major (1) touches 1 file: FAIL — a real fix needs bbj-linke
 effort:            8
 dedup:             none — checked #83 (no match), #90 (no match), #466 (sibling-type RETURN MISMATCH VALIDATION assumes the resolved overload is already correct and compares its declared type against a hierarchy — this finding is about resolving to the wrong overload in the first place, upstream of and unrelated to #466's validation mechanism, no overlap); no frozen issue names overload re-selection for linking/type-inference specifically.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Call findBestOverload from getCandidate/getType and re-derive identity/return-type from the winning candidate.
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -249,8 +249,8 @@ classification:    major (1) touches 1 file: FAIL — closing this gap requires 
 effort:            8
 dedup:             #486 partial-overlap — #486 requests watching config.bbx and re-applying PREFIX/USE changes without a restart; this finding traces the exact missing call (settings.prefixes computed once in initializeWorkspace(), never recomputed by didChangeConfiguration) that implementing #486 would need to add.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Add a `reloadSettings()` method re-running the config.bbx/ project.properties read, call it from main.ts on relevant setting changes.
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -268,8 +268,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            8
 dedup:             none — none of the 15 frozen open issues concern java-interop connection-retry behavior; #232 (CPU stability in multi-project workspaces, routed to RU-61-02) is a different mechanism (scope walks, not connection serialization).
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: A peer-reachability circuit breaker that short-circuits further connect attempts after the first failure, reset on clearCache().
+proposed_labels:   area=vscode; PRIO 1; effort 8
 issue:             
 ```
 
@@ -287,8 +287,8 @@ classification:    major (1) touches 1 file: FAIL — a real fix needs both a ca
 effort:            8
 dedup:             none — #232 is not in the frozen 15-issue snapshot because it is not an open GitHub issue (already tracked as roadmap tech debt); names DEBT-01 as the owning requirement so Phase 66 re-triages against this current-code evidence rather than re-deriving it. Checked #83 (project-wide USE statements mechanism, no match — different feature request), #90 (opting files/regions out of linking, no match — this is a performance path, not an opt-out feature), #466 (sibling-type method return mismatches, no match — unrelated dimension) as this unit's plausible neighbours; none match.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: Cache getBBjClassesFromFile's per-file lookup keyed by bbjFilePath+doc URI; add isExternalDocument-based pruning to collectLocalSymbols mirroring bbj-linker.ts's treeIter.prune().
+proposed_labels:   area=vscode; PRIO 1; effort 8
 issue:             
 ```
 
@@ -306,8 +306,8 @@ classification:    major (1) touches 1 file: FAIL — a responsibility split nec
 effort:            8
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Extract the lock and the complete-class-index builder into their own modules.
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -325,8 +325,8 @@ classification:    major (1) touches 1 file: FAIL — removing the singleton als
 effort:            8
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: Inject JavadocProvider via BBjServices instead of getInstance().
+proposed_labels:   area=vscode; PRIO 3; effort 8
 issue:             
 ```
 
@@ -344,8 +344,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Extract a shared `WithChannelAndOptionsAndItems<Item>`-style common prefix fragment, or a documented rationale for why the extra Output-only alternative must stay asymmetric.
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -363,8 +363,8 @@ classification:    major (1) touches 1 file: FAIL — a responsibility split nec
 effort:            8
 dedup:             #466 partial-overlap — this finding's subject (the class's responsibility count) does not duplicate #466's request (extending sibling-type mismatch detection), but the FINAL_TYPE_ASSIGNABLE_TO mechanism this finding names is the code #466 would extend, so cross-referencing is useful when #466 is triaged. Checked against #90 also (this unit's other flagged plausible neighbour); no overlap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: Extract return-type/field-init checking and constructor validation into their own modules, mirroring how check-function-calls.ts and check-variable-scoping.ts are already separated from check-classes.ts.
+proposed_labels:   area=vscode; PRIO 3; effort 8
 issue:             
 ```
 
@@ -382,8 +382,8 @@ classification:    major (1) touches 1 file: FAIL — extracting a shared helper
 effort:            2
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Extract getFunctionReference into bbj-nodedescription-provider.ts and update both call sites.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -401,8 +401,8 @@ classification:    major (1) touches 1 file: FAIL — removing the duplication b
 effort:            2
 dedup:             none — checked against #231 (closest area match — requests configurable classpath/CLI args for RUN commands, not interop-default duplication), #33, #385, #485 and #486 — none address this duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Pass interopHost/interopPort through unmodified at both call sites, relying solely on setConnectionConfig's own default.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -420,8 +420,8 @@ classification:    major (1) touches 1 file: FAIL — moving the file also updat
 effort:            2
 dedup:             none — checked against #385 (requests launching the external Graffiti Composer tool — unrelated to this file's location in the source tree), #33, #231, #485 and #486 — none address module placement.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Move composer-commands.ts to src/, update main.ts's import path.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -439,8 +439,8 @@ classification:    major (1) touches >=2 files (a build-time generation step acr
 effort:            4
 dedup:             none — none of the 15 frozen open issues concern .ts/.bbl catalog duplication or drift.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Generate .bbl from .ts at build time, or delete the physical .bbl files.
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -458,8 +458,8 @@ classification:    major (1) touches >=2 files (standardizing all four .ts wrapp
 effort:            2
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Pick one wrapper shape, apply to all four.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -478,7 +478,7 @@ effort:            8
 dedup:             none — no frozen open issue matches; no DEBT-01..06 item names this specific test gap (DEBT-02 covers the 3 disabled parser.test.ts assertions and the TEST-03 completion-test.test.ts skip only, not test/linking.test.ts's "Interop related tests"). Phase 66 should triage this as a new debt item — e.g. a CI-safe mock interop backend that answers with a real classpath, or documenting these as RUN_BBJ_TESTS-gated local-only tests with the current environment behavior (port-open-but-no-bbjdir) called out explicitly.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
 
@@ -497,7 +497,7 @@ effort:            8
 dedup:             none — no frozen open issue addresses java-interop.ts unit-test coverage for its connection/timeout/lock code paths.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
 
@@ -516,7 +516,7 @@ effort:            4
 dedup:             DEBT-02 — the owning re-triage requirement (Phase 66): "The 3 disabled parser.test.ts assertions and the skipped TEST-03 case re-triaged — enabled, or documented with the specific blocking limitation and what would unblock them." None of the 15 frozen open issues concern these disabled assertions.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_labels:   area=javascript; PRIO 2; effort 4
 issue:             
 ```
 
@@ -535,7 +535,7 @@ effort:            8
 dedup:             DEBT-02 — Phase 66's debt item explicitly covers "the 3 disabled parser.test.ts assertions and the skipped TEST-03 case," matching this finding exactly; re-triage (enable, or document the specific blocking limitation) is DEBT-02's own stated scope. None of the 15 frozen open issues address this Langium completion-grammar-follower limitation.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
 
@@ -554,7 +554,7 @@ effort:            8
 dedup:             none — this is the D-06 routing-table hookTimeout item, not a GitHub issue; no DEBT-01..06 item names it specifically (distinct from DEBT-02's TEST-03/ parser.test.ts scope) — Phase 66 should triage this as a new debt item, mirroring how RU-61-06 handled the routing table's linking.test.ts item (P61-D5-001).
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -573,7 +573,7 @@ effort:            8
 dedup:             none
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -591,8 +591,8 @@ classification:    major (1) touches 1 file: n/a — the fix (adding a runtime p
 effort:            4
 dedup:             none — #475 requests a new SETOPTS tri-state composer UX with IOR/AND-aware codegen, not message-validation hardening on the existing webview boundary; #385 concerns launching an external Graffiti Composer tool, unrelated to this in-tree webview's message handling. Neither open issue overlaps this finding.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: A small runtime shape guard per handler, e.g. a type-predicate before build().
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -610,8 +610,8 @@ classification:    major (1) touches 1 file: n/a — same repeated single-file e
 effort:            2
 dedup:             none — neither #475 (SETOPTS composer UX) nor #385 (external Graffiti Composer launch) concerns nonce generation or CSP hardening in any of these four files.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Swap Math.random() for node:crypto's randomBytes/randomUUID.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -629,8 +629,8 @@ classification:    major (1) touches 1 file: FAIL -- the fix spans at least Comm
 effort:            8
 dedup:             #231 partial-overlap -- #231 requests configurable classpath/command-line settings for starting BBj programs; those settings (bbj.classpath, bbj.compiler.*, bbj.configPath) already exist, and this finding is about their existing unescaped interpolation into child_process.exec(), a security defect #231 does not address. #485 partial-overlap -- #485 requests honoring custom-named/located config files everywhere; this finding's bbj.configPath/-c interpolation touches the same setting but is about injection-safety, not feature completeness. #486 none -- #486 requests live-reload of config.bbx PREFIX/USE changes, unrelated to command-string construction.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: (switch to execFile/spawn with an argument array, mirroring IntelliJ's GeneralCommandLine.addParameter approach -- see P62-D7-001).
+proposed_labels:   area=vscode; PRIO 1; effort 8
 issue:             
 ```
 
@@ -648,8 +648,8 @@ classification:    major (1) touches 1 file: pass (extension.ts only) -- (2) no 
 effort:            4
 dedup:             none -- none of #231/#485/#486 concern credential/token exposure via process arguments or output-channel logging.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: (switch to execFile/spawn with an argument array so secrets never appear in a shell-interpolated string, and mask by position rather than substring match).
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -667,8 +667,8 @@ classification:    major (1) touches 1 file: FAIL -- a comprehensive fix touches
 effort:            8
 dedup:             none -- checked against all 15 frozen open issues; #475 requests SETOPTS decode-hover/tri-state composer UX, not input validation on the addWindow/ addChildWindow/msgbox composers; #385 requests launching an external Graffiti Composer tool, unrelated to this in-tree composer's field validation. No other frozen issue names composer input validation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: (thread validateStringField-style checks through addwindowPreview/ addchildwindowPreview, and assignTo through msgboxPreview, matching msgbox's own existing pattern).
+proposed_labels:   area=vscode; PRIO 3; effort 8
 issue:             
 ```
 
@@ -686,8 +686,8 @@ classification:    major (1) touches 1 file: pass — confined to document-forma
 effort:            4
 dedup:             none — checked against all 15 frozen issues; none requests java-binary pinning or spawn hardening. #65 (support tokenized BBj files) is unrelated — it requests tokenized-file language support, not process-spawn hardening, and is unrelated to the formatter feature.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: (add an optional bbj.javaHome setting, defaulting to the current PATH lookup, and prefer it when set).
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -705,8 +705,8 @@ classification:    major (1) touches 1 file: pass — confined to decompile-io.t
 effort:            2
 dedup:             none — #65 requests the tokenized-file feature itself, which this exact file already implements; this finding is a defense-in-depth hardening gap inside that implementation, not the feature request, so it does not overlap #65. No other frozen issue concerns file-path containment here.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: (fs.lstat the resolved path first and reject non-regular files).
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -724,8 +724,8 @@ classification:    major (1) touches 1 file: FAIL — the identical pattern recu
 effort:            4
 dedup:             none — neither #475 nor #385 concerns webview panel lifecycle or subscription management; no other frozen open issue names composer resource disposal.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: The identical pattern recurs in all 4 files, and a comprehensive fix (add panel.onDidDispose(() => {...}, undefined, context.subscriptions) or scope the message-listener disposable to the panel itself) needs to touch all 4, so test (1) fails on its own.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -743,8 +743,8 @@ classification:    major (1) touches 1 file: FAIL -- the identical unguarded pat
 effort:            2
 dedup:             none -- none of #231/#485/#486 concern command invocation without a focused editor.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: (apply resolveTargetFileName's existing guard to the other four).
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -762,8 +762,8 @@ classification:    major (1) touches 1 file: pass -- (2) no public API change: p
 effort:            4
 dedup:             none -- none of #231/#485/#486 concern command disposal or registration lifecycle.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: (wrap each registration in context.subscriptions.push(...)).
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -781,8 +781,8 @@ classification:    major (1) touches 1 file: pass -- the fix is contained to msg
 effort:            4
 dedup:             none -- no frozen open issue names composer edit-position staleness or race conditions.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: The fix is contained to msgbox-composer-ui.ts (re-resolve the call at the captured line immediately before applying the edit).
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -800,8 +800,8 @@ classification:    major (1) touches 1 file: FAIL — extracting a shared `webvi
 effort:            4
 dedup:             none — neither #475 nor #385 concerns code duplication between the four generator files. RU-62-03's own D4 cell (logic/UI-layer duplication, a separate 3x`-composer.ts`x4x`-ui.ts` comparison) cross-references this finding rather than restating it (D-12) — see plan 62-03.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Extracting a shared `webview-security.ts` helper for getNonce()/CSP-array construction necessarily touches all 4 call sites.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -819,8 +819,8 @@ classification:    major (1) touches 1 file: pass (extension.ts; the dead Comman
 effort:            8
 dedup:             none -- none of #231/#485/#486 concern activate()'s structure, exec-wrapper duplication, or dead credential-fallback code.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: (extract the EM-login handler and the exec-wrapping pattern into shared, named helpers; delete the two dead-code branches).
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -838,8 +838,8 @@ classification:    major (1) touches 1 file: FAIL -- resolving the duplication (
 effort:            4
 dedup:             none -- none of #231/#485/#486 concern compiler-option metadata duplication between CompilerOptions.ts and package.json.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Resolving the duplication (e.g. generating one from the other, or a shared JSON source both read) necessarily touches both package.json and CompilerOptions.ts.
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -857,8 +857,8 @@ classification:    major (1) touches 1 file: FAIL -- extracting a shared call-lo
 effort:            4
 dedup:             none -- neither #475 nor #385 concerns code duplication within the composer logic/UI layer. Cross-references RU-62-04's P62-D4-001 (the generator-layer half of the same D-12 duplication callout) by ID rather than restating its evidence.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Extracting a shared call-locator/scanner helper, or a shared UI registration helper, necessarily touches at least 3 (composer.ts) or 2 (ui.ts) files at once.
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -876,8 +876,8 @@ classification:    major (1) touches 1 file: FAIL — comprehensive resolution r
 effort:            8
 dedup:             none — neither #475 nor #385 concerns test coverage for the webview generator files; no other frozen open issue names composer test gaps.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: (author `*-composer-webview.test.ts` per generator using a minimal vscode-API mock).
+proposed_labels:   area=javascript; PRIO 3; effort 8
 issue:             
 ```
 
@@ -895,8 +895,8 @@ classification:    major (1) touches 1 file: FAIL -- comprehensive resolution re
 effort:            8
 dedup:             none -- none of #231/#485/#486 concern test coverage for extension.ts or Commands.cjs.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: (author extension.test.ts and commands.test.ts using a minimal vscode API mock, following whatever pattern the composer-webview D5 gap in RU-62-04 ultimately adopts).
+proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
 
@@ -914,8 +914,8 @@ classification:    major (1) touches 1 file: FAIL -- comprehensive resolution re
 effort:            8
 dedup:             none -- neither #475 nor #385 concerns test coverage for the composer UI-wiring files; no DEBT-* requirement names this gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: (author a *-composer-ui.test.ts per file using a minimal vscode-API mock, mirroring the gap and remediation shape already recorded for the webview layer at RU-62-04's P62-D5-001).
+proposed_labels:   area=vscode; PRIO 3; effort 8
 issue:             
 ```
 
@@ -933,8 +933,8 @@ classification:    major (1) touches 1 file: FAIL — closing the JSON-validity 
 effort:            8
 dedup:             none — no frozen open issue names language-configuration.json test coverage.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: For the JSON-validity half; the behavioral half needs new infrastructure design, a larger investment than "name the exact edit".
+proposed_labels:   area=javascript; PRIO 3; effort 8
 issue:             
 ```
 
@@ -952,8 +952,8 @@ classification:    major (1) touches 1 file: FAIL -- Commands.cjs and extension.
 effort:            8
 dedup:             none -- none of #231/#485/#486 concern process-spawning methodology or pre-flight path validation; this is a comparative observation, not a feature request.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: (adopt an argument-array-based spawn API -- Node's execFile/spawn -- mirroring IntelliJ's GeneralCommandLine approach, plus add pre-flight existence/executable checks).
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -971,8 +971,8 @@ classification:    major (1) touches 1 file: pass (a checksum/signature check is
 effort:            8
 dedup:             none — #410 (Zed Editor support) requests a new editor integration, unrelated to Node.js download integrity on any existing IDE; #476 (starter programs via File and Code Templates) concerns project scaffolding, unrelated to runtime acquisition. Both of this unit's named plausible neighbours checked explicitly and dismissed. No other frozen open issue names Node.js download integrity.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: Compute and compare a published SHASUMS256.txt entry from nodejs.org before extraction.
+proposed_labels:   area=intellij; PRIO 1; effort 8
 issue:             
 ```
 
@@ -990,8 +990,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — neither #410 nor #476, nor any other frozen open issue, concerns verification of the cached Node.js binary on read. Distinct from P63-D1-001, which concerns verification of the archive on download; the two are separately fixable and neither subsumes the other.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Record the downloaded binary's digest alongside the cache and re-verify it in getCachedNodePath() before returning, or at minimum probe `node --version` against NODE_VERSION.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1009,8 +1009,8 @@ classification:    major (1) touches 1 file: FAIL — a fix (routing secrets via
 effort:            8
 dedup:             none — #231 (custom classpath and command-line settings for starting BBj programs) requests configurability of run arguments, not their process-argument- list observability; this finding is about an existing exposure of secret values already passed as arguments, a security defect #231 does not address. #385 (Graffiti Composer launch request) is unrelated — it requests launching an external composer tool, not EM credential/token handling. Both of this unit's named plausible neighbours checked explicitly and dismissed.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: Switch the four call sites from addParameter(secret) to a stdin write or a process-scoped environment variable the downstream .bbj scripts are redesigned to read instead.
+proposed_labels:   area=intellij; PRIO 1; effort 8
 issue:             
 ```
 
@@ -1028,8 +1028,8 @@ classification:    major (1) touches 1 file: pass (confined to BbjEMTokenStore.j
 effort:            4
 dedup:             none — no frozen open issue names JWT expiry-decoding fail-open behaviour in the IntelliJ plugin.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Change the three "unable to determine" branches to return true — fail closed — or add an explicit isTokenWellFormed() gate callers must check before treating a token as usable.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1047,8 +1047,8 @@ classification:    major (1) touches 1 file: FAIL — the two Files.createTempFi
 effort:            4
 dedup:             none — no frozen open issue names temp-file permission handling in the EM login/validate flow.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Pass PosixFilePermissions.asFileAttribute(EnumSet.of(OWNER_READ, OWNER_WRITE)) to both createTempFile calls, with a Windows-appropriate ACL fallback.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1066,8 +1066,8 @@ classification:    major (1) touches 1 file: pass (confined to ComposerLauncher.
 effort:            4
 dedup:             none — checked #385 (Graffiti Composer launch request, unrelated external tool) and #475 (SETOPTS assistance, a different composer form) explicitly; neither names this document-write validation gap. No frozen open issue addresses it.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Thread the LS's existing validateStringField-style structural check, or an IntelliJ-side equivalent, through the write path before Document.replaceString/ insertString.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1085,8 +1085,8 @@ classification:    major (1) touches 1 file: pass (confined to BbjLanguageServer
 effort:            4
 dedup:             none — #410 (Zed Editor support) and #231 (custom classpath and command-line settings) both checked explicitly and dismissed — neither concerns Node.js executable resolution or search-path safety. No other frozen open issue names this launch-path fallback.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 4
+proposed_approach: Require an absolute, existing, executable path before constructing GeneralCommandLine — fail loudly with an actionable Settings-configuration prompt instead of falling back to the bare literal "node".
+proposed_labels:   area=intellij; PRIO 1; effort 4
 issue:             
 ```
 
@@ -1104,8 +1104,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — #410 and #231 checked explicitly and dismissed as unrelated. No frozen open issue names java-interop probe identity verification.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: The limitation is inherent given java-interop exposes no LSP-visible identity or handshake to check against, per this file's own class doc, :19-23 — the nameable edit is documenting the limitation explicitly in that same doc, since a protocol-level identity check would require a java-interop change out of this unit's scope.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1123,8 +1123,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — no frozen open issue names this cache-availability diagnostic gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Log the swallowed IOException, or return a small sealed result type distinguishing "not cached" from "cache directory inaccessible".
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1142,8 +1142,8 @@ classification:    major (1) touches 1 file: pass (fix confined to reconciling B
 effort:            4
 dedup:             none — no frozen open issue names java-interop port auto-detection.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Move port auto-detection into BbjSettings.getState(), replacing the equality check with a genuine "never configured" sentinel.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1161,8 +1161,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — no frozen open issue names concurrent-download races in the Node.js acquisition path.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Guard the check-then-set with a synchronized block or an AtomicBoolean compare-and-set.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1180,8 +1180,8 @@ classification:    major (1) touches 1 file: FAIL — a fix needs to move buildC
 effort:            8
 dedup:             none — no frozen open issue names EDT-blocking behaviour in the BBj run/EM-login actions (distinct from RU-63-03's P63-D3-001, which is the Settings dialog's own separate EDT-blocking finding).
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: Restructure actionPerformed() so buildCommandLine()'s token-validation/login round trip runs inside the existing executeOnPooledThread(...) block rather than before it.
+proposed_labels:   area=intellij; PRIO 1; effort 8
 issue:             
 ```
 
@@ -1199,8 +1199,8 @@ classification:    major (1) touches 1 file: pass (BbjEMLoginAction.java only) �
 effort:            2
 dedup:             none — no frozen open issue names action-enablement inconsistency in the EM login action.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Add update()/ getActionUpdateThread() overrides mirroring BbjRefreshJavaClassesAction's pattern.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1218,8 +1218,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — no frozen open issue names this temp-file cleanup gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Widen the try/finally at :119-123 to also wrap the runProcess(...) call at line 115.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1237,8 +1237,8 @@ classification:    major (1) touches 1 file: FAIL — a fix (add .exceptionally(
 effort:            4
 dedup:             none — no frozen open issue names unhandled composer-request failures.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Add .exceptionally(t -> onEdt(() -> notifyNotReady(...))) or an equivalent error-surfacing handler to each chain.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1256,8 +1256,8 @@ classification:    major (1) touches 1 file: FAIL — spans MsgboxComposerDialog
 effort:            4
 dedup:             none — no frozen open issue names this defensive-null-check gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Null-default each sub-list to List.of() at the point of use, or guard before iterating.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1275,8 +1275,8 @@ classification:    major (1) touches 1 file: pass (confined to ComposerLauncher.
 effort:            2
 dedup:             none — no frozen open issue names this array-bounds gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Guard ed.flagsRange.length == 2 / ed.eventMaskRange.length == 2 before indexing.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1295,7 +1295,7 @@ effort:            8
 dedup:             none — no frozen open issue names this stale-captured-range gap.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
 
@@ -1313,8 +1313,8 @@ classification:    major (1) touches 1 file: FAIL — the same fix (registering 
 effort:            4
 dedup:             none — #410 and #231 checked explicitly and dismissed. No frozen open issue names status-bar visibility staleness on editor-tab switch.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Register a FileEditorManagerListener. FILE_EDITOR_MANAGER subscription via the project message bus in each widget's constructor, disposed alongside messageBusConnection, calling updateVisibility() on selection change.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1332,8 +1332,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — no frozen open issue names EDT-blocking behavior in the crash-recovery path (distinct from #486, which requests config-file watch/reload, not crash recovery). #410/#231 also checked and dismissed.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Move the delay onto restartAlarm.addRequest(this::restart, 1000) off the EDT, reusing the existing Alarm-based scheduling machinery instead of a raw Thread.sleep inside invokeLater.
+proposed_labels:   area=intellij; PRIO 2; effort 2
 issue:             
 ```
 
@@ -1351,8 +1351,8 @@ classification:    major (1) touches 1 file: pass — the minimal fix (an in-fli
 effort:            4
 dedup:             none — #410/#231 checked and dismissed. No frozen open issue names concurrent-restart races or the unused debounce infrastructure.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Guard restart() with an in-flight AtomicBoolean, or make the currently-unused scheduleRestart()/Alarm machinery the single entry point every caller uses. Note: contrary to this record's own evidence field, `BbjSettingsConfigurable.apply():83` has called `scheduleRestart()` since commit `35c916b`, predating the Phase 63 review — the guard must account for that existing call site rather than treating the debounce machinery as unused (Phase 67 close-out correction).
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1370,8 +1370,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2
 dedup:             none — no frozen open issue names this dispose-ordering gap. #410/#231 also checked and dismissed.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Add `if (project.isDisposed()) return;` at the top of checkConnection() and inside broadcastStatus()'s invokeLater lambda, mirroring BbjServerService's own pattern.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1389,8 +1389,8 @@ classification:    major (1) touches 1 file: FAIL — a real fix needs a STRING_
 effort:            8
 dedup:             none — #65 (tokenized BBj files), #381 (config.bbx highlighting) and #476 (starter programs) are this unit's named plausible neighbours; none addresses bracket-matching inside string literals. No other frozen open issue is closer.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Add a quote-delimited scan branch to BbjWordLexer. advance(), emit a new STRING IElementType, wire it into getStringLiteralElements(), and guard isPairedBracesAllowedBeforeType against it.
+proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
 
@@ -1408,8 +1408,8 @@ classification:    major (1) touches 1 file: pass (confined to BbjCommenter.java
 effort:            4
 dedup:             none — #65, #381 and #476 (this unit's named neighbours) are unrelated; no frozen open issue names IntelliJ comment-toggle case sensitivity.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: BbjCommenter.java:9-11 is the exact site; the fix direction is to make REM recognition case-insensitive, either via a lexer-level COMMENT token so the platform's PSI-aware commenting path applies instead of raw-text matching, or a custom case-insensitive commenter.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1427,8 +1427,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — no frozen open issue names EDT-blocking behaviour in the BBj settings panel.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Move getNodeVersion()/getBBjClasspathEntries() calls off the EDT via a debounced background task.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1446,8 +1446,8 @@ classification:    major (1) touches 1 file: pass (BbjRunActionBase.java, adding
 effort:            4
 dedup:             none — no frozen open issue names redundant EM token validation round-trips.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Cache the last-validated token value plus a timestamp and skip re-validation within a short trust window.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1465,8 +1465,8 @@ classification:    major (1) touches 1 file: FAIL — a shared debounce mechanis
 effort:            4
 dedup:             none — no frozen open issue names this missing debounce.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Wrap each refresh() call in a shared debounce helper using com.intellij.util.Alarm.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1484,8 +1484,8 @@ classification:    major (1) touches 1 file: pass (a session-scoped cache field 
 effort:            4
 dedup:             none — no frozen open issue names this redundant catalogs/server refetch.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Cache the resolved BbjComposerServer/ComposerCatalogs per project, invalidated on LS restart.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1503,8 +1503,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            2 (revised 2026-08-18: recorded as 3, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 3 was chosen to mean 'below the 4 bucket'. Original value retained here.)
 dedup:             none — #410/#231 checked and dismissed. No frozen open issue names java-interop poll cadence/gating.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2 (revised 2026-08-18: recorded as 3, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 3 was chosen to mean 'below the 4 bucket'. Original value retained here.)
+proposed_approach: Gate scheduleNextCheck()/startChecking() on whether a BBj file is currently open, mirroring the widgets' own updateVisibility() check, or on project-frame focus/idle state.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1522,8 +1522,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names this temp-directory accumulation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Cache bundleDir in a stable location, mirroring RU-63-03's own getNodeDataDirectory() pattern, and skip the copy loop when a valid prior copy is already present.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1541,8 +1541,8 @@ classification:    major (1) touches 1 file: pass (a cache field in this class, 
 effort:            4
 dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names redundant Node.js version-check spawning.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Cache the last known-good version result per path, invalidated on settings change.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1560,8 +1560,8 @@ classification:    major (1) touches 1 file: FAIL — a shared constant used con
 effort:            2
 dedup:             none — no frozen open issue names this literal-duplication gap.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Introduce BbjSettings.DEFAULT_JAVA_INTEROP_PORT and reference it from all 3 files.
+proposed_labels:   area=intellij; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1579,8 +1579,8 @@ classification:    major (1) touches 1 file: FAIL — a shared helper used consi
 effort:            4
 dedup:             none — no frozen open issue names this duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Add a small static helper and delegate all three call sites to it.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1598,8 +1598,8 @@ classification:    major (1) touches 1 file: FAIL — collapsing the duplication
 effort:            4
 dedup:             none — no frozen open issue names BUI/DWC action duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Introduce a getClientType() abstract method and move the shared body up to BbjRunActionBase.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1617,8 +1617,8 @@ classification:    major (1) touches 1 file: FAIL — collapsing three files int
 effort:            4
 dedup:             none — no frozen open issue names composer-action duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: A single BbjComposeAction(Kind) constructed three times in plugin.xml via constructor-arg registration, replacing three Java files with one.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1636,8 +1636,8 @@ classification:    major (1) touches 1 file: FAIL — moving validateTokenServer
 effort:            4
 dedup:             none — no frozen open issue names this class-responsibility placement.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Move validateTokenServerSide()/getEmValidateBbjPath() to a static method on or beside BbjEMTokenStore, updating the two call sites.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1655,8 +1655,8 @@ classification:    major (1) touches 1 file: FAIL — collapsing the duplication
 effort:            8
 dedup:             none — checked #385 and #475 explicitly; neither names this dialog duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: Extract a shared AddWindowFamilyComposerDialog base carrying refresh/apply/selected/ setSelected/preselect/addGroupedChecks/setEnabledRecursive/labeled, with the two concrete classes supplying only their distinct field set and RPC calls.
+proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
 
@@ -1674,8 +1674,8 @@ classification:    major (1) touches 1 file: FAIL — collapsing three files int
 effort:            4
 dedup:             none — no frozen open issue names this intention-action duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: A single ConfigureComposerIntention(String text, Kind kind, String keyword) constructed three times via plugin.xml constructor-arg registration, mirroring RU-63-01's own P63-D4-005 disposition for the analogous three BbjCompose*Action files.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1693,8 +1693,8 @@ classification:    major (1) touches 1 file: FAIL — extracting a shared utilit
 effort:            4
 dedup:             none — no frozen open issue names this small-helper duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Add a small static-only ComposerSwingUtil class in composer/ and delegate all six call sites to it.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1713,7 +1713,7 @@ effort:            4
 dedup:             DEBT-05 — this is the phase's designated DEBT-05 evidence record; Phase 66 re-triages it, not re-derives it. #410 and #231 also checked explicitly and dismissed as unrelated to LSP4IJ API coupling.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1731,8 +1731,8 @@ classification:    major (1) touches 1 file: FAIL — extracting a shared base s
 effort:            4
 dedup:             none — #410 and #231 checked explicitly and dismissed. No frozen open issue names status-bar widget/factory duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Extract a shared base class/factory parameterized by Topic type, icon/text mapping function, and popup-menu item list.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1750,8 +1750,8 @@ classification:    major (1) touches 1 file: pass — (2) no public API/grammar/
 effort:            4
 dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names this inert color-customization page.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Either wire these keys into a real TextMate-to-TextAttributesKey mapping now, or note in the UI/comment that the page is inert pending the semantic-token milestone referenced in :20-23.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1769,8 +1769,8 @@ classification:    major (1) touches 1 file: FAIL — extracting the shared skel
 effort:            4
 dedup:             none — #65, #381 and #476 are unrelated; no frozen open issue names this notification-provider duplication.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Extract a small abstract base class or static helper for the file-type guard plus panel construction, parameterized by message text and actions.
+proposed_labels:   area=intellij; PRIO 3; effort 4
 issue:             
 ```
 
@@ -1788,8 +1788,8 @@ classification:    major (1) touches 1 file: n/a — this finding *is* the missi
 effort:            8
 dedup:             none — no frozen open issue names bbj-intellij's absent test infrastructure.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Add a `sourceSets.test`/JUnit dependency block to build.gradle.kts and author a first test class.
+proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
 
@@ -1807,8 +1807,8 @@ classification:    major (1) touches 1 file: pass (the pin is a single constant)
 effort:            4
 dedup:             none — no frozen open issue names the pinned Node.js runtime version.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Bump NODE_VERSION to a current, in-support v20.x or later LTS release and verify the download filename/checksum shape is unchanged.
+proposed_labels:   area=dependencies; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1827,7 +1827,7 @@ effort:            8
 dedup:             none — no frozen open issue names the bbj-intellij Gradle/JDK toolchain mismatch. `dedup:` additionally notes: RU-64-02 owns bbj-intellij/build.gradle.kts for every dimension other than this routed D6 cell (D-10) — Phase 64's own sweep re-triages this item rather than re-deriving it; this record is the full evidence handoff, not a duplicate.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=dependencies; PRIO 2; effort 8
 issue:             
 ```
 
@@ -1846,7 +1846,7 @@ effort:            8
 dedup:             none — #231 (custom classpath and command-line settings for starting BBj programs) requests configurable run/compile settings, which presupposes a working compile action; it does not itself request implementing the missing bbjcpl invocation this finding records. #385 (Graffiti Composer) is unrelated. Both of this unit's named plausible neighbours checked explicitly and dismissed.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=intellij; PRIO 2; effort 8
 issue:             
 ```
 
@@ -1865,7 +1865,7 @@ effort:            8
 dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests tokenized/ line-numbered BBj file support; this finding's denumber/decompile/ decompileReadonly absence is the IntelliJ-side remainder of that same request (the VS Code side is already implemented, per RU-62-02's own D7 cell), so it is not a novel gap for those three commands specifically — the configureCompileOptions and em absences are not covered by #65. #231/#385 checked explicitly: #231 concerns run/compile settings configurability generally, overlapping loosely with configureCompileOptions but not requesting the other four; #385 is unrelated (Graffiti Composer).
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
 
@@ -1884,7 +1884,7 @@ effort:            8
 dedup:             none — no frozen open issue names the refreshJavaClasses restart-vs-targeted- request divergence.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
 
@@ -1903,7 +1903,7 @@ effort:            8
 dedup:             #475 partial-overlap — #475 requests a NEW BBj-code-scoped SETOPTS capability (decode hovers + tri-state composer with IOR/AND-aware codegen for SETOPTS calls inside BBj source) that neither IDE has today; this finding is about porting the EXISTING #474 config.bbx SETOPTS composer (already shipped in VS Code) to IntelliJ — related but not identical. setopts-catalog.ts's own header, quoted in RU-62-03's D8 cell, names IntelliJ reuse of its byte/bit logic as a stated future intention — exactly the reuse surface #475's tri-state composer would also need — so this finding's fix is a natural prerequisite subset of #475's fuller scope, not a duplicate of it. #385 (Graffiti Composer, an unrelated external tool) checked explicitly and dismissed.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
 
@@ -1922,7 +1922,7 @@ effort:            8
 dedup:             #65 (support tokenized BBj files) partial-overlap — #65 requests exactly the tokenized-detection quarter of this finding's four-feature absence; the VS Code side already implements it (RU-62-02's own D7 cell), so this finding's tokenized-detection component is #65's IntelliJ-side remainder, not a novel request. The format/denumber/decompile components are not covered by #65 or any other frozen open issue. #381 and #476 (this unit's other named neighbours) are unrelated.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_labels:   area=intellij; PRIO 3; effort 8
 issue:             
 ```
 
@@ -1940,8 +1940,8 @@ classification:    major (1) touches 1 file: FAIL — the fix spans MsgboxCompos
 effort:            2
 dedup:             none — no frozen open issue names these stale class-doc claims.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Update each class doc to name both create and edit-in-place flows, mirroring AddChildWindowComposerDialog.java's own accurate wording, and update ComposerLauncher.java's doc to say "all three composer UIs".
+proposed_labels:   area=documentation; PRIO 3; effort 2
 issue:             
 ```
 
@@ -1959,8 +1959,8 @@ classification:    major — (1) at most one file: PASS, the edit is confined to
 effort:            4
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions EM credentials, default passwords, `web.bbj`, or authentication of any kind; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — the fix changes the script's contract with its callers (a no-credential invocation must now fail rather than proceed), so the VS Code and IntelliJ launch paths have to be considered alongside it; Phase 67 does not apply it unilaterally.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Delete the two fallback assignments and route the no-credential case to `login_failed:`.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 4
 issue:             
 ```
 
@@ -1979,7 +1979,7 @@ effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about EM authentication, token handling, credential storage or process arguments; issue #231 is the nearest neighbour by subject area (custom classpath and command-line settings for starting BBj programs) and is a feature request about classpath configuration, sharing no defect with this record.
 disposition:       major-refactor — this is one leg of SEC-04 (EM token lifecycle, end to end across `BbjEMTokenStore`, `em-login.bbj` and `em-validate-token.bbj`) and touches SEC-05 (process spawning). Phase 65 owns the synthesis; this record supplies the `RU-64-03` leg with full evidence and does not attempt the lifecycle here.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_labels:   area=BBj integration and infrastructure; PRIO 1; effort 8
 issue:             
 ```
 
@@ -1998,7 +1998,7 @@ effort:            8
 dedup:             none — no issue in the frozen 15-issue snapshot concerns the formatter, the vendored JARs, extension packaging or artifact integrity; 0 of the 15 carry the `dependencies` area label.
 disposition:       major-refactor — recorded here, routed to `MAJOR-REFACTORS.md` by Phase 68 and to Phase 69 for filing. Phase 67 does not apply it.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_labels:   area=BBj integration and infrastructure; PRIO 1; effort 8
 issue:             
 ```
 
@@ -2016,8 +2016,8 @@ classification:    major — (1) at most one file: FAIL, two workflows carry the
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot names CI, a workflow, secret handling, publishing or a marketplace credential; 0 of the 15 carry the `dependencies` area label and 0 name build configuration of any kind. Issue #476 mentions both IDEs but concerns starter-program templates, not the release pipeline.
 disposition:       major-refactor — test (6) routes every D1 finding to Phase 68's `MAJOR-REFACTORS.md` rather than Phase 67's apply path, even though the edit itself is two lines, and Phase 69's issue drafting for it is subject to D-16's disclosure limits and to ISSUE-01.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 2
+proposed_approach: Add an `env:` mapping for the token to both steps and reference the shell variable from the `run:` body, exactly as `VSCE_PAT` is already handled.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 1; effort 2
 issue:             
 ```
 
@@ -2035,8 +2035,8 @@ classification:    major — (1) at most one file: FAIL, four workflows. (2) no 
 effort:            4
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI permissions, tokens, workflow configuration or release automation; 0 of the 15 carry the `dependencies` label and 0 name a workflow.
 disposition:       major-refactor — declaring a scope that turns out to be too narrow breaks the release path, so the change has to be staged against a real release run rather than applied unilaterally by Phase 67, and test (6) independently routes any D1 finding to `MAJOR-REFACTORS.md`.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Add `permissions: contents: read` to `build.yml` and `pr-validation.yml`, `contents: write` to `preview.yml`, and per-job blocks to `manual-release.yml`'s two undeclared jobs.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2054,8 +2054,8 @@ classification:    major — (1) at most one file: FAIL, the minimal correct fix
 effort:            4
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions Gradle, the wrapper, checksums, supply chain or the IntelliJ build; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — the fix spans the wrapper pair and the workflow definitions and changes what every build verifies before it runs, so Phase 67 does not apply it unilaterally; it belongs in `MAJOR-REFACTORS.md` alongside `P64-D6-006`, which records the same artifact's identity and update-path half.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 4
+proposed_approach: Add `distributionSha256Sum=<published sum for the chosen release>` to the properties file, regenerate the JAR for that same release, and add `gradle/actions/wrapper-validation` to the workflows that run `./gradlew`.
+proposed_labels:   area=intellij; PRIO 1; effort 4
 issue:             
 ```
 
@@ -2073,8 +2073,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about the interop test harness, test reporting or CI result accuracy.
 disposition:       major-refactor — small edit, but INVENTORY 3c test (4) fails, so it does not enter Phase 67's `easy` apply path without the `MAJOR-REFACTORS.md` record first.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Compute `failed` the way `:446` does and return it in all three places.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2092,8 +2092,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            2
 dedup:             none — no issue in the frozen 15-issue snapshot concerns the interop harness or its HTML report.
 disposition:       major-refactor — cosmetic in effect, but classified by the same six tests as everything else; recorded rather than quietly downgraded.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Highlight first, then escape, or make the two regexes match `&quot;`.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2111,8 +2111,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            4
 dedup:             none — the frozen 15-issue snapshot contains no issue about BUI/DWC launch failures, `web.bbj`, or silent run-command no-ops.
 disposition:       major-refactor — recorded for Phase 68's document split; not applied here.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: Add `err=` branches to the six calls and give them a distinct labelled message rather than reusing `login_failed:`, whose text would be wrong for them.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2131,7 +2131,7 @@ effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about releases, versioning, tags or publication; 0 of the 15 carry the `dependencies` label and 0 name CI.
 disposition:       major-refactor — the change reorders two live publishing pipelines across two marketplaces and can only be validated by an actual release, so Phase 67 does not apply it unilaterally.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2150,7 +2150,7 @@ effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about preview builds, versioning or CI concurrency.
 disposition:       major-refactor — the fix is small in lines but is a release-policy decision about how the preview version is derived, so it belongs on `MAJOR-REFACTORS.md` rather than in Phase 67's apply path.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_labels:   area=BBj integration and infrastructure; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2168,8 +2168,8 @@ classification:    major — (1) at most one file: PASS, the fix is confined to 
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions packaging, vsce, esbuild, minification or the VSIX; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — the edit is one line plus four deletions, but it changes what the release path produces, so it wants a deliberate packaging verification rather than an unattended Phase 67 apply.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Point `vscode:prepublish` at `node ./esbuild.mjs --minify` and delete the dead `esbuild-base`, `esbuild`, `esbuild-watch` and `test-compile` scripts.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2187,8 +2187,8 @@ classification:    major — (1) at most one file: PASS if the fix is to drop th
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions TypeScript configuration, project references or type-checking the test suite; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow or build configuration.
 disposition:       major-refactor — the honest fix is not the one-line deletion but wiring a type-check for `test/` that nothing runs today, which is a build-pipeline change rather than an unattended edit.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Delete `tsconfig.test.json:7-9` and add a `typecheck` script that runs `tsc -p tsconfig.test.json --noEmit`.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2206,8 +2206,8 @@ classification:    major — (1) at most one file: PASS, the fix is confined to 
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions the IntelliJ build, plugin packaging or the language-server copy step; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — the fix adds a failure path to a build this environment cannot execute, so it needs a real Gradle run to verify rather than an unattended Phase 67 apply.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Declare the copy inputs explicitly and add a `doFirst` that fails with a directed message when `../bbj-vscode/out/language/main.cjs` is absent.
+proposed_labels:   area=intellij; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2225,8 +2225,8 @@ classification:    major — (1) at most one file: FAIL, five workflows would ea
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI duration, caching or build performance.
 disposition:       major-refactor — the edit is mechanical and low-risk, but test (1) fails on file count, and INVENTORY 3c admits no exception for a change that is small in each of several files; recorded as `major` rather than reclassified to fit the fix.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Add `cache: npm` and `cache-dependency-path: bbj-vscode/package-lock.json` to the five `setup-node` steps and `cache: gradle` to the three `setup-java` steps.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2244,8 +2244,8 @@ classification:    major — (1) at most one file: PASS in the narrowest reading
 effort:            4
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI duration, redundant builds or workflow triggers.
 disposition:       major-refactor — the decision changes what protects `main`, so it is documented for review rather than applied by Phase 67.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: PENDING-APPROACH — Reciprocal note: its `build.yml` `on:`-block sibling (`P64-D4-004`) already landed in Phase 67 as a recorded D-06 departure — whoever implements this record should expect that change is already applied (Phase 67 close-out §"Recorded departures").
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2263,8 +2263,8 @@ classification:    major — (1) at most one file: PASS, the fix is confined to 
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions build time, CI duration, npm lifecycle scripts or Langium code generation; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow or build configuration.
 disposition:       major-refactor — the edit is small but it changes what a bare `npm install` leaves behind, which several documented workflows and CLAUDE.md's own quickstart depend on, so it is a deliberate change rather than an unattended one.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Either narrow `prepare` to `npm run langium:generate` (the part a fresh checkout genuinely needs) and let each caller build explicitly, or drop the redundant `npm run build` line from the three workflows.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2282,8 +2282,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            8
 dedup:             none — no issue in the frozen 15-issue snapshot concerns the interop test harness, its structure, or code organisation anywhere under `bbj-vscode/tools/`.
 disposition:       major-refactor — recorded for Phase 68's `MAJOR-REFACTORS.md`; not applied here.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 8
+proposed_approach: Generalise `runGetClassInfo` over the request type so cases 12-17 delegate to it, and split the report's template literal out of `generateReport`.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 3; effort 8
 issue:             
 ```
 
@@ -2301,8 +2301,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about the interop harness or dead code anywhere in the repository.
 disposition:       major-refactor — small edit, `major` by INVENTORY 3c test (4); it does not enter Phase 67's `easy` apply path without a `MAJOR-REFACTORS.md` record first.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Either delete `:659` or make `:1045` derive its list from it.
+proposed_labels:   area=BBj integration and infrastructure; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2321,7 +2321,7 @@ effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about CI structure, workflow maintenance or build configuration; 0 of the 15 carry the `dependencies` area label and 0 name a workflow.
 disposition:       major-refactor — a structural change across six workflow files that only a real run of each can validate; Phase 67 does not apply it, and it carries `P64-D3-001`, `P64-D1-005` and `P64-D6-004` with it as the reason each of those is a multi-file edit rather than a one-line one.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2339,8 +2339,8 @@ classification:    major — (1) at most one file: PASS, adding a preset is conf
 effort:            8
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions ESLint, linting or code style; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow or build configuration.
 disposition:       major-refactor — enabling the rules is one line; making the tree pass them is not, and the size of that second step is unknown until the first is taken, so this belongs in `MAJOR-REFACTORS.md` with the remediation scoped before it is applied.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Spread `...tseslint.configs.recommended` into the exported config.
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2358,8 +2358,8 @@ classification:    major — (1) at most one file: **FAIL** — the deletions sp
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions dead scripts, activation events, the TextMate generator or manifest hygiene; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow or build configuration.
 disposition:       major-refactor — classification governs the routing, so this goes to Phase 68's `MAJOR-REFACTORS.md` rather than Phase 67's apply path, even though the edit itself is three provably unreferenced deletions verifiable by re-running the existing build and suite.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Delete `package.json:662`, `:663`, `:664` and the `onCommand:bbj.autoComment` entry, and remove the `textMate` block at `langium-config.json:13-15`.
+proposed_labels:   area=vscode; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2378,7 +2378,7 @@ effort:            8
 dedup:             none — the frozen 15-issue snapshot contains no issue about test coverage, CI scope, lint scope, or the interop harness.
 disposition:       major-refactor — recorded for Phase 68's document split and Phase 69's filing. Distinct from DEBT-02 (disabled `parser.test.ts` assertions) and from `RU-61-06`'s failing `linking.test.ts` tests, both of which concern tests that exist; this record concerns a tree that has none.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=BBj integration and infrastructure; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2396,8 +2396,8 @@ classification:    major — (1) at most one file: PASS if the fix is to declare
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions vitest configuration, test discovery or type-checking the test suite; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow or build configuration. Cross-referenced rather than duplicated: `RU-61-06` owns the 11 failing `linking.test.ts` tests and DEBT-02 owns the 3 disabled `parser.test.ts` assertions; neither is re-recorded here.
 disposition:       major-refactor — pairs with `P64-D2-008`; declaring the globs is trivial, but doing it correctly means deciding what the suite is and giving `test/` a working type-check, which is a build-pipeline decision rather than an unattended edit.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Add `include: ['test/**/*.test.ts']` and an explicit `exclude` naming `out/**` and `node_modules/**` to `vitest.config.ts`'s `test` block.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2415,8 +2415,8 @@ classification:    major — (1) at most one file: PASS, the declaration lands i
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about tooling dependencies, the interop harness, or undeclared packages; 0 of the 15 carry the `dependencies` area label.
 disposition:       major-refactor — referred to `RU-64-02` as a cross-unit referral below, because the `location:` of the defect is this file but the file the fix edits, `bbj-vscode/package.json`, is `RU-64-02`'s and is swept by plan `64-03`.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Add a pinned `tsx` to `devDependencies` and drop `npx` from the shebang and the usage block.
+proposed_labels:   area=dependencies; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2435,7 +2435,7 @@ effort:            8
 dedup:             none — no issue in the frozen 15-issue snapshot names the formatter, a vendored binary, or dependency provenance; 0 of the 15 carry the `dependencies` area label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — **the fix this asks for is provenance, not a version bump.** What is needed is a statement of what the artifact is, where it came from, which version it is, and a recorded hash to pin it — after which it becomes triageable at all. Filed by Phase 69; not applied by Phase 67.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_labels:   area=dependencies; PRIO 1; effort 8
 issue:             
 ```
 
@@ -2454,7 +2454,7 @@ effort:            4
 dedup:             none — no open issue in the frozen 15-issue snapshot concerns GitHub Actions, pinning, supply-chain provenance or CI dependencies; 0 of the 15 carry the `dependencies` area label at all, which was re-derived in this file's header rather than assumed.
 disposition:       major-refactor — routed to Phase 68's `MAJOR-REFACTORS.md` with the enumeration above attached, so the pin set does not have to be re-derived; the separate one-file `@v3` staleness at `P64-D6-004` is the part Phase 67 can apply.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_labels:   area=dependencies; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2473,7 +2473,7 @@ effort:            4
 dedup:             none — 0 of the frozen 15 open issues carry the `dependencies` area label and none names Dependabot, dependency automation, Gradle dependencies or the documentation site's dependencies; this was re-derived from the snapshot's own `Area` column in this file's header rather than assumed.
 disposition:       major-refactor — the npm and `github-actions` additions are mechanical, but the Gradle decision is criterion-3 triage that plan `64-03` consolidates, so the whole is documented rather than applied.
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_labels:   area=dependencies; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2491,8 +2491,8 @@ classification:    major — (1) at most one file: FAIL, correcting it means reg
 effort:            4
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions the Gradle wrapper, checksums, vendored binaries or supply-chain provenance; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — pairs with `P64-D1-006`, which records the integrity half of the same bootstrap chain; both belong in `MAJOR-REFACTORS.md` and neither is a Phase 67 unattended apply.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 4
+proposed_approach: Run `./gradlew wrapper --gradle-version <chosen release> --gradle-distribution-sha256-sum <that release's published checksum>` on a working toolchain, commit both regenerated files, and add `gradle/actions/wrapper-validation` to `pr-validation.yml`, `manual-release.yml` and `preview.yml`.
+proposed_labels:   area=dependencies; PRIO 1; effort 4
 issue:             
 ```
 
@@ -2510,8 +2510,8 @@ classification:    major — (1) at most one file: PASS if the edit is only to m
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions vsce, dependency placement, packaging or the npm dependency tree; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary. Two workflow comments (`manual-release.yml:30`, `preview.yml:28`) already assert that "vsce comes from bbj-vscode devDependencies", which the manifest contradicts — that discrepancy is referred to `RU-64-01` under `### Cross-unit referrals` rather than recorded twice.
 disposition:       major-refactor — a one-line move with a regenerated lockfile, but it changes what `npm ci --omit=dev` installs and therefore what the release workflows have available, so it needs a verified packaging run rather than an unattended apply.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 2
+proposed_approach: Move `"@vscode/vsce": "^3.7.1"` from `dependencies` (`:670`) to `devDependencies` (`:679-693`) and regenerate the lockfile.
+proposed_labels:   area=dependencies; PRIO 1; effort 2
 issue:             
 ```
 
@@ -2529,8 +2529,8 @@ classification:    major — (1) at most one file: PASS, the remediation is a lo
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions brace-expansion, minimatch, glob matching, the language client's dependency tree or a denial of service; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — recorded for `MAJOR-REFACTORS.md` with the open reachability question attached, rather than applied unattended in Phase 67.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 2
+proposed_approach: The remediation is a lockfile-only bump of the nested `brace-expansion` to 5.0.9 or later, which `npm audit --json` reports as `fixAvailable: true`.
+proposed_labels:   area=dependencies; PRIO 1; effort 2
 issue:             
 ```
 
@@ -2548,8 +2548,8 @@ classification:    major — (1) at most one file: FAIL, the fix spans `build.gr
 effort:            8
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions Gradle, the JDK toolchain, the IntelliJ Platform version or LSP4IJ; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary. Cross-reference rather than duplicate: this record **merges** `P63-D6-002` (`63-COVERAGE.md:439`), which recorded the same toolchain condition from `RU-63-03`/D6 with an explicit `location:` exception because `build.gradle.kts` is this unit's file; that finding remains citable by ID and is not re-recorded under a new number.
 disposition:       major-refactor — spans three files and a Gradle major line, cannot be verified in this environment, and is the enabling fix for the phase's stated coverage limitation; Phase 66 should read it as `DEBT`-shaped work.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_approach: Add `java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }` to `build.gradle.kts` mirroring `java-interop/build.gradle:6-10`, and regenerate the wrapper onto a current Gradle release with its published checksum pinned.
+proposed_labels:   area=dependencies; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2567,8 +2567,8 @@ classification:    major — (1) at most one file: PASS, only `java-interop/buil
 effort:            2
 dedup:             none — no open issue in the frozen 15-issue snapshot mentions Guava, java-interop's dependencies or temporary-directory permissions; 0 of the 15 carry the `dependencies` label and 0 name CI, a workflow, build configuration or a vendored binary.
 disposition:       major-refactor — a major-version bump in an out-of-milestone project with no bootstrappable build; recorded for Phase 68/69 so criterion 3's Gradle half is complete rather than silently short one row.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: Raise the coordinate to `32.0.0-jre` or later.
+proposed_labels:   area=dependencies; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2586,8 +2586,8 @@ classification:    major — (1) at most one file: PASS. (2) no public API chang
 effort:            2
 dedup:             none — the frozen 15-issue snapshot contains no issue about documentation accuracy in the interop harness or anywhere under `bbj-vscode/tools/`.
 disposition:       major-refactor — recorded; the widen-the-gate variant of the fix would change runtime behaviour and belongs with `P64-D4-002`, so the two are best resolved together.
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 2
+proposed_approach: Correct the claim at `:6` to name the three fields the gate enforces (or widen the gate to match the claim), and add `--timeout` to `:9-13`.
+proposed_labels:   area=documentation; PRIO 3; effort 2
 issue:             
 ```
 
@@ -2605,8 +2605,8 @@ classification:    major (1) touches 1 file: n/a — the fix (porting an equival
 effort:            4
 dedup:             none — neither #475 (SETOPTS tri-state composer UX) nor #385 (external Graffiti Composer launch) concerns addWindow/addChildWindow field-validation parity with msgbox; no open issue overlaps this asymmetry.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 3, effort 4
+proposed_approach: Port validateStringField-style checks to addwindow-composer.ts's and addchildwindow-composer.ts's free-text fields and gate the 'insert' side effect on the result, mirroring msgbox's r.valid pattern.
+proposed_labels:   area=vscode; PRIO 3; effort 4
 issue:             
 ```
 
@@ -2624,8 +2624,8 @@ classification:    major (1) touches 1 file: pass — the fix (checking Password
 effort:            4
 dedup:             none — no frozen open issue names PasswordSafe, SecretStorage, or credential- backend configurability of any kind.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: (surface a one-time notification when PasswordSafe's resolved backend is not the native keychain, mirroring the transparency VS Code's fixed binding provides for free).
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2643,8 +2643,8 @@ classification:    major (1) touches 1 file: pass — confined to extension.ts �
 effort:            4
 dedup:             none — no frozen open issue names JWT expiry-decoding fail-open behaviour in the VS Code extension.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_approach: (change the three "unable to determine" branches at :345,:356,:364 to return true — fail closed — matching the exact edit P63-D1-004 already proposes for its own IntelliJ analog).
+proposed_labels:   area=vscode; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2662,8 +2662,8 @@ classification:    major (1) touches 1 file: FAIL — the complete fix needs bot
 effort:            8 (cross-repo scope — a java-interop/ JAR change, a redeployment, and a bbj-vscode-side extension plus its regression test — is larger than a single-repo fix; no departure from a prior recorded value since DEBT-04 carries no inherited finding to depart from).
 dedup:             none — checked against INVENTORY's frozen 15-issue snapshot. #466 (Detect sibling-type method return mismatches via Java class hierarchy) explicitly considered per this plan's own instruction and resolved unrelated: #466 concerns validating an ALREADY-RESOLVED return type against a Java class hierarchy after a method call resolves; this finding concerns which SET OF MEMBERS a class-reference receiver's own completion scope contains before any call is resolved — a different mechanism (scope/completion filtering, not return-type validation) with no overlap. No other frozen-snapshot issue concerns MemberCall static-vs-instance completion filtering.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8 (cross-repo scope — a java-interop/ JAR change, a redeployment, and a bbj-vscode-side extension plus its regression test — is larger than a single-repo fix; no departure from a prior recorded value since DEBT-04 carries no inherited finding to depart from).
+proposed_approach: The complete fix needs both a bbj-scope.ts-side extension AND a java-interop/ JAR-side change (outside this repo's FUT-01 boundary) plus a redeployment, not a single-file edit.
+proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
 
@@ -2681,8 +2681,8 @@ classification:    major (1) touches 1 file: FAIL — the minimal fix exports ap
 effort:            2
 dedup:             none — checked against the frozen 15-issue snapshot's composition-check table in ## Dedup source above; no open issue is topically adjacent to CPL-06 diagnostic hierarchy/BBjCPL-Langium merge timing. This finding corrects PROJECT.md's own prior "one extra build cycle, end state correct" characterization rather than duplicating any tracker report.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 2
+proposed_approach: The minimal fix exports applyDiagnosticHierarchy from bbj-document-validator.ts and calls it from debouncedCompile in bbj-document-builder.ts after the mergeDiagnostics call, two files.
+proposed_labels:   area=vscode; PRIO 2; effort 2
 issue:             
 ```
 
@@ -2700,8 +2700,8 @@ classification:    major (1) touches 1 file: FAIL — the named edit below needs
 effort:            8
 dedup:             none — #232 is CLOSED and therefore absent from the frozen 15-issue snapshot, so this is not a duplicate of any open issue. Checked #83 (project-wide USE statements — different feature, no match) and #90 (opt-out linking — a UX request, not this always-on scan cost, no match) as the plausible neighbours already identified at Phase 61 sweep time; re-confirmed no new open issue exists to check against (frozen snapshot unchanged, still 15 issues). This finding adds: a concrete, two-mechanism named-edit implementation plan (D-11), which #232 (now closed) never had.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 1, effort 8
+proposed_approach: Run these three tests under a **repo-local Java classpath** available under a non-`EmptyFileSystem` fixture — i.e., `createBBjTestServices` (`bbj-vscode/test/bbj-test-module.ts`) extended with real classpath data (or a richer `JavaInteropTestService` fixture covering `String`, `BBjAPI`'s namespace/semaphore methods, and Java array types) rather than the current fake-class stub. This is the **unblocking condition**: nothing outside this repository needs to change.
+proposed_labels:   area=vscode; PRIO 1; effort 8
 issue:             
 ```
 
@@ -2719,8 +2719,8 @@ classification:    major (1) touches 1 file: FAIL — a complete fix needs a new
 effort:            4 (matches P63-D4-010's own recorded effort — no departure; the added contract-test scope is bounded to the three already-identified extension points, not a open-ended investigation).
 dedup:             supersedes P63-D4-010 (63-COVERAGE.md, this phase's designated DEBT-05 evidence record) — not re-derived, re-triaged with this plan's own live jar measurement in place of P63-D4-010's coupling-shape-only trace. #410 (Zed Editor support request) and #231 (custom classpath/CLI settings request) re-checked against this file's `## Dedup source` composition-check table above — both remain unrelated to LSP4IJ API coupling, consistent with P63-D4-010's own dedup finding.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4 (matches P63-D4-010's own recorded effort — no departure; the added contract-test scope is bounded to the three already-identified extension points, not a open-ended investigation).
+proposed_approach: A complete fix needs a new bbj-intellij/src/test/ source set exercising both BbjCompletionFeature.java and BbjLanguageServerFactory.java, two files, and per P64-D6-010 even running that suite locally is currently blocked by the JDK toolchain mismatch.
+proposed_labels:   area=intellij; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2739,7 +2739,7 @@ effort:            4
 dedup:             none — checked against the frozen 15-issue snapshot; no open issue concerns these three disabled parser.test.ts assertions. #83/#90/#466 (this plan's other checked neighbours) are unrelated dimensions/mechanisms.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 4
+proposed_labels:   area=javascript; PRIO 2; effort 4
 issue:             
 ```
 
@@ -2758,6 +2758,6 @@ effort:            8
 dedup:             none — checked against the frozen 15-issue snapshot; no open issue addresses this Langium completion-grammar-follower limitation.
 disposition:       major-refactor
 proposed_approach: PENDING-APPROACH
-proposed_labels:   PENDING-AREA, PRIO 2, effort 8
+proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
