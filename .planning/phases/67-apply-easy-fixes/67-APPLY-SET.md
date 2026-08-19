@@ -1981,3 +1981,15 @@ COVERAGE file and not INVENTORY.md was touched by this phase).
   fix content was altered. (A prior draft of the callout above `### Denominator` miscounted this as
   seven rows and cited a nonexistent `P64-D4-005`; corrected in the same commit as this note — see
   that callout for the full correction.)
+
+### Close-out review
+
+**2026-08-19:** approved, with one required correction: the Index/Rows drift was six rows, not
+seven — P62-D4-005 (not P64-D4-005) was among the six originally flagged, and no seventh row was
+discovered. The reconciliation data itself was independently verified correct: 77/77 rows, zero
+Index-vs-Rows mismatches, verdict distribution 70 applied / 4 no-op / 1 deferred / 2 excluded.
+
+Before approving, the orchestrator independently verified: all ledger commit shas resolve via
+`git cat-file -e` (98 unique shas extracted from the ledger's `commit:` fields, zero unresolved);
+`npm run lint` (from `bbj-vscode/`) exits 0 with zero warnings; and
+`.planning/reviews/EASY-FIXES.md` is confirmed absent (Phase 68 DOC-01).
