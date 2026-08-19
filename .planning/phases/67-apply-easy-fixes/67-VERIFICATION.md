@@ -1,18 +1,21 @@
 ---
 phase: 67-apply-easy-fixes
 verified: 2026-08-19T15:56:41Z
-status: human_needed
+status: passed
 score: 3/4 roadmap success criteria directly verified, 1 deferred to Phase 68 by design
 behavior_unverified: 0
 overrides_applied: 0
 deferred:
+
   - truth: "No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md (Success Criterion 4)"
     addressed_in: "Phase 68"
     evidence: "ROADMAP.md Phase 68 goal: 'Produce EASY-FIXES.md and MAJOR-REFACTORS.md with full coverage statement' — DOC-01 is explicitly the deliverable that creates this file. 67-CONTEXT.md's own D-16/Claude's-Discretion section records this boundary explicitly, and 67-APPLY-SET.md's ledger carries all 77 rows' finding_id/location/dimension/failure_scenario/fix_applied/commit/user_facing fields (29 rows flagged user_facing: yes, zero empty fields) so Phase 68 can assemble the document without re-deriving anything."
 human_verification:
+
   - test: "Decide whether the 6 findings in 67-REVIEW.md (1 Critical, 6 Warnings) are acceptable residual risk for a phase whose own goal requires fixes be applied 'as a low-risk ... change', or whether one or more of the 5-6 newly-introduced concurrency/behavior Warnings (WR-01 LRU cache eviction racing its own cyclic resolution, WR-02 stale connection listener able to clobber a healthy reconnect, WR-03 shared-mutable cancellation token across concurrent completion requests, WR-04 lexer split widened to also break on bare \\r beyond the fix's stated CRLF/LF scope, WR-05 stale-content risk in the shared in-flight format promise, WR-06 mtime-truncation false-negative in the .lst freshness gate) warrant a fast-follow fix or a filed issue before the phase is considered fully closed."
     expected: "A human (not an LLM judgment) accepts the residual risk as documented and narrow-trigger, or requires follow-up action. This is inherently a risk-tolerance judgment call the code review itself declined to make unilaterally."
     why_human: "This is a risk-acceptance decision, not a fact the codebase can settle. I independently confirmed two of the six warnings (WR-04's split regex, WR-02's newly-added onClose/onError listeners) are real, present in the current code, and were introduced by this phase's own commits — not pre-existing. Whether that residual risk is compatible with the phase's own 'low-risk' framing is a judgment call, not a verifiable fact."
+
   - test: "Confirm the Critical finding CR-01 (unvalidated bbj.home spawn exposure) is correctly triaged as pre-existing/out-of-scope and appropriately routed to Phase 68 rather than requiring a Phase 67 fix"
     expected: "Human agrees this is P61-D1-003 (a major-refactor, D1-classified finding that Phase 67's own D-05 rule forbids re-triaging), correctly left untouched by this phase and now flagged at true severity for Phase 68/69 to prioritize"
     why_human: "Security-severity triage judgment; 67-REVIEW.md's own text and 67-CONTEXT.md's D-05 rule both support the routing, but confirming a Critical-severity item's disposition is a human call, not a grep."

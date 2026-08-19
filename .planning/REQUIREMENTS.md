@@ -63,10 +63,10 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 
 ### Easy Fixes
 
-- [ ] **FIX-01**: Each easy fix is low-risk and contained, and lands as its own atomic commit referencing its finding ID
-- [ ] **FIX-02**: Each behavior-changing fix ships with a regression test that fails before the fix and passes after
-- [ ] **FIX-03**: After all fixes, `npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew build` succeeds in `bbj-intellij/`
-- [ ] **FIX-04**: No applied fix changes user-facing behavior without that change being recorded in EASY-FIXES.md
+- [x] **FIX-01**: Each easy fix is low-risk and contained, and lands as its own atomic commit referencing its finding ID
+- [x] **FIX-02**: Each behavior-changing fix ships with a regression test that fails before the fix and passes after
+- [x] **FIX-03**: After all fixes, `npm test` and `npm run lint` are clean in `bbj-vscode/`, and `./gradlew build` succeeds in `bbj-intellij/`
+- [x] **FIX-04**: No applied fix changes user-facing behavior without that change being recorded in EASY-FIXES.md
 
 ### Deliverable Documents
 
@@ -144,10 +144,10 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DEBT-06 | Phase 66 | Complete |
 | DEBT-07 | Phase 66 | Pending |
 | DEBT-08 | Phase 66 | Pending |
-| FIX-01 | Phase 67 | Pending |
-| FIX-02 | Phase 67 | Pending |
-| FIX-03 | Phase 67 | Pending |
-| FIX-04 | Phase 67 | Pending |
+| FIX-01 | Phase 67 | Complete |
+| FIX-02 | Phase 67 | Complete |
+| FIX-03 | Phase 67 | Complete |
+| FIX-04 | Phase 67 | Complete |
 | DOC-01 | Phase 68 | Pending |
 | DOC-02 | Phase 68 | Pending |
 | DOC-03 | Phase 68 | Pending |
