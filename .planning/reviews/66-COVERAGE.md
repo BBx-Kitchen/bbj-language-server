@@ -173,13 +173,15 @@ reproducible), one row per bullet, each carrying that bullet's `PROJECT.md` line
 | 256 | FQN path static-only filtering deferred | DEBT-04 | `P66-D2-002` | major-refactor — see `## DEBT-04` |
 | 257 | Static method return type inference gap | DEBT-03 | `P66-D2-001` | easy-fix — see `## DEBT-03` |
 
-**Rows this plan (66-01) verdicts:** 251, 253, 254, 257 — four `PROJECT.md`-line rows, covering
-the three items (DEBT-01, DEBT-02, DEBT-03) this plan owns; DEBT-02 spans two bullets/rows (253,
-254) because D-07's two-unblocking-conditions split (see `## DEBT-02`) keeps them as two distinct
-register rows even though both resolve under the one `DEBT-02` requirement. **Rows still owed:**
-250 and 256 remain `pending 66-02` (DEBT-05, DEBT-04); 252 and 255 remain `pending 66-03`
-(DEBT-07, DEBT-08) — neither orphan bullet is dropped or silently folded; 66-03 closes them by
-adding `DEBT-07`/`DEBT-08` to `REQUIREMENTS.md`, never by editing `INVENTORY.md`.
+**Rows 66-01 verdicted:** 251, 253, 254, 257 — four `PROJECT.md`-line rows, covering the three
+items (DEBT-01, DEBT-02, DEBT-03) that plan owns; DEBT-02 spans two bullets/rows (253, 254) because
+D-07's two-unblocking-conditions split (see `## DEBT-02`) keeps them as two distinct register rows
+even though both resolve under the one `DEBT-02` requirement. **Rows 66-02 verdicted:** 250 and 256
+(DEBT-05, DEBT-04 — see `## DEBT-05`/`## DEBT-04`), closing out this plan's own two owed rows in
+full — no row in this register carries a marker naming this plan as still owing it. **Rows still
+owed:** 252 and 255 remain `pending 66-03` (DEBT-07, DEBT-08) — neither orphan bullet is dropped or
+silently folded; 66-03 closes them by adding `DEBT-07`/`DEBT-08` to `REQUIREMENTS.md`, never by
+editing `INVENTORY.md`.
 
 Lines 252 and 255 are the two orphans `INVENTORY.md:1220` recorded (the 8-vs-6 debt-list drift);
 their rows above are the pointer into that drift and are what makes it discoverable from this file
@@ -1008,3 +1010,326 @@ match; this is a plugin-internal coupling concern, not a general dependency-vers
 INVENTORY §3d); effort `4`.
 
 **No `gh` write subcommand was run to produce this draft.**
+
+## DEBT-04
+
+DEBT-04 is the one item on the denominator with **zero inherited sweep evidence** — no Phase
+61-65 finding was ever recorded for it. `61-COVERAGE.md:1862` (`RU-61-06`'s D5 cell) independently
+noticed the gap while sweeping test coverage, but explicitly declined to file a second overlapping
+finding: "Confirmed the DEBT-04 FQN static-only completion-filtering gap has only a prose record
+in `REQUIREMENTS.md`, no dedicated regression test — noted as context, not a new finding". So this
+section leads with a fresh trace rather than a citation.
+
+### Why no live reproduction was attempted
+
+Stated before the evidence, so the trace below is never read as a substitute for a reproduction
+that was silently skipped: this sandbox has known pre-existing test failures that an open
+`java-interop` port does not resolve. `PROJECT.md`'s own measured test/build state (read at this
+plan's execution time) records **11 failed | 850/843 passed (run-dependent) | 25-79 skipped (886
+total)**, "all 11 failures environment-classified (java-interop unreachable in this sandbox)" — a
+condition CONTEXT.md's D-09 names directly as the reason a live repro would be indistinguishable
+from a failed setup, and therefore a **worse** evidence record than an honest, labelled trace. No
+attempt was made to start `java-interop`, connect a real BBj backend, or run a completion request
+against a live language server in this task. Everything in the `### Static trace` subsection below
+is a **read of the committed source**, not an observed runtime result.
+
+### Static trace
+
+**The detection point — `bbj-vscode/src/language/bbj-scope.ts`, `getScope`'s member-completion
+branch (lines 191-234).**
+
+```ts
+191   if (context.property === 'member' && isMemberCall(context.container)) {
+192       const receiver = context.container.receiver
+193       const receiverType = this.typeInferer.getType(receiver);
+...
+198       // Detect class-reference access: receiver is a SymbolRef directly referencing a JavaClass
+199       // (e.g., `String.` after `USE java.lang.String`) — show only static methods.
+200       let isClassRef = false;
+201       if (isSymbolRef(receiver)) {
+202           try {
+203               const ref = receiver.symbol.ref;
+204               isClassRef = isJavaClass(ref);
+205           } catch {
+206               // cyclic reference, ignore
+207           }
+208       }
+209       if (isJavaClass(receiverType)) {
+...
+213           if (isClassRef) {
+214               // Class reference access — static members only. ...
+218               const staticMethods = receiverType.methods.filter(m => m.isStatic);
+219               const staticFields = receiverType.fields.filter(f => f.isStatic);
+220               const scope = this.createScopeForNodes(stream(staticFields).concat(staticMethods));
+...
+226           // Instance access — all methods and fields plus .class
+227           const members = stream(receiverType.fields).concat(receiverType.methods);
+228           const membersScope = this.createScopeForNodes(members);
+```
+
+Line-by-line, for the `member` cross-reference of a `MemberCall` whose `receiverType` resolves to
+a `JavaClass`: `isClassRef` (line 200) starts `false` and is set `true` **only** when `receiver` is
+itself a `SymbolRef` AST node (line 201) whose resolved `symbol.ref` is a `JavaClass` (line 204).
+If `isClassRef` is `true`, line 213's branch filters to `staticMethods`/`staticFields` only
+(lines 218-220). If `isClassRef` is `false`, execution falls through to line 226's "Instance
+access" branch, which offers **every** field and method (line 227) with no static/instance
+distinction at all.
+
+**`bbj-vscode/src/language/bbj-completion-provider.ts` — the consuming path, checked for
+independent filtering of its own.** `completionForCrossReference` and `completionFor`
+(`bbj-completion-provider.ts:120-176`) forward the `member` cross-reference of a `MemberCall`
+straight to Langium's default cross-reference completion, which resolves candidates via the scope
+`getScope` above already computed — neither method references `isClassRef`, `isJavaClass`, or a
+member's `isStatic` flag anywhere in this file (confirmed: `grep -n "isClassRef\|isStatic"
+bbj-completion-provider.ts` returns no match). **The divergence point is entirely inside
+`bbj-scope.ts`'s `getScope`; the completion provider adds no filtering of its own that could
+compensate.**
+
+**The two input shapes DEBT-04's own wording distinguishes, traced concretely:**
+
+1. **The USE-alias path — works.** `USE java.lang.String` (grammar rule `Use`, `bbj.langium:308`)
+   binds the simple name `String` into scope as a `NamedElement` resolvable by
+   `SymbolRef.symbol=[NamedElement:FeatureName]` (`bbj.langium:818-819`). For `String.valueOf`
+   typed after that `USE`, the `member=valueOf` cross-reference's `receiver` is a bare `SymbolRef`
+   node whose `symbol.ref` resolves directly to the imported `JavaClass`. At `bbj-scope.ts:201`,
+   `isSymbolRef(receiver)` is **true**; at `:204`, `isJavaClass(ref)` is **true**; `isClassRef`
+   becomes `true`; the static-only branch (`:213-220`) is taken. This is the path the existing
+   in-code comment at `:198-199` documents, and it is unchanged.
+2. **The MemberCall `isClassRef` path (a fully-qualified reference, no `USE`) — the gap.** The
+   grammar's `MemberCall` rule is left-recursive chained member access
+   (`{infer MemberCall.receiver=current} '.' (member=...)?`, `bbj.langium:791`). Typing
+   `java.lang.String.valueOf(2)` with no preceding `USE` parses `java.lang.String` as a chain of
+   nested `MemberCall` nodes (`SymbolRef(java)` → `MemberCall(.lang)` → `MemberCall(.String)`), so
+   the `receiver` of the final `.valueOf` `MemberCall` is itself a **`MemberCall` node, not a
+   `SymbolRef`** — even though `this.typeInferer.getType(receiver)` still correctly resolves it to
+   the `JavaClass` for `java.lang.String`. At `bbj-scope.ts:201`, `isSymbolRef(receiver)` is
+   **false** — the `MemberCall` shape never reaches the `try` block at all. `isClassRef` stays
+   `false` (line 200's initial value, never overwritten). Execution reaches `:226`'s "Instance
+   access" branch and offers `receiverType.fields` **and** `receiverType.methods` together, with no
+   static/instance distinction — instance methods like `charAt`/`length`/`substring` are offered
+   alongside statics like `valueOf`/`format`/`join` for a fully-qualified class reference, which is
+   exactly DEBT-04's documented symptom ("FQN path static-only filtering deferred").
+
+Both results are recorded — the working path as working, not left implicit, per the Phase 64 D-12
+positive-results pattern (checked-and-clean must be distinguishable from unchecked).
+
+### Stated blocker
+
+`bbj-vscode/src/language/java-interop.ts:572-588` — the two-phase class-resolution block added by
+commit `99820a0` (`feat(59-04)`) — sets `field.isStatic`/`method.isStatic` from the raw Java DTO,
+**defaulting to `false` when the DTO omits the value**:
+
+```ts
+579   field.isStatic = (field as unknown as { isStatic?: boolean }).isStatic ?? false;
+...
+584   method.isStatic = (method as unknown as { isStatic?: boolean }).isStatic ?? false;
+```
+
+This is the exact, previously-documented reason the MemberCall-receiver extension to `isClassRef`
+was **implemented and then dropped** in the same commit that fixed the isStatic race condition —
+recorded in `.planning/phases/59-java-class-reference-features/59-04-SUMMARY.md`'s own Deviations
+section: *"MemberCall isClassRef extension dropped: extending isClassRef detection to FQN
+MemberCall chains caused regression — old JAR does not send isStatic for fields so Boolean.TRUE
+and Date.valueOf could not link; FQN completion showing all members is pre-existing behavior
+maintained."* Extending `isClassRef` detection to `MemberCall` receivers without a guarantee that
+the connected `java-interop` JAR reliably populates `isStatic` on `JavaField` (not just
+`JavaMethod`) would silently hide every legitimately static field behind a flag that always
+defaults `false` — including the `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`-style event constants
+`bbj-scope.ts:214-217`'s own comment names as depending on this exact mechanism. Closing the gap
+therefore requires a **JAR-side change in `java-interop/`** — confirming/adding `isStatic` on the
+field DTO — and a **redeployment** of that JAR to BBj's runtime classpath, before the
+`bbj-scope.ts`-side extension can be safely re-enabled. `java-interop/` sits entirely outside this
+milestone's review boundary under `FUT-01` (v4.0 scope excludes the Java service), so the blocker
+is recorded here, not worked around.
+
+### Verdict
+
+The code is unchanged: `bbj-scope.ts:191-234`'s `isClassRef` detection is still limited to
+`isSymbolRef(receiver)`, exactly as commit `99820a0` left it in v3.9 (confirmed by this plan's own
+line-by-line re-read, and consistent with the phase-wide empty `git diff` baseline recorded in
+`## The evidence rule (D-08)` above). The item is **still real** and its fix is nameable but
+gated on cross-repo (`java-interop/`) work outside this milestone's boundary — matching D-06's
+`major-refactor` mapping for a still-real item drafted for Phase 69, the same pattern D-07 applied
+to DEBT-02's two blocked findings in `## DEBT-02` above (a blocker is recorded in the draft, not
+used as a `wontfix` escape hatch).
+
+### Finding record
+
+```
+id:                P66-D2-002
+unit:              DEBT-04
+location:          bbj-vscode/src/language/bbj-scope.ts:191-234 (getScope's member-completion
+                   branch; isClassRef detection at :199-208);
+                   bbj-vscode/src/language/bbj-completion-provider.ts (consumes the scope with no
+                   independent isClassRef-aware filtering of its own);
+                   bbj-vscode/src/language/java-interop.ts:572-588 (the isStatic ?? false default
+                   that is the stated blocker)
+dimension:         D2
+secondary:         []
+severity:          medium
+evidence_tier:     repro
+                   D2's INVENTORY §3b bar is `repro`; DEBT-04's own trace clears it by the bar's
+                   **second form** — "a line-by-line trace naming the concrete inputs/state and
+                   the exact file:line where behaviour diverges" — not by a runtime reproduction,
+                   which the `### Why no live reproduction was attempted` subsection above states
+                   was deliberately not attempted. CONTEXT.md D-09 calls this the `trace` tier by
+                   its own phrasing; that phrase is D-09's shorthand for exactly this second §3b
+                   form, reconciled explicitly here per this plan's own planner-reconciliation
+                   note rather than left for a reader to work out.
+evidence:          The static trace above: bbj-scope.ts:199-208's isSymbolRef(receiver) check,
+                   concrete input 1 (USE java.lang.String then String.valueOf — receiver is a
+                   SymbolRef, isClassRef=true, static-only branch taken, works) versus concrete
+                   input 2 (java.lang.String.valueOf(2) with no USE — receiver is a MemberCall
+                   node, isSymbolRef(receiver) is false, isClassRef stays false, falls to the
+                   Instance access branch at :226-228, offering every field and method). Plus
+                   java-interop.ts:572-588's isStatic ?? false default and the commit-99820a0/
+                   59-04-SUMMARY.md historical record of the same extension being attempted and
+                   reverted for exactly this reason.
+failure_scenario:  A fully-qualified Java class MemberCall reference typed without a preceding USE
+                   alias (e.g. java.lang.String.valueOf(2), or any FQN-qualified static access) —
+                   the completion list offered for the trailing member includes every instance
+                   method and field of the class alongside its statics, instead of statics only,
+                   because isClassRef never becomes true for a MemberCall-shaped receiver.
+classification:    major
+                   (1) touches 1 file: FAIL — the complete fix needs both a bbj-scope.ts-side
+                   extension AND a java-interop/ JAR-side change (outside this repo's FUT-01
+                   boundary) plus a redeployment, not a single-file edit — (2) no public
+                   API/grammar/LSP change: pass — the fix changes internal scope-resolution logic
+                   only — (3) no new dependency: pass — (4) regression-testable with the existing
+                   vitest harness: FAIL — a real regression test needs a Java classpath backend
+                   reflecting the updated JAR's isStatic-for-fields behaviour, which this
+                   sandbox's EmptyFileSystem-based test context cannot provide (the same
+                   DEBT-02-class blocker P61-D5-003 already recorded) — (5) reviewer can name the
+                   exact edit: pass — see Issue-ready draft below — (6) severity medium, dimension
+                   D2 (not D1): pass — tests (1) and (4) both fail, so classification is major
+                   regardless of (2)/(3)/(5)/(6).
+effort:            8
+                   (cross-repo scope — a java-interop/ JAR change, a redeployment, and a
+                   bbj-vscode-side extension plus its regression test — is larger than a
+                   single-repo fix; no departure from a prior recorded value since DEBT-04 carries
+                   no inherited finding to depart from).
+dedup:             none — checked against INVENTORY's frozen 15-issue snapshot. #466 (Detect
+                   sibling-type method return mismatches via Java class hierarchy) explicitly
+                   considered per this plan's own instruction and resolved unrelated: #466
+                   concerns validating an ALREADY-RESOLVED return type against a Java class
+                   hierarchy after a method call resolves; this finding concerns which SET OF
+                   MEMBERS a class-reference receiver's own completion scope contains before any
+                   call is resolved — a different mechanism (scope/completion filtering, not
+                   return-type validation) with no overlap. No other frozen-snapshot issue
+                   concerns MemberCall static-vs-instance completion filtering.
+disposition:       major-refactor
+```
+
+### Issue-ready draft
+
+**Title:** FQN-qualified Java class references offer instance members instead of static-only
+completion (`isClassRef` doesn't follow `MemberCall` receiver chains) — supersedes no prior issue
+
+**Problem statement:** `bbj-scope.ts`'s `getScope` member-completion branch only detects a
+"class-reference" receiver (triggering static-only filtering) when the receiver AST node is a
+`SymbolRef` directly bound to a `JavaClass` — the `USE`-alias path. When the receiver is itself a
+`MemberCall` — the shape produced by a fully-qualified reference like `java.lang.String.` typed
+without a `USE` — `isSymbolRef(receiver)` is `false`, `isClassRef` stays `false`, and completion
+falls into the "instance access" branch, offering every method and field instead of statics only.
+
+**`file:line` evidence:**
+- `bbj-vscode/src/language/bbj-scope.ts:191-234` (`getScope`'s member-completion branch;
+  `isClassRef` detection at `:199-208`; the `isJavaClass(receiverType)` fork at `:209-234`).
+- `bbj-vscode/src/language/bbj-completion-provider.ts` (consumes the scope with no independent
+  `isClassRef`-aware filtering — confirmed by direct read, no match for `isClassRef`/`isStatic`
+  anywhere in the file).
+- `bbj-vscode/src/language/java-interop.ts:572-588` (the stated blocker: `field.isStatic`/
+  `method.isStatic` both default `false` via `?? false` when the raw DTO omits the value — the old
+  JAR does not send `isStatic` for fields).
+- Historical decision record: commit `99820a0` /
+  `.planning/phases/59-java-class-reference-features/59-04-SUMMARY.md` ("MemberCall isClassRef
+  extension dropped ... old JAR does not send isStatic for fields; FQN paths continue showing all
+  members until JAR is updated").
+
+**Verified failure scenario (traced, not executed — see `### Why no live reproduction was
+attempted` above):** For `java.lang.String.valueOf(2)` typed without a preceding `USE
+java.lang.String`, the grammar parses `java.lang.String` as a chain of `MemberCall` nodes, so the
+receiver of the final `.valueOf` `MemberCall` is a `MemberCall` node, not a `SymbolRef`.
+`isSymbolRef(receiver)` at `bbj-scope.ts:201` returns `false`, `isClassRef` stays `false`, and the
+completion list offered for `.valueOf(` includes `String`'s instance methods (`charAt`, `length`,
+`substring`, ...) alongside its static methods (`valueOf`, `format`, `join`, ...) — instead of only
+the statics a class-reference access should show. By contrast, `USE java.lang.String` then
+`String.` resolves `receiver` to a `SymbolRef` bound directly to the `JavaClass`, `isClassRef`
+becomes `true`, and only static members are offered — this path works today and is unaffected.
+
+**Proposed approach:** `receiverType` (`bbj-scope.ts:193`, `this.typeInferer.getType(receiver)`)
+already resolves to the correct `JavaClass` for a chained-`MemberCall` FQN receiver like
+`java.lang.String` — the type inferer is not the gap. The gap is purely the syntactic
+`isSymbolRef(receiver)` test at line 201, which asks "is the receiver written as a bare name" (a
+`USE` alias) rather than the semantic question DEBT-04 actually needs answered — "does the
+receiver refer to the class itself, as opposed to an instance value of that class type". A chained
+FQN segment (`java.lang.String`, the innermost `MemberCall`'s own `member` cross-reference
+resolving to the `JavaClass` `String`) refers to the class itself in exactly the same sense a `USE`
+alias does; it is just spelled as a `MemberCall` chain instead of a single `SymbolRef`. The fix is
+to extend the detection at `bbj-scope.ts:199-208` to also treat a `MemberCall` receiver whose own
+`member` cross-reference resolves to a `JavaClass` as a class reference, equivalent to today's
+`isSymbolRef(receiver) && isJavaClass(receiver.symbol.ref)` check — **gated behind confirming
+`java-interop`'s JAR reliably sets `isStatic` on `JavaField`** (not just `JavaMethod`), since
+enabling this without that guarantee would silently hide legitimately static fields (event
+constants like `BBjHtmlView.ON_HTMLVIEW_DOWNLOAD`, per the existing comment at
+`bbj-scope.ts:214-217`) behind an `isStatic` flag that always defaults `false`. The JAR-side change
+(`java-interop/`, out of this milestone's review boundary per `FUT-01`) must ship and be
+redeployed to BBj's runtime classpath before this `bbj-vscode`-side extension can be safely
+re-enabled — the same two-step shape commit `99820a0`'s own Task 2 (a `human-action` deployment
+gate) already established for this exact change.
+
+**Acceptance criteria:**
+- `java-interop`'s JAR sends `isStatic` for `JavaField` (not just `JavaMethod`) in its
+  class-metadata payload, and is redeployed to the environment used for testing.
+- `bbj-scope.ts`'s `isClassRef` detection is extended to `MemberCall` receivers resolving to a
+  `JavaClass`.
+- A regression test (none exists today — this repository has no committed assertion of
+  FQN-vs-`USE`-alias completion parity) asserts that `java.lang.String.` (no `USE`) and `String.`
+  (after `USE java.lang.String`) offer the identical static-only member set.
+- `npm test` remains green; no existing completion/scope assertion regresses.
+
+**Proposed labels:** area `scoping` (from the repository's existing area-label set — the
+divergence lives entirely in `bbj-scope.ts`'s scope resolution); `types` is a secondary candidate
+since the fix also touches `java-interop.ts`'s type-DTO handling; `PRIO 2` (severity `medium`
+maps to `PRIO 2` per INVENTORY §3d); effort `8`.
+
+**No `gh` write subcommand was run to produce this draft.**
+
+## Plan 66-02 accounting
+
+**Rows and records this plan verdicted.** Two of the eight denominator items — DEBT-05 and
+DEBT-04 — are verdicted by this plan, spanning **2 `PROJECT.md`-line register rows** (250, 256)
+and **2 finding records** (`P66-D4-001`, `P66-D2-002`) — a 1:1 rows-to-records ratio here, unlike
+66-01's DEBT-02 split, because neither DEBT-05 nor DEBT-04 has D-07's two-distinct-unblocking-
+conditions shape.
+
+**Finding IDs allocated by this plan:** `P66-D4-001` (DEBT-05, superseding `P63-D4-010`) and
+`P66-D2-002` (DEBT-04, no inherited record to supersede) — both matched their pre-allocated slots
+from the Finding-ID namespace table exactly; neither resolved `already-covered`/`not-reproducible`
+(both items were found still real), so no pre-allocated ID went unused.
+
+**Pre-allocated IDs left for 66-03:** `P66-D2-003` (DEBT-07) and `P66-D5-003` (DEBT-08) — this
+plan touches neither; their register rows (252, 255) remain `pending 66-03`, carried exactly as
+66-01 left them.
+
+**Denominator register status after this plan:** 6 of 8 rows now carry a verdict (251, 253, 254,
+257 from 66-01; 250, 256 from this plan); 2 rows (252, 255) remain explicitly `pending 66-03` —
+never blank.
+
+**Zero source files modified, zero tracker writes.** Re-run at this plan's completion:
+
+```bash
+git status --porcelain bbj-vscode bbj-intellij java-interop .github
+```
+**Literal output: (empty — nothing).**
+
+```bash
+git status --porcelain .planning/reviews/INVENTORY.md .planning/reviews/61-COVERAGE.md .planning/reviews/62-COVERAGE.md .planning/reviews/63-COVERAGE.md .planning/reviews/64-COVERAGE.md .planning/reviews/65-COVERAGE.md
+```
+**Literal output: (empty — nothing).**
+
+No `gh` write subcommand ran anywhere in this plan — every `gh` invocation used in this plan's
+evidence gathering (dedup checks against the frozen snapshot) was already recorded by 66-01's `##
+Dedup source` section; this plan added no new `gh` call of any kind, read-only or otherwise. D-01
+(verdict-only, no source change) and D-02 (zero tracker writes) both hold, evidenced by the literal
+command output above rather than asserted.
