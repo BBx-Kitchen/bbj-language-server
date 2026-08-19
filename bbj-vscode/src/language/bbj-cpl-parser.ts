@@ -36,8 +36,10 @@ export function parseBbjcplOutput(stderr: string): Diagnostic[] {
         const match = ERROR_LINE_RE.exec(line);
         if (!match) continue;
 
-        // bbjcpl reports 1-based physical lines; LSP ranges are 0-based
-        const physicalLine = parseInt(match[1], 10) - 1;
+        // bbjcpl reports 1-based physical lines; LSP ranges are 0-based. Clamp at zero so a
+        // reported line of 0 (or any malformed value below 1) never produces a negative,
+        // out-of-contract LSP line number (P61-D2-009).
+        const physicalLine = Math.max(0, parseInt(match[1], 10) - 1);
         const sourceSnippet = match[2].trim();
 
         const range: Range = {
