@@ -1773,3 +1773,51 @@ an all-unchecked `6`-item baseline that no longer held once `66-01`/`66-02` had 
 `DEBT-01`..`DEBT-05` complete) and this task's actual, correct 8-total-bullets state — is recorded
 as a deviation in `66-03-SUMMARY.md`, not silently reconciled here.
 
+## PROJECT.md rewrite (D-13)
+
+`.planning/PROJECT.md` §"Known tech debt" was rewritten in place — a scoped edit to that section
+only (lines 249-257 of the pre-edit file; `git diff -U0 .planning/PROJECT.md` confirms every
+changed hunk sits inside that range, no hunk elsewhere in the file).
+
+**Before/after bullet count, literal command output:**
+
+```bash
+sed -n '/^\*\*Known tech debt:/,/^## /p' .planning/PROJECT.md | grep -c '^- '
+```
+
+**Before this edit: `8`. After this edit: `8`.** No bullet was added or deleted — every surviving
+bullet keeps its original text and gains a suffix; none resolved `already-covered`/
+`not-reproducible` this phase (all eight verdicted `major-refactor`, `easy-fix`, or `wontfix`), so
+no strikethrough was needed.
+
+**Eight-row suffix table**, one row per bullet, in `PROJECT.md` source order:
+
+| Line | Bullet (leading text) | Requirement | Finding ID | Disposition |
+|---|---|---|---|---|
+| 250 | BbjCompletionFeature still extends LSPCompletionFeature | DEBT-05 | `P66-D4-001` | major-refactor |
+| 251 | CPU stability mitigations documented but not yet implemented (#232) | DEBT-01 | `P66-D3-001` | major-refactor |
+| 252 | CPL-06 hierarchy suppression takes one extra build cycle | DEBT-07 | `P66-D2-003` | major-refactor |
+| 253 | TEST-03 (DEF FN completion inside class methods) skipped | DEBT-02 | `P66-D5-002` | major-refactor |
+| 254 | 3 parser.test.ts assertions DISABLED | DEBT-02 | `P66-D5-001` | major-refactor |
+| 255 | IntelliJ TextMate bundle filename registration unverified | DEBT-08 | `P66-D5-003` | wontfix (blocked on `P64-D6-010`) |
+| 256 | FQN path static-only filtering deferred | DEBT-04 | `P66-D2-002` | major-refactor |
+| 257 | Static method return type inference gap | DEBT-03 | `P66-D2-001` | easy-fix |
+
+Every ID and disposition above is copied from that item's own `### Finding record` in this file
+(`## DEBT-01` through `## DEBT-08`), not re-derived or re-decided in this rewrite — matching D-13's
+own instruction. The two orphan bullets (252, 255) lost their "not yet mapped to a DEBT-NN item"
+tail and now carry `DEBT-07`/`DEBT-08` respectively, alongside their finding-ID-and-disposition
+suffix, identically to the other six bullets — after this edit no bullet in the section describes
+itself as unmapped (`grep -ci 'not yet mapped'` over the extracted section returns `0`).
+
+**The header parenthetical** was rewritten to point at `.planning/reviews/66-COVERAGE.md` as the
+evidence base, name the 2026-08-19 re-triage date, and state that `DEBT-01`..`DEBT-08` now
+enumerate all eight bullets — replacing the 2026-08-17 survival-check wording and its stale
+"6 items, not 8" gap statement entirely (the gap is now closed, not merely recorded).
+
+**What Phase 69 still owes:** backfilling the filed issue number into each bullet, once Phase 69
+files the drafts recorded in `## DEBT-01` through `## DEBT-08` above under `ISSUE-01`'s approval
+gate. Phase 66 supplies the ID-and-disposition pointer; Phase 69 supplies the tracker number — the
+`(drafted; issue number backfilled by Phase 69)` parenthetical on each `PROJECT.md` bullet states
+this explicitly, so a reader of `PROJECT.md` alone (without opening `66-COVERAGE.md`) knows the
+issue is not yet filed. No `gh` write subcommand ran to produce this section.

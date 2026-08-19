@@ -246,15 +246,15 @@ milestone; labelling it as if it had would be false. Reconstructed from `2194616
 
 **Repo structure:** `bbj-intellij/` directory alongside existing `bbj-vscode/` and `java-interop/`.
 
-**Known tech debt:** (checked against the tree and against `.planning/REQUIREMENTS.md`'s DEBT-01..DEBT-06 on 2026-08-17; none resolved — all 8 survive. REQUIREMENTS.md's carried-debt enumeration has 6 items, not 8: the two items marked "not yet mapped" below are not represented as a DEBT-* requirement — see `.planning/reviews/INVENTORY.md` §"D-15 Correction Log".)
-- BbjCompletionFeature still extends LSPCompletionFeature (`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java`), API that may change across LSP4IJ versions — DEBT-05
-- CPU stability mitigations documented but not yet implemented (#232) — DEBT-01
-- CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct) — not yet mapped to a DEBT-NN item
-- TEST-03 (DEF FN completion inside class methods) skipped — Langium grammar follower limitation — DEBT-02
-- 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment — DEBT-02
-- IntelliJ TextMate bundle: filename-based `config.bbx`/`config.min` registration was added to the bundle (`2489001`, #381, in `2194616..v0.12.0`) mirroring the VS Code approach, but whether JetBrains' TextMate plugin actually honors `filenames` (vs. `extensions`) is unverified in this sandbox (`./gradlew build` fails on a local JDK toolchain mismatch, not a code defect) — not yet mapped to a DEBT-NN item
-- FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment — DEBT-04
-- Static method return type inference gap — String.valueOf(2) does not assign type to target variable — DEBT-03
+**Known tech debt:** (re-triaged against current code by Phase 66 on 2026-08-19; full evidence in `.planning/reviews/66-COVERAGE.md`. `DEBT-01`..`DEBT-08` now enumerate all eight bullets below — the 8-vs-6 gap `.planning/reviews/INVENTORY.md:1220` recorded is closed by `DEBT-07`/`DEBT-08`. Each bullet's finding ID and disposition are drafted for Phase 69's tracker filing, not yet filed — see `66-COVERAGE.md`'s `## DEBT-06 closure`.)
+- BbjCompletionFeature still extends LSPCompletionFeature (`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java`), API that may change across LSP4IJ versions — DEBT-05, P66-D4-001, major-refactor (drafted; issue number backfilled by Phase 69)
+- CPU stability mitigations documented but not yet implemented (#232) — DEBT-01, P66-D3-001, major-refactor (drafted; issue number backfilled by Phase 69)
+- CPL-06 hierarchy suppression takes one extra build cycle after BBjCPL merge (timing nuance, end state correct) — DEBT-07, P66-D2-003, major-refactor (drafted; issue number backfilled by Phase 69)
+- TEST-03 (DEF FN completion inside class methods) skipped — Langium grammar follower limitation — DEBT-02, P66-D5-002, major-refactor (drafted; issue number backfilled by Phase 69)
+- 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment — DEBT-02, P66-D5-001, major-refactor (drafted; issue number backfilled by Phase 69)
+- IntelliJ TextMate bundle: filename-based `config.bbx`/`config.min` registration was added to the bundle (`2489001`, #381, in `2194616..v0.12.0`) mirroring the VS Code approach, but whether JetBrains' TextMate plugin actually honors `filenames` (vs. `extensions`) is unverified in this sandbox (`./gradlew build` fails on a local JDK toolchain mismatch, not a code defect) — DEBT-08, P66-D5-003, wontfix (blocked on P64-D6-010; drafted, issue number backfilled by Phase 69)
+- FQN path static-only filtering deferred — USE alias path works; MemberCall isClassRef requires JAR redeployment — DEBT-04, P66-D2-002, major-refactor (drafted; issue number backfilled by Phase 69)
+- Static method return type inference gap — String.valueOf(2) does not assign type to target variable — DEBT-03, P66-D2-001, easy-fix (drafted; issue number backfilled by Phase 69)
 
 ## Constraints
 
