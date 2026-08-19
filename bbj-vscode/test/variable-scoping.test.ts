@@ -210,6 +210,25 @@ PRINT x
             `);
             expectNoHints(result, /used before assignment/i);
         });
+
+        test('P61-D2-010: excluded subtree (a method body) is pruned from the outer scope walk, not just skipped', async () => {
+            // The method body correctly assigns x before reading it. A same-named, later
+            // program-scope assignment to x must not make the outer Program-scope walk reach
+            // into the method body and flag the method's own perfectly valid read — Pass 2's
+            // traversal is documented not to enter nested MethodDecl/BbjClass/DefFunction
+            // bodies at all (they have their own dedicated validation pass).
+            const result = await validate(`
+class public TestPrune
+    method public void test()
+        x = 1
+        PRINT x
+    methodend
+classend
+
+x = 99
+            `);
+            expectNoHints(result, /x.*used before assignment/i);
+        });
     });
 
     // ========================================================================
