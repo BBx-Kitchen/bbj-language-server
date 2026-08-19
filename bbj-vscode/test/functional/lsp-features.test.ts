@@ -300,6 +300,73 @@ describe('LSP Feature Verification Tests', async () => {
         });
     });
 
+    // P61-D5-011: bbj-signature-help-provider.ts (17-118) had no test calling
+    // provideSignatureHelp on a real MethodCall — a regression in the active-parameter
+    // calculation, the rendered label, or the documentation block would pass `npm test`
+    // undetected (D-13, no red state producible: the provider already computes all three
+    // correctly).
+    describe('Signature help (P61-D5-011)', () => {
+        const signatureHelpProvider = services.BBj.lsp.SignatureHelp!;
+
+        function positionOf(document: LangiumDocument, snippet: string) {
+            const offset = document.textDocument.getText().indexOf(snippet);
+            expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+            return document.textDocument.positionAt(offset);
+        }
+
+        test('provideSignatureHelp on a real MethodCall returns label, activeParameter and documentation', async () => {
+            const document = await parse(`
+                class public Calc
+                    method public int add(BBjNumber a, BBjNumber b)
+                        methodret a + b
+                    methodend
+                    method public void run()
+                        LET r = #add(1, 2)
+                    methodend
+                classend
+            `, { validation: true });
+            expectNoErrors(document);
+
+            // Cursor inside the second argument ("2") — activeParameter must be 1.
+            const position = positionOf(document, '2)');
+            const help = await signatureHelpProvider.provideSignatureHelp(document, {
+                textDocument: { uri: document.uri.toString() },
+                position
+            });
+
+            expect(help).toBeDefined();
+            expect(help!.signatures).toHaveLength(1);
+            expect(help!.signatures[0].label).toBe('add(BBjNumber a, BBjNumber b)');
+            expect(help!.signatures[0].parameters?.map(p => p.label)).toEqual(['BBjNumber a', 'BBjNumber b']);
+            expect(help!.signatures[0].documentation).toBeDefined();
+            expect((help!.signatures[0].documentation as { value: string }).value).toContain('add(BBjNumber a, BBjNumber b)');
+            expect(help!.activeParameter).toBe(1);
+        });
+
+        test('provideSignatureHelp reports activeParameter 0 with the cursor in the first argument', async () => {
+            const document = await parse(`
+                class public Calc
+                    method public int add(BBjNumber a, BBjNumber b)
+                        methodret a + b
+                    methodend
+                    method public void run()
+                        LET r = #add(1, 2)
+                    methodend
+                classend
+            `, { validation: true });
+            expectNoErrors(document);
+
+            const position = positionOf(document, '1,');
+            const help = await signatureHelpProvider.provideSignatureHelp(document, {
+                textDocument: { uri: document.uri.toString() },
+                position
+            });
+
+            expect(help).toBeDefined();
+            expect(help!.activeParameter).toBe(0);
+        });
+    });
+
     // Combined test: Multiple LSP features working together
     describe('Integrated LSP Features', () => {
         test('All LSP features work correctly on realistic BBj code', async () => {
