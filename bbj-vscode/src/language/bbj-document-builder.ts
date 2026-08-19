@@ -160,30 +160,38 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const timer = setTimeout(async () => {
             this.cplDebounceTimers.delete(key);
 
-            // Clear-then-show: remove old BBjCPL diagnostics before compile
-            document.diagnostics = (document.diagnostics ?? []).filter(
-                d => d.source !== 'BBjCPL'
-            );
-
-            // Resolve BBjCPLService lazily via serviceRegistry
-            // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
-            const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
-            const cplService = langServices.compiler.BBjCPLService;
-
-            const cplDiags = await cplService.compile(key);
-
-            if (cplDiags.length > 0) {
-                // Merge BBjCPL diagnostics with current Langium diagnostics
-                document.diagnostics = mergeDiagnostics(
-                    document.diagnostics ?? [],
-                    cplDiags
+            try {
+                // Clear-then-show: remove old BBjCPL diagnostics before compile
+                document.diagnostics = (document.diagnostics ?? []).filter(
+                    d => d.source !== 'BBjCPL'
                 );
-            }
 
-            // Re-notify client with updated merged diagnostics.
-            // Use CancellationToken.None — the original build's token may be stale
-            // after the 500ms debounce. BBjCPLService handles its own timeout internally.
-            await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+                // Resolve BBjCPLService lazily via serviceRegistry
+                // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
+                const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
+                const cplService = langServices.compiler.BBjCPLService;
+
+                const cplDiags = await cplService.compile(key);
+
+                if (cplDiags.length > 0) {
+                    // Merge BBjCPL diagnostics with current Langium diagnostics
+                    document.diagnostics = mergeDiagnostics(
+                        document.diagnostics ?? [],
+                        cplDiags
+                    );
+                }
+
+                // Re-notify client with updated merged diagnostics.
+                // Use CancellationToken.None — the original build's token may be stale
+                // after the 500ms debounce. BBjCPLService handles its own timeout internally.
+                await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+            } catch (e) {
+                // The callback runs detached from setTimeout, with no rejection handler of
+                // its own — an uncaught throw here would surface as an unhandled promise
+                // rejection at the process level instead of being caught in-context
+                // (P61-D2-017). Log and let the build continue.
+                logger.error(`BBjCPL debounced compile failed for ${key}: ${e}`);
+            }
         }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
 
         this.cplDebounceTimers.set(key, timer);
