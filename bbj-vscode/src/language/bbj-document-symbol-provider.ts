@@ -72,7 +72,6 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
             }
 
             // Error-recovery path: name property exists on AST but nameProvider couldn't find its CST node
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const name = (astNode as any).name;
             if (typeof name === 'string' && name.trim() && astNode.$cstNode) {
                 // Use the node's own CST node as both range and selectionRange
@@ -146,7 +145,6 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
                 try {
                     if (!node.$cstNode) continue;
 
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const name = (node as any).name;
                     const hasName = (typeof name === 'string' && name.trim()) ||
                                     !!this.nameProvider.getNameNode(node);
