@@ -599,6 +599,70 @@ new case added to `test/decompile-io.test.ts` for `P62-D2-011`.
 
 **`./gradlew build`:** not re-run — no `bbj-intellij/` file changed by this plan (D-09).
 
+### Plan 67-09 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm run lint` and `npm test` (three full runs, per D-08), on HEAD after
+this plan's ten commits closing six ledger rows (P62-D2-007, P62-D2-008, P62-D2-009, P62-D5-004,
+P62-D2-004, P62-D2-006 — the three grammar rows and P62-D2-004 each landed as a red+green pair;
+P62-D5-004 closed no-op, no code change). This plan adds two new test modules
+(`test/extension-activation.test.ts`, 2 cases; `test/language-configuration.test.ts`, 2 cases) and
+extends `test/textmate-highlighting.test.ts` (4 new cases: 1 for P62-D2-007, 2 for P62-D2-008, 1
+for P62-D2-009) — no existing test file is deleted or has cases removed.
+`bbj-vscode/syntaxes/bbj.tmLanguage.json`, `bbj-vscode/src/extension.ts` and
+`bbj-vscode/bbj-language-configuration.json` all have no reachable path from
+`test/linking.test.ts`'s interop suite, so the gate set was expected to stay unchanged.
+
+**`npm run lint`: exit code `0`, zero warnings.** Unchanged from the `P61-D4-010` lint-clean
+milestone; none of this plan's commits touches an eslint directive.
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time — the
+same 11 names as the phase-start gate set:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set on all three runs — same 11 names, none added, none removed.
+
+Beyond these 11, each run showed a different 0-2 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.`, never an assertion failure:
+
+- Run 1: two additional suites hit the timeout — `test/run-call-file-resolution.test.ts > RUN/CALL
+  file resolution is inert without project context` (`:86`) and
+  `test/validation-function-calls.test.ts > builtin function call validation (#451)` (`:15`), both
+  pre-existing files this plan does not touch. Excluded per D-08.
+- Run 2: one additional suite hit the timeout — `test/line-break-validation.test.ts > Line break
+  validation: CRLF and missing trailing newline (P61-D5-006)` (`:25`), a pre-existing file this
+  plan does not touch. Excluded per D-08.
+- Run 3: one additional suite hit the timeout — `test/hover.test.ts > Hover content: documented
+  members, inheritance, and error resilience (P61-D5-012)` (`:15`), a pre-existing file this plan
+  does not touch. Excluded per D-08.
+
+Every test in a timed-out suite reports `skipped`, not `failed`, which is why the total
+passed/skipped counts vary run to run (900-939 passed, 6-45 skipped) while the 11-name
+deterministic failure set and the 956 total never move.
+
+**Total test count observation (not gate criteria, D-08):** `956` total tests across all three
+runs (`11 failed | N passed | M skipped (956)`), up from `948` recorded in the Plan 67-08 delta —
+the +8 matches this plan's two new test modules (`test/extension-activation.test.ts` 2 cases,
+`test/language-configuration.test.ts` 2 cases) plus the 4 new cases added to
+`test/textmate-highlighting.test.ts`.
+
+**`./gradlew build`:** not re-run — the IntelliJ plugin bundles `syntaxes/bbj.tmLanguage.json` and
+`bbj-language-configuration.json` as a copied resource (`bbj-intellij/build.gradle.kts`'s
+`copyTextMateBundle` task), but no `bbj-intellij/` file itself changed by this plan (D-09) — the
+grammar change reaches IntelliJ at plugin-build time with no Java-side edit required.
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*

@@ -79,16 +79,16 @@ Two derived counts, and the arithmetic connecting them:
 | 42 | P61-D8-005 | applied | fe4d8a0 |
 | 43 | P61-D8-006 | no-op | none — resolved by P61-D2-016's fix (c47da5c) |
 | 44 | P61-D8-007 | applied | 40d3af1 |
-| 45 | P62-D2-004 | pending | pending |
-| 46 | P62-D2-006 | pending | pending |
-| 47 | P62-D2-007 | pending | pending |
-| 48 | P62-D2-008 | pending | pending |
-| 49 | P62-D2-009 | pending | pending |
+| 45 | P62-D2-004 | applied | 7729e06 (test) + 36de32d (fix) |
+| 46 | P62-D2-006 | applied | 295c7a6 (test) + 8c49e2f (fix) |
+| 47 | P62-D2-007 | applied | 3a32cef (test) + 4c7b973 (fix) |
+| 48 | P62-D2-008 | applied | 5026129 (test) + b30fc6c (fix) |
+| 49 | P62-D2-009 | applied | eb81320 (test) + 283cdd3 (fix) |
 | 50 | P62-D2-010 | pending | pending |
 | 51 | P62-D2-011 | pending | pending |
 | 52 | P62-D3-001 | pending | pending |
 | 53 | P62-D4-005 | pending | pending |
-| 54 | P62-D5-004 | pending | pending |
+| 54 | P62-D5-004 | no-op | none — the three named assertions were landed as P62-D2-007/008/009's regression tests |
 | 55 | P62-D5-006 | pending | pending |
 | 56 | P62-D7-002 | pending | pending |
 | 57 | P62-D8-001 | applied | 2fa0264 |
@@ -959,15 +959,15 @@ location:          bbj-vscode/src/extension.ts:892
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  If the language-server process fails to spawn, client.start()'s rejection is never observed anywhere in this file, producing an unhandled promise rejection in the extension host with no dedicated user-facing message explaining that the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 7729e06 — `npx vitest run test/extension-activation.test.ts` fails: "expected \"vi.fn()\" to be called at least once" — a mock LanguageClient whose start() rejects produces no observed showErrorMessage call, confirming the rejection went unobserved.
+failure_scenario:  If the language-server process fails to spawn, client.start()'s rejection is never observed anywhere in this file, producing an unhandled promise rejection in the extension host with no dedicated user-facing message explaining that the server didn't start, while every command remains registered as if it had.
+fix_applied:       Attached a .catch() to client.start() in startLanguageClient() logging via console.error (the file's established error-narrowing idiom: error instanceof Error ? error.message : String(error)) and surfacing via vscode.window.showErrorMessage("BBj language server did not start: ...") — the same reporting path this file already uses for every other user-facing failure. A successful start() continues to activate exactly as before.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/extension-activation.test.ts test/language-configuration.test.ts test/composer-commands.test.ts — build succeeds, 3/3 test files pass; npm run lint exits 0 with zero warnings
+commit:            7729e06 (test) + 36de32d (fix)
+notes:             `git show --stat 36de32d` touches only bbj-vscode/src/extension.ts.
 ```
 
 ```
@@ -978,15 +978,15 @@ location:          bbj-vscode/bbj-language-configuration.json:54-55,100-101
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  Any tool that treats bbj-language-configuration.json as strict JSON — a schema validator, a build-time lint step, a future automated consumer, or simply JSON.parse called directly as this review's own acceptance check
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 295c7a6 — `npx vitest run test/language-configuration.test.ts` fails: `SyntaxError: Unexpected token ']', ..."   },\n    ],\n    "su"... is not valid JSON`, confirming JSON.parse throws pre-fix.
+failure_scenario:  Any tool that treats bbj-language-configuration.json as strict JSON — a schema validator, a build-time lint step, a future automated consumer, or simply JSON.parse called directly as this review's own acceptance check does — throws a SyntaxError and fails to load the file; only VS Code's own lenient in-process parser currently tolerates it.
+fix_applied:       Removed the comma after the last autoClosingPairs element (the "rem /**" object, at the line the record calls 54) and the comma after onEnterRules' closing bracket, before the file's final closing brace (the record's 100-101). Pre-fix entry counts recorded and confirmed unchanged post-fix: comments=1, brackets=3, autoClosingPairs=7, surroundingPairs=5, onEnterRules=3.
+user_facing:       yes
+verification:      cd bbj-vscode && node -e "JSON.parse(require('fs').readFileSync('bbj-language-configuration.json','utf8'))" exits 0; npx vitest run test/language-configuration.test.ts (2/2 pass)
+commit:            295c7a6 (test) + 8c49e2f (fix)
+notes:             bbj-intellij/build.gradle.kts's copyTextMateBundle task copies this file byte-identically into the IntelliJ plugin bundle — this reaches both IDEs with no Java-side edit.
 ```
 
 ```
@@ -997,15 +997,15 @@ location:          bbj-vscode/syntaxes/bbj.tmLanguage.json:18-25,27-35,68-72
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  Any BBj string literal containing plain text — the overwhelming majority of "..."/'...' usage in real BBj source — is rendered by a theme's constant.character.escape color (typically distinct from, and often more
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 3a32cef — `npx vitest run test/textmate-highlighting.test.ts` fails: "h must not carry the escape scope: expected true to be false" — every character of a string's content carries constant.character.escape.bbj alongside string.quoted.double.bbj. Pre-fix both string.quoted.* patterns arrays held 1 entry each (the #string-character-escape include).
+failure_scenario:  Any BBj string literal containing plain text — the overwhelming majority of "..."/'...' usage in real BBj source — is rendered by a theme's constant.character.escape color (typically distinct from, and often more attention-drawing than, its string color) for every character, not just the quote delimiters.
+fix_applied:       Removed the {"include": "#string-character-escape"} entry from both string.quoted.double.bbj and string.quoted.single.bbj patterns arrays (both now 0 entries), and dropped the now-unused string-character-escape repository rule entirely.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/textmate-highlighting.test.ts test/textmate-bbx-highlighting.test.ts (17/17 pass); node -e confirms both string.quoted.* patterns arrays are length 0 (down from 1,1); grammar still parses as strict JSON
+commit:            3a32cef (test) + 4c7b973 (fix)
+notes:             The [rR][eE][mM] case-insensitive character-class idiom is untouched by this fix (it touches only the string rules).
 ```
 
 ```
@@ -1016,15 +1016,15 @@ location:          bbj-vscode/syntaxes/bbj.tmLanguage.json:41-50
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A bare REM on its own line — a valid, complete no-op comment statement per the language server's own lexer, and a real developer idiom for marking an intentionally blank line — is rendered as plain, unscoped code by the editor
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 5026129 — `npx vitest run test/textmate-highlighting.test.ts` fails: "bare REM is comment-scoped: expected false to be true" — a line containing only `REM` tokenizes as plain source.bbj with no comment scope. Pre-fix begin pattern: "[rR][eE][mM][ \\t]".
+failure_scenario:  A bare REM on its own line — a valid, complete no-op comment statement per the language server's own lexer, and a real developer idiom for marking an intentionally blank line — is rendered as plain, unscoped code by the editor instead of a comment.
+fix_applied:       Changed the comments repository rule's begin pattern from "[rR][eE][mM][ \\t]" to "[rR][eE][mM]([ \\t]|(?=$))" — trailing whitespace is now optional, matched via a zero-width end-of-line lookahead when absent. beginCaptures.1 (punctuation.whitespace.comment.leading.bbj), previously inert since the pre-fix pattern had no capturing group at all, now applies to the space/tab branch for real and captures nothing on the zero-width bare-REM branch. REMARK/REM15 etc. remain unscoped.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/textmate-highlighting.test.ts test/textmate-bbx-highlighting.test.ts (17/17 pass); manual tokenization confirms REM / REM this is a comment / REMARK = 1 all scope as before the finding, plus the new bare-REM case
+commit:            5026129 (test) + b30fc6c (fix)
+notes:             The [rR][eE][mM] case-insensitive character-class idiom is preserved.
 ```
 
 ```
@@ -1035,15 +1035,15 @@ location:          bbj-vscode/syntaxes/bbj.tmLanguage.json:15
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  IOL=/LEN= — BBj's I/O-list-length and record-length options, always written with a value attached (IOL=5, LEN=80) — never receive keyword highlighting in that form, the only form that occurs in real code; the pattern only fires
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at eb81320 — `npx vitest run test/textmate-highlighting.test.ts` fails: "IOL= token present: expected undefined to be defined" — `IOL=5` and `LEN=10` produce no keyword.control.bbj token at all, the value-attached text merging into an unscoped blob. Pre-fix match tail: \\b([iI][oO][lL]=|[lL][eE][nN]=)\\B.
+failure_scenario:  IOL=/LEN= — BBj's I/O-list-length and record-length options, always written with a value attached (IOL=5, LEN=80) — never receive keyword highlighting in that form, the only form that occurs in real code; the pattern only fires on the unrealistic IOL=/LEN= with nothing after it.
+fix_applied:       Branch taken: dropped the trailing \B assertion after the IOL=/LEN= alternation entirely, rather than replacing it with a (?=\d) lookahead — a value-only lookahead would have regressed the previously-working space/end-of-line-terminated form (confirmed via live tokenization before choosing this branch). The preceding long keyword alternation is untouched.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/textmate-highlighting.test.ts test/textmate-bbx-highlighting.test.ts (17/17 pass)
+commit:            eb81320 (test) + 283cdd3 (fix)
+notes:             The [rR][eE][mM] idiom elsewhere in the file is untouched by this fix.
 ```
 
 ```
@@ -1130,15 +1130,15 @@ location:          bbj-vscode/test/textmate-highlighting.test.ts (absence of 3 a
 dimension:         D5
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           no-op
 test_required:     test-is-the-fix (D-13)
-fail_before:       TBD
-failure_scenario:  A future edit to bbj.tmLanguage.json's string or keyword patterns can reintroduce or worsen any of these three defects (or a similar one) with `npm test` green throughout, since the existing 2 tests do not assert
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D5 test-coverage-gap record, no code red state applies
+failure_scenario:  A future edit to bbj.tmLanguage.json's string or keyword patterns can reintroduce or worsen any of these three defects (or a similar one) with `npm test` green throughout, since the existing 2 tests do not assert string-content scope purity, bare-REM recognition, or the IOL=/LEN= value-attached form.
+fix_applied:       No-op per the record's own escape clause. The record's test-5 clause names exactly three missing assertions: string-content scope purity, bare-REM recognition, and IOL=/LEN= with a value attached. All three were landed verbatim as the regression tests for P62-D2-007, P62-D2-008 and P62-D2-009 in this same plan (test/textmate-highlighting.test.ts, same file the record names) — no fourth assertion is missing, so no delta commit is needed.
+user_facing:       yes
+verification:      cd bbj-vscode && npx vitest run test/textmate-highlighting.test.ts — the three named assertions are present and passing (17 total tests in the two textmate files)
+commit:            none — the three assertions this record names were landed as the regression tests for P62-D2-007 3a32cef, P62-D2-008 5026129, P62-D2-009 eb81320
+notes:             Closed by cross-reference per the record's own test-5 clause ("all three missing assertions belong in the single existing textmate-highlighting.test.ts"); nothing beyond those three assertions was requested.
 ```
 
 ```
