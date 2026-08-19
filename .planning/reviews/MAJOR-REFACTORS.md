@@ -708,7 +708,7 @@ classification:    major (1) touches 1 file: n/a — this is an environment/test
 effort:            8
 dedup:             none — no frozen open issue matches; no DEBT-01..06 item names this specific test gap (DEBT-02 covers the 3 disabled parser.test.ts assertions and the TEST-03 completion-test.test.ts skip only, not test/linking.test.ts's "Interop related tests"). Phase 66 should triage this as a new debt item — e.g. a CI-safe mock interop backend that answers with a real classpath, or documenting these as RUN_BBJ_TESTS-gated local-only tests with the current environment behavior (port-open-but-no-bbjdir) called out explicitly.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The approach is the environment work, not a code edit: what has to be reachable is a java-interop peer answering on port 5008 with a loaded classpath and bbjdir, matching what these 11 tests expect; opening a bare listener on that port has already been tried and does not fix them (Phase 64 D-06), because the peer must speak the real protocol and answer with real class data. If a classpath-loaded peer cannot be provisioned in CI/sandbox, the alternative is to make the 11 `test/linking.test.ts > Linking Tests > Interop related tests` cases skip explicitly when the peer is unreachable, rather than run and fail, so the suite reports an honest green instead of a false failure.
 proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
@@ -727,7 +727,7 @@ classification:    major (1) touches 1 file: n/a — closing this gap requires n
 effort:            8
 dedup:             none — no frozen open issue addresses java-interop.ts unit-test coverage for its connection/timeout/lock code paths.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: This record's own gap is downstream of P61-D5-001: the only tests capable of exercising java-interop.ts's real connection-lifecycle, timeout and lock-serialization code are the same 11 `test/linking.test.ts > Linking Tests > Interop related tests` cases, and they are blocked on the same unreachable-classpath peer on port 5008 — a bare listener on that port, already tried under Phase 64 D-06, does not unblock them either. Independently of whether that peer is ever provisioned, this record's own classification names a second, narrower approach: build a controllable fake socket peer as new test infrastructure so `bbj-vscode/src/language/java-interop.ts`'s connection/timeout/lock code paths can be unit-tested against a scriptable double rather than a live BBj backend.
 proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
@@ -746,7 +746,7 @@ classification:    major (1) touches 1 file: n/a — this is an environment/test
 effort:            4
 dedup:             DEBT-02 — the owning re-triage requirement (Phase 66): "The 3 disabled parser.test.ts assertions and the skipped TEST-03 case re-triaged — enabled, or documented with the specific blocking limitation and what would unblock them." None of the 15 frozen open issues concern these disabled assertions.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: Like P61-D5-001, no single code edit closes this gap because the missing piece is an environment capability, not a defect: the three disabled `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts` (lines 533, 815, 864) need a Java classpath resolvable under Langium's `EmptyFileSystem` test context, which today only a live, classpath-loaded java-interop peer on port 5008 can supply, and a bare listener on that port (Phase 64 D-06) does not supply one. If that peer cannot be provisioned for the test environment, the alternative is documenting these three assertions as blocked-pending-classpath rather than leaving them silently commented out, so DEBT-02's re-triage has an honest record to close against.
 proposed_labels:   area=javascript; PRIO 2; effort 4
 issue:             
 ```
@@ -765,7 +765,7 @@ classification:    major (1) touches 1 file: FAIL — the grammar-follower limit
 effort:            8
 dedup:             DEBT-02 — Phase 66's debt item explicitly covers "the 3 disabled parser.test.ts assertions and the skipped TEST-03 case," matching this finding exactly; re-triage (enable, or document the specific blocking limitation) is DEBT-02's own stated scope. None of the 15 frozen open issues address this Langium completion-grammar-follower limitation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: "Already failing" here means the underlying defect cannot be observed as a green-to-red regression today, because the completion-provider suite in `bbj-vscode/test/completion-test.test.ts` already fails to produce any candidate positions inside `MethodDecl.body` statements — the skipped assertion (lines 203-213) has never passed. The first step for an implementer is not re-enabling this one test but establishing a passing baseline for that suite's `MethodDecl.body` completion-position handling in Langium's grammar traversal itself; only once class-method-body statement positions produce candidates at all does this record's own DEF FN `_f$`/`_t$` parameter-truncation defect become separable from that broader grammar-traversal gap, whether by a grammar restructuring on the BBj side or an upstream Langium completion-provider change.
 proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```
@@ -784,7 +784,7 @@ classification:    major (1) touches 1 file: FAIL/n/a — the two candidate reme
 effort:            8
 dedup:             none — this is the D-06 routing-table hookTimeout item, not a GitHub issue; no DEBT-01..06 item names it specifically (distinct from DEBT-02's TEST-03/ parser.test.ts scope) — Phase 66 should triage this as a new debt item, mirroring how RU-61-06 handled the routing table's linking.test.ts item (P61-D5-001).
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: Two options exist and this record does not choose between them: (1) reduce the work — parallelize `initializeWorkspace()`'s independent I/O steps in `bbj-vscode/src/language/bbj-ws-manager.ts:106-184` via `Promise.all` where steps have no data dependency, and short-circuit classpath/implicit-import loading once java-interop is known unreachable, tying into P61-D3-002's circuit-breaker recommendation — trading implementation effort for a lower, more consistent worst-case duration; or (2) accept the work and instead raise vitest's `hookTimeout` for this specific `beforeAll` or globally in `vitest.config.ts`, trading a longer per-run wait for no code change. Choosing between them is the first decision an implementer makes; this record states both rather than picking one, because its own classification records the choice as unresolved.
 proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
@@ -803,7 +803,7 @@ classification:    major (1) touches 1 file: FAIL — testing main.ts's handler 
 effort:            8
 dedup:             none
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: The classification clause names the edit directly: extract the `bbj/refreshJavaClasses` and `onDidChangeConfiguration` handler bodies out of `bbj-vscode/src/language/main.ts:1-190` into named, exported functions that take `{shared, BBj, connection}` as parameters, so they no longer depend on `main.ts`'s module-load-time `createConnection()` call. Once extracted, a new test file can import and unit-test those functions directly against a synthetic `{shared, BBj, connection}` fixture without triggering the LSP connection wiring that makes `main.ts` itself untestable today.
 proposed_labels:   area=vscode; PRIO 2; effort 8
 issue:             
 ```
@@ -2969,7 +2969,7 @@ classification:    major (1) touches 1 file: n/a — this is an environment/test
 effort:            4
 dedup:             none — checked against the frozen 15-issue snapshot; no open issue concerns these three disabled parser.test.ts assertions. #83/#90/#466 (this plan's other checked neighbours) are unrelated dimensions/mechanisms.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: Like the Phase 61 D5 environment/coverage-gap records this record cites (P61-D5-003), no single code edit closes this gap: the three disabled `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts` (lines 533, 815, 864) need a Java classpath resolvable under Langium's `EmptyFileSystem` test context, a capability the current unit-test setup does not provide. DEBT-02's own re-triage scope is to either enable them once that capability exists or document the specific blocking limitation and what would unblock it — this record's approach is that documentation-or-enablement choice, not a fabricated single-file fix, since its own classification found none.
 proposed_labels:   area=javascript; PRIO 2; effort 4
 issue:             
 ```
@@ -2988,7 +2988,7 @@ classification:    major (1) touches 1 file: FAIL — the grammar-follower limit
 effort:            8
 dedup:             none — checked against the frozen 15-issue snapshot; no open issue addresses this Langium completion-grammar-follower limitation.
 disposition:       major-refactor
-proposed_approach: PENDING-APPROACH
+proposed_approach: "Already failing" here means the same as P61-D5-010, which this record cites: the completion-provider suite in `bbj-vscode/test/completion-test.test.ts` cannot be observed green today, because the Langium grammar follower produces no candidate positions anywhere inside `MethodDecl.body` statements — the skipped DEF FN `_f$`/`_t$` assertion (lines 203-213) has never passed. The first step is establishing a passing baseline for that suite's class-method-body completion-position handling itself, at which point this record's own defect becomes separable from the broader grammar-traversal gap, via either a BBj-side grammar restructuring or an upstream Langium completion-provider change.
 proposed_labels:   area=javascript; PRIO 2; effort 8
 issue:             
 ```

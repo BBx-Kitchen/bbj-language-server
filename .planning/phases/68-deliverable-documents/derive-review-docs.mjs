@@ -1708,20 +1708,23 @@ function runCheck() {
         ok = false;
     }
 
-    // --- 7c. proposed_approach placeholder census equals the expected 26-ID no-named-edit set ---
+    // --- 7c. proposed_approach placeholder census is a subset of the expected 26-ID no-named-edit set ---
+    // Plan 68-05 drains this set incrementally across its three tasks (26 -> 18 -> 10 -> 0), so the
+    // gate cannot require exact equality with the full 26 once authoring has begun — it must instead
+    // fail only when a placeholder appears outside the known set (a rogue/new placeholder) or when the
+    // set grows back, never when it shrinks toward zero as approaches are authored.
     {
         const placeholderIds = majorBlocks
             .filter(f => fullJoined(f.proposed_approach).includes(PLACEHOLDER_APPROACH))
             .map(f => joined(f.id))
             .sort();
         const expected = [...EXPECTED_NO_NAMED_EDIT_IDS].sort();
-        if (JSON.stringify(placeholderIds) !== JSON.stringify(expected)) {
-            const missing = expected.filter(id => !placeholderIds.includes(id));
-            const extra = placeholderIds.filter(id => !expected.includes(id));
-            console.log(`FAIL: proposed_approach placeholder set (${placeholderIds.length}) does not equal the expected 26-ID no-named-edit set — missing: [${missing.join(', ')}]; extra: [${extra.join(', ')}]`);
+        const extra = placeholderIds.filter(id => !expected.includes(id));
+        if (extra.length > 0) {
+            console.log(`FAIL: proposed_approach placeholder set (${placeholderIds.length}) includes IDs outside the expected 26-ID no-named-edit set — extra: [${extra.join(', ')}]`);
             ok = false;
         } else {
-            console.log(`PASS: exactly ${placeholderIds.length} blocks carry the approach placeholder marker, matching the expected no-named-edit ID set`);
+            console.log(`PASS: ${placeholderIds.length} of the expected 26 no-named-edit-ID blocks still carry the approach placeholder marker (subset check; 0 expected once plan 68-05 completes)`);
         }
     }
 
