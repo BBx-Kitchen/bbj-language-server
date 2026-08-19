@@ -1,5 +1,5 @@
 ---
-status: testing
+status: complete
 phase: 67-apply-easy-fixes
 source: [67-VERIFICATION.md]
 started: 2026-08-19
@@ -8,13 +8,7 @@ updated: 2026-08-19
 
 ## Current Test
 
-number: 2
-name: Triage disposition of Critical finding CR-01
-expected: |
-  Human agrees the unvalidated `bbj.home` -> `spawn()` exposure is P61-D1-003, a D1-classified
-  major-refactor finding that Phase 67's own D-05 rule forbids re-triaging — correctly left
-  untouched by this phase and now flagged at true severity for Phase 68/69 to prioritize.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -49,14 +43,14 @@ disposition: |
 
 ### 2. Triage disposition of Critical finding CR-01
 expected: Human agrees the unvalidated `bbj.home` → `spawn()` exposure is P61-D1-003, a D1-classified major-refactor finding that Phase 67's own D-05 rule forbids re-triaging — correctly left untouched by this phase and now flagged at true severity for Phase 68/69 to prioritize.
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 2
-passed: 1
+passed: 2
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
