@@ -12,6 +12,16 @@ the mechanical scaffold — `row:`, `finding_id:`, `unit:`, `location:`, `dimens
 directly in this document, so re-running `emit-easy` regenerates the scaffold only and is not a
 safe overwrite of this assembled file once that content has been added.
 
+## Reconciliation
+
+`77` easy-fix records selected, splitting `70` `applied` + `4` `no-op` + `2` `excluded` + `1` `deferred` = `77` (D-03). The `4` `no-op` records are `P61-D8-001`, `P61-D8-002`, `P61-D8-006`, `P62-D5-004`; the `2` `excluded` records are `P64-D8-003`, `P64-D8-004`; the `1` `deferred` record is `P63-D7-004`.
+
+`29` of the `77` rows carry `user_facing: yes`, and those rows are what discharges FIX-04 under D-11.
+
+`2` records — `P61-D4-010` and `P61-D8-005` — carry `effort: 1`, off INVENTORY §3d's locked `{2,4,8}` scale. Phase 67's close-out §"Recorded departures" found no in-record annotation for either despite 68-CONTEXT.md D-02 asserting one exists; the value is carried through unrounded and the discrepancy is stated here rather than an annotation being fabricated.
+
+Findings that are neither easy-fix nor major-refactor are recorded in `MAJOR-REFACTORS.md` §"Other Dispositions" (D-06); this document is not duplicated there.
+
 ## Rows
 
 ```

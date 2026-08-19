@@ -14,6 +14,16 @@ and their judgment content are authored directly in this document, so re-running
 regenerates the scaffold only and is not a safe overwrite of this assembled file once that content
 has been added.
 
+## Reconciliation
+
+`224` records selected across the six closed COVERAGE files, splitting `144` major-refactor + `77` easy-fix + `3` wontfix = `224`, with the per-phase major split 61=`29`, 62=`20`, 63=`52`, 64=`34`, 65=`3`, 66=`6` = `144`.
+
+The `77` easy-fix records live in `EASY-FIXES.md`, and the `3` wontfix records live in this document's `## Other Dispositions` section, so no row of the `224` is absent from the pair of documents.
+
+Severity distribution of the `144`: `1` critical, `16` high, `70` medium, `57` low.
+
+Effort distribution after INVENTORY §3d normalisation: `40` × `2`, `59` × `4`, `45` × `8`. Three records — `P63-D3-005`, `P66-D2-002`, `P66-D4-001` — carry an in-record annotation on the `effort:` value that is carried through verbatim rather than stripped to the bare number.
+
 ## Records
 
 ```

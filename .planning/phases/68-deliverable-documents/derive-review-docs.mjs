@@ -396,6 +396,98 @@ has been added.
 `;
 }
 
+/** Severity / effort distribution across the 144 selected major-refactor records, plus the IDs
+ *  of records whose `effort:` field carries an in-record annotation rather than a bare number
+ *  (D-13's locked {2,4,8} scale, INVENTORY §3d). Every number here is re-derived from the corpus
+ *  at Reconciliation-authoring time and again at every `check` run (see checkReconciliationText). */
+function majorSeverityAndEffort(selection) {
+    const severityCounts = {};
+    const effortCounts = {};
+    const annotatedEffortIds = [];
+    for (const rec of selection.major) {
+        const sev = joined(rec.fields.severity);
+        severityCounts[sev] = (severityCounts[sev] ?? 0) + 1;
+        const effRaw = fullJoined(rec.fields.effort);
+        const bareMatch = effRaw.match(/^(\d+)\b/);
+        const effNum = bareMatch ? bareMatch[1] : effRaw;
+        effortCounts[effNum] = (effortCounts[effNum] ?? 0) + 1;
+        if (effRaw !== effNum) annotatedEffortIds.push(rec.id);
+    }
+    return { severityCounts, effortCounts, annotatedEffortIds };
+}
+
+/** Verdict distribution, user_facing:-yes rows, and off-{2,4,8}-scale effort rows across the 77
+ *  selected easy-fix records, sourced from 67-APPLY-SET.md (verdict/user_facing) and COVERAGE
+ *  (effort, per the same fidelity reasoning as renderEasyRow). */
+function easyVerdictAndEffort(selection, applySetMap) {
+    const verdictCounts = {};
+    const verdictIds = {};
+    const userFacingYesIds = [];
+    const offScaleEffortIds = [];
+    for (const rec of selection.easy) {
+        const applyFields = applySetMap.get(rec.id);
+        const verdict = joined(applyFields.verdict);
+        verdictCounts[verdict] = (verdictCounts[verdict] ?? 0) + 1;
+        (verdictIds[verdict] ??= []).push(rec.id);
+        if (fullJoined(applyFields.user_facing).startsWith('yes')) userFacingYesIds.push(rec.id);
+        // Bare leading number only — COVERAGE's effort field for P63-D8-006/P63-D8-007 reads
+        // "2 (revised 2026-08-18: recorded as 1 ...)" (an annotation about 67-APPLY-SET.md's own
+        // separate rounding, not a COVERAGE-side off-scale value), so the bare COVERAGE number (2)
+        // is what is on/off {2,4,8}-scale here, not the full annotated string.
+        const effRaw = joined(rec.fields.effort);
+        const bareMatch = effRaw.match(/^(\d+)\b/);
+        const effBare = bareMatch ? bareMatch[1] : effRaw;
+        if (!['2', '4', '8'].includes(effBare)) offScaleEffortIds.push(rec.id);
+    }
+    return { verdictCounts, verdictIds, userFacingYesIds, offScaleEffortIds };
+}
+
+/** MAJOR-REFACTORS.md's `## Reconciliation` section, computed fresh from the corpus every call —
+ *  used both to compose the assembled document and, at `check` time, to verify the document's
+ *  own Reconciliation text has not drifted from what the corpus currently derives (Task 3). */
+function majorReconciliationText(selection) {
+    const { severityCounts, effortCounts, annotatedEffortIds } = majorSeverityAndEffort(selection);
+    const total = selection.major.length + selection.easy.length + selection.wontfix.length;
+    const phaseSplit = PHASES.map(p => `${p}=\`${selection.majorSplit[p]}\``).join(', ');
+    return `## Reconciliation
+
+\`${total}\` records selected across the six closed COVERAGE files, splitting \`${selection.major.length}\` major-refactor + \`${selection.easy.length}\` easy-fix + \`${selection.wontfix.length}\` wontfix = \`${total}\`, with the per-phase major split ${phaseSplit} = \`${selection.major.length}\`.
+
+The \`${selection.easy.length}\` easy-fix records live in \`EASY-FIXES.md\`, and the \`${selection.wontfix.length}\` wontfix records live in this document's \`## Other Dispositions\` section, so no row of the \`${total}\` is absent from the pair of documents.
+
+Severity distribution of the \`${selection.major.length}\`: \`${severityCounts.critical ?? 0}\` critical, \`${severityCounts.high ?? 0}\` high, \`${severityCounts.medium ?? 0}\` medium, \`${severityCounts.low ?? 0}\` low.
+
+Effort distribution after INVENTORY §3d normalisation: \`${effortCounts['2'] ?? 0}\` × \`2\`, \`${effortCounts['4'] ?? 0}\` × \`4\`, \`${effortCounts['8'] ?? 0}\` × \`8\`. Three records — ${annotatedEffortIds.map(id => `\`${id}\``).join(', ')} — carry an in-record annotation on the \`effort:\` value that is carried through verbatim rather than stripped to the bare number.
+
+`;
+}
+
+/** EASY-FIXES.md's `## Reconciliation` section, computed fresh from the corpus every call — see
+ *  majorReconciliationText for the check-time re-derivation this feeds. */
+function easyReconciliationText(selection, applySetMap) {
+    const { verdictCounts, verdictIds, userFacingYesIds, offScaleEffortIds } = easyVerdictAndEffort(selection, applySetMap);
+    const applied = verdictCounts.applied ?? 0;
+    const noOp = verdictCounts['no-op'] ?? 0;
+    const excluded = verdictCounts.excluded ?? 0;
+    const deferred = verdictCounts.deferred ?? 0;
+    const total = selection.easy.length;
+    const noOpIds = (verdictIds['no-op'] ?? []).map(id => `\`${id}\``).join(', ');
+    const excludedIds = (verdictIds.excluded ?? []).map(id => `\`${id}\``).join(', ');
+    const deferredIds = (verdictIds.deferred ?? []).map(id => `\`${id}\``).join(', ');
+    const offScale = offScaleEffortIds.map(id => `\`${id}\``).join(' and ');
+    return `## Reconciliation
+
+\`${total}\` easy-fix records selected, splitting \`${applied}\` \`applied\` + \`${noOp}\` \`no-op\` + \`${excluded}\` \`excluded\` + \`${deferred}\` \`deferred\` = \`${total}\` (D-03). The \`${noOp}\` \`no-op\` records are ${noOpIds}; the \`${excluded}\` \`excluded\` records are ${excludedIds}; the \`${deferred}\` \`deferred\` record is ${deferredIds}.
+
+\`${userFacingYesIds.length}\` of the \`${total}\` rows carry \`user_facing: yes\`, and those rows are what discharges FIX-04 under D-11.
+
+\`${offScaleEffortIds.length}\` records — ${offScale} — carry \`effort: 1\`, off INVENTORY §3d's locked \`{2,4,8}\` scale. Phase 67's close-out §"Recorded departures" found no in-record annotation for either despite 68-CONTEXT.md D-02 asserting one exists; the value is carried through unrounded and the discrepancy is stated here rather than an annotation being fabricated.
+
+Findings that are neither easy-fix nor major-refactor are recorded in \`MAJOR-REFACTORS.md\` §"Other Dispositions" (D-06); this document is not duplicated there.
+
+`;
+}
+
 /** Regeneration guard (T-68-03): refuse to emit if MAJOR-REFACTORS.md already carries a non-empty
  *  `issue:` value, unless --force is passed. Applies to both emit-easy and emit-major. */
 function checkRegenerationGuard(force) {
@@ -432,16 +524,18 @@ function runEmit(kind, { force, write }) {
         return;
     }
 
-    let body, header, targetPath, sectionHeading;
+    let body, header, reconciliation, targetPath, sectionHeading;
     if (kind === 'easy') {
         const applySetMap = loadApplySetMap();
         body = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
         header = easyHeader();
+        reconciliation = easyReconciliationText(selection, applySetMap);
         sectionHeading = '## Rows';
         targetPath = EASY_PATH;
     } else {
         body = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
         header = majorHeader();
+        reconciliation = majorReconciliationText(selection);
         sectionHeading = '## Records';
         targetPath = MAJOR_PATH;
     }
@@ -449,7 +543,7 @@ function runEmit(kind, { force, write }) {
     process.stdout.write(body + '\n');
 
     if (write) {
-        writeAtomic(targetPath, `${header}${sectionHeading}\n\n${body}\n`);
+        writeAtomic(targetPath, `${header}${reconciliation}${sectionHeading}\n\n${body}\n`);
     }
 }
 
@@ -693,14 +787,34 @@ function runCheck() {
     }
 
     // --- 7. Determinism ---
+    const applySetMap = loadApplySetMap();
     {
-        const applySetMap = loadApplySetMap();
         const { easyOk, majorOk } = checkDeterminism(selection, applySetMap);
         if (!easyOk || !majorOk) {
             console.log(`FAIL: determinism — easyOk=${easyOk} majorOk=${majorOk}`);
             ok = false;
         } else {
             console.log('PASS: determinism — two in-process renders of each emit produce identical strings');
+        }
+    }
+
+    // --- 8. Reconciliation arithmetic re-derived from the corpus ---
+    {
+        const expectedEasyReconciliation = easyReconciliationText(selection, applySetMap);
+        const expectedMajorReconciliation = majorReconciliationText(selection);
+        const easyHasReconciliation = easyText.includes('## Reconciliation');
+        const majorHasReconciliation = majorText.includes('## Reconciliation');
+        if (!easyHasReconciliation || !majorHasReconciliation) {
+            console.log(`FAIL: Reconciliation section missing — EASY-FIXES.md=${easyHasReconciliation} MAJOR-REFACTORS.md=${majorHasReconciliation}`);
+            ok = false;
+        } else if (!easyText.includes(expectedEasyReconciliation)) {
+            console.log('FAIL: EASY-FIXES.md §Reconciliation text does not match what the corpus currently derives — a stated number has drifted from the corpus');
+            ok = false;
+        } else if (!majorText.includes(expectedMajorReconciliation)) {
+            console.log('FAIL: MAJOR-REFACTORS.md §Reconciliation text does not match what the corpus currently derives — a stated number has drifted from the corpus');
+            ok = false;
+        } else {
+            console.log('PASS: both documents\' §Reconciliation arithmetic matches what the corpus currently derives');
         }
     }
 
