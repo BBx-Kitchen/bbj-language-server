@@ -88,7 +88,7 @@ Every `.bbj` file in `test/test-data/` is automatically parsed by `example-files
 ### IDE Integration
 
 Both VS Code and IntelliJ consume the same language server binary (`out/language/main.cjs`). The IntelliJ plugin bundles the compiled LS and TextMate grammar, and connects via LSP4IJ. Both share:
-- TextMate grammar: `syntaxes/bbj.tmLanguage.json`
+- TextMate grammar and language configuration: `syntaxes/bbj.tmLanguage.json`, `syntaxes/bbx.tmLanguage.json`, `bbj-language-configuration.json`, `bbx-language-configuration.json` (copied byte-identically into the IntelliJ plugin bundle by `bbj-intellij/build.gradle.kts`'s `copyTextMateBundle` task)
 - Run tools: `web.bbj`, `em-login.bbj`
 
 ### AST Type Constants
