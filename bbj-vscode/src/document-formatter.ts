@@ -63,6 +63,8 @@ export const DocumentFormatter = {
       p.on('error', (err) => {
         if (err && (err as any).code === 'ENOENT') {
           return reject(err);
+        } else {
+          return reject(err);
         }
       });
 
