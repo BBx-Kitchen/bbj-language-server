@@ -152,39 +152,47 @@ export class BbjLinker extends DefaultLinker {
         return error;
     }
 
+    /**
+     * Resolves the workspace root to compute a source location relative path against: the first
+     * workspace folder's fsPath, falling back to the document's own directory when no workspace
+     * folder is available (e.g. a single open file with no workspace context).
+     */
+    private resolveWorkspaceRoot(documentUri: URI): string {
+        const wsManager = this.wsManager();
+        const folders = wsManager.workspaceFolders;
+        if (folders && folders.length > 0) {
+            // WorkspaceFolder has uri property which is a string (URI)
+            const wsUri = URI.parse(folders[0].uri);
+            return wsUri.fsPath;
+        }
+        // Fallback: use document directory
+        return dirname(documentUri.fsPath);
+    }
+
+    /**
+     * Formats a `<workspace-relative-path>[:<line>]` source location string for `uri`, shared by
+     * both {@link getSourceLocation} (reference-based, 1-based line already computed by the caller)
+     * and {@link getSourceLocationForNode} (node-based). `line` of `0` omits the `:<line>` suffix.
+     */
+    private formatSourceLocation(uri: URI, line: number): string {
+        const workspaceRoot = this.resolveWorkspaceRoot(uri);
+        const relativePath = relative(workspaceRoot, uri.fsPath);
+        return line > 0 ? `${relativePath}:${line}` : relativePath;
+    }
+
     protected getSourceLocation(refInfo: ReferenceInfo): string | undefined {
         try {
             // Get the document from the reference
             const doc = AstUtils.getDocument(refInfo.container);
             if (!doc) return undefined;
 
-            // Get workspace root
-            const wsManager = this.wsManager();
-            let workspaceRoot: string | undefined;
-
-            const folders = wsManager.workspaceFolders;
-            if (folders && folders.length > 0) {
-                // WorkspaceFolder has uri property which is a string (URI)
-                const wsUri = URI.parse(folders[0].uri);
-                workspaceRoot = wsUri.fsPath;
-            }
-
-            // Fallback: use document directory
-            if (!workspaceRoot) {
-                workspaceRoot = dirname(doc.uri.fsPath);
-            }
-
-            // Compute relative path
-            const relativePath = relative(workspaceRoot, doc.uri.fsPath);
-
             // Get line number from CST node
-            let lineInfo = '';
+            let line = 0;
             if (isReference(refInfo.reference) && refInfo.reference.$refNode) {
-                const lineNumber = refInfo.reference.$refNode.range.start.line + 1; // 1-based
-                lineInfo = `:${lineNumber}`;
+                line = refInfo.reference.$refNode.range.start.line + 1; // 1-based
             }
 
-            return `${relativePath}${lineInfo}`;
+            return this.formatSourceLocation(doc.uri, line);
         } catch (error) {
             // Graceful fallback if source location extraction fails
             return undefined;
@@ -194,18 +202,7 @@ export class BbjLinker extends DefaultLinker {
     protected getSourceLocationForNode(document: LangiumDocument | undefined, line: number): string | undefined {
         if (!document) return undefined;
         try {
-            const wsManager = this.wsManager();
-            let workspaceRoot: string | undefined;
-            const folders = wsManager.workspaceFolders;
-            if (folders && folders.length > 0) {
-                const wsUri = URI.parse(folders[0].uri);
-                workspaceRoot = wsUri.fsPath;
-            }
-            if (!workspaceRoot) {
-                workspaceRoot = dirname(document.uri.fsPath);
-            }
-            const relativePath = relative(workspaceRoot, document.uri.fsPath);
-            return line > 0 ? `${relativePath}:${line}` : relativePath;
+            return this.formatSourceLocation(document.uri, line);
         } catch {
             return undefined;
         }
