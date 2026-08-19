@@ -191,8 +191,11 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
             logger.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
         } catch (e) {
-            // all fine
-            console.error(e);
+            // Setup failed partway through (a malformed project.properties file, an
+            // unexpected throw inside parseSettings()/loadClasspath()/loadImplicitImports()).
+            // this.settings is left in whatever state existed at the throw point; surface the
+            // failure via logger.error so it is visible instead of silent (P61-D2-016).
+            logger.error(`Workspace initialization failed: ${e}`);
         }
 
         return await super.initializeWorkspace(folders, cancelToken);
