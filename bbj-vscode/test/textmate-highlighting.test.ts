@@ -95,4 +95,18 @@ describe('TextMate highlighting (#107)', () => {
         }
     });
 
+    // P62-D2-008: a bare REM at end of line (no trailing space/tab) is still a comment.
+    test('P62-D2-008 — a bare REM at end of line is recognised as a comment', () => {
+        const [tokens] = tokenizeLines(['REM']);
+        const remToken = tokens.find(t => t.text === 'REM');
+        expect(remToken, 'REM token present').toBeDefined();
+        expect(remToken!.scopes.some(s => s.startsWith('comment.line.bbj')), 'bare REM is comment-scoped').toBe(true);
+    });
+
+    test('P62-D2-008 — REM followed by text still scopes as a comment as before', () => {
+        const [tokens] = tokenizeLines(['REM this is a comment']);
+        const remToken = tokens.find(t => t.text.startsWith('REM'));
+        expect(remToken, 'REM token present').toBeDefined();
+        expect(remToken!.scopes.some(s => s.startsWith('comment.line.bbj')), 'REM with text is comment-scoped').toBe(true);
+    });
 });
