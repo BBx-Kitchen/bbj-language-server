@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 6/12 plans executed
+**Plans**: 7/12 plans executed
 
 Plans:
 **Wave 1**
@@ -607,7 +607,7 @@ Plans:
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 67-07-PLAN.md — The 9 D5 test-coverage additions plus the one D8 comment fix in the test tree
+- [x] 67-07-PLAN.md — The 9 D5 test-coverage additions plus the one D8 comment fix in the test tree
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
