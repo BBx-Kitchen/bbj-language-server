@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 4/12 plans executed
+**Plans**: 5/12 plans executed
 
 Plans:
 **Wave 1**
@@ -599,7 +599,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 67-05-PLAN.md — The 5 remaining language-core D2 fixes: value converter, lexer, CPL parser, variable scoping, events library
+- [x] 67-05-PLAN.md — The 5 remaining language-core D2 fixes: value converter, lexer, CPL parser, variable scoping, events library
 
 **Wave 6** *(blocked on Wave 5 completion)*
 

@@ -5,15 +5,15 @@ milestone_name: Stability and Quality
 current_phase: 67
 current_phase_name: apply-easy-fixes
 status: executing
-stopped_at: Completed 67-04-PLAN.md
-last_updated: "2026-08-19T12:12:25.334Z"
+stopped_at: Completed 67-05-PLAN.md
+last_updated: "2026-08-19T12:57:57.679Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 42
-  completed_plans: 34
+  completed_plans: 35
   percent: 70
 ---
 
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 ## Current Position
 
 Phase: 67 (apply-easy-fixes) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-08-19 — Phase 67 execution started
 
@@ -111,6 +111,7 @@ Last activity: 2026-08-19 — Phase 67 execution started
 | Phase 67 P02 | ~9min | 3 tasks | 4 files |
 | Phase 67 P03 | ~15min | 3 tasks | 6 files |
 | Phase 67 P04 | ~22min | 3 tasks | 8 files |
+| Phase 67 P05 | ~13min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: [Phase 67 Plan 03]: ws-manager.test.ts uses createBBjTestServices (not plain createBBjServices) to avoid the real java-interop socket connect cost documented by P61-D5-013
 - [Phase ?]: [Phase 67 Plan 04]: P61-D3-004's memoization cache stores the in-flight Promise (not resolved value) since Langium's completion engine invokes completionForCrossReference concurrently via Promise.all; a resolved-value cache under-deduplicated
 - [Phase ?]: [Phase 67 Plan 04]: npm run lint reached literal zero-warning cleanliness via P61-D4-010, the phase's own lint-clean milestone (D-10)
+- [Phase ?]: [Phase 67 Plan 05]: P61-D2-006 branch taken: track and re-emit each line's own original EOL via a capturing split, not the reject/normalize-before-parse alternative
+- [Phase ?]: [Phase 67 Plan 05]: P61-D2-010 branch taken: TreeStream iterator's prune() over a manual recursive walk mirroring walkStatements
+- [Phase ?]: [Phase 67 Plan 05]: P61-D2-019 branch taken: merge (DOCU text differed) not delete — both phrasings preserved as a union in the kept declaration
+- [Phase ?]: [Phase 67 Plan 05]: FIX-01..03 left Pending in REQUIREMENTS.md, following 67-01's precedent, deferred to 67-12 phase close
 
 ### Tech Debt
 
@@ -254,8 +259,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T12:12:25.307Z
-Stopped at: Completed 67-04-PLAN.md
+Last session: 2026-08-19T12:57:52.240Z
+Stopped at: Completed 67-05-PLAN.md
 Resume file: 
 
 None
