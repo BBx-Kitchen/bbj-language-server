@@ -692,7 +692,48 @@ against the 15 issues open at milestone start, only after the user has approved 
   4. No filed issue duplicates any of the 15 issues open at milestone start
   5. MAJOR-REFACTORS.md is updated with the filed issue number next to each corresponding finding
 
-**Plans**: TBD
+**Plans**: 13 plans — the phase is inherently sequential (one approval gate, one append-target document,
+one tracker), so only the six body-rendering shards run in parallel. Filing order throughout is
+`MAJOR-REFACTORS.md` §"Index (severity-sorted, for Phase 69 filing order)". No tracker write happens
+before plan `69-08`'s ISSUE-01 approval gate.
+
+Plans:
+**Wave 1**
+
+- [ ] 69-01-PLAN.md — The drafting contract and its end-to-end proof: create `69-ISSUE-DRAFT.md`'s frame (derivation, the two-field advisory route predicate, `144 = 135 public + 9 advisories` reconciliation, the settled `P66-D4-001`/`P63-D4-010` supersedes routing, the D-10 title-shape discrepancy, the `#497`–`#500` dedup baseline, the D-03 grouping of all 33 D1 records), render index rows 1 and 3 as the tracer proving both routes, then the remaining 15 wave-1 records into shard `69-BODIES-01.md`, plus `COVERAGE.md`
+
+**Wave 2** *(blocked on Wave 1 completion — six independent shards, zero file overlap)*
+
+- [ ] 69-02-PLAN.md — Render filing-order rows 18-40 (23 `medium`) into `69-BODIES-02.md`, carrying the `#485` and `DEBT-02` dedup annotations into their bodies
+- [ ] 69-03-PLAN.md — Render filing-order rows 41-64 (24 `medium`) into `69-BODIES-03.md`, including both halves of the corpus's only `supersedes` pair, each body naming the other
+- [ ] 69-04-PLAN.md — Render filing-order rows 65-87 (23 `medium`) into `69-BODIES-04.md`, closing the 70-record `medium` block and glossing four review-internal references
+- [ ] 69-05-PLAN.md — Render filing-order rows 88-107 (20 `low`) into `69-BODIES-05.md`, with `P63-D3-005` proving the label rule against a prose `effort:` value
+- [ ] 69-06-PLAN.md — Render filing-order rows 108-125 (18 `low`) into `69-BODIES-06.md`
+- [ ] 69-07-PLAN.md — Render filing-order rows 126-144 (19 `low`) into `69-BODIES-07.md` and prove the 144 denominator by measuring `BODY-BEGIN` counts across all seven shards
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 69-08-PLAN.md — Assemble the seven shards into one committed `69-ISSUE-DRAFT.md` and delete them; run the nine-assertion integrity gate (corpus set equality, the 9/135 route split recomputed from the corpus, label fidelity, 144 distinct titles, body completeness, verbatim fidelity, self-containedness, secret scan, no-tracker-write-yet); then the **ISSUE-01 `checkpoint:decision`** — the one-way door, never auto-approved
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 69-09-PLAN.md — The filing ledger and the D-07 live dedup re-query over open **and** closed issues (three mechanical passes, snapshot to `69-TRACKER-SNAPSHOT.txt`, halt on any genuine duplicate); then the 9 private draft security advisories, the first one created and verified before the other eight — the reversible end of the tracker
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 69-10-PLAN.md — The first one-way writes: the 8 wave-1 public issues, read back for byte-identical titles, body prefixes and exactly-three-label sets; the wave-1 reconciliation; then the D-13 pause for the developer to check the template against the real tracker
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 69-11-PLAN.md — File the 70 `medium` public issues (index rows 18-87) in two batches with the ledger-plus-title resume check, and reconcile 87 rows
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 69-12-PLAN.md — File the 57 `low` public issues (index rows 88-144) and close the run: ledger-versus-corpus set equality proved by `diff`, all 144 `entry:` values distinct, `144 = 9 + 135`
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 69-13-PLAN.md — Write the 144 tracker entries into `MAJOR-REFACTORS.md`'s `issue:` slots in one commit (targeted line edit, `git diff --numstat` exactly `144 144`, derivation script never invoked, `--force` never passed); then `69-CLOSE-OUT.md` with the ISSUE-01..05 verdicts, the D-17 advisory carve-out naming ISSUE-03's shortfall, six reconciliation equations, the discrepancy register and the seven-assertion write-boundary check
 
 ---
 
