@@ -84,15 +84,15 @@ Two derived counts, and the arithmetic connecting them:
 | 47 | P62-D2-007 | applied | 3a32cef (test) + 4c7b973 (fix) |
 | 48 | P62-D2-008 | applied | 5026129 (test) + b30fc6c (fix) |
 | 49 | P62-D2-009 | applied | eb81320 (test) + 283cdd3 (fix) |
-| 50 | P62-D2-010 | pending | pending |
-| 51 | P62-D2-011 | pending | pending |
-| 52 | P62-D3-001 | pending | pending |
-| 53 | P62-D4-005 | pending | pending |
+| 50 | P62-D2-010 | applied | c10e7a9 (red) + c05fd57 (green) |
+| 51 | P62-D2-011 | applied | 57c8ada (red) + 73aadc8 (test-timing fix) + 806acb5 (green) |
+| 52 | P62-D3-001 | applied | 0a8a14b (red) + a425924 (green) |
+| 53 | P62-D4-005 | applied | e6fc4fe |
 | 54 | P62-D5-004 | no-op | none — the three named assertions were landed as P62-D2-007/008/009's regression tests |
-| 55 | P62-D5-006 | pending | pending |
+| 55 | P62-D5-006 | applied | 4afa828 |
 | 56 | P62-D7-002 | applied | 906c07b (test) + bee185d (fix) |
 | 57 | P62-D8-001 | applied | 2fa0264 |
-| 58 | P62-D8-002 | pending | pending |
+| 58 | P62-D8-002 | applied | b8dd31a |
 | 59 | P63-D4-001 | applied | 7816c7d |
 | 60 | P63-D4-014 | applied | 2cf09a6 |
 | 61 | P63-D7-004 | deferred | none — deferred per D-15 |
@@ -1238,6 +1238,7 @@ effort:            4
 verdict:           applied
 test_required:     no (D-11 D4)
 fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
+failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — the duplication is a maintainability cost: any future platform-specific fix (e.g. a sixth OS/architecture combination, or hardening one branch without the others) must be applied at up to 5 separate sites by hand, with drift risk between them; the god-function shape makes downloadAndExtractNode harder to review, test in isolation, or partially reuse (e.g. resolving just the extracted-binary path without also downloading).
 fix_applied:       Added a private `Platform` enum (WINDOWS/UNIX) with `current()`, `archiveExtension()` and `nodeExecutableName()` members, replacing the five repeated `SystemInfo.isWindows` decision sites (including getCachedNodePath's :50). Split downloadAndExtractNode into buildDownloadUrl/download/extract/install/cleanup private methods invoked in the original order.
 user_facing:       no — internal refactor of BbjNodeDownloader; no plugin-visible behaviour, UI text, or icon changes
 verification:      review-only — no compile, no test ran (D-14). Statement-by-statement ordering trace (this row carries more behavioural risk than the other eight per the plan's own flagged-assumption #1):
@@ -1270,6 +1271,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D4)
 fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
+failure_scenario:  n/a in the sense that D4 records dead code, not a runtime failure — the bbj-config.svg/bbj-config_dark.svg resource pair is bundled into every plugin build and referenced by nothing, a small but genuine maintenance/packaging-size cost with no corresponding functionality.
 fix_applied:       Deleted the BbjIcons.CONFIG constant (BbjIcons.java:14) and its two backing resource files, bbj-intellij/src/main/resources/icons/bbj-config.svg and bbj-config_dark.svg. Pre-deletion check: `grep -rn 'CONFIG\|bbj-config' bbj-intellij/src/` returned only the declaration itself; `grep -n 'icon\|CONFIG' bbj-intellij/src/main/resources/META-INF/plugin.xml` named no CONFIG/bbj-config reference — no surviving reference, so the deletion is unconditional, not a reasoned partial.
 user_facing:       no — CONFIG was never referenced by any action, tool window, or plugin.xml entry, so no icon that a user could ever see is removed; only dead code/resources are removed
 verification:      review-only — no compile, no test ran (D-14). Post-commit checks: `test ! -f bbj-config.svg && test ! -f bbj-config_dark.svg` → ICONS_REMOVED; `grep -rn 'bbj-config' bbj-intellij/src/` → no hits (exit 1); `git ls-files bbj-intellij/src/main/resources/icons/ | wc -l` → 16, exactly two fewer than the pre-deletion count of 18; brace-balance check on all tracked bbj-intellij Java files → no UNBALANCED line.
@@ -1307,6 +1309,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  n/a (D8 is a doc-accuracy finding) — a caller relying on the Javadoc's implied read-only contract (e.g. calling this method speculatively/defensively, assuming it cannot fail due to a write) is not warned that this "getter" can also fail for write-related reasons (permission, read-only filesystem, disk full) — which is exactly the ambiguity P63-D2-001 records as a correctness gap; this finding is the doc-accuracy half of that same code shape.
 fix_applied:       Added one sentence to getCachedNodePath()'s Javadoc noting it creates the plugin's Node.js data directory (via getNodeDataDirectory()'s Files.createDirectories) as a side effect if it does not already exist.
 user_facing:       no — Javadoc-only edit
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof (`git show <sha> -U0 -- BbjNodeDownloader.java | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)'`):
@@ -1328,6 +1331,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  n/a (D8 is a doc-accuracy finding) — a future maintainer skimming the class Javadoc or a user reading the action's tooltip text ("Compile the current BBj file") receives no signal that this is unimplemented, unlike the honest inline TODO comment.
 fix_applied:       Appended a "Not yet implemented — see referral P63-D7-001" sentence to the class Javadoc, naming that actionPerformed() currently only logs a message and does not send a compile command to the language server (confirmed by reading actionPerformed()'s body, lines 24-39). Took the Javadoc branch, not the constructor's description-string branch, to avoid a user-visible tooltip-text change.
 user_facing:       no — class Javadoc only; the action's displayed name/description text ("Compile BBj File" / "Compile the current BBj file") is unchanged
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
@@ -1349,6 +1353,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  n/a (D8 is a doc-accuracy finding) — a reader relying on the Javadoc's specific "OS-native keychain" claim to reason about at-rest exposure or persistence-across-restart would be wrong on any install where the user has selected KeePass or "Do not save," neither of which this class detects or accounts for.
 fix_applied:       Softened the class Javadoc's "stored in the OS-native keychain" claim to "stored via IntelliJ's PasswordSafe, backed by whichever credential store the user has configured (a native keychain, KeePass, or none)" — matches PasswordSafe.getInstance().set(...) (:34) exactly, without overstating the replacement guarantee either.
 user_facing:       no — Javadoc-only edit
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
@@ -1371,6 +1376,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  A maintainer relying on the class doc's "mirroring" claim to assume Java's DTOs are a complete field-for-field reflection of the TS-side types would be wrong by exactly the two dormant fields P63-D7-004 records — not a functional bug today, since neither field is currently consumed by any UI, but a doc-accuracy gap that would mislead a reviewer checking DTO completeness by reading the comment alone instead of diffing the two sides.
 fix_applied:       Softened "mirroring" to "carrying ... relevant to the IntelliJ dialogs" and added a one-line note naming the two intentionally-unused TS-side optional fields (MsgboxPreview.exprText, msgbox CatalogItem.constant) that P63-D7-004 traced. Took both branches the record offers rather than choosing one, since neither alone fully removed the overstatement. P63-D7-004 itself is deferred per D-15 — no field added; verified via `git diff <plan-start>..HEAD -- ComposerModels.java`, which shows comment-line changes only (see row 61 and this row's verification).
 user_facing:       no — class comment only, no field/method change
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof (single-commit diff):
@@ -1403,6 +1409,7 @@ effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's lo
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  A developer who opens this tool window expecting to see the language server's own diagnostic stdout/stderr output — the exact promise the class doc and the window's own initial message ("BBj Language Server log initialized") make — sees only the small set of status-transition strings this unit's code happens to log, never the server process's own console output, reducing the window's diagnostic value below what its documentation promises.
 fix_applied:       Corrected the class Javadoc to describe what the window actually shows — curated status-transition messages logged via BbjServerService#logToConsole (server status changes, auto-restart, crash notifications) — rather than raw server stdout/stderr, which createToolWindowContent() never attaches to. Took the Javadoc-correction branch; the record's own behaviour-changing alternative (wiring the process's real stdout/stderr into the console) is out of this easy-fix's scope per the record itself.
 user_facing:       no — Javadoc-only edit; the console's actual displayed content is unchanged
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
@@ -1427,6 +1434,7 @@ effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's lo
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  A reader of this class's own doc reasonably assumes rapid repeated restart triggers are already deduplicated somewhere in this class, when in fact — per P63-D2-013 — none of the six real trigger paths goes through that debouncing at all.
 fix_applied:       DEVIATION FROM PLAN, recorded per this row's own must_haves obligation to verify every corrected Javadoc claim against the code as read: the plan instructed removing the "debounced restart scheduling" claim outright, on the premise (inherited from P63-D2-013's evidence) that scheduleRestart() has "zero call sites anywhere in the codebase." Verification found this premise false — `grep -rn "\.restart()\|scheduleRestart()" bbj-intellij/src/main/java/` shows exactly one scheduleRestart() call site, BbjSettingsConfigurable.apply():83, present since v1.2 (commit 35c916b, `git log -S scheduleRestart`), predating the Phase 63 review. Applied a corrected-not-removed edit instead: the class doc now names the one real debounced path (settings-apply) and the six direct-restart() bypass sites P63-D2-013 itself enumerated (manual restart action, crash notification, both status bar widgets, refresh Java classes, crash auto-restart), which remains accurate. This is a documented divergence, not a silent adjustment.
 user_facing:       no — Javadoc-only edit
 verification:      review-only — no compile, no test ran (D-14). Comment-only proof:
@@ -1453,6 +1461,7 @@ effort:            2
 verdict:           applied
 test_required:     no (D-11 D8)
 fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
+failure_scenario:  n/a (D8 is a doc-accuracy finding) — a developer who copies the Settings > Color Scheme demo pane's block-comment syntax as a template for a real BBj documentation comment writes an invalid delimiter that the grammar's own DOCU terminal will not recognize as a documentation comment.
 fix_applied:       Changed the block-comment opener in getDemoText()'s sample from "/@" to "/@@" at line 117, matching bbj.langium:953's DOCU terminal (`/\/@@[\s\S]*?@\//`) and bbj.tmLanguage.json's comment.block.bbj rule, both verified by reading. Confirmed against both files before editing.
 user_facing:       yes — this text renders in the visible preview pane of Settings > Editor > Color Scheme > BBj
 verification:      review-only — no compile, no test ran (D-14). `git show -U0` output:
@@ -1564,6 +1573,16 @@ test_required:     tool-native check (D-14)
 fail_before:       Before the edit, `package-lock.json:3`'s root `version` and `packages[""].version`
                     both read `0.11.0` while `package.json:3` read `0.12.0`
                     (`node -e "const l=require('./package-lock.json');console.log(l.version)"` → `0.11.0`).
+failure_scenario:  A release engineer, an SBOM generator, or a reproducibility audit reads the
+                    lockfile to establish what version of `bbj-lang` a given dependency graph belongs
+                    to — the ordinary reason to read a lockfile's root entry rather than the manifest
+                    — and gets `0.11.0` for a tree that is `0.12.0`. Any artefact keyed on that value
+                    (a generated SBOM, a provenance attestation, a release-note diff between two
+                    lockfiles) records the wrong version, and the error is silent because nothing in
+                    `npm ci`'s sync check compares the root `version` field. It also means the
+                    committed lockfile is not byte-identical to the one `npm install` would produce
+                    from the current manifest, so the next dependency change will carry an unrelated
+                    version-line diff that obscures the real one in review.
 fix_applied:       Ran `npm install --package-lock-only` in `bbj-vscode/`; the resulting diff is
                     confined to the two `version` lines (`git diff --stat package-lock.json` → 1 file
                     changed, 2 insertions, 2 deletions). The 593-entry dependency graph is unchanged.
@@ -1728,3 +1747,230 @@ verification:      cd bbj-vscode && npm run build && npx vitest run test/method-
 commit:            382a068 (red) + 32faeff (green)
 notes:             D-04 merge — see the P61-D2-011 row for the shared edit and shared commit pair. P66-D2-001 is Phase 66's DEBT-03 re-triage citing P61-D2-011 by ID as the original reproduction; neither record was rewritten to fit the merge.
 ```
+
+## Close-out
+
+Closed at plan 67-12. `git rev-parse HEAD` at the time this audit ran: `533572b` (plan 67-12's own
+Task 1 commit, `docs(67): record the phase-close baseline delta and the FIX-03 verdict`), itself
+built on `56d6e85` (plan 67-11's last commit) — see `67-BASELINE.md`'s `close_commit`.
+
+**Index/Rows reconciliation performed first (T-67-12-04-adjacent, not itself a threat register
+item):** the Index table above had **seven** rows still reading `pending | pending` — the six the
+orchestrator named (`P62-D2-010`, `P62-D3-001`, `P62-D5-006`, `P62-D8-002`, `P62-D2-011`,
+`P64-D4-005`) plus a seventh the same drift produced, `P62-D4-005` (row 53), whose Rows-section
+verdict was `applied` (commit `e6fc4fe`) while its Index entry still read `pending`. All seven are
+corrected above to match their Rows-section verdict and commit. A row-by-row Index-vs-Rows diff run
+against the corrected file (comparing all 77 `finding_id` → `verdict` pairs in both sections)
+returns zero mismatches — the drift is fully reconciled, not just the six originally named.
+
+**Row completeness gap found and fixed during this audit:** ten rows —
+`P63-D4-001`, `P63-D4-014`, `P63-D8-001`, `P63-D8-002`, `P63-D8-003`, `P63-D8-005`, `P63-D8-006`,
+`P63-D8-007`, `P63-D8-008` (plan 67-11's IntelliJ rows) and `P64-D6-009` (plan 67-10's lockfile
+version-field row) — had no `failure_scenario:` field at all (the field was omitted entirely, not
+left `TBD`, so the earlier `TBD`/`pending` grep did not catch it). Each was populated from the
+originating record's own `failure_scenario:` text in `63-COVERAGE.md`/`64-COVERAGE.md`, quoted in
+full. A field-completeness scan re-run after the fix over all 77 rows for `failure_scenario`,
+`fix_applied`, `user_facing`, `verdict` and `test_required` returns zero empty fields. This is a
+Rule 2 auto-fix (missing critical ledger content the plan's own acceptance criteria requires), not
+a re-litigation of any row's verdict, commit, or fix — no `fix_applied`, `commit`, `user_facing` or
+`verdict` field was touched.
+
+### Denominator
+
+**77 rows in.**
+
+- **2 excluded**, on the reviewer's own recorded reason (D-03): `P64-D8-003`
+  (`.planning/reviews/INVENTORY.md:938`) and `P64-D8-004` (`INVENTORY.md:964`) — both state in their
+  own disposition text that INVENTORY is immutable for v4.0 (Phase 60 D-09).
+- **1 deferred** (D-15): `P63-D7-004` — a D7 cross-IDE parity fix needing a Gradle regression test
+  that cannot run without a JDK 17.
+- **74 applied records** (77 − 2 − 1), composed of **70 rows with verdict `applied`** and
+  **4 rows with verdict `no-op`**:
+  - `P61-D8-001` — no commit of its own; resolved by `P61-D2-004`'s fix (`557ab62`).
+  - `P61-D8-002` — no commit of its own; resolved by `P61-D2-005`'s fix (`4db8169`).
+  - `P61-D8-006` — no commit of its own; resolved by `P61-D2-016`'s fix (`c47da5c`).
+  - `P62-D5-004` — no commit of its own; the three assertions it names were landed as
+    `P62-D2-007`/`P62-D2-008`/`P62-D2-009`'s own regression tests (`3a32cef`, `5026129`, `eb81320`).
+- **73 distinct edits** (74 − 1): the D-04 merge (`P61-D2-011` + `P66-D2-001`) is one edit closing
+  two records, applied and committed once (`382a068` red + `32faeff` green), so 74 records land as
+  73 distinct edits.
+
+Arithmetic: **77 records → 74 applied records (70 applied + 4 no-op) → 73 distinct edits.**
+
+### Commit reconciliation
+
+**Projected: 73 edits + 29 red-test commits = 102 code commits** (per `67-01-PLAN.md`'s D-12
+estimate, restated in this file's own `## Reconciliation` section above).
+
+**Actual, measured two ways:**
+
+1. **From the ledger's own `commit:` fields** (mechanical extraction, all 77 rows): **98 unique
+   commit shas**. Broken down: **29 unique shas labeled `(red)`/`(test)`** and **29 unique shas
+   labeled `(green)`/`(fix)`** — exactly matching the 29 red-test-commit projection — plus **40
+   further single/other shas** covering every D4/D5/D6/D8-alone edit that needed no test pair, and
+   `P62-D2-011`'s one extra test-timing-fix commit (`73aadc8`, see that row's own `notes:`). Every
+   one of the 98 resolves via `git cat-file -e` (checked individually, zero failures) and every
+   `test_required: yes` row's red/test sha is confirmed an ancestor of its green/fix sha via
+   `git merge-base --is-ancestor` (checked individually, zero failures).
+
+   **The difference from the projection (102 − 98 = 4) is exactly the four no-op rows.** Each
+   no-op row (`P61-D8-001`, `P61-D8-002`, `P61-D8-006`, `P62-D5-004`) is one of the 73 distinct
+   edits the projection counted as needing a commit of its own, but each instead resolves by
+   citing a commit already counted under a different row — so each subtracts exactly one commit
+   from the naive per-edit total. `102 − 4 = 98`, matching the measured count exactly. Expected,
+   not an error, per this row's own acceptance note.
+
+2. **From git history directly:** `git log <start_commit>..HEAD --format=%s` (`start_commit` =
+   `47bb785817d3e2949ed1ca9ba8363542cc7bde64`, per `67-BASELINE.md`) returns **135 subjects total**
+   as of this audit's own HEAD. Of these, **99 name a finding ID** and **36 are plan-level
+   `docs(67)`/`docs(67-NN)` commits** with no finding ID (baseline captures, ledger derivation,
+   plan summaries, this close-out). **Zero subjects lack both** a finding-ID reference and a
+   `67`/`67-NN` doc scope. The 99-vs-98 difference is exactly one commit: `e7f8239`
+   (`docs(P61-D2-011,P66-D2-001): close apply-set rows`) cites both finding IDs in its subject —
+   satisfying FIX-01's traceability intent — but is plan 67-01's own ledger-housekeeping commit,
+   not one of the 73 edits' `commit:` field values, so it does not appear in the ledger-side count.
+
+Both counts reconcile exactly with no unexplained remainder.
+
+### FIX-01 verdict
+
+**Discharged.** FIX-01 ("Each easy fix is low-risk and contained, and lands as its own atomic
+commit referencing its finding ID") holds under the D-12 reading stated explicitly in
+`67-CONTEXT.md`: **a red/green commit pair is the atomic unit for a behaviour-changing fix**, and
+the D-04 merged commit pair closes two rows (`P61-D2-011` + `P66-D2-001`) citing both IDs in one
+pair — this is one change that happens to close two records of the same defect, not a FIX-01
+violation. Every commit referenced by the ledger resolves to a real commit (`git cat-file -e`,
+zero failures across all 98). The commit-trace check above found zero commit subjects, across the
+phase's full 135-commit span, that lack both a finding-ID reference and a `67`/`67-NN` doc scope —
+so every code commit is traceable to the finding it closes.
+
+**`REQUIREMENTS.md`'s FIX-01 text is not edited** by this task or any other in this phase.
+
+### FIX-02 verdict
+
+**Discharged, with the two documented exceptions D-11/D-13/D-16 already account for.** FIX-02
+("Each behavior-changing fix ships with a regression test that fails before the fix and passes
+after") is measured against D-11's classification: **30 records** (D2: 25, D3: 4, D7: 1 — all
+counted only within the 74 applied records; the deferred D7 row `P63-D7-004` also carries
+`test_required: yes` but is not applied, so it sits outside this 30) are classified
+behaviour-changing and require a regression test. These 30 records realize as **29 red-test
+commits**, because the D-04 merge folds `P61-D2-011`'s and `P66-D2-001`'s own D2 test obligations
+into the single shared red commit `382a068`.
+
+- **28 of the 29** carry an observed red state (`fail_before: observed at <sha>`, individually
+  confirmed as ancestors of their green commit above).
+- **1 of the 29** (`P61-D2-002`) carries `fail_before: inapplicable`, with reason recorded in the
+  row's own `notes:`: rigorous reproduction against the real `vscode-jsonrpc` library (not a
+  hand-rolled repro) found the claimed unhandled-rejection mechanism does not occur under real
+  Node/V8 promise semantics, so no red state could be produced honestly. The fix is still applied
+  verbatim per the record's own classification test, and this is argued as a D-04-style override
+  in that row, not a silent skip.
+
+Separately, D-13's own regression-test category — **13 D5 test-coverage-gap records** — record
+`test_required: test-is-the-fix (D-13)` and `fail_before: inapplicable — a D5 row adds a missing
+test against code that already works, so no red state is producible (D-13)` by construction; each
+of the 13 rows' `notes:` records an anti-vacuous check (a deliberate local break, observed failure,
+then revert) as the substitute evidence a literal red commit cannot provide. And **3 D6
+dependency/workflow records** (`P64-D6-004`, `P64-D6-009`, `P64-D6-013`) plus **1 D2 workflow
+record** (`P64-D2-004`, the genuine D-11→D-16 override — see `### Recorded departures`) record
+`tool-native check (D-14)` / an explicit D-16 override in place of a vitest `fail_before`, because
+no vitest test can exercise a GitHub Actions trigger filter or a lockfile version field — the
+strongest check each artefact type admits, per D-16, ran in each case.
+
+### FIX-04 verdict
+
+**FIX-04 is not literally true at the end of Phase 67.** `.planning/reviews/EASY-FIXES.md` does
+not exist — confirmed (`test ! -f .planning/reviews/EASY-FIXES.md` succeeds) — and is Phase 68's
+DOC-01 deliverable, not something this phase is scoped to write (Claude's Discretion,
+`67-CONTEXT.md`).
+
+**What Phase 67 did instead:** every one of the 77 rows in this ledger carries the exact fields
+DOC-01 requires — finding ID (`finding_id:`), `file:line` (`location:`), dimension
+(`dimension:`), a verified failure scenario (`failure_scenario:` — now populated for all 77 rows
+after this close-out's row-completeness fix), the fix applied (`fix_applied:`), and the commit
+hash (`commit:`) — plus a `user_facing:` flag DOC-01 does not strictly require but that Phase 68
+can use to prioritize which rows are user-visible behaviour changes versus internal-only edits.
+**29 rows carry `user_facing: yes`.** Phase 68 assembles `EASY-FIXES.md` by lifting these fields
+directly; nothing needs to be re-derived from source or from the COVERAGE files.
+
+**`.planning/reviews/EASY-FIXES.md` and `MAJOR-REFACTORS.md` are deliberately not created by this
+phase** — confirmed both absent, and `git status --porcelain .planning/reviews/` is empty (no
+COVERAGE file and not INVENTORY.md was touched by this phase).
+
+### Recorded departures
+
+- **D-06 departure — `P64-D4-004` applied without its paired `P64-D3-002`.** The record's own
+  disposition asked for it to be applied "alongside" `P64-D3-002`'s `build.yml` `paths:` filter
+  decision; `P64-D3-002` is `major-refactor` and routes to Phase 68, so the sequencing could not be
+  honoured. The easy/major classification stayed the single routing rule; the reviewer's aside is
+  recorded, not silently dropped (row 70's own `notes:`).
+
+- **The genuine D-11→D-16 override is `P64-D2-004` alone**, not three rows. D2's default (D-11)
+  requires a vitest regression test; no vitest test can exercise a GitHub Actions `paths:` filter,
+  so D-16's YAML-parse-plus-`git ls-files`-count check substitutes, argued explicitly in that row.
+  `P64-D6-004` (D6) and `P64-D4-004` (D4) are not overrides in the same sense — D6's own D-11
+  default is already "tool-native check," and D4's own D-11 default is already "no test required" —
+  D-16 there only specifies which concrete check applies to a workflow-file artefact, not a
+  departure from what D-11 already said.
+
+- **Off-scale `effort:` values carried through unrounded, not silently re-scaled to
+  INVENTORY §3d's `{2,4,8}` set:** `P61-D4-010` and `P61-D8-005` (`effort: 1`, no inline "rounded
+  down" annotation found in either source record despite the plan text asserting one exists — the
+  discrepancy is recorded in each row's own `notes:` rather than a fabricated quote); `P63-D8-006`
+  and `P63-D8-007` (`effort: 2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's locked
+  {2,4,8} scale...)` — rounded down from the source's raw `1` for ISSUE-03 labelling purposes, with
+  the original value retained in the annotation).
+
+- **`P61-D2-002`'s empirically-falsified failure claim.** Its evidence field claimed
+  `Promise.race`'s losing branch leaks an unhandled rejection; empirical testing against the real
+  `vscode-jsonrpc` library (not a hand-rolled repro) found this does not hold under real Node/V8
+  promise semantics — no red state could be honestly produced. The fix was still applied verbatim
+  per the record's own classification test, and `fail_before` is recorded `inapplicable` with the
+  reason, argued as a D-04-style override in that row rather than silently forcing a fabricated red
+  commit. **This is a finding-record accuracy issue Phase 68's `EASY-FIXES.md` inherits if it lifts
+  the row's evidence uncritically — flagged here so it does not.**
+
+- **`P63-D8-007`'s corrected-not-removed Javadoc, and the upstream finding-record error it
+  exposes.** The plan instructed removing a "debounced restart scheduling" doc claim outright, on
+  the premise (inherited from `P63-D2-013`'s own evidence) that `scheduleRestart()` has "zero call
+  sites anywhere in the codebase." Verification found this premise **false**:
+  `BbjSettingsConfigurable.apply():83` has called it since v1.2 (commit `35c916b`), predating the
+  Phase 63 review entirely. The row applied a corrected edit instead of a removal, and the
+  divergence is recorded in the row's own `fix_applied:` and `notes:`. **`P63-D2-013` is a filed
+  major-refactor record Phase 68 documents in `MAJOR-REFACTORS.md` — this evidence error is flagged
+  here so Phase 68 does not restate the "zero call sites" claim as fact.** Not raised as a new
+  finding: `P63-D2-013`'s broader conclusion (most restart triggers bypass the debounce) remains
+  correct and independently reverified in the row.
+
+- **`P64-D6-013`'s actual scope exceeded its record's stated six-package remediation.** The record
+  named six moderate-severity packages; the approved `npm audit fix --package-lock-only` (no
+  `--force`) actually closed **all 19** pre-existing advisories (7 moderate, 11 high, 1 critical),
+  including a major-version jump on `@azure/msal-node` (3.8.6 → 5.6.0) that pulled in a new
+  `@azure/msal-browser` peer. `package.json` is provably untouched (`git diff bbj-vscode/package.json`
+  empty), so the wider resolution came from npm's own graph-consistency solving under the approved
+  command, not from a forced override or a broader edit than what was approved at the blocking
+  human checkpoint. Recorded in the row's own `fix_applied:`/`notes:` as a positive but
+  larger-than-predicted outcome. **Phase 68's `EASY-FIXES.md` should record the actual 19-advisory
+  scope, not the record's original 6-package estimate, if it lifts this row.**
+
+- **`P63-D4-001`'s D-14 divergence.** D-14 characterizes all nine applied IntelliJ rows as unable
+  to change bytecode behaviour (comment/doc or naming-only edits); `P63-D4-001`'s five-way method
+  split plus a new `Platform` helper enum is a genuine control-flow restructuring, not a rename or
+  comment edit. Recorded per the plan's own flagged-assumption #1 — a statement-by-statement
+  ordering trace is the row's own mitigation (its `verification:` field), since no compiler or test
+  confirms it in this environment.
+
+- **`P63-D8-008`'s comment-only-proof-check inapplicable caveat.** Unlike the other eight IntelliJ
+  D8 rows, this edit is inside a Java text-block *string literal* (demo sample data), not Java
+  comment syntax, so the phase's mechanical "diff line begins with `*`/`//`" comment-only proof
+  does not literally apply. Read-verified instead, per the row's own `notes:`.
+
+- **`P61-D5-004`'s blast-radius check surfaced no defect to carry forward.** The added regression
+  test passed cleanly against the existing, already-committed `test/test-data/` fixtures on first
+  run — no pre-existing parse defect was uncovered. Nothing routes to Phase 68 from this row.
+
+- **Row-completeness fix applied during this close-out audit** (see the callout above the
+  `### Denominator` heading): ten rows were missing their `failure_scenario:` field entirely and
+  the Index table had seven (not six) rows drifted from their Rows-section verdict. Both are
+  corrected in this same commit, sourced from the originating COVERAGE.md records and the Rows
+  section itself respectively — no verdict, commit, or fix content was altered.
