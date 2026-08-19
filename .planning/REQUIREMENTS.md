@@ -73,7 +73,7 @@ Requirements for the v4.0 Stability and Quality milestone. Each maps to exactly 
 - [x] **DOC-01**: `.planning/reviews/EASY-FIXES.md` records every easy finding with finding ID, `file:line`, dimension, verified failure scenario, the fix applied, and its commit hash
 - [x] **DOC-02**: `.planning/reviews/MAJOR-REFACTORS.md` records every major finding with finding ID, `file:line`, dimension, verified failure scenario, proposed approach, effort estimate, and proposed labels
 - [ ] **DOC-03**: Both documents state review coverage explicitly — modules reviewed, dimensions applied, and what was excluded — so coverage gaps are visible to a reader
-- [ ] **DOC-04**: Findings that are neither easy fixes nor major refactors (duplicate, wontfix, already-covered, not-reproducible) are recorded with their disposition and reason rather than dropped silently
+- [x] **DOC-04**: Findings that are neither easy fixes nor major refactors (duplicate, wontfix, already-covered, not-reproducible) are recorded with their disposition and reason rather than dropped silently
 
 ### GitHub Issues
 
@@ -151,7 +151,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | DOC-01 | Phase 68 | Complete |
 | DOC-02 | Phase 68 | Complete |
 | DOC-03 | Phase 68 | Pending |
-| DOC-04 | Phase 68 | Pending |
+| DOC-04 | Phase 68 | Complete |
 | ISSUE-01 | Phase 69 | Pending |
 | ISSUE-02 | Phase 69 | Pending |
 | ISSUE-03 | Phase 69 | Pending |

@@ -655,13 +655,13 @@ explicitly.
   4. Findings that were duplicate, wontfix, already-covered, or not-reproducible are listed with
      their disposition and reason, not silently dropped
 
-**Plans**: 2/7 plans executed
+**Plans**: 3/7 plans executed
 
 Plans:
 
 - [x] 68-01-PLAN.md — Derivation spine: `derive-review-docs.mjs`, three-way `disposition:` selection with the 224/144/77/3 hard-fail gate, both deliverable documents on disk end-to-end, and the standing `check` gate
 - [x] 68-02-PLAN.md — Record content: 77 easy rows lifted from `67-APPLY-SET.md`, 144 major blocks in INVENTORY frozen field order with `proposed_approach:` / `proposed_labels:` / empty `issue:`, plus both index tables
-- [ ] 68-03-PLAN.md — `## Other Dispositions`: DOC-04's category reconciliation, 3 wontfix, 24 not-reproducible, the stated zero for `duplicate`, 14 already-covered, and 30 referrals with resolution slots
+- [x] 68-03-PLAN.md — `## Other Dispositions`: DOC-04's category reconciliation, 3 wontfix, 24 not-reproducible, the stated zero for `duplicate`, 14 already-covered, and 30 referrals with resolution slots
 - [ ] 68-04-PLAN.md — DOC-03 coverage preamble: the scope half and the gap half, generated once and emitted byte-identically into both documents
 - [ ] 68-05-PLAN.md — The 26 authored `proposed_approach:` entries for records whose classification clause named no single edit
 - [ ] 68-06-PLAN.md — The 30 cross-unit referral resolutions, each naming a finding ID, a check line, or an open gap, with a census that sums to 30
