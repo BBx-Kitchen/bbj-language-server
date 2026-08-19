@@ -22,6 +22,88 @@ safe overwrite of this assembled file once that content has been added.
 
 Findings that are neither easy-fix nor major-refactor are recorded in `MAJOR-REFACTORS.md` §"Other Dispositions" (D-06); this document is not duplicated there.
 
+## Index
+
+| # | finding_id | verdict | commit |
+|---|---|---|---|
+| 1 | P61-D2-001 | applied | 38fe1d1 (red) + 59dc2be (green) |
+| 2 | P61-D2-002 | applied | 7ae80a2 (test) + b0696aa (fix) |
+| 3 | P61-D2-003 | applied | 2770752 (red) + 4c92662 (green) |
+| 4 | P61-D2-004 | applied | e82f9c2 (red) + 557ab62 (green) |
+| 5 | P61-D2-005 | applied | 1b619cc (red) + 4db8169 (green) |
+| 6 | P61-D2-006 | applied | 112c9bb (red) + e57b15a (green) |
+| 7 | P61-D2-008 | applied | 83375d4 (red) + 664670f (green) |
+| 8 | P61-D2-009 | applied | 5528665 (red) + 7b6eff9 (green) |
+| 9 | P61-D2-010 | applied | 869a330 (red) + b83d3e8 (green) |
+| 10 | P61-D2-011 | applied | 382a068 (red) + 32faeff (green) |
+| 11 | P61-D2-013 | applied | 1b85860 (red) + eb7d843 (green) |
+| 12 | P61-D2-014 | applied | 6b8c2db (red) + 84373a6 (green) |
+| 13 | P61-D2-015 | applied | c6bef67 (red) + 1f5e824 (green) |
+| 14 | P61-D2-016 | applied | d0b1666 (red) + c47da5c (green) |
+| 15 | P61-D2-017 | applied | 26576ae (red) + 38dea2e (green) |
+| 16 | P61-D2-019 | applied | d1e86e6 (red) + 3b18ac9 (green) |
+| 17 | P61-D3-001 | applied | 7a4448d (red) + 6d7be38 (green) |
+| 18 | P61-D3-004 | applied | a1a90cd (red) + 0aaece2 (green) |
+| 19 | P61-D3-005 | applied | fc9cf79 (red) + 6b32823 (green) |
+| 20 | P61-D4-003 | applied | 8c9028c |
+| 21 | P61-D4-005 | applied | 6be6639 |
+| 22 | P61-D4-006 | applied | 906ca51 |
+| 23 | P61-D4-008 | applied | 7d03fc0 |
+| 24 | P61-D4-009 | applied | 8d166cc |
+| 25 | P61-D4-010 | applied | 91f8329 |
+| 26 | P61-D4-012 | applied | 76ccb8b |
+| 27 | P61-D5-004 | applied | 6af46c8 |
+| 28 | P61-D5-005 | applied | 500001d |
+| 29 | P61-D5-006 | applied | d080471 |
+| 30 | P61-D5-007 | applied | 64c9d1e |
+| 31 | P61-D5-008 | applied | 1b8e786 |
+| 32 | P61-D5-009 | applied | 2b121ee |
+| 33 | P61-D5-011 | applied | e0acbbf |
+| 34 | P61-D5-012 | applied | 42b8881 |
+| 35 | P61-D5-015 | applied | 540232c |
+| 36 | P61-D5-016 | applied | 5db3ac9 (test) |
+| 37 | P61-D5-017 | applied | f3ba5c5 |
+| 38 | P61-D8-001 | no-op | none — resolved via P61-D2-004's fix (557ab62), per the record's own "or fix the code" clause |
+| 39 | P61-D8-002 | no-op | none — resolved by P61-D2-005's fix (4db8169), per this record's own "or fix the code" clause |
+| 40 | P61-D8-003 | applied | 69435df |
+| 41 | P61-D8-004 | applied | 2c497ec |
+| 42 | P61-D8-005 | applied | fe4d8a0 |
+| 43 | P61-D8-006 | no-op | none — resolved by P61-D2-016's fix (c47da5c), per this record's own alternative resolution |
+| 44 | P61-D8-007 | applied | 40d3af1 |
+| 45 | P62-D2-004 | applied | 7729e06 (test) + 36de32d (fix) |
+| 46 | P62-D2-006 | applied | 295c7a6 (test) + 8c49e2f (fix) |
+| 47 | P62-D2-007 | applied | 3a32cef (test) + 4c7b973 (fix) |
+| 48 | P62-D2-008 | applied | 5026129 (test) + b30fc6c (fix) |
+| 49 | P62-D2-009 | applied | eb81320 (test) + 283cdd3 (fix) |
+| 50 | P62-D2-010 | applied | c10e7a9 (red) + c05fd57 (green) |
+| 51 | P62-D2-011 | applied | 57c8ada (red) + 73aadc8 (test-timing fix, see notes) + 806acb5 (green) |
+| 52 | P62-D3-001 | applied | 0a8a14b (red) + a425924 (green) |
+| 53 | P62-D4-005 | applied | e6fc4fe |
+| 54 | P62-D5-004 | no-op | none — the three assertions this record names were landed as the regression tests for P62-D2-007 3a32cef, P62-D2-008 5026129, P62-D2-009 eb81320 |
+| 55 | P62-D5-006 | applied | 4afa828 |
+| 56 | P62-D7-002 | applied | 906c07b (test, red) + bee185d (fix, green) |
+| 57 | P62-D8-001 | applied | 2fa0264 |
+| 58 | P62-D8-002 | applied | b8dd31a |
+| 59 | P63-D4-001 | applied | 7816c7d |
+| 60 | P63-D4-014 | applied | 2cf09a6 |
+| 61 | P63-D7-004 | deferred | deferred — no JDK 17 available in this environment (Phase 67 D-15) |
+| 62 | P63-D8-001 | applied | 281f62c |
+| 63 | P63-D8-002 | applied | 40da059 |
+| 64 | P63-D8-003 | applied | b57d98b |
+| 65 | P63-D8-005 | applied | 6ca6c49 |
+| 66 | P63-D8-006 | applied | 46a8d8c |
+| 67 | P63-D8-007 | applied | 18d5cc0 |
+| 68 | P63-D8-008 | applied | 97a2e6b |
+| 69 | P64-D2-004 | applied | d6e0dee (fix) |
+| 70 | P64-D4-004 | applied | b816116 (chore) |
+| 71 | P64-D6-004 | applied | ad3dfa7 (chore) |
+| 72 | P64-D6-009 | applied | e2ebb11 (chore) |
+| 73 | P64-D6-013 | applied | 14560eb (chore) |
+| 74 | P64-D8-003 | excluded | excluded — INVENTORY.md is immutable for v4.0 (Phase 60 D-09, Phase 67 D-03) |
+| 75 | P64-D8-004 | excluded | excluded — INVENTORY.md is immutable for v4.0 (Phase 60 D-09, Phase 67 D-03) |
+| 76 | P64-D8-005 | applied | 8713493 (docs) |
+| 77 | P66-D2-001 | applied | 382a068 (red) + 32faeff (green) |
+
 ## Rows
 
 ```
@@ -33,6 +115,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 38fe1d1
 failure_scenario:  (a) Two Java-class lookups fire in the same tick while disconnected — each opens its own socket, one is leaked. (b) The peer is killed mid-session — every subsequent resolveClassByName call reuses the dead connection object and its requests hang or reject with no recovery until clearCache() is called explicitly.
 fix_applied:       Added an in-flight connectingPromise field so concurrent same-tick connect() callers share one createSocket() invocation and receive the identical MessageConnection. Registered onClose/onError listeners on the established connection that clear this.connection, so a dropped peer forces the next connect() call to reconnect instead of returning the dead reference.
 user_facing:       yes
@@ -50,6 +134,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       inapplicable — empirically verified (against the real vscode-jsonrpc SocketMessageReader/Writer + createMessageConnection, not just a hand-rolled repro) that Promise.race([sendRequest(...), timeoutPromise]) already attaches a rejection handler to both array entries synchronously per the Promise.race spec, so a losing branch's later rejection is never unhandled — with or without an extra .catch(). No failing-before state could be produced; see the test commit's own comment and 67-02-SUMMARY.md.
 failure_scenario:  A slow peer answers a getClassInfo request just after the 10s timeout has already rejected the race; the late-settling sendRequest(...) promise then rejects with no handler, surfacing as an unhandledRejection at the process level.
 fix_applied:       getRawClass() now stores the sendRequest() promise in a variable and attaches a defensive no-op .catch() to it before racing it against the 10s timeout, per the record's exact-edit instruction. The rejection still propagates to the caller via Promise.race. Applied as a harmless, reviewer-blessed defensive change even though empirical testing (see fail_before) found it does not alter observable behaviour for this specific mechanism.
 user_facing:       no
@@ -67,6 +153,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 2770752
 failure_scenario:  A malformed or malicious getClassInfo response with a missing/null fields or methods array throws an uncaught TypeError: Cannot read properties of undefined synchronously inside resolveClass(), propagating out of the resolution chain uncaught.
 fix_applied:       Added javaClass.fields ??= [] and javaClass.methods ??= [] in resolveClass()'s Phase 1, alongside the existing classes/constructors defensive defaults, before the loops that iterate them.
 user_facing:       yes
@@ -84,6 +172,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at e82f9c2
 failure_scenario:  The classpath is reloaded via main.ts's didChangeConfiguration path (clearCache() then loadClasspath()); the stale completeClassIndex built for the previous classpath survives and continues to answer resolveClassCandidatesBySimpleName/findClassCandidatesByPrefix auto-import suggestions with FQNs from the old classpath instead of the new one.
 fix_applied:       clearCache() now calls this.clearCompleteClassIndex(), so completeClassIndex/completeIndexResolved are reset alongside the rest of the cached state, and the index is rebuilt against the new classpath on next use.
 user_facing:       yes
@@ -101,6 +191,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 1b619cc — `npx vitest run test/value-converter.test.ts` failed 1/3: `expected 'He said ""hi""' to be 'He said "hi"'` (the doubled-quote case), confirming the converter left the doubled quotes uncollapsed
 failure_scenario:  A BBj source string literal containing a doubled-quote escape (e.g. `"He said ""hi"""`) parses without error, but StringLiteral.value retains the literal `""` sequence instead of the single embedded `"` the language's own escape convention specifies, so every consumer of `.value` — including RU-61-03's bbj-validator.ts:419 file-path resolution (`let cleanPath = fileid.value`), which would mis-resolve a path containing an escaped quote — sees a semantically wrong string.
 fix_applied:       BBjValueConverter's STRING_LITERAL case now applies `.replace(/""/g, '"')` after slicing off the outer quote delimiters, matching bbj.langium:948's own documented doubled-quote escape contract. No other rule's conversion changed.
 user_facing:       yes
@@ -118,6 +210,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 112c9bb — `npx vitest run test/lexer.test.ts` failed 1/6: mixed-CRLF/LF token offsets `[0, 9, 18]` did not equal `[0, 9, 17]`, confirming the global-eol join shifted the offset of every token after the first drifted line
 failure_scenario:  A .bbj file containing mixed line endings (at least one \r\n line and at least one bare \n line — plausible when a repository lacks .gitattributes EOL normalization, or a file is edited across Windows/Unix tooling) is retokenized by BbjLexer.tokenize; prepareLineSplitter's uniform-EOL normalization changes the transformed text's length relative to the original document text. Every token offset computed against the transformed text from the first drifted line onward no longer matches the corresponding offset in the original document text that the LSP layer maps positions against, so diagnostics, hover, completion and go-to-definition ranges are silently shifted for the remainder of the file.
 fix_applied:       Branch taken: track and re-emit each line's own original EOL. prepareLineSplitter now captures each line's original delimiter via a capturing split (`text.split(/(\r\n|\r|\n)/)`) and re-joins each line with its own captured delimiter instead of the single globally-detected `eol`; the final line still falls back to the detected `eol` (unchanged from prior behavior) so single-EOL-style files and files with no trailing newline tokenize byte-for-byte identically to before. The continuation-line splicing logic is untouched and stays length-preserving (proved algebraically: padding cancels the stripped ':' characters exactly).
 user_facing:       yes
@@ -135,6 +229,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 83375d4 — `npx vitest run test/lexer.test.ts` failed: `expect(() => tokenBuilder.spliceToken(tokens, 'MISSING_TOKEN')).toThrow()` — spliceToken did not throw; `tokens.splice(-1, 1)` silently removed the last element ('THIRD') instead
 failure_scenario:  If any of the 14 hardcoded terminal names passed to spliceToken becomes absent from `tokens` — e.g. a future grammar edit renames or removes RPAREN_NL — findIndex returns -1 and `tokens.splice(-1, 1)` silently removes and re-splices the unrelated LAST token in the vocabulary array instead of raising an error, corrupting Chevrotain's token-priority ordering with no diagnostic message; the failure would surface later as a confusing, hard-to-trace lexer misbehavior rather than at the point of the misconfiguration.
 fix_applied:       spliceToken (bbj-token-builder.ts) now throws an Error naming the missing token before calling tokens.splice(nextTokenIndex, 1) when findIndex returns -1, instead of letting the splice silently remove and reorder the last token. No change to the 14 call sites or their argument names.
 user_facing:       no
@@ -152,6 +248,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 5528665 — `npx vitest run test/cpl-parser.test.ts` failed 1/10: `expected -1 to be 0` for a diagnostic reporting physical line 0
 failure_scenario:  bbjcpl emits (or a future compiler version emits, or a malformed/truncated compiler invocation produces) an error line reporting physical line 0, or a line number exceeding the LSP client's document's actual line count; parseBbjcplOutput returns a Diagnostic with a negative range.start.line, outside the LSP Position contract (zero-based, non-negative), which can be rejected, clamped unpredictably, or cause a client-side rendering exception instead of surfacing the intended compiler error.
 fix_applied:       bbj-cpl-parser.ts now computes `physicalLine = Math.max(0, parseInt(match[1], 10) - 1)`, clamping at zero instead of letting it go negative. A diagnostic on line 5 still maps to 4, unchanged.
 user_facing:       yes
@@ -169,6 +267,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 869a330 — `npx vitest run test/variable-scoping.test.ts` failed 1/30: a class method's own correctly-ordered `x = 1` / `PRINT x` produced a spurious `'x' used before assignment (first assigned at line 9)` hint because a later program-scope `x = 99` existed
 failure_scenario:  Any BBj program containing a class/method whose body assigns and then reads a local variable, where an unrelated Program-scope (or enclosing-method-scope) variable happens to share the same case-insensitive name and is assigned later in document order, produces a spurious "used before assignment" Hint on the method-local variable's perfectly valid read — a false positive traceable to the outer scope's traversal reaching into a nested scope it was documented not to enter. The same un-pruned traversal is also a redundant full-subtree AST walk (secondary D3): every Program-level validation pass additionally re-walks the body of every nested MethodDecl that the MethodDecl's own separate validation pass already walks in full.
 fix_applied:       Branch taken: use the TreeStream iterator's `prune()` method directly (obtained via `.iterator()`, since `prune()` is only reachable on the iterator object, not through the for...of sugar). Pass 2's loop now calls `contentsIterator.prune()` for excluded MethodDecl/BbjClass/DefFunction subtrees instead of a bare `continue`, so no node inside an excluded subtree is visited.
 user_facing:       yes
@@ -186,6 +286,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 382a068 — `npx vitest run test/method-return-java-type.test.ts` failed 1/12: `expected [] to deeply equal [ Array(1) ]` (zero incompatible-type diagnostics found where one was expected), confirming getType() returned undefined for the unresolved-return-type call site
 failure_scenario:  Any static or instance Java method call whose JavaMethod.resolvedReturnType has not (yet, or ever) been populated — a resolution race, a partially resolved class, or any future code path that constructs/updates a JavaMethod outside java-interop.ts's own resolveClass() Phase 2 — causes bbj-type-inferer.ts to silently return no type for that call site, with no diagnostic explaining why. This matches DEBT-03's documented symptom (`String.valueOf(2)` assigns no type).
 fix_applied:       In getTypeInternal's isJavaMethod branch (bbj-type-inferer.ts:75-76), fall back to `this.javaInterop.getResolvedClass(member.returnType)` when `member.resolvedReturnType?.ref` is undefined — resolving the always-present raw returnType string through the same class-resolution path the inferer already uses for a named Java type. No new export, no wider refactor.
 user_facing:       yes
@@ -203,6 +305,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 1b85860 — `npx vitest run test/completion-test.test.ts` failed 3/3 new cases: a pre-cancelled token still returned field-completion items, still called FileSystemProvider.readDirectory, and still called JavaInteropService.findClassCandidatesByPrefix
 failure_scenario:  A user types quickly inside a type-reference position; the editor cancels an earlier completion request as a newer one supersedes it (standard LSP behavior on rapid keystrokes). The cancelled request's completeAutoImportClasses call is not interrupted — it continues running (including its java-interop round trip) to completion, wasting CPU and java-interop's single global resolution lock queue (RU-61-06) on a result that is discarded on arrival.
 fix_applied:       getCompletion (bbj-completion-provider.ts) now stores the request's cancelToken on a new activeCancelToken instance field and threads it as a direct parameter into getFieldCompletion and getFilePathCompletion. completeAutoImportClasses gained a cancelToken parameter too, supplied via activeCancelToken from completionForCrossReference (whose own signature is fixed by the base provider's interface and cannot carry the token directly). Each of the three methods checks cancelToken?.isCancellationRequested before starting work and again after its own await boundary, returning early on a pre-cancelled token; completeAutoImportClasses also forwards the token into JavaInteropService.findClassCandidatesByPrefix's own pre-existing (previously unused) token parameter.
 user_facing:       yes
@@ -220,6 +324,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 6b8c2db — `npx vitest run test/document-symbol.test.ts` failed: `expect(positions.size).toBe(2)` — two DocumentSymbols sharing the same range.start but different range.end collapsed into 1 tracked position, not 2
 failure_scenario:  In a document with parser errors under LARGE_FILE_THRESHOLD (triggering the deep-walk fallback, line 52), two distinct named nodes that happen to start at the identical line/character produce only one outline entry instead of two; the second node's symbol is dropped from recovery with no indication to the user that anything is missing from the outline.
 fix_applied:       collectPositions and applyDeepWalkFallback's own position check (bbj-document-symbol-provider.ts) now key on both range.start AND range.end via a new shared private encodeRangeKey(range) helper (returns a string `${startLine}:${startChar}-${endLine}:${endChar}`), replacing the old `line * 100_000 + character` start-only numeric key in both places. The Set element type changed from number to string accordingly.
 user_facing:       yes
@@ -237,6 +343,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at c6bef67 — AssertionError: expected [ '/prefix-a/' ] to include '/prefix-b/'
 failure_scenario:  A multi-root VS Code workspace has folder A (with project.properties defining PREFIX/classpath) and folder B (a second root, e.g. a shared library project with its own project.properties). If folder A is listed first, folder B's PREFIX/classpath settings are never read; if folder B is listed first, folder A's settings are ignored instead — either way, one root's Java classpath/PREFIX configuration is silently dropped, matching #33's report that VS Code multi-root workspaces "don't work".
 fix_applied:       initializeWorkspace() previously read project.properties from folders[0] only and assigned this.settings from that single read. Restructured to loop over every workspace folder, read each one's project.properties, run each through parseSettings() (still passing the same shared config.bbx-derived prefixfromconfig, which is not per-folder), and push each folder's resulting prefixes/classpath into two accumulator arrays; this.settings is then assigned once from the merged arrays. The single-folder case is provably unchanged — with one folder, the loop's single iteration produces the exact same parseSettings() call and result the old code produced directly — and the zero-folder case still calls parseSettings("", undefined) exactly as before.
 user_facing:       yes
@@ -254,6 +362,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at d0b1666 — AssertionError: expected "error" to be called at least once
 failure_scenario:  A malformed project.properties file, or an unexpected synchronous throw inside parseSettings()/collectPrefixes(), causes initializeWorkspace() to exit its try block early. `this.settings` is left undefined or partially-populated; later calls to getSettings() (consumed by bbj-document-builder.ts and main.ts) silently receive that partial/undefined state, with no signal to the user beyond a raw console.error line — no logger.error, no connection.window.showErrorMessage.
 fix_applied:       Removed the misleading `// all fine` comment and the bare console.error(e) call. The catch block now reads `logger.error(\`Workspace initialization failed: ${e}\`)`, so any exception thrown during setup (settings/javadoc/classpath/implicit-import) reaches the language server's own logger instead of a raw, easy-to-miss console line. Chose logger.error alone over bbj-notifications.ts's client-notification path: bbj-ws-manager.ts does not already import bbj-notifications.ts, and the finding's own test-5 clause accepts logger.error as sufficient.
 user_facing:       yes
@@ -271,6 +381,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 26576ae — AssertionError: expected "error" to be called at least once, plus an actual unhandled promise rejection ("Error: cpl compile boom") reported by vitest for the same run
 failure_scenario:  `cplService.compile(key)` (or `notifyDocumentPhase`) rejects — e.g. an unexpected error inside BBjCPLService's process-spawn/parse path. The async setTimeout callback's returned promise rejects with no attached handler, surfacing as an unhandledRejection at the Node process level rather than being caught and logged in-context.
 fix_applied:       Wrapped the entire debouncedCompile() setTimeout callback body (diagnostic clearing, BBjCPLService resolution, compile(), diagnostic merging, notifyDocumentPhase()) in a try/catch. On failure, logs `logger.error(\`BBjCPL debounced compile failed for ${key}: ${e}\`)` and returns, so one bad compile no longer escapes as an unhandled rejection and the rest of the build continues.
 user_facing:       yes
@@ -288,6 +400,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at d1e86e6 — `npx vitest run test/builtin-functions-library.test.ts` failed 1/3: found duplicate event names `ON_MOUSE_ENTER, ON_MOUSE_EXIT`
 failure_scenario:  A reference to ON_MOUSE_ENTER or ON_MOUSE_EXIT always resolves to the first declaration (line 57/62); the second declaration's distinct DOCU text is permanently unreachable by linking. Completion's getAllElements() has no dedup, so a user completing an ON_MOUSE_ENTER/ON_MOUSE_EXIT handler sees the same label offered twice, indistinguishable except by which duplicate's hover text happens to be shown.
 fix_applied:       Branch taken: merge (the two declarations differ in DOCU text only — "Window Mouse Enter"/"Window Mouse Exit" vs "Mouse Enter Event"/"Mouse Exit Event" — so both phrasings are preserved as a union, e.g. "Window Mouse Enter / Mouse Enter Event", in the kept line-57/62 declaration). The duplicate eventtype block at lines 525-533 is removed. events.bbl (the physical catalog mirror) is unchanged — confirmed dead per Phase 61 Plan 07 (RU-61-07): not read by any runtime consumer or test, only the .ts-exported string is used.
 user_facing:       yes
@@ -305,6 +419,8 @@ dimension:         D3
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D3)
+fail_before:       observed at 7a4448d
 failure_scenario:  A long-running editor session against a large/varied classpath (many `use`d packages over time) grows these maps without bound, increasing steady-state memory usage monotonically until the server is restarted.
 fix_applied:       Added LruMap<K,V> (a Map wrapper evicting the least-recently-used entry once a size cap is exceeded) and bound _resolvedClasses to it via the new named constant RESOLVED_CLASSES_CACHE_LIMIT (5000, a discretionary choice — no number is named by the finding record; large enough for a typical project's resolved classpath while still bounding steady-state growth). childrenOfByName and _pendingResolutions were left unbounded: the record's own location (40-48) and test-5 clause name only _resolvedClasses as the exact edit, and both other maps are transient/short-lived by construction (_pendingResolutions entries are deleted in resolveClassByName's finally block; childrenOfByName grows proportionally to _resolvedClasses's own distinct-package count, not independently).
 user_facing:       yes
@@ -322,6 +438,8 @@ dimension:         D3
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D3)
+fail_before:       observed at a1a90cd — `npx vitest run test/completion-test.test.ts` failed: `expect(findSpy).toHaveBeenCalledTimes(1)` — two completion requests for the identical prefix called findClassCandidatesByPrefix 4 times (Langium's own completion engine invokes completionForCrossReference more than once per cross-reference feature at a single offset, so even one request alone produced 2 calls)
 failure_scenario:  Typing a Java class name prefix character-by-character inside a type reference (e.g. "H", "Ha", "Has", "Hash", "HashM", "HashMa", "HashMap") in a workspace with a large classpath re-runs the full completeClassIndex/ resolvedClasses scan on every keystroke from the second character onward; against an unresponsive java-interop peer, the same keystrokes each risk stalling the completion popup for the connect-timeout window.
 fix_applied:       completeAutoImportClasses (bbj-completion-provider.ts) now routes findClassCandidatesByPrefix through a new findClassCandidatesByPrefixCached helper, backed by a new autoImportPrefixCache instance field (Map<string, {promise, cachedAt}>) keyed on the lowercased prefix. The cache stores the in-flight Promise itself, not just its resolved value — Langium's completion engine awaits every matched grammar feature concurrently via Promise.all, so two completeAutoImportClasses calls for the same prefix within one request can both reach the cache before either resolves; sharing the in-flight promise dedupes that race as well as ordinary sequential repeats. Bounded by a 20-entry LRU-style size cap and a 2000ms TTL. Not document-scoped — cache key is the prefix alone, argued safe in this row's notes below (T-67-04-04).
 user_facing:       yes
@@ -339,6 +457,8 @@ dimension:         D3
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D3)
+fail_before:       observed at fc9cf79 — AssertionError: expected 4 to be less than or equal to 1
 failure_scenario:  A workspace with a large indexed class count and several documents each carrying multiple unresolved USE-file diagnostics triggers, on every incremental rebuild touching those documents, one full pass over the entire workspace's BbjClass index per unresolved diagnostic — cost scales with total indexed classes × unresolved diagnostics per rebuild, not with the size of the file(s) actually being edited.
 fix_applied:       revalidateUseFilePathDiagnostics() called indexManager.allElements(BbjClass.$type) inside the per-diagnostic .some() filter callback — once per unresolved-USE diagnostic in the batch. Now builds a `Map<string, AstNodeDescription>` (normalized lowercase fsPath -> the BbjClass description) once per call, before the per-document loop, and the per-diagnostic check becomes a Map.has() lookup against that same Map. Result equivalence is structural: both the old and new checks compare the same normalized/lowercased fsPath values for equality, just against a Set-backed Map instead of a fresh linear scan.
 user_facing:       yes
@@ -356,6 +476,8 @@ dimension:         D4
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11
 failure_scenario:  n/a (D4 trace-tier finding): a change to the shared connect+send+catch shape (e.g. adding a retry, or the circuit breaker recommended by P61-D3-002) must be applied in up to 4 places by hand, risking drift between them.
 fix_applied:       Extracted a private sendRequestSafe<P,R>(request, params, fallback, token) helper implementing the shared connect+send+catch(log,return-fallback) shape, and routed loadClasspath() through it. getRawClass (timeout race, no fallback-value semantics), loadImplicitImports (multiple nested per-package requests with per-item processing), and ensureCompleteClassIndex (METHOD_NOT_FOUND-specific latch plus success-path side effects) each carry logic beyond the plain shape and were intentionally left unrouted rather than force-fit, to avoid a behaviour-changing refactor beyond what the record's exact-edit clause asks for.
 user_facing:       no
@@ -373,6 +495,8 @@ dimension:         D4
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a future change to token priority ordering (the spliceToken block) risks an accidental edit inside the unrelated ID-category-wiring block, since both operate on the same local `tokens` variable with no named boundary between them.
 fix_applied:       Extracted the 14 hardcoded spliceToken calls (lines 21-34 of the pre-fix buildTokens) into a new private reorderTokenPriorities(tokens) method, called once from buildTokens in their place. Behaviour-preserving: same 14 custom token names, same call order, same spliceToken implementation — only the grouping changed. Per this plan's own exact-edit scope, only reorderTokenPriorities was extracted; the record's evidence text also names a second wireIdCategories(tokens, terminalTokens) extraction for the ID/LONGER_ALT wiring block, which this plan's task text did not include and which was left in buildTokens unchanged.
 user_facing:       no
@@ -390,6 +514,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): ~46 lines of dead, unreachable code sit alongside the working implementation with an almost-identical name and shape; a future contributor fixing a visibility-check bug in check-classes.ts's checkClassReference has no signal that bbj-validator.ts's same-named method is inert, and could plausibly "fix" the wrong one.
 fix_applied:       Deleted BBjValidator.checkClassReference (266-303) and its private isSubFolderOf helper (305-311). Confirmed both are dead: registerValidationChecks() never registers checkClassReference as a check, and check-classes.ts's registerClassChecks() uses its own separately-instantiated ClassValidator (a different class) whose own checkClassReference (check-classes.ts:112) is the copy actually called at every real site (Use, BbjClass extends/implements, ConstructorCall, MethodDecl, FieldDecl, ParameterDecl, VariableDecl). The two copies are equivalent in the visibility-check logic they share; check-classes.ts's copy is strictly more complete (adds warnUnresolvableType for #438), confirming it — not the dead copy — as the intended implementation, so the branch taken is delete, not wire-up. Also removed the imports (dirname, isAbsolute, relative, Reference, DiagnosticInfo) that became unused as a result.
 user_facing:       no
@@ -407,6 +533,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a change to the workspace-root resolution strategy (e.g. supporting multi-root workspaces properly instead of always `workspaceFolders[0]`) must be applied by hand in two places, risking drift.
 fix_applied:       getSourceLocation and getSourceLocationForNode duplicated the same workspace-root resolution and relative-path/line formatting shape. Extracted private resolveWorkspaceRoot(documentUri) (first workspace folder's fsPath, falling back to dirname(documentUri.fsPath)) and formatSourceLocation(uri, line) (`<relative-path>[:<line>]`, line 0 omits the suffix), and routed both call sites through them. Behaviour-preserving by construction: both original functions built the identical `${relativePath}${lineInfo}` / `line > 0 ? ... : relativePath` shape from the identical workspace-root logic, now expressed once.
 user_facing:       no
@@ -424,6 +552,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — dead code, not a runtime failure): the module ships in the bundle with no consumer; a future contributor cannot tell from the code alone whether it is vestigial or intentionally kept for future use.
 fix_applied:       Deleted bbj-vscode/src/language/assertions.ts (the 4-line assertTrue helper) after re-confirming zero consumers at HEAD: `grep -rn 'assertions.js|assertTrue' bbj-vscode/src bbj-vscode/test` returned only the file's own definition line, matching Phase 61's original zero-consumer finding.
 user_facing:       no
@@ -441,6 +571,8 @@ dimension:         D4
 severity:          low
 effort:            1
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11; `npm run lint` itself is the regression check
 failure_scenario:  n/a (D4 trace-tier finding — the lint warning itself is the defect, not a runtime failure): the directives no longer suppress anything, adding noise to `npm run lint`'s output and masking whether a future, genuinely-needed eslint-disable nearby is intentional or another unused leftover.
 fix_applied:       Deleted the two `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comments at bbj-document-symbol-provider.ts:75 (getSymbol's error-recovery `(astNode as any).name` read) and :149 (applyDeepWalkFallback's deep-walk `(node as any).name` read). Neither `as any` read actually trips that rule (confirmed by the baseline's own "Unused eslint-disable directive" warning text), so both directives were pure noise.
 user_facing:       no
@@ -458,6 +590,8 @@ dimension:         D4
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a future change to this reload-and-revalidate sequence (e.g. adding a new step, or fixing P61-D2-016/P61-D2-018) must be applied by hand in both handlers, risking the two call sites drifting out of sync.
 fix_applied:       The bbj/refreshJavaClasses request handler and the onDidChangeConfiguration handler duplicated the same clear-cache/reload-classpath/reload-implicit-imports/re-validate-open-documents/refresh-inlay-hints/notify sequence. Extracted a private async reloadJavaClassesAndRevalidate() and routed both handlers through it; each handler keeps its own distinct wrapping (the request handler's try/catch returns true/false and calls showErrorMessage on failure, the config-change handler's try/catch only logs — both preserved unchanged, only the shared middle sequence moved).
 user_facing:       no
@@ -475,6 +609,8 @@ dimension:         D5
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  A future .bbj file added to test/test-data/ that fails to lex or parse would NOT fail this test, silently defeating the regression-test guarantee CLAUDE.md's Testing Pattern section states: "Every .bbj file in test/test-data/ is automatically parsed by example-files.test.ts and must produce zero lexer/parser errors."
 fix_applied:       Replaced the fire-and-forget `.forEach(async file => ...)` with a `for...of` loop that awaits each parse and asserts sequentially, so a lexer/parser error in any test/test-data/*.bbj file now fails the test instead of becoming an unhandled rejection the resolved promise swallowed. No source change.
 user_facing:       no
@@ -492,6 +628,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a future change to getBbjcplPath()/compile()'s path-validation behavior (e.g. a fix for P61-D1-003) has no existing regression test to confirm it actually rejects an untrusted bbjHome, or to prevent a future regression from silently reopening the gap.
 fix_applied:       Branch taken: the record's test-5 clause offers two branches — assert the spawn is rejected once P61-D1-003 is fixed, or document the current unvalidated behaviour explicitly. P61-D1-003 is classified major-refactor by INVENTORY §3c test 6 and routes to Phase 68, so the "assert rejection" branch is unavailable in this phase; took the "document current behaviour" branch. Added a new controlled fixture, test/test-data/cpl-fixture-bbjhome/bin/bbjcpl (a shell script this repo owns, never an external path or writable temp dir per threat T-67-07-02), and a test in cpl-service.test.ts pointing bbjHome at it and asserting compile() spawns and trusts the substitute binary unvalidated — pinning that getBbjcplPath() applies no signature/checksum/path validation today. No source change.
 user_facing:       no
@@ -509,6 +647,8 @@ dimension:         D5
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in hasLinebreakBefore/hasLinebreakAfter's CRLF or final-line handling would pass the full npm test suite undetected, because no test exercises either case for this file's checks.
 fix_applied:       New file bbj-vscode/test/line-break-validation.test.ts (Shared Pattern A), covering CRLF line endings, a missing trailing newline at EOF, and both combined, asserting no spurious "needs to start in a new line" diagnostic in any case. `test/validation.test.ts` is shared by several plans' targets, so a dedicated file keeps this row's diff attributable, per the plan's own instruction. No source change.
 user_facing:       no
@@ -526,6 +666,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future change to the tie-break comparison (e.g. `>` to `>=` on line 46) would silently flip which overload wins ties with no test catching the regression.
 fix_applied:       New file bbj-vscode/test/overload-selector.test.ts, driving findBestOverload directly (its one production call site is bbj-inlay-hint-provider.ts:65) against two real MethodDecl overloads of foo() parsed from a live class, both scoring identically against an unknown-typed argument — an exact tie — asserting the linked declaration (passed first) wins over the equally-scored sibling. No source change.
 user_facing:       no
@@ -543,6 +685,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a future change to the local-vs-member scope nesting order in this branch would go undetected by the existing test suite.
 fix_applied:       Added a P61-D5-008 describe block to the existing test/variable-scoping.test.ts (the established home for scoping assertions, per the plan). Declares a class field and a same-named DECLAREd local in one method, then confirms a plain reference to the name resolves to the local VariableDecl, not the FieldDecl. No source change.
 user_facing:       no
@@ -560,6 +704,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — missing test, not a runtime failure): a fix to P61-D2-011 without an accompanying regression test would leave this specific gap open independently — the underlying bug and the missing test are two distinct defects that both need closing.
 fix_applied:       Added a committed test asserting the inferred type of a static Java method call (String.valueOf(2) infers to java.lang.String) via the type inferer service directly — distinct from P61-D2-011/P66-D2-001's diagnostic-message assertion. No source change; the test-is-the-fix per D-13.
 user_facing:       no
@@ -577,6 +723,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the active-parameter calculation (getActiveParameter), the rendered signature label, or the markdown documentation block would pass the full `npm test` suite undetected, because no currently-passing test exercises provideSignatureHelp/getSignatureFromElement against a real method call.
 fix_applied:       Added a "Signature help (P61-D5-011)" describe block to the EXISTING test/functional/lsp-features.test.ts — that file already existed, so per the record's own escape clause no new test/signature-help.test.ts was created. Calls provideSignatureHelp on a real MethodCall (a class method call via `#add(1, 2)`), asserting the returned label, parameter labels, markdown documentation content, and activeParameter for both the first- and second-argument cursor positions. No source change.
 user_facing:       no
@@ -594,6 +742,8 @@ dimension:         D5
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in inherited-field detection (e.g. always reporting "inherited"), the Javadoc-provider integration, or the error-degrade path silently swallowing a real hover computation error would pass the full `npm test` suite undetected.
 fix_applied:       Added three cases to the existing test/hover.test.ts, calling getHoverContent directly: (1) a documented BBj class member (REM /** */ doc comment) renders as markdown; (2) an inherited field is marked "inherited from Base" — empirically found this branch only fires when the hovered field's own CST node is itself the receiver of an outer MemberCall (a chained access like `d!.x.y`, not a direct one-hop `d!.x`), and the field must itself be BbjClass-typed for isBbjClass(receiverType) to hold, both documented inline in the test; (3) a mocked typeInferer.getType throw during hover computation degrades to undefined instead of rejecting, per the outer try/catch (with a passing baseline call proving the mock is what changes the outcome). No source change.
 user_facing:       no
@@ -611,6 +761,8 @@ dimension:         D5
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the dedup guard (e.g. always sending, or never sending after the first call) would pass `npm test` undetected.
 fix_applied:       New file bbj-vscode/test/notifications.test.ts, mocking a Connection-shaped object and asserting: notifyBbjcplAvailability/notifyJavaConnectionError are no-ops before initNotifications() is called; notifyBbjcplAvailability only sends when the available value actually changes (dedup guard); notifyJavaConnectionError interpolates the error detail into its window/showMessage call. Each test resets the module registry and dynamically re-imports (`vi.resetModules()`), isolating each test from the module's own singleton state (_connection, bbjcplAvailableState). No source change.
 user_facing:       no
@@ -628,6 +780,8 @@ dimension:         D5
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  n/a (D5 trace-tier finding — a coverage gap, not a runtime failure): a regression in the debounce timing, the lazy-availability-check's once-only guard, or the trigger-mode dispatch (P61-D2-017's unhandled- rejection gap included) would pass `npm test` undetected.
 fix_applied:       Added two direct assertions against a BBjDocumentBuilder constructed with a mocked ServiceRegistry (BBjCPLService.compile as a vi.fn()) and mocked TextDocuments, reusing the same harness the P61-D2-017/P61-D3-005 tests in this same file build: (1) trackBbjcplAvailability() called twice only calls the (mocked) notifyBbjcplAvailability once, proving the bbjcplAvailable !== undefined once-only guard; (2) debouncedCompile() called three times rapidly for the same document, then the 500ms debounce window advanced once via vitest fake timers, only calls compile() once, proving the clearTimeout-on-resave trailing-edge debounce. Both assertions passed immediately against the unmodified implementation — no source change, per D-13.
 user_facing:       no
@@ -645,6 +799,8 @@ dimension:         D5
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — a D5 row adds a missing test against code that already works, so no red state is producible (D-13)
 failure_scenario:  A malformed entry added to labels.ts, variables.ts or events.ts (e.g. a name colliding with a reserved keyword, breaking the LibSymbolicLabel/ LibVariable/LibEventType parse) silently disables completion/hover for that entry with no regression test catching it, unlike functions.ts. The CVS docstring drift (P61-D4-015) demonstrates .ts/.bbl content can already diverge with nothing noticing.
 fix_applied:       New file bbj-vscode/test/builtin-library-members.test.ts mirroring builtin-functions-library.test.ts's shape: parse-guard + named-entry assertions for labels.ts/variables.ts/events.ts's virtual documents. Also added the record's named .ts-vs-.bbl content-equivalence assertion for all three: the physical lib/*.bbl file is parsed independently and its UNIQUE declared name set (not raw count) compared against the .ts-derived virtual document actually served to the language server. Unique-set comparison specifically so the never-read events.bbl's pre-P61-D2-019 duplicate ON_MOUSE_ENTER/ON_MOUSE_EXIT leftovers (that fix, landed in plan 67-05, correctly only touched the consumed events.ts file, leaving the dead .bbl sibling untouched — out of that fix's scope) are not mistaken for new drift. Functions.ts/.bbl was NOT included (already covered by builtin-functions-library.test.ts and P61-D8-007's comment fix in this same task). No source change.
 user_facing:       no
@@ -662,6 +818,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           no-op
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D8 trace-tier finding, documentation-accuracy only
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of clearCache()'s doc comment reasonably concludes calling it leaves no stale cached state, which is false for the complete class index.
 fix_applied:       No code change. The record's test-5 clause offers two resolutions: fix the comment, "or fix the code per P61-D2-004 so the comment becomes true." P61-D2-004 landed in this same plan (commit 557ab62), and clearCache() now does clear the complete class index — so the doc comment's "Clears all cached Java class data..." claim is accurate as written. Re-read against the post-fix clearCache() body and confirmed true; no edit needed.
 user_facing:       no
@@ -679,6 +837,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           no-op
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of this comment reasonably concludes escaped double-quotes are already normalized in the parsed AST value, which is false.
 fix_applied:       No edit. The record's own escape clause offers two resolutions: fix the comment, or fix the code per P61-D2-005 so the comment becomes true. P61-D2-005 landed in plan 67-05 (commit 4db8169): BBjValueConverter's STRING_LITERAL case now does `input.slice(1, -1).replace(/""/g, '"')`, un-escaping doubled quotes. Line 948's comment reads `// "" escapse " inside a string. Also \ as a plain non escape char. Handled in BBjValueConverter` — both clauses checked against the post-P61-D2-005 converter: the doubled-quote un-escape now genuinely happens there, and no backslash handling exists anywhere in runConverter, so backslash remains a plain non-escape char exactly as the comment states. The comment is accurate as written; taking this branch.
 user_facing:       no
@@ -696,6 +856,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of CLAUDE.md's Architecture section forms an incomplete picture of the validation surface, unaware that builtin-function-call argument/arity/return-type checking is a fourth, separate validations/ module.
 fix_applied:       CLAUDE.md's Architecture "Validation" bullet (now at line 54 — CLAUDE.md's own line numbers have drifted since the record was written, current content re-located by grep) named bbj-validator.ts, bbj-document-validator.ts, check-classes.ts, check-variable-scoping.ts and line-break-validation.ts but omitted validations/check-function-calls.ts, which exists (confirmed via `ls bbj-vscode/src/language/validations/`). Added `validations/check-function-calls.ts` to the list.
 user_facing:       no
@@ -713,6 +875,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of compile()'s class-level comment could wrongly conclude BBjCPL diagnostics are not yet surfaced to users (they are, via the debounced on-save path in bbj-document-builder.ts), and a reader of setTimeout()'s comment could wrongly assume the compile timeout is configurable from VS Code settings today, when no such wiring exists.
 fix_applied:       Two comments corrected: (1) the class-level comment (48-49) claimed the buildDocuments() wiring was future work ("Phase 53 will wire this into buildDocuments() via: ..."); bbj-document-builder.ts:173 confirms the wiring already exists (`langServices.compiler.BBjCPLService.compile(key)` inside the debounced compile step) — corrected to state the integration is complete and name the actual call site. (2) setTimeout()'s doc comment (203-207) claimed it is "Called by Phase 53 from VS Code settings wiring"; `grep -rn '.setTimeout(' bbj-vscode/src` finds zero call sites anywhere — corrected to state it is currently unused. Per the record's own branch choice, wiring a settings path would be a behaviour change and is out of scope for a D8 comment-only fix; took the comment branch, recorded here.
 user_facing:       no
@@ -730,6 +894,8 @@ dimension:         D8
 severity:          low
 effort:            1
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-completeness defect, not a runtime failure): a reader of CLAUDE.md's architecture overview reasonably concludes Completion is the only custom LSP feature provider of note in this codebase, when ten others exist and are equally part of the "Langium Pipeline" section's own subject matter.
 fix_applied:       Extended the existing Completion bullet (did not add a separate bullet) to name the other LSP feature providers registered in bbj-vscode/src/language/bbj-module.ts's BBjModule `lsp` service group: DocumentSymbolProvider, DefinitionProvider, HoverProvider, SemanticTokenProvider, SignatureHelp, InlayHintProvider, CodeActionProvider — read from bbj-module.ts directly rather than reused from the finding record. The record's own text estimated "ten" other files (also counting the `documentation`-group CommentProvider and the bbj-use-insert.ts helper module, neither of which is a distinct `lsp`-group provider, plus BBjSharedModule's separately-registered NodeKindProvider, which lives in the shared services module rather than BBjModule's own lsp group); the actual count of BBjModule's own lsp-group providers besides Completion is 7 — recorded as found, not re-asserted as "ten".
 user_facing:       no
@@ -747,6 +913,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           no-op
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D8 trace-tier finding, documentation-accuracy only
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of this comment reasonably concludes that any exception caught here has no consequence, which is false — it silently leaves setup half-completed.
 fix_applied:       No separate code change. The record's test-5 clause offers two resolutions: "remove/replace the misleading comment, or fix the underlying handling per P61-D2-016 so the comment becomes true." P61-D2-016 landed in this same plan (commit c47da5c) and its own fix deleted the misleading `// all fine` comment at bbj-ws-manager.ts:180 as part of routing the catch through logger.error — re-read against the post-fix catch block and confirmed the comment is gone entirely (not just corrected), so there is no remaining misleading clause to edit.
 user_facing:       no
@@ -764,6 +932,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  A reader of this test's comment reasonably concludes the physical lib/functions.bbl file is validated by CI; it is not — a syntax error introduced only into the physical file would pass this test undetected.
 fix_applied:       Corrected the header comment to state explicitly that it guards the .ts-derived virtual document served at the synthetic `bbjlib:///functions.bbl` URI (bbj-ws-manager.ts's loadAdditionalDocuments), built from `builtinFunctions` in lib/functions.ts — and that it does NOT read or guard the physical lib/functions.bbl file on disk, which no production code path reads either. Points to builtin-library-members.test.ts's P61-D5-017 equivalence test (this same task, committed just before this row) as what actually compares the .ts and physical .bbl content.
 user_facing:       no
@@ -781,6 +951,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 7729e06 — `npx vitest run test/extension-activation.test.ts` fails: "expected \"vi.fn()\" to be called at least once" — a mock LanguageClient whose start() rejects produces no observed showErrorMessage call, confirming the rejection went unobserved.
 failure_scenario:  If the language-server process fails to spawn, client.start()'s rejection is never observed anywhere in this file, producing an unhandled promise rejection in the extension host with no dedicated user-facing message explaining that the server didn't start, while every command remains registered as if it had.
 fix_applied:       Attached a .catch() to client.start() in startLanguageClient() logging via console.error (the file's established error-narrowing idiom: error instanceof Error ? error.message : String(error)) and surfacing via vscode.window.showErrorMessage("BBj language server did not start: ...") — the same reporting path this file already uses for every other user-facing failure. A successful start() continues to activate exactly as before.
 user_facing:       yes
@@ -798,6 +970,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 295c7a6 — `npx vitest run test/language-configuration.test.ts` fails: `SyntaxError: Unexpected token ']', ..."   },\n    ],\n    "su"... is not valid JSON`, confirming JSON.parse throws pre-fix.
 failure_scenario:  Any tool that treats bbj-language-configuration.json as strict JSON — a schema validator, a build-time lint step, a future automated consumer, or simply JSON.parse called directly as this review's own acceptance check does — throws a SyntaxError and fails to load the file; only VS Code's own lenient in-process parser currently tolerates it, so the defect is invisible in the shipped extension today but is not portable to any other consumer.
 fix_applied:       Removed the comma after the last autoClosingPairs element (the "rem /**" object, at the line the record calls 54) and the comma after onEnterRules' closing bracket, before the file's final closing brace (the record's 100-101). Pre-fix entry counts recorded and confirmed unchanged post-fix: comments=1, brackets=3, autoClosingPairs=7, surroundingPairs=5, onEnterRules=3.
 user_facing:       yes
@@ -815,6 +989,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 3a32cef — `npx vitest run test/textmate-highlighting.test.ts` fails: "h must not carry the escape scope: expected true to be false" — every character of a string's content carries constant.character.escape.bbj alongside string.quoted.double.bbj. Pre-fix both string.quoted.* patterns arrays held 1 entry each (the #string-character-escape include).
 failure_scenario:  Any BBj string literal containing plain text — the overwhelming majority of "..."/'...' usage in real BBj source — is rendered by a theme's constant.character.escape color (typically distinct from, and often more attention-drawing than, its string color) for every character, not just the quote delimiters. Visible on virtually every line containing a string literal in any .bbj file, e.g. `PRINT "Hello, World!"`'s entire "Hello, World!" renders in the escape-sequence color instead of the string color.
 fix_applied:       Removed the {"include": "#string-character-escape"} entry from both string.quoted.double.bbj and string.quoted.single.bbj patterns arrays (both now 0 entries), and dropped the now-unused string-character-escape repository rule entirely.
 user_facing:       yes
@@ -832,6 +1008,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 5026129 — `npx vitest run test/textmate-highlighting.test.ts` fails: "bare REM is comment-scoped: expected false to be true" — a line containing only `REM` tokenizes as plain source.bbj with no comment scope. Pre-fix begin pattern: "[rR][eE][mM][ \\t]".
 failure_scenario:  A bare REM on its own line — a valid, complete no-op comment statement per the language server's own lexer, and a real developer idiom for marking an intentionally blank line — is rendered as plain, unscoped code by the editor instead of a comment.
 fix_applied:       Changed the comments repository rule's begin pattern from "[rR][eE][mM][ \\t]" to "[rR][eE][mM]([ \\t]|(?=$))" — trailing whitespace is now optional, matched via a zero-width end-of-line lookahead when absent. beginCaptures.1 (punctuation.whitespace.comment.leading.bbj), previously inert since the pre-fix pattern had no capturing group at all, now applies to the space/tab branch for real and captures nothing on the zero-width bare-REM branch. REMARK/REM15 etc. remain unscoped.
 user_facing:       yes
@@ -849,6 +1027,8 @@ dimension:         D2
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at eb81320 — `npx vitest run test/textmate-highlighting.test.ts` fails: "IOL= token present: expected undefined to be defined" — `IOL=5` and `LEN=10` produce no keyword.control.bbj token at all, the value-attached text merging into an unscoped blob. Pre-fix match tail: \\b([iI][oO][lL]=|[lL][eE][nN]=)\\B.
 failure_scenario:  IOL=/LEN= — BBj's I/O-list-length and record-length options, always written with a value attached (IOL=5, LEN=80) — never receive keyword highlighting in that form, the only form that occurs in real code; the pattern only fires on the unrealistic IOL=/LEN= with nothing after it.
 fix_applied:       Branch taken: dropped the trailing \B assertion after the IOL=/LEN= alternation entirely, rather than replacing it with a (?=\d) lookahead — a value-only lookahead would have regressed the previously-working space/end-of-line-terminated form (confirmed via live tokenization before choosing this branch). The preceding long keyword alternation is untouched.
 user_facing:       yes
@@ -866,6 +1046,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at c10e7a9 — `npx vitest run test/document-formatter.test.ts` times out after 5000ms ("Test timed out in 5000ms") on the P62-D2-010 case: the format promise never settles when the mocked spawn emits a non-ENOENT 'error' event.
 failure_scenario:  If cp.spawn('java', formatFlags) (line 59) emits 'error' with any code other than 'ENOENT' (a permissions error on the java binary being the most realistic case, e.g. after a botched local JDK reinstall), the runFormatter Promise never settles: the format request awaiting it (provideDocumentFormattingEdits's .then(...) at line 32) hangs indefinitely, with no error message, no timeout, and no way for the user to tell the formatter is stuck versus merely slow.
 fix_applied:       Added an else branch to the spawn 'error' handler that calls reject(err) for any error code other than ENOENT, so every spawn-level error now settles the promise instead of only the ENOENT case.
 user_facing:       yes
@@ -883,6 +1065,8 @@ dimension:         D2
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 57c8ada — `npx vitest run test/decompile-io.test.ts` fails: "expected 'print \"stale\"\n' to be 'print \"fresh\"\n'" — a stale .lst of matching size is returned before the fresh write ever happens.
 failure_scenario:  If a prior decompileInPlace attempt against the same file already left a stale <input>.lst on disk (e.g. the extension crashed or the user closed VS Code between the exec() completing and the rename step), and a subsequent retry's fresh bbjlst output happens to settle at the same byte size as the stale file, the first two 150ms-spaced polls can both observe that stale size before the new write has begun, causing waitForDecompileOutput to resolve immediately with the STALE .lst's content rather than the fresh run's output — the user would see outdated decompiled source with no error.
 fix_applied:       Replaced the size-only statSize helper with statSizeAndMtime and captured a call-start timestamp (callStartMs) at function entry; resolution now requires both the size to settle across two polls AND the file's mtimeMs to be at or after callStartMs, so a stale .lst written before the call started can never satisfy the gate even if its size coincidentally matches.
 user_facing:       yes
@@ -900,6 +1084,8 @@ dimension:         D3
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D3)
+fail_before:       observed at 0a8a14b — `npx vitest run test/document-formatter.test.ts` fails: "expected \"vi.fn()\" to be called 1 times, but got 2 times" — two concurrent format requests for the same document URI spawn two independent processes.
 failure_scenario:  Saving several open BBj documents together (VS Code's "Save All", or format-on-save firing while a manual format request from the same document is still in flight) spawns one independent JVM per request with no upper bound on concurrency — on a machine with several BBj files open, this can transiently spawn several concurrent JVMs, each with the ~750ms+ startup cost the code's own warning threshold already flags, worsening perceived editor responsiveness during a bulk save.
 fix_applied:       Added a module-level Map<string, Promise<string>> (inFlightFormats) keyed by document URI. provideDocumentFormattingEdits now checks the map before spawning: a concurrent request for the same URI reuses the in-flight promise; the entry is deleted once the promise settles on both the resolve and reject paths, so a later request for the same URI still spawns a fresh process.
 user_facing:       yes
@@ -917,6 +1103,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 classifies D4 as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — if the magic-byte sequence were ever revised (e.g. a future tokenized-file format version), a fix applied to only one of the two constants inside this unit would silently desynchronize isTokenizedBBjHeader and isTokenizedFile, causing the two detection paths (extension.ts's tab-open prompt vs. Commands.cjs's decompile/denumber flow) to disagree about whether the same file is tokenized.
 fix_applied:       Imported TOKENIZED_BBJ_MAGIC from ./tokenized-bbj.js and wrapped it with Buffer.from(...) in place of decompile-io.ts's own hand-typed local const. tokenized-bbj.ts is unchanged — it remains the single source of truth for the magic byte sequence.
 user_facing:       no
@@ -934,6 +1122,8 @@ dimension:         D5
 severity:          low
 effort:            4
 verdict:           no-op
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — D5 test-coverage-gap record, no code red state applies
 failure_scenario:  A future edit to bbj.tmLanguage.json's string or keyword patterns can reintroduce or worsen any of these three defects (or a similar one) with `npm test` green throughout, since the existing 2 tests do not assert string-content scope purity, bare-REM recognition, or the IOL=/LEN= value-attached form.
 fix_applied:       No-op per the record's own escape clause. The record's test-5 clause names exactly three missing assertions: string-content scope purity, bare-REM recognition, and IOL=/LEN= with a value attached. All three were landed verbatim as the regression tests for P62-D2-007, P62-D2-008 and P62-D2-009 in this same plan (test/textmate-highlighting.test.ts, same file the record names) — no fourth assertion is missing, so no delta commit is needed.
 user_facing:       yes
@@ -951,6 +1141,8 @@ dimension:         D5
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     test-is-the-fix (D-13)
+fail_before:       inapplicable — D5 test-coverage gaps land as one commit per D-13; the test passes the moment it is written, no red state is possible
 failure_scenario:  A regression in the exit-code handling, the P62-D2-010 hang path, or the P62-D3-001 concurrent-spawn behavior would ship silently — `npm test` staying green today provides no signal about any of them, since no test imports this file at all.
 fix_applied:       Authored bbj-vscode/test/document-formatter.test.ts, mocking vscode and child_process.spawn. Covers all four required cases: ENOENT, a non-zero process exit, a non-ENOENT spawn error, and the unsaved-content-map fallback taking precedence over document.getText(). The non-ENOENT-error case is the same test already committed for P62-D2-010 — deliberately not duplicated here, only the remaining three new cases were added.
 user_facing:       no
@@ -968,6 +1160,8 @@ dimension:         D7
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D7)
+fail_before:       Red commit 906c07b's `lists .bbl among its extensions` assertion failed with `AssertionError: expected [ '.bbj', '.bbjt', '.src', '.bbx' ] to include '.bbl'` — observed directly via `npx vitest run test/language-configuration.test.ts` before the fix commit.
 failure_scenario:  A user who opens one of this project's own lib/*.bbl builtin-catalog files (or any .bbl file in a BBj project using custom builtin libraries) directly in VS Code sees plain, unscoped text with no bracket matching, no comment toggling, and no language-server diagnostics/completions in that editor tab — while the identical file, opened in IntelliJ, gets full "BBj" TextMate highlighting per the IntelliJ manifest's .bbl entry.
 fix_applied:       Added ".bbl" to bbj-vscode/package.json's "bbj" language contribution's "extensions" array (:30-35), matching bbj.tmLanguage.json's own fileTypes field and the IntelliJ TextMate bundle's extensions list. Test added to bbj-vscode/test/language-configuration.test.ts asserting the extensions array contains .bbl and that every pre-existing extension is still listed.
 user_facing:       yes — .bbl files now resolve to the bbj language id, TextMate grammar and language-configuration behavior in VS Code, matching IntelliJ's existing behavior
@@ -985,6 +1179,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies this dimension as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of CLAUDE.md reasonably concludes only bbj.tmLanguage.json is IDE-shared, and could edit bbx.tmLanguage.json or either *-language-configuration.json file believing it is VS Code-only, missing that the same edit reaches IntelliJ via copyTextMateBundle.
 fix_applied:       CLAUDE.md's §IDE Integration TextMate bullet named only `syntaxes/bbj.tmLanguage.json`. Identified the actual shared set from bbj-intellij/build.gradle.kts's copyTextMateBundle task (lines 83-88), which includes exactly four files: syntaxes/bbj.tmLanguage.json, syntaxes/bbx.tmLanguage.json, bbj-language-configuration.json, bbx-language-configuration.json — cross-checked against bbj-vscode/package.json's contributes.grammars (bbj.tmLanguage.json, bbx.tmLanguage.json) and contributes.languages' configuration fields (bbj-language-configuration.json, bbx-language-configuration.json), and confirmed all four exist on disk. Rewrote the bullet to name all four and the copyTextMateBundle task that shares them.
 user_facing:       no
@@ -1002,6 +1198,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 classifies D8 as no-behaviour-change, so there is no failing state to observe
 failure_scenario:  n/a (D8 is a comment-accuracy finding) — the map, its onDidChangeTextDocument writer (lines 88-91), and its onDidCloseTextDocument cleanup (lines 94-96) add a per-keystroke write and 9 of this file's 96 lines for no confirmed behavioral difference, while the comment's inaccurate framing would mislead a future maintainer into believing the map is load-bearing.
 fix_applied:       Corrected the three comments at unsavedContentMap's declaration, its use-site fallback, and the two listeners: they now state that document.getText() always returns VS Code's live in-memory buffer (never a disk read), so the map's tracked value and document.getText() are the same content for the document object provideDocumentFormattingEdits receives. Took the comment-correction branch, not the map-removal branch (see notes).
 user_facing:       no
@@ -1019,6 +1217,8 @@ dimension:         D4
 severity:          low
 effort:            4
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
 failure_scenario:  n/a (D4 is a code-shape finding, not a runtime failure scenario) — the duplication is a maintainability cost: any future platform-specific fix (e.g. a sixth OS/architecture combination, or hardening one branch without the others) must be applied at up to 5 separate sites by hand, with drift risk between them; the god-function shape makes downloadAndExtractNode harder to review, test in isolation, or partially reuse (e.g. resolving just the extracted-binary path without also downloading).
 fix_applied:       Added a private `Platform` enum (WINDOWS/UNIX) with `current()`, `archiveExtension()` and `nodeExecutableName()` members, replacing the five repeated `SystemInfo.isWindows` decision sites (including getCachedNodePath's :50). Split downloadAndExtractNode into buildDownloadUrl/download/extract/install/cleanup private methods invoked in the original order.
 user_facing:       no — internal refactor of BbjNodeDownloader; no plugin-visible behaviour, UI text, or icon changes
@@ -1036,6 +1236,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4)
+fail_before:       inapplicable — D-11 D4 no-behaviour-change default, no regression test required
 failure_scenario:  n/a in the sense that D4 records dead code, not a runtime failure — the bbj-config.svg/bbj-config_dark.svg resource pair is bundled into every plugin build and referenced by nothing, a small but genuine maintenance/packaging-size cost with no corresponding functionality.
 fix_applied:       Deleted the BbjIcons.CONFIG constant (BbjIcons.java:14) and its two backing resource files, bbj-intellij/src/main/resources/icons/bbj-config.svg and bbj-config_dark.svg. Pre-deletion check: `grep -rn 'CONFIG\|bbj-config' bbj-intellij/src/` returned only the declaration itself; `grep -n 'icon\|CONFIG' bbj-intellij/src/main/resources/META-INF/plugin.xml` named no CONFIG/bbj-config reference — no surviving reference, so the deletion is unconditional, not a reasoned partial.
 user_facing:       no — CONFIG was never referenced by any action, tool window, or plugin.xml entry, so no icon that a user could ever see is removed; only dead code/resources are removed
@@ -1053,6 +1255,8 @@ dimension:         D7
 severity:          low
 effort:            2
 verdict:           deferred
+test_required:     yes (D-11 D7)
+fail_before:       inapplicable — deferred, not applied (D-15)
 failure_scenario:  Currently zero observable impact — both IDEs display the raw numeric expr in their summary line regardless of useConstants, and the actually-inserted statement text is correct on both sides. The latent risk is that a future change to either webview's or dialog's display code to surface exprText/ constant would work silently on the VS Code side and silently do nothing on the IntelliJ side, since Gson would drop the field with no compile-time or runtime error — "a silent shape drift the compiler cannot catch."
 fix_applied:       not applied — deferred
 user_facing:       no — deferred, not applied (no edit made)
@@ -1070,6 +1274,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  n/a (D8 is a doc-accuracy finding) — a caller relying on the Javadoc's implied read-only contract (e.g. calling this method speculatively/defensively, assuming it cannot fail due to a write) is not warned that this "getter" can also fail for write-related reasons (permission, read-only filesystem, disk full) — which is exactly the ambiguity P63-D2-001 records as a correctness gap; this finding is the doc-accuracy half of that same code shape.
 fix_applied:       Added one sentence to getCachedNodePath()'s Javadoc noting it creates the plugin's Node.js data directory (via getNodeDataDirectory()'s Files.createDirectories) as a side effect if it does not already exist.
 user_facing:       no — Javadoc-only edit
@@ -1087,6 +1293,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  n/a (D8 is a doc-accuracy finding) — a future maintainer skimming the class Javadoc or a user reading the action's tooltip text ("Compile the current BBj file") receives no signal that this is unimplemented, unlike the honest inline TODO comment.
 fix_applied:       Appended a "Not yet implemented — see referral P63-D7-001" sentence to the class Javadoc, naming that actionPerformed() currently only logs a message and does not send a compile command to the language server (confirmed by reading actionPerformed()'s body, lines 24-39). Took the Javadoc branch, not the constructor's description-string branch, to avoid a user-visible tooltip-text change.
 user_facing:       no — class Javadoc only; the action's displayed name/description text ("Compile BBj File" / "Compile the current BBj file") is unchanged
@@ -1104,6 +1312,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  n/a (D8 is a doc-accuracy finding) — a reader relying on the Javadoc's specific "OS-native keychain" claim to reason about at-rest exposure or persistence- across-restart would be wrong on any install where the user has selected KeePass or "Do not save," neither of which this class detects or accounts for.
 fix_applied:       Softened the class Javadoc's "stored in the OS-native keychain" claim to "stored via IntelliJ's PasswordSafe, backed by whichever credential store the user has configured (a native keychain, KeePass, or none)" — matches PasswordSafe.getInstance().set(...) (:34) exactly, without overstating the replacement guarantee either.
 user_facing:       no — Javadoc-only edit
@@ -1121,6 +1331,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  A maintainer relying on the class doc's "mirroring" claim to assume Java's DTOs are a complete field-for-field reflection of the TS-side types would be wrong by exactly the two dormant fields P63-D7-004 records — not a functional bug today, since neither field is currently consumed by any UI, but a doc-accuracy gap that would mislead a reviewer checking DTO completeness by reading the comment alone instead of diffing the two sides.
 fix_applied:       Softened "mirroring" to "carrying ... relevant to the IntelliJ dialogs" and added a one-line note naming the two intentionally-unused TS-side optional fields (MsgboxPreview.exprText, msgbox CatalogItem.constant) that P63-D7-004 traced. Took both branches the record offers rather than choosing one, since neither alone fully removed the overstatement. P63-D7-004 itself is deferred per D-15 — no field added; verified via `git diff <plan-start>..HEAD -- ComposerModels.java`, which shows comment-line changes only (see row 61 and this row's verification).
 user_facing:       no — class comment only, no field/method change
@@ -1138,6 +1350,8 @@ dimension:         D8
 severity:          low
 effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 1 was chosen to mean 'below the 4 bucket'. Original value retained here.)
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  A developer who opens this tool window expecting to see the language server's own diagnostic stdout/stderr output — the exact promise the class doc and the window's own initial message ("BBj Language Server log initialized") make — sees only the small set of status-transition strings this unit's code happens to log, never the server process's own console output, reducing the window's diagnostic value below what its documentation promises.
 fix_applied:       Corrected the class Javadoc to describe what the window actually shows — curated status-transition messages logged via BbjServerService#logToConsole (server status changes, auto-restart, crash notifications) — rather than raw server stdout/stderr, which createToolWindowContent() never attaches to. Took the Javadoc-correction branch; the record's own behaviour-changing alternative (wiring the process's real stdout/stderr into the console) is out of this easy-fix's scope per the record itself.
 user_facing:       no — Javadoc-only edit; the console's actual displayed content is unchanged
@@ -1155,6 +1369,8 @@ dimension:         D8
 severity:          low
 effort:            2 (revised 2026-08-18: recorded as 1, off INVENTORY §3d's locked {2,4,8} scale. Rounded DOWN to the nearest legal value so the finding remains labellable for ISSUE-03, which uses the effort value as the label with no translation step. Rounding down rather than up preserves the reviewer's evident intent — 1 was chosen to mean 'below the 4 bucket'. Original value retained here.)
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  A reader of this class's own doc reasonably assumes rapid repeated restart triggers are already deduplicated somewhere in this class, when in fact — per P63-D2-013 — none of the six real trigger paths goes through that debouncing at all.
 fix_applied:       DEVIATION FROM PLAN, recorded per this row's own must_haves obligation to verify every corrected Javadoc claim against the code as read: the plan instructed removing the "debounced restart scheduling" claim outright, on the premise (inherited from P63-D2-013's evidence) that scheduleRestart() has "zero call sites anywhere in the codebase." Verification found this premise false — `grep -rn "\.restart()\|scheduleRestart()" bbj-intellij/src/main/java/` shows exactly one scheduleRestart() call site, BbjSettingsConfigurable.apply():83, present since v1.2 (commit 35c916b, `git log -S scheduleRestart`), predating the Phase 63 review. Applied a corrected-not-removed edit instead: the class doc now names the one real debounced path (settings-apply) and the six direct-restart() bypass sites P63-D2-013 itself enumerated (manual restart action, crash notification, both status bar widgets, refresh Java classes, crash auto-restart), which remains accurate. This is a documented divergence, not a silent adjustment.
 user_facing:       no — Javadoc-only edit
@@ -1172,6 +1388,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8)
+fail_before:       inapplicable — D-11 D8 no-behaviour-change default, no regression test required
 failure_scenario:  n/a (D8 is a doc-accuracy finding) — a developer who copies the Settings > Color Scheme demo pane's block-comment syntax as a template for a real BBj documentation comment writes an invalid delimiter that the grammar's own DOCU terminal will not recognize as a documentation comment.
 fix_applied:       Changed the block-comment opener in getDemoText()'s sample from "/@" to "/@@" at line 117, matching bbj.langium:953's DOCU terminal (`/\/@@[\s\S]*?@\//`) and bbj.tmLanguage.json's comment.block.bbj rule, both verified by reading. Confirmed against both files before editing.
 user_facing:       yes — this text renders in the visible preview pane of Settings > Editor > Color Scheme > BBj
@@ -1189,6 +1407,8 @@ dimension:         D2
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     yes (D-11 D2) — overridden per D-16: a GitHub Actions workflow cannot carry a vitest regression test in this repository, so D-16's tool-native check (the js-yaml parse plus the two `git ls-files` counts below) stands in its place.
+fail_before:       Before the edit, `bbj-vscode/out/language/**` matched zero tracked files (`git ls-files bbj-vscode/out | wc -l` → 0), so no pull request touching `src/language/` could ever trigger `pr-validation.yml`.
 failure_scenario:  A pull request edits `bbj-vscode/src/language/bbj-module.ts`, or any of the other 52 tracked files under `src/language/`, and nothing else. The `paths:` filter at `:8-13` matches none of the changed files, so `pr-validation.yml` is skipped entirely and the pull request shows no IntelliJ check at all — not a failing check, an absent one, which reads to a reviewer as "not applicable" rather than "not run". `build.yml` runs and passes, because it builds and tests only `bbj-vscode`. The change merges to `main`, and the first time the IntelliJ side is exercised is `preview.yml`'s `build-intellij` job, which runs after `publish-preview` has already published the VS Code preview to the Marketplace — so the break surfaces after publication instead of before merge.
 fix_applied:       Replaced the glob `'bbj-vscode/out/language/**'` at `:10` with `'bbj-vscode/src/language/**'`, the 52 tracked files `out/language/main.cjs` is actually built from (recount: `git ls-files bbj-vscode/src/language | wc -l` reports 52, not the record's estimated 53 — recorded here as the actual measured count rather than silently carrying the record's figure forward).
 user_facing:       no — CI-surface only
@@ -1206,6 +1426,8 @@ dimension:         D4
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D4) — D-16's tool-native check (YAML parse) applies since D4 is no-regression-test by default and this is a workflow file
+fail_before:       Before the edit, `build.yml`'s `on:` block declared two triggers, `push` (to the nonexistent `typefox-dev` branch) and `pull_request`; `git branch -a | grep -i typefox` returned nothing, confirming the `push` trigger was dead.
 failure_scenario:  A contributor reads `build.yml:3-9` and concludes that pushes to a development branch are built by CI, and pushes work to a long-lived branch expecting it to be validated; nothing runs, and the absence of a check reads as "CI is not configured for this branch" only if they already know `typefox-dev` is gone. The dual of the same confusion is a maintainer auditing which events can reach a workflow that runs `npx vsce package` — the answer they must reach is "pull requests to `main`, and nothing else", and the file does not say that.
 fix_applied:       Deleted `build.yml:4-6` (the `push:` trigger and its `branches: [typefox-dev]` list), leaving `on:` with the `pull_request` trigger only.
 user_facing:       no — CI-surface only
@@ -1223,6 +1445,8 @@ dimension:         D6
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     tool-native check (D-14)
+fail_before:       Before the edit, `build.yml:18` and `:20` referenced `actions/checkout@v3` and `actions/setup-node@v3`, the only `@v3` references anywhere in `.github/workflows/` — every other workflow, and `build.yml`'s own `actions/upload-artifact@v4` at `:41`, was already on `@v4`.
 failure_scenario:  A contributor reads `build.yml` to copy the standard checkout-and-setup preamble into a new workflow — the preamble being duplicated across five files already, `P64-D4-003` — and copies the `@v3` pair, propagating the stale reference. More directly: the `@v3` and `@v4` majors of these actions differ in defaults and in the runtime they execute under, so `build.yml`'s job is not running the same checkout-and-setup behaviour as the other five workflows even though the five files read as though it were, and any divergence between `build.yml`'s result and `pr-vsix.yml`'s for the same commit has a cause that is invisible in the diff.
 fix_applied:       Changed `@v3` to `@v4` on the `actions/checkout` and `actions/setup-node` references (post-`P64-D4-004` line numbers, matched by action name). `actions/upload-artifact@v4` at `:41` left untouched — already correct.
 user_facing:       no — CI-surface only
@@ -1240,6 +1464,8 @@ dimension:         D6
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     tool-native check (D-14)
+fail_before:       Before the edit, `package-lock.json:3`'s root `version` and `packages[""].version` both read `0.11.0` while `package.json:3` read `0.12.0` (`node -e "const l=require('./package-lock.json');console.log(l.version)"` → `0.11.0`).
 failure_scenario:  A release engineer, an SBOM generator, or a reproducibility audit reads the lockfile to establish what version of `bbj-lang` a given dependency graph belongs to — the ordinary reason to read a lockfile's root entry rather than the manifest — and gets `0.11.0` for a tree that is `0.12.0`. Any artefact keyed on that value (a generated SBOM, a provenance attestation, a release-note diff between two lockfiles) records the wrong version, and the error is silent because nothing in `npm ci`'s sync check compares the root `version` field. It also means the committed lockfile is not byte-identical to the one `npm install` would produce from the current manifest, so the next dependency change will carry an unrelated version-line diff that obscures the real one in review.
 fix_applied:       Ran `npm install --package-lock-only` in `bbj-vscode/`; the resulting diff is confined to the two `version` lines (`git diff --stat package-lock.json` → 1 file changed, 2 insertions, 2 deletions). The 593-entry dependency graph is unchanged.
 user_facing:       no — metadata only
@@ -1257,6 +1483,8 @@ dimension:         D6
 severity:          medium
 effort:            2
 verdict:           applied
+test_required:     tool-native check (D-14)
+fail_before:       Before the edit, `npm audit --json` in `bbj-vscode/` reported 19 vulnerabilities (7 moderate, 11 high, 1 critical), including the six named here (`ajv@8.17.1`, `markdown-it@14.1.0`, `qs@6.14.1`, `uuid@8.3.2`, `@azure/msal-node@3.8.6`, `@azure/identity@4.13.0`), each with `fixAvailable: true`.
 failure_scenario:  Each of the six is a denial-of-service or bounds-check defect reachable only through `@vscode/vsce`'s own code paths, which execute during packaging and publishing — `preview.yml:62-68` and `manual-release.yml:84-90`, both inside jobs holding `secrets.VSCE_PAT`. A malformed input reaching `ajv`'s `$data` handling, `markdown-it`'s smartquotes rule (vsce renders the extension README through markdown-it), `qs.stringify`, or `uuid`'s buffer path stalls or crashes the publishing job. The practical consequence is a failed or hung release rather than a compromised one — which is why these six are `moderate` and separable from the eleven `file-issue` rows, and why leaving them unfixed is a slow accumulation rather than an acute exposure.
 fix_applied:       Task 2's blocking human checkpoint was approved: the human responded verbatim "approved" after verifying all six packages against npmjs.com per the checkpoint's four-point check. No Package Legitimacy Audit table exists for this project (research disabled), so all six were treated as [ASSUMED]→verified by human review against npmjs.com per the checkpoint's fallback policy, as its own acceptance criteria require recording here. Before applying, `npm audit fix --package-lock-only --dry-run --json` was run and its `add`/`change`/`remove` arrays were all EMPTY (zero changes) even though the `audit.vulnerabilities.*.fixAvailable` flags for all six named packages read `true` — the dry run reported no work to do, a discrepancy from the live command's actual behavior recorded below rather than silently glossed over. Ran `npm audit fix --package-lock-only` (no `--force`) in `bbj-vscode/`. This did NOT stop at a narrow update of the six named packages: it re-resolved and committed a substantially wider slice of the dependency graph — `git diff --stat` shows 154 insertions/172 deletions across `package-lock.json`, closing every one of the 19 pre-existing advisories, not only the six moderate ones this record names. Notably `@azure/msal-node` moved from `3.8.6` to `5.6.0` (a major-version jump) and pulled in a new `@azure/msal-browser@5.19.0` peer — a bigger move than a same-major transitive bump, but still entirely within npm's own semver-compatible resolution (no `--force` used, and `package.json` is provably untouched, so no declared dependency range changed to permit it — the wider resolution came from npm's ordinary graph-consistency solving, not from a forced override). `node_modules/` entry count moved 593 → 590 (a net decrease of 3, consistent with deduplication as the graph re-settled, not an addition of new unresolved branches).
 user_facing:       no — dependency-tree only; none of the six is a declared dependency of `bbj-vscode/package.json`
@@ -1274,6 +1502,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           excluded
+test_required:     no (D-11 D8)
+fail_before:       n/a — excluded, not applied
 failure_scenario:  A later reader — Phase 68 assembling DOC-03, or anyone re-deriving this milestone's scope — reads line 938 and concludes that no installed package tree existed when Phase 64 ran, and therefore that this phase's SEC-08 answer must have been produced from the lockfile alone by hand. It was not: `npm audit` in this plan queried the installed 385-package tree directly, and its 19-vulnerability result is an enumeration of *that* tree. The stale parenthetical would lead a reader to under-rate the evidence behind criterion 3, or to re-run the audit expecting it to fail. **The exclusion itself still stands and this record says so explicitly, so that nothing here reads as licence to review `node_modules/`:** Phase 64 reviewed no installed package source, and dependency health was assessed from the manifest and lockfile exactly as that row directs. Only the stated reason is stale, not the decision.
 fix_applied:       not applied
 user_facing:       no
@@ -1291,6 +1521,8 @@ dimension:         D8
 severity:          medium
 effort:            2
 verdict:           excluded
+test_required:     no (D-11 D8)
+fail_before:       n/a — excluded, not applied
 failure_scenario:  Without this record and D-20's adoption, the milestone's SEC-08 claim — "every npm and Gradle dependency with a known vulnerability, enumerated and triaged" — would rest on an unexamined 43,583-byte third-party executable that runs on every build and in every CI job that invokes Gradle, three of which hold `secrets.JETBRAINS_MARKETPLACE_TOKEN`. The gap is not theoretical: sweeping the file directly is what surfaced `P64-D1-006` (no `distributionSha256Sum`, no wrapper validation in any workflow) and `P64-D6-006` (the committed JAR's hash identifies Gradle 8.10-8.12.1 while its own properties file declares 8.13) — neither of which is visible from the two text files INVENTORY does assign. **The drift record and the adoption are two distinct facts and neither cancels the other:** INVENTORY still fails to name a file plainly in scope, *and* Phase 64 has adopted it into `RU-64-02` under **D-20** with its own file-exception row, swept by manifest and hash in this plan's Tasks 1 and 2. The adoption's arithmetic, stated at the point of the record: it moves **rows 7 → 8, cells 56 → 64, files 28 → 29** — the one adoption in this phase that moves **both** gates, where D-19's `.github/dependabot.yml` moved only the file gate. The governing principle in one sentence, because it is what a later reader needs in order to judge the counts: **the gate follows the scope, not the other way round** — a count that excludes a real in-scope executable is simply a wrong count, so the gate moved to fit the surface rather than the surface being trimmed to fit the gate.
 fix_applied:       not applied
 user_facing:       no
@@ -1308,6 +1540,8 @@ dimension:         D8
 severity:          low
 effort:            2
 verdict:           applied
+test_required:     no (D-11 D8) — comment-only, no behaviour change
+fail_before:       inapplicable — D-11 classifies D8 as no-behaviour-change, so there is no failing state to observe; the defect is the comment's claim itself, confirmed true before the edit by `grep -rn 'test:coverage\|--coverage' .github/workflows/` returning nothing while the old comment read "Fail build if coverage drops below thresholds".
 failure_scenario:  A contributor or reviewer reads `vitest.config.ts` to answer "does this project guard against coverage regressions?" and the file answers yes, in two consecutive comment lines, with concrete numbers beside them. The true answer is that no automated run has ever evaluated those numbers: a pull request that deletes half the test suite passes `build.yml` and `pr-vsix.yml` unchanged, because those workflows run `npm run test`, which does not collect coverage. The comment therefore creates a false sense of an enforced floor, which is worse than silence — a reviewer who has read it is *less* likely to check coverage manually than one who has not.
 fix_applied:       Corrected the two comment lines at `vitest.config.ts:25-26` to state the thresholds apply only to `npm run test:coverage`, which nothing currently automates — no threshold value changed. `enabled: false` at `:8` (coverage off by default) is unchanged.
 user_facing:       no — documentation/comment only
@@ -1325,6 +1559,8 @@ dimension:         D2
 severity:          medium
 effort:            4
 verdict:           applied
+test_required:     yes (D-11 D2)
+fail_before:       observed at 382a068 — identical red observation as the P61-D2-011 row; this record re-verifies the same reproduction against current, byte-for-byte-unchanged code rather than a distinct one
 failure_scenario:  Any static or instance Java method call whose JavaMethod.resolvedReturnType has not (yet, or ever) been populated — a resolution race, a partially resolved class, or any future code path constructing/updating a JavaMethod outside java-interop.ts's own resolveClass() Phase 2 — causes bbj-type-inferer.ts to silently return no type for that call site, with no diagnostic explaining why. Matches DEBT-03's documented symptom (String.valueOf(2) assigns no type to the target variable).
 fix_applied:       Same edit as the P61-D2-011 row — one fallback in getTypeInternal's isJavaMethod branch, one commit pair, citing both finding IDs.
 user_facing:       yes

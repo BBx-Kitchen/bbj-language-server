@@ -53,10 +53,45 @@ const PLACEHOLDER_AREA = 'PENDING-AREA';
 const PLACEHOLDER_RESOLUTION = 'PENDING-RESOLUTION';
 const PLACEHOLDER_MARKERS = [PLACEHOLDER_APPROACH, PLACEHOLDER_AREA, PLACEHOLDER_RESOLUTION];
 const SEVERITY_PRIO = { critical: 'PRIO 1', high: 'PRIO 1', medium: 'PRIO 2', low: 'PRIO 3' };
+const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
+
+// INVENTORY's fifteen existing area labels (INVENTORY.md:34-38) — `proposed_labels:`'s area
+// component is drawn only from this set (plan 68-02 Task 2).
+const AREA_LABELS = new Set([
+    'grammar', 'scoping', 'types', 'library', 'validation', 'linking', 'CUI', 'vscode', 'intellij',
+    'BBj integration and infrastructure', 'missing verb/parameter', 'common pattern', 'dependencies',
+    'javascript', 'documentation'
+]);
+
+// The 26 major-refactor finding IDs whose `classification:` test-(5) clause names no edit
+// (verdict FAIL/n/a/moot, or absent) — plan 68-02 Task 2's action text. `approachSeed` computes
+// this set live from the corpus at every run and hard-fails if the derived set departs from this
+// literal list (the same honesty-gate pattern `assertCounts` uses for the 224/144/77/3 denominator).
+const EXPECTED_NO_NAMED_EDIT_IDS = [
+    'P61-D5-001', 'P61-D5-002', 'P61-D5-003', 'P61-D5-010', 'P61-D5-013', 'P61-D5-014',
+    'P63-D7-001', 'P63-D7-002', 'P63-D7-003', 'P63-D7-005', 'P63-D7-006', 'P63-D2-010',
+    'P63-D6-002', 'P63-D4-010', 'P64-D1-002', 'P64-D1-003', 'P64-D2-005', 'P64-D2-006',
+    'P64-D3-002', 'P64-D4-003', 'P64-D5-001', 'P64-D6-002', 'P64-D6-003', 'P64-D6-005',
+    'P66-D5-001', 'P66-D5-002'
+];
+
+// Phase 67 close-out corrections that land on major records (68-02 Task 2 action) — appended to
+// the corrected block's own `proposed_approach:` value so a reader is not misled by a disproven
+// or superseded premise carried in the record's own `evidence:`/`classification:` prose.
+const CORRECTION_P63_D2_013 =
+    "Note: contrary to this record's own evidence field, `BbjSettingsConfigurable.apply():83` has " +
+    'called `scheduleRestart()` since commit `35c916b`, predating the Phase 63 review — the guard ' +
+    "must account for that existing call site rather than treating the debounce machinery as unused " +
+    '(Phase 67 close-out correction).';
+const CORRECTION_P64_D3_002 =
+    'Reciprocal note: its `build.yml` `on:`-block sibling (`P64-D4-004`) already landed in Phase 67 ' +
+    "as a recorded D-06 departure — whoever implements this record should expect that change is " +
+    'already applied (Phase 67 close-out §"Recorded departures").';
 
 const EASY_REQUIRED_KEYS = [
     'row', 'finding_id', 'unit', 'location', 'dimension', 'severity', 'effort', 'verdict',
-    'failure_scenario', 'fix_applied', 'user_facing', 'verification', 'commit', 'notes'
+    'test_required', 'fail_before', 'failure_scenario', 'fix_applied', 'user_facing',
+    'verification', 'commit', 'notes'
 ];
 const MAJOR_REQUIRED_KEYS = [
     'id', 'unit', 'location', 'dimension', 'secondary', 'severity', 'evidence_tier', 'evidence',
@@ -178,18 +213,23 @@ function loadApplySetMap() {
     return map;
 }
 
-/** Read and parse all 224 corpus records from the six closed COVERAGE files. */
+/** Read and parse all 224 corpus records from the six closed COVERAGE files. Also returns the raw
+ *  per-phase file text (phaseFileTexts), needed by `draftApproachForId` to pull a DEBT record's
+ *  own "### Issue-ready draft" §"Proposed approach:" prose when its `classification:` test-(5)
+ *  clause is a bare pointer ("see Issue-ready draft below") rather than inline content. */
 function loadCorpus() {
     const records = [];
+    const phaseFileTexts = {};
     for (const phase of PHASES) {
         const filePath = join(REVIEWS_DIR, `${phase}-COVERAGE.md`);
         const text = readFileSync(filePath, 'utf8');
+        phaseFileTexts[phase] = text;
         for (const block of extractRecords(text)) {
             const fields = parseFields(block);
             records.push({ phase, id: joined(fields.id), disposition: joined(fields.disposition), fields });
         }
     }
-    return records;
+    return { records, phaseFileTexts };
 }
 
 /** Three-way split by the leading token of `disposition:` (D-01), each ordered by originating
@@ -272,9 +312,12 @@ function assertCounts(selection) {
  *  COVERAGE after whitespace-collapse (a must_haves.truths requirement) — derive-apply-set.mjs's
  *  own `firstThreeLines` truncation left 67-APPLY-SET.md's copy of this field shorter than the
  *  COVERAGE original for many rows, so COVERAGE, not the ledger, is this field's fidelity source.
- *  verdict/fix_applied/user_facing/verification/commit/notes have no COVERAGE equivalent and are
- *  lifted from 67-APPLY-SET.md by finding_id (D-04). A missing match is a hard error (a departure
- *  from the proven 77=77 ID-set equality), not silently skipped. */
+ *  verdict/test_required/fail_before/fix_applied/user_facing/verification/commit/notes have no
+ *  COVERAGE equivalent and are lifted from 67-APPLY-SET.md by finding_id (D-04) — including the
+ *  Phase 67 close-out corrections for `P61-D2-002` and `P64-D6-013`, which already live inside
+ *  those two rows' own ledger `notes:` value and so travel through this verbatim lift unchanged.
+ *  A missing match is a hard error (a departure from the proven 77=77 ID-set equality), not
+ *  silently skipped. */
 function renderEasyRow(rowNumber, rec, applySetMap) {
     const applyFields = applySetMap.get(rec.id);
     if (!applyFields) {
@@ -291,6 +334,8 @@ function renderEasyRow(rowNumber, rec, applySetMap) {
         field('severity', joined(f.severity)),
         field('effort', joined(f.effort)),
         field('verdict', joined(applyFields.verdict)),
+        field('test_required', fullJoined(applyFields.test_required)),
+        field('fail_before', fullJoined(applyFields.fail_before)),
         field('failure_scenario', fullJoined(f.failure_scenario)),
         field('fix_applied', fullJoined(applyFields.fix_applied)),
         field('user_facing', fullJoined(applyFields.user_facing)),
@@ -301,32 +346,246 @@ function renderEasyRow(rowNumber, rec, applySetMap) {
     ].join('\n');
 }
 
+/** Hard-fail check (D-04, D-02): the 77-row ledger's own finding-ID set must equal the corpus
+ *  easy-fix selection's ID set — the ledger is the content source, the corpus is still the
+ *  denominator, and a departure between the two is a finding, not a silent skip. */
+function checkLedgerIdSetEquality(selection, applySetMap) {
+    const ledgerIds = new Set(applySetMap.keys());
+    const corpusIds = new Set(selection.easy.map(r => r.id));
+    const inLedgerNotCorpus = [...ledgerIds].filter(id => !corpusIds.has(id));
+    const inCorpusNotLedger = [...corpusIds].filter(id => !ledgerIds.has(id));
+    if (inLedgerNotCorpus.length || inCorpusNotLedger.length) {
+        throw new Error(
+            'D-04 ledger/corpus ID-set mismatch — in 67-APPLY-SET.md not in corpus easy-fix selection: ' +
+            `[${inLedgerNotCorpus.join(', ')}]; in corpus not in ledger: [${inCorpusNotLedger.join(', ')}]`
+        );
+    }
+}
+
+/** EASY-FIXES.md's `## Index` table (Task 1): one row per selected easy-fix record, in the same
+ *  four-column shape `67-APPLY-SET.md` uses. For the 7 non-`applied` rows the `commit` cell
+ *  carries the inline reason (D-03) rather than a hash, so the table alone answers why a row has
+ *  no commit hash without a reader needing `67-APPLY-SET.md` open. The reason text is selected by
+ *  the row's own `verdict:` value (mechanical, not per-ID): `no-op` rows lift the ledger's own
+ *  `commit:` field verbatim (it already names the resolving finding ID and its commit); `excluded`
+ *  and `deferred` rows get a fixed reason naming the governing decision. */
+const EXCLUDED_INDEX_REASON = 'excluded — INVENTORY.md is immutable for v4.0 (Phase 60 D-09, Phase 67 D-03)';
+const DEFERRED_INDEX_REASON = 'deferred — no JDK 17 available in this environment (Phase 67 D-15)';
+function easyIndexCommitCell(applyFields) {
+    const verdict = joined(applyFields.verdict);
+    if (verdict === 'excluded') return EXCLUDED_INDEX_REASON;
+    if (verdict === 'deferred') return DEFERRED_INDEX_REASON;
+    // applied and no-op: the ledger's own commit: field already carries the sha(s), or (for
+    // no-op) the resolving finding ID and its commit — lifted verbatim either way.
+    return fullJoined(applyFields.commit);
+}
+function easyIndexTable(selection, applySetMap) {
+    const rows = selection.easy.map((rec, i) => {
+        const applyFields = applySetMap.get(rec.id);
+        const verdict = joined(applyFields.verdict);
+        const commitCell = easyIndexCommitCell(applyFields).replace(/\|/g, '\\|');
+        return `| ${i + 1} | ${rec.id} | ${verdict} | ${commitCell} |`;
+    });
+    return [
+        '## Index',
+        '',
+        '| # | finding_id | verdict | commit |',
+        '|---|---|---|---|',
+        ...rows
+    ].join('\n');
+}
+
 /** Locked-scale PRIO label for a severity value (INVENTORY §3d) — mechanical, not judgment. */
 function prioForSeverity(severity) {
     return SEVERITY_PRIO[severity] ?? 'PRIO ?';
 }
 
-/** Area label for a finding's proposed_labels — genuine judgment (which module/component this
- *  belongs to for Phase 69's issue labels), not derivable from a locked scale. Scaffolded as a
- *  placeholder here; a later plan in this phase authors the real area per record. */
-function areaForRecord(_fields) {
-    return PLACEHOLDER_AREA;
+/** Bare leading `{2,4,8}` token of an `effort:` field that may carry an in-record annotation
+ *  (e.g. `P63-D3-005`'s "2\n(revised 2026-08-18: ...)") — proposed_labels' effort component is
+ *  this bare token, so the label and the recorded estimate are the same value with no translation
+ *  step (D-09), while the block's own `effort:` field keeps the full annotation prose intact. */
+function bareEffort(effortJoined) {
+    const m = effortJoined.match(/^(\d+)\b/);
+    return m ? m[1] : effortJoined;
 }
 
-/** Compose the `proposed_labels:` value: area (judgment, placeholder for now) + PRIO (locked
- *  severity scale, mechanical) + effort (already-recorded locked scale, mechanical). */
+/** Area label for a finding's `proposed_labels:` (68-02 Task 2 action) — resolved mechanically,
+ *  in order: dimension `D6` -> `dependencies`; dimension `D8` -> `documentation`; else the longest
+ *  matching `location:` path prefix among the six named prefixes. A bare `bbj-vscode/` root-level
+ *  file (package.json, eslint.config.js, tsconfig.test.json, vitest.config.ts — none of them under
+ *  `src/`, `test/` or `tools/`) is still part of the VS Code extension's own build tooling, so it
+ *  resolves to `vscode` as the broader, lower-priority catch-all for that repo — applying the same
+ *  longest-prefix-match principle one level up rather than falling to a placeholder for a case the
+ *  must_haves.truths gate requires to resolve inside the fifteen-label set. Six of 144 records take
+ *  this catch-all path (`P64-D2-007`, `P64-D2-008`, `P64-D3-003`, `P64-D4-005`, `P64-D4-006`,
+ *  `P64-D5-002`); every other record resolves via one of the six explicitly named prefixes. */
+function areaForRecord(fields) {
+    const dimension = joined(fields.dimension);
+    if (dimension === 'D6') return 'dependencies';
+    if (dimension === 'D8') return 'documentation';
+    const firstLoc = fullJoined(fields.location).split(',')[0].trim();
+    const PREFIX_RULES = [
+        ['bbj-intellij/', 'intellij'],
+        ['bbj-vscode/src/', 'vscode'],
+        ['bbj-vscode/tools/', 'BBj integration and infrastructure'],
+        ['bbj-vscode/test/', 'javascript'],
+        ['.github/', 'BBj integration and infrastructure'],
+        ['java-interop/', 'BBj integration and infrastructure'],
+        ['bbj-vscode/', 'vscode'] // catch-all: root-level bbj-vscode/ build/tooling files
+    ];
+    let best = null;
+    for (const [prefix, area] of PREFIX_RULES) {
+        if (firstLoc.startsWith(prefix) && (!best || prefix.length > best[0].length)) best = [prefix, area];
+    }
+    return best ? best[1] : `${PLACEHOLDER_AREA} (unresolved location prefix: ${firstLoc})`;
+}
+
+/** Compose the `proposed_labels:` value: `area=<label>; PRIO <n>; effort <n>` (68-02 Task 2
+ *  action's exact shape) — area is the mechanical rule above, PRIO is INVENTORY §3d's locked
+ *  severity scale, and effort is the bare leading token of the block's own `effort:` field, so the
+ *  label and the estimate are the same value with no translation step. */
 function proposedLabels(fields) {
     const severity = joined(fields.severity);
-    const effort = joined(fields.effort);
-    return `${areaForRecord(fields)}, ${prioForSeverity(severity)}, effort ${effort}`;
+    const effort = bareEffort(fullJoined(fields.effort));
+    return `area=${areaForRecord(fields)}; ${prioForSeverity(severity)}; effort ${effort}`;
 }
 
-/** MAJOR-REFACTORS.md block: INVENTORY's frozen 13-field order, verbatim, plus the four
- *  Phase-69-facing fields (D-09): proposed_approach (judgment, placeholder for now),
- *  proposed_labels (area placeholder + mechanically-derived PRIO/effort), and an empty issue:
- *  slot Phase 69 fills under ISSUE-05. */
-function renderMajorBlock(rec) {
+/** Extract the text of test `(n)` from a `classification:` field's joined text — the span from the
+ *  literal `(n)` marker up to (but not including) the next `(n+1)` marker, or to the end of the
+ *  string if `(n)` is the last test recorded. */
+function extractClause(classificationJoined, n) {
+    const re = new RegExp(`\\(${n}\\)([\\s\\S]*?)(?:\\(${n + 1}\\)|$)`);
+    const m = classificationJoined.match(re);
+    return m ? m[1].trim() : '';
+}
+
+/** If `anchor` (e.g. "name the exact edit") is immediately followed by a parenthetical group in
+ *  `clause` — tracking paren depth so a nested paren inside the named edit (a regex literal, a
+ *  code snippet) does not truncate the capture early — return that group's inner text; else null. */
+function parenAfterAnchor(clause, anchor) {
+    const anchorIdx = clause.indexOf(anchor);
+    if (anchorIdx === -1) return null;
+    const after = clause.slice(anchorIdx + anchor.length);
+    const pm = after.match(/^\s*\(/);
+    if (!pm) return null;
+    const openIdx = anchorIdx + anchor.length + pm[0].length - 1;
+    let depth = 0, i = openIdx;
+    for (; i < clause.length; i++) {
+        if (clause[i] === '(') depth++;
+        else if (clause[i] === ')') { depth--; if (depth === 0) break; }
+    }
+    if (depth !== 0) return null;
+    return clause.slice(openIdx + 1, i).trim();
+}
+
+/** The reasoning prose that follows a test clause's own verdict token (`: pass —` / `: PASS,` /
+ *  `: FAIL —` / etc.), with the verdict token and its leading punctuation stripped. Returns '' if
+ *  the clause carries no verdict token at all. */
+function reasoningAfterVerdict(clause) {
+    const m = clause.match(/:\s*(pass|PASS|FAIL|n\/a|moot)\b\.?/);
+    if (!m) return '';
+    return clause.slice(m.index + m[0].length).replace(/^[\s,]*[—–-]+\s*/, '').trim();
+}
+
+/** The last verdict token (pass/PASS/FAIL/n/a/moot) appearing in `clause`, lowercased, or null if
+ *  none is found. Uses the last match rather than the first because a clause's own reasoning prose
+ *  (inside a nested parenthetical or a quoted phrase) can itself contain an earlier colon+word that
+ *  is not the test's own verdict. */
+function lastVerdictToken(clause) {
+    const vm = [...clause.matchAll(/:\s*(pass|PASS|FAIL|n\/a|moot)\b/g)];
+    return vm.length ? vm[vm.length - 1][1].toLowerCase() : null;
+}
+
+/** True when `text` is nothing but a pointer to the record's own "### Issue-ready draft" section
+ *  ("(see Issue-ready draft below)" / "see Issue-ready draft below") rather than an inline named
+ *  edit — the six Phase 66 DEBT records with a full issue-ready draft use this phrasing. */
+function isPointerOnly(text) {
+    return /^\(?see (the )?issue-ready draft below\)?/i.test(text.trim());
+}
+
+/** For a finding ID whose own COVERAGE record is followed (within the same file, close by) by an
+ *  "### Issue-ready draft" section, pull that section's own "**Proposed approach:**" paragraph —
+ *  real reviewer-authored text, not inferred — up to the next bold label, `---`, or `###` heading.
+ *  Returns null if the ID has no nearby draft section or the paragraph can't be located. */
+function draftApproachForId(fileText, id) {
+    const idIdx = fileText.indexOf(`id:                ${id}\n`);
+    if (idIdx === -1) return null;
+    const draftIdx = fileText.indexOf('### Issue-ready draft', idIdx);
+    if (draftIdx === -1 || draftIdx - idIdx > 4000) return null; // must belong to this same record, not a later one
+    const afterDraft = fileText.slice(draftIdx);
+    const m = afterDraft.match(/\*\*Proposed approach:\*\*([\s\S]*?)(?:\n\n\*\*|\n\n---|\n### )/);
+    return m ? collapseWhitespace(m[1]) : null;
+}
+
+/** Light rewrite so an extracted clause reads as a standalone imperative-ish sentence rather than
+ *  a mid-sentence reasoning fragment: strip leading connective punctuation left over from the
+ *  extraction point, capitalize the first letter, strip trailing dangling punctuation, and ensure
+ *  a closing period. This is punctuation cleanup only — no word of the reviewer's own content is
+ *  added or changed, per DOC-02's "MUST NOT invent" prohibition. */
+function toImperative(text) {
+    let t = text.trim().replace(/^[,;:\s]+/, '').replace(/^[—–-]+\s*/, '');
+    if (t.length) t = t.charAt(0).toUpperCase() + t.slice(1);
+    t = t.replace(/[\s,;—–-]+$/, '');
+    if (!/[.?!]$/.test(t)) t += '.';
+    return t;
+}
+
+/** Seed `proposed_approach:` from the record's own `classification:` field (68-02 Task 2 action).
+ *  Primary source is test-(5)'s own clause: a parenthetical immediately after "name the exact
+ *  edit" if present, else the reasoning prose following its verdict token. When that clause's own
+ *  verdict is not `pass`, or is `pass` but names no edit inline (a bare pointer to the record's own
+ *  "### Issue-ready draft" section, or genuinely empty — five Phase 62 D4 dedup records and one
+ *  Phase 64 D6 record read this way), two mechanical fallbacks apply in order before falling to the
+ *  placeholder: the record's own Issue-ready draft "Proposed approach:" paragraph (six Phase 66
+ *  DEBT records carry one), then test-(1)'s own clause by the same parenthetical/reasoning
+ *  extraction (its FAIL reasoning routinely names the same edit test-5 references, since test (1)
+ *  is "at most one file touched" and its failure explanation is "because fixing this needs edit X
+ *  across N files"). Every fallback still draws only on the record's own written text — never a
+ *  guess. Returns `{ placeholder: boolean, text: string }`. */
+function approachSeed(rec, phaseFileTexts) {
+    const classificationJoined = fullJoined(rec.fields.classification);
+    const clause5 = extractClause(classificationJoined, 5);
+    const verdict5 = lastVerdictToken(clause5);
+    if (verdict5 !== 'pass') {
+        return { placeholder: true, text: PLACEHOLDER_APPROACH };
+    }
+    let content = parenAfterAnchor(clause5, 'name the exact edit');
+    if (!content) content = reasoningAfterVerdict(clause5);
+    if (!content || content.length < 8 || isPointerOnly(content)) {
+        const draft = draftApproachForId(phaseFileTexts[rec.phase], rec.id);
+        if (draft && draft.length >= 8) {
+            content = draft;
+        } else {
+            const clause1 = extractClause(classificationJoined, 1);
+            const c1 = parenAfterAnchor(clause1, 'touches 1 file') || reasoningAfterVerdict(clause1);
+            content = (c1 && c1.length >= 8 && !isPointerOnly(c1)) ? c1 : null;
+        }
+    }
+    if (!content) {
+        // A test-(5) "pass" verdict with no named edit anywhere findable in the record's own
+        // written text — treat as the placeholder class too, per the same honesty gate: a derived
+        // discrepancy from the expected 118/26 split is reported, never silently forced to fit.
+        return { placeholder: true, text: PLACEHOLDER_APPROACH };
+    }
+    return { placeholder: false, text: toImperative(content) };
+}
+
+/** MAJOR-REFACTORS.md block: INVENTORY's frozen 13-field order, verbatim, plus the three
+ *  Phase-69-facing fields (D-09's four appended fields, minus `effort:` which is already carried
+ *  in the frozen order — see the reconciliation note below): `proposed_approach:` (seeded from the
+ *  record's own classification test-5 clause, or the placeholder marker where it names no edit),
+ *  `proposed_labels:` (mechanically-derived area/PRIO/effort), and an empty `issue:` slot Phase 69
+ *  fills under ISSUE-05. Reconciliation note: D-09 describes "four appended fields"
+ *  (proposed_approach, effort, proposed_labels, issue); the frozen 13-field order already carries
+ *  `effort:` in place, so only three fields are genuinely appended here — `effort:` itself is not
+ *  moved or duplicated. Carries the two Phase 67 close-out corrections (68-02 Task 2 action):
+ *  `P63-D2-013`'s corrected call-site note, and `P64-D3-002`'s reciprocal `P64-D4-004` note. */
+function renderMajorBlock(rec, phaseFileTexts) {
     const f = rec.fields;
+    let seed = approachSeed(rec, phaseFileTexts);
+    let approachText = seed.text;
+    if (rec.id === 'P63-D2-013') approachText = `${approachText} ${CORRECTION_P63_D2_013}`;
+    if (rec.id === 'P64-D3-002') approachText = `${approachText} — ${CORRECTION_P64_D3_002}`;
     return [
         '```',
         field('id', rec.id),
@@ -342,10 +601,52 @@ function renderMajorBlock(rec) {
         field('effort', fullJoined(f.effort)),
         field('dedup', fullJoined(f.dedup)),
         field('disposition', fullJoined(f.disposition)),
-        field('proposed_approach', PLACEHOLDER_APPROACH),
+        field('proposed_approach', approachText),
         field('proposed_labels', proposedLabels(f)),
         field('issue', ''),
         '```'
+    ].join('\n');
+}
+
+/** MAJOR-REFACTORS.md's `## Index (severity-sorted, for Phase 69 filing order)` (Task 3, D-10).
+ *  Sort key, in order: severity rank (critical, high, medium, low), then PRIO, then effort
+ *  ascending, then originating phase, then finding ID — the last two components make the key
+ *  total, so no two records can tie and the table is stable across re-derivations. */
+function severityIndexRow(rec) {
+    const f = rec.fields;
+    const severity = joined(f.severity);
+    const prio = prioForSeverity(severity);
+    const prioNum = Number((prio.match(/\d+/) ?? ['9'])[0]);
+    const effort = Number(bareEffort(fullJoined(f.effort)));
+    const area = areaForRecord(f);
+    const firstLoc = fullJoined(f.location).split(',')[0].trim();
+    return {
+        id: rec.id, phase: rec.phase, severity, prio, prioNum, effort, area, location: firstLoc
+    };
+}
+function severityIndexTable(selection) {
+    const rows = selection.major.map(severityIndexRow);
+    rows.sort((a, b) =>
+        (SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]) ||
+        (a.prioNum - b.prioNum) ||
+        (a.effort - b.effort) ||
+        (a.phase - b.phase) ||
+        a.id.localeCompare(b.id)
+    );
+    const lines = rows.map((r, i) =>
+        `| ${i + 1} | ${r.severity} | ${r.prio} | ${r.effort} | ${r.id} | ${r.location} | ${r.area} |`
+    );
+    return [
+        '## Index (severity-sorted, for Phase 69 filing order)',
+        '',
+        'Phase 69 files in severity order (highest first); the record blocks below stay in ' +
+            'originating-phase order so this document keeps diffing against `67-APPLY-SET.md` (D-10) ' +
+            '— the 1 `critical` and 16 `high` records surface first here rather than being buried at ' +
+            'whatever phase they came from.',
+        '',
+        '| # | severity | PRIO | effort | finding_id | location | area |',
+        '|---|---|---|---|---|---|---|',
+        ...lines
     ].join('\n');
 }
 
@@ -518,24 +819,27 @@ function runEmit(kind, { force, write }) {
     }
 
     const corpus = loadCorpus();
-    const selection = selectByDisposition(corpus);
+    const selection = selectByDisposition(corpus.records);
     if (!assertCounts(selection)) {
         process.exitCode = 1;
         return;
     }
 
-    let body, header, reconciliation, targetPath, sectionHeading;
+    let body, header, reconciliation, indexSection, targetPath, sectionHeading;
     if (kind === 'easy') {
         const applySetMap = loadApplySetMap();
+        checkLedgerIdSetEquality(selection, applySetMap); // D-04: ledger is the content source, corpus is still the denominator (D-02)
         body = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
         header = easyHeader();
         reconciliation = easyReconciliationText(selection, applySetMap);
+        indexSection = `${easyIndexTable(selection, applySetMap)}\n\n`;
         sectionHeading = '## Rows';
         targetPath = EASY_PATH;
     } else {
-        body = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
+        body = selection.major.map(rec => renderMajorBlock(rec, corpus.phaseFileTexts)).join('\n\n');
         header = majorHeader();
         reconciliation = majorReconciliationText(selection);
+        indexSection = `${severityIndexTable(selection)}\n\n`;
         sectionHeading = '## Records';
         targetPath = MAJOR_PATH;
     }
@@ -543,7 +847,7 @@ function runEmit(kind, { force, write }) {
     process.stdout.write(body + '\n');
 
     if (write) {
-        writeAtomic(targetPath, `${header}${reconciliation}${sectionHeading}\n\n${body}\n`);
+        writeAtomic(targetPath, `${header}${reconciliation}${indexSection}${sectionHeading}\n\n${body}\n`);
     }
 }
 
@@ -645,18 +949,18 @@ function placeholderCensus(text) {
 
 /** Determinism assertion (must_haves.truths): two in-process renders of each emit produce
  *  identical strings. */
-function checkDeterminism(selection, applySetMap) {
+function checkDeterminism(selection, applySetMap, phaseFileTexts) {
     const easy1 = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
     const easy2 = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
-    const major1 = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
-    const major2 = selection.major.map(rec => renderMajorBlock(rec)).join('\n\n');
+    const major1 = selection.major.map(rec => renderMajorBlock(rec, phaseFileTexts)).join('\n\n');
+    const major2 = selection.major.map(rec => renderMajorBlock(rec, phaseFileTexts)).join('\n\n');
     return { easyOk: easy1 === easy2, majorOk: major1 === major2 };
 }
 
 function runCheck() {
     let ok = true;
     const corpus = loadCorpus();
-    const selection = selectByDisposition(corpus);
+    const selection = selectByDisposition(corpus.records);
     if (!assertCounts(selection)) {
         process.stderr.write('FAIL: corpus hard-fail gate (see breakdown above)\n');
         process.exitCode = 1;
@@ -789,12 +1093,108 @@ function runCheck() {
     // --- 7. Determinism ---
     const applySetMap = loadApplySetMap();
     {
-        const { easyOk, majorOk } = checkDeterminism(selection, applySetMap);
+        const { easyOk, majorOk } = checkDeterminism(selection, applySetMap, corpus.phaseFileTexts);
         if (!easyOk || !majorOk) {
             console.log(`FAIL: determinism — easyOk=${easyOk} majorOk=${majorOk}`);
             ok = false;
         } else {
             console.log('PASS: determinism — two in-process renders of each emit produce identical strings');
+        }
+    }
+
+    // --- 7b. Ledger/corpus ID-set equality (D-04) ---
+    try {
+        checkLedgerIdSetEquality(selection, applySetMap);
+        console.log('PASS: 67-APPLY-SET.md finding-ID set equals the corpus easy-fix selection (D-04)');
+    } catch (e) {
+        console.log(`FAIL: ${e.message}`);
+        ok = false;
+    }
+
+    // --- 7c. proposed_approach placeholder census equals the expected 26-ID no-named-edit set ---
+    {
+        const placeholderIds = majorBlocks
+            .filter(f => fullJoined(f.proposed_approach).includes(PLACEHOLDER_APPROACH))
+            .map(f => joined(f.id))
+            .sort();
+        const expected = [...EXPECTED_NO_NAMED_EDIT_IDS].sort();
+        if (JSON.stringify(placeholderIds) !== JSON.stringify(expected)) {
+            const missing = expected.filter(id => !placeholderIds.includes(id));
+            const extra = placeholderIds.filter(id => !expected.includes(id));
+            console.log(`FAIL: proposed_approach placeholder set (${placeholderIds.length}) does not equal the expected 26-ID no-named-edit set — missing: [${missing.join(', ')}]; extra: [${extra.join(', ')}]`);
+            ok = false;
+        } else {
+            console.log(`PASS: exactly ${placeholderIds.length} blocks carry the approach placeholder marker, matching the expected no-named-edit ID set`);
+        }
+    }
+
+    // --- 7d. proposed_labels area values are drawn only from INVENTORY's fifteen-label set ---
+    {
+        const outOfSet = [];
+        for (const f of majorBlocks) {
+            const labels = fullJoined(f.proposed_labels);
+            const m = labels.match(/^area=([^;]+);/);
+            const area = m ? m[1].trim() : null;
+            if (!area || !AREA_LABELS.has(area)) outOfSet.push(`${joined(f.id)}: "${area}"`);
+        }
+        if (outOfSet.length) {
+            console.log(`FAIL: proposed_labels area values outside the fifteen-label set — ${outOfSet.length} problem(s):`);
+            for (const o of outOfSet) console.log(`  - ${o}`);
+            ok = false;
+        } else {
+            console.log('PASS: every proposed_labels area value is drawn from INVENTORY\'s fifteen-label set');
+        }
+    }
+
+    // --- 7e. Severity-sorted index (Task 3, D-10) ---
+    {
+        const idxMatch = majorText.match(/^## Index \(severity-sorted, for Phase 69 filing order\)\n([\s\S]*?)\n## Records/m);
+        if (!idxMatch) {
+            console.log('FAIL: MAJOR-REFACTORS.md is missing "## Index (severity-sorted, for Phase 69 filing order)" between Reconciliation and Records');
+            ok = false;
+        } else {
+            const rows = idxMatch[1].split('\n').filter(l => /^\|\s*\d+\s*\|/.test(l));
+            const parsed = rows.map(l => {
+                const cells = l.split('|').map(c => c.trim()).filter((_, i) => i > 0);
+                const [num, severity, prio, effort, id] = cells;
+                return { num: Number(num), severity, prioNum: Number((prio.match(/\d+/) ?? ['9'])[0]), effort: Number(effort), id };
+            });
+            if (parsed.length !== EXPECTED_MAJOR_TOTAL) {
+                console.log(`FAIL: severity-sorted index has ${parsed.length} rows, expected ${EXPECTED_MAJOR_TOTAL}`);
+                ok = false;
+            } else {
+                const idxIds = new Set(parsed.map(r => r.id));
+                const recIds = new Set(majorDocIds);
+                const inIdxNotRec = [...idxIds].filter(id => !recIds.has(id));
+                const inRecNotIdx = [...recIds].filter(id => !idxIds.has(id));
+                if (inIdxNotRec.length || inRecNotIdx.length) {
+                    console.log(`FAIL: severity index finding-ID set != record-block finding-ID set — in index not in records: [${inIdxNotRec.join(', ')}]; in records not in index: [${inRecNotIdx.join(', ')}]`);
+                    ok = false;
+                } else {
+                    let sorted = true;
+                    const idToPhase = new Map(selection.major.map(r => [r.id, r.phase]));
+                    for (let i = 1; i < parsed.length; i++) {
+                        const a = parsed[i - 1], b = parsed[i];
+                        const key = x => [SEVERITY_RANK[x.severity], x.prioNum, x.effort, idToPhase.get(x.id) ?? 0, x.id];
+                        const ka = key(a), kb = key(b);
+                        let cmp = 0;
+                        for (let k = 0; k < ka.length && cmp === 0; k++) {
+                            if (typeof ka[k] === 'string') cmp = ka[k].localeCompare(kb[k]);
+                            else cmp = ka[k] - kb[k];
+                        }
+                        if (cmp > 0) { sorted = false; break; }
+                    }
+                    if (!sorted) {
+                        console.log('FAIL: severity-sorted index rows are not in non-decreasing order under the five-component sort key');
+                        ok = false;
+                    } else if (parsed[0].severity !== 'critical') {
+                        console.log(`FAIL: severity-sorted index row 1 has severity "${parsed[0].severity}", expected "critical"`);
+                        ok = false;
+                    } else {
+                        console.log('PASS: severity-sorted index has 144 rows, its finding-ID set matches the record blocks, and rows are sorted under the five-component key');
+                    }
+                }
+            }
         }
     }
 
