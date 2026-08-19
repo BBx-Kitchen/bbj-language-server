@@ -1,0 +1,7 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary (P61-D5-005). Not the
+# real compiler — a controlled substitute the repo owns, used to pin
+# BBjCPLService's current behaviour: it spawns whatever bbjHome/bin/bbjcpl
+# names with no signature/checksum/path validation (P61-D1-003).
+echo "$(dirname "$0")/../../fake.bbj: error at line 1 (1):     PIN TEST MARKER" >&2
+exit 0

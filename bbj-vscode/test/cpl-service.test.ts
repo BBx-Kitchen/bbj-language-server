@@ -1,3 +1,4 @@
+import path from 'path';
 import { describe, test, expect, vi } from 'vitest';
 import { BBjCPLService } from '../src/language/bbj-cpl-service.js';
 
@@ -128,6 +129,41 @@ describe('BBjCPLService', () => {
         // Spy on logger — INFO is suppressed at default WARN level, so we check indirectly
         const result = await svc.compile('/tmp/test.bbj');
         expect(result).toEqual([]);
+    }, 10000);
+
+    /**
+     * P61-D5-005: pins the CURRENT unvalidated bbjHome spawn behaviour. The record's own
+     * test-5 clause offers two branches: assert the spawn is rejected once P61-D1-003 is
+     * fixed, or document the current unvalidated behaviour explicitly. P61-D1-003 is
+     * classified major-refactor (INVENTORY §3c test 6) and routes to Phase 68, so the first
+     * branch is unavailable in this phase — this test takes the second branch.
+     *
+     * getBbjcplPath() joins bbjHome/bin/bbjcpl with no signature, checksum, or path
+     * validation of any kind (P61-D1-003). This test proves that today: bbjHome is pointed
+     * at a controlled fixture directory this repo owns (never an external path, never a
+     * temp dir writable by another process, never an env-var-derived path — T-67-07-02),
+     * containing a substitute "bbjcpl" script that is provably NOT the real compiler (it
+     * just echoes a fixed marker line to stderr). compile() spawns it anyway and parses its
+     * output as if it were legitimate bbjcpl diagnostics — demonstrating there is currently
+     * no check that the binary at bbjHome/bin/bbjcpl is actually bbjcpl.
+     */
+    test('P61-D5-005: compile() spawns and trusts whatever binary sits at bbjHome/bin/bbjcpl, unvalidated', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
+        const svc = new BBjCPLService(services as any);
+
+        const result = await svc.compile('/some/fake.bbj');
+
+        // The substitute binary is not bbjcpl — yet its output was spawned, read, and
+        // parsed as a real diagnostic, proving there is no validation of the binary's
+        // identity at this path today.
+        expect(result).toHaveLength(1);
+        expect(result[0].message).toContain('PIN TEST MARKER');
     }, 10000);
 
 });
