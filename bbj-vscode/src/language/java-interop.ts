@@ -201,8 +201,13 @@ export class JavaInteropService {
      */
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         const connection = await this.connect();
+        const requestPromise = connection.sendRequest(getClassInfoRequest, { className }, token);
+        // Defensive no-op handler on the raced branch (P61-D2-002): the rejection still reaches
+        // the caller via the Promise.race below, this only guards against a late settlement being
+        // reported as an unhandled rejection.
+        requestPromise.catch(() => { /* surfaced to the caller via the race below */ });
         return Promise.race([
-            connection.sendRequest(getClassInfoRequest, { className }, token),
+            requestPromise,
             new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Java class resolution timeout for ${className}`)), 10000))
         ]);
     }
