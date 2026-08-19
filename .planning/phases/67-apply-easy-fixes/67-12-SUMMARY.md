@@ -144,3 +144,14 @@ Phase 67 is closed. `.planning/phases/67-apply-easy-fixes/67-APPLY-SET.md` is re
 ---
 *Phase: 67-apply-easy-fixes*
 *Completed: 2026-08-19*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/67-apply-easy-fixes/67-BASELINE.md`
+- FOUND: `.planning/phases/67-apply-easy-fixes/67-APPLY-SET.md`
+- FOUND: `.planning/phases/67-apply-easy-fixes/67-12-SUMMARY.md`
+- FOUND commit `533572b` (Task 1)
+- FOUND commit `c8389a9` (Task 2)
+- FOUND commit `8e8e97c` (Task 3 correction)
+- FOUND commit `9e1f8fb` (Task 3 review recorded)
+- FOUND commit `a9fbbd7` (this summary)
