@@ -1,9 +1,6 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - typefox-dev
   pull_request:
     branches:
       - main
