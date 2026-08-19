@@ -22,8 +22,9 @@ export default defineConfig({
         functions: 45,
         branches: 40,
         statements: 50,
-        // Fail build if coverage drops below thresholds
-        // This prevents regressions, not ensures completeness
+        // These thresholds apply only to `npm run test:coverage` (the only
+        // script that passes --coverage); no CI workflow invokes it, so no
+        // automated build is failed by them today
       }
     }
   },
