@@ -134,6 +134,8 @@ explicitly disables the extension until the user has affirmatively trusted the w
 
 ### WR-01: LRU cache can evict a class registration still needed by its own in-flight cyclic resolution
 
+> **Disposition (Phase 67 UAT):** deferred — filed as [#497](https://github.com/BBx-Kitchen/bbj-language-server/issues/497) (`bug`, `vscode`, `PRIO 2`, `8`). Design decision + hard-to-construct regression test; out of scope for a low-risk fix pass.
+
 **File:** `bbj-vscode/src/language/java-interop.ts:36-64` (`LruMap`), `:698-705` (`resolveClass`'s
 early registration), `:544-556` (`resolveClassByName`'s fast-path/pending-dedup)
 
@@ -173,6 +175,8 @@ must never evict), or (b) have the recursive fast-path in `resolveClassByName` a
 
 ### WR-02: Stale `connection.onClose`/`onError` listener can clobber a newer, healthy connection
 
+> **Disposition (Phase 67 UAT):** fixed in-phase (commit `8194248`) — identity guard on both listeners, with a regression test verified to fail against the un-fixed code.
+
 **File:** `bbj-vscode/src/language/java-interop.ts:134-135`
 
 **Issue:**
@@ -196,6 +200,8 @@ connection.onError(() => { if (this.connection === connection) this.connection =
 ```
 
 ### WR-03: `activeCancelToken` is shared mutable instance state, not threaded per-request
+
+> **Disposition (Phase 67 UAT):** deferred — filed as [#498](https://github.com/BBx-Kitchen/bbj-language-server/issues/498) (`bug`, `vscode`, `PRIO 2`, `4`). Architectural change to a singleton service.
 
 **File:** `bbj-vscode/src/language/bbj-completion-provider.ts:59` (field), `:247` (write in
 `getCompletion`), `:102` (read in `completionForCrossReference`)
@@ -221,6 +227,8 @@ nested concurrent call cannot observe a value written by an unrelated request.
 
 ### WR-04: Lexer's EOL-preserving split also splits on bare `\r`, changing continuation-detection input beyond what was tested
 
+> **Disposition (Phase 67 UAT):** fixed in-phase (commit `8194248`) — split narrowed back to `/(\r\n|\n)/`, with a regression test verified to fail against the un-fixed code.
+
 **File:** `bbj-vscode/src/language/bbj-lexer.ts:15` (vs. prior `text.split(/\r?\n/g)`)
 
 **Issue:** The old splitter `/\r?\n/g` only ever split on `\n` (optionally preceded by `\r`) — a
@@ -241,6 +249,8 @@ pattern back to `/(\r\n|\n)/` to preserve the prior splitting semantics exactly,
 stated scope ("mixed CRLF/LF").
 
 ### WR-05: Shared in-flight format promise can apply a stale full-document replacement
+
+> **Disposition (Phase 67 UAT):** deferred — filed as [#499](https://github.com/BBx-Kitchen/bbj-language-server/issues/499) (`bug`, `vscode`, `PRIO 3`, `2`). Requires an explicit guard-or-document decision.
 
 **File:** `bbj-vscode/src/document-formatter.ts:38-53`
 
@@ -266,6 +276,8 @@ started with and bypass sharing on a mismatch, or accept the risk explicitly (do
 narrow trigger window — but the current code neither guards against nor documents this trade-off.
 
 ### WR-06: `.lst` freshness gate is vulnerable to filesystem mtime-granularity truncation
+
+> **Disposition (Phase 67 UAT):** deferred — filed as [#500](https://github.com/BBx-Kitchen/bbj-language-server/issues/500) (`bug`, `vscode`, `PRIO 2`, `4`). Highest user impact of the six; needs a slack value + mtime-independent test strategy.
 
 **File:** `bbj-vscode/src/decompile-io.ts:69-90`
 
