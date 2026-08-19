@@ -35,10 +35,10 @@ Two derived counts, and the arithmetic connecting them:
 
 | # | finding_id | verdict | commit |
 |---|---|---|---|
-| 1 | P61-D2-001 | pending | pending |
-| 2 | P61-D2-002 | pending | pending |
-| 3 | P61-D2-003 | pending | pending |
-| 4 | P61-D2-004 | pending | pending |
+| 1 | P61-D2-001 | applied | 38fe1d1 (red) + 59dc2be (green) |
+| 2 | P61-D2-002 | applied | 7ae80a2 (test) + b0696aa (fix) |
+| 3 | P61-D2-003 | applied | 2770752 (red) + 4c92662 (green) |
+| 4 | P61-D2-004 | applied | e82f9c2 (red) + 557ab62 (green) |
 | 5 | P61-D2-005 | pending | pending |
 | 6 | P61-D2-006 | pending | pending |
 | 7 | P61-D2-008 | pending | pending |
@@ -51,10 +51,10 @@ Two derived counts, and the arithmetic connecting them:
 | 14 | P61-D2-016 | pending | pending |
 | 15 | P61-D2-017 | pending | pending |
 | 16 | P61-D2-019 | pending | pending |
-| 17 | P61-D3-001 | pending | pending |
+| 17 | P61-D3-001 | applied | 7a4448d (red) + 6d7be38 (green) |
 | 18 | P61-D3-004 | pending | pending |
 | 19 | P61-D3-005 | pending | pending |
-| 20 | P61-D4-003 | pending | pending |
+| 20 | P61-D4-003 | applied | 8c9028c |
 | 21 | P61-D4-005 | pending | pending |
 | 22 | P61-D4-006 | pending | pending |
 | 23 | P61-D4-008 | pending | pending |
@@ -72,7 +72,7 @@ Two derived counts, and the arithmetic connecting them:
 | 35 | P61-D5-015 | pending | pending |
 | 36 | P61-D5-016 | pending | pending |
 | 37 | P61-D5-017 | pending | pending |
-| 38 | P61-D8-001 | pending | pending |
+| 38 | P61-D8-001 | no-op | none — comment already accurate after P61-D2-004's fix (557ab62) |
 | 39 | P61-D8-002 | pending | pending |
 | 40 | P61-D8-003 | pending | pending |
 | 41 | P61-D8-004 | pending | pending |
@@ -123,14 +123,14 @@ location:          bbj-vscode/src/language/java-interop.ts:91-108
 dimension:         D2
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  (a) Two Java-class lookups fire in the same tick while disconnected — each opens its own socket, one is leaked. (b) The peer is killed mid-session — every subsequent resolveClassByName call reuses the dead connection object
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at 38fe1d1
+failure_scenario:  (a) Two Java-class lookups fire in the same tick while disconnected — each opens its own socket, one is leaked. (b) The peer is killed mid-session — every subsequent resolveClassByName call reuses the dead connection object and its requests hang or reject with no recovery until clearCache() is called explicitly.
+fix_applied:       Added an in-flight connectingPromise field so concurrent same-tick connect() callers share one createSocket() invocation and receive the identical MessageConnection. Registered onClose/onError listeners on the established connection that clear this.connection, so a dropped peer forces the next connect() call to reconnect instead of returning the dead reference.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts
+commit:            38fe1d1 (red) + 59dc2be (green)
 notes:             
 ```
 
@@ -142,15 +142,15 @@ location:          bbj-vscode/src/language/java-interop.ts:176-181
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A slow peer answers a getClassInfo request just after the 10s timeout has already rejected the race; the late-settling sendRequest(...) promise then rejects with no handler, surfacing as an unhandledRejection at the process
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — empirically verified (against the real vscode-jsonrpc SocketMessageReader/Writer + createMessageConnection, not just a hand-rolled repro) that Promise.race([sendRequest(...), timeoutPromise]) already attaches a rejection handler to both array entries synchronously per the Promise.race spec, so a losing branch's later rejection is never unhandled — with or without an extra .catch(). No failing-before state could be produced; see the test commit's own comment and 67-02-SUMMARY.md.
+failure_scenario:  A slow peer answers a getClassInfo request just after the 10s timeout has already rejected the race; the late-settling sendRequest(...) promise then rejects with no handler, surfacing as an unhandledRejection at the process level.
+fix_applied:       getRawClass() now stores the sendRequest() promise in a variable and attaches a defensive no-op .catch() to it before racing it against the 10s timeout, per the record's exact-edit instruction. The rejection still propagates to the caller via Promise.race. Applied as a harmless, reviewer-blessed defensive change even though empirical testing (see fail_before) found it does not alter observable behaviour for this specific mechanism.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts
+commit:            7ae80a2 (test) + b0696aa (fix)
+notes:             D-04-style override of the D2 default red-before-green expectation, argued here: rigorous reproduction against the real jsonrpc library (not just Node's native Promise.race) found the claimed mechanism does not produce an unhandled rejection under real Node/V8 promise semantics, so a red commit would have been fabricated. The fix is still applied verbatim per the record's classification test (5).
 ```
 
 ```
@@ -161,14 +161,14 @@ location:          bbj-vscode/src/language/java-interop.ts:576-585
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A malformed or malicious getClassInfo response with a missing/null fields or methods array throws an uncaught TypeError: Cannot read properties of undefined synchronously inside resolveClass(), propagating out of the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at 2770752
+failure_scenario:  A malformed or malicious getClassInfo response with a missing/null fields or methods array throws an uncaught TypeError: Cannot read properties of undefined synchronously inside resolveClass(), propagating out of the resolution chain uncaught.
+fix_applied:       Added javaClass.fields ??= [] and javaClass.methods ??= [] in resolveClass()'s Phase 1, alongside the existing classes/constructors defensive defaults, before the loops that iterate them.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts
+commit:            2770752 (red) + 4c92662 (green)
 notes:             
 ```
 
@@ -180,14 +180,14 @@ location:          bbj-vscode/src/language/java-interop.ts:761-790
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  The classpath is reloaded via main.ts's didChangeConfiguration path (clearCache() then loadClasspath()); the stale completeClassIndex built for the previous classpath survives and continues to answer
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
+fail_before:       observed at e82f9c2
+failure_scenario:  The classpath is reloaded via main.ts's didChangeConfiguration path (clearCache() then loadClasspath()); the stale completeClassIndex built for the previous classpath survives and continues to answer resolveClassCandidatesBySimpleName/findClassCandidatesByPrefix auto-import suggestions with FQNs from the old classpath instead of the new one.
+fix_applied:       clearCache() now calls this.clearCompleteClassIndex(), so completeClassIndex/completeIndexResolved are reset alongside the rest of the cached state, and the index is rebuilt against the new classpath on next use.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts
+commit:            e82f9c2 (red) + 557ab62 (green)
 notes:             
 ```
 
@@ -427,15 +427,15 @@ location:          bbj-vscode/src/language/java-interop.ts:40-48
 dimension:         D3
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D3)
-fail_before:       TBD
+fail_before:       observed at 7a4448d
 failure_scenario:  A long-running editor session against a large/varied classpath (many `use`d packages over time) grows these maps without bound, increasing steady-state memory usage monotonically until the server is restarted.
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Added LruMap<K,V> (a Map wrapper evicting the least-recently-used entry once a size cap is exceeded) and bound _resolvedClasses to it via the new named constant RESOLVED_CLASSES_CACHE_LIMIT (5000, a discretionary choice — no number is named by the finding record; large enough for a typical project's resolved classpath while still bounding steady-state growth). childrenOfByName and _pendingResolutions were left unbounded: the record's own location (40-48) and test-5 clause name only _resolvedClasses as the exact edit, and both other maps are transient/short-lived by construction (_pendingResolutions entries are deleted in resolveClassByName's finally block; childrenOfByName grows proportionally to _resolvedClasses's own distinct-package count, not independently).
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts test/imports.test.ts
+commit:            7a4448d (red) + 6d7be38 (green)
+notes:             Cap value (5000) is a discretionary choice, named as a constant per the plan's own instruction; the test file imports the constant from source rather than duplicating the literal, so the two can never drift.
 ```
 
 ```
@@ -484,15 +484,15 @@ location:          bbj-vscode/src/language/java-interop.ts:175-314
 dimension:         D4
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a (D4 trace-tier finding): a change to the shared connect+send+catch shape (e.g. adding a retry, or the circuit breaker recommended by P61-D3-002) must be applied in up to 4 places by hand, risking drift
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11
+failure_scenario:  n/a (D4 trace-tier finding): a change to the shared connect+send+catch shape (e.g. adding a retry, or the circuit breaker recommended by P61-D3-002) must be applied in up to 4 places by hand, risking drift between them.
+fix_applied:       Extracted a private sendRequestSafe<P,R>(request, params, fallback, token) helper implementing the shared connect+send+catch(log,return-fallback) shape, and routed loadClasspath() through it. getRawClass (timeout race, no fallback-value semantics), loadImplicitImports (multiple nested per-package requests with per-item processing), and ensureCompleteClassIndex (METHOD_NOT_FOUND-specific latch plus success-path side effects) each carry logic beyond the plain shape and were intentionally left unrouted rather than force-fit, to avoid a behaviour-changing refactor beyond what the record's exact-edit clause asks for.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/java-interop-service.test.ts test/method-return-java-type.test.ts test/imports.test.ts
+commit:            8c9028c
+notes:             Only 1 of the 4 call sites named in the record's location range was routed through the new helper; the acceptance criterion (at least one call site) is met. The other 3 sites' reasons for exclusion are documented in the helper's own doc comment in source.
 ```
 
 ```
@@ -826,15 +826,15 @@ location:          bbj-vscode/src/language/java-interop.ts:757-760
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           no-op
 test_required:     no (D-11 D8)
-fail_before:       TBD
-failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of clearCache()'s doc comment reasonably concludes calling it leaves no stale cached state, which is false for the
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D8 trace-tier finding, documentation-accuracy only
+failure_scenario:  n/a (D8 trace-tier finding — a documentation-accuracy defect, not a runtime failure): a reader of clearCache()'s doc comment reasonably concludes calling it leaves no stale cached state, which is false for the complete class index.
+fix_applied:       No code change. The record's test-5 clause offers two resolutions: fix the comment, "or fix the code per P61-D2-004 so the comment becomes true." P61-D2-004 landed in this same plan (commit 557ab62), and clearCache() now does clear the complete class index — so the doc comment's "Clears all cached Java class data..." claim is accurate as written. Re-read against the post-fix clearCache() body and confirmed true; no edit needed.
+user_facing:       no
+verification:      review-only — read clearCache()'s doc comment (java-interop.ts:867-869) against its post-P61-D2-004 body (java-interop.ts:870+); no compile, no test ran (D-14)
+commit:            none — resolved via P61-D2-004's fix (557ab62), per the record's own "or fix the code" clause
+notes:             Genuine no-op per the record's own escape clause, not a re-triage: the record explicitly names "fix the code per P61-D2-004" as one of its two valid resolutions, and P61-D2-004 (this same plan) took that path.
 ```
 
 ```
