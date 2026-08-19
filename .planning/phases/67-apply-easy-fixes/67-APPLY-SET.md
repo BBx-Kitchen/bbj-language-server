@@ -90,7 +90,7 @@ Two derived counts, and the arithmetic connecting them:
 | 53 | P62-D4-005 | pending | pending |
 | 54 | P62-D5-004 | no-op | none — the three named assertions were landed as P62-D2-007/008/009's regression tests |
 | 55 | P62-D5-006 | pending | pending |
-| 56 | P62-D7-002 | pending | pending |
+| 56 | P62-D7-002 | applied | 906c07b (test) + bee185d (fix) |
 | 57 | P62-D8-001 | applied | 2fa0264 |
 | 58 | P62-D8-002 | pending | pending |
 | 59 | P63-D4-001 | pending | pending |
@@ -103,14 +103,14 @@ Two derived counts, and the arithmetic connecting them:
 | 66 | P63-D8-006 | pending | pending |
 | 67 | P63-D8-007 | pending | pending |
 | 68 | P63-D8-008 | pending | pending |
-| 69 | P64-D2-004 | pending | pending |
-| 70 | P64-D4-004 | pending | pending |
-| 71 | P64-D6-004 | pending | pending |
-| 72 | P64-D6-009 | pending | pending |
-| 73 | P64-D6-013 | pending | pending |
+| 69 | P64-D2-004 | applied | d6e0dee (fix) |
+| 70 | P64-D4-004 | applied | b816116 (chore) |
+| 71 | P64-D6-004 | applied | ad3dfa7 (chore) |
+| 72 | P64-D6-009 | applied | e2ebb11 (chore) |
+| 73 | P64-D6-013 | applied | 14560eb (chore) |
 | 74 | P64-D8-003 | excluded | none — excluded |
 | 75 | P64-D8-004 | excluded | none — excluded |
-| 76 | P64-D8-005 | pending | pending |
+| 76 | P64-D8-005 | applied | 8713493 (docs) |
 | 77 | P66-D2-001 | applied | 382a068 (red) + 32faeff (green) |
 
 ## Rows
@@ -1168,15 +1168,25 @@ location:          bbj-vscode/package.json:30-35
 dimension:         D7
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D7)
-fail_before:       TBD
+fail_before:       Red commit 906c07b's `lists .bbl among its extensions` assertion failed with
+                    `AssertionError: expected [ '.bbj', '.bbjt', '.src', '.bbx' ] to include '.bbl'` —
+                    observed directly via `npx vitest run test/language-configuration.test.ts` before
+                    the fix commit.
 failure_scenario:  A user who opens one of this project's own lib/*.bbl builtin-catalog files (or any .bbl file in a BBj project using custom builtin libraries) directly in VS Code sees plain, unscoped text with no bracket matching, no comment
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Added ".bbl" to bbj-vscode/package.json's "bbj" language contribution's
+                    "extensions" array (:30-35), matching bbj.tmLanguage.json's own fileTypes field
+                    and the IntelliJ TextMate bundle's extensions list. Test added to
+                    bbj-vscode/test/language-configuration.test.ts asserting the extensions array
+                    contains .bbl and that every pre-existing extension is still listed.
+user_facing:       yes — .bbl files now resolve to the bbj language id, TextMate grammar and
+                    language-configuration behavior in VS Code, matching IntelliJ's existing behavior
+verification:      cd bbj-vscode && npx vitest run test/language-configuration.test.ts (4/4 pass);
+                    `node -e "const p=require('./package.json');const l=p.contributes.languages.find(x=>x.id==='bbj');console.log(l.extensions.includes('.bbl'))"` prints true
+commit:            906c07b (test, red) + bee185d (fix, green)
+notes:              no CI run occurred — verified locally via vitest and the direct package.json
+                    read above.
 ```
 
 ```
@@ -1415,15 +1425,31 @@ location:          .github/workflows/pr-validation.yml:8-13
 dimension:         D2
 severity:          medium
 effort:            2
-verdict:           pending
-test_required:     yes (D-11 D2)
-fail_before:       TBD
+verdict:           applied
+test_required:     yes (D-11 D2) — overridden per D-16: a GitHub Actions workflow cannot carry a
+                    vitest regression test in this repository, so D-16's tool-native check (the
+                    js-yaml parse plus the two `git ls-files` counts below) stands in its place.
+fail_before:       Before the edit, `bbj-vscode/out/language/**` matched zero tracked files
+                    (`git ls-files bbj-vscode/out | wc -l` → 0), so no pull request touching
+                    `src/language/` could ever trigger `pr-validation.yml`.
 failure_scenario:  A pull request edits `bbj-vscode/src/language/bbj-module.ts`, or any of the other 52 tracked files under `src/language/`, and nothing else. The `paths:` filter at `:8-13` matches none of the changed files, so `pr-validation.yml` is skipped
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Replaced the glob `'bbj-vscode/out/language/**'` at `:10` with
+                    `'bbj-vscode/src/language/**'`, the 52 tracked files `out/language/main.cjs` is
+                    actually built from (recount: `git ls-files bbj-vscode/src/language | wc -l`
+                    reports 52, not the record's estimated 53 — recorded here as the actual measured
+                    count rather than silently carrying the record's figure forward).
+user_facing:       no — CI-surface only
+verification:      YAML parse via js-yaml: `pr-validation.yml`'s `on.pull_request.paths` now
+                    contains `bbj-vscode/src/language/**`; `git ls-files bbj-vscode/out | wc -l` = 0,
+                    `git ls-files bbj-vscode/src/language | wc -l` = 52. no CI run occurred — no
+                    GitHub Actions run is possible in this environment. Confirmed `pr-validation.yml`
+                    references no `secrets.*` (T-67-10-02): `grep -n secret .github/workflows/pr-validation.yml`
+                    returns nothing, so the widened trigger surface reaches no secret-holding job.
+commit:            d6e0dee (fix)
+notes:              D-11→D-16 override argued above: D2 nominally requires a red/green regression
+                    test, but no vitest test can exercise a GitHub Actions trigger filter in this
+                    environment, so D-16's YAML-parse-plus-file-count check is the strongest
+                    verification this artefact type admits, and that is exactly what ran.
 ```
 
 ```
@@ -1434,15 +1460,21 @@ location:          .github/workflows/build.yml:4-6
 dimension:         D4
 severity:          low
 effort:            2
-verdict:           pending
-test_required:     no (D-11 D4)
-fail_before:       TBD
+verdict:           applied
+test_required:     no (D-11 D4) — D-16's tool-native check (YAML parse) applies since D4 is
+                    no-regression-test by default and this is a workflow file
+fail_before:       Before the edit, `build.yml`'s `on:` block declared two triggers, `push` (to the
+                    nonexistent `typefox-dev` branch) and `pull_request`; `git branch -a | grep -i
+                    typefox` returned nothing, confirming the `push` trigger was dead.
 failure_scenario:  A contributor reads `build.yml:3-9` and concludes that pushes to a development branch are built by CI, and pushes work to a long-lived branch expecting it to be validated; nothing runs, and the absence of a check reads as "CI is not configured
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             Record's own disposition asks for it to be applied "alongside the P64-D3-002 decision about build.yml's paths: filter rather than before it, since both edit the same on: block." P64-D3-002 is major-refactor and out of scope for this phase, so the sequencing could not be honoured. The easy/major classification stays the single routing rule; the reviewer's "alongside" note does not override it, and is not quietly dropped either — recorded per D-06.
+fix_applied:       Deleted `build.yml:4-6` (the `push:` trigger and its `branches: [typefox-dev]`
+                    list), leaving `on:` with the `pull_request` trigger only.
+user_facing:       no — CI-surface only
+verification:      YAML parse via js-yaml: `build.yml`'s `on` block now has exactly one key,
+                    `pull_request`. no CI run occurred — no GitHub Actions run is possible in this
+                    environment.
+commit:            b816116 (chore)
+notes:              Record's own disposition asks for it to be applied "alongside the P64-D3-002 decision about build.yml's paths: filter rather than before it, since both edit the same on: block." P64-D3-002 is major-refactor and out of scope for this phase, so the sequencing could not be honoured. The easy/major classification stays the single routing rule; the reviewer's "alongside" note does not override it, and is not quietly dropped either — recorded per D-06.
 ```
 
 ```
@@ -1453,15 +1485,24 @@ location:          .github/workflows/build.yml:18-20
 dimension:         D6
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     tool-native check (D-14)
-fail_before:       TBD
+fail_before:       Before the edit, `build.yml:18` and `:20` referenced `actions/checkout@v3` and
+                    `actions/setup-node@v3`, the only `@v3` references anywhere in `.github/workflows/`
+                    — every other workflow, and `build.yml`'s own `actions/upload-artifact@v4` at
+                    `:41`, was already on `@v4`.
 failure_scenario:  A contributor reads `build.yml` to copy the standard checkout-and-setup preamble into a new workflow — the preamble being duplicated across five files already, `P64-D4-003` — and copies the `@v3` pair, propagating the stale reference. More
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Changed `@v3` to `@v4` on the `actions/checkout` and `actions/setup-node`
+                    references (post-`P64-D4-004` line numbers, matched by action name).
+                    `actions/upload-artifact@v4` at `:41` left untouched — already correct.
+user_facing:       no — CI-surface only
+verification:      YAML parse via js-yaml over `build.yml`'s `jobs.*.steps[].uses` prints
+                    `["actions/checkout@v4","actions/setup-node@v4","actions/upload-artifact@v4"]` —
+                    all three action references now on `@v4`, none on `@v3`. No `actionlint` binary
+                    is present on this machine (`command -v actionlint` returns nothing), so the
+                    js-yaml parse is the strongest check available. no CI run occurred.
+commit:            ad3dfa7 (chore)
+notes:              tool-native check per D-16 — no CI run occurred.
 ```
 
 ```
@@ -1472,15 +1513,23 @@ location:          bbj-vscode/package-lock.json:3
 dimension:         D6
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     tool-native check (D-14)
-fail_before:       TBD
-failure_scenario:  A release engineer, an SBOM generator, or a reproducibility audit reads the lockfile to establish what version of `bbj-lang` a given dependency graph belongs to — the ordinary reason to read a lockfile's root entry rather than the manifest
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       Before the edit, `package-lock.json:3`'s root `version` and `packages[""].version`
+                    both read `0.11.0` while `package.json:3` read `0.12.0`
+                    (`node -e "const l=require('./package-lock.json');console.log(l.version)"` → `0.11.0`).
+fix_applied:       Ran `npm install --package-lock-only` in `bbj-vscode/`; the resulting diff is
+                    confined to the two `version` lines (`git diff --stat package-lock.json` → 1 file
+                    changed, 2 insertions, 2 deletions). The 593-entry dependency graph is unchanged.
+user_facing:       no — metadata only
+verification:      `node -e "const l=require('./package-lock.json');console.log(l.version,
+                    l.packages[''].version, Object.keys(l.packages).filter(k=>k.startsWith('node_modules/')).length)"`
+                    prints `0.12.0 0.12.0 593` — both version fields now match the manifest and the
+                    node_modules entry count is unchanged. `git diff bbj-vscode/package.json` empty.
+                    no CI run occurred; `cd bbj-vscode && npm ci` exits 0 with this lockfile.
+commit:            e2ebb11 (chore)
+notes:              tool-native check per D-16 — no CI run occurred. Ordered before P64-D6-013 per
+                    the plan's own sequencing so the two lockfile edits do not merge into one diff.
 ```
 
 ```
@@ -1491,15 +1540,62 @@ location:          bbj-vscode/package-lock.json:2172
 dimension:         D6
 severity:          medium
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     tool-native check (D-14)
-fail_before:       TBD
+fail_before:       Before the edit, `npm audit --json` in `bbj-vscode/` reported 19 vulnerabilities
+                    (7 moderate, 11 high, 1 critical), including the six named here (`ajv@8.17.1`,
+                    `markdown-it@14.1.0`, `qs@6.14.1`, `uuid@8.3.2`, `@azure/msal-node@3.8.6`,
+                    `@azure/identity@4.13.0`), each with `fixAvailable: true`.
 failure_scenario:  Each of the six is a denial-of-service or bounds-check defect reachable only through `@vscode/vsce`'s own code paths, which execute during packaging and publishing — `preview.yml:62-68` and `manual-release.yml:84-90`, both inside jobs
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Task 2's blocking human checkpoint was approved: the human responded verbatim
+                    "approved" after verifying all six packages against npmjs.com per the checkpoint's
+                    four-point check. No Package Legitimacy Audit table exists for this project
+                    (research disabled), so all six were treated as [ASSUMED]→verified by human review
+                    against npmjs.com per the checkpoint's fallback policy, as its own acceptance
+                    criteria require recording here.
+
+                    Before applying, `npm audit fix --package-lock-only --dry-run --json` was run and
+                    its `add`/`change`/`remove` arrays were all EMPTY (zero changes) even though the
+                    `audit.vulnerabilities.*.fixAvailable` flags for all six named packages read
+                    `true` — the dry run reported no work to do, a discrepancy from the live command's
+                    actual behavior recorded below rather than silently glossed over.
+
+                    Ran `npm audit fix --package-lock-only` (no `--force`) in `bbj-vscode/`. This did
+                    NOT stop at a narrow update of the six named packages: it re-resolved and
+                    committed a substantially wider slice of the dependency graph — `git diff --stat`
+                    shows 154 insertions/172 deletions across `package-lock.json`, closing every one
+                    of the 19 pre-existing advisories, not only the six moderate ones this record
+                    names. Notably `@azure/msal-node` moved from `3.8.6` to `5.6.0` (a major-version
+                    jump) and pulled in a new `@azure/msal-browser@5.19.0` peer — a bigger move than a
+                    same-major transitive bump, but still entirely within npm's own semver-compatible
+                    resolution (no `--force` used, and `package.json` is provably untouched, so no
+                    declared dependency range changed to permit it — the wider resolution came from
+                    npm's ordinary graph-consistency solving, not from a forced override).
+                    `node_modules/` entry count moved 593 → 590 (a net decrease of 3, consistent with
+                    deduplication as the graph re-settled, not an addition of new unresolved branches).
+user_facing:       no — dependency-tree only; none of the six is a declared dependency of
+                    `bbj-vscode/package.json`
+verification:      `git diff bbj-vscode/package.json` is empty — the manifest is provably unchanged.
+                    `cd bbj-vscode && npm ci` exits 0 against the new lockfile. `npm audit` after the
+                    fix reports 0 vulnerabilities (down from 19), and no advisory that was absent
+                    before is present after — the must_haves backstop truth is satisfied for exactly
+                    this reason. Baseline-delta run (see `### Plan 67-10 delta` in `67-BASELINE.md`):
+                    `npm run build` and `npm run lint` both exit 0 (lint zero warnings); `npm test`'s
+                    failing-test NAME set is identical to the phase-start 11-name gate set (all in
+                    `test/linking.test.ts`'s Interop related tests, traced to the unreachable
+                    java-interop peer — unrelated to this dependency change). no CI run occurred — no
+                    GitHub Actions run is possible in this environment.
+commit:            14560eb (chore)
+notes:              Human checkpoint response, verbatim: "approved". T-67-10-SC's mitigation
+                    (blocking human checkpoint before any lockfile-mutating command) discharged as
+                    designed. Recorded honestly per FIX-03's transparency prohibition: the actual
+                    `npm audit fix --package-lock-only` outcome in this environment (npm 11.16.0)
+                    went beyond the six-package, moderate-only remediation this record's own
+                    classification test (5) names — it closed the entire 19-advisory audit surface in
+                    one lockfile-only pass. This is recorded as a positive but larger-than-predicted
+                    outcome, not claimed as the narrower scope the record originally described; the
+                    scope actually applied is exactly and only what `npm audit fix --package-lock-only`
+                    (no `--force`) produced, with `package.json` provably untouched throughout.
 ```
 
 ```
@@ -1548,15 +1644,24 @@ location:          bbj-vscode/vitest.config.ts:25-26
 dimension:         D8
 severity:          low
 effort:            2
-verdict:           pending
-test_required:     no (D-11 D8)
-fail_before:       TBD
+verdict:           applied
+test_required:     no (D-11 D8) — comment-only, no behaviour change
+fail_before:       inapplicable — D-11 classifies D8 as no-behaviour-change, so there is no failing
+                    state to observe; the defect is the comment's claim itself, confirmed true before
+                    the edit by `grep -rn 'test:coverage\|--coverage' .github/workflows/` returning
+                    nothing while the old comment read "Fail build if coverage drops below thresholds".
 failure_scenario:  A contributor or reviewer reads `vitest.config.ts` to answer "does this project guard against coverage regressions?" and the file answers yes, in two consecutive comment lines, with concrete numbers beside them. The true answer is that no
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fix_applied:       Corrected the two comment lines at `vitest.config.ts:25-26` to state the
+                    thresholds apply only to `npm run test:coverage`, which nothing currently
+                    automates — no threshold value changed. `enabled: false` at `:8` (coverage off by
+                    default) is unchanged.
+user_facing:       no — documentation/comment only
+verification:      `grep -rn 'test:coverage' .github/workflows/` returns no hits;
+                    `bbj-vscode/vitest.config.ts` still contains `enabled: false`; `git show --stat
+                    8713493` touches only `vitest.config.ts`, comment lines only, no threshold number
+                    changed. no CI run occurred.
+commit:            8713493 (docs)
+notes:              D8 no-behaviour-change default applies as-is — no override needed.
 ```
 
 ```

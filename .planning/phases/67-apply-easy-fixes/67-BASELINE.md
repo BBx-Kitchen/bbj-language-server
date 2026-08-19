@@ -663,6 +663,79 @@ the +8 matches this plan's two new test modules (`test/extension-activation.test
 `copyTextMateBundle` task), but no `bbj-intellij/` file itself changed by this plan (D-09) — the
 grammar change reaches IntelliJ at plugin-build time with no Java-side edit required.
 
+### Plan 67-10 delta
+
+**Verdict: identical** — including through the phase's one dependency-tree-reinstalling fix
+(`P64-D6-013`), which the plan's own action step calls out as the case where a changed failure set
+would be treated as a blocker, not an observation.
+
+Ran from `bbj-vscode/`: `npm ci`, `npm run build`, `npm run lint`, and `npm test` (three full
+`npm test` runs, per D-08), on HEAD after this plan's nine commits closing seven ledger rows
+(`P64-D4-004`, `P64-D6-004`, `P64-D2-004`, `P64-D8-005`, `P62-D7-002`, `P64-D6-009`, `P64-D6-013`).
+Three of the seven touch only `.github/workflows/` or a comment (`P64-D4-004`, `P64-D6-004`,
+`P64-D2-004`, `P64-D8-005` — no runtime code path), one adds a client-side language-id extension
+entry (`P62-D7-002`), and two reinstall/reresolve the `bbj-vscode/` dependency tree
+(`P64-D6-009`, `P64-D6-013`). None touches `test/linking.test.ts`'s interop suite or its
+java-interop transport, so the 11-name gate set was expected to stay unchanged.
+
+**`npm ci`: exit `0`.** Installs cleanly against the `P64-D6-009`+`P64-D6-013` lockfile —
+`langium:generate` and `build` both ran as part of the `prepare` lifecycle script with no error.
+
+**`npm run build`: exit `0`.**
+
+**`npm run lint`: exit code `0`, zero warnings.** Unchanged from the `P61-D4-010` lint-clean
+milestone; none of this plan's commits touches an eslint directive.
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time — the
+same 11 names as the phase-start gate set:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set on all three runs — same 11 names, none added, none removed.
+All 11 are traced to the same unreachable-java-interop-peer cause recorded at phase start; none is
+newly introduced by the dependency-tree reinstall, confirming `P64-D6-009`/`P64-D6-013` broke
+nothing this suite can observe.
+
+Beyond these 11, each run showed a different 0-2 additional `FAIL` lines, every one a `beforeAll`
+`Error: Hook timed out in 10000ms.`, never an assertion failure:
+
+- Run 1: `test/builtin-library-members.test.ts > builtin library: labels, variables, events
+  (P61-D5-017)` (`:16`-ish), `test/lazy-prefix-loading.test.ts > Lazy PREFIX loading (#32)`, and
+  `test/use-project-root.test.ts > USE resolves relative to the project root (#378)` — pre-existing
+  files this plan does not touch. Excluded per D-08.
+- Run 2: `test/classes.test.ts > Cyclic inheritance detection` and
+  `test/run-call-file-resolution.test.ts > RUN/CALL file resolution is inert without project
+  context` — pre-existing files this plan does not touch. Excluded per D-08.
+- Run 3: `test/use-project-root.test.ts > USE resolves relative to the project root (#378)` —
+  pre-existing file this plan does not touch. Excluded per D-08.
+
+Every test in a timed-out suite reports `skipped`, not `failed`, which is why the total
+passed/skipped counts vary run to run (925-943 passed, 4-22 skipped) while the 11-name
+deterministic failure set and the 958 total never move.
+
+**Total test count observation (not gate criteria, D-08):** `958` total tests across all three
+runs (`11 failed | N passed | M skipped (958)`), up from `956` recorded in the Plan 67-09 delta —
+the +2 matches this plan's two new `test/language-configuration.test.ts` cases added for
+`P62-D7-002`.
+
+**`npm audit` after this plan's dependency-tree changes: `0` vulnerabilities** (down from the
+phase-start 19: 7 moderate, 11 high, 1 critical). See the `P64-D6-013` ledger row for the full
+account of why the fix's actual scope exceeded the six packages the finding record names.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed by this plan (D-09); the
+`P62-D7-002` client-side `.bbl` extension entry is VS Code-only (`bbj-vscode/package.json`), and the
+lockfile changes are npm-only.
+
 ## Phase-close delta
 
 *(To be filled by plan 67-12 at phase close.)*
