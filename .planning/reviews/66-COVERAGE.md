@@ -547,3 +547,194 @@ verdicted here.
 
 **No `gh` write subcommand was run to produce either draft.**
 
+## DEBT-03
+
+### Inherited evidence
+
+Cites both `P61-*` records by ID — the reproduction angle and the untested-regression angle:
+
+- **`P61-D2-011`** (`61-COVERAGE.md`, D2 cell narrative ~line 1516, record ~line 1527) — the
+  reproduction: a synthetic `JavaMethod` (`valueOf`, `returnType: 'java.lang.String'`) with
+  `resolvedReturnType` left unset produced **zero** "incompatible type" diagnostics when validated
+  against a declared `java.util.HashMap` return type, proving `getType()` silently returned
+  `undefined` instead of the expected mismatch.
+- **`P61-D5-009`** (`61-COVERAGE.md`, D5 cell narrative ~line 1519, record ~line 1797) — the
+  untested-regression angle: the gap exists only as prose (`STATE.md`, `ROADMAP.md`), with no
+  committed regression test asserting a static Java method call's inferred type.
+
+Neither trace is restated here.
+
+### Currency check
+
+The Phase 61 reproduction used a throwaway vitest test, deleted before commit (`git status
+--porcelain bbj-vscode` was clean at sweep time) — it cannot be re-run by citation alone, and it
+is **not** re-run here (no fresh reproduction was executed by this plan). Instead, INVENTORY §3b's
+`repro` bar is cleared by its **second form**: a line-by-line trace from current code.
+
+```bash
+grep -n "isJavaMethod(member)" bbj-vscode/src/language/bbj-type-inferer.ts
+```
+**Literal output:** `75:                } else if (isJavaMethod(member)) {`
+
+Read directly (`bbj-vscode/src/language/bbj-type-inferer.ts:65-90`): the `getTypeInternal`
+`isMemberCall` branch's `isJavaMethod(member)` case (lines 75-76) reads
+
+```ts
+} else if (isJavaMethod(member)) {
+    return member.resolvedReturnType?.ref;
+```
+
+with **no fallback** to the always-present raw `member.returnType: string`
+(`generated/ast.ts:1350`) when `resolvedReturnType` is unset. Compare the sibling branches
+immediately below: `isMethodDecl(member)` (line 77) and `isFieldDecl(member)` (line 79) both call
+`getClass(member.returnType)` / `getClass(member.type)` directly off the raw, always-present type
+string — only the `isJavaMethod` branch has no equivalent fallback.
+
+| Anchor | Recorded location | Current location | Construct | Result |
+|---|---|---|---|---|
+| `isJavaMethod` branch, no fallback | `bbj-type-inferer.ts:75-76` | `bbj-type-inferer.ts:75-76` | `} else if (isJavaMethod(member)) { return member.resolvedReturnType?.ref; }` | **current** — identical lines, identical code, no fallback added |
+
+Zero drift — the exact code `P61-D2-011` reproduced against is still present, unmodified, at the
+identically recorded line range.
+
+### Verdict
+
+The code is unchanged since the swept SHA (confirmed by the phase-wide empty diff and this
+anchor's exact-line match): the item is **still real**. Per D-06's exception clause, this verdicts
+`easy-fix` — not `major-refactor` — because both inherited records (`P61-D2-011` and `P61-D5-009`)
+already independently classified `easy` with all six §3c tests passing, and re-evaluating each
+test against the current, unchanged code confirms the same result (see Finding record below): the
+fix touches one file, adds no public API/grammar/LSP change, adds no dependency, is
+regression-testable with the existing vitest harness, the exact edit is nameable, and severity is
+`medium` (not `critical`/`high`, and dimension is D2 not D1).
+
+### Finding record
+
+```
+id:                P66-D2-001
+unit:              DEBT-03
+location:          bbj-vscode/src/language/bbj-type-inferer.ts:75-76
+dimension:         D2
+secondary:         [D5]
+severity:          medium
+evidence_tier:     repro
+evidence:          Because a secondary dimension (D5) is set, INVENTORY §3b's adjacency rule
+                   requires the stricter of the two tiers; D2 is repro-tier and D5 is
+                   trace-tier-by-assertion, so repro (the stricter) governs and is recorded here.
+                   Cites P61-D2-011 (the original reproduction, evidence not restated) and
+                   P61-D5-009 (the untested-regression angle, evidence not restated) by ID, plus
+                   this plan's line-by-line re-read of the current isJavaMethod branch (see
+                   Currency check above), which clears the repro bar's second form: a trace naming
+                   the concrete inputs/state (a JavaMethod whose resolvedReturnType is unset — any
+                   path bypassing java-interop.ts's async Phase 2, java-interop.ts:615-618) and
+                   the exact file:line where behaviour diverges (bbj-type-inferer.ts:75-76's
+                   missing fallback to the always-present raw member.returnType string).
+failure_scenario:  Any static or instance Java method call whose JavaMethod.resolvedReturnType has
+                   not (yet, or ever) been populated — a resolution race, a partially resolved
+                   class, or any future code path constructing/updating a JavaMethod outside
+                   java-interop.ts's own resolveClass() Phase 2 — causes bbj-type-inferer.ts to
+                   silently return no type for that call site, with no diagnostic explaining why.
+                   Matches DEBT-03's documented symptom (String.valueOf(2) assigns no type to the
+                   target variable).
+classification:    easy
+                   (1) touches 1 file: pass — the fallback edit lives entirely inside the
+                   isJavaMethod branch of bbj-type-inferer.ts's getTypeInternal — (2) no public
+                   API/grammar/LSP change: pass — (3) no new dependency: pass — (4)
+                   regression-testable with the existing vitest harness: pass — the same
+                   method-return-java-type.test.ts #437 mismatch-detection mechanism the original
+                   reproduction used can carry a committed regression test — (5) reviewer can name
+                   the exact edit: pass — in the isJavaMethod branch, fall back to
+                   this.javaInterop.getResolvedClass(member.returnType) when
+                   resolvedReturnType?.ref is undefined — (6) severity medium, dimension D2 (not
+                   D1): pass — all six pass, easy. Both inherited records (P61-D2-011,
+                   P61-D5-009) independently reached the same easy classification; re-evaluating
+                   against the current, byte-for-byte-unchanged code reproduces the same result.
+effort:            4
+dedup:             #466 (Detect sibling-type method return mismatches via Java class hierarchy) —
+                   checked and recorded as unrelated: #466 requests a validation that compares an
+                   ALREADY-RESOLVED return type against a Java class hierarchy (e.g. a HashMap
+                   returned where a TreeMap was declared) — its premise is that getType() already
+                   produced a type to compare. This finding is about getType() producing no type
+                   at all in the first place (silently returning undefined), a different and
+                   upstream mechanism from #466's hierarchy-comparison concern; a fix for this
+                   finding is a precondition for #466's validation ever having a type to compare
+                   in the resolvedReturnType-unset case, but the two are not duplicates and do not
+                   partially overlap in what they each check.
+disposition:       easy-fix
+```
+
+### Issue-ready draft
+
+**Title:** `bbj-type-inferer.ts`'s `isJavaMethod` branch drops the return type when
+`resolvedReturnType` is unresolved — add a raw-`returnType` fallback
+
+**Problem statement:** `getTypeInternal`'s `isJavaMethod(member)` branch returns
+`member.resolvedReturnType?.ref` with no fallback to the always-present raw
+`member.returnType: string`, so any call site whose Java method type has not (yet, or ever) been
+async-resolved by `java-interop.ts`'s Phase 2 silently receives `undefined` instead of a usable
+type, with no diagnostic explaining why.
+
+**`file:line` evidence:** `bbj-vscode/src/language/bbj-type-inferer.ts:75-76`.
+
+**Verified failure scenario:** `String.valueOf(2)` (a static Java method call) assigns no
+inferred type to its target variable, matching `PROJECT.md`'s documented symptom exactly; the
+inherited reproduction (`P61-D2-011`) demonstrated this produces zero "incompatible type"
+diagnostics even against a declared, mismatched return type.
+
+**Proposed approach — named edit:** In `getTypeInternal`'s `isJavaMethod` branch
+(`bbj-type-inferer.ts:75-76`), fall back to
+`this.javaInterop.getResolvedClass(member.returnType)` when `member.resolvedReturnType?.ref` is
+`undefined`, using the method's own always-present raw `returnType: string`
+(`generated/ast.ts:1350`) as the fallback input — the same resolution mechanism `java-interop.ts`'s
+own Phase 2 already uses, just invoked synchronously against the raw string instead of waiting on
+the async-populated `resolvedReturnType` reference.
+
+**Acceptance criteria:**
+- `String.valueOf(2)` (and any other static/instance Java method call with an unresolved
+  `resolvedReturnType`) infers a usable type instead of `undefined`.
+- A new committed regression test (the untested-regression angle `P61-D5-009` recorded — no such
+  test currently exists in the committed tree) asserts the inferred/propagated type of a static
+  Java method call using the existing `method-return-java-type.test.ts` `#437`
+  mismatch-detection mechanism.
+- `npm test` remains green; no existing type-inference assertion regresses.
+
+**Proposed labels:** area `types` (from the repository's existing area-label set); `PRIO 2`
+(severity `medium`); effort `4`.
+
+**No `gh` write subcommand was run to produce this draft.**
+
+## Plan 66-01 accounting
+
+**Rows and records this plan verdicted.** Three of the eight denominator items (DEBT-01, DEBT-02,
+DEBT-03) are verdicted by this plan, spanning **4 `PROJECT.md`-line register rows** (251, 253,
+254, 257 — DEBT-02 owns two rows per D-07's two-unblocking-conditions split) and **4 finding
+records** (`P66-D3-001`, `P66-D5-001`, `P66-D5-002`, `P66-D2-001`) — "3 rows, 4 records" in the
+plan's own shorthand, where "rows" counts denominator *items* and "records" counts the finding
+records those items produced.
+
+**Finding IDs allocated by this plan:** `P66-D3-001` (DEBT-01), `P66-D5-001` and `P66-D5-002`
+(DEBT-02), `P66-D2-001` (DEBT-03) — all four, per the pre-allocation table above, matched their
+pre-allocated slots exactly; none resolved `already-covered`/`not-reproducible` (the phase-wide
+diff was empty, so nothing had changed since the swept SHA), so no pre-allocated ID went unused.
+
+**Pre-allocated IDs left for later plans:** `P66-D2-002` (DEBT-04) and `P66-D4-001` (DEBT-05),
+left for `66-02`; `P66-D2-003` (DEBT-07) and `P66-D5-003` (DEBT-08), left for `66-03`. Their
+register rows (250, 256 pending `66-02`; 252, 255 pending `66-03`) are carried above with the
+explicit `pending 66-02` / `pending 66-03` cells — never left blank.
+
+**Zero source files modified, zero tracker writes.** Re-run at this plan's completion:
+
+```bash
+git status --porcelain bbj-vscode bbj-intellij java-interop .github
+```
+**Literal output: (empty — nothing).**
+
+```bash
+git status --porcelain .planning/reviews/INVENTORY.md .planning/reviews/61-COVERAGE.md .planning/reviews/62-COVERAGE.md .planning/reviews/63-COVERAGE.md .planning/reviews/64-COVERAGE.md .planning/reviews/65-COVERAGE.md
+```
+**Literal output: (empty — nothing).**
+
+No `gh` write subcommand ran anywhere in this plan — only the read-only `gh issue view 232` and
+`gh issue view 466` queries recorded above (`## Dedup source`, `## DEBT-01`, `## DEBT-03`'s dedup
+field). D-01 (verdict-only, no source change) and D-02 (zero tracker writes) both hold, evidenced
+by literal command output rather than asserted.
