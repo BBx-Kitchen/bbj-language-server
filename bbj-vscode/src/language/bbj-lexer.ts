@@ -9,7 +9,18 @@ export class BbjLexer extends DefaultLexer {
 
     protected prepareLineSplitter(text: string): string {
         const windowsEol = text.includes('\r\n');
-        const lines = text.split(/\r?\n/g);
+        // Split into (line, delimiter) pairs so each line's own original EOL can be re-emitted
+        // below instead of a single globally-detected one — using one global EOL for every line
+        // corrupts every downstream token offset on mixed CRLF/LF input (P61-D2-006).
+        const parts = text.split(/(\r\n|\r|\n)/);
+        const lines: string[] = [];
+        const delimiters: string[] = [];
+        for (let i = 0; i < parts.length; i += 2) {
+            lines.push(parts[i]);
+            if (i + 1 < parts.length) {
+                delimiters.push(parts[i + 1]);
+            }
+        }
         for (let i = 0; i < lines.length - 1; i++) {
             const start = i + 1;
             let lineIndex = start;
@@ -30,8 +41,11 @@ export class BbjLexer extends DefaultLexer {
                 i = end;
             }
         }
+        // The last element has no captured delimiter (it's either the true final line with no
+        // trailing terminator, or the empty tail after a genuine trailing terminator); fall back
+        // to the single detected EOL there, matching this function's prior behavior exactly.
         const eol = windowsEol ? '\r\n' : '\n';
-        return lines.join(eol) + eol;
+        return lines.map((line, i) => line + (delimiters[i] ?? eol)).join('');
     }
 
 }
