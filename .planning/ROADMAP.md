@@ -581,17 +581,52 @@ regression-tested, atomically-committed change, and the full test/build suite is
 **Plans**: 12 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 67-01-PLAN.md — Baseline capture, the derived 77-row apply-set ledger, and the D-04 merged fix end-to-end (tracer)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 67-02-PLAN.md — The 7 `java-interop.ts` findings: connection lifecycle, cache invalidation, unbounded cache
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 67-03-PLAN.md — `bbj-ws-manager.ts` (3) and `bbj-document-builder.ts` (3): multi-folder workspaces, swallowed errors, per-lookup rescan
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 67-04-PLAN.md — Completion, document-symbol and token-builder providers (6), plus the D-10 lint-clean gate
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 67-05-PLAN.md — The 5 remaining language-core D2 fixes: value converter, lexer, CPL parser, variable scoping, events library
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 67-06-PLAN.md — 4 maintainability + 2 source comment fixes, and the 3 `CLAUDE.md` corrections
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 67-07-PLAN.md — The 9 D5 test-coverage additions plus the one D8 comment fix in the test tree
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
 - [ ] 67-08-PLAN.md — `document-formatter.ts` (4) and `decompile-io.ts` (2): hangs, duplicate spawns, stale artefacts
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
 - [ ] 67-09-PLAN.md — TextMate grammar (3 + coverage row), extension activation, and the language-configuration JSON
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
 - [ ] 67-10-PLAN.md — Build/CI/dependency fixes and `.bbl` registration, behind a package-legitimacy checkpoint
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
 - [ ] 67-11-PLAN.md — The 9 `bbj-intellij/` fixes (review-only, D-14) and the `P63-D7-004` deferral (D-15)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
 - [ ] 67-12-PLAN.md — Phase-close baseline delta, ledger completeness audit, and the FIX-03 / FIX-04 shortfall statements
 
 ---
