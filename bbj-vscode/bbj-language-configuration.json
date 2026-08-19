@@ -51,7 +51,7 @@
             "notIn": [
                 "string"
             ]
-        },
+        }
     ],
     "surroundingPairs": [
         [
@@ -97,5 +97,5 @@
                 "appendText": "REM "
             }
         }
-    ],
+    ]
 }
