@@ -5,9 +5,10 @@
  ******************************************************************************/
 
 import * as fs from 'fs';
+import { TOKENIZED_BBJ_MAGIC } from './tokenized-bbj.js';
 
 /** Magic bytes at the start of a tokenized (binary) BBj program: "<<bbj>>". */
-const TOKENIZED_MAGIC = Buffer.from([0x3c, 0x3c, 0x62, 0x62, 0x6a, 0x3e, 0x3e]);
+const TOKENIZED_MAGIC = Buffer.from(TOKENIZED_BBJ_MAGIC);
 
 const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
