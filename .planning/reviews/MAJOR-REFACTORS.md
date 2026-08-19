@@ -3132,6 +3132,25 @@ nothing is exactly a finding dropped silently, which is what DOC-04 exists to pr
 that landed is `already-covered` with a citation; either way the reader can check it. No
 resolution is guessed here — the whole point of D-07 is that guessing would hide a silent drop.
 
+**Resolution census.** Of the `30` referrals, `19` landed as findings (an existing or newly-cited
+finding ID carries the subject), `6` were absorbed as observations (the receiving unit answered the
+subject inside a named prose section rather than as a numbered finding), `5` are open gaps (the
+receiving unit recorded nothing on the subject), and `0` are untraceable — `19` + `6` + `5` + `0` =
+`30`.
+
+The 5 open gaps, listed by source anchor so the phase close-out can carry them forward: (1)
+`64-COVERAGE.md:881` — referral 21, `RU-64-02` never independently confirmed `RU-64-03`'s
+undeclared-`tsx`-tool-dependency referral anywhere in its own `### SEC-08 Dependency Triage`; (2)
+`64-COVERAGE.md:1747` — referral 27, Phase 69 has not yet executed, so no disposition exists yet
+for the `P64-D1-004` issue-drafting instruction it carries; (3) `64-COVERAGE.md:3365` — referral 28,
+`RU-64-01` closed before `RU-64-02` raised the stale-workflow-comment referral, and `RU-64-01`'s own
+earlier D8 record still asserts the comments are accurate, uncorrected; (4) `64-COVERAGE.md:3372` —
+referral 29, `RU-64-01` closed before `RU-64-02` raised the no-test-run referral, and `RU-64-01`'s D5
+cell is structurally `n/a` for workflow files under `R-D5-CI`, so no finding was ever going to land
+there for this fact; (5) `64-COVERAGE.md:3378` — referral 30, `RU-62-01` is closed (Phase 62) and the
+`brace-expansion` reachability question is explicitly carried into Phase 69's issue draft rather than
+answered.
+
 **Phase 61 (12 referrals):**
 
 1. **[from `61-COVERAGE.md:640`]** **RU-61-05** — `bbj-ws-manager.ts:53-55` and `main.ts:151-152` supply `interopHost`/`interopPort` from `initializationOptions`/`didChangeConfiguration` with only a falsy-check default (`|| 'localhost'`, `|| 5008`), the same gap this unit's `setConnectionConfig` (`java-interop.ts:116-120`, `P61-D1-001`) does not close. `RU-61-05`'s own D1/D2 sweep should confirm whether either call site adds validation this unit does not see, or record its own finding if not.
@@ -3257,25 +3276,76 @@ resolution:        absorbed as an observation — `RU-63-05`'s own D7 Cross-IDE 
 **Phase 64 (10 referrals):**
 
 21. **[from `64-COVERAGE.md:881`]** **→ `RU-64-02` (plan `64-03`), D6.** `P64-D6-001`'s defect lives at `run-tests.ts:1,11-13`, but the file its fix edits — `bbj-vscode/package.json` — is `RU-64-02`'s for every dimension. Referred so `64-03`'s `### SEC-08 Dependency Triage` sees an undeclared tool dependency that no `npm audit` run over the declared tree can surface, and can state whether its own npm enumeration confirms the absence independently.
-resolution:        PENDING-RESOLUTION
+resolution:        open gap — `RU-64-02` never addresses this in its own `### SEC-08 Dependency
+                    Triage` or elsewhere: `grep -c 'P64-D6-001\|tsx' 64-COVERAGE.md` past
+                    `RU-64-02`'s own section header returns `0`. The SEC-08 triage table
+                    enumerates only `npm audit`-flagged vulnerable packages, which `tsx` is not
+                    (it is undeclared, not vulnerable), and no line states that RU-64-02's own npm
+                    enumeration was checked against the specific claim that `tsx` is absent. The
+                    receiving unit recorded nothing on this subject.
 22. **[from `64-COVERAGE.md:882`]** **→ `RU-64-01` (plan `64-02`), D6/SEC-07.** Whether this repository's dependency automation could ever see the three vendored JARs. What `RU-64-03` establishes and hands over: the three artifacts are `.jar` files under `bbj-vscode/tools/formatter/`, none is declared in any manifest or lockfile, and `.github/dependabot.yml` declares the npm ecosystem for `/bbj-vscode`. The conclusion that follows is `RU-64-01`'s to draw against the file itself, which plan `64-02` owns; stated here as a boundary rather than pre-empted.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — answered by `RU-64-01`'s own `### Cross-unit
+                    referrals` entry 3 (`64-COVERAGE.md:1746`, item 26 in this list): "the answer
+                    is no," with the dependabot.yml ecosystem trace as evidence. Recorded inline
+                    in that referral-response prose, not as a new `P64-*` finding, since the
+                    answer is a boundary fact rather than a defect.
 23. **[from `64-COVERAGE.md:883`]** **→ Phase 65, SEC-04 and SEC-05.** `P64-D1-002` is one leg of the EM token lifecycle (acquisition and validation via `em-login.bbj` and `em-validate-token.bbj`) and touches process spawning. Phase 65 owns the end-to-end synthesis across `BbjEMTokenStore` and both IDEs' launch paths; this unit supplies its leg with full evidence and does not attempt the lifecycle. Recorded as a referral rather than a ledger row, since Phase 65 is a cross-cutting audit and not a sweep unit.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — Phase 65's SEC-04 `### Cross-references` entry
+                    for `P64-D1-002` (`65-COVERAGE.md`, "D-07 handoff to `65-03`/SEC-05"
+                    paragraph) confirms the finding unmodified as the correct, complete owner of
+                    the ARGV-exposure-and-file-write leg and states a precision on
+                    `em-validate-token.bbj`'s wording, without promoting a new `P65-D1-*` finding
+                    — Phase 65 explicitly states the token-as-process-argument question "is
+                    answered, once, in this surface" by the existing ID.
 24. **[from `64-COVERAGE.md:1744`]** **→ `RU-64-02` (plan `64-03`), D6 / SEC-08.** The Gradle half of `P64-D6-005`. What `RU-64-01` establishes and hands over: `.github/dependabot.yml:3-7` declares exactly one `updates:` entry, `package-ecosystem: "npm"` for `directory: "/bbj-vscode"`, with **no `gradle` entry**, so `bbj-intellij`'s dependency tree receives no automated update coverage at all; corroborated by five open `dependabot/npm_and_yarn/bbj-vscode/*` remote branches and none for gradle. Plan `64-03` establishes under D-10 that the same tree cannot be enumerated locally either, and the composition — unscanned by tooling *and* unenumerable by hand — is a materially stronger SEC-08 result than either half alone. That composition belongs in `RU-64-02`'s `### SEC-08 Dependency Triage`, which consolidates criterion 3's answer; it is stated here as a boundary rather than pre-empted. The `documentation/` and `github-actions` halves of the same finding stay here, because both surfaces are `RU-64-01`'s.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — answered inside `RU-64-02`'s own D6/`### SEC-08
+                    Dependency Triage` cell (`64-COVERAGE.md`, "Composed with `RU-64-01`'s
+                    finding, which is stronger than either half alone" paragraph): confirms the
+                    Gradle tree is both unscanned by tooling (`P64-D6-005`) and unenumerable by
+                    hand (this unit's own `./gradlew` failure), composing the two into one
+                    stronger statement rather than filing a third ID for the composition itself.
 25. **[from `64-COVERAGE.md:1745`]** **→ `RU-64-02` (plan `64-03`), D2 / D5.** `bbj-vscode/package.json:654` declares `"vscode:prepublish": "shx cp ../LICENSE ./LICENSE && npm run esbuild-base -- --minify && npm run lint"`, and `vsce package` runs that script before packaging. Every packaging step in this unit therefore depends on ESLint passing — `build.yml:39`, `pr-vsix.yml:61`, `preview.yml:67` and `manual-release.yml:89` — including the two that immediately precede a marketplace publish, even though **no workflow in the repository runs `npm run lint` explicitly** and no workflow names lint as a gate. That is a workflow-visible fact, but the file it would be fixed in is `bbj-vscode/package.json`, which INVENTORY assigns to `RU-64-02` for every dimension, so no finding is allocated here (D-18). Referred so `64-03` can assess it against the manifest and against INVENTORY's recorded `npm run lint` baseline.
-resolution:        PENDING-RESOLUTION
+resolution:        landed — `P64-D4-005` (`RU-64-02`, major-refactor) assesses exactly this
+                    manifest fact as part of its own evidence: "`lint` runs in CI only through
+                    `package.json:654`'s `vscode:prepublish`, so the decorative check also sits on
+                    the release path" — confirming no workflow runs `npm run lint` as an explicit,
+                    named gate, folded into the decorative-lint finding rather than filed
+                    separately.
 26. **[from `64-COVERAGE.md:1746`]** **→ `RU-64-03` (plan `64-01`, closed) — answering its referral, not opening one.** `64-01`'s `### Cross-unit referrals` entry 2 asks whether this repository's dependency automation could ever see the three vendored `tools/formatter/` JARs, and states plainly that the conclusion is `RU-64-01`'s to draw against the config file itself. **The answer is no.** `.github/dependabot.yml:4-5` declares only the npm ecosystem for `/bbj-vscode`; Dependabot's npm ecosystem derives its dependency set from `package.json` and `package-lock.json`, in neither of which any of the three JARs is declared (`RU-64-03` established that as `P64-D6-001`'s premise), and the config declares no `maven` or `gradle` ecosystem that could see a `.jar` by any other route. The three vendored binaries are therefore outside every ecosystem this repository's dependency automation declares, which is a different and stronger statement than "no advisory has been reported for them". `RU-64-03` is closed and its section is not edited; the answer is recorded here, in the unit that owns the file that settles it.
-resolution:        PENDING-RESOLUTION
+resolution:        absorbed as an observation — this entry is itself the answer to referral 22
+                    above: `RU-64-01` confirms "the answer is no" against
+                    `.github/dependabot.yml`'s declared ecosystems, recorded inline in this
+                    Cross-unit referrals block rather than as a new `P64-*` finding, since it
+                    establishes a boundary fact (no ecosystem could ever see the JARs) rather than
+                    a defect of its own.
 27. **[from `64-COVERAGE.md:1747`]** **→ Phase 69 (issue drafting), gated on ISSUE-01 and bounded by D-16.** `P64-D1-004` is rated `high` and its `evidence:` field is deliberately redacted under D-16's two-tier rule, which this plan renders rather than re-approves. Whoever drafts its issue must carry the same limits into the issue text — surface, problem class and impact only — and must not reconstruct the omitted detail from the surrounding `### SEC-07 Workflow Security Posture` cells, which describe the same steps at the same level of abstraction for a different purpose. `P64-D1-005` is `medium` and carries no such limit. Recorded as a referral rather than a ledger row, since Phase 69 is not a sweep unit and INVENTORY's routing table contains no Phase 64 row.
-resolution:        PENDING-RESOLUTION
+resolution:        open gap — Phase 69 has not yet executed (it is a later phase than this one),
+                    so no disposition exists yet for whoever drafts `P64-D1-004`'s issue to follow
+                    this instruction. Carried forward to the phase close-out rather than treated
+                    as resolved; not a silent drop, since the instruction itself is fully recorded
+                    in the referral text, but there is no receiving-unit record to cite today.
 28. **[from `64-COVERAGE.md:3365`]** **To `RU-64-01` — two workflow comments contradicted by this unit's manifest.** `manual-release.yml:30` and `preview.yml:28` both read "vsce comes from bbj-vscode devDependencies (npm ci) — `npx vsce` resolves the pinned version". `bbj-vscode/package.json:670` declares `"@vscode/vsce": "^3.7.1"` under **`dependencies`**, not `devDependencies`. The manifest side is `P64-D6-007` and is recorded above; the two stale comments are located in `.github/`, which is `RU-64-01`'s surface and was swept by plan `64-02`, so they are referred rather than given a second finding here.
-resolution:        PENDING-RESOLUTION
+resolution:        open gap — `RU-64-01` closed (per its own `### Unit closure` part (iv): "This
+                    unit owns zero inherited items") before `RU-64-02` raised this referral;
+                    `RU-64-01`'s own D8 cell, written earlier, still asserts the two comments are
+                    accurate (`64-COVERAGE.md:924`, "match ... which `npm ci` installs") without
+                    the `dependencies`-vs-`devDependencies` distinction `P64-D6-007` later
+                    established. No later record corrects it. Carried forward to the phase
+                    close-out.
 29. **[from `64-COVERAGE.md:3372`]** **To `RU-64-01` — the cross-IDE validation workflow runs no test.** `pr-validation.yml:30-31` runs `npm ci` and `npm run build` and never `npm run test`, so the workflow whose stated job is validating a pull request across both IDEs exercises none of the 50-file suite. Surfaced by this unit's D5 sweep, located in `RU-64-01`'s file, referred rather than claimed. Note the adjacency: `RU-64-01`'s `P64-D2-004` already records that one of the same workflow's five path filters can never match.
-resolution:        PENDING-RESOLUTION
+resolution:        open gap — same structural cause as referral 28: `RU-64-01` closed before this
+                    referral was raised and its own D5 cell is `n/a` under `R-D5-CI` by design
+                    (test-coverage gaps are recorded against the code a workflow runs, not the
+                    workflow file), so no `P64-D5-*`/`P64-D2-*` finding was ever going to land
+                    here for this specific fact. The gap itself — `pr-validation.yml` never runs
+                    `npm run test` — is real and unresolved by any unit's own record. Carried
+                    forward to the phase close-out.
 30. **[from `64-COVERAGE.md:3378`]** **To `RU-62-01` (closed, Phase 62) — the `brace-expansion` reachability question.** Establishing whether a workspace-controlled glob reaches the vulnerable copy inlined in `out/extension.cjs` requires reading `bbj-vscode/src/extension.ts`. That unit is closed and this phase does not reopen it; the question is attached to `P64-D6-008` and carried into Phase 69's issue draft rather than answered here or left unstated.
-resolution:        PENDING-RESOLUTION
+resolution:        open gap — `RU-62-01` is closed (Phase 62) and this phase does not reopen it,
+                    per the referral's own text; the reachability question is explicitly
+                    unanswered and is "attached to `P64-D6-008` and carried into Phase 69's issue
+                    draft rather than answered here or left unstated." No receiving-unit
+                    disposition exists yet. Carried forward to the phase close-out.
 
 **Phase 65 (0 referrals):**
 

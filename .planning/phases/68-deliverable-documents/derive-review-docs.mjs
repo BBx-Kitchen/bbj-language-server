@@ -1906,6 +1906,29 @@ function runCheck() {
                 }
             }
 
+            // 5b. The referral sub-section's resolution census (landed / absorbed / open gap /
+            //     untraceable) re-adds to 30, so a hand-edited count can't silently drift from the
+            //     30 resolution: entries it is supposed to summarise (plan 68-06, Task 3).
+            {
+                const refText = extractSubsection(otherText, '### Cross-unit referrals and their resolution') ?? '';
+                const censusRe = /Of the `30` referrals, `(\d+)` landed as findings[\s\S]*?`(\d+)` were absorbed as observations[\s\S]*?`(\d+)` are open gaps[\s\S]*?`(\d+)` are untraceable[\s\S]*?`(\d+)`\s*\+\s*`(\d+)`\s*\+\s*`(\d+)`\s*\+\s*`(\d+)`\s*=\s*`30`/;
+                const m = refText.match(censusRe);
+                if (!m) {
+                    console.log('FAIL: DOC-04 referral census — the census sentence (landed/absorbed/open-gap/untraceable counts summing to 30) was not found in the expected shape');
+                    ok = false;
+                } else {
+                    const [, landed, absorbed, openGap, untraceable, sLanded, sAbsorbed, sOpenGap, sUntraceable] = m.map(Number);
+                    const proseSum = landed + absorbed + openGap + untraceable;
+                    const arithMatches = landed === sLanded && absorbed === sAbsorbed && openGap === sOpenGap && untraceable === sUntraceable;
+                    if (proseSum !== EXPECTED_REFERRAL_TOTAL || !arithMatches) {
+                        console.log(`FAIL: DOC-04 referral census — landed=${landed} absorbed=${absorbed} openGap=${openGap} untraceable=${untraceable} sums to ${proseSum} (expected ${EXPECTED_REFERRAL_TOTAL}); restated arithmetic ${sLanded}+${sAbsorbed}+${sOpenGap}+${sUntraceable} ${arithMatches ? 'matches' : 'does NOT match'} the stated counts`);
+                        ok = false;
+                    } else {
+                        console.log(`PASS: DOC-04 referral census — landed=${landed} absorbed=${absorbed} openGap=${openGap} untraceable=${untraceable}, summing to ${EXPECTED_REFERRAL_TOTAL}`);
+                    }
+                }
+            }
+
             // 6. `### Category reconciliation`'s table counts equal the live-derived 3, 24, 0, 14.
             {
                 const reconText = extractSubsection(otherText, '### Category reconciliation') ?? '';
