@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
 
 /**
  * Utility for storing and retrieving EM JWT tokens via IntelliJ PasswordSafe.
- * Tokens are keyed by a service name, stored in the OS-native keychain.
+ * Tokens are keyed by a service name and stored via IntelliJ's PasswordSafe, backed by
+ * whichever credential store the user has configured (a native keychain, KeePass, or none).
  */
 public final class BbjEMTokenStore {
 
