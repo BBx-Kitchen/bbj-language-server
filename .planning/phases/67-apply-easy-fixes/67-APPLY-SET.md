@@ -41,25 +41,25 @@ Two derived counts, and the arithmetic connecting them:
 | 4 | P61-D2-004 | applied | e82f9c2 (red) + 557ab62 (green) |
 | 5 | P61-D2-005 | pending | pending |
 | 6 | P61-D2-006 | pending | pending |
-| 7 | P61-D2-008 | pending | pending |
+| 7 | P61-D2-008 | applied | 83375d4 (red) + 664670f (green) |
 | 8 | P61-D2-009 | pending | pending |
 | 9 | P61-D2-010 | pending | pending |
 | 10 | P61-D2-011 | applied | 382a068 (red) + 32faeff (green) |
-| 11 | P61-D2-013 | pending | pending |
-| 12 | P61-D2-014 | pending | pending |
+| 11 | P61-D2-013 | applied | 1b85860 (red) + eb7d843 (green) |
+| 12 | P61-D2-014 | applied | 6b8c2db (red) + 84373a6 (green) |
 | 13 | P61-D2-015 | applied | c6bef67 (red) + 1f5e824 (green) |
 | 14 | P61-D2-016 | applied | d0b1666 (red) + c47da5c (green) |
 | 15 | P61-D2-017 | applied | 26576ae (red) + 38dea2e (green) |
 | 16 | P61-D2-019 | pending | pending |
 | 17 | P61-D3-001 | applied | 7a4448d (red) + 6d7be38 (green) |
-| 18 | P61-D3-004 | pending | pending |
+| 18 | P61-D3-004 | applied | a1a90cd (red) + 0aaece2 (green) |
 | 19 | P61-D3-005 | applied | fc9cf79 (red) + 6b32823 (green) |
 | 20 | P61-D4-003 | applied | 8c9028c |
-| 21 | P61-D4-005 | pending | pending |
+| 21 | P61-D4-005 | applied | 6be6639 |
 | 22 | P61-D4-006 | pending | pending |
 | 23 | P61-D4-008 | pending | pending |
 | 24 | P61-D4-009 | pending | pending |
-| 25 | P61-D4-010 | pending | pending |
+| 25 | P61-D4-010 | applied | 91f8329 |
 | 26 | P61-D4-012 | pending | pending |
 | 27 | P61-D5-004 | pending | pending |
 | 28 | P61-D5-005 | pending | pending |
@@ -237,15 +237,15 @@ location:          bbj-vscode/src/language/bbj-token-builder.ts:67-71
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  If any of the 14 hardcoded terminal names passed to spliceToken becomes absent from `tokens` — e.g. a future grammar edit renames or removes RPAREN_NL — findIndex returns -1 and `tokens.splice(-1, 1)` silently
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 83375d4 — `npx vitest run test/lexer.test.ts` failed: `expect(() => tokenBuilder.spliceToken(tokens, 'MISSING_TOKEN')).toThrow()` — spliceToken did not throw; `tokens.splice(-1, 1)` silently removed the last element ('THIRD') instead
+failure_scenario:  If any of the 14 hardcoded terminal names passed to spliceToken becomes absent from `tokens` — e.g. a future grammar edit renames or removes RPAREN_NL — findIndex returns -1 and `tokens.splice(-1, 1)` silently removes and re-splices the unrelated LAST token in the vocabulary array instead of raising an error, corrupting Chevrotain's token-priority ordering with no diagnostic message; the failure would surface later as a confusing, hard-to-trace lexer misbehavior rather than at the point of the misconfiguration.
+fix_applied:       spliceToken (bbj-token-builder.ts) now throws an Error naming the missing token before calling tokens.splice(nextTokenIndex, 1) when findIndex returns -1, instead of letting the splice silently remove and reorder the last token. No change to the 14 call sites or their argument names.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/lexer.test.ts test/parser.test.ts test/example-files.test.ts — build succeeds, all 3 suites pass (225 passed, 1 pre-existing skip), confirming all 14 hardcoded terminal names still resolve against the real grammar's token vocabulary
+commit:            83375d4 (red) + 664670f (green)
+notes:             Tested directly against the private spliceToken method (constructed a minimal 3-token array missing the sought name) rather than via a full grammar build, since triggering the -1 branch through the real 14-name call sequence would require breaking the grammar itself.
 ```
 
 ```
@@ -313,15 +313,15 @@ location:          bbj-vscode/src/language/bbj-completion-provider.ts:154-200
 dimension:         D2
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  A user types quickly inside a type-reference position; the editor cancels an earlier completion request as a newer one supersedes it (standard LSP behavior on rapid keystrokes). The cancelled request's
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 1b85860 — `npx vitest run test/completion-test.test.ts` failed 3/3 new cases: a pre-cancelled token still returned field-completion items, still called FileSystemProvider.readDirectory, and still called JavaInteropService.findClassCandidatesByPrefix
+failure_scenario:  A user types quickly inside a type-reference position; the editor cancels an earlier completion request as a newer one supersedes it (standard LSP behavior on rapid keystrokes). The cancelled request's completeAutoImportClasses call is not interrupted — it continues running (including its java-interop round trip) to completion, wasting CPU and java-interop's single global resolution lock queue (RU-61-06) on a result that is discarded on arrival. getFieldCompletion and getFilePathCompletion have the identical gap: neither ever receives or checks the cancellation token.
+fix_applied:       getCompletion (bbj-completion-provider.ts) now stores the request's cancelToken on a new activeCancelToken instance field and threads it as a direct parameter into getFieldCompletion and getFilePathCompletion. completeAutoImportClasses gained a cancelToken parameter too, supplied via activeCancelToken from completionForCrossReference (whose own signature is fixed by the base provider's interface and cannot carry the token directly). Each of the three methods checks cancelToken?.isCancellationRequested before starting work and again after its own await boundary, returning early on a pre-cancelled token; completeAutoImportClasses also forwards the token into JavaInteropService.findClassCandidatesByPrefix's own pre-existing (previously unused) token parameter.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/completion-test.test.ts test/file-path-completion.test.ts — build succeeds, both suites pass (77 passed, 1 pre-existing skip)
+commit:            1b85860 (red) + eb7d843 (green)
+notes:             grep -c 'isCancellationRequested' bbj-vscode/src/language/bbj-completion-provider.ts = 6, above the acceptance floor of 3.
 ```
 
 ```
@@ -332,15 +332,15 @@ location:          bbj-vscode/src/language/bbj-document-symbol-provider.ts:155,1
 dimension:         D2
 severity:          low
 effort:            2
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D2)
-fail_before:       TBD
-failure_scenario:  In a document with parser errors under LARGE_FILE_THRESHOLD (triggering the deep-walk fallback, line 52), two distinct named nodes that happen to start at the identical line/character produce only one outline entry instead of two;
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at 6b8c2db — `npx vitest run test/document-symbol.test.ts` failed: `expect(positions.size).toBe(2)` — two DocumentSymbols sharing the same range.start but different range.end collapsed into 1 tracked position, not 2
+failure_scenario:  In a document with parser errors under LARGE_FILE_THRESHOLD (triggering the deep-walk fallback, line 52), two distinct named nodes that happen to start at the identical line/character produce only one outline entry instead of two; the second node's symbol is dropped from recovery with no indication to the user that anything is missing from the outline.
+fix_applied:       collectPositions and applyDeepWalkFallback's own position check (bbj-document-symbol-provider.ts) now key on both range.start AND range.end via a new shared private encodeRangeKey(range) helper (returns a string `${startLine}:${startChar}-${endLine}:${endChar}`), replacing the old `line * 100_000 + character` start-only numeric key in both places. The Set element type changed from number to string accordingly.
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/document-symbol.test.ts — build succeeds, all 7 cases pass
+commit:            6b8c2db (red) + 84373a6 (green)
+notes:             Tested directly against the private collectPositions method with two synthetic DocumentSymbol objects sharing range.start, rather than a real BBj parse-error snippet — constructing a genuine BBj source that reproduces the exact same-start/different-end AST collision deterministically would depend on Chevrotain error-recovery internals that are not a stable contract to build a test against.
 ```
 
 ```
@@ -446,15 +446,15 @@ location:          bbj-vscode/src/language/bbj-completion-provider.ts:90-116
 dimension:         D3
 severity:          medium
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     yes (D-11 D3)
-fail_before:       TBD
-failure_scenario:  Typing a Java class name prefix character-by-character inside a type reference (e.g. "H", "Ha", "Has", "Hash", "HashM", "HashMa", "HashMap") in a workspace with a large classpath re-runs the full completeClassIndex/
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       observed at a1a90cd — `npx vitest run test/completion-test.test.ts` failed: `expect(findSpy).toHaveBeenCalledTimes(1)` — two completion requests for the identical prefix called findClassCandidatesByPrefix 4 times (Langium's own completion engine invokes completionForCrossReference more than once per cross-reference feature at a single offset, so even one request alone produced 2 calls)
+failure_scenario:  Typing a Java class name prefix character-by-character inside a type reference (e.g. "H", "Ha", "Has", "Hash", "HashM", "HashMa", "HashMap") in a workspace with a large classpath re-runs the full completeClassIndex/resolvedClasses scan on every keystroke from the second character onward; against an unresponsive java-interop peer, the same keystrokes each risk stalling the completion popup for the connect-timeout window.
+fix_applied:       completeAutoImportClasses (bbj-completion-provider.ts) now routes findClassCandidatesByPrefix through a new findClassCandidatesByPrefixCached helper, backed by a new autoImportPrefixCache instance field (Map<string, {promise, cachedAt}>) keyed on the lowercased prefix. The cache stores the in-flight Promise itself, not just its resolved value — Langium's completion engine awaits every matched grammar feature concurrently via Promise.all, so two completeAutoImportClasses calls for the same prefix within one request can both reach the cache before either resolves; sharing the in-flight promise dedupes that race as well as ordinary sequential repeats. Bounded by a 20-entry LRU-style size cap and a 2000ms TTL. Not document-scoped — cache key is the prefix alone, argued safe in this row's notes below (T-67-04-04).
+user_facing:       yes
+verification:      cd bbj-vscode && npm run build && npx vitest run test/completion-test.test.ts test/file-path-completion.test.ts — build succeeds, both suites pass (77 passed, 1 pre-existing skip); the P61-D3-004 test asserts both the reduced call count (1, not 4) and result-set equality between the first (uncached) and second (cached) completion's offered labels
+commit:            a1a90cd (red) + 0aaece2 (green)
+notes:             Invalidation trigger (D-11): a 2000ms TTL per cache entry plus a 20-entry LRU-style size cap — no explicit event-driven invalidation (e.g. on JavaInteropService.clearCache()) was wired, since that would require touching java-interop.ts / main.ts outside this task's file scope. The TTL bounds staleness against the class index growing mid-session to at most 2s, which self-heals on the next keystroke for that prefix; a cache with no invalidation story at all would have been the exact stale-completion bug T-67-04-02 warns against. Cache key is the lowercased prefix only, not per-document (T-67-04-04): findClassCandidatesByPrefix's result depends solely on JavaInteropService's workspace-wide class index, which every document shares, so a hit computed for one document's prefix is exactly the answer another document's identical prefix would compute — not a cross-document data leak.
 ```
 
 ```
@@ -503,15 +503,15 @@ location:          bbj-vscode/src/language/bbj-token-builder.ts:7-64
 dimension:         D4
 severity:          low
 effort:            4
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a future change to token priority ordering (the spliceToken block) risks an accidental edit inside the unrelated
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11
+failure_scenario:  n/a (D4 trace-tier finding — the code shape itself is the defect, not a runtime failure): a future change to token priority ordering (the spliceToken block) risks an accidental edit inside the unrelated ID-category-wiring block, since both operate on the same local `tokens` variable with no named boundary between them.
+fix_applied:       Extracted the 14 hardcoded spliceToken calls (lines 21-34 of the pre-fix buildTokens) into a new private reorderTokenPriorities(tokens) method, called once from buildTokens in their place. Behaviour-preserving: same 14 custom token names, same call order, same spliceToken implementation — only the grouping changed. Per this plan's own exact-edit scope, only reorderTokenPriorities was extracted; the record's evidence text also names a second wireIdCategories(tokens, terminalTokens) extraction for the ID/LONGER_ALT wiring block, which this plan's task text did not include and which was left in buildTokens unchanged.
+user_facing:       no
+verification:      cd bbj-vscode && npm run build && npx vitest run test/lexer.test.ts test/parser.test.ts test/example-files.test.ts — build succeeds, all 3 suites pass (225 passed, 1 pre-existing skip), confirming tokenization is unchanged after the extraction
+commit:            6be6639
+notes:             grep -c 'reorderTokenPriorities' bbj-vscode/src/language/bbj-token-builder.ts = 2 (definition + one call site).
 ```
 
 ```
@@ -579,15 +579,15 @@ location:          bbj-vscode/src/language/bbj-document-symbol-provider.ts:75,14
 dimension:         D4
 severity:          low
 effort:            1
-verdict:           pending
+verdict:           applied
 test_required:     no (D-11 D4)
-fail_before:       TBD
-failure_scenario:  n/a (D4 trace-tier finding — the lint warning itself is the defect, not a runtime failure): the directives no longer suppress anything, adding noise to `npm run lint`'s output and masking whether a future, genuinely-needed
-fix_applied:       TBD
-user_facing:       TBD
-verification:      TBD
-commit:            pending
-notes:             effort recorded as `1` in the source record — an off-scale value outside INVENTORY §3d's locked {2,4,8} effort scale. Carried through unchanged per this phase's off-scale handling instruction; not re-rounded to `2`. (The source record itself carries no additional inline annotation beyond the raw `effort: 1` value.) This is the same edit D-10 identifies as clearing both of npm run lint's pre-existing warnings.
+fail_before:       inapplicable — D4 trace-tier finding, no regression test per D-11; `npm run lint` itself is the regression check
+failure_scenario:  n/a (D4 trace-tier finding — the lint warning itself is the defect, not a runtime failure): the directives no longer suppress anything, adding noise to `npm run lint`'s output and masking whether a future, genuinely-needed eslint-disable nearby is intentional or another unused leftover.
+fix_applied:       Deleted the two `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comments at bbj-document-symbol-provider.ts:75 (getSymbol's error-recovery `(astNode as any).name` read) and :149 (applyDeepWalkFallback's deep-walk `(node as any).name` read). Neither `as any` read actually trips that rule (confirmed by the baseline's own "Unused eslint-disable directive" warning text), so both directives were pure noise.
+user_facing:       no
+verification:      cd bbj-vscode && npm run lint — exits 0 with zero warnings (previously: exit 0, 2 warnings)
+commit:            91f8329
+notes:             effort recorded as `1` in the source record — an off-scale value outside INVENTORY §3d's locked {2,4,8} effort scale. Carried through unchanged per this phase's off-scale handling instruction; not re-rounded to `2`. (The source record itself carries no additional inline annotation beyond the raw `effort: 1` value.) This is the same edit D-10 identifies as clearing both of npm run lint's pre-existing warnings — confirmed: `git show --stat 91f8329` touches only bbj-vscode/src/language/bbj-document-symbol-provider.ts, 2 lines deleted, no other file.
 ```
 
 ```

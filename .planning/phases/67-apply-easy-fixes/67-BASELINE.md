@@ -149,6 +149,23 @@ recorded there with suite name, quoted timeout, and reproduction status.
   out in 10000ms.` at `test/run-call-file-resolution.test.ts:23`, observed twice during plan
   67-03's baseline delta below (two separate re-runs). Not among the original 5; a new suite
   hitting the same pattern, reproduced across runs — confirmed flaky.
+- `test/use-project-root.test.ts > USE resolves relative to the project root (#378)` — `Error: Hook
+  timed out in 10000ms.` at `test/use-project-root.test.ts:28`, observed during plan 67-04's
+  baseline delta below (run 3 of 3). Already named among the suites recorded above; reproduction
+  confirms the flakiness is load-dependent.
+- `test/class-validations-issues.test.ts > Class validation issues (#79, #80, #86, #87)` —
+  `Error: Hook timed out in 10000ms.` at `test/class-validations-issues.test.ts:22`, observed
+  during plan 67-04's baseline delta below (run 1 of 3). Not among the previously named suites; a
+  new suite hitting the same load-dependent `beforeAll initializeWorkspace()` pattern. Did not
+  reproduce on runs 2 or 3 of the same delta (contention-dependent, per D-08).
+- `test/validation.test.ts > BBj validation` — `Error: Hook timed out in 10000ms.` at
+  `test/validation.test.ts:19`, observed during plan 67-04's baseline delta below (run 1 of 3).
+  Not among the previously named suites; a new suite hitting the same pattern. Did not reproduce
+  on runs 2 or 3 of the same delta.
+- `test/validation-function-calls.test.ts > builtin function call validation (#451)` — `Error: Hook
+  timed out in 10000ms.` at `test/validation-function-calls.test.ts:15`, observed during plan
+  67-04's baseline delta below (run 3 of 3). Not among the previously named suites; a new suite
+  hitting the same pattern. Did not reproduce on runs 1 or 2 of the same delta.
 
 ### Plan 67-01 delta
 
@@ -281,6 +298,68 @@ every affected suite's `beforeAll` calls the same shared, pre-existing
 **`npm run lint`:** exit code `0`, the same 2 pre-existing "Unused eslint-disable directive"
 warnings at `bbj-document-symbol-provider.ts:75,149` (`P61-D4-010`'s own evidence, not yet
 applied) — unchanged from the phase-start baseline.
+
+**`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
+
+### Plan 67-04 delta
+
+**Verdict: identical.**
+
+Ran from `bbj-vscode/`: `npm run lint` and `npm test 2>&1 | tail -40` (three full runs, per D-08),
+on HEAD after plan 67-04's ten commits (the P61-D2-013, P61-D3-004, P61-D2-014, P61-D2-008
+red/green pairs, the P61-D4-010 and P61-D4-005 no-test D4 fixes; no `bbj-intellij/` file changed,
+so `./gradlew build` is not re-run per D-09).
+
+**`npm run lint`: exit code `0`, zero warnings.** This is the lint-clean milestone D-10 predicted:
+the two baseline warnings —
+
+```
+bbj-vscode/src/language/bbj-document-symbol-provider.ts
+   75:13  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  149:21  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+```
+
+— are cleared by `P61-D4-010` (commit `91f8329`), which deletes both now-unused
+`eslint-disable-next-line @typescript-eslint/no-explicit-any` directives. This is the finding named
+as the cause, not housekeeping: no other file in this plan's diff touches an eslint directive, and
+`git diff 6343f90..HEAD --name-only` contains no path matching `eslint`.
+
+**`npm test`:** across all three runs, the failing-test NAME set was identical every time:
+
+1. `test/linking.test.ts > Linking Tests > Interop related tests > All BBj classes extends Object`
+2. `test/linking.test.ts > Linking Tests > Interop related tests > Import and declare simple Java class without using FQNs`
+3. `test/linking.test.ts > Linking Tests > Interop related tests > Import Java class`
+4. `test/linking.test.ts > Linking Tests > Interop related tests > Declare with direct import`
+5. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in extends`
+6. `test/linking.test.ts > Linking Tests > Interop related tests > Class definition with direct import in implements`
+7. `test/linking.test.ts > Linking Tests > Interop related tests > Unloaded Java FQN access - test for #6`
+8. `test/linking.test.ts > Linking Tests > Interop related tests > Java FQN access - test for #6`
+9. `test/linking.test.ts > Linking Tests > Interop related tests > Linked List is resolved`
+10. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class in use statement`
+11. `test/linking.test.ts > Linking Tests > Interop related tests > Resolve nested class FQN`
+
+Set-equal to the phase-start gate set — same 11 names, none added, none removed, on every one of
+the three runs. `test/completion-test.test.ts`, `test/file-path-completion.test.ts`,
+`test/document-symbol.test.ts`, `test/lexer.test.ts`, `test/parser.test.ts` and
+`test/example-files.test.ts` — the six suites this plan's `<verify>` blocks target directly —
+passed in full on every run.
+
+Beyond these 11, each of the three runs showed exactly 1-2 additional `FAIL` lines, every one a
+`beforeAll` `Error: Hook timed out in 10000ms.`, never an assertion failure: run 1
+(`test/class-validations-issues.test.ts`, `test/validation.test.ts`), run 2
+(`test/classes.test.ts > Cyclic inheritance detection`), run 3
+(`test/run-call-file-resolution.test.ts`, `test/use-project-root.test.ts`,
+`test/validation-function-calls.test.ts`). `test/classes.test.ts`,
+`test/run-call-file-resolution.test.ts` and `test/use-project-root.test.ts` are already named in
+`## Flaky exclusions (D-08)` above (same file, load-dependent hookTimeout); `test/class-validations-issues.test.ts`,
+`test/validation.test.ts` and `test/validation-function-calls.test.ts` are new suites hitting the
+identical `beforeAll initializeWorkspace()` hookTimeout pattern for the first time in this phase —
+none of the three touches any file this plan modifies
+(`bbj-completion-provider.ts`, `bbj-document-symbol-provider.ts`, `bbj-token-builder.ts`), so the
+new names are consistent with — not caused by — this plan's changes; excluded per D-08 with the
+exclusion argued per occurrence above. Every test in a timed-out suite reports `skipped`, not
+`failed`, which is why the total passed/skipped counts vary slightly run to run (852-892 passed,
+4-44 skipped) while the 11-name deterministic failure set and the 907 total never move.
 
 **`./gradlew build`:** not re-run — no `bbj-intellij/` file changed in this plan (D-09).
 
