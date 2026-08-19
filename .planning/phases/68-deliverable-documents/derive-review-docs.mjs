@@ -988,11 +988,118 @@ function writeAtomic(path, text) {
     renameSync(tmpPath, path);
 }
 
-/** DOC title + Derivation section shared preamble builders. */
-function easyHeader() {
+/** DOC-03 (68-04): the coverage preamble shared verbatim by both documents — one string, emitted
+ *  identically into `EASY-FIXES.md` and `MAJOR-REFACTORS.md` by construction (one producer, two
+ *  emissions), positioned after the `# ` title and before `## Derivation` (68-01's
+ *  `<phase_conventions>` fixes this order; this plan moves `## Derivation` down to make room).
+ *  `### Scope` states what was reviewed, at what granularity, against which dimensions, and what
+ *  was deliberately excluded and why — citing `INVENTORY.md` by section name rather than restating
+ *  its grid. `### Gaps` states what was not checked as plainly as what was: the JDK-17 gap (no
+ *  IntelliJ fix compiled or tested), the 11 deterministic interop test failures plus the separate
+ *  hookTimeout-driven run-to-run variance, the 24 not-reproducible candidate claims, and Phase 65's
+ *  enumerate-vs-record shape. DOC-03's wording is "so coverage gaps are visible to a reader" — a
+ *  preamble that lists only what was reviewed does not discharge it (68-CONTEXT.md D-08). */
+function renderCoveragePreamble() {
+    return `## Coverage
+
+### Scope
+
+The review surface: 21 review units across the four sweep phases — \`RU-61-01\`..\`RU-61-07\`
+(\`bbj-vscode/src/language/\`), \`RU-62-01\`..\`RU-62-05\` (extension host, composers, TextMate),
+\`RU-63-01\`..\`RU-63-05\` (\`bbj-intellij/\`, 61 Java files), \`RU-64-01\`..\`RU-64-03\` (build, CI,
+dependencies and tools) and the cross-cutting \`RU-D8-01\` documentation unit — plus 8
+file-exception rows for files whose applicability differs from their unit's (\`INVENTORY.md\`
+§"Applicability Grid").
+
+Eight dimensions applied cell by cell: D1 Security, D2 Correctness, D3 Performance,
+D4 Maintainability, D5 Test coverage, D6 Dependency health, D7 Cross-IDE parity, D8 Doc accuracy.
+The grid totals 29 rows (21 units + 8 file-exception rows) × 8 dimensions = 232 cells, of which 148
+are \`applies\` and 84 are \`n/a\` with a written exclusion marker. See \`INVENTORY.md\`
+§"Applicability Grid" and §"Grid totals" for the cell-by-cell detail — this preamble states the
+totals rather than restating the grid, so a reader gets a truthful picture without a second file
+open, and an auditor gets the path.
+
+Every one of the 224 recorded findings clears an evidence tier defined in \`INVENTORY.md\` §3b
+"Evidence Tiers", distributed 108 \`repro\`, 80 \`trace\` and 36 \`inherited\`. No record in either
+document is an unverified claim; the separate population of candidate claims that could not clear a
+tier is recorded in \`MAJOR-REFACTORS.md\` §"Other Dispositions" §"not-reproducible" rather than
+dropped.
+
+Named exclusions, each with its reason (\`REQUIREMENTS.md\` §"Out of Scope", \`INVENTORY.md\`
+§"Surface Accounting & Named Exclusions"):
+
+- \`java-interop/\`'s Java service — excluded by scope decision at milestone start (FUT-01); the
+  TypeScript-side client is reviewed at \`RU-61-06\`, and \`java-interop/build.gradle\` is read once
+  by \`RU-64-02\` only as a dependency-tree source, not as a code review.
+- \`bbj-vscode/src/language/generated/\` (17.5k LOC) — machine-generated from \`bbj.langium\`, whose
+  grammar source is reviewed instead.
+- \`bbj-vscode-deprecated/\` — a stale \`bbj-vscode-0.1.999.vsix\` artifact only, no source, flagged
+  for removal.
+- Grammar redesign to remove parser ambiguity — v3.3 established all 47 ambiguities resolve
+  correctly; redesign is a language-level project.
+- Wholesale test-suite authoring — coverage gaps are reported as findings; only regression tests for
+  applied fixes are written.
+- Implementing the major refactors — the milestone deliverable is detailed issues for separate
+  resolution.
+- New features of any kind — a quality milestone; behavior changes only where a defect is being
+  fixed.
+
+Two boundary cases are named so they read as deliberate rather than oversights: \`documentation/\`
+is scoped but D8-only (\`RU-D8-01\` checks code accuracy against docs-site claims; no editorial
+review of structure, tone or completeness — that is FUT-02); \`README.md\` is excluded, named as a
+candidate for a future D8 unit rather than silently dropped.
+
+Corpus size: 224 recorded findings, split 144 major-refactor, 77 easy-fix and 3 wontfix, derived by
+the selection rule stated in \`## Derivation\` below.
+
+### Gaps
+
+**No IntelliJ fix was compiled or tested.** The only installed JDK is Temurin 25.0.3 at
+\`/opt/java/default\`, and \`bbj-intellij/build.gradle.kts\` targets Java 17, so \`./gradlew build\`
+cannot run in this environment. Nine applied \`bbj-intellij/\` fixes are review-verified only under
+Phase 67 D-14, and one further easy fix — \`P63-D7-004\` — is deferred for the same reason under
+Phase 67 D-15. "Review-verified" means a human-readable statement-by-statement check and nothing
+stronger; no compiler and no test confirmed any of the ten.
+
+**11 deterministic \`npm test\` failures.** All 11 are in
+\`test/linking.test.ts > Linking Tests > Interop related tests\` and reproduce identically across
+runs, caused by an unreachable java-interop peer. Opening a listener on port 5008 does not fix them
+(Phase 64 D-06) — that has been tried. Separately, the suite-level file-failure and skip counts vary
+between otherwise identical runs because a \`beforeAll\` hook
+(\`WorkspaceManager.initializeWorkspace()\`) intermittently exceeds vitest's default 10-second
+\`hookTimeout\` under load, so a reader comparing two runs is not misled into reading the variance
+as a regression. \`INVENTORY.md\` §"Test & Build Baseline (D-05, D-06)" is the sole authority for
+these numbers; no suite count here is taken from any other source.
+
+**24 not-reproducible candidate claims.** Each is an area a reviewer looked at and could not settle
+within a read-only sweep — a runtime measurement, a BBj interpreter or repository-settings access it
+did not have. They are coverage gaps by definition. See \`MAJOR-REFACTORS.md\` §"Other Dispositions"
+§"not-reproducible", which enumerates all 24 with the tier each failed and why.
+
+**Phase 65's shape.** Its cross-cutting security audit enumerated roughly 36 items and recorded 3 as
+findings, because the remainder were settled by direct code trace rather than left unexamined.
+Stated plainly so a reader does not infer that the security audit found almost nothing.
+
+`;
+}
+
+/** DOC title builders — the `# ` line only, so `## Coverage` (renderCoveragePreamble) can be
+ *  spliced between the title and `## Derivation` per this plan's `<phase_conventions>`. */
+function easyTitle() {
     return `# Phase 68 Easy-Fix Findings
 
-## Derivation
+`;
+}
+
+function majorTitle() {
+    return `# Phase 68 Major-Refactor Findings
+
+`;
+}
+
+/** `## Derivation` section builders (title moved out to easyTitle/majorTitle above). */
+function easyDerivation() {
+    return `## Derivation
 
 Records are selected by the leading token of each finding's \`disposition:\` field — \`easy-fix\` —
 across the six closed COVERAGE files (\`.planning/reviews/61-COVERAGE.md\` … \`66-COVERAGE.md\`),
@@ -1007,10 +1114,8 @@ safe overwrite of this assembled file once that content has been added.
 `;
 }
 
-function majorHeader() {
-    return `# Phase 68 Major-Refactor Findings
-
-## Derivation
+function majorDerivation() {
+    return `## Derivation
 
 Records are selected by the leading token of each finding's \`disposition:\` field —
 \`major-refactor\` — across the six closed COVERAGE files (\`.planning/reviews/61-COVERAGE.md\` …
@@ -1155,19 +1260,21 @@ function runEmit(kind, { force, write }) {
         return;
     }
 
-    let body, header, reconciliation, indexSection, targetPath, sectionHeading;
+    let body, title, derivation, reconciliation, indexSection, targetPath, sectionHeading;
     if (kind === 'easy') {
         const applySetMap = loadApplySetMap();
         checkLedgerIdSetEquality(selection, applySetMap); // D-04: ledger is the content source, corpus is still the denominator (D-02)
         body = selection.easy.map((rec, i) => renderEasyRow(i + 1, rec, applySetMap)).join('\n\n');
-        header = easyHeader();
+        title = easyTitle();
+        derivation = easyDerivation();
         reconciliation = easyReconciliationText(selection, applySetMap);
         indexSection = `${easyIndexTable(selection, applySetMap)}\n\n`;
         sectionHeading = '## Rows';
         targetPath = EASY_PATH;
     } else {
         body = selection.major.map(rec => renderMajorBlock(rec, corpus.phaseFileTexts)).join('\n\n');
-        header = majorHeader();
+        title = majorTitle();
+        derivation = majorDerivation();
         reconciliation = majorReconciliationText(selection);
         indexSection = `${severityIndexTable(selection)}\n\n`;
         sectionHeading = '## Records';
@@ -1177,7 +1284,7 @@ function runEmit(kind, { force, write }) {
     process.stdout.write(body + '\n');
 
     if (write) {
-        writeAtomic(targetPath, `${header}${reconciliation}${indexSection}${sectionHeading}\n\n${body}\n`);
+        writeAtomic(targetPath, `${title}${renderCoveragePreamble()}${derivation}${reconciliation}${indexSection}${sectionHeading}\n\n${body}\n`);
     }
 }
 

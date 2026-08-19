@@ -1,5 +1,85 @@
 # Phase 68 Major-Refactor Findings
 
+## Coverage
+
+### Scope
+
+The review surface: 21 review units across the four sweep phases — `RU-61-01`..`RU-61-07`
+(`bbj-vscode/src/language/`), `RU-62-01`..`RU-62-05` (extension host, composers, TextMate),
+`RU-63-01`..`RU-63-05` (`bbj-intellij/`, 61 Java files), `RU-64-01`..`RU-64-03` (build, CI,
+dependencies and tools) and the cross-cutting `RU-D8-01` documentation unit — plus 8
+file-exception rows for files whose applicability differs from their unit's (`INVENTORY.md`
+§"Applicability Grid").
+
+Eight dimensions applied cell by cell: D1 Security, D2 Correctness, D3 Performance,
+D4 Maintainability, D5 Test coverage, D6 Dependency health, D7 Cross-IDE parity, D8 Doc accuracy.
+The grid totals 29 rows (21 units + 8 file-exception rows) × 8 dimensions = 232 cells, of which 148
+are `applies` and 84 are `n/a` with a written exclusion marker. See `INVENTORY.md`
+§"Applicability Grid" and §"Grid totals" for the cell-by-cell detail — this preamble states the
+totals rather than restating the grid, so a reader gets a truthful picture without a second file
+open, and an auditor gets the path.
+
+Every one of the 224 recorded findings clears an evidence tier defined in `INVENTORY.md` §3b
+"Evidence Tiers", distributed 108 `repro`, 80 `trace` and 36 `inherited`. No record in either
+document is an unverified claim; the separate population of candidate claims that could not clear a
+tier is recorded in `MAJOR-REFACTORS.md` §"Other Dispositions" §"not-reproducible" rather than
+dropped.
+
+Named exclusions, each with its reason (`REQUIREMENTS.md` §"Out of Scope", `INVENTORY.md`
+§"Surface Accounting & Named Exclusions"):
+
+- `java-interop/`'s Java service — excluded by scope decision at milestone start (FUT-01); the
+  TypeScript-side client is reviewed at `RU-61-06`, and `java-interop/build.gradle` is read once
+  by `RU-64-02` only as a dependency-tree source, not as a code review.
+- `bbj-vscode/src/language/generated/` (17.5k LOC) — machine-generated from `bbj.langium`, whose
+  grammar source is reviewed instead.
+- `bbj-vscode-deprecated/` — a stale `bbj-vscode-0.1.999.vsix` artifact only, no source, flagged
+  for removal.
+- Grammar redesign to remove parser ambiguity — v3.3 established all 47 ambiguities resolve
+  correctly; redesign is a language-level project.
+- Wholesale test-suite authoring — coverage gaps are reported as findings; only regression tests for
+  applied fixes are written.
+- Implementing the major refactors — the milestone deliverable is detailed issues for separate
+  resolution.
+- New features of any kind — a quality milestone; behavior changes only where a defect is being
+  fixed.
+
+Two boundary cases are named so they read as deliberate rather than oversights: `documentation/`
+is scoped but D8-only (`RU-D8-01` checks code accuracy against docs-site claims; no editorial
+review of structure, tone or completeness — that is FUT-02); `README.md` is excluded, named as a
+candidate for a future D8 unit rather than silently dropped.
+
+Corpus size: 224 recorded findings, split 144 major-refactor, 77 easy-fix and 3 wontfix, derived by
+the selection rule stated in `## Derivation` below.
+
+### Gaps
+
+**No IntelliJ fix was compiled or tested.** The only installed JDK is Temurin 25.0.3 at
+`/opt/java/default`, and `bbj-intellij/build.gradle.kts` targets Java 17, so `./gradlew build`
+cannot run in this environment. Nine applied `bbj-intellij/` fixes are review-verified only under
+Phase 67 D-14, and one further easy fix — `P63-D7-004` — is deferred for the same reason under
+Phase 67 D-15. "Review-verified" means a human-readable statement-by-statement check and nothing
+stronger; no compiler and no test confirmed any of the ten.
+
+**11 deterministic `npm test` failures.** All 11 are in
+`test/linking.test.ts > Linking Tests > Interop related tests` and reproduce identically across
+runs, caused by an unreachable java-interop peer. Opening a listener on port 5008 does not fix them
+(Phase 64 D-06) — that has been tried. Separately, the suite-level file-failure and skip counts vary
+between otherwise identical runs because a `beforeAll` hook
+(`WorkspaceManager.initializeWorkspace()`) intermittently exceeds vitest's default 10-second
+`hookTimeout` under load, so a reader comparing two runs is not misled into reading the variance
+as a regression. `INVENTORY.md` §"Test & Build Baseline (D-05, D-06)" is the sole authority for
+these numbers; no suite count here is taken from any other source.
+
+**24 not-reproducible candidate claims.** Each is an area a reviewer looked at and could not settle
+within a read-only sweep — a runtime measurement, a BBj interpreter or repository-settings access it
+did not have. They are coverage gaps by definition. See `MAJOR-REFACTORS.md` §"Other Dispositions"
+§"not-reproducible", which enumerates all 24 with the tier each failed and why.
+
+**Phase 65's shape.** Its cross-cutting security audit enumerated roughly 36 items and recorded 3 as
+findings, because the remainder were settled by direct code trace rather than left unexamined.
+Stated plainly so a reader does not infer that the security audit found almost nothing.
+
 ## Derivation
 
 Records are selected by the leading token of each finding's `disposition:` field —
