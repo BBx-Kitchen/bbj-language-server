@@ -4,9 +4,9 @@ milestone: v4.0
 milestone_name: Stability and Quality
 current_phase: 66
 current_phase_name: known-debt-re-triage
-status: executing
-stopped_at: Completed 66-02-PLAN.md
-last_updated: "2026-08-19T06:26:30.297Z"
+status: verifying
+stopped_at: Completed 66-03-PLAN.md
+last_updated: "2026-08-19T06:44:04.342Z"
 last_activity: 2026-08-19
 last_activity_desc: Phase 66 execution started
 progress:
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-17)
 
 Phase: 66 (known-debt-re-triage) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-19 — Phase 66 execution started
 
 ## Performance Metrics
@@ -106,6 +106,7 @@ Last activity: 2026-08-19 — Phase 66 execution started
 | Phase 65 P03 | 30min | 3 tasks | 1 files |
 | Phase 66 P01 | 12min | 3 tasks | 1 files |
 | Phase 66 P02 | ~55min | 2 tasks | 1 files |
+| Phase 66 P03 | ~45min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase ?]: DEBT-05's '19 experimental API usages' figure settled by provenance (traced via git log -S to the IntelliJ Plugin Verifier's 2026-02-10 compatibility report), not re-derived or discarded
 - [Phase ?]: DEBT-05 verdicts major-refactor (superseding P63-D4-010): 3 of 9 LSP4IJ classes bbj-intellij touches carry class-level @ApiStatus.Experimental, with a contract-test issue draft as the actionable in-repo fix
 - [Phase ?]: DEBT-04 verdicts major-refactor with P66-D2-002 (evidence_tier repro via INVENTORY §3b's second form): the USE-alias completion path works, the MemberCall FQN path is the traced gap, java-interop JAR redeployment is the stated blocker
+- [Phase ?]: DEBT-07 verdicted major-refactor: traced Rule 0 (BBjCPL suppresses Langium parse errors) as unreachable on every build cycle, not delayed by one as PROJECT.md previously claimed — the merge path that introduces BBjCPL diagnostics never calls applyDiagnosticHierarchy
+- [Phase ?]: DEBT-08 verdicted wontfix (unblocking condition P64-D6-010 stated): IntelliJ TextMate filenames-vs-extensions verification remains blocked on the JDK toolchain mismatch, still drafted for Phase 69 per D-07
+- [Phase ?]: Criteria 3 and 5 of Phase 66's ROADMAP success criteria answered Partially Met, not Met — neither DEBT-03/DEBT-04 nor the six original carried items are literally 'fixed or filed'/'represented by a GitHub issue' on the strength of a draft; the Phase 69 dependency is named explicitly
 
 ### Tech Debt
 
@@ -237,8 +241,8 @@ None
 
 ## Session Continuity
 
-Last session: 2026-08-19T06:26:30.273Z
-Stopped at: Completed 66-02-PLAN.md
+Last session: 2026-08-19T06:44:04.318Z
+Stopped at: Completed 66-03-PLAN.md
 Resume file: 
 
 None

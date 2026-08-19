@@ -537,7 +537,7 @@ it re-examines specific, already-known items rather than surfacing new ones.
   5. Every one of these 6 items ends the milestone represented either by a merged fix or a GitHub
      issue — none remain as PROJECT.md prose only
 
-**Plans**: 2/3 plans executed — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
+**Plans**: 3/3 plans executed — INVENTORY defines **no `RU-66-*` units**, so as in Phase 65 the grid, the cell gate
 and the file gate are absent. They are replaced by a single **8-row debt denominator** derived live
 from `PROJECT.md` §"Known tech debt" (D-04), every row carrying a verdict. The phase is **verdict-only**:
 zero source files modified (D-01) and zero GitHub tracker writes (D-02) — each unresolved item gets an
@@ -556,7 +556,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 66-03-PLAN.md — Verdict the two orphan bullets and add **DEBT-07**/**DEBT-08** to `REQUIREMENTS.md` (bullets + coverage-matrix rows), closing the 8-vs-6 drift `INVENTORY.md:1220` recorded **without editing that record**; rewrite `PROJECT.md`'s debt list so every bullet carries its `P66-*` finding ID, requirement and disposition (D-13, resolved items struck not deleted); then close **DEBT-06** honestly — its tracker half completes in Phase 69 — and re-derive D-15's four gates live with literal output: Denominator, Criterion (5 criteria answered Met/Partially Met/Not Met), Requirement (`DEBT-01`..`DEBT-08`), and Boundary (`git status --porcelain` over the four protected trees and the six immutable records, plus the no-tracker-write record)
+- [x] 66-03-PLAN.md — Verdict the two orphan bullets and add **DEBT-07**/**DEBT-08** to `REQUIREMENTS.md` (bullets + coverage-matrix rows), closing the 8-vs-6 drift `INVENTORY.md:1220` recorded **without editing that record**; rewrite `PROJECT.md`'s debt list so every bullet carries its `P66-*` finding ID, requirement and disposition (D-13, resolved items struck not deleted); then close **DEBT-06** honestly — its tracker half completes in Phase 69 — and re-derive D-15's four gates live with literal output: Denominator, Criterion (5 criteria answered Met/Partially Met/Not Met), Requirement (`DEBT-01`..`DEBT-08`), and Boundary (`git status --porcelain` over the four protected trees and the six immutable records, plus the no-tracker-write record)
 
 ---
 
