@@ -31,39 +31,7 @@ const { shared, BBj } = createBBjServices({ connection, ...NodeFileSystem });
 
 connection.onRequest('bbj/refreshJavaClasses', async () => {
     try {
-        const javaInterop = BBj.java.JavaInteropService;
-
-        // Step 1: Clear all cached Java class data (includes disconnecting)
-        javaInterop.clearCache();
-
-        // Step 2: Reload classpath from workspace settings
-        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
-        const settings = wsManager.getSettings();
-        if (settings && settings.classpath.length > 0) {
-            await javaInterop.loadClasspath(settings.classpath);
-        }
-
-        // Step 3: Reload implicit imports
-        await javaInterop.loadImplicitImports();
-
-        // Step 4: Re-validate all open documents by resetting their state
-        const documents = shared.workspace.LangiumDocuments.all.toArray();
-        for (const doc of documents) {
-            if (doc.uri.scheme === 'file') {
-                doc.state = DocumentState.Parsed;
-            }
-        }
-        const docUris = documents
-            .filter(doc => doc.uri.scheme === 'file')
-            .map(doc => doc.uri);
-        if (docUris.length > 0) {
-            await shared.workspace.DocumentBuilder.update(docUris, []);
-        }
-        refreshInlayHints();
-
-        // Step 5: Send notification
-        connection.window.showInformationMessage('Java classes refreshed');
-
+        await reloadJavaClassesAndRevalidate();
         return true;
     } catch (error) {
         console.error('Failed to refresh Java classes:', error);
@@ -79,6 +47,45 @@ startLanguageServer(shared);
 // parameter names) arrived asynchronously. Clients without refresh support just ignore us.
 function refreshInlayHints() {
     connection.languages.inlayHint.refresh().catch(() => { /* client does not support refresh */ });
+}
+
+// Clears the Java classpath cache, reloads it from the current workspace settings, reloads
+// implicit imports, and re-validates every open document by resetting its build state — the
+// shared reload sequence used by both the explicit bbj/refreshJavaClasses request handler and an
+// onDidChangeConfiguration settings change that affects the classpath.
+async function reloadJavaClassesAndRevalidate(): Promise<void> {
+    const javaInterop = BBj.java.JavaInteropService;
+
+    // Step 1: Clear all cached Java class data (includes disconnecting)
+    javaInterop.clearCache();
+
+    // Step 2: Reload classpath from workspace settings
+    const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+    const settings = wsManager.getSettings();
+    if (settings && settings.classpath.length > 0) {
+        await javaInterop.loadClasspath(settings.classpath);
+    }
+
+    // Step 3: Reload implicit imports
+    await javaInterop.loadImplicitImports();
+
+    // Step 4: Re-validate all open documents by resetting their state
+    const documents = shared.workspace.LangiumDocuments.all.toArray();
+    for (const doc of documents) {
+        if (doc.uri.scheme === 'file') {
+            doc.state = DocumentState.Parsed;
+        }
+    }
+    const docUris = documents
+        .filter(doc => doc.uri.scheme === 'file')
+        .map(doc => doc.uri);
+    if (docUris.length > 0) {
+        await shared.workspace.DocumentBuilder.update(docUris, []);
+    }
+    refreshInlayHints();
+
+    // Step 5: Send notification
+    connection.window.showInformationMessage('Java classes refreshed');
 }
 
 // Guard: skip Java class reload until initial workspace build is complete
@@ -157,32 +164,7 @@ connection.onDidChangeConfiguration(async (change) => {
         logger.info('BBj settings changed, refreshing Java classes...');
         javaInterop.setConnectionConfig(newInteropHost, newInteropPort);
 
-        // Clear all cached Java class data (includes disconnecting)
-        javaInterop.clearCache();
-
-        // Reload classpath from current workspace settings
-        const settings = wsManager.getSettings();
-        if (settings && settings.classpath.length > 0) {
-            await javaInterop.loadClasspath(settings.classpath);
-        }
-        await javaInterop.loadImplicitImports();
-
-        // Re-validate all open documents
-        const documents = shared.workspace.LangiumDocuments.all.toArray();
-        for (const doc of documents) {
-            if (doc.uri.scheme === 'file') {
-                doc.state = DocumentState.Parsed;
-            }
-        }
-        const docUris = documents
-            .filter(doc => doc.uri.scheme === 'file')
-            .map(doc => doc.uri);
-        if (docUris.length > 0) {
-            await shared.workspace.DocumentBuilder.update(docUris, []);
-        }
-        refreshInlayHints();
-
-        connection.window.showInformationMessage('Java classes refreshed');
+        await reloadJavaClassesAndRevalidate();
     } catch (error) {
         console.error('Failed to refresh Java classes after settings change:', error);
     }
