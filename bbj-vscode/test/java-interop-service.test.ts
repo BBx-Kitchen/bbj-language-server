@@ -155,6 +155,29 @@ describe('JavaInteropService (mock socket, no real port 5008 connection)', () =>
         });
     });
 
+    describe('a stale connection listener cannot clobber a newer healthy connection (P67-WR-02)', () => {
+        test('the old connection closing after a reconnect leaves the new connection installed', async () => {
+            const service = createInteropService();
+            const first = await service.testConnect();
+            const staleSocket = service.lastSocket!;
+            expect(service.socketFactoryCalls).toBe(1);
+
+            // Drop the first connection via its `error` listener, then reconnect.
+            staleSocket.emit('error', new Error('peer reset'));
+            const second = await service.testConnect();
+            expect(service.socketFactoryCalls).toBe(2);
+            expect(second).not.toBe(first);
+
+            // The first socket's teardown is asynchronous: its `close` arrives only now, after a
+            // healthy replacement is already installed. Unguarded, this handler would null out
+            // `this.connection` and force a spurious third socket on the next call.
+            staleSocket.emit('close');
+            const third = await service.testConnect();
+            expect(service.socketFactoryCalls).toBe(2);
+            expect(third).toBe(second);
+        });
+    });
+
     describe('raced getRawClass request never produces an unhandled promise rejection (P61-D2-002)', () => {
         // NOTE on this test's shape (see 67-02-SUMMARY.md "Deviations" for the full writeup):
         // Empirical verification against the real vscode-jsonrpc SocketMessageReader/Writer +
