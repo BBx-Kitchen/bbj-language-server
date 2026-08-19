@@ -812,4 +812,47 @@ classend
             }
         });
     });
+
+    describe('repeated same-prefix class-candidate lookups hit a memoization cache - P61-D3-004', () => {
+        // Typing continues to trigger a fresh lookup per distinct prefix, but a second lookup for
+        // the *same* prefix (e.g. Langium's completion engine invoking completionForCrossReference
+        // more than once for the same cross-reference feature at one offset) must be served from
+        // cache instead of re-running findClassCandidatesByPrefix.
+
+        // A prefix/class name not used by any other test in this file — the memoization cache is
+        // shared across the whole provider instance's lifetime (by design, see the cache field's
+        // own doc comment), so reusing a common prefix like "TreeM" would spuriously hit an entry
+        // another test already populated.
+        const uniqueClassName = 'P61D3004UniqueMarkerClass';
+
+        async function autoImportCompletionLabels(counter: number): Promise<string[]> {
+            const text = `x! = new ${uniqueClassName.substring(0, uniqueClassName.length - 5)}`;
+            const doc = await parseHelper<Model>(bbjServices)(
+                text, { documentUri: `file:///p61-d3-004-${counter}.bbj` });
+            const params: CompletionParams = {
+                textDocument: { uri: doc.textDocument.uri },
+                position: doc.textDocument.positionAt(text.length),
+                context: { triggerKind: CompletionTriggerKind.Invoked }
+            };
+            const list = await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+            return (list?.items ?? []).map(i => i.label);
+        }
+
+        test('a second lookup for the identical prefix is served from cache, not re-run', async () => {
+            interopSeam.seedCompleteClassIndex([`com.p61d3004.${uniqueClassName}`]);
+            const findSpy = vi.spyOn(bbjServices.java.JavaInteropService, 'findClassCandidatesByPrefix');
+            try {
+                const first = await autoImportCompletionLabels(0);
+                const second = await autoImportCompletionLabels(1);
+                // Result equivalence: the cached path must return exactly what the uncached path does.
+                expect(second).toEqual(first);
+                expect(first).toContain(uniqueClassName);
+                // The underlying lookup ran once for the two identical-prefix requests, not twice.
+                expect(findSpy).toHaveBeenCalledTimes(1);
+            } finally {
+                findSpy.mockRestore();
+                interopSeam.resetCompleteClassIndex();
+            }
+        });
+    });
 });
