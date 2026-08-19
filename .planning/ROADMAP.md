@@ -578,7 +578,7 @@ regression-tested, atomically-committed change, and the full test/build suite is
 
   4. No applied fix changes user-facing behavior without that change appearing in EASY-FIXES.md
 
-**Plans**: 9/12 plans executed
+**Plans**: 10/12 plans executed
 
 Plans:
 **Wave 1**
@@ -619,7 +619,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 67-10-PLAN.md — Build/CI/dependency fixes and `.bbl` registration, behind a package-legitimacy checkpoint
+- [x] 67-10-PLAN.md — Build/CI/dependency fixes and `.bbl` registration, behind a package-legitimacy checkpoint
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
