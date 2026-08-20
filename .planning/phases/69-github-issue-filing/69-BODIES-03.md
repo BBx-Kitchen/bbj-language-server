@@ -555,3 +555,560 @@ the same path and asserts the version-check subprocess runs at most once.
 
 Finding `P63-D3-007` · dimension D3 · severity medium · effort 4. `dedup: none`.
 <!-- BODY-END P63-D3-007 -->
+
+### 53. P63-D4-010 — intellij: BbjCompletionFeature and language-server registration classes couple tightly to LSP4IJ's experimental API surface with no regression test
+**Route:** public issue
+**Labels:** intellij, PRIO 2, 4
+
+<!-- BODY-BEGIN P63-D4-010 -->
+## Problem
+
+Seven files in this unit subclass or consume LSP4IJ classes and APIs directly, with no regression
+test anywhere in the module to catch a breaking change from a future LSP4IJ release.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java,bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java:8-12,40-65,bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageClient.java:8-9,18,bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServer.java:11,28,bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java:19-20,208-210,bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropService.java:10,bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java:14`
+
+Surface: 20 references to `com.redhat.devtools.lsp4ij` across 11 files repo-wide, concentrated in
+this unit's 7 files — `BbjCompletionFeature` extends `LSPCompletionFeature` (overriding `getIcon()`);
+`BbjLanguageServerFactory` implements `LanguageServerFactory`, returning an anonymous
+`LSPClientFeatures` with a nested `LSPDocumentLinkFeature` override; `BbjLanguageClient` extends
+`LanguageClientImpl`; `BbjLanguageServer` extends `OSProcessStreamConnectionProvider`;
+`BbjServerService`/`BbjJavaInteropService`/`BbjStatusBarWidget` consume the `ServerStatus` enum and
+`LanguageServerManager`'s id-based start/stop API as plain values. Problem class:
+dependency-coupling surface with no regression coverage. Impact: a breaking signature or semantics
+change to any of the subclassed/overridden LSP4IJ members in a future release would surface as a
+compile failure or a silent behaviour change at plugin-update time, with nothing in this module to
+catch a silent one before release.
+
+## Failure scenario
+
+n/a (D4 is a code-shape finding, not a runtime failure scenario) — a breaking signature or semantics change to LSPCompletionFeature.getIcon(), LSPClientFeatures's builder chain, LanguageClientImpl. handleServerStatusChanged(), or OSProcessStreamConnectionProvider's constructor contract in a future LSP4IJ release would surface as a compile failure or a silent behaviour change across this unit's 7 files at plugin-update time, with no regression test anywhere in this module (P63-D5-001) to catch a silent one before release.
+
+## Proposed approach
+
+P66-D4-001 supersedes this record — its own `dedup:` states so directly. It re-triages this same coupling-shape evidence with a live jar measurement (the nine-row `RuntimeInvisibleAnnotations -> ApiStatus$Experimental` annotation table against the cached `lsp4ij-0.19.0.jar`) and names its own approach: a new `bbj-intellij/src/test/` source set exercising `BbjCompletionFeature.java` and `BbjLanguageServerFactory.java`, currently blocked by the same JDK toolchain gap `P63-D6-002` records. An implementer should read `P66-D4-001` as the live record for this coupling surface; this block stays in the document as the phase's designated DEBT-05 evidence handoff, not collapsed into its successor.
+
+## Acceptance criteria
+
+This finding's own coupling-shape evidence is superseded by finding `P66-D4-001`'s live
+jar-measurement re-triage (see Traceability below); the concrete acceptance criteria for adding
+regression coverage are tracked against that superseding finding's own issue, not duplicated here.
+This issue is considered resolved when the successor issue's `bbj-intellij/src/test/` source set
+closes the same coupling surface this record identifies.
+
+## Traceability
+
+Finding `P63-D4-010` · dimension D4 · severity medium · effort 4. This finding is superseded by a
+later finding, `P66-D4-001`, which re-triages the same LSP4IJ-coupling evidence with a live jar
+measurement and names a concrete regression-test plan. What remains true of this finding on its own:
+it is the original record of the coupling surface across all seven files in this unit, and it stays
+open as its own standalone issue rather than being dropped, so the coupling surface it documents has
+a tracker entry independent of its successor's.
+<!-- BODY-END P63-D4-010 -->
+
+### 54. P63-D6-001 — dependencies: pinned Node.js runtime is past its own upstream end-of-life and missing five flagged security releases
+**Route:** public issue
+**Labels:** dependencies, PRIO 2, 4
+
+<!-- BODY-BEGIN P63-D6-001 -->
+## Problem
+
+The pinned Node.js version constant (`NODE_VERSION = "v20.18.1"`) is past its own upstream
+end-of-life and missing five later releases that nodejs.org's own release index flags as security
+releases.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java:34`
+
+Surface: `NODE_VERSION = "v20.18.1"` (`:34`). Problem class: outdated pinned runtime dependency past
+its own vendor's end-of-life date. Impact: every install of this plugin downloads and executes a
+Node.js runtime build that is past its own upstream end-of-life and missing at least five releases
+flagged as security fixes, with no mechanism to pick any of them up short of a plugin-code change
+and a new plugin release.
+
+## Failure scenario
+
+Every install of this plugin downloads and executes a Node.js runtime build that is, as of sweep time, past its own upstream end-of-life and missing at least 5 releases nodejs.org itself flagged as security fixes — the plugin has no mechanism to pick up any of those fixes short of a plugin-code change to the pinned constant and a new plugin release.
+
+## Proposed approach
+
+Bump NODE_VERSION to a current, in-support v20.x or later LTS release and verify the download filename/checksum shape is unchanged.
+
+## Acceptance criteria
+
+`NODE_VERSION` is bumped to a currently in-support Node.js LTS release (v20.x or later), and the
+download filename/checksum construction logic is verified unchanged for the new version's release
+artifact naming. A regression test (or a manually documented verification step, given no existing
+harness covers this path) confirms the plugin can still resolve and download the updated version's
+release artifact.
+
+## Traceability
+
+Finding `P63-D6-001` · dimension D6 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P63-D6-001 -->
+
+### 55. P64-D1-001 — BBj integration and infrastructure: web.bbj silently falls back to the default admin/admin123 Enterprise Manager credentials when none are supplied
+**Route:** public issue
+**Labels:** BBj integration and infrastructure, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D1-001 -->
+## Problem
+
+When no EM credentials or token are supplied, `web.bbj` silently substitutes the literal default
+administrator credentials `"admin"`/`"admin123"` and authenticates as the EM administrator.
+
+## Evidence
+
+`bbj-vscode/tools/web.bbj:30-31`
+
+Surface: `web.bbj:19-20` read username/password via `ARGV(5,err=*next)`/`ARGV(6,err=*next)`, leaving
+both unset if fewer than six arguments are supplied; `:26` takes the token branch only if a token is
+present, otherwise `:30` assigns the literal `"admin"` to `username!` and `:31` assigns
+`"admin123"` to `password!`, and `:32` authenticates with `BBjAdminFactory.getBBjAdmin(...)`.
+Problem class: fail-open authentication with hardcoded default credentials — silent, with no message,
+log line, or marker in the output, and no configuration switch to disable the fallback. Impact: a
+BUI/DWC run command with no EM credentials configured and no token available silently authenticates
+as the EM administrator, and the subsequent flow creates or overwrites a registered application
+entry under administrator authority the user never knowingly exercised.
+
+## Failure scenario
+
+A BBj installation whose EM administrator password was never changed from the shipped default. A user triggers the BUI or DWC run command with no EM credentials configured and no token available, so ARGV(5), ARGV(6) and ARGV(8) all arrive empty. `web.bbj:30-31` substitutes admin/admin123, `:32` authenticates as the EM administrator, and `:54`-`:87` then create or overwrite a registered application entry — program path, working directory, classpath and config file — under administrator authority that the user never knowingly exercised and was never prompted for. The same path is what makes an unattended or scripted invocation silently privileged.
+
+## Proposed approach
+
+Delete the two fallback assignments and route the no-credential case to `login_failed:`.
+
+## Acceptance criteria
+
+A BUI/DWC run invocation with no EM credentials configured and no token available fails closed —
+routing to the `login_failed:` path — instead of silently authenticating with default
+`admin`/`admin123` credentials. A regression test (or documented manual verification, given no
+existing harness drives this `.bbj` tool script) exercises the no-credential case and asserts it
+reaches the failure path rather than a successful admin login.
+
+## Traceability
+
+Finding `P64-D1-001` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D1-001 -->
+
+### 56. P64-D1-005 — BBj integration and infrastructure: most CI workflows declare no permissions: block, leaving GITHUB_TOKEN scope at whatever the org default is
+**Route:** public issue
+**Labels:** BBj integration and infrastructure, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D1-005 -->
+## Problem
+
+Four of six workflows (seven of ten jobs) declare no `permissions:` block, so their `GITHUB_TOKEN`
+scope is whatever the repository/organization default is rather than an explicit, reviewable
+minimum.
+
+## Evidence
+
+`.github/workflows/preview.yml:8-10`
+
+Surface: `permissions:` appears only at `deploy-docs.yml:12`, `pr-vsix.yml:26` (both top-level), and
+`manual-release.yml:149` (job-level, one job only); `build.yml`, `preview.yml`, `pr-validation.yml`,
+and `manual-release.yml`'s `build-vscode`/`build-intellij` jobs declare none. Problem class:
+undeclared token scope defaulting to an org-level setting not visible in the tree — inferred to be
+the permissive default because `preview.yml` and `manual-release.yml` push commits/tags with no
+explicit token, which requires `contents: write`. Impact: the jobs holding the VS Code and
+JetBrains marketplace publishing tokens, and the same-repository-PR build job, also hold a
+full-scope repository token by default, granting far more authority than each job's task requires.
+
+## Failure scenario
+
+A third-party action or a Gradle plugin executing inside `preview.yml`'s `publish-preview` or `build-intellij` job — every action reference in both being a mutable tag under `P64-D6-003` — runs with a repository token that, on the permissive default, can push to `main`, move tags, create releases and write packages, in addition to whatever marketplace credential is in scope for its step. The narrower everyday case is the same shape without a compromise: any step that misbehaves in those seven jobs does so with far more authority than the job's task requires, and nothing in the repository records what that authority is, so a reviewer reading `build.yml` or `pr-validation.yml` cannot tell from the file whether its token can write to the repository or not.
+
+## Proposed approach
+
+Add `permissions: contents: read` to `build.yml` and `pr-validation.yml`, `contents: write` to `preview.yml`, and per-job blocks to `manual-release.yml`'s two undeclared jobs.
+
+## Acceptance criteria
+
+`build.yml` and `pr-validation.yml` declare an explicit `permissions: contents: read` block;
+`preview.yml` declares `contents: write`; `manual-release.yml`'s `build-vscode` and `build-intellij`
+jobs each declare an explicit per-job permissions block. The next run of each modified workflow
+completes successfully under its newly declared scope, confirming the declared permission is
+sufficient for that workflow's actual operations.
+
+## Traceability
+
+Finding `P64-D1-005` · dimension D1 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D1-005 -->
+
+### 57. P64-D2-003 — BBj integration and infrastructure: six post-login EM calls in web.bbj have no error handler, so failures produce a silent no-op
+**Route:** public issue
+**Labels:** BBj integration and infrastructure, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D2-003 -->
+## Problem
+
+Six external calls that run after a successful EM login carry no `err=` handler, so a failure at any
+of them produces a silent no-op rather than any visible message.
+
+## Evidence
+
+`bbj-vscode/tools/web.bbj:34,54,70,87,90,91`
+
+Surface: seven `err=` occurrences total in `web.bbj` — five `ARGV` reads and the two login calls
+only; the script's one user-facing failure message (`MSGBOX("Login Failed!",...)` at `:97`) is
+reachable only from those two login calls; six post-login calls —
+`admin!.getRemoteConfiguration()` (`:34`), `configuration!.createApplication()` (`:54`),
+`BBjAPI().getConfig().getConfigFileName()` (`:70`), `app!.commit()` (`:87`),
+`app!.getDwcUrl(0)`/`app!.getBuiUrl(0)` (`:90`), and `BBjAPI().getThinClient().browse(url!)` (`:91`)
+— carry no `err=` branch. Problem class: silent failure — errors after login are simply unhandled
+rather than surfaced. Impact: if any of these six calls fails (e.g. `commit()` fails due to a
+permission or connection issue), control never reaches the browser-open or message-box steps, and
+the BUI/DWC run command produces nothing at all, indistinguishable from a run that was never
+triggered.
+
+## Failure scenario
+
+EM authentication succeeds, so `:27` or `:32` returns an `admin!` handle and the `login_failed:` path is out of reach. `app!.commit()` at `:87` then fails — the authenticated EM user lacks permission to write the application entry, the entry collides, or the EM connection drops between `:34` and `:87`. Control never reaches `:90-91`, so no browser is opened, and it cannot reach `:97`, so no message box is shown. From the user's side the BUI/DWC run command produces nothing at all: no browser, no dialog, no distinction from a run that was never triggered. The same shape applies to the other five unguarded calls.
+
+## Proposed approach
+
+Add `err=` branches to the six calls and give them a distinct labelled message rather than reusing `login_failed:`, whose text would be wrong for them.
+
+## Acceptance criteria
+
+Each of the six identified post-login calls (`getRemoteConfiguration`, `createApplication`,
+`getConfigFileName`, `commit`, `getDwcUrl`/`getBuiUrl`, and the browser launch) has an `err=` branch
+routing to a distinct, correctly worded failure message rather than being silently unhandled or
+reusing `login_failed:`'s text. A regression test (or documented manual verification, given no
+existing harness drives this `.bbj` tool script) forces one of the six calls to fail and asserts a
+distinct, visible failure message is produced.
+
+## Traceability
+
+Finding `P64-D2-003` · dimension D2 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D2-003 -->
+
+### 58. P64-D3-002 — BBj integration and infrastructure: build.yml runs unconditionally and without a concurrency group on every pull request, duplicating another workflow's build and test
+**Route:** public issue
+**Labels:** BBj integration and infrastructure, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D3-002 -->
+## Problem
+
+`build.yml` has no `paths:` filter and runs on every pull request regardless of what changed,
+duplicating `pr-vsix.yml`'s install/build/test/package sequence for any PR touching `bbj-vscode`,
+and neither workflow declares a `concurrency:` group to cancel superseded runs.
+
+## Evidence
+
+`.github/workflows/build.yml:3-9`
+
+Surface: `build.yml:7-9` declares `pull_request: branches: [main]` with no `paths:` filter, running
+`npm ci`/build/vitest/`vsce package` on every PR; `pr-vsix.yml` declares the same trigger behind a
+`paths:` filter and runs an equivalent sequence, fully overlapping for any PR touching
+`bbj-vscode/**`; `build.yml` is the only workflow among the four PR-triggered ones with no `paths:`
+scoping. Problem class: unscoped CI trigger plus missing concurrency control, causing redundant and
+non-cancelled CI runs. Impact: a documentation-only PR still triggers a full `build.yml` run
+including the vitest suite and a VSIX package; a branch pushed multiple times leaves multiple full
+builds running to completion because no concurrency group cancels the superseded ones.
+
+## Failure scenario
+
+A contributor opens a pull request that edits `bbj-vscode/src/language/bbj.langium` and pushes three times over ten minutes while responding to review. Each push starts a fresh `build.yml` run (cold install, build, full vitest suite, VSIX package) and a fresh `pr-vsix.yml` run (cold install, build, full vitest suite, VSIX package), and because neither declares a `concurrency:` group for `build.yml`, none of the earlier `build.yml` runs is cancelled. Six full builds of the same project execute for one pull request, four of them for commits nobody will look at again. Separately, a documentation-only pull request — which `deploy-docs.yml` correctly declines to build — still triggers a complete `build.yml` run including the vitest suite.
+
+## Proposed approach
+
+The manifest file is `.github/workflows/build.yml:3-9`, and the decision it turns on is what protects `main`: whether `build.yml` gains a `paths:` filter (bringing it in line with every other scoped workflow), is merged into `pr-vsix.yml` so the two stop running the same install-build-test-package sequence twice per pull request, or deliberately stays the one unconditional gate that runs on every PR regardless of what changed — the wrong choice removes the only check `main` currently has on every pull request, which is why this is a review decision rather than a nameable edit. The sibling `on:`-block change is already applied: `P64-D4-004` landed in Phase 67 as a recorded D-06 departure, removing the dead `push: branches: [typefox-dev]` trigger and leaving `on:` with `pull_request` alone — an implementer starts from that state, a change already recorded as complete in the project's own internal release-engineering notes, not the pre-Phase-67 one.
+
+## Acceptance criteria
+
+A named CI-policy decision is made and recorded (in the resulting issue's own discussion, not
+preempted here) on one of: adding a `paths:` filter to `build.yml`, merging `build.yml` into
+`pr-vsix.yml`, or deliberately keeping `build.yml` as the one unconditional gate on every pull
+request. Whichever direction is chosen, a follow-up regression check confirms `main` retains at
+least one CI gate that runs on every pull request regardless of what changed.
+
+## Traceability
+
+Finding `P64-D3-002` · dimension D3 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D3-002 -->
+
+### 59. P64-D6-003 — dependencies: all 36 GitHub Actions references across the workflows use mutable version tags instead of pinned commit SHAs
+**Route:** public issue
+**Labels:** dependencies, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D6-003 -->
+## Problem
+
+All 36 `uses:` references across the six workflow files, covering nine distinct GitHub Actions,
+resolve to mutable major-version tags, and none is pinned to a commit SHA.
+
+## Evidence
+
+`.github/workflows/manual-release.yml:18-162`
+
+Surface: 36 `uses:` references total across `build.yml` (3), `deploy-docs.yml` (5),
+`manual-release.yml` (11), `pr-validation.yml` (6), `pr-vsix.yml` (4), `preview.yml` (7); a
+repo-wide grep for a 40-character commit-SHA pin returns zero matches. Problem class: unpinned
+supply-chain dependency — the bytes executed at job start are whatever the mutable tag currently
+resolves to, with no reviewable diff for a re-tag. Impact: the highest-privilege combination is five
+`actions/upload-artifact@v4` steps inside the same jobs holding the VS Code and JetBrains
+marketplace publishing tokens; a re-tag of any of the nine referenced actions changes what those
+jobs execute with no corresponding change in this repository.
+
+## Failure scenario
+
+A release of any one of the nine referenced actions is re-tagged or republished under its existing major tag — the ordinary mechanism by which `@v4` advances, and the mechanism an account compromise would ride. The next `preview.yml` or `manual-release.yml` run executes the new bytes inside a job that holds a marketplace publishing credential and, per `P64-D1-005`, a repository token at the permissive default scope. Nothing in this repository changes, no pull request is opened, and no diff exists for anyone to review; the first observable signal would be whatever the changed action does. The same exposure applies in the ordinary non-malicious case as a reproducibility gap: a build that succeeded last week and fails today cannot be attributed from the repository alone, because the workflow file is identical and the code it ran is not.
+
+## Proposed approach
+
+The manifest files are the six workflows under `.github/workflows/`, whose 36 `uses:` references cover 9 distinct actions and resolve entirely to mutable major-version tags (`grep -nE 'uses:.*@[0-9a-f]{40}' .github/workflows/*.yml` returns `0`). The edit is to pin each of the 36 references to the commit SHA its current tag currently resolves to, appending a `# vX.Y.Z` comment per GitHub's own convention so the human-readable version stays visible, and to adopt an update mechanism so the pins do not go stale — a `github-actions` Dependabot ecosystem entry (`P64-D6-005` names the same gap) is the natural fit since Dependabot already resolves SHA bumps for pinned actions. The tool-native check that proves the result is the same grep against all six files reporting `36` SHA-pinned references and `0` remaining mutable-tag references.
+
+## Acceptance criteria
+
+All 36 `uses:` references across the six workflow files are pinned to the commit SHA their current
+tag resolves to, each with a `# vX.Y.Z` comment naming the human-readable version. A grep for a
+commit-SHA-pinned `uses:` pattern reports 36 matches and a grep for a bare mutable-tag `uses:`
+pattern reports 0. An update mechanism (a `github-actions` Dependabot ecosystem entry or equivalent)
+is in place so the pins do not silently go stale.
+
+## Traceability
+
+Finding `P64-D6-003` · dimension D6 (secondary D1) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D6-003 -->
+
+### 60. P64-D6-005 — dependencies: Dependabot configuration covers only the bbj-vscode npm tree, leaving the Gradle, documentation, and GitHub Actions dependency trees unwatched
+**Route:** public issue
+**Labels:** dependencies, PRIO 2, 4
+
+<!-- BODY-BEGIN P64-D6-005 -->
+## Problem
+
+`.github/dependabot.yml` declares exactly one update entry, covering only `bbj-vscode`'s npm tree,
+leaving three other dependency trees — the IntelliJ Gradle tree, the documentation npm tree, and the
+36 GitHub Actions references — with no automated update coverage.
+
+## Evidence
+
+`.github/dependabot.yml:3-7`
+
+Surface: `dependabot.yml` is 19 lines, one `updates:` entry
+(`package-ecosystem: "npm"`, `directory: "/bbj-vscode"`, `interval: "weekly"`); uncovered: the
+`bbj-intellij` Gradle tree (no `gradle` ecosystem entry), the `documentation/` npm tree (no entry
+naming that directory, despite a 685KB `package-lock.json` built on every doc change), and the 36
+GitHub Actions references (no `github-actions` ecosystem entry). Problem class: incomplete
+dependency-update coverage across a repository with four distinct dependency trees. Impact: a
+published advisory affecting a transitive Gradle plugin dependency, the documentation site's tree,
+or one of the nine GitHub Actions produces no Dependabot pull request, and the steady stream of
+`bbj-vscode` npm update PRs the maintainers already see reads as working dependency automation
+rather than partial coverage.
+
+## Failure scenario
+
+A published advisory affects a transitive dependency of the IntelliJ Platform Gradle plugin, or the Docusaurus tree under `documentation/`, or one of the nine GitHub Actions this repository executes. Dependabot opens no pull request, because none of those three trees is declared in its configuration, and the repository's maintainers see the same steady stream of `bbj-vscode` npm updates they always see — five such branches are open right now — which reads as working dependency automation rather than as partial coverage. Nothing else fills the gap: the review of this repository's Gradle build tooling will establish that the Gradle tree cannot be enumerated locally either, so for that tree there is no automated signal and no manual one. The failure is therefore silent by construction: the absence of an alert is indistinguishable from the absence of a vulnerability.
+
+## Proposed approach
+
+The manifest file is `.github/dependabot.yml:3-7`. Two of the three uncovered trees are nameable edits: add a `github-actions` ecosystem entry (`directory: "/"`) to close the 36-reference gap `P64-D6-003` enumerates, and add a second `npm` entry for `directory: "/documentation"` to cover the Docusaurus tree's own `package-lock.json`. The third — whether `bbj-intellij`'s Gradle tree is covered by a `gradle` ecosystem entry, a different scanner, or accepted with a written reason — is not part of this approach: it is a decision that belongs to the review of this repository's Gradle build and CI tooling, under SEC-08, referred rather than pre-empted here, per this record's own evidence. The tool-native check that proves the mechanical half is a YAML parse of `dependabot.yml` reporting three `updates:` entries once the Gradle decision is also recorded (two if it is deferred as a documented exception).
+
+## Acceptance criteria
+
+`dependabot.yml` gains a `github-actions` ecosystem entry (`directory: "/"`) and a second `npm`
+entry for `directory: "/documentation"`, closing the two mechanically nameable gaps. A YAML parse of
+`dependabot.yml` reports three `updates:` entries (or two, if the Gradle-tree decision is deferred
+as a documented exception rather than resolved here). Whether and how the `bbj-intellij` Gradle tree
+is covered is recorded as an explicit, written decision rather than left silently unaddressed.
+
+## Traceability
+
+Finding `P64-D6-005` · dimension D6 · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P64-D6-005 -->
+
+### 61. P65-D1-002 — intellij: EM JWT token storage silently follows the IDE-wide password-save setting instead of a fixed secure backend
+**Route:** public issue
+**Labels:** intellij, PRIO 2, 4
+
+<!-- BODY-BEGIN P65-D1-002 -->
+## Problem
+
+The IntelliJ EM JWT token's storage backend is governed entirely by IntelliJ's IDE-wide
+"Save passwords" setting, unlike VS Code's fixed, platform-bound `SecretStorage`.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:25-29 (contrasted with bbj-vscode/src/extension.ts:587,667)`
+
+Surface: `createAttributes()` (`:25-29`) builds a `CredentialAttributes` from only a generated
+service name, with no further flag; `storeToken`/`getToken`/`deleteToken` call
+`PasswordSafe.getInstance()` with those attributes alone; which backend `PasswordSafe` actually uses
+is governed entirely by the IDE-wide "Save passwords" setting (native keychain, a local
+KeePass-format file, or memory-only). Problem class: a security-relevant storage guarantee that
+silently varies with a setting outside the plugin's knowledge or control, contrasted against VS
+Code's fixed `SecretStorage` binding, which offers no equivalent lever. Impact: an org policy or a
+user setting IntelliJ's "Save passwords" preference to "In KeePass" or "Do not save" causes the EM
+JWT to be stored with a materially weaker guarantee, or not persisted at all, with no warning to the
+user that this specific credential's protection changed.
+
+## Failure scenario
+
+An organization's IT policy, or a user acting alone, sets IntelliJ's "Save passwords" preference to "In KeePass" or "Do not save" — a setting entirely outside this plugin's knowledge or control — and the EM JWT is thereafter stored in a local KeePass-format file (protected only by that file's own master password and OS file permissions, a materially weaker guarantee than an OS keychain entry) or not persisted at all across IDE restarts, forcing a silent re-login prompt with no indication to the user that their chosen preference changed this specific credential's protection. The equivalent VS Code user has no such lever available to weaken it, and no comparable warning exists on either side telling the user which backend is currently protecting this particular token.
+
+## Proposed approach
+
+(surface a one-time notification when PasswordSafe's resolved backend is not the native keychain, mirroring the transparency VS Code's fixed binding provides for free).
+
+## Acceptance criteria
+
+When `PasswordSafe`'s resolved backend for the EM JWT credential is not the native OS keychain, the
+plugin surfaces a one-time notification informing the user which backend is currently protecting
+the token. A regression test (or documented manual verification, given no existing IntelliJ test
+harness in this module) exercises a non-keychain `PasswordSafe` configuration and asserts the
+notification is shown exactly once.
+
+## Traceability
+
+Finding `P65-D1-002` · dimension D1 (secondary D7) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P65-D1-002 -->
+
+### 62. P65-D1-003 — vscode: EM token expiry check reports malformed, unsigned, or exp-less JWTs as not expired
+**Route:** public issue
+**Labels:** vscode, PRIO 2, 4
+
+<!-- BODY-BEGIN P65-D1-003 -->
+## Problem
+
+`extension.ts`'s `isTokenExpired()` independently exhibits the same fail-open weakness already
+recorded on the IntelliJ side — it returns "not expired" for three classes of malformed or
+ambiguous JWT input, with no signature verification.
+
+## Evidence
+
+`bbj-vscode/src/extension.ts:339-366 (contrasted with bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java:56-88, P63-D1-004)`
+
+Surface: `isTokenExpired()` (`:339-366`), three "unable to determine" branches at `:344-346`,
+`:355-357`, `:363-365`, no signature verification anywhere in the function. Problem class: fail-open
+expiry validation, mirroring the IntelliJ-side defect this cross-cutting sweep surfaced by tracing
+expiry handling on both IDEs. Impact: mitigated but not eliminated by `ensureValidToken()`'s
+mandatory server round trip for both run commands; the residual gap is that a freshly-issued token
+stored by the login handler is never itself re-validated at that moment, so a malformed or
+substituted token at exactly that point would be accepted into secret storage silently.
+
+## Failure scenario
+
+A JWT token that is not well-formed 3-part base64url, whose decoded payload lacks an exp claim, or whose decode throws for any reason is reported "not expired" identically to a token with a genuine future exp, by getEMCredentials() (:374-388) and therefore by ensureValidToken() and getEMCredentials()'s every other caller. The freshly-issued token stored by the bbj.loginEM handler (:667) is never itself run through this or any other validator before being persisted, so a malformed or substituted token at that exact moment would be accepted into SecretStorage silently — the run flows remain protected only because ensureValidToken's separate server round trip (:471) is unconditional, not because this decode caught anything.
+
+## Proposed approach
+
+(change the three "unable to determine" branches at :345,:356,:364 to return true — fail closed — matching the exact edit P63-D1-004 already proposes for its own IntelliJ analog).
+
+## Acceptance criteria
+
+The three "unable to determine" branches in `extension.ts`'s `isTokenExpired()` (`:345`, `:356`,
+`:364`) return `true` (fail closed) rather than `false`, matching the fix applied to the IntelliJ
+analog. A regression test exercises a non-3-part token, an exp-less payload, and a decode-throwing
+payload against `isTokenExpired()` directly (a pure function requiring no VS Code API mock) and
+asserts each is now treated as expired.
+
+## Traceability
+
+Finding `P65-D1-003` · dimension D1 (secondary D2) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P65-D1-003 -->
+
+### 63. P66-D4-001 — intellij: BbjCompletionFeature and BbjLanguageServerFactory couple to LSP4IJ classes marked @ApiStatus.Experimental, confirmed by jar inspection
+**Route:** public issue
+**Labels:** intellij, PRIO 2, 4
+
+<!-- BODY-BEGIN P66-D4-001 -->
+## Problem
+
+A live jar-measurement re-triage confirms that `BbjCompletionFeature` and `BbjLanguageServerFactory`
+subclass or anonymously implement three LSP4IJ classes each carrying a class-level
+`@ApiStatus.Experimental` marker, with no regression test to catch a breaking change.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java:19,21 (extends LSPCompletionFeature; @Override getIcon(CompletionItem)); bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjLanguageServerFactory.java:39-64 (anonymous LSPClientFeatures with a nested LSPDocumentLinkFeature override); bbj-intellij/build.gradle.kts:27 (the pinned 0.19.0)`
+
+Surface: `LSPCompletionFeature`, `LSPClientFeatures`, and `LSPDocumentLinkFeature` — the three
+classes `BbjCompletionFeature`/`BbjLanguageServerFactory` subclass or anonymously implement — each
+carry a class-level `RuntimeInvisibleAnnotations -> ApiStatus$Experimental` block in the cached
+`lsp4ij-0.19.0.jar`, read directly via `javap -v` rather than asserted from documentation. Problem
+class: dependency-coupling to an API its own vendor marks unstable, with no regression coverage.
+Impact: a breaking signature or semantics change to any of the subclassed/overridden members in a
+future LSP4IJ release — explicitly permitted under their own `@ApiStatus.Experimental` contract —
+would surface as a compile failure or a silent behaviour change at plugin-update time, with nothing
+in this module to catch a silent one before release.
+
+## Failure scenario
+
+n/a (D4 is a code-shape finding, not a runtime failure scenario) — a breaking signature or semantics change to LSPCompletionFeature.getIcon(), LSPClientFeatures's initializeParams()/setDocumentLinkFeature()/ setCompletionFeature() builder chain, or LSPDocumentLinkFeature.isSupported() in a future LSP4IJ release (explicitly permitted by their own @ApiStatus.Experimental contract) would surface as a compile failure or a silent behaviour change across BbjCompletionFeature.java and BbjLanguageServerFactory.java at plugin-update time, with no regression test anywhere in this module (P63-D5-001) to catch a silent one before release.
+
+## Proposed approach
+
+A complete fix needs a new bbj-intellij/src/test/ source set exercising both BbjCompletionFeature.java and BbjLanguageServerFactory.java, two files, and per P64-D6-010 even running that suite locally is currently blocked by the JDK toolchain mismatch.
+
+## Acceptance criteria
+
+A new `bbj-intellij/src/test/` source set exists exercising both `BbjCompletionFeature.java` and
+`BbjLanguageServerFactory.java` against their subclassed LSP4IJ extension points (`getIcon()`, the
+`LSPClientFeatures` builder chain, and `LSPDocumentLinkFeature.isSupported()`), providing a
+regression signal a future LSP4IJ upgrade would trip if it breaks one of these three coupling
+points. This criterion is understood to be blocked on resolving the JDK toolchain mismatch that
+currently prevents running the module's test suite locally, and that blocker is tracked as a
+precondition, not silently dropped.
+
+## Traceability
+
+Finding `P66-D4-001` · dimension D4 · severity medium · effort 4 (matches the same effort already on
+record for this coupling surface — no departure). This finding supersedes an earlier finding,
+`P63-D4-010`, re-triaging the same LSP4IJ-coupling evidence with this record's own live jar
+measurement (the nine-row annotation table above) in place of the earlier record's
+coupling-shape-only trace. What it adds beyond `P63-D4-010`: a confirmed, tool-measured
+`@ApiStatus.Experimental` annotation on all three coupled LSP4IJ classes, and a concrete proposed
+fix — a new `bbj-intellij/src/test/` source set — that the earlier record did not attempt.
+<!-- BODY-END P66-D4-001 -->
+
+### 64. P66-D5-001 — javascript: three parser test assertions remain disabled, so classpath-dependent validation regressions pass the suite undetected
+**Route:** public issue
+**Labels:** javascript, PRIO 2, 4
+
+<!-- BODY-BEGIN P66-D5-001 -->
+## Problem
+
+Three disabled/commented-out assertions in `parser.test.ts` mean a regression in
+Java-classpath-dependent validation would pass the full test suite undetected.
+
+## Evidence
+
+`bbj-vscode/test/parser.test.ts:530,811,860`
+
+Surface: three `DISABLED` `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts`,
+covering `new String()` substring validation, `BBjAPI()` global-namespace method-chain resolution,
+and `String[]`/`byte[]` Java-typed class fields, all unchanged at their recorded lines with their
+recorded blocking comments intact. Problem class: missing/disabled regression assertions — a
+test-infrastructure gap (no Java classpath resolvable under Langium's `EmptyFileSystem` test
+context) rather than a runtime behavior defect. Impact: any regression in these three validation
+scenarios would pass the full npm test suite undetected, because the only assertions that would
+catch it are commented out rather than executed.
+
+## Failure scenario
+
+Any regression in Java-classpath-dependent validation for these three scenarios — new String() substring validation, BBjAPI() global-namespace method-chain resolution, and String[]/byte[] Java-typed class fields — would pass the full npm test suite undetected, because the only assertions that would catch it are commented out rather than executed.
+
+## Proposed approach
+
+Like the Phase 61 D5 environment/coverage-gap records this record cites (P61-D5-003), no single code edit closes this gap: the three disabled `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts` (lines 533, 815, 864) need a Java classpath resolvable under Langium's `EmptyFileSystem` test context, a capability the current unit-test setup does not provide. DEBT-02's own re-triage scope is to either enable them once that capability exists or document the specific blocking limitation and what would unblock it — this record's approach is that documentation-or-enablement choice, not a fabricated single-file fix, since its own classification found none.
+
+## Acceptance criteria
+
+The three disabled `expectNoValidationErrors` assertions in `bbj-vscode/test/parser.test.ts` are
+either (a) re-enabled once a Java classpath resolvable under Langium's `EmptyFileSystem` test
+context is available, with each assertion passing under that classpath, or (b) left disabled with a
+written, current explanation of the specific blocking limitation and what capability would need to
+exist to unblock them. Whichever path is taken, the outcome is a documented decision rather than an
+indefinitely silent gap.
+
+## Traceability
+
+Finding `P66-D5-001` · dimension D5 (secondary D2) · severity medium · effort 4. `dedup: none`.
+<!-- BODY-END P66-D5-001 -->
