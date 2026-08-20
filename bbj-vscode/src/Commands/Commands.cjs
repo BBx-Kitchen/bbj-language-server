@@ -5,6 +5,8 @@ const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
+const { buildRunArgv } = require("./process-args");
+const { runProcessCallback, formatArgvForLog } = require("./process-runner");
 
 // Shared output channel from extension.ts
 let outputChannel = null;
@@ -243,32 +245,31 @@ const Commands = {
     if (!home) return;
 
     const webConfig = vscode.workspace.getConfiguration('bbj.web');
-    var sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
+    const sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
 
-    const bbj = `${home}/bin/bbj${os.platform() === 'win32' ? '.exe' : ''}`;
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
 
-    if (sscp != null && sscp > '') {
-      sscp = '-CP' + sscp;
-    } else {
-      sscp = '';
-    }
-
     // Add custom config.bbx path if configured
     const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
-    const configArg = configPath ? `-c"${configPath}" ` : '';
 
-    const cmd = `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"`;
+    const argv = buildRunArgv({
+      home,
+      platform: os.platform(),
+      classpathEntry: sscp,
+      configPath,
+      workingDir,
+      fileName
+    });
 
     const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
     if (isDebug && outputChannel) {
-      outputChannel.appendLine(`GUI run: ${cmd}`);
+      outputChannel.appendLine(`GUI run: ${formatArgvForLog(argv)}`);
     }
 
     const runCommand = () => {
-      exec(cmd, (err, stdout, stderr) => {
+      runProcessCallback(argv, {}, (err, stdout, stderr) => {
         if (err) {
           const errorMsg = `Failed to run "${fileName}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
           vscode.window.showErrorMessage(errorMsg);
