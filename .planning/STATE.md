@@ -107,9 +107,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
   MILESTONES.md).
 
-- **Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.** Only the `bbjcpl` compile
-  path was live-launched; Run / Run BUI / Run DWC and EM login/validate need the `QA/`
-  checklist before that advisory is published. See `tmp_human_review/07-*`.
+- ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
+  Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
+  automated verification left open (only the `bbjcpl` compile path had been exercised live).
+  That advisory now waits only on the release before it can be published.
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
   on a bare TCP connect to :5008. BBjServices squats on that port without speaking the

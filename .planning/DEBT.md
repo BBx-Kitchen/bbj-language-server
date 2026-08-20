@@ -55,43 +55,30 @@ first — classify before deciding.
 
 ---
 
-## 2. Orphan phase directory: `68-deliverable-documents`
+## 2. Orphan phase directory `68-deliverable-documents` — RESOLVED 2026-08-20
 
-`.planning/phases/68-deliverable-documents/` contains a single 19KB
-`68-PATTERNS.md` (dated 2026-08-19) with **no corresponding ROADMAP entry** —
-ROADMAP phases stop at 59, and phases 60–67 do not exist anywhere in planning.
+Moved out of `.planning/phases/` into the local `.planning/milestones/v4.0-phases/` archive,
+where it belongs as a v4.0 phase artifact. It is deliberately **untracked**: the pre-push hook
+embargoes every `.planning/milestones/v4.0*` path, and that policy was respected rather than
+bypassed. The file remains on disk with the rest of the embargoed v4.0 tree.
 
-Notes:
-- The whole `.planning/phases/` tree is **untracked** in git (no `.gitignore` rule —
-  it simply was never committed). Completed phases are archived into
-  `.planning/milestones/<version>-phases/` on milestone close, so `phases/` is
-  transient scratch space. This directory is what got left behind.
-- `68-PATTERNS.md` is a `gsd-pattern-mapper` artifact — a codebase pattern analysis
-  produced *before* planning. Its content may still be useful; it is the dangling
-  phase number that is the problem.
-
-**Why it was deferred:** deleting it risks discarding real analysis; keeping it as-is
-leaves `/gsd-progress` reporting a phase that does not exist. Deciding which needs
-someone to actually read the file.
-
-**How to address:** read `68-PATTERNS.md`, then either fold its content into the
-codebase docs (`.planning/codebase/`) and delete the directory, or give phase 68 a
-real ROADMAP entry if the work it maps is still intended.
+Scanned clean of advisory detail before the move (it is a pattern map describing markdown
+artifact structure, not code or findings).
 
 ---
 
-## 3. `MILESTONES.md` has duplicated milestone sections
+## 3. `MILESTONES.md` duplicated sections — RESOLVED 2026-08-20
 
-`v3.3 Output & Diagnostic Cleanup` and `v3.4 0.8.0 Issue Closure` each appear
-**twice** in `.planning/MILESTONES.md` — at lines 30 and 327 (v3.3), and lines 3 and
-356 (v3.4). The file also runs newest-first for its first block and then oldest-first
-for a second block, so it reads as two concatenated histories.
+The file carried two concatenated histories: a newest-first block and an oldest-first block,
+overlapping on v3.3 and v3.4.
 
-Low severity — cosmetic, no tooling reads it for routing. But it makes the file
-untrustworthy as a changelog, and any future append lands in an ambiguous place.
+Deduplicated by comparing the copies rather than deleting blindly — they were **not** identical:
+- v3.3's second copy was a strict superset (added a "What's next" line) → kept.
+- v3.4's second copy was a stub whose "43 phases, 86 plans" figures were cumulative project
+  totals mislabelled as that milestone's own → discarded, detailed copy kept.
 
-**How to address:** de-duplicate and settle on one ordering. Mechanical, but verify
-the two copies of each section actually agree before deleting either.
+Now 17 sections, one per shipped milestone, ordered newest-first. Matches the 17-milestone
+total in ROADMAP.md.
 
 ---
 
