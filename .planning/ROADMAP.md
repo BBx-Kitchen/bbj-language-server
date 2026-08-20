@@ -245,7 +245,26 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5f22-gqrx-xr22 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: TBD
+**Plans**: 0/5 plans executed
+**Wave 1**
+
+  - [ ] 71-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 71-02-PLAN.md — additional regression coverage (detail in the advisory's private fork)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 71-03-PLAN.md — pull request against `main`, prepared and reviewed
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 71-04-PLAN.md — landing on `main`, with CI observed
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+  - [ ] 71-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 72: Remediate GHSA-c4hw-5j83-cx5h
 
