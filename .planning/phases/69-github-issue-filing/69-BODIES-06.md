@@ -11,6 +11,15 @@
 | 114 | P62-D1-006 | public issue | vscode: the formatter resolves the java binary via a bare PATH lookup with no pinning setting and no pre-spawn verification | vscode, PRIO 3, 4 |
 | 115 | P62-D4-003 | public issue | vscode: 20 compiler-option definitions are hand-duplicated between CompilerOptions.ts and package.json with nothing keeping them in sync | vscode, PRIO 3, 4 |
 | 116 | P63-D1-006 | public issue | intellij: composer dialogs write LS-composed BBj statement text into the developer's document with no escaping or structural validation | intellij, PRIO 3, 4 |
+| 117 | P63-D2-002 | public issue | intellij: java-interop port auto-detection runs only inside the Settings dialog's reset(), so direct getState() callers get the hardcoded default | intellij, PRIO 3, 4 |
+| 118 | P63-D2-008 | public issue | intellij: composer dialogs iterate catalog sub-lists with no null guard, so a malformed catalogs response throws an unhandled NullPointerException on the EDT | intellij, PRIO 3, 4 |
+| 119 | P63-D2-011 | public issue | intellij: both status-bar widgets update file-extension visibility only on a status-bus event, never on a bare editor-tab switch | intellij, PRIO 3, 4 |
+| 120 | P63-D3-003 | public issue | intellij: composer dialogs fire one full preview LSP4IJ round trip per keystroke with no debounce, unlike the language server's own 500ms debounce | intellij, PRIO 3, 4 |
+| 121 | P63-D3-004 | public issue | intellij: every composer-open invocation re-resolves the language server and refetches static catalogs that never change at runtime | intellij, PRIO 3, 4 |
+| 122 | P63-D3-006 | public issue | intellij: the TextMate bundle provider allocates a fresh temp directory and re-copies its bundle files on every IDE launch with no caching or cleanup | intellij, PRIO 3, 4 |
+| 123 | P63-D4-003 | public issue | intellij: three near-identical plugin-tool-path resolution methods duplicate the same lookup-and-null-check logic across two files | intellij, PRIO 3, 4 |
+| 124 | P63-D4-004 | public issue | intellij: BbjRunBuiAction and BbjRunDwcAction duplicate 131 of 142 lines of shared run-action logic, differing only in a handful of BUI/DWC-specific literals | intellij, PRIO 3, 4 |
+| 125 | P63-D4-005 | public issue | intellij: three composer-launch actions are near-identical files differing only in one Kind enum constant and doc text | intellij, PRIO 3, 4 |
 
 ## Bodies rows 108-125
 
@@ -432,3 +441,426 @@ manual verification step at merge time.
 
 Finding `P63-D1-006` · dimension D1 (secondary D2) · severity low · effort 4. `dedup: none`.
 <!-- BODY-END P63-D1-006 -->
+
+### 117. P63-D2-002 — intellij: java-interop port auto-detection runs only inside the Settings dialog's reset(), so direct getState() callers get the hardcoded default
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D2-002 -->
+## Problem
+
+`BbjSettings.getState()` auto-detects `bbjHomePath` and `nodeJsPath` inline whenever they are empty,
+benefiting every consumer of `getState()`, but `javaInteropPort` receives no equivalent treatment
+there — its only auto-detection lives in `BbjSettingsConfigurable.reset()`, gated by an
+equality-to-default check (`if (javaInteropPort == 5008)`) rather than a genuine "was this ever
+configured" check.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsConfigurable.java:130-140`
+
+Surface: `BbjSettingsConfigurable.reset()`'s port auto-detection (`:130-140`), gated by the
+literal-equality check at `:131`, versus `BbjSettings.getState()`'s inline auto-detection of
+`bbjHomePath`/`nodeJsPath` (`BbjSettings.java:44-57`), which has no such gate. Problem class:
+inconsistent auto-detection scope between two related settings, with an equality check standing in
+for a configured/unconfigured sentinel. Impact: any direct
+`BbjSettings.getInstance().getState()` caller that is not the Settings UI never runs port
+auto-detection at all, and a user who explicitly confirms port 5008 is indistinguishable from a user
+who never touched the field, so their choice is silently overwritten each time the Settings dialog
+reopens.
+
+## Failure scenario
+
+A consumer reading BbjSettings.getInstance().getState().javaInteropPort directly (bypassing the Settings dialog) gets the hardcoded default 5008 even when BBj.properties specifies a different java-interop port, unlike bbjHomePath/ nodeJsPath which are auto-detected wherever they are read. Separately, a user who has explicitly left the port at its default value has that value silently replaced with a newly detected port each time the Settings dialog is reopened and OK'd, with no way to express "I want 5008, don't auto-detect."
+
+## Proposed approach
+
+Move port auto-detection into BbjSettings.getState(), replacing the equality check with a genuine "never configured" sentinel.
+
+## Acceptance criteria
+
+Java-interop port auto-detection moves into `BbjSettings.getState()` itself, alongside
+`bbjHomePath`/`nodeJsPath`, so every consumer of `getState()` benefits and not only the Settings
+UI's `reset()`. The equality-to-default check is replaced with a genuine "never configured"
+sentinel, so a user who explicitly confirms port 5008 is no longer indistinguishable from one who
+never touched the field. Because no `src/test/` source set exists for `bbj-intellij` today,
+regression coverage depends on that gap being closed first, or on a recorded manual verification
+step at merge time.
+
+## Traceability
+
+Finding `P63-D2-002` · dimension D2 (secondary D4) · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D2-002 -->
+
+### 118. P63-D2-008 — intellij: composer dialogs iterate catalog sub-lists with no null guard, so a malformed catalogs response throws an unhandled NullPointerException on the EDT
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D2-008 -->
+## Problem
+
+`MsgboxComposerDialog.createCenterPanel()` and both addWindow-family dialogs iterate their
+`ComposerCatalogs` sub-list fields (icons, button sets, default buttons, flags, event bits) with no
+null guard, while `ComposerLauncher`'s own `catalogs == null` check guards only the top-level
+reference, not its individual sub-list fields.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:116-118,139,AddWindowComposerDialog.java:151,161,AddChildWindowComposerDialog.java:155,165`
+
+Surface: `fillCombo(icon, catalogs.icons)`/`fillCombo(buttonSet, catalogs.buttonSets)`/
+`fillCombo(defaultButton, catalogs.defaultButtons)` and the `for (CatalogItem it : catalogs.flags)`
+loop in `MsgboxComposerDialog.createCenterPanel()`, mirrored by `addGroupedChecks(flags/eventPanel,
+catalogs.flags/eventBits, ...)` in both addWindow-family dialogs — none null-guarded. Problem class:
+missing null check on a sub-field of an already-null-checked parent object. Impact: a malformed or
+partial `bbj/composer/catalogs` response with a null `icons`/`buttonSets`/`defaultButtons`/`flags`/
+`eventBits` field throws a `NullPointerException` inside `createCenterPanel()`, called synchronously
+on the EDT during dialog construction, surfacing as an "IDE Internal Error" balloon rather than the
+graceful "not ready" message `ComposerLauncher` already shows for a fully-null `catalogs` object.
+
+## Failure scenario
+
+A malformed or partial bbj/composer/catalogs response with a null icons/ buttonSets/defaultButtons/flags/eventBits field throws NullPointerException inside createCenterPanel(), called synchronously from DialogWrapper.init() on the EDT during dialog construction — IntelliJ's top-level EDT handler shows an "IDE Internal Error" balloon instead of the graceful "not ready" message ComposerLauncher already has one level up for a fully-null catalogs object.
+
+## Proposed approach
+
+Null-default each sub-list to List.of() at the point of use, or guard before iterating.
+
+## Acceptance criteria
+
+Each of `MsgboxComposerDialog`, `AddWindowComposerDialog` and `AddChildWindowComposerDialog` either
+null-defaults its `ComposerCatalogs` sub-list fields to `List.of()` at the point of use, or guards
+before iterating, so a malformed or partial catalogs response no longer throws an unhandled
+`NullPointerException` inside `createCenterPanel()`. Because no `src/test/` source set exists for
+`bbj-intellij` today, regression coverage depends on that gap being closed first, or on a recorded
+manual verification step at merge time confirming a null sub-list field no longer crashes dialog
+construction.
+
+## Traceability
+
+Finding `P63-D2-008` · dimension D2 (secondary D1) · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D2-008 -->
+
+### 119. P63-D2-011 — intellij: both status-bar widgets update file-extension visibility only on a status-bus event, never on a bare editor-tab switch
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D2-011 -->
+## Problem
+
+Both `BbjStatusBarWidget` and `BbjJavaInteropStatusBarWidget` call `updateVisibility()` exclusively
+from inside `updateStatus()`, which runs only on a server-status/java-interop-status message-bus
+event or once at construction — neither file registers a `FileEditorManagerListener` or any other
+editor-selection-change hook, so the widget's file-extension visibility check never re-runs on a
+bare editor-tab switch.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjStatusBarWidget.java:67-114,bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjJavaInteropStatusBarWidget.java:65-108`
+
+Surface: both widgets' `updateVisibility()` calls (`:99`/`:93`), reachable only from
+`updateStatus()` (`:67-101`/`:65-95`), itself gated on a status-bus Topic subscription
+(`:58-61`/`:56-59`) or construction time; no `FileEditorManagerListener` registration anywhere in
+either file. Problem class: a visibility check tied to the wrong event source (status change
+instead of editor-selection change). Impact: a user who opens a BBj file, making the widget visible,
+then switches to a non-BBj file with no intervening status change keeps seeing the now-stale visible
+widget; conversely, opening a first BBj file after the server already reached a stable status leaves
+the widget hidden until an unrelated status transition happens to occur.
+
+## Failure scenario
+
+A user who opens a BBj file (widget becomes visible) and then switches to a non-BBj file, with no intervening server-status or java-interop-status change, keeps seeing the now-stale visible widget — and the reverse: opening a first BBj file after the server has already reached a stable "started" status (no further status event fires) leaves the widget hidden until some unrelated status transition happens to occur, if one ever does.
+
+## Proposed approach
+
+Register a FileEditorManagerListener. FILE_EDITOR_MANAGER subscription via the project message bus in each widget's constructor, disposed alongside messageBusConnection, calling updateVisibility() on selection change.
+
+## Acceptance criteria
+
+Both `BbjStatusBarWidget` and `BbjJavaInteropStatusBarWidget` register a
+`FileEditorManagerListener.FILE_EDITOR_MANAGER` subscription via the project message bus in their
+constructors, disposed alongside their existing `messageBusConnection`, calling `updateVisibility()`
+on editor-selection change in addition to the existing status-bus trigger. Because no `src/test/`
+source set exists for `bbj-intellij` today, regression coverage depends on that gap being closed
+first, or on a recorded manual verification step confirming the widget updates on a bare tab switch.
+
+## Traceability
+
+Finding `P63-D2-011` · dimension D2 (secondary D3) · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D2-011 -->
+
+### 120. P63-D3-003 — intellij: composer dialogs fire one full preview LSP4IJ round trip per keystroke with no debounce, unlike the language server's own 500ms debounce
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D3-003 -->
+## Problem
+
+The identical inline `SimpleDocumentListener` in all three composer dialogs calls `refresh()`
+synchronously from `insertUpdate`/`removeUpdate`/`changedUpdate` with no `Timer`/`Alarm`/
+scheduled-executor anywhere in this unit, so every keystroke in any text field fires one full
+`bbj/composer/*/preview` LSP4IJ round trip — unlike the language server's own 500ms trailing-edge
+document-validation debounce.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/MsgboxComposerDialog.java:268-272,AddWindowComposerDialog.java:300-305,AddChildWindowComposerDialog.java:309-314`
+
+Surface: the identical `SimpleDocumentListener` in all three dialogs, with no
+`com.intellij.util.Alarm`/`SingleAlarm`-style coalescing anywhere in the 13 files this unit covers.
+Problem class: missing debounce on a high-frequency UI-triggered network request. Impact: fast
+typing in any message/title/assignTo (Msgbox) or geometry/receiver field (addWindow/addChildWindow)
+issues one LSP4IJ request per keystroke with no coalescing, each round trip updating the
+schematic/statement/summary fields on the EDT — a redundant-request cost that scales with typing
+speed rather than with actual settle points.
+
+## Failure scenario
+
+Fast typing in message/title/assignTo (Msgbox) or any of the geometry/receiver fields (addWindow/addChildWindow) issues one LSP4IJ request per keystroke with no coalescing, each round trip updating the schematic/statement/summary fields on the EDT — a redundant-request cost that scales with typing speed rather than with actual settle points.
+
+## Proposed approach
+
+Wrap each refresh() call in a shared debounce helper using com.intellij.util.Alarm.
+
+## Acceptance criteria
+
+All three composer dialogs' `SimpleDocumentListener` implementations route their `refresh()` calls
+through a shared debounce helper built on `com.intellij.util.Alarm`, so fast typing coalesces into
+one round trip per settle point rather than firing one LSP4IJ request per keystroke. Because no
+`src/test/` source set exists for `bbj-intellij` today, regression coverage depends on that gap
+being closed first, or on a recorded manual verification step timing request frequency during fast
+typing before and after the change.
+
+## Traceability
+
+Finding `P63-D3-003` · dimension D3 · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D3-003 -->
+
+### 121. P63-D3-004 — intellij: every composer-open invocation re-resolves the language server and refetches static catalogs that never change at runtime
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D3-004 -->
+## Problem
+
+`ComposerLauncher.launch()` calls `BbjComposerService.server(project)` — itself re-resolving
+`LanguageServerManager.start()` plus a fresh `getLanguageServer` future — followed unconditionally
+by `server.composerCatalogs()` on every single composer-open invocation, even though the static
+option catalogs are module-level constants on the language-server side that never change at
+runtime.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:66-71,BbjComposerService.java:23-29`
+
+Surface: `launch()`'s unconditional `server(project)` (`:66`) followed by `composerCatalogs()`
+(`:71`) on every invocation, against the LS-side catalogs handler's module-level const arrays
+(`composer-commands.ts:52-57`), which never change at runtime. Problem class: redundant
+per-invocation network round trips for data that never varies within a session. Impact: every
+"Compose MSGBOX"/"Compose addWindow"/"Compose addChildWindow" invocation — not just the first one in
+a session — pays a server-resolution round trip plus a full catalogs round trip plus a decode round
+trip before the dialog appears, even though the catalogs contents are identical to the previous
+invocation's.
+
+## Failure scenario
+
+Every "Compose MSGBOX"/"Compose addWindow"/"Compose addChildWindow" invocation — not just the first one in a session — pays a server-resolution round trip plus a full catalogs round trip plus a decode round trip before the dialog appears, even though the catalogs contents are identical to the previous invocation's.
+
+## Proposed approach
+
+Cache the resolved BbjComposerServer/ComposerCatalogs per project, invalidated on LS restart.
+
+## Acceptance criteria
+
+`ComposerLauncher.launch()` caches the resolved `BbjComposerServer` and `ComposerCatalogs` per
+project, invalidated on language-server restart, so only the first composer-open invocation in a
+session pays the server-resolution and catalogs round trips. Because no `src/test/` source set
+exists for `bbj-intellij` today, regression coverage depends on that gap being closed first, or on a
+recorded manual verification step confirming subsequent invocations skip the redundant round trips.
+
+## Traceability
+
+Finding `P63-D3-004` · dimension D3 · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D3-004 -->
+
+### 122. P63-D3-006 — intellij: the TextMate bundle provider allocates a fresh temp directory and re-copies its bundle files on every IDE launch with no caching or cleanup
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D3-006 -->
+## Problem
+
+`BbjTextMateBundleProvider.getBundles()` calls `Files.createTempDirectory(...)` to allocate a
+freshly, uniquely named directory on every invocation, then re-copies all five bundled TextMate
+files into it, with no check for a prior valid copy, no caching of a stable target path, and nothing
+in the file that deletes, registers a shutdown hook for, or calls `deleteOnExit()` on the directory
+it creates.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjTextMateBundleProvider.java:27-48`
+
+Surface: `getBundles()`'s `Files.createTempDirectory(Path.of(PathManager.getTempPath()),
+"textmate-bbj")` call (`:29-30`) and its unconditional re-copy of the five `BUNDLE_FILES` (`:17-23`)
+into it, with no cleanup call anywhere in the file. Problem class: unbounded temp-file accumulation
+with no cleanup path. Impact: every IDE process that loads this plugin's TextMate bundle allocates a
+new `"textmate-bbjXXXXXXXX"`-named temp directory and never removes the directory created by any
+prior launch, so repeated launches accumulate abandoned directories in the plugin's temp path.
+
+## Failure scenario
+
+Every IDE process that loads this plugin's TextMate bundle (at minimum once per IDE launch, given the bundleProvider extension point is application-scoped) allocates a new "textmate-bbjXXXXXXXX"-named temp directory and re-copies five small files into it, and never removes the directory created by any prior launch — repeated launches accumulate abandoned directories in the plugin's temp path with no cleanup path in this code.
+
+## Proposed approach
+
+Cache bundleDir in a stable location, mirroring the Node.js download-and-cache logic's own getNodeDataDirectory() pattern (in bbj-intellij's BbjNodeDownloader.java), and skip the copy loop when a valid prior copy is already present.
+
+## Acceptance criteria
+
+`BbjTextMateBundleProvider.getBundles()` caches its target bundle directory in a stable location
+instead of allocating a fresh uniquely named temp directory on every invocation, and skips the copy
+loop when a valid prior copy is already present. Because no `src/test/` source set exists for
+`bbj-intellij` today, regression coverage depends on that gap being closed first, or on a recorded
+manual verification step confirming repeated IDE launches no longer accumulate new temp
+directories.
+
+## Traceability
+
+Finding `P63-D3-006` · dimension D3 (secondary D2) · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D3-006 -->
+
+### 123. P63-D4-003 — intellij: three near-identical plugin-tool-path resolution methods duplicate the same lookup-and-null-check logic across two files
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D4-003 -->
+## Problem
+
+`getWebBbjPath()`/`getEmValidateBbjPath()` (`BbjRunActionBase.java`) and `getEMLoginBbjPath()`
+(`BbjEMLoginAction.java`) each independently resolve a plugin-bundled tool script path through the
+identical sequence — `PluginId.getId` → `findEnabledPlugin` → null-check → `resolve("lib/tools/
+<name>")` → existence check → return path-or-null — with no shared helper anywhere in this unit.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:231-248,256-272,BbjEMLoginAction.java:158-168`
+
+Surface: the three near-identical tool-path-resolution methods, differing only in target filename
+and minor null-check ordering, with no shared "resolve a plugin-bundled tool script path" helper.
+Problem class: duplicated resolution logic across two files. Impact: any future change to the
+plugin-ID lookup or bundling convention (for example, supporting a second plugin ID for a rebrand,
+or changing the `lib/tools/` layout) must be applied at three separate sites by hand, with drift
+risk between them.
+
+## Failure scenario
+
+n/a (D4 is a code-shape finding) — any future change to the plugin-ID lookup or bundling convention (e.g. supporting a second plugin ID for a rebrand, or changing the lib/tools/ layout) must be applied at three separate sites by hand across two files, with drift risk between them.
+
+## Proposed approach
+
+Add a small static helper and delegate all three call sites to it.
+
+## Acceptance criteria
+
+A single shared helper resolves a plugin-bundled tool script path given a filename, and
+`getWebBbjPath()`, `getEmValidateBbjPath()` and `getEMLoginBbjPath()` all delegate to it instead of
+each repeating the resolution sequence independently. Because no `src/test/` source set exists for
+`bbj-intellij` today, regression coverage depends on that gap being closed first, or on a recorded
+manual verification step confirming all three actions still resolve their tool scripts correctly
+after the change.
+
+## Traceability
+
+Finding `P63-D4-003` · dimension D4 · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D4-003 -->
+
+### 124. P63-D4-004 — intellij: BbjRunBuiAction and BbjRunDwcAction duplicate 131 of 142 lines of shared run-action logic, differing only in a handful of BUI/DWC-specific literals
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D4-004 -->
+## Problem
+
+`BbjRunBuiAction.java` and `BbjRunDwcAction.java` are 142-line files that differ in only 11 lines
+each — the "BUI"/"DWC" client-type literal, three user-facing message strings, the constructor's
+display text/icon, and `getRunMode()`'s return value — with the remaining 131 lines, including the
+entire EM-login/token-validation/classpath/config-path/command-line-assembly flow, byte-for-byte
+identical between the two files.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java,BbjRunDwcAction.java`
+
+Surface: `git diff --no-index --numstat` between the two files reports 11 of 142 lines differing per
+file. Problem class: near-total structural duplication between two action classes. Impact: any
+future fix to the shared BUI/DWC flow (for example, the EDT-blocking fix this band's `P63-D2-004`
+describes, or a classpath-handling change) must be applied identically in two files by hand, with
+drift risk if one copy is updated and the other missed.
+
+## Failure scenario
+
+n/a (D4 is a code-shape finding) — any future fix to the shared BUI/DWC flow (e.g. the P63-D2-004 EDT-blocking fix, or a classpath-handling change) must be applied identically in two files by hand, with drift risk if one copy is updated and the other missed.
+
+## Proposed approach
+
+Introduce a getClientType() abstract method and move the shared body up to BbjRunActionBase.
+
+## Acceptance criteria
+
+`BbjRunBuiAction` and `BbjRunDwcAction` no longer duplicate their shared 131-line body —
+`BbjRunActionBase` gains a `getClientType()` abstract method (or equivalent), and the shared flow
+moves up into the base class, with the two subclasses reduced to their differing BUI/DWC-specific
+literals. Because no `src/test/` source set exists for `bbj-intellij` today, regression coverage
+depends on that gap being closed first, or on a recorded manual verification step confirming both
+Run As BUI and Run As DWC still behave identically after the refactor.
+
+## Traceability
+
+Finding `P63-D4-004` · dimension D4 · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D4-004 -->
+
+### 125. P63-D4-005 — intellij: three composer-launch actions are near-identical files differing only in one Kind enum constant and doc text
+**Route:** public issue
+**Labels:** intellij, PRIO 3, 4
+
+<!-- BODY-BEGIN P63-D4-005 -->
+## Problem
+
+`BbjComposeAddChildWindowAction.java`, `BbjComposeAddWindowAction.java` and
+`BbjComposeMsgboxAction.java` are three 38-line files sharing an identical structure —
+null-guarding project/editor in `update()`, delegating to `ComposerLauncher.launch(project, editor,
+Kind.X)` in `actionPerformed()`, declaring `ActionUpdateThread.BGT` — differing only in the `Kind`
+enum constant and doc text.
+
+## Evidence
+
+`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjComposeAddChildWindowAction.java,BbjComposeAddWindowAction.java,BbjComposeMsgboxAction.java`
+
+Surface: pairwise `git diff --no-index --numstat` reports 4 of 38 lines differing between
+AddChildWindow and AddWindow, and 5 of 38 between AddWindow and Msgbox — in both cases only the
+class doc, class name and `Kind` enum constant. Problem class: three files existing purely to supply
+one differing enum constant to a shared call. Impact: a fourth composer kind would add a fourth
+near-identical file rather than a single data-driven registration, compounding the duplication with
+each new composer type.
+
+## Failure scenario
+
+n/a (D4 is a code-shape finding) — three files exist purely to supply one differing enum constant to a shared call; a fourth composer kind would add a fourth near-identical file rather than a single data-driven registration.
+
+## Proposed approach
+
+A single BbjComposeAction(Kind) constructed three times in plugin.xml via constructor-arg registration, replacing three Java files with one.
+
+## Acceptance criteria
+
+The three near-identical composer-launch action classes are replaced with a single
+`BbjComposeAction(Kind)` constructed three times in `plugin.xml` via constructor-arg registration,
+so a future composer kind is added by registering one more `plugin.xml` entry rather than authoring
+a fourth near-identical Java file. Because no `src/test/` source set exists for `bbj-intellij` today,
+regression coverage depends on that gap being closed first, or on a recorded manual verification
+step confirming all three composer menu actions still launch correctly after the consolidation.
+
+## Traceability
+
+Finding `P63-D4-005` · dimension D4 · severity low · effort 4. `dedup: none`.
+<!-- BODY-END P63-D4-005 -->
