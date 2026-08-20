@@ -1,3 +1,18 @@
+---
+gsd_state_version: 1.0
+milestone: v4.1
+milestone_name: Security Advisory Remediation
+status: planning
+last_updated: "2026-08-20T14:09:07.266Z"
+last_activity: 2026-08-20
+progress:
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State: BBj Language Server
 
 **Last Updated:** 2026-08-20
@@ -14,18 +29,10 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-Phase: none active — v4.0 closed 2026-08-20; v4.1 security milestone opening
-Status: v4.0 shipped (40/40 requirements); GHSA-p5f3-9456-9pcx fixed and merged (PR #637); preview build to QA
-Last activity: 2026-08-20 - Filed v4.0 Stability & Quality retroactively; opened .planning/DEBT.md; executing quick task 260820-hxg (GHSA-p5f3-9456-9pcx command-injection hardening)
-
-Progress: [██████████] v4.0 complete (10/10 phases, 62 plans) — closed
-
-**Next milestone (v4.1, security):** remediate the 8 remaining draft advisories. Each has
-a temporary private fork created 2026-08-20 from its advisory page; per-advisory planning
-artifacts live **inside those private forks**, not on `main`, so unfixed surfaces are not
-published. `tmp_human_review/` and `.planning/DEBT.md` hold the remaining open items.
-
----
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-08-20 — Milestone v4.1 started
 
 ## Performance Metrics
 
@@ -41,18 +48,21 @@ published. `tmp_human_review/` and `.planning/DEBT.md` hold the remaining open i
 ### Recent History
 
 **v3.9 (Shipped: 2026-02-21):**
+
 - Duration: 1 day
 - Phases: 3 (57-59)
 - Plans: 8
 - Key: Bug fixes, grammar additions (EXIT/SERIAL/ADDR), Java class reference features (.class, static methods, deprecated, constructors)
 
 **v3.8 (Shipped: 2026-02-20):**
+
 - Duration: 1 day
 - Phases: 3 (54-56)
 - Plans: 7
 - Key: Fixed all test failures, re-enabled disabled assertions, removed dead code, resolved all production FIXMEs
 
 **v3.7 (Shipped: 2026-02-20):**
+
 - Duration: 1 day
 - Phases: 4 (50-53)
 - Plans: 7
@@ -71,6 +81,7 @@ published. `tmp_human_review/` and `.planning/DEBT.md` hold the remaining open i
 ### Decisions
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
 - [Phase 59]: MemberCall isClassRef extension dropped — old JAR does not send isStatic for fields
@@ -91,13 +102,16 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - **8 draft advisories unfixed** (all high) from v4.0 phase 65 — the v4.1 milestone scope.
   Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637) but stays an
   unpublished draft until the release ships.
+
 - **Manual QA outstanding on the merged fix.** Only the `bbjcpl` compile path was
   live-launched; Run / Run BUI / Run DWC and EM login/validate need the `QA/` checklist
   before GHSA-p5f3-9456-9pcx is published. See `tmp_human_review/07-*`.
+
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
   on a bare TCP connect to :5008. BBjServices squats on that port without speaking the
   interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
   `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`.
+
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
 ### Quick Tasks Completed

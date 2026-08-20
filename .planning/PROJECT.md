@@ -8,6 +8,21 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
+## Current Milestone: v4.1 Security Advisory Remediation
+
+**Goal:** Remediate the eight remaining high-severity security advisories, each in its own
+temporary private fork, so every fix ships before its advisory is published.
+
+**Target features:**
+- Eight advisories remediated, one per phase (70-77), each verified and merged before publication
+- Every fix carries a regression test proven to fail against the pre-fix code
+- Each advisory published only after its fix is released
+
+**Working model:** one phase per advisory, one temporary private fork per advisory, one PR per
+fork. Detailed findings, plans and summaries live **inside the private forks**. Artifacts on
+public `main` reference advisories by GHSA id only and describe no flaw mechanism, so the eight
+unfixed surfaces are not published ahead of their fixes.
+
 ## Requirements
 
 ### Validated
@@ -161,10 +176,18 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 - ✓ Static method completion on class references via USE statements (#374) — v3.9
 - ✓ Deprecated methods show strikethrough indicator in completion items — v3.9
 - ✓ Constructor completion for `new ClassName()` expressions — v3.9
+- ✓ GHSA-p5f3-9456-9pcx remediated: shell-string command construction replaced with argument arrays — v4.1 (PR #637)
 
 ### Active
 
-(No active milestone — use `/gsd:new-milestone` to start next)
+- [ ] **SEC-01**: GHSA-89r9-2pw4-mc7f is remediated, verified, and its fix merged
+- [ ] **SEC-02**: GHSA-5f22-gqrx-xr22 is remediated, verified, and its fix merged
+- [ ] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
+- [ ] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
+- [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
+- [ ] **SEC-06**: GHSA-33x9-cpwv-xcv2 is remediated, verified, and its fix merged
+- [ ] **SEC-07**: GHSA-xxp5-vv2w-42q8 is remediated, verified, and its fix merged
+- [ ] **SEC-08**: GHSA-h43f-jcjr-2g4j is remediated, verified, and its fix merged
 
 ### Out of Scope
 
@@ -322,5 +345,22 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 | ( trigger returns empty CompletionList | Prevents slow fallthrough to default completion when constructor completion unavailable | ✓ Good — v3.9 shipped |
 | DTO isDeprecated → Langium deprecated field mapping | Java naming convention differs from Langium property name; explicit mapping in java-interop.ts | ✓ Good — v3.9 shipped |
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ---
-*Last updated: 2026-02-21 after v3.9 milestone*
+*Last updated: 2026-08-20 after starting v4.1 Security Advisory Remediation*
