@@ -1,6 +1,6 @@
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-02-21
+**Last Updated:** 2026-08-20
 
 ## Project Reference
 
@@ -8,17 +8,22 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone
+**Current Focus:** Remediating GHSA-p5f3-9456-9pcx (critical, CWE-78); next milestone unscoped
 
 ---
 
 ## Current Position
 
-Phase: 59 of 59 — All phases complete
-Status: v3.9 shipped
-Last activity: 2026-03-29 - Completed quick task 260329-oqw: PR #383: Return undefined instead of empty list from getFieldCompletion to allow other providers to continue
+Phase: none active on `main` — v4.0 (phases 60-69) code-merged but NOT shipped
+Status: v4.0 `tech_debt` — audited 40/40, never closed; artifacts on unmerged branch `v4.0-stability-and-quality`
+Last activity: 2026-08-20 - Filed v4.0 Stability & Quality retroactively; opened .planning/DEBT.md; executing quick task 260820-hxg (GHSA-p5f3-9456-9pcx command-injection hardening)
 
-Progress: [██████████] 100% (v3.9 shipped)
+Progress: [██████████] 100% of planned v4.0 phases executed (10/10, 62 plans) — milestone close pending
+
+**Needs human attention:** see `tmp_human_review/` — 9 unpublished draft security
+advisories, WR-01..WR-06 unfiled concurrency warnings, the unmerged v4.0 artifact
+branch, and the v4.0 milestone close. See `.planning/DEBT.md` for the deferred
+UAT/patterns debt.
 
 ---
 
@@ -27,7 +32,7 @@ Progress: [██████████] 100% (v3.9 shipped)
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 16
+**Milestones shipped:** 16 (v4.0 executed and audited but not closed)
 **Phases completed:** 59
 **Plans completed:** 143
 **Days elapsed:** 21
@@ -83,20 +88,30 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ### Blockers/Concerns
 
-None
+- **Unpushed security fix.** Quick task 260820-hxg (3 commits) sits on local branch
+  `fix/ghsa-p5f3-9456-9pcx`; not pushed, no PR. GHSA-p5f3-9456-9pcx stays an unpublished
+  draft until the fix ships.
+- **8 further draft advisories unfixed** (all high) from v4.0 phase 65. See
+  `tmp_human_review/01-security-advisories.md`.
+- **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
+  on a bare TCP connect to :5008. BBjServices squats on that port without speaking the
+  interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
+  `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`.
+- Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260329-oqw | PR #383: Return undefined instead of empty list from getFieldCompletion to allow other providers to continue | 2026-03-29 | ab42eef | [260329-oqw-pr-383-return-undefined-instead-of-empty](./quick/260329-oqw-pr-383-return-undefined-instead-of-empty/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260329-oqw | PR #383: Return undefined instead of empty list from getFieldCompletion to allow other providers to continue | 2026-03-29 | ab42eef | | [260329-oqw-pr-383-return-undefined-instead-of-empty](./quick/260329-oqw-pr-383-return-undefined-instead-of-empty/) |
+| 260820-hxg | GHSA-p5f3-9456-9pcx (critical, CWE-78): replace shell-string `child_process.exec()` construction with `execFile` argument arrays across all 7 command constructions; adds metacharacter regression tests + reintroduction guard | 2026-08-20 | f289fc5 | Verified | [260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape](./quick/260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape/) |
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-02-21
-Stopped at: Completed v3.9 milestone — all 11 requirements satisfied, milestone archived
+Last session: 2026-08-20
+Stopped at: Quick task 260820-hxg verified (9/9 must-haves, live-tested against /opt/bbx); planning docs committed; nothing pushed
 Resume file: None
 
 ---

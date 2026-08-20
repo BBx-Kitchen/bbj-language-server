@@ -1,10 +1,11 @@
 const vscode = require("vscode");
 const path = require("path");
-const { exec } = require("child_process");
 const os = require("os");
 const fs = require("fs");
 const PropertiesReader = require("properties-reader");
 const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
+const { buildRunArgv, buildWebRunArgv, buildCompileArgv, buildDecompileArgv } = require("./process-args");
+const { runProcess, runProcessCallback, formatArgvForLog } = require("./process-runner");
 
 // Shared output channel from extension.ts
 let outputChannel = null;
@@ -22,23 +23,13 @@ const setOutputChannel = (channel) => {
 };
 
 /**
- * Helper function to wrap child_process.exec() in a Promise for use with withProgress
- * @param {string} cmd - The command to execute
+ * Helper function to run an Argv (executable path + argument array) in a Promise
+ * for use with withProgress. Delegates to process-runner.js's runProcess, which
+ * launches via execFile — never a shell (GHSA-p5f3-9456-9pcx).
+ * @param {import('./process-args').Argv} argv - The executable path + argument array to run
  * @returns {Promise<{stdout: string, stderr: string}>} Promise that resolves with stdout/stderr or rejects with error
  */
-const execWithProgress = (cmd) => {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) {
-        // Attach stderr to the error object for better error messages
-        err.stderr = stderr;
-        reject(err);
-      } else {
-        resolve({ stdout, stderr });
-      }
-    });
-  });
-};
+const execWithProgress = (argv) => runProcess(argv);
 
 const { isTokenizedFile, waitForDecompileOutput } = require("../decompile-io");
 
@@ -65,7 +56,6 @@ const runWeb = (params, client, credentials) => {
   if (!home) return;
 
   const webConfig = vscode.workspace.getConfiguration("bbj.web");
-  const bbj = `${home}/bin/bbj${os.platform() === "win32" ? ".exe" : ""}`;
   const webRunnerWorkingDir = path.resolve(`${__dirname}/../tools`);
 
   // Use provided credentials (from SecretStorage) or fall back to config
@@ -106,15 +96,27 @@ const runWeb = (params, client, credentials) => {
   // never ends up with the "--" sentinel as its config file (issue #382).
   const configPath = vscode.workspace.getConfiguration('bbj').configPath || `${home}/cfg/config.bbx`;
 
-  const cmd = `"${bbj}" -q -WD"${webRunnerWorkingDir}" "${webRunnerWorkingDir}/web.bbj" - "${client}" "${name}" "${programme}" "${workingDir}" "${username}" "${password}" "${sscp}" "${token}" "${configPath}"`;
+  const argv = buildWebRunArgv({
+    home,
+    platform: os.platform(),
+    toolsDir: webRunnerWorkingDir,
+    client,
+    name,
+    programme,
+    workingDir,
+    username,
+    password,
+    classpathEntry: sscp,
+    token,
+    configPath
+  });
 
   const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
   if (isDebug && outputChannel) {
-    const debugCmd = cmd.replace(`"${token}"`, '"***"').replace(`"${password}"`, '"***"');
-    outputChannel.appendLine(`${client} run: ${debugCmd}`);
+    outputChannel.appendLine(`${client} run: ${formatArgvForLog(argv, [token, password])}`);
   }
 
-  exec(cmd, (err, stdout, stderr) => {
+  runProcessCallback(argv, {}, (err, stdout, stderr) => {
     if (err) {
       const errorMsg = `Failed to run "${programme}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
       vscode.window.showErrorMessage(errorMsg);
@@ -122,9 +124,6 @@ const runWeb = (params, client, credentials) => {
     }
   });
 };
-
-const bbjlstBin = (home) =>
-  `"${home}/bin/bbjlst${os.platform() === 'win32' ? '.exe' : ''}"`;
 
 /**
  * Resolve the target file for a decompile/denumber operation.
@@ -162,9 +161,12 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
 
   const newFileName = options.denumber ? resolvedFileName : resolvedFileName.replace(/\.lst$/, '');
 
-  const flags = options.denumber ? `-l ${resolvedFileName.endsWith('.lst') ? '-xlst' : ''}` : '';
-
-  const cmd = `${bbjlstBin(home)} ${flags} "${resolvedFileName}"`;
+  const argv = buildDecompileArgv({
+    home,
+    platform: os.platform(),
+    fileName: resolvedFileName,
+    denumber: options.denumber
+  });
 
   const title = options.denumber ? "Denumbering BBj Program..." : "Decompiling BBj Program...";
 
@@ -177,7 +179,7 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
       // Capture up-front whether the input is tokenized: only then can bbjlst
       // legitimately rewrite it in place (denumbering plain text always emits `.lst`).
       const wasTokenized = await isTokenizedFile(resolvedFileName);
-      await execWithProgress(cmd);
+      await execWithProgress(argv);
 
       // bbjlst may return before its output is on disk, and may either produce
       // `<input>.lst` or rewrite the input in place — wait for whichever happens.
@@ -243,32 +245,31 @@ const Commands = {
     if (!home) return;
 
     const webConfig = vscode.workspace.getConfiguration('bbj.web');
-    var sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
+    const sscp = stripSentinel(vscode.workspace.getConfiguration('bbj').classpath);
 
-    const bbj = `${home}/bin/bbj${os.platform() === 'win32' ? '.exe' : ''}`;
     const active = vscode.window.activeTextEditor;
     const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
 
-    if (sscp != null && sscp > '') {
-      sscp = '-CP' + sscp;
-    } else {
-      sscp = '';
-    }
-
     // Add custom config.bbx path if configured
     const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
-    const configArg = configPath ? `-c"${configPath}" ` : '';
 
-    const cmd = `"${bbj}" -q ${sscp} ${configArg}-WD"${workingDir}" "${fileName}"`;
+    const argv = buildRunArgv({
+      home,
+      platform: os.platform(),
+      classpathEntry: sscp,
+      configPath,
+      workingDir,
+      fileName
+    });
 
     const isDebug = vscode.workspace.getConfiguration('bbj').get('debug');
     if (isDebug && outputChannel) {
-      outputChannel.appendLine(`GUI run: ${cmd}`);
+      outputChannel.appendLine(`GUI run: ${formatArgvForLog(argv)}`);
     }
 
     const runCommand = () => {
-      exec(cmd, (err, stdout, stderr) => {
+      runProcessCallback(argv, {}, (err, stdout, stderr) => {
         if (err) {
           const errorMsg = `Failed to run "${fileName}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
           vscode.window.showErrorMessage(errorMsg);
@@ -323,9 +324,8 @@ const Commands = {
 
     // Build the compiler options from configuration
     const compilerOptions = buildCompileOptions(config);
-    const optionsStr = compilerOptions.length > 0 ? compilerOptions.join(' ') + ' ' : '';
 
-    const cmd = `"${home}/bin/bbjcpl${os.platform() === 'win32' ? '.exe' : ''}" ${optionsStr}"${fileName}"`;
+    const argv = buildCompileArgv({ home, platform: os.platform(), compilerOptions, fileName });
 
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -333,7 +333,7 @@ const Commands = {
       cancellable: false
     }, async () => {
       try {
-        await execWithProgress(cmd);
+        await execWithProgress(argv);
         vscode.window.showInformationMessage(`Successfully compiled "${fileName}"`);
       } catch (err) {
         const errorMsg = `Failed to compile "${fileName}": ${err.message || err}${err.stderr ? '\n\nDetails:\n' + err.stderr : ''}`;
@@ -380,7 +380,8 @@ const Commands = {
         await fs.promises.copyFile(resolvedFileName, tmpInput);
 
         const wasTokenized = await isTokenizedFile(tmpInput);
-        await execWithProgress(`${bbjlstBin(home)} -l "${tmpInput}"`);
+        const argv = buildDecompileArgv({ home, platform: os.platform(), fileName: tmpInput, denumber: true });
+        await execWithProgress(argv);
 
         // Wait for the output, then normalise it to a `.bbj` file so the editor
         // opens it with BBj language support.
