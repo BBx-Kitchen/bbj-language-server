@@ -95,11 +95,13 @@ jobs:
 
       - name: Publish IntelliJ preview to JetBrains Marketplace
         working-directory: bbj-intellij
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
         run: >-
           ./gradlew publishPlugin
           -Pversion=${{ needs.publish-preview.outputs.version }}
           -PintellijChannel=preview
-          -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+          -PintellijPlatformPublishingToken="$JETBRAINS_MARKETPLACE_TOKEN"
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
