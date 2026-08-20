@@ -2,13 +2,18 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-status: planning
-last_updated: "2026-08-20T15:00:00.000Z"
+current_phase: 70
+current_phase_name: Remediate GHSA-89r9-2pw4-mc7f
+status: ready_to_execute
+stopped_at: Phase 70 planned (5 plans, verification passed); execution not started
+last_updated: "2026-08-20T15:35:50.409Z"
 last_activity: 2026-08-20
+last_activity_desc: Phase 70 planned — 5 plans across 5 waves, plan-checker passed
+state_head: 34fdac0bdfc288861f51b16c1460c4db0a8da130
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 5
   completed_plans: 0
   percent: 0
 ---
@@ -29,10 +34,16 @@ See: .planning/PROJECT.md (updated 2026-08-20)
 
 ## Current Position
 
-Phase: 70 of 77 (Remediate GHSA-89r9-2pw4-mc7f) — ready to plan
-Plan: — (not yet planned)
-Status: Roadmap created, ready to plan Phase 70
-Last activity: 2026-08-20 — ROADMAP.md created for v4.1 (Phases 70-77, one per advisory)
+Phase: 70 of 77 (Remediate GHSA-89r9-2pw4-mc7f)
+Plan: 70-01-PLAN.md (wave 1 of 5) — not started
+Total Plans in Phase: 5
+Plans Complete: 0
+Status: Ready to execute
+Last activity: 2026-08-20 — Phase 70 planned: 5 plans in 5 waves, plan-checker VERIFICATION PASSED, 4/4 requirements and 12/12 context decisions covered
+
+Note: Phase 70 planning artifacts are held off public `main` (see REQUIREMENTS.md PROC-01);
+`.git/info/exclude` covers `.planning/phases/70-*/` and the `pre-push` hook covers `phases/7[0-7]`.
+Waves 4 and 5 are `autonomous: false` — they touch public history and external state.
 
 Progress: [░░░░░░░░░░] 0%
 

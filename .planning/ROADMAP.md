@@ -201,96 +201,134 @@ Disclosure notice in REQUIREMENTS.md.
 ## Phase Details
 
 ### Phase 70: Remediate GHSA-89r9-2pw4-mc7f
+
 **Goal**: GHSA-89r9-2pw4-mc7f is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-01, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-89r9-2pw4-mc7f`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-89r9-2pw4-mc7f is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: 5 plans
+**Wave 1**
+
   - [ ] 70-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
   - [ ] 70-02-PLAN.md — regression check and CI enforcement
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
   - [ ] 70-03-PLAN.md — private-fork pull request, reviewed and merged
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
   - [ ] 70-04-PLAN.md — landing on `main`, with CI observed
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
   - [ ] 70-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 71: Remediate GHSA-5f22-gqrx-xr22
+
 **Goal**: GHSA-5f22-gqrx-xr22 is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-02, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-5f22-gqrx-xr22`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5f22-gqrx-xr22 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 72: Remediate GHSA-c4hw-5j83-cx5h
+
 **Goal**: GHSA-c4hw-5j83-cx5h is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-03, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-c4hw-5j83-cx5h`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-c4hw-5j83-cx5h is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 73: Remediate GHSA-5vrp-fj75-pm5q
+
 **Goal**: GHSA-5vrp-fj75-pm5q is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-04, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-5vrp-fj75-pm5q`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5vrp-fj75-pm5q is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 74: Remediate GHSA-9gv3-gr6g-c4rj
+
 **Goal**: GHSA-9gv3-gr6g-c4rj is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-05, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-9gv3-gr6g-c4rj`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-9gv3-gr6g-c4rj is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 75: Remediate GHSA-33x9-cpwv-xcv2
+
 **Goal**: GHSA-33x9-cpwv-xcv2 is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-06, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-33x9-cpwv-xcv2`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-33x9-cpwv-xcv2 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 76: Remediate GHSA-xxp5-vv2w-42q8
+
 **Goal**: GHSA-xxp5-vv2w-42q8 is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-07, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-xxp5-vv2w-42q8`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-xxp5-vv2w-42q8 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ### Phase 77: Remediate GHSA-h43f-jcjr-2g4j
+
 **Goal**: GHSA-h43f-jcjr-2g4j is remediated, verified, merged, and ready to publish.
 **Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
 **Requirements**: SEC-08, PROC-01, PROC-02, PROC-03
 **Success Criteria** (what must be TRUE):
+
   1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-h43f-jcjr-2g4j`
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-h43f-jcjr-2g4j is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+
 **Plans**: TBD
 
 ## Progress
