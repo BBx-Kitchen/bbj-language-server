@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
 status: planning
-last_updated: "2026-08-20T14:09:07.266Z"
+last_updated: "2026-08-20T15:00:00.000Z"
 last_activity: 2026-08-20
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -19,20 +19,22 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-21)
+See: .planning/PROJECT.md (updated 2026-08-20)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Remediating GHSA-p5f3-9456-9pcx (critical, CWE-78); next milestone unscoped
+**Current Focus:** v4.1 Security Advisory Remediation — Phase 70 (GHSA-89r9-2pw4-mc7f), first of 8 advisory phases
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-08-20 — Milestone v4.1 started
+Phase: 70 of 77 (Remediate GHSA-89r9-2pw4-mc7f) — ready to plan
+Plan: — (not yet planned)
+Status: Roadmap created, ready to plan Phase 70
+Last activity: 2026-08-20 — ROADMAP.md created for v4.1 (Phases 70-77, one per advisory)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -40,12 +42,19 @@ Last activity: 2026-08-20 — Milestone v4.1 started
 
 **Started:** 2026-02-01
 **Milestones shipped:** 17
-**Phases completed:** 59
-**Plans completed:** 143
+**Phases completed:** 69
+**Plans completed:** 205
 **Days elapsed:** 21
 **Velocity:** ~6.8 plans/day
 
 ### Recent History
+
+**v4.0 (Shipped: 2026-08-20):**
+
+- Duration: 181 days
+- Phases: 10 (60-69)
+- Plans: 62
+- Key: Review-and-hardening pass across the repo; cross-cutting security audit surfaced 9 advisories, 1 fixed in-phase (GHSA-p5f3-9456-9pcx, PR #637), 8 carried into v4.1
 
 **v3.9 (Shipped: 2026-02-21):**
 
@@ -61,19 +70,14 @@ Last activity: 2026-08-20 — Milestone v4.1 started
 - Plans: 7
 - Key: Fixed all test failures, re-enabled disabled assertions, removed dead code, resolved all production FIXMEs
 
-**v3.7 (Shipped: 2026-02-20):**
-
-- Duration: 1 day
-- Phases: 4 (50-53)
-- Plans: 7
-- Key: Diagnostic noise reduction, Structure View resilience, BBjCPL compiler integration
-
 ---
 
 ## Accumulated Context
 
 ### Active Constraints
 
+- Disclosure constraint: no v4.1 planning artifact on `main` may describe a flaw mechanism, affected file, or exploitation path for any of the 8 unpublished advisories — opaque GHSA-id-only references only (see REQUIREMENTS.md disclosure notice)
+- Per-phase implementation detail (findings, fix design, tests) lives inside each advisory's private fork, not under `.planning/phases/` on `main`
 - TEST-03 (DEF FN suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
@@ -82,11 +86,10 @@ Last activity: 2026-08-20 — Milestone v4.1 started
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
+- [v4.1 roadmap]: One phase per advisory, 1:1, fixed order (Phase 70-77 = SEC-01..SEC-08) — mapping fixed by REQUIREMENTS.md traceability, not re-derived
+- [v4.1 roadmap]: PROC-01/02/03 (private fork per advisory, non-vacuous regression test, publish-after-release) mapped across the full Phase 70-77 range rather than to a single phase
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
-- [Phase 59]: MemberCall isClassRef extension dropped — old JAR does not send isStatic for fields
-- [Phase 59]: ( trigger returns empty CompletionList (not undefined) — prevents slow fallthrough
-- [Phase 59]: CompletionItemTag.Deprecated only — no sortText change, no label suffix
 
 ### Tech Debt
 
@@ -99,18 +102,20 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ### Blockers/Concerns
 
-- **8 draft advisories unfixed** (all high) from v4.0 phase 65 — the v4.1 milestone scope.
-  Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637) but stays an
-  unpublished draft until the release ships.
+- **8 draft advisories unfixed** (all high) — the entire v4.1 milestone scope, now mapped
+  1:1 to Phases 70-77. Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637)
+  but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
+  MILESTONES.md).
 
-- **Manual QA outstanding on the merged fix.** Only the `bbjcpl` compile path was
-  live-launched; Run / Run BUI / Run DWC and EM login/validate need the `QA/` checklist
-  before GHSA-p5f3-9456-9pcx is published. See `tmp_human_review/07-*`.
+- **Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.** Only the `bbjcpl` compile
+  path was live-launched; Run / Run BUI / Run DWC and EM login/validate need the `QA/`
+  checklist before that advisory is published. See `tmp_human_review/07-*`.
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
   on a bare TCP connect to :5008. BBjServices squats on that port without speaking the
   interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
-  `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`.
+  `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`. Tracked in
+  `.planning/DEBT.md`, not v4.1 scope.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
@@ -126,7 +131,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 ## Session Continuity
 
 Last session: 2026-08-20
-Stopped at: PR #637 merged (cf01570); v4.0 closed on records; 8 advisory private forks created; v4.1 security milestone opening
+Stopped at: v4.1 ROADMAP.md created (Phases 70-77, one per advisory, 11/11 requirements
+mapped); REQUIREMENTS.md traceability already correct and unchanged. Next: `/gsd-plan-phase 70`.
 Resume file: None
 
 ---
@@ -151,9 +157,10 @@ Resume file: None
 | v3.7 Diagnostic Quality & BBjCPL Integration | 50-53 | 7 | 2026-02-20 |
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | 2026-02-21 |
+| v4.0 Stability and Quality | 60-69 | 62 | 2026-08-20 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-02-21 after v3.9 milestone completion*
+*State updated: 2026-08-20 after v4.1 ROADMAP.md creation (Phases 70-77)*

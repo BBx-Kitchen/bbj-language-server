@@ -18,6 +18,10 @@ temporary private fork, so every fix ships before its advisory is published.
 - Every fix carries a regression test proven to fail against the pre-fix code
 - Each advisory published only after its fix is released
 
+<!-- Do NOT list advisory ids grouped by flaw class here, or anywhere under .planning/ on
+     public main. Grouping ids by what they have in common discloses the flaw class of each
+     one. See the disclosure notice in REQUIREMENTS.md. -->
+
 **Working model:** one phase per advisory, one temporary private fork per advisory, one PR per
 fork. Detailed findings, plans and summaries live **inside the private forks**. Artifacts on
 public `main` reference advisories by GHSA id only and describe no flaw mechanism, so the eight

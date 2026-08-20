@@ -19,6 +19,7 @@
 - ✅ **v3.8 Test & Debt Cleanup** — Phases 54-56 (shipped 2026-02-20)
 - ✅ **v3.9 Quick Wins** — Phases 57-59 (shipped 2026-02-21)
 - ✅ **v4.0 Stability and Quality** — Phases 60-69 (shipped 2026-08-20; artifacts held off `main` by decision — see MILESTONES.md)
+- 🚧 **v4.1 Security Advisory Remediation** — Phases 70-77 (in progress)
 
 ## Phases
 
@@ -178,6 +179,115 @@ Research-only milestone — no phases.
 
 </details>
 
+### 🚧 v4.1 Security Advisory Remediation (In Progress)
+
+**Milestone Goal:** Remediate the eight remaining high-severity security advisories, each in
+its own temporary private fork, so every fix ships before its advisory is published.
+
+**Working model:** one phase per advisory, one temporary private fork per advisory, one PR per
+fork. Per-phase implementation detail (findings, affected surfaces, fix design, tests) lives
+inside each private fork, not in this file or in `.planning/phases/` on `main` — see the
+Disclosure notice in REQUIREMENTS.md.
+
+- [ ] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 74: Remediate GHSA-9gv3-gr6g-c4rj** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 75: Remediate GHSA-33x9-cpwv-xcv2** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 76: Remediate GHSA-xxp5-vv2w-42q8** - Fix developed, verified, and merged in its private fork; ready to publish
+- [ ] **Phase 77: Remediate GHSA-h43f-jcjr-2g4j** - Fix developed, verified, and merged in its private fork; ready to publish
+
+## Phase Details
+
+### Phase 70: Remediate GHSA-89r9-2pw4-mc7f
+**Goal**: GHSA-89r9-2pw4-mc7f is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-01, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-89r9-2pw4-mc7f`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-89r9-2pw4-mc7f is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 71: Remediate GHSA-5f22-gqrx-xr22
+**Goal**: GHSA-5f22-gqrx-xr22 is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-02, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-5f22-gqrx-xr22`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-5f22-gqrx-xr22 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 72: Remediate GHSA-c4hw-5j83-cx5h
+**Goal**: GHSA-c4hw-5j83-cx5h is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-03, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-c4hw-5j83-cx5h`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-c4hw-5j83-cx5h is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 73: Remediate GHSA-5vrp-fj75-pm5q
+**Goal**: GHSA-5vrp-fj75-pm5q is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-04, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-5vrp-fj75-pm5q`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-5vrp-fj75-pm5q is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 74: Remediate GHSA-9gv3-gr6g-c4rj
+**Goal**: GHSA-9gv3-gr6g-c4rj is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-05, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-9gv3-gr6g-c4rj`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-9gv3-gr6g-c4rj is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 75: Remediate GHSA-33x9-cpwv-xcv2
+**Goal**: GHSA-33x9-cpwv-xcv2 is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-06, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-33x9-cpwv-xcv2`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-33x9-cpwv-xcv2 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 76: Remediate GHSA-xxp5-vv2w-42q8
+**Goal**: GHSA-xxp5-vv2w-42q8 is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-07, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-xxp5-vv2w-42q8`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-xxp5-vv2w-42q8 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
+### Phase 77: Remediate GHSA-h43f-jcjr-2g4j
+**Goal**: GHSA-h43f-jcjr-2g4j is remediated, verified, merged, and ready to publish.
+**Depends on**: Nothing (independent private fork; order fixed by REQUIREMENTS.md traceability)
+**Requirements**: SEC-08, PROC-01, PROC-02, PROC-03
+**Success Criteria** (what must be TRUE):
+  1. A fix is developed and committed in the private fork `BBx-Kitchen/bbj-language-server-ghsa-h43f-jcjr-2g4j`
+  2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
+  3. The fork's pull request is reviewed and merged to `main`
+  4. GHSA-h43f-jcjr-2g4j is marked ready to publish once its fix is released (CVE assigned where severity warrants)
+**Plans**: TBD
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -199,6 +309,7 @@ Research-only milestone — no phases.
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
+| v4.1 Security Advisory Remediation | 70-77 | TBD | Not started | - |
 
 **Total:** 17 milestones shipped, 69 phases complete, 205 plans shipped.
 
@@ -207,6 +318,11 @@ still-unfixed advisories — see MILESTONES.md), so its 10 phases / 62 plans are
 here but have no `.planning/milestones/v4.0-phases/` archive. That asymmetry is intended,
 not a gap to repair.
 
+v4.1's eight phases (70-77) are 1:1 with the eight remaining unpublished advisories.
+Per-phase plan detail is developed inside each advisory's own temporary private fork, not
+under `.planning/phases/` on `main` — this roadmap tracks only the neutral outcome (fix
+developed, tested, merged, ready to publish) for each.
+
 ---
 
-*Roadmap last updated: 2026-08-20 — v4.0 closed; v4.1 security milestone opening next.*
+*Roadmap last updated: 2026-08-20 — v4.1 Security Advisory Remediation roadmap created (Phases 70-77, one per advisory, coverage 11/11).*
