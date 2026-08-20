@@ -22,14 +22,21 @@ import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
 
+/**
+ * URI of the synthetic program that holds the USE statements found in config.bbx (#83).
+ * The scope provider merges its USE statements into every program as project-wide imports.
+ */
+export const ConfigUseDocUri = 'bbjlib:///config-uses.bbj';
+
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     private documentFactory: LangiumDocumentFactory;
     private javaInterop: JavaInteropService;
-    private settings: { prefixes: string[], classpath: string[] } | undefined = undefined;
+    private settings: { prefixes: string[], classpath: string[], configUses: string[] } | undefined = undefined;
     private bbjdir = "";
     private classpathFromSettings = "";
     private configPath = "";
+    private configUseStatementsEnabled = true;
 
     constructor(services: LangiumSharedServices) {
         super(services);
@@ -56,6 +63,13 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
                 // Extract configPath setting
                 this.configPath = params.initializationOptions.configPath || "";
+
+                // #83: USE statements from config.bbx act as project-wide imports, matching BBj
+                // runtime behavior. On by default — the setting is an opt-out escape hatch.
+                this.configUseStatementsEnabled = params.initializationOptions.configUseStatementsEnabled !== false;
+                if (!this.configUseStatementsEnabled) {
+                    console.log('Project-wide USE statements from config.bbx disabled via settings');
+                }
 
                 // Set type resolution warnings based on settings
                 const typeResWarnings = params.initializationOptions.typeResolutionWarnings;
@@ -107,6 +121,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         try {
             let propcontents = "";
             let prefixfromconfig;
+            let usesfromconfig: string[] = [];
             if (folders.length > 0) {
                 const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
                 const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
@@ -120,7 +135,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                         const configUri = safeUri(this.configPath);
                         const configContents = await this.fileSystemProvider.readFile(configUri);
                         prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
-                        logger.info(`Loaded config.bbx from custom path: ${this.configPath}`);
+                        usesfromconfig = collectConfigUseStatements(configContents);
+                        console.log(`Loaded config.bbx from custom path: ${this.configPath} (${usesfromconfig.length} USE statement(s))`);
                     } catch (e) {
                         logger.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
                     }
@@ -129,7 +145,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                         const bbjcfgdir = await this.fileSystemProvider.readDirectory(joinPath(safeUri(this.bbjdir), 'cfg'));
                         const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
                         if (configbbx) {
-                            prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                            const configContents = await this.fileSystemProvider.readFile(configbbx.uri);
+                            prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                            usesfromconfig = collectConfigUseStatements(configContents);
+                            console.log(`Loaded ${configbbx.uri.fsPath} (${usesfromconfig.length} USE statement(s))`);
                         }
                     } catch (e) {
                         logger.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
@@ -138,7 +157,10 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                     logger.warn("No bbjdir set. No classpath and prefixes loaded.")
                 }
             }
-            this.settings = parseSettings(propcontents, prefixfromconfig)
+            this.settings = { ...parseSettings(propcontents, prefixfromconfig), configUses: usesfromconfig }
+            if (usesfromconfig.length > 0 && !this.configUseStatementsEnabled) {
+                console.log(`config.bbx contains ${usesfromconfig.length} USE statement(s), but project-wide USE statements are disabled (bbj.configUseStatements.enabled is false)`);
+            }
 
             // initialize javadoc look-up before loading classes.
             const wsJavadocFolders = folders.map(folder =>
@@ -209,6 +231,15 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
         collector(this.documentFactory.fromString(builtinSymbolicLabels, URI.parse('bbjlib:///labels.bbl')));
         collector(this.documentFactory.fromString(builtinEvents, URI.parse('bbjlib:///events.bbl')));
         collector(this.documentFactory.fromString(builtinBBjAPI, URI.parse('bbjlib:///bbj-api.bbl')));
+
+        // Project-wide USE statements from config.bbx (#83): materialize them as a synthetic
+        // program so they are linked like ordinary USE statements. The scope provider merges
+        // them into every program (see BbjScopeProvider.configUseImports).
+        if (this.configUseStatementsEnabled && this.settings && this.settings.configUses.length > 0) {
+            const content = this.settings.configUses.map(use => `use ${use}`).join('\n');
+            console.log(`Injecting ${this.settings.configUses.length} project-wide USE statement(s) from config.bbx`);
+            collector(this.documentFactory.fromString(content, URI.parse(ConfigUseDocUri)));
+        }
     }
 
     public getSettings() {
@@ -270,6 +301,22 @@ export function joinPath(base: URI, ...segments: string[]): URI {
     const path = [base.path, ...segments].join('/');
     const normalized = path.replace(/\/+/g, '/');
     return base.with({ path: normalized });
+}
+
+/**
+ * Extract the USE statement specifications from config.bbx contents (#83).
+ * Lines have the same form as the USE verb argument, e.g.
+ * `USE ::path/to/file.bbj::ClassName` or `USE java.util.HashMap`.
+ */
+export function collectConfigUseStatements(configContents: string): string[] {
+    const uses = new Set<string>();
+    for (const line of configContents.split('\n')) {
+        const spec = line.match(/^\s*USE\s+(.+)/i)?.[1]?.trim();
+        if (spec) {
+            uses.add(spec);
+        }
+    }
+    return [...uses];
 }
 
 export function collectPrefixes(input: string): string[] {

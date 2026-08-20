@@ -121,6 +121,20 @@ Path to a custom `config.bbx` file. When not set, defaults to `{bbj.home}/cfg/co
 
 Set this when your `config.bbx` is in a non-standard location. Used for PREFIX directory resolution.
 
+#### `bbj.configUseStatements.enabled`
+
+Treat `USE` statements found in `config.bbx` as project-wide imports that are available in every BBj program, matching BBj runtime behavior.
+
+```json
+{
+  "bbj.configUseStatements.enabled": false
+}
+```
+
+**Default**: `true`
+
+Disable this if a shared `config.bbx` adds unwanted classes to code completion and linking in a workspace (the classes it imports become visible in all files).
+
 #### `bbj.typeResolution.warnings`
 
 Enable or disable type resolution warnings (CAST, USE, inheritance). Disable for heavily dynamic codebases where these warnings are noisy.

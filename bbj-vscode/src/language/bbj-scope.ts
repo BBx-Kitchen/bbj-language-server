@@ -15,6 +15,7 @@ import {
     EMPTY_SCOPE, EMPTY_STREAM,
     GrammarUtils,
     IndexManager, isAstNode,
+    LangiumDocuments,
     ReferenceInfo, Scope, Stream, stream,
     StreamScope,
     URI,
@@ -50,10 +51,10 @@ import {
     Statement, Use
 } from './generated/ast.js';
 import { JavaInteropService } from './java-interop.js';
-import { BBjWorkspaceManager } from './bbj-ws-manager.js';
+import { BBjWorkspaceManager, ConfigUseDocUri } from './bbj-ws-manager.js';
 import { normalize, resolve } from 'path';
 import { assertType } from './utils.js';
-import { getClass } from './bbj-nodedescription-provider.js';
+import { getClass, getFQNFullname } from './bbj-nodedescription-provider.js';
 
 const BBjClassNamePattern = /^::(.*)::([_a-zA-Z][\w_]*@?)$/;
 export const BBjPathPattern = /^::(.*)::$/;
@@ -66,6 +67,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
     protected readonly typeInferer: TypeInferer;
     protected readonly workspaceManager: BBjWorkspaceManager;
     protected readonly astReflection: AstReflection;
+    protected readonly langiumDocuments: LangiumDocuments;
 
     constructor(services: BBjServices) {
         super(services);
@@ -74,6 +76,7 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         this.astNodeLocator = services.workspace.AstNodeLocator;
         this.typeInferer = services.types.Inferer;
         this.workspaceManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        this.langiumDocuments = services.shared.workspace.LangiumDocuments;
     }
 
     override getScope(context: ReferenceInfo): Scope {
@@ -421,9 +424,49 @@ export class BbjScopeProvider extends DefaultScopeProvider {
         if (root) {
             const useStatements = collectAllUseStatements(root);
             return useStatements.filter(it => it.bbjClass?.ref)
-                .map(it => it.bbjClass!.$nodeDescription!);
+                .map(it => it.bbjClass!.$nodeDescription!)
+                .concat(this.configUseImports(root));
         }
         return []
+    }
+
+    /**
+     * Class descriptions contributed by the USE statements of config.bbx (#83).
+     * They live in a synthetic program (see {@link ConfigUseDocUri}) that only exists
+     * when the opt-in flag is set, and act as project-wide imports for every program
+     * except the synthetic one itself.
+     */
+    private configUseImports(root: Program): AstNodeDescription[] {
+        const configDoc = this.langiumDocuments.getDocument(URI.parse(ConfigUseDocUri));
+        if (!configDoc) {
+            return [];
+        }
+        const configRoot = configDoc.parseResult.value;
+        if (configRoot === root || !isProgram(configRoot)) {
+            return [];
+        }
+        const descriptions: AstNodeDescription[] = [];
+        for (const use of collectAllUseStatements(configRoot)) {
+            if (use.bbjClass?.ref) {
+                descriptions.push(use.bbjClass.$nodeDescription!);
+            } else if (use.javaClass) {
+                // Register under the simple name, mirroring what BbjScopeComputation does
+                // for a local `use java.foo.Bar` statement. The class was resolved into the
+                // interop service when the synthetic program's scope was computed.
+                const fqn = getFQNFullname(use.javaClass);
+                let klass = this.javaInterop.getResolvedClass(fqn);
+                if (!klass && fqn.includes('.')) {
+                    // inner class notation fallback (a.b.C -> a.b$C), as in BbjScopeComputation
+                    const lastDot = fqn.lastIndexOf('.');
+                    klass = this.javaInterop.getResolvedClass(fqn.substring(0, lastDot) + '$' + fqn.substring(lastDot + 1));
+                }
+                if (klass && !klass.error) {
+                    const simpleName = fqn.substring(fqn.lastIndexOf('.') + 1);
+                    descriptions.push(this.descriptions.createDescription(klass, simpleName));
+                }
+            }
+        }
+        return descriptions;
     }
 
     importedClasses(root: Program | undefined): AstNodeDescription[] {
@@ -562,7 +605,17 @@ export function collectAllUseStatements(program: Program): Use[] {
     if (isBbjDocument(document) && document.cachedUseStatements) {
         return document.cachedUseStatements;
     }
-    return collectUseStatements(program.statements.filter(isStatement))
+    return computeAllUseStatements(program);
+}
+
+/**
+ * Compute USE statements directly from the AST, bypassing the document cache.
+ * Must be used to (re)fill the cache: reading through collectAllUseStatements would
+ * return the previous parse's (possibly empty) cached list and freeze it forever,
+ * so USE statements added by an edit would never be picked up until restart.
+ */
+export function computeAllUseStatements(program: Program): Use[] {
+    return collectUseStatements(program.statements.filter(isStatement));
 }
 
 function collectUseStatements(statements: Statement[]): Use[] {

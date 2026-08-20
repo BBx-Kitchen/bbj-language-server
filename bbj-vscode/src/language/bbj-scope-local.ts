@@ -15,7 +15,7 @@ import { CancellationToken } from 'vscode-languageserver';
 import { BBjServices } from './bbj-module.js';
 import { FunctionNodeDescription, getClassRefNode, getFQNFullname, ParameterData } from './bbj-nodedescription-provider.js';
 import { logger } from './logger.js';
-import { collectAllUseStatements } from './bbj-scope.js';
+import { computeAllUseStatements } from './bbj-scope.js';
 import {
     ArrayDecl,
     Assignment,
@@ -115,7 +115,9 @@ export class BbjScopeComputation extends DefaultScopeComputation {
 
         if (isProgram(rootNode)) {
             // Cache USE statements. They are used frequently during scope resolution.
-            (document as BbjDocument).cachedUseStatements = collectAllUseStatements(rootNode);
+            // Always recompute from the current AST: this runs after every (re)parse and
+            // must replace the previous parse's cache (see computeAllUseStatements).
+            (document as BbjDocument).cachedUseStatements = computeAllUseStatements(rootNode);
         }
 
         if (JavaSyntheticDocUri === document.uri.toString() && isClasspath(rootNode)) {

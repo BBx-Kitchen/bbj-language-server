@@ -52,6 +52,7 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.addProperty("javaInteropPort", state.javaInteropPort);
                 options.addProperty("configPath",
                     state.configPath != null ? state.configPath : "");
+                options.addProperty("configUseStatementsEnabled", state.configUseStatementsEnabled);
                 params.setInitializationOptions(options);
             }
         }
