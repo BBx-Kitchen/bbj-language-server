@@ -1,6 +1,7 @@
 import path from 'path';
 import { describe, test, expect, vi } from 'vitest';
 import { BBjCPLService } from '../src/language/bbj-cpl-service.js';
+import { logger } from '../src/language/logger.js';
 
 /**
  * Create a minimal mock services object satisfying BBjCPLServiceContext.
@@ -59,8 +60,14 @@ describe('BBjCPLService', () => {
         expect(JSON.stringify(result)).not.toContain('SUBSTITUTE BINARY MARKER');
     }, 10000);
 
-    test('inFlight map is cleaned up after ENOENT error', async () => {
-        const services = createMockServices('/tmp');
+    test('inFlight map is cleaned up after a compile completes', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
         const svc = new BBjCPLService(services as any);
 
         const filePath = '/tmp/test-file.bbj';
@@ -68,7 +75,7 @@ describe('BBjCPLService', () => {
         // Should not be compiling before the call
         expect(svc.isCompiling(filePath)).toBe(false);
 
-        // Start compilation — will fail with ENOENT
+        // Start compilation — the fixture's substitute binary really spawns and closes
         const compilePromise = svc.compile(filePath);
 
         // After completion, inFlight map must be cleaned up
@@ -94,9 +101,15 @@ describe('BBjCPLService', () => {
     });
 
     test('abort-on-resave: second compile() call on same file completes without error', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
         // When a second compile() is called for the same file while first is in-flight,
-        // the first should be aborted. Both should return [] (ENOENT in this test environment).
-        const services = createMockServices('/tmp');
+        // the first should be aborted (superseded by the second, spawnable fixture).
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
         const svc = new BBjCPLService(services as any);
 
         const filePath = '/tmp/test-file.bbj';
@@ -115,22 +128,62 @@ describe('BBjCPLService', () => {
         expect(svc.isCompiling(filePath)).toBe(false);
     }, 10000);
 
-    test('getBbjcplPath: non-Windows uses bbjcpl (no .exe suffix)', async () => {
-        // Validate path derivation by checking that the ENOENT is triggered
-        // for the expected path (not .exe on non-Windows).
-        // We use /tmp as bbjHome — bbjcpl does not exist at /tmp/bin/bbjcpl.
-        // The service should attempt spawn and get ENOENT.
+    test('a relative bbj.home yields no diagnostics', async () => {
         if (process.platform === 'win32') {
-            // Skip on Windows — would need bbjcpl.exe
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
             return;
         }
 
-        const services = createMockServices('/tmp');
+        // Built relative to the current working directory rather than hard-coded, so the
+        // value is CWD-independent and would otherwise resolve to a directory satisfying
+        // every layout requirement.
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-bbjhome');
+        const relativeBbjHome = path.relative(process.cwd(), fixtureBbjHome);
+        const services = createMockServices(relativeBbjHome);
         const svc = new BBjCPLService(services as any);
 
-        // Spy on logger — INFO is suppressed at default WARN level, so we check indirectly
         const result = await svc.compile('/tmp/test.bbj');
         expect(result).toEqual([]);
+    }, 10000);
+
+    test('a bbjHome carrying no cfg directory yields no diagnostics', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-nocfg-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
+        const svc = new BBjCPLService(services as any);
+
+        const result = await svc.compile('/some/file.bbj');
+
+        expect(result).toEqual([]);
+        expect(JSON.stringify(result)).not.toContain('NOCFG FIXTURE MARKER');
+    }, 10000);
+
+    test('a rejected bbjHome is logged once per distinct value', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-partial-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
+        const svc = new BBjCPLService(services as any);
+
+        const warnSpy = vi.spyOn(logger, 'warn');
+        try {
+            await svc.compile('/some/file.bbj');
+            await svc.compile('/some/other-file.bbj');
+
+            expect(warnSpy).toHaveBeenCalledTimes(1);
+            const [message] = warnSpy.mock.calls[0];
+            expect(message as string).toContain(fixtureBbjHome);
+            expect(message as string).toContain('bin/bbj');
+        } finally {
+            warnSpy.mockRestore();
+        }
     }, 10000);
 
     /**
