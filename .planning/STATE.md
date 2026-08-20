@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-current_phase: 70
-current_phase_name: Remediate GHSA-89r9-2pw4-mc7f
+current_phase: 71
+current_phase_name: Remediate GHSA-5f22-gqrx-xr22
 status: executing
 stopped_at: Phase 70 waves 1-4 done; fix merged to public main (528889d); wave 5 (publication readiness) awaits a human CVE decision
-last_updated: "2026-08-20T15:35:50.409Z"
+last_updated: "2026-08-20T20:55:13.544Z"
 last_activity: 2026-08-20
-last_activity_desc: SEC-01 fix merged to main via PR #638; verified in a live publish run
-state_head: 34fdac0bdfc288861f51b16c1460c4db0a8da130
+last_activity_desc: "SEC-01 fix merged to main via PR #638; verified in a live publish run"
+state_head: 82856afc96a798674b88f8fdf7588bdbffef8fa8
 progress:
   total_phases: 8
   completed_phases: 0
-  total_plans: 5
+  total_plans: 20
   completed_plans: 3
   percent: 0
 ---
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-08-20)
 
 ## Current Position
 
-Phase: 70 of 77 (Remediate GHSA-89r9-2pw4-mc7f)
+Phase: 71 (Remediate GHSA-5f22-gqrx-xr22) — READY TO EXECUTE
 Plan: 70-05-PLAN.md (wave 5 of 5) — awaiting human decision
-Total Plans in Phase: 5
+Total Plans in Phase: 6
 Plans Complete: 3
 Status: Waves 1-4 complete; wave 5 blocked on a human CVE decision
 Last activity: 2026-08-20 — SEC-01 fix merged to public main via PR #638 (528889d); verified end-to-end in a live Publish Preview run

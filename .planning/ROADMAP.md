@@ -282,7 +282,26 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-c4hw-5j83-cx5h is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: TBD
+**Plans**: 5 plans
+**Wave 1**
+
+  - [ ] 72-01-PLAN.md — remediation, part 1, with test scaffolding (detail in the advisory's private fork)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 72-02-PLAN.md — edge coverage and residual record
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 72-03-PLAN.md — private preparation and public pull request
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 72-04-PLAN.md — landing on `main`, with CI observed
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+  - [ ] 72-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 73: Remediate GHSA-5vrp-fj75-pm5q
 
@@ -296,7 +315,22 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5vrp-fj75-pm5q is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: TBD
+**Plans**: 4 plans
+**Wave 1**
+
+  - [ ] 73-01-PLAN.md — remediation (detail in the advisory's private fork)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 73-02-PLAN.md — regression checks and CI enforcement
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 73-03-PLAN.md — private preparation and public pull request
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 73-04-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 74: Remediate GHSA-9gv3-gr6g-c4rj
 
