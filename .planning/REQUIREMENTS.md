@@ -17,6 +17,13 @@ design, tests — lives **inside that fork**.
 **When adding to this file, keep that shape.** Do not "improve" a requirement by explaining what
 is wrong. Once an advisory is published and its fix released, its detail may be backfilled here.
 
+**This applies to research too, and it is stricter than it first appears.** Remediation research
+for these advisories is deliberately **not** tracked under `.planning/research/` — see
+`.git/info/exclude`. "Framed as forward-looking best practice" is *not* sufficient
+sanitisation: naming a file plus the control to add to it ("add `X` to `path/y`") states that
+the control is absent, which is the advisory. Concrete, file-level remediation guidance for an
+unfixed advisory can only live inside that advisory's private fork.
+
 ## v4.1 Requirements
 
 Each requirement is complete when the advisory's fix is implemented in its private fork,
