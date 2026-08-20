@@ -134,7 +134,9 @@ jobs:
 
       - name: Publish to JetBrains Marketplace
         working-directory: bbj-intellij
-        run: ./gradlew publishPlugin -Pversion=${{ needs.build-vscode.outputs.version }} -PintellijPlatformPublishingToken=${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+        env:
+          JETBRAINS_MARKETPLACE_TOKEN: ${{ secrets.JETBRAINS_MARKETPLACE_TOKEN }}
+        run: ./gradlew publishPlugin -Pversion=${{ needs.build-vscode.outputs.version }} -PintellijPlatformPublishingToken="$JETBRAINS_MARKETPLACE_TOKEN"
 
       - name: Upload IntelliJ plugin
         uses: actions/upload-artifact@v4
