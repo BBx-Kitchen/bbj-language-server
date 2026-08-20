@@ -125,7 +125,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - **8 draft advisories unfixed** (all high) — the entire v4.1 milestone scope, now mapped
   1:1 to Phases 70-77. Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637)
   but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
-  MILESTONES.md).
+  MILESTONES.md). GHSA-89r9-2pw4-mc7f is fixed, merged to `main`; publication awaits a release.
 
 - ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
   Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
