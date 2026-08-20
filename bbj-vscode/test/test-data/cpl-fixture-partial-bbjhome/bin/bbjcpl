@@ -1,0 +1,6 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary. A controlled substitute
+# the repo owns, placed in a directory that carries no other layout marker,
+# used to pin how the compiler path is resolved and consumed.
+echo "$(dirname "$0")/../../fake.bbj: error at line 1 (1):     SUBSTITUTE BINARY MARKER" >&2
+exit 0

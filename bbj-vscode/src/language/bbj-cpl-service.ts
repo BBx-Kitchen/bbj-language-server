@@ -1,7 +1,8 @@
 import { spawn } from 'child_process';
-import * as path from 'path';
+import { resolveBbjBinary } from '../bbj-home-layout.js';
 import { Diagnostic } from 'vscode-languageserver';
 import { parseBbjcplOutput } from './bbj-cpl-parser.js';
+import { notifyBbjcplAvailability } from './bbj-notifications.js';
 import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger } from './logger.js';
 
@@ -58,6 +59,9 @@ export class BBjCPLService {
 
     /** Reference to the workspace manager for getBBjDir() calls. */
     private readonly wsManager: BBjWorkspaceManager;
+
+    /** The last bbjHome value already warned about, so a rejection logs once per distinct value. */
+    private lastRejectedBbjHome: string | undefined = undefined;
 
     /**
      * @param services Minimal context providing access to the shared WorkspaceManager.
@@ -222,17 +226,32 @@ export class BBjCPLService {
     }
 
     /**
-     * Derive the full path to the bbjcpl binary from the BBj home directory.
+     * Resolve the path to the bbjcpl binary from the BBj home directory.
      *
-     * Returns undefined if BBj home is not configured (empty or undefined).
-     * Platform suffix: `.exe` on Windows, no suffix on POSIX.
+     * Returns undefined when BBj home is not configured (empty or undefined),
+     * or when `resolveBbjBinary` rejects the configured bbjHome against the
+     * expected installation layout — in which case the rejection is logged
+     * once per distinct bbjHome and reported through
+     * {@link notifyBbjcplAvailability}. Returns the resolved path only when
+     * the layout check passes.
      */
     private getBbjcplPath(): string | undefined {
         const bbjHome = this.wsManager.getBBjDir();
         if (!bbjHome) {
             return undefined;
         }
-        const binaryName = process.platform === 'win32' ? 'bbjcpl.exe' : 'bbjcpl';
-        return path.join(bbjHome, 'bin', binaryName);
+
+        const resolution = resolveBbjBinary(bbjHome, 'bbjcpl');
+        if (resolution.reason) {
+            if (this.lastRejectedBbjHome !== bbjHome) {
+                this.lastRejectedBbjHome = bbjHome;
+                logger.warn(`bbjcpl unavailable for bbj.home ${JSON.stringify(bbjHome)}: ${resolution.reason}`);
+                notifyBbjcplAvailability(false);
+            }
+            return undefined;
+        }
+
+        this.lastRejectedBbjHome = undefined;
+        return resolution.path;
     }
 }

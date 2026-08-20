@@ -43,18 +43,20 @@ describe('BBjCPLService', () => {
         expect(result).toEqual([]);
     });
 
-    test('ENOENT graceful degradation: bbjcpl not installed returns empty diagnostics', async () => {
-        // Use a non-empty bbjHome so the path is derived, but bbjcpl won't actually exist there
-        // Using /tmp which definitely exists, but bbjcpl won't be in /tmp/bin/
-        const services = createMockServices('/tmp');
+    test('a bbjHome carrying only bin/bbjcpl yields no diagnostics and the substitute binary is not run', async () => {
+        if (process.platform === 'win32') {
+            // The fixture is a POSIX shell script; Windows would need a .bat/.exe substitute.
+            return;
+        }
+
+        const fixtureBbjHome = path.join(__dirname, 'test-data', 'cpl-fixture-partial-bbjhome');
+        const services = createMockServices(fixtureBbjHome);
         const svc = new BBjCPLService(services as any);
 
-        // bbjcpl binary won't exist at /tmp/bin/bbjcpl
-        // This should trigger ENOENT and return [] gracefully
         const result = await svc.compile('/some/file.bbj');
 
-        expect(Array.isArray(result)).toBe(true);
         expect(result).toEqual([]);
+        expect(JSON.stringify(result)).not.toContain('SUBSTITUTE BINARY MARKER');
     }, 10000);
 
     test('inFlight map is cleaned up after ENOENT error', async () => {
