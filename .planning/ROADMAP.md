@@ -212,18 +212,18 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-89r9-2pw4-mc7f is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: 5 plans
+**Plans**: 3/5 plans executed
 **Wave 1**
 
-  - [ ] 70-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
+  - [x] 70-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 70-02-PLAN.md — regression check and CI enforcement
+  - [x] 70-02-PLAN.md — regression check and CI enforcement
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 70-03-PLAN.md — private-fork pull request, reviewed and merged
+  - [x] 70-03-PLAN.md — private-fork pull request, reviewed and merged
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

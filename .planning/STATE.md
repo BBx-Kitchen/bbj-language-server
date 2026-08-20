@@ -4,17 +4,17 @@ milestone: v4.1
 milestone_name: Security Advisory Remediation
 current_phase: 70
 current_phase_name: Remediate GHSA-89r9-2pw4-mc7f
-status: ready_to_execute
-stopped_at: Phase 70 planned (5 plans, verification passed); execution not started
+status: executing
+stopped_at: Phase 70 waves 1-4 done; fix merged to public main (528889d); wave 5 (publication readiness) awaits a human CVE decision
 last_updated: "2026-08-20T15:35:50.409Z"
 last_activity: 2026-08-20
-last_activity_desc: Phase 70 planned — 5 plans across 5 waves, plan-checker passed
+last_activity_desc: SEC-01 fix merged to main via PR #638; verified in a live publish run
 state_head: 34fdac0bdfc288861f51b16c1460c4db0a8da130
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 3
   percent: 0
 ---
 
@@ -35,15 +35,23 @@ See: .planning/PROJECT.md (updated 2026-08-20)
 ## Current Position
 
 Phase: 70 of 77 (Remediate GHSA-89r9-2pw4-mc7f)
-Plan: 70-01-PLAN.md (wave 1 of 5) — not started
+Plan: 70-05-PLAN.md (wave 5 of 5) — awaiting human decision
 Total Plans in Phase: 5
-Plans Complete: 0
-Status: Ready to execute
-Last activity: 2026-08-20 — Phase 70 planned: 5 plans in 5 waves, plan-checker VERIFICATION PASSED, 4/4 requirements and 12/12 context decisions covered
+Plans Complete: 3
+Status: Waves 1-4 complete; wave 5 blocked on a human CVE decision
+Last activity: 2026-08-20 — SEC-01 fix merged to public main via PR #638 (528889d); verified end-to-end in a live Publish Preview run
 
-Note: Phase 70 planning artifacts are held off public `main` (see REQUIREMENTS.md PROC-01);
+Waves 1-2 executed as planned. Wave 3 halted: the advisory's private fork cannot take a same-repo
+pull request (its PR base resolves to the public repo), so plans 70-03/70-04 did not match reality.
+At the resulting checkpoint the private-fork ceremony was dropped for this advisory by explicit
+decision and the fix landed through a normal public PR — see the embargoed
+`70-DECISION-fork-flow.md` and `70-04-SUMMARY.md`.
+
+Phases 71-77 plan the same private-fork PR flow and will hit the same wall — re-plan their landing
+step before executing.
+
+Note: Phase 70 planning artifacts are held off public `main` (REQUIREMENTS.md PROC-01);
 `.git/info/exclude` covers `.planning/phases/70-*/` and the `pre-push` hook covers `phases/7[0-7]`.
-Waves 4 and 5 are `autonomous: false` — they touch public history and external state.
 
 Progress: [░░░░░░░░░░] 0%
 
