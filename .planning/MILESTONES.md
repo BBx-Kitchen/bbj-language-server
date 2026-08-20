@@ -1,17 +1,25 @@
 # Project Milestones: BBj Language Server
 
-## v4.0 Stability and Quality (Code merged: 2026-08-20 — NOT formally shipped)
+## v4.0 Stability and Quality (Shipped: 2026-08-20)
 
-**Status: `tech_debt`. This milestone was fully planned and audited but never closed
-through `/gsd-complete-milestone`.** Its audit states: "no blockers, no unmet
-requirements; deferred items warrant review before ship." Treat it as open until
-someone acts on the deferred items below.
+**Closed 2026-08-20** on records. The audit scored 40/40 requirements with no blockers
+and no unmet requirements; its deferred items are handed forward rather than left open
+(see below). Code shipped via PR #636 (`7371c26`) plus the GHSA-p5f3-9456-9pcx
+remediation in PR #637 (`cf01570`).
 
-**Where the artifacts live:** phases 60–69, REQUIREMENTS.md, ROADMAP.md and
-`v4.0-MILESTONE-AUDIT.md` exist **only on the unmerged branch
-`v4.0-stability-and-quality`** (417 commits ahead of its remote, 104 behind). PR #636
-merged the *code* to `main`; the planning artifacts did not come with it. `main`'s
-`.planning/` therefore jumps from v3.9 straight to here.
+**Where the artifacts live — by decision, not by accident.** Phases 60–69,
+REQUIREMENTS.md, the v4.0 ROADMAP and `v4.0-MILESTONE-AUDIT.md` were authored on the
+local `v4.0-stability-and-quality` branch and are **deliberately not merged to `main`**.
+The remote branch of that name was force-pushed to a trimmed, code-only revision
+(`cd8c7f8`) which is long merged; the branch is closed and is to be left alone.
+
+The reason the full artifact tree stays off `main`: roughly fourteen of its files —
+`reviews/65-COVERAGE.md`, `phases/69-github-issue-filing/69-ISSUE-DRAFT.md`,
+`reviews/64-COVERAGE.md`, `reviews/MAJOR-REFACTORS.md`, `reviews/62-COVERAGE.md`,
+`phases/65-*/65-03-PLAN.md` and the `69-*` filing ledger among them — describe the eight
+still-unfixed advisories in detail. Publishing them to a public repository ahead of their
+fixes is exactly what the private-fork flow exists to prevent. `main`'s `.planning/`
+therefore jumps from v3.9 to this entry, and that gap is intentional.
 
 **Delivered:** a ten-phase review-and-hardening pass over the whole repo — language
 core, extension host / webview composers, IntelliJ plugin, build/CI/dependencies —
@@ -36,7 +44,8 @@ filing.
 **Audit scores:** requirements 40/40 · phases 10/10 · integration 6/6 · flows 1/1 ·
 gaps: none.
 
-**Deferred items requiring human action** (filed to `tmp_human_review/`):
+**Deferred items — carried forward to the v4.1 security milestone** (also filed to
+`tmp_human_review/`):
 
 - **9 security advisories remain unpublished drafts** — GHSA-p5f3-9456-9pcx,
   -89r9-2pw4-mc7f, -5f22-gqrx-xr22, -c4hw-5j83-cx5h, -5vrp-fj75-pm5q,
@@ -73,9 +82,11 @@ gaps: none.
 
 **Git range:** `2194616` → `291cd23` (PR #636 merge commit: `7371c26`)
 
-**What's next:** GHSA-p5f3-9456-9pcx is being remediated now (quick task 260820-hxg).
-The other 8 advisories, the WR-01..WR-06 warnings, and the v4.0 artifact merge are
-open — see `tmp_human_review/` and `.planning/DEBT.md`.
+**What's next:** GHSA-p5f3-9456-9pcx is **fixed and merged** (PR #637, `cf01570`,
+verified 9/9 must-haves with a live-BBj compile-path test); the preview build goes to QA
+ahead of release. The remaining 8 advisories move into the **v4.1 security milestone**,
+each with its own temporary private fork created 2026-08-20 from its advisory page. The
+WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-phase).
 
 ---
 

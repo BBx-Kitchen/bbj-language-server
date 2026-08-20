@@ -14,16 +14,16 @@ See: .planning/PROJECT.md (updated 2026-02-21)
 
 ## Current Position
 
-Phase: none active on `main` — v4.0 (phases 60-69) code-merged but NOT shipped
-Status: v4.0 `tech_debt` — audited 40/40, never closed; artifacts on unmerged branch `v4.0-stability-and-quality`
+Phase: none active — v4.0 closed 2026-08-20; v4.1 security milestone opening
+Status: v4.0 shipped (40/40 requirements); GHSA-p5f3-9456-9pcx fixed and merged (PR #637); preview build to QA
 Last activity: 2026-08-20 - Filed v4.0 Stability & Quality retroactively; opened .planning/DEBT.md; executing quick task 260820-hxg (GHSA-p5f3-9456-9pcx command-injection hardening)
 
-Progress: [██████████] 100% of planned v4.0 phases executed (10/10, 62 plans) — milestone close pending
+Progress: [██████████] v4.0 complete (10/10 phases, 62 plans) — closed
 
-**Needs human attention:** see `tmp_human_review/` — 9 unpublished draft security
-advisories, WR-01..WR-06 unfiled concurrency warnings, the unmerged v4.0 artifact
-branch, and the v4.0 milestone close. See `.planning/DEBT.md` for the deferred
-UAT/patterns debt.
+**Next milestone (v4.1, security):** remediate the 8 remaining draft advisories. Each has
+a temporary private fork created 2026-08-20 from its advisory page; per-advisory planning
+artifacts live **inside those private forks**, not on `main`, so unfixed surfaces are not
+published. `tmp_human_review/` and `.planning/DEBT.md` hold the remaining open items.
 
 ---
 
@@ -32,7 +32,7 @@ UAT/patterns debt.
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 16 (v4.0 executed and audited but not closed)
+**Milestones shipped:** 17
 **Phases completed:** 59
 **Plans completed:** 143
 **Days elapsed:** 21
@@ -88,11 +88,12 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ### Blockers/Concerns
 
-- **Unpushed security fix.** Quick task 260820-hxg (3 commits) sits on local branch
-  `fix/ghsa-p5f3-9456-9pcx`; not pushed, no PR. GHSA-p5f3-9456-9pcx stays an unpublished
-  draft until the fix ships.
-- **8 further draft advisories unfixed** (all high) from v4.0 phase 65. See
-  `tmp_human_review/01-security-advisories.md`.
+- **8 draft advisories unfixed** (all high) from v4.0 phase 65 — the v4.1 milestone scope.
+  Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637) but stays an
+  unpublished draft until the release ships.
+- **Manual QA outstanding on the merged fix.** Only the `bbjcpl` compile path was
+  live-launched; Run / Run BUI / Run DWC and EM login/validate need the `QA/` checklist
+  before GHSA-p5f3-9456-9pcx is published. See `tmp_human_review/07-*`.
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
   on a bare TCP connect to :5008. BBjServices squats on that port without speaking the
   interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
@@ -111,7 +112,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 ## Session Continuity
 
 Last session: 2026-08-20
-Stopped at: Quick task 260820-hxg verified (9/9 must-haves, live-tested against /opt/bbx); planning docs committed; nothing pushed
+Stopped at: PR #637 merged (cf01570); v4.0 closed on records; 8 advisory private forks created; v4.1 security milestone opening
 Resume file: None
 
 ---

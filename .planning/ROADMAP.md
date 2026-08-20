@@ -18,7 +18,7 @@
 - ✅ **v3.7 Diagnostic Quality & BBjCPL Integration** — Phases 50-53 (shipped 2026-02-20)
 - ✅ **v3.8 Test & Debt Cleanup** — Phases 54-56 (shipped 2026-02-20)
 - ✅ **v3.9 Quick Wins** — Phases 57-59 (shipped 2026-02-21)
-- ⚠️ **v4.0 Stability and Quality** — Phases 60-69 (code merged 2026-08-20; NOT formally shipped, status `tech_debt`; artifacts on unmerged branch `v4.0-stability-and-quality`)
+- ✅ **v4.0 Stability and Quality** — Phases 60-69 (shipped 2026-08-20; artifacts held off `main` by decision — see MILESTONES.md)
 
 ## Phases
 
@@ -198,15 +198,15 @@ Research-only milestone — no phases.
 | v3.7 Diagnostic Quality & BBjCPL | 50-53 | 7 | Complete | 2026-02-20 |
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
-| v4.0 Stability and Quality | 60-69 | 62 | ⚠️ Code merged, not shipped (`tech_debt`) | — |
+| v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
 
-**Total:** 16 milestones shipped, 59 phases complete, 143 plans shipped.
+**Total:** 17 milestones shipped, 69 phases complete, 205 plans shipped.
 
-v4.0 is **not** counted as shipped: its 10 phases and 62 plans were planned, executed
-and audited, but the milestone was never closed and its planning artifacts live only on
-the unmerged branch `v4.0-stability-and-quality`. Including v4.0 the project stands at
-69 phases / 205 plans. See `MILESTONES.md`, `.planning/DEBT.md` and `tmp_human_review/`.
+v4.0's phase and plan artifacts are deliberately not on `main` (they detail eight
+still-unfixed advisories — see MILESTONES.md), so its 10 phases / 62 plans are counted
+here but have no `.planning/milestones/v4.0-phases/` archive. That asymmetry is intended,
+not a gap to repair.
 
 ---
 
-*Roadmap last updated: 2026-08-20 — v4.0 recorded as code-merged-but-unshipped; no active phases on `main`.*
+*Roadmap last updated: 2026-08-20 — v4.0 closed; v4.1 security milestone opening next.*
