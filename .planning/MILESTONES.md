@@ -1,5 +1,84 @@
 # Project Milestones: BBj Language Server
 
+## v4.0 Stability and Quality (Code merged: 2026-08-20 — NOT formally shipped)
+
+**Status: `tech_debt`. This milestone was fully planned and audited but never closed
+through `/gsd-complete-milestone`.** Its audit states: "no blockers, no unmet
+requirements; deferred items warrant review before ship." Treat it as open until
+someone acts on the deferred items below.
+
+**Where the artifacts live:** phases 60–69, REQUIREMENTS.md, ROADMAP.md and
+`v4.0-MILESTONE-AUDIT.md` exist **only on the unmerged branch
+`v4.0-stability-and-quality`** (417 commits ahead of its remote, 104 behind). PR #636
+merged the *code* to `main`; the planning artifacts did not come with it. `main`'s
+`.planning/` therefore jumps from v3.9 straight to here.
+
+**Delivered:** a ten-phase review-and-hardening pass over the whole repo — language
+core, extension host / webview composers, IntelliJ plugin, build/CI/dependencies —
+plus a cross-cutting security audit, debt re-triage, easy-fix application, and issue
+filing.
+
+**Phases completed:** 60–69 (62 plans)
+
+| Phase | Name |
+|-------|------|
+| 60 | baseline-resync-review-standards |
+| 61 | language-core-review |
+| 62 | extension-host-webview-composer-review |
+| 63 | intellij-plugin-review |
+| 64 | build-ci-dependency-review |
+| 65 | cross-cutting-security-audit |
+| 66 | known-debt-re-triage |
+| 67 | apply-easy-fixes |
+| 68 | deliverable-documents |
+| 69 | github-issue-filing |
+
+**Audit scores:** requirements 40/40 · phases 10/10 · integration 6/6 · flows 1/1 ·
+gaps: none.
+
+**Deferred items requiring human action** (filed to `tmp_human_review/`):
+
+- **9 security advisories remain unpublished drafts** — GHSA-p5f3-9456-9pcx,
+  -89r9-2pw4-mc7f, -5f22-gqrx-xr22, -c4hw-5j83-cx5h, -5vrp-fj75-pm5q,
+  -9gv3-gr6g-c4rj, -33x9-cpwv-xcv2, -xxp5-vv2w-42q8, -h43f-jcjr-2g4j. Not
+  world-visible. Publishing is a deliberate separate act this milestone did not perform.
+- **WR-01..WR-06** — six concurrency/behavior warnings from phase 67. The audit claims
+  these were "recorded ONLY in 67-REVIEW.md — not on the GitHub tracker"; **that is
+  incorrect.** Verified 2026-08-20: WR-02 and WR-04 were fixed in-phase and the fixes are
+  present on `main` (`java-interop.ts:190-191`, `bbj-lexer.ts:19`), and WR-01/03/05/06 are
+  filed as open issues #497/#498/#499/#500. The audit summary needs correcting; the
+  underlying `67-REVIEW.md` is accurate. Note `8194248` is not an ancestor of `main` (PR
+  #636 rebased), so SHA-ancestry checks falsely report the fixes as missing — compare file
+  content instead.
+- **Nyquist validation 0/10** — no phase has a VALIDATION.md while the nyquist
+  capability is active at `verify:post`. A coverage TODO, not a compliance failure.
+- **Branch `issue492-cpu-regression-tests`** — 3 unmerged commits (705 insertions,
+  6 regression-test files) reachable from no other ref, for the now-closed issue #492.
+  Deliberately retained.
+- **Local test suite red** — 11 failures under `Linking Tests > Interop related tests`.
+  The audit attributes these to "a dead java-interop service on :5008"; the real cause,
+  established 2026-08-20, is that **BBjServices owns port 5008** while
+  `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates on a bare TCP connect with no
+  protocol handshake — so the gate false-positives and enables tests nothing can serve.
+  Green under `RUN_BBJ_TESTS=0`; reproduced identically at `291cd23`. Not attributable to
+  any v4.0 phase. Note CI is green only because CI has no BBj and therefore *skips* these
+  tests — CI green is not evidence they pass.
+
+**Stats (code on `main`, v3.9 tip → now):**
+
+- 159 commits, 233 files changed (+20,526 / -3,813 lines, excluding `.planning/`)
+- 10 phases, 62 plans
+- 181 days (2026-02-21 → 2026-08-20)
+- Marketplace releases 0.9.0, 0.10.0, 0.11.0, 0.12.0
+
+**Git range:** `2194616` → `291cd23` (PR #636 merge commit: `7371c26`)
+
+**What's next:** GHSA-p5f3-9456-9pcx is being remediated now (quick task 260820-hxg).
+The other 8 advisories, the WR-01..WR-06 warnings, and the v4.0 artifact merge are
+open — see `tmp_human_review/` and `.planning/DEBT.md`.
+
+---
+
 ## v3.4 0.8.0 Issue Closure (Shipped: 2026-02-08)
 
 **Delivered:** Closed all 7 open GitHub issues tagged with the 0.8.0 milestone — fixed parser keyword conflicts, excluded .bbl library files from language features, cleaned up toolbar buttons, fixed token authentication corruption, and added config.bbx path support to all run commands across both VS Code and IntelliJ.
