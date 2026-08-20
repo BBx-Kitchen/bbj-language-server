@@ -1,4 +1,4 @@
-import { AstNode, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
+import { AstNode, AstNodeDescription, BuildOptions, DefaultDocumentBuilder, DocumentState, FileSystemProvider, LangiumDocument, LangiumSharedCoreServices, WorkspaceManager, interruptAndCheck, AstUtils, UriUtils } from "langium";
 import { CancellationToken } from "vscode-jsonrpc";
 import { URI } from 'vscode-uri';
 import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
@@ -160,30 +160,38 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const timer = setTimeout(async () => {
             this.cplDebounceTimers.delete(key);
 
-            // Clear-then-show: remove old BBjCPL diagnostics before compile
-            document.diagnostics = (document.diagnostics ?? []).filter(
-                d => d.source !== 'BBjCPL'
-            );
-
-            // Resolve BBjCPLService lazily via serviceRegistry
-            // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
-            const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
-            const cplService = langServices.compiler.BBjCPLService;
-
-            const cplDiags = await cplService.compile(key);
-
-            if (cplDiags.length > 0) {
-                // Merge BBjCPL diagnostics with current Langium diagnostics
-                document.diagnostics = mergeDiagnostics(
-                    document.diagnostics ?? [],
-                    cplDiags
+            try {
+                // Clear-then-show: remove old BBjCPL diagnostics before compile
+                document.diagnostics = (document.diagnostics ?? []).filter(
+                    d => d.source !== 'BBjCPL'
                 );
-            }
 
-            // Re-notify client with updated merged diagnostics.
-            // Use CancellationToken.None — the original build's token may be stale
-            // after the 500ms debounce. BBjCPLService handles its own timeout internally.
-            await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+                // Resolve BBjCPLService lazily via serviceRegistry
+                // (BBjDocumentBuilder is a shared service; BBjCPLService is a language service)
+                const langServices = this.serviceRegistry.getServices(document.uri) as BBjServices;
+                const cplService = langServices.compiler.BBjCPLService;
+
+                const cplDiags = await cplService.compile(key);
+
+                if (cplDiags.length > 0) {
+                    // Merge BBjCPL diagnostics with current Langium diagnostics
+                    document.diagnostics = mergeDiagnostics(
+                        document.diagnostics ?? [],
+                        cplDiags
+                    );
+                }
+
+                // Re-notify client with updated merged diagnostics.
+                // Use CancellationToken.None — the original build's token may be stale
+                // after the 500ms debounce. BBjCPLService handles its own timeout internally.
+                await this.notifyDocumentPhase(document, DocumentState.Validated, CancellationToken.None);
+            } catch (e) {
+                // The callback runs detached from setTimeout, with no rejection handler of
+                // its own — an uncaught throw here would surface as an unhandled promise
+                // rejection at the process level instead of being caught in-context
+                // (P61-D2-017). Log and let the build continue.
+                logger.error(`BBjCPL debounced compile failed for ${key}: ${e}`);
+            }
         }, BBjDocumentBuilder.SAVE_DEBOUNCE_MS);
 
         this.cplDebounceTimers.set(key, timer);
@@ -363,6 +371,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         const bbjWsManager = this.wsManager() as BBjWorkspaceManager;
         const prefixes = bbjWsManager.getSettings()?.prefixes ?? [];
 
+        // Build the fsPath-to-BbjClass index ONCE per update instead of re-scanning
+        // allElements() inside the per-diagnostic filter below — a full linear scan of
+        // the entire workspace's BbjClass index, repeated once per unresolved-USE
+        // diagnostic in this batch, previously ran on every incremental rebuild (P61-D3-005).
+        const classesByPath = new Map<string, AstNodeDescription>();
+        for (const bbjClass of this.indexManager.allElements(BbjClass.$type)) {
+            classesByPath.set(normalize(bbjClass.documentUri.fsPath).toLowerCase(), bbjClass);
+        }
+
         for (const document of documents) {
             if (bbjWsManager.isExternalDocument(document.uri)) continue;
             if (!document.diagnostics?.length) continue;
@@ -392,12 +409,11 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
                     prefixes.map(prefixPath => URI.file(resolve(prefixPath, cleanPath)))
                 );
 
-                // Check if any BbjClass now exists at these URIs
-                const nowResolved = this.indexManager.allElements(BbjClass.$type).some(bbjClass => {
-                    return adjustedFileUris.some(adjustedFileUri =>
-                        normalize(bbjClass.documentUri.fsPath).toLowerCase() === normalize(adjustedFileUri.fsPath).toLowerCase()
-                    );
-                });
+                // Check if any BbjClass now exists at these URIs, via the Map built once
+                // above rather than re-scanning allElements() for every diagnostic.
+                const nowResolved = adjustedFileUris.some(adjustedFileUri =>
+                    classesByPath.has(normalize(adjustedFileUri.fsPath).toLowerCase())
+                );
 
                 // If now resolved, remove the diagnostic (return false to filter out)
                 return !nowResolved;

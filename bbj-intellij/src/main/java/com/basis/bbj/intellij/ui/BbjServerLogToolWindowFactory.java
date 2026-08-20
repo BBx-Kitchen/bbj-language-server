@@ -13,7 +13,10 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Tool window factory for the BBj Language Server log output.
- * Creates a console view that displays real-time server stdout/stderr.
+ * Creates a console view that displays curated status-transition messages logged via
+ * {@link BbjServerService#logToConsole} (e.g. server status changes, auto-restart, crash
+ * notifications) — not the raw stdout/stderr of the spawned language server process itself,
+ * which this window does not attach to.
  */
 public final class BbjServerLogToolWindowFactory implements ToolWindowFactory, DumbAware {
 

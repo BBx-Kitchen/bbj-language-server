@@ -3,10 +3,15 @@ package com.basis.bbj.intellij.composer;
 import java.util.List;
 
 /**
- * Gson-serializable data objects mirroring the language server's {@code bbj/composer/*} request
- * params and results (see {@code bbj-vscode/src/language/composer-commands.ts}). The BBj-side
- * TypeScript is the single source of truth for the flag/hex arithmetic (#433); these classes only
- * carry the JSON across LSP4IJ. Field names must match the JSON keys exactly.
+ * Gson-serializable data objects carrying the language server's {@code bbj/composer/*} request
+ * params and results relevant to the IntelliJ dialogs (see
+ * {@code bbj-vscode/src/language/composer-commands.ts}). The BBj-side TypeScript is the single
+ * source of truth for the flag/hex arithmetic (#433); these classes only carry the JSON across
+ * LSP4IJ. Field names must match the JSON keys exactly.
+ *
+ * Note: two TypeScript-side optional fields are intentionally not mirrored here —
+ * {@code MsgboxPreview.exprText} and msgbox {@code CatalogItem.constant} — since neither is
+ * currently consumed by either IDE's UI; Gson silently drops them on deserialization.
  *
  * Note: flag/event-mask bit values can set the 32-bit sign bit ({@code $80000000$} = 2147483648),
  * which overflows a Java {@code int}, so every raw bit value is a {@code long}.

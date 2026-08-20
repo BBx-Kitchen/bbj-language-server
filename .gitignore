@@ -34,3 +34,6 @@ java-interop/.settings/
 .worktrees/
 .security-key
 logs/security/
+
+# GSD runtime artifacts
+.gsd/

@@ -13,6 +13,24 @@ import { BBjWorkspaceManager } from "./bbj-ws-manager.js";
 import { useInsertPosition } from "./bbj-use-insert.js";
 
 
+/**
+ * Cache size for {@link BBjCompletionProvider.findClassCandidatesByPrefixCached}'s memoization
+ * (P61-D3-004). Small and fixed — this only needs to absorb duplicate lookups for the *same*
+ * prefix within a short window (Langium's own completion engine can invoke
+ * `completionForCrossReference` more than once for the same cross-reference feature at one
+ * offset), not to serve as a long-lived class-index cache in its own right.
+ */
+const AUTO_IMPORT_PREFIX_CACHE_SIZE = 20;
+
+/**
+ * How long a cached prefix result is trusted before a fresh `findClassCandidatesByPrefix` lookup
+ * is required (ms). Bounds staleness against `JavaInteropService`'s class index growing mid-session
+ * (a class resolving after its simple-name prefix was first cached) to at most this window; the
+ * index only grows over a session, so a short-lived stale hit self-heals on the next completion
+ * request for that prefix.
+ */
+const AUTO_IMPORT_PREFIX_CACHE_TTL_MS = 2000;
+
 export class BBjCompletionProvider extends DefaultCompletionProvider {
 
     /** Minimum typed prefix before offering (potentially many) auto-import class suggestions. */
@@ -30,6 +48,35 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * reference is grammatically optional (see getCompletion).
      */
     protected dotTriggerActive = false;
+
+    /**
+     * The cancellation token for the completion request currently being served (P61-D2-013).
+     * `completionForCrossReference` is invoked deep inside the base provider's own completion
+     * algorithm without a cancellation token in its signature, so this instance field is how
+     * {@link completeAutoImportClasses} — called from there — still observes cancellation; it is
+     * set at the very start of {@link getCompletion} for every request.
+     */
+    protected activeCancelToken?: CancellationToken;
+
+    /**
+     * Prefix -> cached `findClassCandidatesByPrefix` lookup memoization for
+     * {@link completeAutoImportClasses} (P61-D3-004). Keyed on the lowercased prefix only, not
+     * per-document: the underlying lookup depends solely on `JavaInteropService`'s workspace-wide
+     * Java class index, which every document shares, so a hit computed for one document's prefix
+     * is exactly the answer another document's identical prefix would compute too — no
+     * cross-document data leak (T-67-04-04). Bounded by both a small LRU-style size cap
+     * ({@link AUTO_IMPORT_PREFIX_CACHE_SIZE}) and a short TTL ({@link AUTO_IMPORT_PREFIX_CACHE_TTL_MS})
+     * so a prefix cached before the class index grew mid-session goes stale for at most that
+     * window, never for the life of the server process (T-67-04-02).
+     *
+     * Caches the in-flight `Promise`, not just its resolved value: Langium's own completion engine
+     * awaits every matched grammar feature concurrently (`Promise.all`), so two
+     * `completeAutoImportClasses` calls for the same prefix within one request can both reach this
+     * cache before either has resolved. Caching the promise itself (set synchronously, before any
+     * `await`) means the second caller shares the first caller's in-flight request instead of
+     * racing a duplicate one.
+     */
+    protected readonly autoImportPrefixCache = new Map<string, { promise: Promise<string[]>; cachedAt: number }>();
 
     protected readonly documentFactory: LangiumDocumentFactory;
     protected readonly javaInterop: JavaInteropService;
@@ -52,7 +99,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         await super.completionForCrossReference(context, next, recording);
 
         if (!this.dotTriggerActive && this.isClassCrossReference(next.feature) && this.isTypeReferencePosition(context)) {
-            await this.completeAutoImportClasses(context, offered, acceptor);
+            await this.completeAutoImportClasses(context, offered, acceptor, this.activeCancelToken);
         }
     }
 
@@ -87,12 +134,18 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * (issue #447). Coverage depends on the class index (complete when the augmented bbj-ls is
      * present, otherwise classes already resolved this session).
      */
-    protected async completeAutoImportClasses(context: CompletionContext, alreadyOffered: Set<string>, acceptor: CompletionAcceptor): Promise<void> {
+    protected async completeAutoImportClasses(context: CompletionContext, alreadyOffered: Set<string>, acceptor: CompletionAcceptor, cancelToken?: CancellationToken): Promise<void> {
+        if (cancelToken?.isCancellationRequested) {
+            return;
+        }
         const prefix = context.textDocument.getText().substring(context.tokenOffset, context.offset);
         if (prefix.length < BBjCompletionProvider.AUTO_IMPORT_MIN_PREFIX) {
             return;
         }
-        const fqns = await this.javaInterop.findClassCandidatesByPrefix(prefix);
+        const fqns = await this.findClassCandidatesByPrefixCached(prefix, cancelToken);
+        if (cancelToken?.isCancellationRequested) {
+            return;
+        }
         if (fqns.length === 0) {
             return;
         }
@@ -113,6 +166,41 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
                 documentation: { kind: 'markdown', value: `Adds \`use ${fqn}\`` }
             });
         }
+    }
+
+    /**
+     * Memoizes {@link JavaInteropService.findClassCandidatesByPrefix} by lowercased prefix
+     * (P61-D3-004): typing continues to hit a fresh lookup per distinct prefix, but a repeated
+     * lookup for the *same* prefix within {@link AUTO_IMPORT_PREFIX_CACHE_TTL_MS} is served from
+     * cache instead of re-running the underlying scan. See {@link autoImportPrefixCache}'s own
+     * doc comment for the cache-key/invalidation rationale (T-67-04-02, T-67-04-04).
+     */
+    protected findClassCandidatesByPrefixCached(prefix: string, cancelToken?: CancellationToken): Promise<string[]> {
+        const key = prefix.toLowerCase();
+        const now = Date.now();
+        const cached = this.autoImportPrefixCache.get(key);
+        if (cached && (now - cached.cachedAt) < AUTO_IMPORT_PREFIX_CACHE_TTL_MS) {
+            // Refresh recency: delete + re-insert so Map's insertion-order iteration (used below
+            // to evict the oldest entry) treats this key as freshly used.
+            this.autoImportPrefixCache.delete(key);
+            this.autoImportPrefixCache.set(key, cached);
+            return cached.promise;
+        }
+        // Set the in-flight promise into the cache synchronously, before awaiting it, so a
+        // concurrent call for the same prefix (see this field's own doc comment) shares this
+        // request instead of starting a duplicate one.
+        const promise = this.javaInterop.findClassCandidatesByPrefix(prefix, undefined, cancelToken);
+        this.autoImportPrefixCache.set(key, { promise, cachedAt: now });
+        // A failed lookup must not poison the cache for the rest of the TTL window — drop it so
+        // the next call retries instead of re-throwing a stale rejection.
+        promise.catch(() => { this.autoImportPrefixCache.delete(key); });
+        if (this.autoImportPrefixCache.size > AUTO_IMPORT_PREFIX_CACHE_SIZE) {
+            const oldestKey = this.autoImportPrefixCache.keys().next().value;
+            if (oldestKey !== undefined) {
+                this.autoImportPrefixCache.delete(oldestKey);
+            }
+        }
+        return promise;
     }
 
     protected override completionFor(context: CompletionContext, next: NextFeature, acceptor: CompletionAcceptor): MaybePromise<void> {
@@ -152,8 +240,13 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
     }
 
     override async getCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        // Threaded through to getFieldCompletion/getFilePathCompletion (direct parameter) and to
+        // completeAutoImportClasses (via this field — see its own doc comment) so a request the
+        // client has already superseded stops at the next await boundary instead of running to
+        // completion (P61-D2-013).
+        this.activeCancelToken = cancelToken;
         if (params.context?.triggerCharacter === '#') {
-            return this.getFieldCompletion(document, params);
+            return this.getFieldCompletion(document, params, cancelToken);
         }
         if (params.context?.triggerCharacter === '(') {
             // '(' auto-trigger: return constructor items or an empty list — NEVER fall through
@@ -164,7 +257,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
             // '"' auto-trigger: the opening quote of a RUN/CALL file id (`RUN "`, `CALL "`). Offer
             // reachable file paths, or an empty list for any other string literal — NEVER fall
             // through to the default provider, which would offer irrelevant keywords inside a string.
-            return await this.getFilePathCompletion(document, params) ?? { items: [], isIncomplete: false };
+            return await this.getFilePathCompletion(document, params, cancelToken) ?? { items: [], isIncomplete: false };
         }
         if (params.context?.triggerCharacter === '.') {
             // '.' is the member-access operator (MemberCall). The grammar makes the member
@@ -186,7 +279,7 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         // `::...::` file-path segment of a `use`/`declare` only a plain Ctrl+Space reaches here.
         // Offer reachable `.bbj` files / subdirectories there — the grammar treats the path as a
         // single opaque terminal, so the default completion engine has nothing to offer.
-        const filePathCompletion = await this.getFilePathCompletion(document, params);
+        const filePathCompletion = await this.getFilePathCompletion(document, params, cancelToken);
         if (filePathCompletion) {
             return filePathCompletion;
         }
@@ -232,7 +325,10 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
      * Fail-safe: any file-system/resolution error yields an empty list rather than a thrown
      * exception, so a broken prefix never breaks completion.
      */
-    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+    protected async getFilePathCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         const text = document.textDocument.getText();
         const cursorOffset = document.textDocument.offsetAt(params.position);
         const lineStartOffset = document.textDocument.offsetAt({ line: params.position.line, character: 0 });
@@ -253,6 +349,9 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         const replaceRange = { start: prefixStart, end: params.position };
 
         const items = await this.collectFilePathItems(document.uri, pathContext, replaceRange);
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         // isIncomplete so the client re-queries as the path is typed further (e.g. crossing into a
         // subdirectory after a '/'), rather than filtering the first directory's list forever.
         return { items, isIncomplete: true };
@@ -336,7 +435,10 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
         return items;
     }
 
-    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams): Promise<CompletionList | undefined> {
+    protected async getFieldCompletion(document: LangiumDocument, params: CompletionParams, cancelToken?: CancellationToken): Promise<CompletionList | undefined> {
+        if (cancelToken?.isCancellationRequested) {
+            return undefined;
+        }
         // Get cursor position (the # has already been typed)
         const offset = document.textDocument.offsetAt(params.position);
         const rootNode = document.parseResult.value;
@@ -367,6 +469,11 @@ export class BBjCompletionProvider extends DefaultCompletionProvider {
 
         if (!method || !klass) {
             // Not inside a class method — don't provide field completion
+            return undefined;
+        }
+        if (cancelToken?.isCancellationRequested) {
+            // Recovery above may have reparsed a throwaway document copy; don't build items for a
+            // request the client has already superseded.
             return undefined;
         }
 

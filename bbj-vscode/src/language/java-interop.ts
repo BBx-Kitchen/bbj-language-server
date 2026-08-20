@@ -31,13 +31,76 @@ const autoImportCandidatePackages = ['java.util', 'java.util.concurrent', 'java.
 export const JavaSyntheticDocUri = 'classpath:/bbj.bbl'
 
 /**
+ * Maximum number of resolved Java classes kept in {@link JavaInteropService._resolvedClasses}
+ * before the least-recently-used entry is evicted (P61-D3-001) — an open-ended editor session
+ * against a large/varied classpath must not grow this cache without bound. No specific number is
+ * named by the finding record; 5000 is a discretionary choice, large enough to comfortably hold a
+ * typical project's resolved classpath while still bounding steady-state memory growth.
+ */
+export const RESOLVED_CLASSES_CACHE_LIMIT = 5000;
+
+/**
+ * A `Map` bounded to a maximum size, evicting the least-recently-used entry once the cap is
+ * exceeded (P61-D3-001). Recency is refreshed on both `get` and `set` by deleting and
+ * re-inserting the key, relying on `Map`'s insertion-order iteration to find the oldest entry.
+ */
+class LruMap<K, V> {
+    private readonly map = new Map<K, V>();
+
+    constructor(private readonly limit: number) { }
+
+    get size(): number {
+        return this.map.size;
+    }
+
+    has(key: K): boolean {
+        return this.map.has(key);
+    }
+
+    get(key: K): V | undefined {
+        const value = this.map.get(key);
+        if (value !== undefined) {
+            // Refresh recency: delete + re-insert moves the key to the end of iteration order.
+            this.map.delete(key);
+            this.map.set(key, value);
+        }
+        return value;
+    }
+
+    set(key: K, value: V): void {
+        this.map.delete(key);
+        this.map.set(key, value);
+        if (this.map.size > this.limit) {
+            const oldestKey = this.map.keys().next().value;
+            if (oldestKey !== undefined) {
+                this.map.delete(oldestKey);
+            }
+        }
+    }
+
+    values(): IterableIterator<V> {
+        return this.map.values();
+    }
+
+    clear(): void {
+        this.map.clear();
+    }
+}
+
+/**
  * Manages Java interop operations including class resolution, classpath loading,
  * and communication with the Java backend service.
  */
 export class JavaInteropService {
 
     private connection?: MessageConnection;
-    private readonly _resolvedClasses: Map<string, JavaClass> = new Map();
+    /**
+     * In-flight `connect()` promise shared by same-tick callers (P61-D2-001): without it, two
+     * concurrent callers that both observe no existing connection each open their own socket,
+     * and the second silently overwrites/leaks the first.
+     */
+    private connectingPromise?: Promise<MessageConnection>;
+    private readonly _resolvedClasses = new LruMap<string, JavaClass>(RESOLVED_CLASSES_CACHE_LIMIT);
     private readonly childrenOfByName = new Map<JavaClass | JavaPackage | Classpath, Map<string, JavaClass | JavaPackage>>();
     /** Queue-based async mutex: each entry is a resolve function that grants the lock to the next waiter. */
     private lockQueue: Array<() => void> = [];
@@ -70,7 +133,7 @@ export class JavaInteropService {
         }, URI.parse(JavaSyntheticDocUri));
     }
 
-    private get resolvedClasses(): Map<string, JavaClass> {
+    private get resolvedClasses(): LruMap<string, JavaClass> {
         return this._resolvedClasses;
     }
 
@@ -86,12 +149,31 @@ export class JavaInteropService {
     }
 
     /**
-     * Establishes connection to the Java backend service
+     * Establishes connection to the Java backend service. Concurrent same-tick callers share the
+     * single in-flight {@link connectingPromise} instead of each opening their own socket
+     * (P61-D2-001).
      */
     protected async connect(): Promise<MessageConnection> {
         if (this.connection) {
             return this.connection;
         }
+        if (this.connectingPromise) {
+            return this.connectingPromise;
+        }
+        this.connectingPromise = this.establishConnection();
+        try {
+            return await this.connectingPromise;
+        } finally {
+            this.connectingPromise = undefined;
+        }
+    }
+
+    /**
+     * Opens a fresh socket and message connection, and registers `close`/`error` listeners that
+     * drop {@link connection} so a peer disconnect forces the next {@link connect} call to
+     * reconnect instead of handing back the dead reference (P61-D2-001).
+     */
+    private async establishConnection(): Promise<MessageConnection> {
         let socket: Socket;
         try {
             socket = await this.createSocket();
@@ -99,9 +181,14 @@ export class JavaInteropService {
             const detail = e instanceof Error ? e.message : String(e);
             notifyJavaConnectionError(detail);
             console.error('Failed to connect to the Java service.', e);
-            return Promise.reject(e);
+            throw e;
         }
         const connection = createMessageConnection(new SocketMessageReader(socket), new SocketMessageWriter(socket));
+        // Guard on identity: an old connection's close/error can be delivered after a newer
+        // connect() already installed a healthy replacement, and an unguarded clear would drop
+        // that live reference and force a spurious reconnect (P67-WR-02).
+        connection.onClose(() => { if (this.connection === connection) this.connection = undefined; });
+        connection.onError(() => { if (this.connection === connection) this.connection = undefined; });
         connection.listen();
         this.connection = connection;
         return connection;
@@ -174,10 +261,37 @@ export class JavaInteropService {
      */
     protected async getRawClass(className: string, token?: CancellationToken): Promise<JavaClass> {
         const connection = await this.connect();
+        const requestPromise = connection.sendRequest(getClassInfoRequest, { className }, token);
+        // Defensive no-op handler on the raced branch (P61-D2-002): the rejection still reaches
+        // the caller via the Promise.race below, this only guards against a late settlement being
+        // reported as an unhandled rejection.
+        requestPromise.catch(() => { /* surfaced to the caller via the race below */ });
         return Promise.race([
-            connection.sendRequest(getClassInfoRequest, { className }, token),
+            requestPromise,
             new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Java class resolution timeout for ${className}`)), 10000))
         ]);
+    }
+
+    /**
+     * Sends a request to the Java backend service, returning `fallback` and logging the error
+     * instead of throwing if connecting or the request itself fails (P61-D4-003). Shared by
+     * request paths whose error handling is exactly "connect, send, log-and-return-fallback on
+     * failure" — {@link loadClasspath} today; paths with additional success/error-branch logic
+     * (e.g. {@link ensureCompleteClassIndex}'s METHOD_NOT_FOUND latch, or {@link getRawClass}'s
+     * timeout race) are not routed through this helper since they don't fit the plain shape.
+     * @param request the JSON-RPC request type to send
+     * @param params request parameters
+     * @param fallback value returned when connecting or the request fails
+     * @param token cancellation token for request cancellation
+     */
+    private async sendRequestSafe<P, R>(request: RequestType<P, R, null>, params: P, fallback: R, token?: CancellationToken): Promise<R> {
+        try {
+            const connection = await this.connect();
+            return await connection.sendRequest(request, params, token);
+        } catch (e) {
+            console.error(e)
+            return fallback;
+        }
     }
 
     /**
@@ -188,21 +302,15 @@ export class JavaInteropService {
      */
     public async loadClasspath(classPath: string[], token?: CancellationToken): Promise<boolean> {
         logger.debug(() => "Load classpath from: " + classPath.join(', '))
-        try {
-            const entries = classPath.filter(entry => entry.length > 0).map(entry => {
-                // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
-                // Otherwise, add 'file:' prefix for regular file paths
-                if (entry.startsWith('[') && entry.endsWith(']')) {
-                    return entry;
-                }
-                return 'file:' + entry;
-            });
-            const connection = await this.connect();
-            return await connection.sendRequest(loadClasspathRequest, { classPathEntries: entries }, token);
-        } catch (e) {
-            console.error(e)
-            return false;
-        }
+        const entries = classPath.filter(entry => entry.length > 0).map(entry => {
+            // If entry is already wrapped in square brackets (BBj classpath notation), keep it as is
+            // Otherwise, add 'file:' prefix for regular file paths
+            if (entry.startsWith('[') && entry.endsWith(']')) {
+                return entry;
+            }
+            return 'file:' + entry;
+        });
+        return this.sendRequestSafe(loadClasspathRequest, { classPathEntries: entries }, false, token);
     }
 
     /**
@@ -573,6 +681,10 @@ export class JavaInteropService {
         // raw Java DTO data before any async awaits. This is the data that the static-method
         // filter in bbj-scope.ts depends on, and it must be present before getResolvedClass()
         // can return this class to external callers.
+        // A malformed/older classpath response may omit fields/methods entirely (P61-D2-003) —
+        // default them like classes/constructors above so the loops below don't throw.
+        javaClass.fields ??= [];
+        javaClass.methods ??= [];
         for (const field of javaClass.fields) {
             (field as Mutable<JavaField>).$type = JavaField.$type;
             field.deprecated = (field as unknown as { isDeprecated?: boolean }).isDeprecated ?? false;
@@ -770,6 +882,10 @@ export class JavaInteropService {
 
         // Clear java.lang.Object cache
         this.JAVA_LANG_OBJECT = undefined;
+
+        // Clear the complete class index so it is rebuilt against the new classpath instead of
+        // continuing to answer auto-import suggestions with stale FQNs (P61-D2-004)
+        this.clearCompleteClassIndex();
 
         // Reset lock state
         this.lockQueue = [];

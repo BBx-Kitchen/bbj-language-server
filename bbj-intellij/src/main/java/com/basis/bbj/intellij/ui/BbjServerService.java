@@ -23,8 +23,11 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Project-level service managing BBj language server lifecycle.
- * Centralizes server start/stop/restart operations, debounced restart scheduling,
- * crash recovery with auto-restart logic, and status broadcast to UI components.
+ * Centralizes server start/stop/restart operations, crash recovery with auto-restart logic,
+ * and status broadcast to UI components. {@link #scheduleRestart()} offers a debounced restart
+ * path, but only the settings-apply flow ({@code BbjSettingsConfigurable#apply()}) uses it — the
+ * other restart triggers (manual restart action, crash notification, status bar widgets, refresh
+ * Java classes, crash auto-restart) call {@link #restart()} directly with no debounce.
  */
 public final class BbjServerService implements Disposable {
 

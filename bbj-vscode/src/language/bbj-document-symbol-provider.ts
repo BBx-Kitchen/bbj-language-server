@@ -72,7 +72,6 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
             }
 
             // Error-recovery path: name property exists on AST but nameProvider couldn't find its CST node
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const name = (astNode as any).name;
             if (typeof name === 'string' && name.trim() && astNode.$cstNode) {
                 // Use the node's own CST node as both range and selectionRange
@@ -138,7 +137,7 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
     ): void {
         try {
             // Build a set of encoded positions already represented in the existing symbols
-            const coveredPositions = new Set<number>();
+            const coveredPositions = new Set<string>();
             this.collectPositions(existingSymbols, coveredPositions);
 
             // Walk the entire AST and collect named nodes not yet covered
@@ -146,13 +145,12 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
                 try {
                     if (!node.$cstNode) continue;
 
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const name = (node as any).name;
                     const hasName = (typeof name === 'string' && name.trim()) ||
                                     !!this.nameProvider.getNameNode(node);
                     if (!hasName) continue;
 
-                    const pos = node.$cstNode.range.start.line * 100_000 + node.$cstNode.range.start.character;
+                    const pos = this.encodeRangeKey(node.$cstNode.range);
                     if (coveredPositions.has(pos)) continue;
 
                     // This named node is missing from the outline — add it as a flat entry
@@ -170,14 +168,25 @@ export class BBjDocumentSymbolProvider extends DefaultDocumentSymbolProvider {
         }
     }
 
-    private collectPositions(symbols: DocumentSymbol[], positions: Set<number>): void {
+    private collectPositions(symbols: DocumentSymbol[], positions: Set<string>): void {
         for (const sym of symbols) {
-            // Encode start position as a single number to avoid collisions
-            const key = sym.range.start.line * 100_000 + sym.range.start.character;
-            positions.add(key);
+            // Encode the full range (start AND end), not just start (P61-D2-014): two sibling
+            // nodes that share a start position but differ in extent (e.g. a broken container and
+            // a node error-recovery reinserted at the same offset) must be tracked as two distinct
+            // covered positions, not collapsed into one.
+            positions.add(this.encodeRangeKey(sym.range));
             if (sym.children) {
                 this.collectPositions(sym.children, positions);
             }
         }
+    }
+
+    /**
+     * Encodes a CST/LSP range as a single collision-resistant string key combining both the start
+     * AND end position (P61-D2-014). Shared by {@link collectPositions} and
+     * {@link applyDeepWalkFallback} so the two "already covered?" checks can never drift apart.
+     */
+    private encodeRangeKey(range: { start: { line: number; character: number }; end: { line: number; character: number } }): string {
+        return `${range.start.line}:${range.start.character}-${range.end.line}:${range.end.character}`;
     }
 }

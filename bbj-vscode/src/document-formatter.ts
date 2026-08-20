@@ -2,8 +2,18 @@ import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { logger } from './language/logger.js';
 
-// Store unsaved content in memory
+// Mirrors each open document's live content, kept in sync by the onDidChangeTextDocument
+// listener below. document.getText() already returns VS Code's live in-memory buffer for a
+// document — never a disk read — so for the document object provideDocumentFormattingEdits
+// receives, this map's tracked value and document.getText() are always the same content.
 const unsavedContentMap = new Map<string, string>();
+
+// One in-flight format Promise per document URI, so concurrent format requests for the same
+// document (e.g. "Save All", or a manual format racing format-on-save) share a single spawned
+// process instead of each starting its own `java` invocation. Entries are removed once the
+// shared promise settles, on both the resolve and reject paths, so a later request for the same
+// URI spawns again.
+const inFlightFormats = new Map<string, Promise<string>>();
 
 export const DocumentFormatter = {
   provideDocumentFormattingEdits(document: vscode.TextDocument): Thenable<vscode.TextEdit[] | undefined> {
@@ -26,10 +36,24 @@ export const DocumentFormatter = {
     if (config.removeLineContinuation) args.push('--remove-line-continue');
     if (config.splitSingleLineIF) args.push('--single-line-if');
 
-    // Use unsaved content if available, otherwise read from the file system
+    // document.getText() always returns VS Code's live in-memory buffer, never a disk read; the
+    // fallback below simply prefers the tracked mirror when present.
     const documentContent = unsavedContentMap.get(document.uri.toString()) || document.getText();
 
-    return this.runFormatter(args, documentContent).then(
+    const uriKey = document.uri.toString();
+    let formatPromise = inFlightFormats.get(uriKey);
+    if (!formatPromise) {
+      formatPromise = this.runFormatter(args, documentContent) as Promise<string>;
+      inFlightFormats.set(uriKey, formatPromise);
+      const clearInFlight = () => {
+        if (inFlightFormats.get(uriKey) === formatPromise) {
+          inFlightFormats.delete(uriKey);
+        }
+      };
+      formatPromise.then(clearInFlight, clearInFlight);
+    }
+
+    return formatPromise.then(
       (formattedContent: string) => {
         // Create a single edit that replaces the entire document content
         const edit = new vscode.TextEdit(
@@ -63,6 +87,8 @@ export const DocumentFormatter = {
       p.on('error', (err) => {
         if (err && (err as any).code === 'ENOENT') {
           return reject(err);
+        } else {
+          return reject(err);
         }
       });
 
@@ -84,13 +110,13 @@ export const DocumentFormatter = {
   },
 };
 
-// Listen for unsaved changes and store them in memory
+// Listen for changes and keep the live-buffer mirror above in sync.
 vscode.workspace.onDidChangeTextDocument((event) => {
   const { document } = event;
   unsavedContentMap.set(document.uri.toString(), document.getText());
 });
 
-// Cleanup unsaved content when a document is closed
+// Remove the mirrored entry when a document is closed.
 vscode.workspace.onDidCloseTextDocument((document) => {
   unsavedContentMap.delete(document.uri.toString());
 });

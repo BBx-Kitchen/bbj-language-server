@@ -92,6 +92,14 @@ describe('parseBbjcplOutput', () => {
         expect(diagnostics[1].range.start.line).toBe(35); // physical 36 -> 0-based 35
     });
 
+    test('P61-D2-009: a diagnostic reported on physical line 0 clamps to LSP line 0, never -1', () => {
+        const input = '/some/file.bbj: error at line 10 (0):     bad code';
+        const diagnostics = parseBbjcplOutput(input);
+        expect(diagnostics).toHaveLength(1);
+        expect(diagnostics[0].range.start.line).toBe(0);
+        expect(diagnostics[0].range.end.line).toBe(0);
+    });
+
     test('line number off-by-one guard: physical line (34) maps to LSP line 33 (0-based)', () => {
         const input = '/some/file.bbj: error at line 340 (34):     some broken code';
         const diagnostics = parseBbjcplOutput(input);

@@ -18,20 +18,7 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
             }
         });
 
-        this.spliceToken(tokens, 'START_BREAK');
-        this.spliceToken(tokens, 'FNEND');
-        this.spliceToken(tokens, 'NEXT_BREAK');
-        this.spliceToken(tokens, 'NEXT_ID');
-        this.spliceToken(tokens, 'METHODRET_END');
-        this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA');
-        this.spliceToken(tokens, 'KEYWORD_STANDALONE');
-        this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
-        this.spliceToken(tokens, 'RPAREN_NL');
-        this.spliceToken(tokens, 'ASTERISK_EXPRESSION');
-        this.spliceToken(tokens, 'ASTERISK_STANDALONE');
-        this.spliceToken(tokens, 'RELEASE_NL');
-        this.spliceToken(tokens, 'RELEASE_NO_NL');
-        this.spliceToken(tokens, 'EXIT_NO_NL');
+        this.reorderTokenPriorities(tokens);
 
         const id = terminalTokens.find(e => e.name === 'ID')!;
         const idWithSuffix = terminalTokens.find(e => e.name === 'ID_WITH_SUFFIX')!;
@@ -64,8 +51,40 @@ export class BBjTokenBuilder extends DefaultTokenBuilder {
         return tokens;
     }
 
+    /**
+     * Splices the 14 custom tokens with an explicit priority requirement (line-break markers,
+     * standalone-vs-expression disambiguators, etc.) to the front of the token vocabulary
+     * (P61-D4-005). Extracted out of buildTokens() so a future edit to this reordering can't
+     * accidentally land inside the unrelated CATEGORIES/LONGER_ALT wiring that follows it in
+     * buildTokens() — same custom patterns and ordering as before the extraction, unchanged.
+     */
+    private reorderTokenPriorities(tokens: TokenType[]): void {
+        this.spliceToken(tokens, 'START_BREAK');
+        this.spliceToken(tokens, 'FNEND');
+        this.spliceToken(tokens, 'NEXT_BREAK');
+        this.spliceToken(tokens, 'NEXT_ID');
+        this.spliceToken(tokens, 'METHODRET_END');
+        this.spliceToken(tokens, 'ENDLINE_PRINT_COMMA');
+        this.spliceToken(tokens, 'KEYWORD_STANDALONE');
+        this.spliceToken(tokens, 'PRINT_STANDALONE_NL');
+        this.spliceToken(tokens, 'RPAREN_NL');
+        this.spliceToken(tokens, 'ASTERISK_EXPRESSION');
+        this.spliceToken(tokens, 'ASTERISK_STANDALONE');
+        this.spliceToken(tokens, 'RELEASE_NL');
+        this.spliceToken(tokens, 'RELEASE_NO_NL');
+        this.spliceToken(tokens, 'EXIT_NO_NL');
+    }
+
     private spliceToken(tokens: TokenType[], name: string) {
         const nextTokenIndex = tokens.findIndex(type => type.name === name);
+        if (nextTokenIndex === -1) {
+            // A missing name previously reached tokens.splice(-1, 1), which silently removes and
+            // reorders the LAST token instead of the intended one — a silent stream corruption
+            // (P61-D2-008). Fail loudly instead: buildTokens() calls this with 14 hardcoded
+            // terminal names, and a future grammar edit renaming/removing one of them should be a
+            // visible error, not a corrupted token vocabulary.
+            throw new Error(`spliceToken: no token named '${name}' found in the token list.`);
+        }
         const nextToken = tokens.splice(nextTokenIndex, 1)[0];
         tokens.splice(1, 0, nextToken);
     }

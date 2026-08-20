@@ -51,8 +51,8 @@ The language server follows Langium's architecture with custom service overrides
 
 - **Grammar**: `src/language/bbj.langium` — complete BBj syntax definition. Changes here require `npm run langium:generate` to regenerate `src/language/generated/` (AST types in `ast.ts`, grammar in `grammar.ts`, DI module in `module.ts`). Never edit generated files directly.
 - **Scope/Linking**: `bbj-scope.ts` (name provider + scope provider), `bbj-scope-local.ts` (scope computation/LocalSymbols), `bbj-linker.ts` (cross-file reference linking)
-- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus `validations/check-classes.ts`, `validations/check-variable-scoping.ts`, `validations/line-break-validation.ts`
-- **Completion**: `bbj-completion-provider.ts`
+- **Validation**: `bbj-validator.ts` (main validator registering checks), `bbj-document-validator.ts` (document-level validation with BBjCPL compiler integration), plus `validations/check-classes.ts`, `validations/check-function-calls.ts`, `validations/check-variable-scoping.ts`, `validations/line-break-validation.ts`
+- **Completion**: `bbj-completion-provider.ts`. `bbj-module.ts`'s `lsp` service group registers seven further LSP feature providers alongside it: `DocumentSymbolProvider` (`bbj-document-symbol-provider.ts`), `DefinitionProvider` (`bbj-definition-provider.ts`), `HoverProvider` (`bbj-hover.ts`), `SemanticTokenProvider` (`bbj-semantic-token-provider.ts`), `SignatureHelp` (`bbj-signature-help-provider.ts`), `InlayHintProvider` (`bbj-inlay-hint-provider.ts`), and `CodeActionProvider` (`bbj-code-action-provider.ts`)
 - **Type inference**: `bbj-type-inferer.ts`
 - **Java interop**: `java-interop.ts` — connects to the java-interop socket service to resolve Java classes/methods/fields for completion and hover
 - **Lexer**: `bbj-lexer.ts` — custom lexer with line-continuation handling (`prepareLineSplitter`)
@@ -88,7 +88,7 @@ Every `.bbj` file in `test/test-data/` is automatically parsed by `example-files
 ### IDE Integration
 
 Both VS Code and IntelliJ consume the same language server binary (`out/language/main.cjs`). The IntelliJ plugin bundles the compiled LS and TextMate grammar, and connects via LSP4IJ. Both share:
-- TextMate grammar: `syntaxes/bbj.tmLanguage.json`
+- TextMate grammar and language configuration: `syntaxes/bbj.tmLanguage.json`, `syntaxes/bbx.tmLanguage.json`, `bbj-language-configuration.json`, `bbx-language-configuration.json` (copied byte-identically into the IntelliJ plugin bundle by `bbj-intellij/build.gradle.kts`'s `copyTextMateBundle` task)
 - Run tools: `web.bbj`, `em-login.bbj`
 
 ### AST Type Constants

@@ -73,7 +73,13 @@ export class BBjTypeInferer implements TypeInferer {
                 if (isJavaField(member)) {
                     return member.resolvedType?.ref;
                 } else if (isJavaMethod(member)) {
-                    return member.resolvedReturnType?.ref;
+                    // resolvedReturnType is populated asynchronously by java-interop.ts's
+                    // resolveClass() Phase 2 (java-interop.ts:615-618). A JavaMethod reached
+                    // before that phase completes — or constructed outside it entirely — still
+                    // carries the always-present raw `returnType: string`; fall back to
+                    // resolving that through the same class-resolution path rather than
+                    // silently returning no type (P61-D2-011, P66-D2-001 / DEBT-03).
+                    return member.resolvedReturnType?.ref ?? this.javaInterop.getResolvedClass(member.returnType);
                 } else if (isMethodDecl(member)) {
                     return getClass(member.returnType);
                 } else if (isFieldDecl(member)) {

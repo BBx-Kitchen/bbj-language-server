@@ -80,4 +80,47 @@ describe('TextMate highlighting (#107)', () => {
         expect(yToken, 'y$ token present').toBeDefined();
         expect(yToken!.scopes.includes(STRING_SCOPE), 'text after the closed string is not string-scoped').toBe(false);
     });
+
+    // P62-D2-007: string content must carry only the string scope, never
+    // constant.character.escape.bbj — BBj has no character-escape syntax inside strings.
+    test('P62-D2-007 — string content carries no character-escape scope', () => {
+        const [tokens] = tokenizeLines(['x$ = "hello" + y$']);
+        // Every token whose text is (part of) the string's inner content "hello" — excludes the
+        // quote delimiters (separate begin/end punctuation tokens) and the surrounding code.
+        const contentTokens = tokens.filter(t => t.text.length > 0 && 'hello'.includes(t.text));
+        expect(contentTokens.length, 'at least one content token found inside the string').toBeGreaterThan(0);
+        for (const t of contentTokens) {
+            expect(t.scopes.includes(STRING_SCOPE), `"${t.text}" carries the string scope`).toBe(true);
+            expect(t.scopes.includes('constant.character.escape.bbj'), `"${t.text}" must not carry the escape scope`).toBe(false);
+        }
+    });
+
+    // P62-D2-008: a bare REM at end of line (no trailing space/tab) is still a comment.
+    test('P62-D2-008 — a bare REM at end of line is recognised as a comment', () => {
+        const [tokens] = tokenizeLines(['REM']);
+        const remToken = tokens.find(t => t.text === 'REM');
+        expect(remToken, 'REM token present').toBeDefined();
+        expect(remToken!.scopes.some(s => s.startsWith('comment.line.bbj')), 'bare REM is comment-scoped').toBe(true);
+    });
+
+    test('P62-D2-008 — REM followed by text still scopes as a comment as before', () => {
+        const [tokens] = tokenizeLines(['REM this is a comment']);
+        const remToken = tokens.find(t => t.text.startsWith('REM'));
+        expect(remToken, 'REM token present').toBeDefined();
+        expect(remToken!.scopes.some(s => s.startsWith('comment.line.bbj')), 'REM with text is comment-scoped').toBe(true);
+    });
+
+    // P62-D2-009: IOL=/LEN= immediately followed by a value must scope as a keyword — the
+    // realistic, overwhelmingly common form in real BBj code.
+    test('P62-D2-009 — IOL= and LEN= with a value attached are scoped as keywords', () => {
+        const [tokens] = tokenizeLines(['OPEN(1)"file",IOL=5']);
+        const iolToken = tokens.find(t => t.text === 'IOL=');
+        expect(iolToken, 'IOL= token present').toBeDefined();
+        expect(iolToken!.scopes.includes('keyword.control.bbj'), 'IOL= scoped as keyword').toBe(true);
+
+        const [tokens2] = tokenizeLines(['x=LEN=10']);
+        const lenToken = tokens2.find(t => t.text === 'LEN=');
+        expect(lenToken, 'LEN= token present').toBeDefined();
+        expect(lenToken!.scopes.includes('keyword.control.bbj'), 'LEN= scoped as keyword').toBe(true);
+    });
 });

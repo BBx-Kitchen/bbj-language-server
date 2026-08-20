@@ -1,7 +1,7 @@
 
 import { AstUtils, EMPTY_SCOPE, EmptyFileSystem } from 'langium';
 import { expectCompletion, parseHelper } from 'langium/test';
-import { CompletionItemKind, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
+import { CancellationToken, CancellationTokenSource, CompletionItemKind, CompletionParams, CompletionTriggerKind } from 'vscode-languageserver';
 import { describe, expect, test, vi } from 'vitest';
 import { createBBjTestServices } from './bbj-test-module';
 import { isBbjClass, isSymbolRef, Model } from '../src/language/generated/ast.js';
@@ -17,7 +17,7 @@ describe('BBJ completion provider', async () => {
     // parseHelper (validation off) like the rest of this file — a full DocumentBuilder
     // build would run the CPL/interop validation path and reach for the Java service.
     let fieldCompletionCounter = 0;
-    async function fieldCompletion(text: string) {
+    async function fieldCompletion(text: string, cancelToken?: CancellationToken) {
         const offset = text.indexOf('<|>');
         const clean = text.replace('<|>', '');
         const doc = await parseHelper<Model>(bbjServices)(
@@ -27,7 +27,7 @@ describe('BBJ completion provider', async () => {
             position: doc.textDocument.positionAt(offset),
             context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '#' }
         };
-        return bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+        return bbjServices.lsp.CompletionProvider!.getCompletion(doc, params, cancelToken);
     }
 
     // Drive the completion provider with a '.' trigger context at the '<|>' marker.
@@ -747,5 +747,112 @@ classend
         // (e.g. accepting here then typing '(' yields `new TreeMap(TreeMap())`).
         autoImportCase('constructor argument', `tm! = new HashMap(Tree<|>)`, false);
         autoImportCase('assignment value', `x! = Tree<|>`, false);
+    });
+
+    describe('cancellation stops completion work at the next await boundary - P61-D2-013', () => {
+        // A rapid-typing client cancels an earlier completion request once a newer one supersedes
+        // it (standard LSP behavior). Each of getFieldCompletion, getFilePathCompletion and
+        // completeAutoImportClasses must observe a pre-cancelled token and return early instead of
+        // doing the request's work.
+
+        test('a pre-cancelled request stops before getFieldCompletion builds any items', async () => {
+            const text = `class public C
+    field public String name!
+    method public void run()
+        #<|>
+    methodend
+classend
+`;
+            const tokenSource = new CancellationTokenSource();
+            tokenSource.cancel();
+            const list = await fieldCompletion(text, tokenSource.token);
+            expect(list?.items ?? []).toHaveLength(0);
+        });
+
+        test('a pre-cancelled request stops before getFilePathCompletion reads the filesystem', async () => {
+            const readDirSpy = vi.spyOn(bbjServices.shared.workspace.FileSystemProvider, 'readDirectory');
+            try {
+                const text = 'run "';
+                const doc = await parseHelper<Model>(bbjServices)(
+                    text, { documentUri: 'file:///p61-d2-013-filepath.bbj' });
+                const params: CompletionParams = {
+                    textDocument: { uri: doc.textDocument.uri },
+                    position: doc.textDocument.positionAt(text.length),
+                    context: { triggerKind: CompletionTriggerKind.TriggerCharacter, triggerCharacter: '"' }
+                };
+                const tokenSource = new CancellationTokenSource();
+                tokenSource.cancel();
+                const list = await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params, tokenSource.token);
+                expect(readDirSpy).not.toHaveBeenCalled();
+                expect(list?.items ?? []).toHaveLength(0);
+            } finally {
+                readDirSpy.mockRestore();
+            }
+        });
+
+        test('a pre-cancelled request stops before completeAutoImportClasses queries the class index', async () => {
+            interopSeam.seedCompleteClassIndex(['java.util.TreeMap']);
+            const findSpy = vi.spyOn(bbjServices.java.JavaInteropService, 'findClassCandidatesByPrefix');
+            try {
+                const text = 'x! = new TreeM';
+                const doc = await parseHelper<Model>(bbjServices)(
+                    text, { documentUri: 'file:///p61-d2-013-autoimport.bbj' });
+                const params: CompletionParams = {
+                    textDocument: { uri: doc.textDocument.uri },
+                    position: doc.textDocument.positionAt(text.length),
+                    context: { triggerKind: CompletionTriggerKind.Invoked }
+                };
+                const tokenSource = new CancellationTokenSource();
+                tokenSource.cancel();
+                await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params, tokenSource.token);
+                expect(findSpy).not.toHaveBeenCalled();
+            } finally {
+                findSpy.mockRestore();
+                interopSeam.resetCompleteClassIndex();
+            }
+        });
+    });
+
+    describe('repeated same-prefix class-candidate lookups hit a memoization cache - P61-D3-004', () => {
+        // Typing continues to trigger a fresh lookup per distinct prefix, but a second lookup for
+        // the *same* prefix (e.g. Langium's completion engine invoking completionForCrossReference
+        // more than once for the same cross-reference feature at one offset) must be served from
+        // cache instead of re-running findClassCandidatesByPrefix.
+
+        // A prefix/class name not used by any other test in this file — the memoization cache is
+        // shared across the whole provider instance's lifetime (by design, see the cache field's
+        // own doc comment), so reusing a common prefix like "TreeM" would spuriously hit an entry
+        // another test already populated.
+        const uniqueClassName = 'P61D3004UniqueMarkerClass';
+
+        async function autoImportCompletionLabels(counter: number): Promise<string[]> {
+            const text = `x! = new ${uniqueClassName.substring(0, uniqueClassName.length - 5)}`;
+            const doc = await parseHelper<Model>(bbjServices)(
+                text, { documentUri: `file:///p61-d3-004-${counter}.bbj` });
+            const params: CompletionParams = {
+                textDocument: { uri: doc.textDocument.uri },
+                position: doc.textDocument.positionAt(text.length),
+                context: { triggerKind: CompletionTriggerKind.Invoked }
+            };
+            const list = await bbjServices.lsp.CompletionProvider!.getCompletion(doc, params);
+            return (list?.items ?? []).map(i => i.label);
+        }
+
+        test('a second lookup for the identical prefix is served from cache, not re-run', async () => {
+            interopSeam.seedCompleteClassIndex([`com.p61d3004.${uniqueClassName}`]);
+            const findSpy = vi.spyOn(bbjServices.java.JavaInteropService, 'findClassCandidatesByPrefix');
+            try {
+                const first = await autoImportCompletionLabels(0);
+                const second = await autoImportCompletionLabels(1);
+                // Result equivalence: the cached path must return exactly what the uncached path does.
+                expect(second).toEqual(first);
+                expect(first).toContain(uniqueClassName);
+                // The underlying lookup ran once for the two identical-prefix requests, not twice.
+                expect(findSpy).toHaveBeenCalledTimes(1);
+            } finally {
+                findSpy.mockRestore();
+                interopSeam.resetCompleteClassIndex();
+            }
+        });
     });
 });

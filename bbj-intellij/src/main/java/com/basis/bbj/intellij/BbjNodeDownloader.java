@@ -41,13 +41,15 @@ public final class BbjNodeDownloader {
     /**
      * Gets the cached Node.js path if it exists and is executable.
      * This method is fast and synchronous — safe to call from any thread.
+     * Note: as a side effect, this creates the plugin's Node.js data directory
+     * if it does not already exist.
      *
      * @return Path to cached node executable, or null if not cached
      */
     public static @Nullable Path getCachedNodePath() {
         try {
             Path nodeDataDir = getNodeDataDirectory();
-            Path nodePath = nodeDataDir.resolve(SystemInfo.isWindows ? "node.exe" : "node");
+            Path nodePath = nodeDataDir.resolve(Platform.current().nodeExecutableName());
 
             if (Files.exists(nodePath) && Files.isExecutable(nodePath)) {
                 return nodePath;
@@ -94,74 +96,114 @@ public final class BbjNodeDownloader {
         }.queue();
     }
 
+    /**
+     * Small platform-strategy helper centralizing the SystemInfo.isWindows branching that was
+     * previously repeated at each decision site in downloadAndExtractNode's steps.
+     */
+    private enum Platform {
+        WINDOWS, UNIX;
+
+        static Platform current() {
+            return SystemInfo.isWindows ? WINDOWS : UNIX;
+        }
+
+        String archiveExtension() {
+            return this == WINDOWS ? ".zip" : ".tar.gz";
+        }
+
+        String nodeExecutableName() {
+            return this == WINDOWS ? "node.exe" : "node";
+        }
+    }
+
     private static void downloadAndExtractNode(@NotNull ProgressIndicator indicator, @NotNull Project project)
             throws IOException {
-        // Build download URL
-        String platform = getPlatformName();
-        String arch = getArchitecture();
-        String fileName = "node-" + NODE_VERSION + "-" + platform + "-" + arch;
-        String extension = SystemInfo.isWindows ? ".zip" : ".tar.gz";
-        String downloadUrl = DOWNLOAD_BASE_URL + NODE_VERSION + "/" + fileName + extension;
+        Platform platform = Platform.current();
+        String downloadUrl = buildDownloadUrl(platform);
+        String fileName = downloadUrl.substring(downloadUrl.lastIndexOf('/') + 1,
+                downloadUrl.length() - platform.archiveExtension().length());
 
-        indicator.setText("Downloading Node.js " + NODE_VERSION + " for " + platform + "-" + arch);
+        indicator.setText("Downloading Node.js " + NODE_VERSION + " for " + getPlatformName() + "-" + getArchitecture());
         indicator.setFraction(0.1);
 
-        // Download to temp file
-        Path tempFile = Files.createTempFile("node-download-", extension);
+        Path tempFile = Files.createTempFile("node-download-", platform.archiveExtension());
         try {
-            HttpRequests.request(downloadUrl)
-                    .productNameAsUserAgent()
-                    .connect(request -> {
-                        request.saveToFile(tempFile.toFile(), indicator);
-                        return tempFile;
-                    });
+            download(tempFile, downloadUrl, indicator);
 
             indicator.setFraction(0.7);
             indicator.setText("Extracting Node.js binary...");
 
-            // Extract to temp directory
             Path tempExtractDir = Files.createTempDirectory("node-extract-");
             try {
-                if (SystemInfo.isWindows) {
-                    extractZip(tempFile, tempExtractDir, fileName);
-                } else {
-                    extractTarGz(tempFile, tempExtractDir);
-                }
+                extract(platform, tempFile, tempExtractDir, fileName);
 
                 indicator.setFraction(0.9);
                 indicator.setText("Installing Node.js to plugin directory...");
 
-                // Find the extracted node binary
-                Path extractedNode;
-                if (SystemInfo.isWindows) {
-                    extractedNode = tempExtractDir.resolve("node.exe");
-                } else {
-                    extractedNode = tempExtractDir.resolve("bin").resolve("node");
-                }
-
-                if (!Files.exists(extractedNode)) {
-                    throw new IOException("Node binary not found in extracted archive at: " + extractedNode);
-                }
-
-                // Copy to plugin data directory
-                Path nodeDataDir = getNodeDataDirectory();
-                Path targetPath = nodeDataDir.resolve(SystemInfo.isWindows ? "node.exe" : "node");
-                Files.copy(extractedNode, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-                // Set executable permission (important for Unix-like systems)
-                if (!SystemInfo.isWindows) {
-                    targetPath.toFile().setExecutable(true);
-                }
+                install(platform, tempExtractDir);
 
                 indicator.setFraction(1.0);
             } finally {
-                // Clean up temp extraction directory
-                deleteDirectory(tempExtractDir.toFile());
+                cleanup(tempExtractDir);
             }
         } finally {
-            // Clean up temp download file
             Files.deleteIfExists(tempFile);
         }
+    }
+
+    private static @NotNull String buildDownloadUrl(@NotNull Platform platform) {
+        String platformName = getPlatformName();
+        String arch = getArchitecture();
+        String fileName = "node-" + NODE_VERSION + "-" + platformName + "-" + arch;
+        return DOWNLOAD_BASE_URL + NODE_VERSION + "/" + fileName + platform.archiveExtension();
+    }
+
+    private static void download(@NotNull Path tempFile, @NotNull String downloadUrl,
+            @NotNull ProgressIndicator indicator) throws IOException {
+        HttpRequests.request(downloadUrl)
+                .productNameAsUserAgent()
+                .connect(request -> {
+                    request.saveToFile(tempFile.toFile(), indicator);
+                    return tempFile;
+                });
+    }
+
+    private static void extract(@NotNull Platform platform, @NotNull Path tempFile,
+            @NotNull Path tempExtractDir, @NotNull String fileName) throws IOException {
+        if (platform == Platform.WINDOWS) {
+            extractZip(tempFile, tempExtractDir, fileName);
+        } else {
+            extractTarGz(tempFile, tempExtractDir);
+        }
+    }
+
+    private static void install(@NotNull Platform platform, @NotNull Path tempExtractDir) throws IOException {
+        // Find the extracted node binary
+        Path extractedNode;
+        if (platform == Platform.WINDOWS) {
+            extractedNode = tempExtractDir.resolve("node.exe");
+        } else {
+            extractedNode = tempExtractDir.resolve("bin").resolve("node");
+        }
+
+        if (!Files.exists(extractedNode)) {
+            throw new IOException("Node binary not found in extracted archive at: " + extractedNode);
+        }
+
+        // Copy to plugin data directory
+        Path nodeDataDir = getNodeDataDirectory();
+        Path targetPath = nodeDataDir.resolve(platform.nodeExecutableName());
+        Files.copy(extractedNode, targetPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+        // Set executable permission (important for Unix-like systems)
+        if (platform != Platform.WINDOWS) {
+            targetPath.toFile().setExecutable(true);
+        }
+    }
+
+    private static void cleanup(@NotNull Path tempExtractDir) {
+        // Clean up temp extraction directory
+        deleteDirectory(tempExtractDir.toFile());
     }
 
     private static void extractZip(@NotNull Path zipFile, @NotNull Path destDir, @NotNull String baseName)

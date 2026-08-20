@@ -4,8 +4,8 @@
  * terms of the MIT License, which is available in the project root.
  ******************************************************************************/
 
-import { AstNode, AstUtils, CompositeCstNode, CstNode, DiagnosticInfo, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, Reference, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
-import { basename, dirname, isAbsolute, normalize, relative, resolve } from 'path';
+import { AstNode, AstUtils, CompositeCstNode, CstNode, FileSystemProvider, IndexManager, LangiumDocuments, LeafCstNode, Properties, RootCstNode, URI, UriUtils, ValidationAcceptor, ValidationChecks, isCompositeCstNode, isLeafCstNode } from 'langium';
+import { basename, normalize, resolve } from 'path';
 import type { BBjServices } from './bbj-module.js';
 import { TypeInferer } from './bbj-type-inferer.js';
 import { BBjAstType, BbjClass, BeginStatement, CallStatement, CastExpression, Class, CommentStatement, DefFunction, EraseStatement, FieldDecl, InitFileStatement, JavaField, JavaMethod, KeyedFileStatement, LabelDecl, MemberCall, MethodDecl, OpenStatement, Option, RunStatement, SwitchCase, SymbolicLabelRef, Use, VariableDecl, isArrayElement, isBBjClassMember, isBBjTypeRef, isBbjClass, isClass, isCompoundStatement, isKeywordStatement, isLabelDecl, isOption, isSimpleTypeRef, isStringLiteral, isSwitchStatement, isSymbolRef } from './generated/ast.js';
@@ -261,53 +261,6 @@ export class BBjValidator {
                 });
             }
         }
-    }
-
-    public checkClassReference<N extends AstNode>(accept: ValidationAcceptor, ref: Reference<Class> | undefined, info: DiagnosticInfo<N>): void {
-        if (!ref) {
-            return;
-        }
-        const uriOfUsage = AstUtils.getDocument(ref.$refNode!.root.astNode).uri.fsPath;
-        if (!ref.ref) {
-            return;
-        }
-        const klass = ref.ref;
-        if (isBbjClass(klass) && klass.visibility) {
-            const typeName = klass.interface ? 'interface' : 'class';
-            const uriOfDeclaration = AstUtils.getDocument(ref.ref).uri.fsPath;
-
-            // Get source location info for the declaration
-            const filename = basename(uriOfDeclaration);
-            const lineNumber = klass.$cstNode?.range.start.line;
-            const lineInfo = lineNumber !== undefined ? `:${lineNumber + 1}` : '';
-            const sourceInfo = `${filename}${lineInfo}`;
-
-            switch (klass.visibility.toUpperCase()) {
-                case "PUBLIC":
-                    //everything is allowed
-                    return;
-                case "PROTECTED":
-                    const dirOfDeclaration = dirname(uriOfDeclaration);
-                    const dirOfUsage = dirname(uriOfUsage);
-                    if (!this.isSubFolderOf(dirOfUsage, dirOfDeclaration)) {
-                        accept("error", `Protected ${typeName} '${klass.name}' (declared in ${sourceInfo}) can be only referenced within the same directory!`, info);
-                    }
-                    break;
-                case "PRIVATE":
-                    if (uriOfUsage !== uriOfDeclaration) {
-                        accept("error", `Private ${typeName} '${klass.name}' (declared in ${sourceInfo}) can be only referenced within the same file!`, info);
-                    }
-                    break;
-            }
-        }
-    }
-
-    private isSubFolderOf(folder: string, parentFolder: string) {
-        if (parentFolder === folder) {
-            return true;
-        }
-        const relativePath = relative(parentFolder, folder);
-        return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath);
     }
 
     checkCommentNewLines(node: CommentStatement, accept: ValidationAcceptor): void {

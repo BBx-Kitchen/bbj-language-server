@@ -2,6 +2,8 @@ import { EmptyFileSystem } from "langium";
 import { expandToString } from "langium/generate";
 import { createBBjTestServices, TestableBBjLexer } from "./bbj-test-module.js";
 import { describe, test, expect } from "vitest";
+import { BBjTokenBuilder } from "../src/language/bbj-token-builder.js";
+import type { TokenType } from "chevrotain";
 
 const services = createBBjTestServices(EmptyFileSystem);
 const lexer = services.BBj.parser.Lexer;
@@ -48,5 +50,74 @@ PRINT "After"
         const tokenizedText = (lexer as TestableBBjLexer).prepareLineSplitter(text);
         expect(tokenizedText.length).toBe(expectedSplitJoin.length);
         expect(tokenizedText).toBe(expectedSplitJoin);
+    });
+
+    test('P61-D2-006: mixed CRLF/LF line endings preserve token offsets against the original text', () => {
+        // One CRLF line followed by two LF lines. Pre-fix, prepareLineSplitter re-emits every
+        // line with a single globally-detected EOL (CRLF here, since text.includes('\r\n') is
+        // true), turning each LF-only line's 1-char terminator into a 2-char one and shifting
+        // every downstream token offset by 1 per drifted line.
+        const text = 'PRINT 1\r\nPRINT 2\nPRINT "After"\n';
+        const result = lexer.tokenize(text);
+        expect(result.errors).toHaveLength(0);
+        const printTokens = result.tokens.filter(t => t.tokenType.name === 'PRINT');
+        expect(printTokens).toHaveLength(3);
+        const first = text.indexOf('PRINT');
+        const second = text.indexOf('PRINT', first + 1);
+        const third = text.indexOf('PRINT "After"');
+        expect(printTokens.map(t => t.startOffset)).toEqual([first, second, third]);
+    });
+
+    test('P61-D2-006: a single-EOL-style file still tokenizes with unchanged offsets', () => {
+        const text = 'PRINT 1\nPRINT 2\nPRINT "After"\n';
+        const result = lexer.tokenize(text);
+        expect(result.errors).toHaveLength(0);
+        const printTokens = result.tokens.filter(t => t.tokenType.name === 'PRINT');
+        const afterIndex = text.indexOf('PRINT "After"');
+        expect(printTokens[2].startOffset).toBe(afterIndex);
+    });
+
+    test('P61-D2-006: a file with no trailing newline still tokenizes with unchanged offsets', () => {
+        const text = 'PRINT 1\nPRINT "After"';
+        const result = lexer.tokenize(text);
+        expect(result.errors).toHaveLength(0);
+        const printTokens = result.tokens.filter(t => t.tokenType.name === 'PRINT');
+        const afterIndex = text.indexOf('PRINT "After"');
+        expect(printTokens[1].startOffset).toBe(afterIndex);
+    });
+
+    test('P67-WR-04: a lone \\r is not a line boundary and cannot trigger colon-continuation joining', () => {
+        // The pre-P61-D2-006 splitter (/\r?\n/g) never split on a bare `\r` — it stayed embedded
+        // in its line. P61-D2-006's capturing split briefly widened that to also break on a lone
+        // `\r`, which fed an extra boundary into the colon-continuation loop below: a `:` that
+        // merely followed a stray `\r` mid-line would be read as a continuation and silently
+        // rewrite the content. The split must stay scoped to CRLF/LF.
+        const text = 'PRINT 1\r:PRINT 2\nPRINT "After"\n';
+        const prepared = (lexer as TestableBBjLexer).prepareLineSplitter(text);
+        // The `\r` survives inside its line rather than being consumed as a delimiter.
+        expect(prepared).toContain('PRINT 1\r:PRINT 2');
+        const result = lexer.tokenize(text);
+        expect(result.errors).toHaveLength(0);
+        const printTokens = result.tokens.filter(t => t.tokenType.name === 'PRINT');
+        expect(printTokens).toHaveLength(3);
+        expect(printTokens[2].startOffset).toBe(text.indexOf('PRINT "After"'));
+    });
+
+    test('P61-D2-008: spliceToken throws instead of silently corrupting the stream when the named token is absent', () => {
+        // spliceToken is called with 14 hardcoded terminal names during buildTokens(). If any of
+        // them is ever absent from the token list (e.g. a future grammar edit renames/removes one),
+        // findIndex returns -1 and splicing at -1 silently reorders the wrong (last) token instead
+        // of failing loudly.
+        const tokenBuilder = new BBjTokenBuilder() as unknown as {
+            spliceToken(tokens: TokenType[], name: string): void
+        };
+        const tokens: TokenType[] = [
+            { name: 'FIRST', PATTERN: /first/ },
+            { name: 'SECOND', PATTERN: /second/ },
+            { name: 'THIRD', PATTERN: /third/ }
+        ];
+        expect(() => tokenBuilder.spliceToken(tokens, 'MISSING_TOKEN')).toThrow();
+        // The stream must be untouched when the guard fires — no silent corruption.
+        expect(tokens.map(t => t.name)).toEqual(['FIRST', 'SECOND', 'THIRD']);
     });
 });

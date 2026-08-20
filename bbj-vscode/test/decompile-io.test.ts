@@ -90,5 +90,47 @@ describe('decompile-io', () => {
             // Final observed size must equal what's on disk (i.e. it settled, not a partial read).
             expect(fs.statSync(lst).size).toBe(bytes);
         });
+
+        describe('P62-D2-011: a stale .lst of matching size is never mistaken for fresh output', () => {
+            // Committed under bbj-vscode/test/ (not a system temp directory), created and removed
+            // per test — a stale-.lst race needs a fixture that already exists before the wait
+            // starts, which the shared per-test `dir` (created fresh in the outer beforeEach)
+            // cannot represent.
+            const staleFixtureDir = path.join(__dirname, 'test-data', 'decompile-io-p62-d2-011');
+
+            beforeEach(() => {
+                fs.mkdirSync(staleFixtureDir, { recursive: true });
+            });
+            afterEach(() => {
+                fs.rmSync(staleFixtureDir, { recursive: true, force: true });
+            });
+
+            test('resolves with the fresh content, not a pre-existing .lst of coincidentally matching size', async () => {
+                const input = path.join(staleFixtureDir, 'prog.bbj');
+                fs.writeFileSync(input, MAGIC);
+                const lst = input + '.lst';
+                const staleContent = 'print "stale"\n';
+                const freshContent = 'print "fresh"\n';
+                expect(freshContent.length).toBe(staleContent.length); // the coincidental-size premise
+
+                // A stale .lst already on disk before the wait starts, e.g. left over from a
+                // crashed prior decompile attempt against the same file. A real gap before the
+                // call starts is required so the stale write's mtime is unambiguously earlier
+                // than the call-start timestamp the fix captures — writing it in the same tick
+                // as the call would let filesystem mtime rounding coincidentally satisfy the
+                // mtime gate on the very first poll.
+                fs.writeFileSync(lst, staleContent);
+                await new Promise((resolve) => setTimeout(resolve, 100));
+
+                const resultPromise = waitForDecompileOutput(input, { pollMs: 15, timeoutMs: 2000 });
+                // The fresh run's output lands well after two 15ms-spaced polls have already
+                // observed the stale file's settled size.
+                setTimeout(() => fs.writeFileSync(lst, freshContent), 45);
+
+                const result = await resultPromise;
+                expect(result).toEqual({ sourcePath: lst, inPlace: false });
+                expect(fs.readFileSync(lst, 'utf8')).toBe(freshContent);
+            });
+        });
     });
 });

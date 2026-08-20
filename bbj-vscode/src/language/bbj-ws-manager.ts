@@ -105,14 +105,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     override async initializeWorkspace(folders: WorkspaceFolder[], cancelToken?: CancellationToken | undefined): Promise<void> {
         try {
-            let propcontents = "";
-            let prefixfromconfig;
             if (folders.length > 0) {
-                const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folders[0]));
-                const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
-                if (confFile) {
-                    propcontents = await this.fileSystemProvider.readFile(confFile.uri);
-                }
+                let prefixfromconfig;
 
                 // Resolve config.bbx location: use configPath setting if set, otherwise default to bbjdir/cfg/config.bbx
                 if (this.configPath) {
@@ -137,8 +131,28 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 } else {
                     logger.warn("No bbjdir set. No classpath and prefixes loaded.")
                 }
+
+                // Read project.properties from EVERY workspace folder — not just folders[0] —
+                // and merge their prefixes/classpath. Previously only the first folder's
+                // project.properties ever contributed a PREFIX/classpath entry, silently
+                // dropping every additional root in a multi-root workspace (#33, P61-D2-015).
+                const mergedPrefixes: string[] = [];
+                const mergedClasspath: string[] = [];
+                for (const folder of folders) {
+                    let propcontents = "";
+                    const content = await this.fileSystemProvider.readDirectory(this.getRootFolder(folder));
+                    const confFile = content.find(file => file.isFile && file.uri.path.endsWith("project.properties"));
+                    if (confFile) {
+                        propcontents = await this.fileSystemProvider.readFile(confFile.uri);
+                    }
+                    const folderSettings = parseSettings(propcontents, prefixfromconfig);
+                    mergedPrefixes.push(...folderSettings.prefixes);
+                    mergedClasspath.push(...folderSettings.classpath);
+                }
+                this.settings = { prefixes: mergedPrefixes, classpath: mergedClasspath };
+            } else {
+                this.settings = parseSettings("", undefined);
             }
-            this.settings = parseSettings(propcontents, prefixfromconfig)
 
             // initialize javadoc look-up before loading classes.
             const wsJavadocFolders = folders.map(folder =>
@@ -177,8 +191,11 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             const iiLoaded = await this.javaInterop.loadImplicitImports(cancelToken);
             logger.debug(`Implicit Java imports ${iiLoaded ? '' : 'not '}loaded`)
         } catch (e) {
-            // all fine
-            console.error(e);
+            // Setup failed partway through (a malformed project.properties file, an
+            // unexpected throw inside parseSettings()/loadClasspath()/loadImplicitImports()).
+            // this.settings is left in whatever state existed at the throw point; surface the
+            // failure via logger.error so it is visible instead of silent (P61-D2-016).
+            logger.error(`Workspace initialization failed: ${e}`);
         }
 
         return await super.initializeWorkspace(folders, cancelToken);
