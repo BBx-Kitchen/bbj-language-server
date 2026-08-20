@@ -25,6 +25,8 @@ import {
     validateOptions,
     type CompilerOption
 } from './Commands/CompilerOptions.js';
+import { buildEmValidateArgv, buildEmLoginArgv } from './Commands/process-args.js';
+import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -402,44 +404,36 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
             return false;
         }
 
-        // Build path to bbj executable
-        const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
-
         // Build path to em-validate-token.bbj
         const emValidatePath = context.asAbsolutePath(path.join('tools', 'em-validate-token.bbj'));
 
         // Create temp file for BBj output
         const tmpFile = path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`);
 
-        // Build command: bbj -q em-validate-token.bbj - <token> <tmpFile>
-        const emValidateCmd = `"${bbj}" -q "${emValidatePath}" - "${token}" "${tmpFile}"`;
+        // Build argv: bbj -q em-validate-token.bbj - <token> <tmpFile>
+        const argv = buildEmValidateArgv({
+            home: bbjHome,
+            platform: process.platform,
+            scriptPath: emValidatePath,
+            token,
+            tmpFile
+        });
 
         // Log command if debug mode is on (with masked token)
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
-            outputChannel.appendLine(`EM token validation: ${emValidateCmd.replace(token, '***')}`);
+            outputChannel.appendLine(`EM token validation: ${formatArgvForLog(argv, [token])}`);
         }
 
-        // Execute with 10s timeout
-        const result = await new Promise<string>((resolve, reject) => {
-            const { exec } = require('child_process');
-            exec(emValidateCmd,
-                { timeout: 10000 },
-                (err: any, stdout: string, stderr: string) => {
-                    try {
-                        if (err) {
-                            reject(new Error(stderr || err.message));
-                            return;
-                        }
-                        const output = fs.readFileSync(tmpFile, 'utf-8').trim();
-                        resolve(output);
-                    } finally {
-                        // Clean up temp file
-                        try { fs.unlinkSync(tmpFile); } catch {}
-                    }
-                }
-            );
-        });
+        let result: string;
+        try {
+            // Execute with 10s timeout
+            await runProcess(argv, { timeout: 10000 });
+            result = fs.readFileSync(tmpFile, 'utf-8').trim();
+        } finally {
+            // Clean up temp file
+            try { fs.unlinkSync(tmpFile); } catch {}
+        }
 
         // Return true only if output is "VALID"
         return result === 'VALID';
@@ -623,48 +617,48 @@ export function activate(context: vscode.ExtensionContext): void {
         if (password === undefined) return;
 
         // Launch em-login.bbj to validate credentials and get token
-        const bbj = path.join(bbjHome, 'bin', `bbj${process.platform === 'win32' ? '.exe' : ''}`);
         const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
 
         // Create temp file for BBj output
         const tmpFile = path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`);
 
-        const platform = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
-        const infoString = `VS Code on ${platform} as ${os.userInfo().username}`;
+        const platformLabel = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
+        const infoString = `VS Code on ${platformLabel} as ${os.userInfo().username}`;
 
-        const emLoginCmd = `"${bbj}" -q "${emLoginPath}" - "${username}" "${password}" "${tmpFile}" "${infoString}"`;
+        const argv = buildEmLoginArgv({
+            home: bbjHome,
+            platform: process.platform,
+            scriptPath: emLoginPath,
+            username,
+            password,
+            tmpFile,
+            infoString
+        });
 
         const isDebug = vscode.workspace.getConfiguration('bbj').get<boolean>('debug');
         if (isDebug) {
-            outputChannel.appendLine(`EM login: ${emLoginCmd.replace(`"${password}"`, '"***"')}`);
+            outputChannel.appendLine(`EM login: ${formatArgvForLog(argv, [password])}`);
         }
 
         try {
-            const result = await new Promise<string>((resolve, reject) => {
-                const { exec } = require('child_process');
-                exec(emLoginCmd,
-                    { timeout: 15000 },
-                    (err: any, stdout: string, stderr: string) => {
-                        try {
-                            if (err) {
-                                reject(new Error(stderr || err.message));
-                                return;
-                            }
-                            const output = fs.readFileSync(tmpFile, 'utf-8').trim();
-                            if (output.startsWith('ERROR:')) {
-                                reject(new Error(output.substring(6)));
-                                return;
-                            }
-                            resolve(output);
-                        } finally {
-                            try { fs.unlinkSync(tmpFile); } catch {}
-                        }
-                    }
-                );
-            });
+            let output: string;
+            try {
+                // Execute with 15s timeout
+                await runProcess(argv, { timeout: 15000 });
+                output = fs.readFileSync(tmpFile, 'utf-8').trim();
+            } catch (err) {
+                const pe = err as ProcessError;
+                throw new Error(pe.stderr || pe.message);
+            } finally {
+                try { fs.unlinkSync(tmpFile); } catch {}
+            }
+
+            if (output.startsWith('ERROR:')) {
+                throw new Error(output.substring(6));
+            }
 
             // Store token in SecretStorage
-            await context.secrets.store('bbj.em.token', result);
+            await context.secrets.store('bbj.em.token', output);
             vscode.window.showInformationMessage('Successfully logged in to Enterprise Manager');
         } catch (error) {
             vscode.window.showErrorMessage(`EM login failed: ${error}`);
