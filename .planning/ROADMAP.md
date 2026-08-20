@@ -209,7 +209,12 @@ Disclosure notice in REQUIREMENTS.md.
   2. An automated regression test is added that fails against pre-fix code and passes once the fix is applied, proving it is not vacuous
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-89r9-2pw4-mc7f is marked ready to publish once its fix is released (CVE assigned where severity warrants)
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 70-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
+  - [ ] 70-02-PLAN.md — regression check and CI enforcement
+  - [ ] 70-03-PLAN.md — private-fork pull request, reviewed and merged
+  - [ ] 70-04-PLAN.md — landing on `main`, with CI observed
+  - [ ] 70-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 71: Remediate GHSA-5f22-gqrx-xr22
 **Goal**: GHSA-5f22-gqrx-xr22 is remediated, verified, merged, and ready to publish.
