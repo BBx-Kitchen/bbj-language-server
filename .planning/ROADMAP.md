@@ -692,7 +692,7 @@ against the 15 issues open at milestone start, only after the user has approved 
   4. No filed issue duplicates any of the 15 issues open at milestone start
   5. MAJOR-REFACTORS.md is updated with the filed issue number next to each corresponding finding
 
-**Plans**: 5/13 plans executed — the phase is inherently sequential (one approval gate, one append-target document,
+**Plans**: 6/13 plans executed — the phase is inherently sequential (one approval gate, one append-target document,
 one tracker), so only the six body-rendering shards run in parallel. Filing order throughout is
 `MAJOR-REFACTORS.md` §"Index (severity-sorted, for Phase 69 filing order)". No tracker write happens
 before plan `69-08`'s ISSUE-01 approval gate.
@@ -708,7 +708,7 @@ Plans:
 - [x] 69-03-PLAN.md — Render filing-order rows 41-64 (24 `medium`) into `69-BODIES-03.md`, including both halves of the corpus's only `supersedes` pair, each body naming the other
 - [x] 69-04-PLAN.md — Render filing-order rows 65-87 (23 `medium`) into `69-BODIES-04.md`, closing the 70-record `medium` block and glossing four review-internal references
 - [x] 69-05-PLAN.md — Render filing-order rows 88-107 (20 `low`) into `69-BODIES-05.md`, with `P63-D3-005` proving the label rule against a prose `effort:` value
-- [ ] 69-06-PLAN.md — Render filing-order rows 108-125 (18 `low`) into `69-BODIES-06.md`
+- [x] 69-06-PLAN.md — Render filing-order rows 108-125 (18 `low`) into `69-BODIES-06.md`
 - [ ] 69-07-PLAN.md — Render filing-order rows 126-144 (19 `low`) into `69-BODIES-07.md` and prove the 144 denominator by measuring `BODY-BEGIN` counts across all seven shards
 
 **Wave 3** *(blocked on Wave 2 completion)*
