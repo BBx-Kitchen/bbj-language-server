@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: Completed 72-02-PLAN.md (edge-case coverage + residual-risk record for GHSA-c4hw-5j83-cx5h)
-last_updated: "2026-08-21T10:38:11.880Z"
+stopped_at: "Completed 72-03-PLAN.md (public landing: PR #640 open against main, not merged)"
+last_updated: "2026-08-21T12:01:59.109Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 execution started
-state_head: 4ddc58f00566be0c894c35be4b606b9fd60cba67
+state_head: f2d5381a34e1492c40a4ffba9c989c45f50609db
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 14
   percent: 25
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Total Plans in Phase: 5
 Plans Complete: 0/5
 Status: Ready to execute
@@ -128,6 +128,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 |------|----------|-------|-------|
 | Phase 72 P01 | 55min | 2 tasks | 6 files |
 | Phase 72 P02 | 50min | 2 tasks | 2 files |
+| Phase 72 P03 | 45min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
 - [Phase 72]: 72-01: JUnit dependency insertions kept as pure additions inside the existing dependencies{} block (per design_decisions 9) rather than packed onto existing lines to hold a fixed line number for the publishing-token binding; content verified byte-identical instead
 - [Phase 72]: 72-02: NodeExecutableResolver's Resolution.resolved() discards prior-branch rejections on any successful resolution; fixing needs a src/main change this plan is prohibited from making, so the fall-through test was scoped to assert only true behavior and the gap is recorded in 72-RESIDUAL-RISK.md for a follow-up decision
+- [Phase 72]: Landed GHSA-c4hw-5j83-cx5h fix on public origin via PR #640 (fix/node-executable-validation), authorised at a blocking-human checkpoint (land-now); not merged, merge is 72-04's gated decision
+- [Phase 72]: Scoped the fork-tip-to-public-tip content-equality check to bbj-intellij (not the unrestricted repo diff) because the fork base and origin/main diverged by ~34 unrelated commits; no rebase or history rewrite was used
 
 ### Tech Debt
 
@@ -204,8 +207,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T10:38:11.822Z
-Stopped at: Completed 72-02-PLAN.md (edge-case coverage + residual-risk record for GHSA-c4hw-5j83-cx5h)
+Last session: 2026-08-21T12:01:59.042Z
+Stopped at: Completed 72-03-PLAN.md (public landing: PR #640 open against main, not merged)
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
