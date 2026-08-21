@@ -1,0 +1,4 @@
+#!/bin/sh
+# Test fixture standing in for the real bbj interpreter binary. A controlled
+# substitute the repo owns, used as a layout marker alongside bin/bbjcpl.
+exit 0

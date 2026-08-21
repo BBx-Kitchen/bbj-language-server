@@ -1,0 +1,5 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary. Tracked at mode 100644
+# (not executable), used to isolate the executable-bit half of the bin/bbjcpl
+# requirement.
+exit 0
