@@ -5,17 +5,17 @@ milestone_name: Security Advisory Remediation
 current_phase: 73
 current_phase_name: Remediate GHSA-5vrp-fj75-pm5q
 status: executing
-stopped_at: Completed 73-02-PLAN.md
-last_updated: "2026-08-21T13:42:26.873Z"
+stopped_at: Completed 73-03-PLAN.md
+last_updated: "2026-08-21T14:15:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 72 complete, transitioned to Phase 73
-state_head: 1b93fea699670f5bf8554810bef8726983bba2c3
+last_activity_desc: GHSA-5vrp-fj75-pm5q fix merged to public main, publication pending release
+state_head: 662244c4ae72e64355ed00dfc46b86a1fdf25bcb
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 20
-  completed_plans: 18
-  percent: 38
+  completed_plans: 19
+  percent: 39
 ---
 
 # Project State: BBj Language Server
@@ -35,12 +35,14 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 73 — Remediate GHSA-5vrp-fj75-pm5q
-Plan: 3 of 4
+Plan: 4 of 4
 Total Plans in Phase: 4
-Plans Complete: 2/4
-Status: Ready to execute
-72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
-Last activity: 2026-08-21 — 73-02 landed on the private fork: regression suite + CI job (branch pushed, not on origin)
+Plans Complete: 3/4
+Status: Executing
+73-03 landed the fix on public `main` via PR #641 (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`),
+authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
+`Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`.
+Last activity: 2026-08-21 — 73-03 merged GHSA-5vrp-fj75-pm5q's fix to public main; publication awaits a release (D-17)
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -133,6 +135,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 72 P05 | 20 min | 3 tasks | 2 files |
 | Phase 73 P01 | 18min | 3 tasks | 6 files |
 | Phase 73 P02 | 25min | 2 tasks | 3 files |
+| Phase 73 P03 | 25min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -168,6 +171,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 73]: 73-01: private advisory fork's main predates several files/edits already on public main; synced them verbatim in prerequisite commits before the intended fix (kept out of the eventual cherry-pick set)
 - [Phase 73]: 73-02: private advisory fork's main was also missing bbj-vscode/test/workflow-secret-hygiene.test.ts and .github/workflows/workflow-hygiene.yml entirely (beyond the three files 73-01 already found); synced verbatim from public main in a third prerequisite commit before writing the regression suite and CI job
 - [Phase 73]: 73-02: added the wrapper-hygiene job as a second job (not a second step) on workflow-hygiene.yml, keeping the pre-existing secret-hygiene job's id, name, and steps byte-identical to main
+- [Phase 73]: 73-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #641 merged with a merge commit, no rebase needed (origin/main unchanged since the branch was cut)
 
 ### Tech Debt
 
@@ -186,7 +190,9 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   MILESTONES.md). GHSA-89r9-2pw4-mc7f is fixed, merged to `main`; publication awaits a release.
   GHSA-5f22-gqrx-xr22 is fixed, merged to `main`, and its phase (71) is verified and
   complete; publication awaits a release. GHSA-c4hw-5j83-cx5h is fixed, merged to `main`;
-  publication awaits a release.
+  publication awaits a release. GHSA-5vrp-fj75-pm5q is fixed, merged to `main` via PR #641
+  (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`); the merge-triggered publish and
+  hygiene runs both observed green; publication awaits a release (D-17).
 
 - ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
   Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
@@ -216,10 +222,11 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T13:42:26.795Z
-Stopped at: Completed 73-02-PLAN.md
-REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
-gate, then `/gsd-plan-phase 72`.
+Last session: 2026-08-21T14:15:00.000Z
+Stopped at: Completed 73-03-PLAN.md
+GHSA-5vrp-fj75-pm5q fix merged to public main via PR #641; publication awaits a release (D-17).
+Next: continue Phase 73 (plan 04, if any, or phase verification), and `/gsd-execute-phase 70` to
+close phase 70's open verify gate.
 Resume file: None
 
 ---
