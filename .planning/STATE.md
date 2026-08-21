@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 74
 current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
 status: executing
-stopped_at: Completed 74-02-PLAN.md
-last_updated: "2026-08-21T16:07:00.000Z"
+stopped_at: "Phase 74 plan 03 paused at blocking-human merge gate (PR #642 open, checks green)"
+last_updated: "2026-08-21T16:19:30.600Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 74 plan 02 complete — hardening change landed on fork, publication pending
-state_head: 9332a02903da53232cb205af2a5b184b6fc41d12
+state_head: eed1a2cdf632e16975b3c327ebc8d062c671ef0a
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 24
-  completed_plans: 21
+  completed_plans: 22
   percent: 50
 ---
 
@@ -227,12 +227,12 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T15:57:27.153Z
-Stopped at: Completed 74-01-PLAN.md
+Last session: 2026-08-21T16:19:30.448Z
+Stopped at: Phase 74 plan 03 paused at blocking-human merge gate (PR #642 open, checks green)
 GHSA-5vrp-fj75-pm5q fix merged to public main via PR #641; publication awaits a release (D-17).
 Next: continue Phase 73 (plan 04, if any, or phase verification), and `/gsd-execute-phase 70` to
 close phase 70's open verify gate.
-Resume file: None
+Resume file: .planning/phases/74-remediate-ghsa-9gv3-gr6g-c4rj/74-03-PLAN.md
 
 ---
 
