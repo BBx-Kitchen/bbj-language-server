@@ -34,7 +34,7 @@ reviewed, verified, merged to `main`, and released — after which the advisory 
 - [ ] **SEC-01**: GHSA-89r9-2pw4-mc7f is remediated, verified, and its fix merged
 - [x] **SEC-02**: GHSA-5f22-gqrx-xr22 is remediated, verified, and its fix merged
 - [x] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
-- [ ] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
+- [x] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
 - [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
 - [ ] **SEC-06**: GHSA-33x9-cpwv-xcv2 is remediated, verified, and its fix merged
 - [ ] **SEC-07**: GHSA-xxp5-vv2w-42q8 is remediated, verified, and its fix merged
@@ -63,7 +63,7 @@ reviewed, verified, merged to `main`, and released — after which the advisory 
 | SEC-01 | Phase 70 | Pending |
 | SEC-02 | Phase 71 | Complete |
 | SEC-03 | Phase 72 | Complete |
-| SEC-04 | Phase 73 | Pending |
+| SEC-04 | Phase 73 | Complete |
 | SEC-05 | Phase 74 | Pending |
 | SEC-06 | Phase 75 | Pending |
 | SEC-07 | Phase 76 | Pending |

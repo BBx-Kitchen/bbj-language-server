@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-current_phase: 73
-current_phase_name: Remediate GHSA-5vrp-fj75-pm5q
-status: executing
-stopped_at: Completed 73-03-PLAN.md
-last_updated: "2026-08-21T14:15:00.000Z"
+current_phase: 74
+current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
+status: planning
+stopped_at: Phase 73 complete, ready to plan Phase 74
+last_updated: "2026-08-21T14:33:08.560Z"
 last_activity: 2026-08-21
-last_activity_desc: GHSA-5vrp-fj75-pm5q fix merged to public main, publication pending release
-state_head: 662244c4ae72e64355ed00dfc46b86a1fdf25bcb
+last_activity_desc: Phase 73 complete, transitioned to Phase 74
+state_head: 5fc213f6cb5427f5c8aded761da4f1d6f0ccd0e3
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
-  percent: 39
+  completed_plans: 20
+  percent: 50
 ---
 
 # Project State: BBj Language Server
@@ -34,15 +34,15 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 ## Current Position
 
-Phase: 73 — Remediate GHSA-5vrp-fj75-pm5q
-Plan: 4 of 4
+Phase: 74 — Remediate GHSA-9gv3-gr6g-c4rj
+Plan: Not started
 Total Plans in Phase: 4
 Plans Complete: 3/4
-Status: Executing
+Status: Ready to plan
 73-03 landed the fix on public `main` via PR #641 (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`),
 authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
 `Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`.
-Last activity: 2026-08-21 — 73-03 merged GHSA-5vrp-fj75-pm5q's fix to public main; publication awaits a release (D-17)
+Last activity: 2026-08-21 — Phase 73 complete, transitioned to Phase 74
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -224,7 +224,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 ## Session Continuity
 
 Last session: 2026-08-21T14:15:00.000Z
-Stopped at: Completed 73-03-PLAN.md
+Stopped at: Phase 73 complete, ready to plan Phase 74
 GHSA-5vrp-fj75-pm5q fix merged to public main via PR #641; publication awaits a release (D-17).
 Next: continue Phase 73 (plan 04, if any, or phase verification), and `/gsd-execute-phase 70` to
 close phase 70's open verify gate.

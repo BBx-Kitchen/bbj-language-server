@@ -192,7 +192,7 @@ Disclosure notice in REQUIREMENTS.md.
 - [x] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed and merged (via a substituted public PR, not the fork PR); closed 2026-08-21 with 2 recorded overrides — SC3 waived by substitution, guardrail-breadth truth accepted as unmet and deferred to the WINDOWS ledger
 - [x] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
 - [x] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
-- [ ] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish
+- [x] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
 - [ ] **Phase 74: Remediate GHSA-9gv3-gr6g-c4rj** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 75: Remediate GHSA-33x9-cpwv-xcv2** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 76: Remediate GHSA-xxp5-vv2w-42q8** - Fix developed, verified, and merged in its private fork; ready to publish
@@ -326,11 +326,11 @@ Disclosure notice in REQUIREMENTS.md.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 73-03-PLAN.md — private preparation and public pull request
+  - [x] 73-03-PLAN.md — private preparation and public pull request
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-  - [ ] 73-04-PLAN.md — publication readiness: release gate and CVE decision
+  - [x] 73-04-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 74: Remediate GHSA-9gv3-gr6g-c4rj
 
