@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-current_phase: 70
-current_phase_name: Remediate GHSA-89r9-2pw4-mc7f
+current_phase: 72
+current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Phase 71 complete (UAT 2/2, verification passed). Pointer returned to Phase 70, whose 5 plans are all executed but which never produced a 70-VERIFICATION.md — resume with /gsd-execute-phase 70"
-last_updated: "2026-08-21T08:20:22.985Z"
+stopped_at: "Phase 70 filed with 2 human overrides (SC3/PROC-01 accepted via the substituted public-PR landing; truth 4 accepted as UNMET and deferred to the WINDOWS ledger). Advanced to Phase 72 under --force. Next: /gsd-execute-phase 72 — but re-plan its landing step first (see the fork-PR wall below)."
+last_updated: "2026-08-21T09:45:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: "Phase 71 (GHSA-5f22-gqrx-xr22) UAT passed 2/2 and marked complete, 6/6 plans; SEC-02 validated"
-state_head: 2cfda645bd391d43953ae22680b09f789e5845d4
+last_activity_desc: "Phase 70 closed out by human override (least-effort file-and-move-on); pointer advanced to Phase 72"
+state_head: a7cdebcec1c5137e95871b4d2aced232f48d35fc
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 20
   completed_plans: 11
   percent: 13
@@ -28,25 +28,44 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.1 Security Advisory Remediation — Phase 70 (GHSA-89r9-2pw4-mc7f), whose verify gate is still open; 1 of 8 advisory phases complete (Phase 71)
+**Current Focus:** v4.1 Security Advisory Remediation — Phase 72 (GHSA-c4hw-5j83-cx5h), 5 plans ready to execute; 2 of 8 advisory phases closed (70 with overrides, 71 clean)
 
 ---
 
 ## Current Position
 
-Phase: 70 — Remediate GHSA-89r9-2pw4-mc7f
-Plan: Not started
+Phase: 72 — Remediate GHSA-c4hw-5j83-cx5h
+Plan: None started; 5 plans planned, 0 summaries
 Total Plans in Phase: 5
-Plans Complete: 5/5 (70-01 … 70-05, all with summaries)
-Status: Awaiting verification — no `70-VERIFICATION.md` exists, so phase 70's verify gate never ran
-Last activity: 2026-08-21 — Phase 71 UAT passed 2/2 and Phase 71 marked complete (6/6 plans); the
-roadmap pointer then returned to Phase 70 as the lowest still-open phase.
+Plans Complete: 0/5
+Status: Ready to execute. Next: `/gsd-execute-phase 72` — but re-plan its landing step first (the
+fork-PR flow it plans will hit the same wall Phase 70 hit; see below).
+Last activity: 2026-08-21 — Phase 70 was closed out by explicit human decision ("staple and file
+70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
-**Why the pointer moved backwards.** Phase 71 reached verification and UAT before Phase 70 did.
-Phase 70's five plans all have summaries and its fix is merged and preview-published, but the
-phase never produced a `70-VERIFICATION.md`, so it remains `[ ]` in ROADMAP.md. Resume it with
-`/gsd-execute-phase 70` — that re-enters at the verification gate and does not re-run plans that
-already have a SUMMARY.md.
+**Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
+`70-VERIFICATION.md` now reads `status: passed` with `overrides_applied: 2`. The adversarial
+findings were NOT re-run and were NOT fixed; they were accepted. What that means concretely:
+
+1. *SC3 / PROC-01 (fork-PR merge) — waived by substitution.* The fork's `main` is still at its
+   pre-fix tip `c6eb3b2`; PR #1's base resolved to the public repo and closed unmerged. The fix
+   landed via public PR #638 (`528889d`), CI and workflow-hygiene both green. Accepted as
+   satisfying SC3 **for this advisory only** — D-12 had already found this advisory's mechanism
+   public since 2026-02-17, so the embargo rationale PROC-01 protects did not apply. Does not
+   generalize to 72-77.
+2. *CI guardrail breadth — accepted as UNMET and deferred.* The instance-level fix is real and
+   live on public `main`; what remains unmet is the guardrail's breadth against equivalent-syntax
+   variants, which the regression suite does not cover. Filed as `.planning/WINDOWS.md` entry 1
+   (`kind: unmet-truth`, phase 70, **open**). With `workflow.windows_enforce` on, this blocks
+   `/gsd-ship` until fixed or explicitly waived — the deferral is tracked, not silent.
+3. *no-cve stands; severity was never reassessed.* Per the standing v4.1 no-CVE decision (a
+   deliberate PROC-03 waiver). GHSA-89r9-2pw4-mc7f remains live at `severity: high`,
+   `cve_id: null`, `state: draft`. Phase 71-05 did reassess its advisory (high → medium); Phase 70
+   did not, and no advisory mutation was made here, because reassessing severity is a human
+   judgment. **Revisit before this advisory is published.**
+
+Two items are routed to human judgment, not verifier adjudication: ratifying the `no-cve` decision
+while `severity` is still `high`, and accepting the substituted public-PR landing for PROC-01.
 
 Phase 70 (GHSA-89r9-2pw4-mc7f) established the landing shape: the advisory's private fork cannot
 take a same-repo pull request (its PR base resolves to the public repo), so the planned fork-PR
@@ -62,7 +81,7 @@ Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENT
 Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
 from git is correct, not a lost artifact.
 
-Progress: [███████████░░░░░░░░░] 11/20 plans (55%)
+Progress: [███████████░░░░░░░░░] 11/20 plans (55%) — 2/8 phases closed (70 w/ overrides, 71 clean)
 
 ## Performance Metrics
 
@@ -118,8 +137,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 71 UAT]: Whole-suite regression gate accepted as project-wide `numFailedTests: 0` plus
   deterministic targeted-file runs, in place of a failing-suite identity delta — standing for
   phases 72-77, do not re-ask (whole-suite failure *count* is unstable here; DEBT.md item 5)
+
 - [Phase 71 UAT]: GHSA-5f22-gqrx-xr22 residual-risk wording accepted as written rather than
   patched — the overstated claim concerns behaviour that fails closed and is not attacker-reachable
+
 - [v4.1 roadmap]: One phase per advisory, 1:1, fixed order (Phase 70-77 = SEC-01..SEC-08) — mapping fixed by REQUIREMENTS.md traceability, not re-derived
 - [v4.1 roadmap]: PROC-01/02/03 (private fork per advisory, non-vacuous regression test, publish-after-release) mapped across the full Phase 70-77 range rather than to a single phase
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses

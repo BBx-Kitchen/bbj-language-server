@@ -189,7 +189,7 @@ fork. Per-phase implementation detail (findings, affected surfaces, fix design, 
 inside each private fork, not in this file or in `.planning/phases/` on `main` — see the
 Disclosure notice in REQUIREMENTS.md.
 
-- [ ] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed, verified, and merged in its private fork; ready to publish
+- [x] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed and merged (via a substituted public PR, not the fork PR); closed 2026-08-21 with 2 recorded overrides — SC3 waived by substitution, guardrail-breadth truth accepted as unmet and deferred to the WINDOWS ledger
 - [x] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
 - [ ] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish
@@ -212,7 +212,7 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-89r9-2pw4-mc7f is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: 3/5 plans executed
+**Plans**: 5/5 plans executed
 **Wave 1**
 
   - [x] 70-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
@@ -227,11 +227,11 @@ Disclosure notice in REQUIREMENTS.md.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-  - [ ] 70-04-PLAN.md — landing on `main`, with CI observed
+  - [x] 70-04-PLAN.md — landing on `main`, with CI observed
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-  - [ ] 70-05-PLAN.md — publication readiness: release gate and CVE decision
+  - [x] 70-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 71: Remediate GHSA-5f22-gqrx-xr22
 
@@ -409,7 +409,7 @@ Disclosure notice in REQUIREMENTS.md.
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
-| v4.1 Security Advisory Remediation | 70-77 | TBD | In progress (1/8 phases) | - |
+| v4.1 Security Advisory Remediation | 70-77 | TBD | In progress (2/8 phases) | - |
 
 **Total:** 17 milestones shipped, 69 phases complete, 205 plans shipped.
 
@@ -425,4 +425,4 @@ developed, tested, merged, ready to publish) for each.
 
 ---
 
-*Roadmap last updated: 2026-08-21 — Phase 71 (GHSA-5f22-gqrx-xr22) marked complete, 6/6 plans.*
+*Roadmap last updated: 2026-08-21 — Phase 70 (GHSA-89r9-2pw4-mc7f) closed with 2 recorded overrides, 5/5 plans; Phase 71 complete, 6/6 plans.*
