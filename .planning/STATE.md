@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 74
 current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
 status: executing
-stopped_at: Phase 74 context gathered (artifacts embargoed, uncommitted)
-last_updated: "2026-08-21T15:43:10.820Z"
+stopped_at: Completed 74-01-PLAN.md
+last_updated: "2026-08-21T15:57:27.278Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 73 complete, transitioned to Phase 74
-state_head: 9d989e69038c5ebc738c32a28354266638553506
+last_activity_desc: Phase 74 execution started
+state_head: 9332a02903da53232cb205af2a5b184b6fc41d12
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 24
-  completed_plans: 20
+  completed_plans: 21
   percent: 50
 ---
 
@@ -28,21 +28,21 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 72 — Remediate GHSA-c4hw-5j83-cx5h
+**Current Focus:** Phase 74 — Remediate GHSA-9gv3-gr6g-c4rj
 
 ---
 
 ## Current Position
 
-Phase: 74 (Remediate GHSA-9gv3-gr6g-c4rj) — READY TO EXECUTE
-Plan: Not started
+Phase: 74 (Remediate GHSA-9gv3-gr6g-c4rj) — EXECUTING
+Plan: 2 of 4
 Total Plans in Phase: 4
 Plans Complete: 3/4
 Status: Ready to execute
 73-03 landed the fix on public `main` via PR #641 (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`),
 authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
 `Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`.
-Last activity: 2026-08-21 — Phase 73 complete, transitioned to Phase 74
+Last activity: 2026-08-21 — Phase 74 execution started
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -87,7 +87,7 @@ Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENT
 Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
 from git is correct, not a lost artifact.
 
-Progress: [███████████░░░░░░░░░] 11/20 plans ([████░░░░░░] 38%) — 2/8 phases closed (70 w/ overrides, 71 clean)
+Progress: [███████████░░░░░░░░░] 11/20 plans ([█████░░░░░] 50%) — 2/8 phases closed (70 w/ overrides, 71 clean)
 
 ## Performance Metrics
 
@@ -136,6 +136,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 73 P01 | 18min | 3 tasks | 6 files |
 | Phase 73 P02 | 25min | 2 tasks | 3 files |
 | Phase 73 P03 | 25min | 3 tasks | 1 files |
+| Phase 74 P01 | 55min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 73]: 73-02: added the wrapper-hygiene job as a second job (not a second step) on workflow-hygiene.yml, keeping the pre-existing secret-hygiene job's id, name, and steps byte-identical to main
 - [Phase 73]: 73-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #641 merged with a merge commit, no rebase needed (origin/main unchanged since the branch was cut)
 - [Phase 73]: 73-04: GHSA-5vrp-fj75-pm5q — fix merged; publication awaits a release
+- [Phase 74]: 74-01: fork remote ghsa-9gv3 added over HTTPS; subtree diff re-derived live (7 paths, matched plan exactly); fork synced verbatim to a green 31-test baseline in a separable prerequisite commit (cc7ea61, excluded from the eventual cherry-pick set)
+- [Phase 74]: 74-01: the hardening change and its regression coverage landed on `ghsa-9gv3-gr6g-c4rj/verify-node-archive` in the advisory's private fork; the regression check was observed failing before the change and passing after it (PROC-02), and the module suite is green at 49 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
 
 ### Tech Debt
 
@@ -223,12 +226,12 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T15:07:40.414Z
-Stopped at: Phase 74 context gathered (artifacts embargoed, uncommitted)
+Last session: 2026-08-21T15:57:27.153Z
+Stopped at: Completed 74-01-PLAN.md
 GHSA-5vrp-fj75-pm5q fix merged to public main via PR #641; publication awaits a release (D-17).
 Next: continue Phase 73 (plan 04, if any, or phase verification), and `/gsd-execute-phase 70` to
 close phase 70's open verify gate.
-Resume file: .planning/phases/74-remediate-ghsa-9gv3-gr6g-c4rj/74-CONTEXT.md
+Resume file: None
 
 ---
 
