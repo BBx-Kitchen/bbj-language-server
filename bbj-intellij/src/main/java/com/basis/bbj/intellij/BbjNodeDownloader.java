@@ -16,6 +16,7 @@ import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.system.CpuArch;
 import com.basis.bbj.intellij.lsp.NodeArchiveVerifier;
+import com.basis.bbj.intellij.lsp.NodeInstallIntegrity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,10 +41,11 @@ public final class BbjNodeDownloader {
     }
 
     /**
-     * Gets the cached Node.js path if it exists and is executable.
-     * This method is fast and synchronous — safe to call from any thread.
-     * Note: as a side effect, this creates the plugin's Node.js data directory
-     * if it does not already exist.
+     * Gets the cached Node.js path if it exists, is executable, and its recorded install-time
+     * digest still describes it. This method is fast and synchronous — safe to call from any
+     * thread. Note: as a side effect, this creates the plugin's Node.js data directory if it
+     * does not already exist. An absent or disagreeing digest record reads as not cached, so the
+     * caller re-downloads and re-verifies rather than trusting an unrecorded file.
      *
      * @return Path to cached node executable, or null if not cached
      */
@@ -52,7 +54,8 @@ public final class BbjNodeDownloader {
             Path nodeDataDir = getNodeDataDirectory();
             Path nodePath = nodeDataDir.resolve(Platform.current().nodeExecutableName());
 
-            if (Files.exists(nodePath) && Files.isExecutable(nodePath)) {
+            if (Files.exists(nodePath) && Files.isExecutable(nodePath)
+                    && NodeInstallIntegrity.SESSION.matchesRecordedDigest(nodePath, NodeArchiveVerifier.REAL_FILES)) {
                 return nodePath;
             }
         } catch (IOException e) {
@@ -209,6 +212,9 @@ public final class BbjNodeDownloader {
         if (platform != Platform.WINDOWS) {
             targetPath.toFile().setExecutable(true);
         }
+
+        // Record the installed executable's digest so getCachedNodePath() can re-check it
+        NodeInstallIntegrity.SESSION.record(targetPath, NodeArchiveVerifier.REAL_FILES);
     }
 
     private static void cleanup(@NotNull Path tempExtractDir) {
