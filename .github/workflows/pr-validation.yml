@@ -56,6 +56,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+        with:
+          min-wrapper-count: 1
+
       - name: Build IntelliJ plugin
         working-directory: bbj-intellij
         run: ./gradlew buildPlugin

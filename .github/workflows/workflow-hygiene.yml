@@ -2,7 +2,9 @@
 #
 # Asserts that no workflow `run:` body inlines a `${{ secrets.* }}` expression;
 # secrets must be bound through a step-scoped `env:` mapping instead. Runs
-# install-free — the checker is a zero-dependency Node script.
+# install-free — the checker is a zero-dependency Node script. It also
+# asserts that each Gradle wrapper pins its distribution checksum and that
+# every workflow job invoking Gradle validates the wrapper first.
 name: Workflow Hygiene
 
 on:
@@ -30,3 +32,19 @@ jobs:
 
       - name: Scan workflow run bodies for inline secret expressions
         run: node bbj-vscode/tools/check-workflow-secrets.mjs
+
+  wrapper-hygiene:
+    name: Gradle wrapper pinned and validated
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the Gradle wrapper pin and workflow validation steps
+        run: node bbj-vscode/tools/check-gradle-wrapper.mjs

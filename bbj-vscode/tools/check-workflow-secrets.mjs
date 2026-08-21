@@ -21,7 +21,7 @@ function leadingWhitespace(line) {
 
 // Returns one entry per `run:` key found in the file:
 // { keyLine, lines: [{ line, text }, ...] } with 1-based absolute line numbers.
-function collectRunBodies(filePath) {
+export function collectRunBodies(filePath) {
   const lines = splitLines(fs.readFileSync(filePath, 'utf8'));
   const bodies = [];
   let index = 0;
