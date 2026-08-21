@@ -15,6 +15,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.system.CpuArch;
+import com.basis.bbj.intellij.lsp.NodeArchiveVerifier;
+import com.basis.bbj.intellij.lsp.NodeInstallIntegrity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,10 +41,11 @@ public final class BbjNodeDownloader {
     }
 
     /**
-     * Gets the cached Node.js path if it exists and is executable.
-     * This method is fast and synchronous — safe to call from any thread.
-     * Note: as a side effect, this creates the plugin's Node.js data directory
-     * if it does not already exist.
+     * Gets the cached Node.js path if it exists, is executable, and its recorded install-time
+     * digest still describes it. This method is fast and synchronous — safe to call from any
+     * thread. Note: as a side effect, this creates the plugin's Node.js data directory if it
+     * does not already exist. An absent or disagreeing digest record reads as not cached, so the
+     * caller re-downloads and re-verifies rather than trusting an unrecorded file.
      *
      * @return Path to cached node executable, or null if not cached
      */
@@ -51,7 +54,8 @@ public final class BbjNodeDownloader {
             Path nodeDataDir = getNodeDataDirectory();
             Path nodePath = nodeDataDir.resolve(Platform.current().nodeExecutableName());
 
-            if (Files.exists(nodePath) && Files.isExecutable(nodePath)) {
+            if (Files.exists(nodePath) && Files.isExecutable(nodePath)
+                    && NodeInstallIntegrity.SESSION.matchesRecordedDigest(nodePath, NodeArchiveVerifier.REAL_FILES)) {
                 return nodePath;
             }
         } catch (IOException e) {
@@ -130,6 +134,15 @@ public final class BbjNodeDownloader {
         try {
             download(tempFile, downloadUrl, indicator);
 
+            String archiveFileName = downloadUrl.substring(downloadUrl.lastIndexOf('/') + 1);
+            indicator.setFraction(0.4);
+            indicator.setText("Verifying Node.js archive...");
+            NodeArchiveVerifier.Result verification = NodeArchiveVerifier.verify(
+                    archiveFileName, tempFile, NodeArchiveVerifier.PINNED_DIGESTS, NodeArchiveVerifier.REAL_FILES);
+            if (!verification.isVerified()) {
+                throw new IOException(verification.failureMessage());
+            }
+
             indicator.setFraction(0.7);
             indicator.setText("Extracting Node.js binary...");
 
@@ -199,6 +212,9 @@ public final class BbjNodeDownloader {
         if (platform != Platform.WINDOWS) {
             targetPath.toFile().setExecutable(true);
         }
+
+        // Record the installed executable's digest so getCachedNodePath() can re-check it
+        NodeInstallIntegrity.SESSION.record(targetPath, NodeArchiveVerifier.REAL_FILES);
     }
 
     private static void cleanup(@NotNull Path tempExtractDir) {
