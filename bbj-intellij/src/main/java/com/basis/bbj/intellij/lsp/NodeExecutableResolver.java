@@ -1,5 +1,7 @@
 package com.basis.bbj.intellij.lsp;
 
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -146,20 +148,65 @@ public final class NodeExecutableResolver {
 
     /**
      * The whole decision: the configured, detected and cached candidates are tried in that
-     * order and the first one to pass validation is returned.
+     * order. Each non-blank candidate runs the same five-step validation core, and the first
+     * one to pass is returned; a rejected candidate does not stop resolution, it falls through
+     * to the next branch and its rejection is retained.
      */
     public static Resolution resolve(String configuredPath, String detectedPath, String cachedPath,
                                       PathProbe probe) {
-        if (configuredPath != null && !configuredPath.isEmpty()) {
-            return Resolution.resolved(configuredPath, Source.SETTINGS);
+        List<Rejected> rejections = new ArrayList<>();
+
+        String accepted = validate(Source.SETTINGS, configuredPath, probe, rejections);
+        if (accepted != null) {
+            return Resolution.resolved(accepted, Source.SETTINGS);
         }
-        if (detectedPath != null) {
-            return Resolution.resolved(detectedPath, Source.DETECTED);
+        accepted = validate(Source.DETECTED, detectedPath, probe, rejections);
+        if (accepted != null) {
+            return Resolution.resolved(accepted, Source.DETECTED);
         }
-        if (cachedPath != null) {
-            return Resolution.resolved(cachedPath, Source.CACHED);
+        accepted = validate(Source.CACHED, cachedPath, probe, rejections);
+        if (accepted != null) {
+            return Resolution.resolved(accepted, Source.CACHED);
         }
-        return Resolution.resolved("node", null);
+        return Resolution.unresolved(rejections);
+    }
+
+    /**
+     * Runs the five-step validation core against one candidate: it parses as a path, it is
+     * absolute, it exists, it is a regular file, it is executable. A blank candidate is absent
+     * and is skipped without recording anything; the first unsatisfied step on a non-blank
+     * candidate is recorded as a {@link Rejected}. Returns the candidate unchanged when every
+     * step passes, else {@code null}.
+     */
+    private static String validate(Source source, String candidate, PathProbe probe,
+                                     List<Rejected> rejections) {
+        if (candidate == null || candidate.isBlank()) {
+            return null;
+        }
+        Path parsed;
+        try {
+            parsed = java.nio.file.Paths.get(candidate);
+        } catch (InvalidPathException e) {
+            rejections.add(new Rejected(source, Reason.MALFORMED, candidate));
+            return null;
+        }
+        if (!parsed.isAbsolute()) {
+            rejections.add(new Rejected(source, Reason.NOT_ABSOLUTE, candidate));
+            return null;
+        }
+        if (!probe.exists(candidate)) {
+            rejections.add(new Rejected(source, Reason.MISSING, candidate));
+            return null;
+        }
+        if (!probe.isRegularFile(candidate)) {
+            rejections.add(new Rejected(source, Reason.NOT_A_FILE, candidate));
+            return null;
+        }
+        if (!probe.isExecutable(candidate)) {
+            rejections.add(new Rejected(source, Reason.NOT_EXECUTABLE, candidate));
+            return null;
+        }
+        return candidate;
     }
 
     private static String render(Rejected rejected) {

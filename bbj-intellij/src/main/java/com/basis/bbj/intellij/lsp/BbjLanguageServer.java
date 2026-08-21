@@ -3,10 +3,18 @@ package com.basis.bbj.intellij.lsp;
 import com.basis.bbj.intellij.BbjNodeDetector;
 import com.basis.bbj.intellij.BbjNodeDownloader;
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.BbjSettingsConfigurable;
+import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManager;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
 import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
 import com.redhat.devtools.lsp4ij.server.OSProcessStreamConnectionProvider;
 import org.jetbrains.annotations.NotNull;
@@ -19,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.logging.Logger;
 
 /**
  * Starts the BBj language server process using Node.js.
@@ -27,9 +36,11 @@ import java.nio.file.StandardCopyOption;
  */
 public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
 
+    private static final Logger LOG = Logger.getLogger(BbjLanguageServer.class.getName());
+
     public BbjLanguageServer(@NotNull Project project) {
         // Resolve Node.js path
-        String nodePath = resolveNodePath();
+        String nodePath = resolveNodePath(project);
 
         // Resolve language server main.cjs path
         String serverPath = resolveServerPath();
@@ -42,27 +53,45 @@ public final class BbjLanguageServer extends OSProcessStreamConnectionProvider {
         super.setCommandLine(cmd);
     }
 
-    private String resolveNodePath() {
-        // Use settings if configured
-        String nodePath = BbjSettings.getInstance().getState().nodeJsPath;
-        if (nodePath != null && !nodePath.isEmpty()) {
-            return nodePath;
+    private String resolveNodePath(@NotNull Project project) {
+        String configuredPath = BbjSettings.getInstance().getState().nodeJsPath;
+        String detectedPath = BbjNodeDetector.detectNodePath();
+        Path cachedPath = BbjNodeDownloader.getCachedNodePath();
+
+        NodeExecutableResolver.Resolution resolution = NodeExecutableResolver.resolve(
+                configuredPath, detectedPath, cachedPath != null ? cachedPath.toString() : null,
+                NodeExecutableResolver.REAL_FILESYSTEM);
+
+        if (resolution.isResolved()) {
+            for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
+                LOG.warning(rejected.toString());
+            }
+            return resolution.path();
         }
 
-        // Try auto-detection
-        nodePath = BbjNodeDetector.detectNodePath();
-        if (nodePath != null) {
-            return nodePath;
+        for (NodeExecutableResolver.Rejected rejected : resolution.rejections()) {
+            LOG.warning(rejected.toString());
         }
+        notifyUnresolvedNodePath(project, resolution.failureMessage());
+        throw new RuntimeException(resolution.failureMessage());
+    }
 
-        // Check for cached downloaded Node.js
-        Path cachedNode = BbjNodeDownloader.getCachedNodePath();
-        if (cachedNode != null) {
-            return cachedNode.toString();
-        }
-
-        // Fallback to system PATH
-        return "node";
+    private static void notifyUnresolvedNodePath(@NotNull Project project, @NotNull String message) {
+        Notification notification = new Notification(
+                "BBj Language Server",
+                "BBj Language Server",
+                message,
+                NotificationType.ERROR
+        );
+        notification.addAction(new NotificationAction("Configure Node.js Path") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
+                n.expire();
+                ShowSettingsUtil.getInstance()
+                        .showSettingsDialog(project, BbjSettingsConfigurable.class);
+            }
+        });
+        Notifications.Bus.notify(notification, project);
     }
 
     private String resolveServerPath() {
