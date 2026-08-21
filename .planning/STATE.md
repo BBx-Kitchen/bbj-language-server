@@ -4,16 +4,16 @@ milestone: v4.1
 milestone_name: Security Advisory Remediation
 current_phase: 74
 current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
-status: planning
+status: executing
 stopped_at: Phase 74 context gathered (artifacts embargoed, uncommitted)
-last_updated: "2026-08-21T15:07:40.510Z"
+last_updated: "2026-08-21T15:43:10.820Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 73 complete, transitioned to Phase 74
-state_head: 8870aa6bc62872978db77fede43d87e66fa31f7f
+state_head: 9d989e69038c5ebc738c32a28354266638553506
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 20
+  total_plans: 24
   completed_plans: 20
   percent: 50
 ---
@@ -34,11 +34,11 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 ## Current Position
 
-Phase: 74 — Remediate GHSA-9gv3-gr6g-c4rj
+Phase: 74 (Remediate GHSA-9gv3-gr6g-c4rj) — READY TO EXECUTE
 Plan: Not started
 Total Plans in Phase: 4
 Plans Complete: 3/4
-Status: Ready to plan
+Status: Ready to execute
 73-03 landed the fix on public `main` via PR #641 (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`),
 authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
 `Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`.

@@ -344,7 +344,22 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-9gv3-gr6g-c4rj is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: TBD
+**Plans**: 4 plans
+**Wave 1**
+
+  - [ ] 74-01-PLAN.md — remediation (detail in the advisory's private fork)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+  - [ ] 74-02-PLAN.md — additional hardening and regression coverage
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+  - [ ] 74-03-PLAN.md — private preparation and public pull request
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+  - [ ] 74-04-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 75: Remediate GHSA-33x9-cpwv-xcv2
 
