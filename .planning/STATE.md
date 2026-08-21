@@ -37,10 +37,10 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
 Plan: 5 of 5
 Total Plans in Phase: 5
-Plans Complete: 0/5
-Status: Ready to execute
+Plans Complete: 5/5
+Status: All plans complete — phase verification pending
 72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
-Last activity: 2026-08-21 — Phase 72 execution started
+Last activity: 2026-08-21 — 72-05 complete, publication readiness recorded for GHSA-c4hw-5j83-cx5h
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
