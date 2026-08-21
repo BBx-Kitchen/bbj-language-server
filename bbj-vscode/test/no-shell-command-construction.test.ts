@@ -53,3 +53,51 @@ describe('no-shell-command-construction guard', () => {
         expect(source).not.toMatch(/require\(\s*['"]child_process['"]\s*\)/);
     });
 });
+
+const SRC_DIR = path.join(REPO_ROOT, 'src');
+
+/** Matches either module form of importing child_process, ESM or CJS. */
+const CHILD_PROCESS_IMPORT = /from\s+['"]node:child_process['"]|from\s+['"]child_process['"]|require\(\s*['"]node:child_process['"]\s*\)|require\(\s*['"]child_process['"]\s*\)/;
+
+function collectTsAndCjsFiles(dir: string): string[] {
+    const results: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            results.push(...collectTsAndCjsFiles(fullPath));
+        } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.cjs'))) {
+            results.push(fullPath);
+        }
+    }
+    return results;
+}
+
+function filesImportingChildProcess(dir: string): string[] {
+    return collectTsAndCjsFiles(dir)
+        .filter((filePath) => CHILD_PROCESS_IMPORT.test(readStripped(filePath)))
+        .map((filePath) => path.relative(dir, filePath).split(path.sep).join('/'))
+        .sort();
+}
+
+/**
+ * Pins which modules under src/ may launch a process at all: a fourth importer
+ * of child_process is a new execution site to review, not test data to widen
+ * the expected set for. document-formatter.ts is on the list because it runs
+ * `java` from PATH, not a path derived from a configured setting.
+ */
+describe('no-shell-command-construction guard — which modules may launch a process', () => {
+    test('the set of files under src/ importing child_process is exactly the three known launchers', () => {
+        const importers = filesImportingChildProcess(SRC_DIR);
+        expect(importers).toEqual(['Commands/process-runner.ts', 'document-formatter.ts', 'language/bbj-cpl-service.ts']);
+    });
+
+    test('Commands/process-runner.ts still imports confineBbjExecutable', () => {
+        const source = readStripped(path.join(SRC_DIR, 'Commands', 'process-runner.ts'));
+        expect(source).toMatch(/import\s*\{\s*confineBbjExecutable\s*\}\s*from\s*['"]\.\.\/bbj-home-layout\.js['"]/);
+    });
+
+    test('language/bbj-cpl-service.ts still imports resolveBbjBinary', () => {
+        const source = readStripped(path.join(SRC_DIR, 'language', 'bbj-cpl-service.ts'));
+        expect(source).toMatch(/import\s*\{\s*resolveBbjBinary\s*\}\s*from\s*['"]\.\.\/bbj-home-layout\.js['"]/);
+    });
+});
