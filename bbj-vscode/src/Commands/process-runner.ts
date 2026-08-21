@@ -14,12 +14,31 @@
 
 import { execFile, type ExecFileOptions, type ExecFileException } from 'child_process';
 import type { Argv } from './process-args.js';
+import { confineBbjExecutable } from '../bbj-home-layout.js';
 
 export type ProcessError = ExecFileException & { stderr?: string };
 
 export interface RunResult {
     stdout: string;
     stderr: string;
+}
+
+type ResolvedExecutable = { file: string; error?: undefined } | { file?: undefined; error: ProcessError };
+
+/**
+ * Resolves the program `argv.file` names through the shared installation-layout
+ * check before either exec path below launches anything. Returns the checked,
+ * reconstructed path on success, or a `ProcessError` naming the unmet
+ * requirement on refusal — `execFile` never sees the raw, unchecked candidate.
+ */
+function resolveExecutable(argv: Argv): ResolvedExecutable {
+    const { path: validated, reason } = confineBbjExecutable(argv.file);
+    if (validated) {
+        return { file: validated };
+    }
+    const message = `bbj.home is not a usable installation for ${JSON.stringify(argv.file)}: ${reason}`;
+    const error = Object.assign(new Error(message), { cmd: argv.file, code: 'BBJ_HOME_LAYOUT' }) as ProcessError;
+    return { error };
 }
 
 /**
@@ -30,7 +49,12 @@ export interface RunResult {
  */
 export function runProcess(argv: Argv, options: ExecFileOptions = {}): Promise<RunResult> {
     return new Promise((resolve, reject) => {
-        execFile(argv.file, argv.args, options, (err, stdout, stderr) => {
+        const resolved = resolveExecutable(argv);
+        if (resolved.error) {
+            reject(resolved.error);
+            return;
+        }
+        execFile(resolved.file, argv.args, options, (err, stdout, stderr) => {
             if (err) {
                 (err as ProcessError).stderr = stderr?.toString();
                 reject(err);
@@ -51,7 +75,12 @@ export function runProcessCallback(
     options: ExecFileOptions,
     callback: (err: ProcessError | null, stdout: string, stderr: string) => void
 ): void {
-    execFile(argv.file, argv.args, options, (err, stdout, stderr) => {
+    const resolved = resolveExecutable(argv);
+    if (resolved.error) {
+        callback(resolved.error, '', '');
+        return;
+    }
+    execFile(resolved.file, argv.args, options, (err, stdout, stderr) => {
         if (err) {
             (err as ProcessError).stderr = stderr?.toString();
         }
