@@ -97,6 +97,36 @@ class BbjNodeDownloaderSourceGuardTest {
         assertEquals(1, countOccurrences(text, "return \"x64\";"));
     }
 
+    @Test
+    void theCacheHitPathConsultsTheRecordedDigestBeforeReturning() {
+        String text = readGuardedSource();
+        int executableIndex = text.indexOf("Files.isExecutable(nodePath)");
+        int matchesIndex = text.indexOf("matchesRecordedDigest(");
+        int returnIndex = text.indexOf("return nodePath;");
+        assertTrue(executableIndex >= 0, "Files.isExecutable(nodePath) is not present in the downloader file");
+        assertTrue(matchesIndex >= 0, "matchesRecordedDigest( is not present in the downloader file");
+        assertTrue(returnIndex >= 0, "return nodePath; is not present in the downloader file");
+        assertTrue(executableIndex < matchesIndex,
+                "Files.isExecutable(nodePath) must precede matchesRecordedDigest(");
+        assertTrue(matchesIndex < returnIndex,
+                "matchesRecordedDigest( must precede the cached-path return");
+        assertEquals(1, countOccurrences(text, "return nodePath;"),
+                "there must be exactly one, guarded return of the cached path");
+    }
+
+    @Test
+    void theInstalledDigestIsRecordedAfterTheCopy() {
+        String text = readGuardedSource();
+        int copyIndex = text.indexOf("Files.copy(");
+        int recordIndex = text.indexOf("SESSION.record(");
+        assertTrue(copyIndex >= 0, "Files.copy( is not present in the downloader file");
+        assertTrue(recordIndex >= 0, "SESSION.record( is not present in the downloader file");
+        assertTrue(copyIndex < recordIndex,
+                "SESSION.record( must come after Files.copy( so it describes the installed file");
+        assertEquals(1, countOccurrences(text, "SESSION.record("),
+                "the sidecar must be written exactly once, for the installed file");
+    }
+
     private static int countOccurrences(String text, String literal) {
         int count = 0;
         int index = 0;
