@@ -172,6 +172,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 73]: 73-02: private advisory fork's main was also missing bbj-vscode/test/workflow-secret-hygiene.test.ts and .github/workflows/workflow-hygiene.yml entirely (beyond the three files 73-01 already found); synced verbatim from public main in a third prerequisite commit before writing the regression suite and CI job
 - [Phase 73]: 73-02: added the wrapper-hygiene job as a second job (not a second step) on workflow-hygiene.yml, keeping the pre-existing secret-hygiene job's id, name, and steps byte-identical to main
 - [Phase 73]: 73-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #641 merged with a merge commit, no rebase needed (origin/main unchanged since the branch was cut)
+- [Phase 73]: 73-04: GHSA-5vrp-fj75-pm5q — fix merged; publication awaits a release
 
 ### Tech Debt
 
