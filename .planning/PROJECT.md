@@ -181,11 +181,11 @@ unfixed surfaces are not published ahead of their fixes.
 - ✓ Deprecated methods show strikethrough indicator in completion items — v3.9
 - ✓ Constructor completion for `new ClassName()` expressions — v3.9
 - ✓ GHSA-p5f3-9456-9pcx remediated: shell-string command construction replaced with argument arrays — v4.1 (PR #637)
+- ✓ **SEC-02**: GHSA-5f22-gqrx-xr22 remediated, verified, and its fix merged — v4.1 Phase 71 (PR #639)
 
 ### Active
 
 - [ ] **SEC-01**: GHSA-89r9-2pw4-mc7f is remediated, verified, and its fix merged
-- [ ] **SEC-02**: GHSA-5f22-gqrx-xr22 is remediated, verified, and its fix merged
 - [ ] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
 - [ ] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
 - [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
@@ -349,6 +349,10 @@ unfixed surfaces are not published ahead of their fixes.
 | ( trigger returns empty CompletionList | Prevents slow fallthrough to default completion when constructor completion unavailable | ✓ Good — v3.9 shipped |
 | DTO isDeprecated → Langium deprecated field mapping | Java naming convention differs from Langium property name; explicit mapping in java-interop.ts | ✓ Good — v3.9 shipped |
 
+| No CVE for any remaining v4.1 advisory (standing) | User decision, 2026-08-21, taken once for all remaining advisories rather than per-advisory. Supersedes D-17 ("the CVE question is decided per advisory") for phases 72-77. **This is a deliberate departure from PROC-03's "assigned a CVE where severity warrants" clause, not a finding of compliance:** unlike phase 71 — where `no-cve` rested on a recorded severity reassessment (`high` → `medium`) — this decision carries no severity basis, and the remaining advisories' severities are unchanged and NOT reassessed by it. Phases 72-77 must not re-ask the CVE question; they record this decision and proceed. | Applied — phase 71 already executed `no-cve`; phases 72-77 pending |
+| Whole-suite regression gate: project-wide `numFailedTests: 0` plus deterministic targeted-file runs, in place of a failing-suite identity delta (standing) | User decision, 2026-08-21, at the phase 71 UAT checkpoint. The whole-suite failure *count* is unstable in this environment — observed at 4, 10 and 15 for the same command — because `shouldRunBBjTests()` gates on a bare TCP connect to port 5008 and BBjServices squats on that port without speaking the interop protocol (DEBT.md item 5). Four separate phase-71 plans each propagated a request for human sign-off without it ever being answered; it is now answered once. Acceptance extends to phases 72-77. | Accepted as equivalent-in-rigor — phases 72-77 must not re-ask |
+| Residual-risk wording for GHSA-5f22-gqrx-xr22 accepted as written | User decision, 2026-08-21, at the phase 71 UAT checkpoint. A code-review finding showed one paragraph of the phase's residual-risk note overstated a platform-specific claim. The behaviour in question fails closed and is not attacker-reachable, so the wording was accepted rather than patched. The finding's detail is held in the embargoed phase directory, not on `main`. | Accepted as-is — no patch applied |
+
 ## Evolution
 
 This document evolves at phase transitions and milestone boundaries.
@@ -367,4 +371,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-20 after starting v4.1 Security Advisory Remediation*
+*Last updated: 2026-08-21 after Phase 71 (GHSA-5f22-gqrx-xr22)*

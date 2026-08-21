@@ -32,7 +32,7 @@ reviewed, verified, merged to `main`, and released — after which the advisory 
 ### Security Remediation
 
 - [ ] **SEC-01**: GHSA-89r9-2pw4-mc7f is remediated, verified, and its fix merged
-- [ ] **SEC-02**: GHSA-5f22-gqrx-xr22 is remediated, verified, and its fix merged
+- [x] **SEC-02**: GHSA-5f22-gqrx-xr22 is remediated, verified, and its fix merged
 - [ ] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
 - [ ] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
 - [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
@@ -61,18 +61,19 @@ reviewed, verified, merged to `main`, and released — after which the advisory 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | SEC-01 | Phase 70 | Pending |
-| SEC-02 | Phase 71 | Pending |
+| SEC-02 | Phase 71 | Complete |
 | SEC-03 | Phase 72 | Pending |
 | SEC-04 | Phase 73 | Pending |
 | SEC-05 | Phase 74 | Pending |
 | SEC-06 | Phase 75 | Pending |
 | SEC-07 | Phase 76 | Pending |
 | SEC-08 | Phase 77 | Pending |
-| PROC-01 | Phases 70-77 | Pending |
-| PROC-02 | Phases 70-77 | Pending |
-| PROC-03 | Phases 70-77 | Pending |
+| PROC-01 | Phases 70-77 | In progress (1/8 phases) |
+| PROC-02 | Phases 70-77 | In progress (1/8 phases) |
+| PROC-03 | Phases 70-77 | In progress (1/8 phases) |
 
 **Coverage:**
+
 - v4.1 requirements: 11 total
 - Mapped to phases: 11
 - Unmapped: 0 ✓

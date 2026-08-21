@@ -190,7 +190,7 @@ inside each private fork, not in this file or in `.planning/phases/` on `main` �
 Disclosure notice in REQUIREMENTS.md.
 
 - [ ] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed, verified, and merged in its private fork; ready to publish
-- [ ] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish
+- [x] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
 - [ ] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 74: Remediate GHSA-9gv3-gr6g-c4rj** - Fix developed, verified, and merged in its private fork; ready to publish
@@ -245,30 +245,30 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5f22-gqrx-xr22 is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: 0/6 plans executed
+**Plans**: 6/6 plans executed
 **Wave 1**
 
-  - [ ] 71-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
+  - [x] 71-01-PLAN.md — remediation, part 1 (detail in the advisory's private fork)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 71-06-PLAN.md — remediation, part 2 (detail in the advisory's private fork)
+  - [x] 71-06-PLAN.md — remediation, part 2 (detail in the advisory's private fork)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-  - [ ] 71-02-PLAN.md — additional regression coverage (detail in the advisory's private fork)
+  - [x] 71-02-PLAN.md — additional regression coverage (detail in the advisory's private fork)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-  - [ ] 71-03-PLAN.md — pull request against `main`, prepared and reviewed
+  - [x] 71-03-PLAN.md — pull request against `main`, prepared and reviewed
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-  - [ ] 71-04-PLAN.md — landing on `main`, with CI observed
+  - [x] 71-04-PLAN.md — landing on `main`, with CI observed
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-  - [ ] 71-05-PLAN.md — publication readiness: release gate and CVE decision
+  - [x] 71-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 72: Remediate GHSA-c4hw-5j83-cx5h
 
@@ -409,7 +409,7 @@ Disclosure notice in REQUIREMENTS.md.
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | Complete | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
-| v4.1 Security Advisory Remediation | 70-77 | TBD | Not started | - |
+| v4.1 Security Advisory Remediation | 70-77 | TBD | In progress (1/8 phases) | - |
 
 **Total:** 17 milestones shipped, 69 phases complete, 205 plans shipped.
 
@@ -425,4 +425,4 @@ developed, tested, merged, ready to publish) for each.
 
 ---
 
-*Roadmap last updated: 2026-08-20 — v4.1 Security Advisory Remediation roadmap created (Phases 70-77, one per advisory, coverage 11/11).*
+*Roadmap last updated: 2026-08-21 — Phase 71 (GHSA-5f22-gqrx-xr22) marked complete, 6/6 plans.*

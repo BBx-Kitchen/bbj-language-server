@@ -2,58 +2,67 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-current_phase: 71
-current_phase_name: Remediate GHSA-5f22-gqrx-xr22
+current_phase: 70
+current_phase_name: Remediate GHSA-89r9-2pw4-mc7f
 status: executing
-stopped_at: Phase 70 waves 1-4 done; fix merged to public main (528889d); wave 5 (publication readiness) awaits a human CVE decision
-last_updated: "2026-08-20T20:55:13.544Z"
-last_activity: 2026-08-20
-last_activity_desc: "SEC-01 fix merged to main via PR #638; verified in a live publish run"
-state_head: 82856afc96a798674b88f8fdf7588bdbffef8fa8
+stopped_at: "Phase 71 complete (UAT 2/2, verification passed). Pointer returned to Phase 70, whose 5 plans are all executed but which never produced a 70-VERIFICATION.md — resume with /gsd-execute-phase 70"
+last_updated: "2026-08-21T08:20:22.985Z"
+last_activity: 2026-08-21
+last_activity_desc: "Phase 71 (GHSA-5f22-gqrx-xr22) UAT passed 2/2 and marked complete, 6/6 plans; SEC-02 validated"
+state_head: 2cfda645bd391d43953ae22680b09f789e5845d4
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 20
-  completed_plans: 3
-  percent: 0
+  completed_plans: 11
+  percent: 13
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-08-20
+**Last Updated:** 2026-08-21
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-20)
+See: .planning/PROJECT.md (updated 2026-08-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.1 Security Advisory Remediation — Phase 70 (GHSA-89r9-2pw4-mc7f), first of 8 advisory phases
+**Current Focus:** v4.1 Security Advisory Remediation — Phase 70 (GHSA-89r9-2pw4-mc7f), whose verify gate is still open; 1 of 8 advisory phases complete (Phase 71)
 
 ---
 
 ## Current Position
 
-Phase: 71 (Remediate GHSA-5f22-gqrx-xr22) — READY TO EXECUTE
-Plan: 70-05-PLAN.md (wave 5 of 5) — awaiting human decision
-Total Plans in Phase: 6
-Plans Complete: 3
-Status: Waves 1-4 complete; wave 5 blocked on a human CVE decision
-Last activity: 2026-08-20 — SEC-01 fix merged to public main via PR #638 (528889d); verified end-to-end in a live Publish Preview run
+Phase: 70 — Remediate GHSA-89r9-2pw4-mc7f
+Plan: Not started
+Total Plans in Phase: 5
+Plans Complete: 5/5 (70-01 … 70-05, all with summaries)
+Status: Awaiting verification — no `70-VERIFICATION.md` exists, so phase 70's verify gate never ran
+Last activity: 2026-08-21 — Phase 71 UAT passed 2/2 and Phase 71 marked complete (6/6 plans); the
+roadmap pointer then returned to Phase 70 as the lowest still-open phase.
 
-Waves 1-2 executed as planned. Wave 3 halted: the advisory's private fork cannot take a same-repo
-pull request (its PR base resolves to the public repo), so plans 70-03/70-04 did not match reality.
-At the resulting checkpoint the private-fork ceremony was dropped for this advisory by explicit
-decision and the fix landed through a normal public PR — see the embargoed
-`70-DECISION-fork-flow.md` and `70-04-SUMMARY.md`.
+**Why the pointer moved backwards.** Phase 71 reached verification and UAT before Phase 70 did.
+Phase 70's five plans all have summaries and its fix is merged and preview-published, but the
+phase never produced a `70-VERIFICATION.md`, so it remains `[ ]` in ROADMAP.md. Resume it with
+`/gsd-execute-phase 70` — that re-enters at the verification gate and does not re-run plans that
+already have a SUMMARY.md.
 
-Phases 71-77 plan the same private-fork PR flow and will hit the same wall — re-plan their landing
+Phase 70 (GHSA-89r9-2pw4-mc7f) established the landing shape: the advisory's private fork cannot
+take a same-repo pull request (its PR base resolves to the public repo), so the planned fork-PR
+flow was dropped in favor of a normal public PR — see the embargoed
+`70-DECISION-fork-flow.md` and `70-04-SUMMARY.md`. Phase 71 reused that same landing shape (D-11)
+without re-litigating it.
+
+Phases 72-77 plan the same private-fork PR flow and will hit the same wall — re-plan their landing
 step before executing.
 
-Note: Phase 70 planning artifacts are held off public `main` (REQUIREMENTS.md PROC-01);
+Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENTS.md PROC-01);
 `.git/info/exclude` covers `.planning/phases/70-*/` and the `pre-push` hook covers `phases/7[0-7]`.
+Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
+from git is correct, not a lost artifact.
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████████░░░░░░░░░] 11/20 plans (55%)
 
 ## Performance Metrics
 
@@ -106,6 +115,11 @@ Progress: [░░░░░░░░░░] 0%
 
 Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
+- [Phase 71 UAT]: Whole-suite regression gate accepted as project-wide `numFailedTests: 0` plus
+  deterministic targeted-file runs, in place of a failing-suite identity delta — standing for
+  phases 72-77, do not re-ask (whole-suite failure *count* is unstable here; DEBT.md item 5)
+- [Phase 71 UAT]: GHSA-5f22-gqrx-xr22 residual-risk wording accepted as written rather than
+  patched — the overstated claim concerns behaviour that fails closed and is not attacker-reachable
 - [v4.1 roadmap]: One phase per advisory, 1:1, fixed order (Phase 70-77 = SEC-01..SEC-08) — mapping fixed by REQUIREMENTS.md traceability, not re-derived
 - [v4.1 roadmap]: PROC-01/02/03 (private fork per advisory, non-vacuous regression test, publish-after-release) mapped across the full Phase 70-77 range rather than to a single phase
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
@@ -126,6 +140,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   1:1 to Phases 70-77. Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637)
   but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
   MILESTONES.md). GHSA-89r9-2pw4-mc7f is fixed, merged to `main`; publication awaits a release.
+  GHSA-5f22-gqrx-xr22 is fixed, merged to `main`, and its phase (71) is verified and
+  complete; publication awaits a release.
 
 - ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
   Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
@@ -137,6 +153,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
   `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`. Tracked in
   `.planning/DEBT.md`, not v4.1 scope.
+
+- **Phase 70 has no verification report.** Its 5 plans all have summaries and its fix is merged,
+  but `70-VERIFICATION.md` was never produced, so the phase is still open and no UAT ever ran on
+  it. `/gsd-execute-phase 70` resumes at the verification gate.
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
@@ -151,9 +171,10 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-20
-Stopped at: v4.1 ROADMAP.md created (Phases 70-77, one per advisory, 11/11 requirements
-mapped); REQUIREMENTS.md traceability already correct and unchanged. Next: `/gsd-plan-phase 70`.
+Last session: 2026-08-21
+Stopped at: Phase 71 complete — UAT 2/2 passed, `71-VERIFICATION.md` status `passed`, ROADMAP and
+REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
+gate, then `/gsd-plan-phase 72`.
 Resume file: None
 
 ---
@@ -184,4 +205,4 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-08-20 after v4.1 ROADMAP.md creation (Phases 70-77)*
+*State updated: 2026-08-21 after Phase 71 (GHSA-5f22-gqrx-xr22) verification and transition*
