@@ -297,7 +297,7 @@ Disclosure notice in REQUIREMENTS.md.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-  - [ ] 72-04-PLAN.md — landing on `main`, with CI observed
+  - [x] 72-04-PLAN.md — landing on `main`, with CI observed
 
 **Wave 5** *(blocked on Wave 4 completion)*
 

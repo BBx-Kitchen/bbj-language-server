@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Completed 72-03-PLAN.md (public landing: PR #640 open against main, not merged)"
-last_updated: "2026-08-21T12:01:59.109Z"
+stopped_at: "Completed 72-04-PLAN.md — merged PR #640 (squash), published preview 0.12.14 to both marketplaces"
+last_updated: "2026-08-21T12:16:52.079Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 execution started
-state_head: f2d5381a34e1492c40a4ffba9c989c45f50609db
+state_head: f55caeb44a8e69956b6ce1e0e9241fca4714335f
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 20
-  completed_plans: 14
+  completed_plans: 15
   percent: 25
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Total Plans in Phase: 5
 Plans Complete: 0/5
 Status: Ready to execute
@@ -129,6 +129,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 72 P01 | 55min | 2 tasks | 6 files |
 | Phase 72 P02 | 50min | 2 tasks | 2 files |
 | Phase 72 P03 | 45min | 1 tasks | 1 files |
+| Phase 72-remediate-ghsa-c4hw-5j83-cx5h P04 | 15min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -207,8 +208,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T12:01:59.042Z
-Stopped at: Completed 72-03-PLAN.md (public landing: PR #640 open against main, not merged)
+Last session: 2026-08-21T12:16:52.009Z
+Stopped at: Completed 72-04-PLAN.md — merged PR #640 (squash), published preview 0.12.14 to both marketplaces
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
