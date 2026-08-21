@@ -180,6 +180,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 74]: 74-01: the hardening change and its regression coverage landed on `ghsa-9gv3-gr6g-c4rj/verify-node-archive` in the advisory's private fork; the regression check was observed failing before the change and passing after it (PROC-02), and the module suite is green at 49 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
 - [Phase 74]: 74-02: a further hardening change and its offline regression coverage landed on the same fork branch, and the existing release build config was confirmed (by reading it) to already gate on the module test suite. The whole-suite gate is green at 61 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
 - [Phase 74]: 74-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #642 merged with a merge commit (`421b40e086335b3d670ad1d907729b4384be05d9`), no rebase needed (origin/main unchanged since the branch was cut). Merge-triggered `Publish Preview Extension` (version bumped to `0.12.18`) and `Workflow Hygiene` runs both observed concluding `success`; the new test suite ran inside the exact job holding the JetBrains publishing credential.
+- [Phase 74]: 74-04: GHSA-9gv3-gr6g-c4rj — fix merged; publication awaits a release
 
 ### Tech Debt
 
@@ -203,7 +204,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   hygiene runs both observed green; publication awaits a release (D-17). GHSA-9gv3-gr6g-c4rj is
   fixed, merged to `main` via PR #642 (merge commit `421b40e086335b3d670ad1d907729b4384be05d9`);
   the merge-triggered publish and hygiene runs both observed green; publication awaits a release
-  (74-04, publication readiness, is the phase's remaining plan).
+  (D-21).
 
 - ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
   Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
