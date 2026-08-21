@@ -1,0 +1,5 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjlst binary. The only fixture
+# carrying this binary, used to isolate the sixth resolveBbjBinary
+# requirement for a non-marker binary.
+exit 0

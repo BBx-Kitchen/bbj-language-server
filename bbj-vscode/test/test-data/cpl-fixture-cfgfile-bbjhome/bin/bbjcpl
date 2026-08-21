@@ -1,0 +1,5 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary. A controlled substitute
+# the repo owns, in a directory whose cfg entry is a file rather than a
+# directory, used to isolate the directory-ness half of the cfg requirement.
+exit 0
