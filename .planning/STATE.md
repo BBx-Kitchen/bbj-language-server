@@ -5,10 +5,10 @@ milestone_name: Security Advisory Remediation
 current_phase: 74
 current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
 status: executing
-stopped_at: Completed 74-01-PLAN.md
-last_updated: "2026-08-21T15:57:27.278Z"
+stopped_at: Completed 74-02-PLAN.md
+last_updated: "2026-08-21T16:07:00.000Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 74 execution started
+last_activity_desc: Phase 74 plan 02 complete — hardening change landed on fork, publication pending
 state_head: 9332a02903da53232cb205af2a5b184b6fc41d12
 progress:
   total_phases: 8
@@ -20,7 +20,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-08-21
+**Last Updated:** 2026-08-21 (Phase 74 plan 02)
 
 ## Project Reference
 
@@ -35,15 +35,14 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 74 (Remediate GHSA-9gv3-gr6g-c4rj) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Total Plans in Phase: 4
-Plans Complete: 3/4
-Status: Ready to execute
+Plans Complete: 2/4
+Status: Plan 02 (hardening change) complete on the private fork; plan 03 (landing/cherry-pick) next
 73-03 landed the fix on public `main` via PR #641 (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`),
 authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
 `Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`.
-Last activity: 2026-08-21 — Phase 74 execution started
-70 with least effort, then move on") and the pointer advanced past it under `--force`.
+Last activity: 2026-08-21 — Phase 74 plan 02 complete
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
 `70-VERIFICATION.md` now reads `status: passed` with `overrides_applied: 2`. The adversarial
@@ -137,6 +136,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 73 P02 | 25min | 2 tasks | 3 files |
 | Phase 73 P03 | 25min | 3 tasks | 1 files |
 | Phase 74 P01 | 55min | 3 tasks | 8 files |
+| Phase 74 P02 | 35min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -176,6 +176,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 73]: 73-04: GHSA-5vrp-fj75-pm5q — fix merged; publication awaits a release
 - [Phase 74]: 74-01: fork remote ghsa-9gv3 added over HTTPS; subtree diff re-derived live (7 paths, matched plan exactly); fork synced verbatim to a green 31-test baseline in a separable prerequisite commit (cc7ea61, excluded from the eventual cherry-pick set)
 - [Phase 74]: 74-01: the hardening change and its regression coverage landed on `ghsa-9gv3-gr6g-c4rj/verify-node-archive` in the advisory's private fork; the regression check was observed failing before the change and passing after it (PROC-02), and the module suite is green at 49 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
+- [Phase 74]: 74-02: a further hardening change and its offline regression coverage landed on the same fork branch, and the existing release build config was confirmed (by reading it) to already gate on the module test suite. The whole-suite gate is green at 61 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
 
 ### Tech Debt
 
