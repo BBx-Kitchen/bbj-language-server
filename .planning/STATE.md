@@ -4,17 +4,17 @@ milestone: v4.1
 milestone_name: Security Advisory Remediation
 current_phase: 73
 current_phase_name: Remediate GHSA-5vrp-fj75-pm5q
-status: planning
-stopped_at: Phase 72 complete, ready to plan Phase 73
-last_updated: "2026-08-21T12:47:01.936Z"
+status: executing
+stopped_at: Completed 73-01-PLAN.md
+last_updated: "2026-08-21T13:25:35.129Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 complete, transitioned to Phase 73
-state_head: 41cbb07b9138c96cea9334da2a2eeedd30b0664c
+state_head: 32c14052b428ab60bb5bc4f05e3f4c95309d8fa8
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
   percent: 38
 ---
 
@@ -35,12 +35,12 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 73 — Remediate GHSA-5vrp-fj75-pm5q
-Plan: Not started
-Total Plans in Phase: 5
-Plans Complete: 5/5
-Status: Ready to plan
+Plan: 2 of 4
+Total Plans in Phase: 4
+Plans Complete: 1/4
+Status: Ready to execute
 72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
-Last activity: 2026-08-21 — Phase 72 complete, transitioned to Phase 73
+Last activity: 2026-08-21 — 73-01 landed on the private fork (branch pushed, not on origin)
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -85,7 +85,7 @@ Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENT
 Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
 from git is correct, not a lost artifact.
 
-Progress: [███████████░░░░░░░░░] 11/20 plans ([███░░░░░░░] 25%) — 2/8 phases closed (70 w/ overrides, 71 clean)
+Progress: [███████████░░░░░░░░░] 11/20 plans ([████░░░░░░] 38%) — 2/8 phases closed (70 w/ overrides, 71 clean)
 
 ## Performance Metrics
 
@@ -131,6 +131,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 72 P03 | 45min | 1 tasks | 1 files |
 | Phase 72-remediate-ghsa-c4hw-5j83-cx5h P04 | 15min | 1 tasks | 1 files |
 | Phase 72 P05 | 20 min | 3 tasks | 2 files |
+| Phase 73 P01 | 18min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 72]: 72-02: NodeExecutableResolver's Resolution.resolved() discards prior-branch rejections on any successful resolution; fixing needs a src/main change this plan is prohibited from making, so the fall-through test was scoped to assert only true behavior and the gap is recorded in 72-RESIDUAL-RISK.md for a follow-up decision
 - [Phase 72]: Landed GHSA-c4hw-5j83-cx5h fix on public origin via PR #640 (fix/node-executable-validation), authorised at a blocking-human checkpoint (land-now); not merged, merge is 72-04's gated decision
 - [Phase 72]: Scoped the fork-tip-to-public-tip content-equality check to bbj-intellij (not the unrestricted repo diff) because the fork base and origin/main diverged by ~34 unrelated commits; no rebase or history rewrite was used
+- [Phase 73]: 73-01: kept distributionUrl at Gradle 8.13, regenerated the wrapper JAR to match, rather than downgrading the URL to fit the old JAR
+- [Phase 73]: 73-01: private advisory fork's main predates several files/edits already on public main; synced them verbatim in prerequisite commits before the intended fix (kept out of the eventual cherry-pick set)
 
 ### Tech Debt
 
@@ -210,8 +213,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T12:28:45.044Z
-Stopped at: Phase 72 complete, ready to plan Phase 73
+Last session: 2026-08-21T13:25:35.050Z
+Stopped at: Completed 73-01-PLAN.md
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
