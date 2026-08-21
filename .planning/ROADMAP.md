@@ -191,7 +191,7 @@ Disclosure notice in REQUIREMENTS.md.
 
 - [x] **Phase 70: Remediate GHSA-89r9-2pw4-mc7f** - Fix developed and merged (via a substituted public PR, not the fork PR); closed 2026-08-21 with 2 recorded overrides — SC3 waived by substitution, guardrail-breadth truth accepted as unmet and deferred to the WINDOWS ledger
 - [x] **Phase 71: Remediate GHSA-5f22-gqrx-xr22** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
-- [ ] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish
+- [x] **Phase 72: Remediate GHSA-c4hw-5j83-cx5h** - Fix developed, verified, and merged in its private fork; ready to publish (completed 2026-08-21)
 - [ ] **Phase 73: Remediate GHSA-5vrp-fj75-pm5q** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 74: Remediate GHSA-9gv3-gr6g-c4rj** - Fix developed, verified, and merged in its private fork; ready to publish
 - [ ] **Phase 75: Remediate GHSA-33x9-cpwv-xcv2** - Fix developed, verified, and merged in its private fork; ready to publish
@@ -301,7 +301,7 @@ Disclosure notice in REQUIREMENTS.md.
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-  - [ ] 72-05-PLAN.md — publication readiness: release gate and CVE decision
+  - [x] 72-05-PLAN.md — publication readiness: release gate and CVE decision
 
 ### Phase 73: Remediate GHSA-5vrp-fj75-pm5q
 

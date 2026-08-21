@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.1
 milestone_name: Security Advisory Remediation
-current_phase: 72
-current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
-status: executing
-stopped_at: Completed 72-05-PLAN.md — GHSA-c4hw-5j83-cx5h publication readiness recorded, CVE decision applied (no-cve)
-last_updated: "2026-08-21T12:28:45.110Z"
+current_phase: 73
+current_phase_name: Remediate GHSA-5vrp-fj75-pm5q
+status: planning
+stopped_at: Phase 72 complete, ready to plan Phase 73
+last_updated: "2026-08-21T12:47:01.936Z"
 last_activity: 2026-08-21
-last_activity_desc: Phase 72 execution started
-state_head: 31f5c67b3783708b86910911265e5e6d2487bbd4
+last_activity_desc: Phase 72 complete, transitioned to Phase 73
+state_head: 41cbb07b9138c96cea9334da2a2eeedd30b0664c
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 20
-  completed_plans: 15
-  percent: 25
+  completed_plans: 16
+  percent: 38
 ---
 
 # Project State: BBj Language Server
@@ -34,13 +34,13 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 ## Current Position
 
-Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
-Plan: 5 of 5
+Phase: 73 — Remediate GHSA-5vrp-fj75-pm5q
+Plan: Not started
 Total Plans in Phase: 5
 Plans Complete: 5/5
-Status: All plans complete — phase verification pending
+Status: Ready to plan
 72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
-Last activity: 2026-08-21 — 72-05 complete, publication readiness recorded for GHSA-c4hw-5j83-cx5h
+Last activity: 2026-08-21 — Phase 72 complete, transitioned to Phase 73
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -211,7 +211,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 ## Session Continuity
 
 Last session: 2026-08-21T12:28:45.044Z
-Stopped at: Completed 72-05-PLAN.md — GHSA-c4hw-5j83-cx5h publication readiness recorded, CVE decision applied (no-cve)
+Stopped at: Phase 72 complete, ready to plan Phase 73
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
