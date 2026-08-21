@@ -5,11 +5,11 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Completed 72-04-PLAN.md — merged PR #640 (squash), published preview 0.12.14 to both marketplaces"
-last_updated: "2026-08-21T12:16:52.079Z"
+stopped_at: Completed 72-05-PLAN.md — GHSA-c4hw-5j83-cx5h publication readiness recorded, CVE decision applied (no-cve)
+last_updated: "2026-08-21T12:28:45.110Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 execution started
-state_head: f55caeb44a8e69956b6ce1e0e9241fca4714335f
+state_head: 31f5c67b3783708b86910911265e5e6d2487bbd4
 progress:
   total_phases: 8
   completed_phases: 2
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Total Plans in Phase: 5
 Plans Complete: 0/5
 Status: Ready to execute
@@ -130,6 +130,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 72 P02 | 50min | 2 tasks | 2 files |
 | Phase 72 P03 | 45min | 1 tasks | 1 files |
 | Phase 72-remediate-ghsa-c4hw-5j83-cx5h P04 | 15min | 1 tasks | 1 files |
+| Phase 72 P05 | 20 min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -178,7 +179,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
   but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
   MILESTONES.md). GHSA-89r9-2pw4-mc7f is fixed, merged to `main`; publication awaits a release.
   GHSA-5f22-gqrx-xr22 is fixed, merged to `main`, and its phase (71) is verified and
-  complete; publication awaits a release.
+  complete; publication awaits a release. GHSA-c4hw-5j83-cx5h is fixed, merged to `main`;
+  publication awaits a release.
 
 - ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
   Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
@@ -208,8 +210,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T12:16:52.009Z
-Stopped at: Completed 72-04-PLAN.md — merged PR #640 (squash), published preview 0.12.14 to both marketplaces
+Last session: 2026-08-21T12:28:45.044Z
+Stopped at: Completed 72-05-PLAN.md — GHSA-c4hw-5j83-cx5h publication readiness recorded, CVE decision applied (no-cve)
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
