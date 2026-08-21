@@ -315,14 +315,14 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-5vrp-fj75-pm5q is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: 4 plans
+**Plans**: 2/4 plans executed
 **Wave 1**
 
-  - [ ] 73-01-PLAN.md — remediation (detail in the advisory's private fork)
+  - [x] 73-01-PLAN.md — remediation (detail in the advisory's private fork)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 73-02-PLAN.md — regression checks and CI enforcement
+  - [x] 73-02-PLAN.md — regression checks and CI enforcement
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
