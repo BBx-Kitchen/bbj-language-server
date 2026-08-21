@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Phase 70 filed with 2 human overrides (SC3/PROC-01 accepted via the substituted public-PR landing; truth 4 accepted as UNMET and deferred to the WINDOWS ledger). Advanced to Phase 72 under --force. Next: /gsd-execute-phase 72 — its landing step already encodes D-13, no re-plan needed."
-last_updated: "2026-08-21T09:54:01.233Z"
+stopped_at: "Completed 72-01-PLAN.md (test source set, NodeExecutableResolver, red evidence, launch-site fix; 3 commits pushed to ghsa-c4hw fork branch). Next: /gsd-execute-phase 72 continues at 72-02."
+last_updated: "2026-08-21T10:14:08.740Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 execution started
-state_head: 6c13bf201d0d693971751cae7c83781013d1cde7
+state_head: e3aaab2f20a26fcd8c4ef921b2f4bdf351aba1ad
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 20
-  completed_plans: 11
+  completed_plans: 12
   percent: 25
 ---
 
@@ -35,10 +35,10 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 ## Current Position
 
 Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 Total Plans in Phase: 5
 Plans Complete: 0/5
-Status: Executing Phase 72
+Status: Ready to execute
 72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
 Last activity: 2026-08-21 — Phase 72 execution started
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
@@ -85,7 +85,7 @@ Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENT
 Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
 from git is correct, not a lost artifact.
 
-Progress: [███████████░░░░░░░░░] 11/20 plans (55%) — 2/8 phases closed (70 w/ overrides, 71 clean)
+Progress: [███████████░░░░░░░░░] 11/20 plans ([███░░░░░░░] 25%) — 2/8 phases closed (70 w/ overrides, 71 clean)
 
 ## Performance Metrics
 
@@ -122,6 +122,11 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 - Key: Fixed all test failures, re-enabled disabled assertions, removed dead code, resolved all production FIXMEs
 
 ---
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 72 P01 | 55min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -149,6 +154,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [v4.1 roadmap]: PROC-01/02/03 (private fork per advisory, non-vacuous regression test, publish-after-release) mapped across the full Phase 70-77 range rather than to a single phase
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
+- [Phase 72]: 72-01: JUnit dependency insertions kept as pure additions inside the existing dependencies{} block (per design_decisions 9) rather than packed onto existing lines to hold a fixed line number for the publishing-token binding; content verified byte-identical instead
 
 ### Tech Debt
 
@@ -196,8 +202,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21
-Stopped at: Phase 71 complete — UAT 2/2 passed, `71-VERIFICATION.md` status `passed`, ROADMAP and
+Last session: 2026-08-21T10:14:08.671Z
+Stopped at: Completed 72-01-PLAN.md (test source set, NodeExecutableResolver, red evidence, launch-site fix; 3 commits pushed to ghsa-c4hw fork branch). Next: /gsd-execute-phase 72 continues at 72-02.
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
