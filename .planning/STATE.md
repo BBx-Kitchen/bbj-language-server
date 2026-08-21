@@ -5,7 +5,7 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Phase 70 filed with 2 human overrides (SC3/PROC-01 accepted via the substituted public-PR landing; truth 4 accepted as UNMET and deferred to the WINDOWS ledger). Advanced to Phase 72 under --force. Next: /gsd-execute-phase 72 — but re-plan its landing step first (see the fork-PR wall below)."
+stopped_at: "Phase 70 filed with 2 human overrides (SC3/PROC-01 accepted via the substituted public-PR landing; truth 4 accepted as UNMET and deferred to the WINDOWS ledger). Advanced to Phase 72 under --force. Next: /gsd-execute-phase 72 — its landing step already encodes D-13, no re-plan needed."
 last_updated: "2026-08-21T09:45:00.000Z"
 last_activity: 2026-08-21
 last_activity_desc: "Phase 70 closed out by human override (least-effort file-and-move-on); pointer advanced to Phase 72"
@@ -38,8 +38,8 @@ Phase: 72 — Remediate GHSA-c4hw-5j83-cx5h
 Plan: None started; 5 plans planned, 0 summaries
 Total Plans in Phase: 5
 Plans Complete: 0/5
-Status: Ready to execute. Next: `/gsd-execute-phase 72` — but re-plan its landing step first (the
-fork-PR flow it plans will hit the same wall Phase 70 hit; see below).
+Status: Ready to execute. Next: `/gsd-execute-phase 72`. Its landing step needs no re-planning —
+72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
 Last activity: 2026-08-21 — Phase 70 was closed out by explicit human decision ("staple and file
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
@@ -73,8 +73,10 @@ flow was dropped in favor of a normal public PR — see the embargoed
 `70-DECISION-fork-flow.md` and `70-04-SUMMARY.md`. Phase 71 reused that same landing shape (D-11)
 without re-litigating it.
 
-Phases 72-77 plan the same private-fork PR flow and will hit the same wall — re-plan their landing
-step before executing.
+Phases 72 and 73 were planned AFTER Phase 70 hit the fork-PR wall and already encode the public-PR
+landing (72-03 and 73-03, both D-13: "no pull request against the advisory's private fork; a fork
+PR resolves its base to the public repository and would merge publicly outside any human gate").
+They need no landing re-plan. Phases 74-77 are still unplanned — carry D-13 into them when planned.
 
 Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENTS.md PROC-01);
 `.git/info/exclude` covers `.planning/phases/70-*/` and the `pre-push` hook covers `phases/7[0-7]`.
