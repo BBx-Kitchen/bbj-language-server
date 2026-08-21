@@ -282,14 +282,14 @@ Disclosure notice in REQUIREMENTS.md.
   3. The fork's pull request is reviewed and merged to `main`
   4. GHSA-c4hw-5j83-cx5h is marked ready to publish once its fix is released (CVE assigned where severity warrants)
 
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 **Wave 1**
 
   - [x] 72-01-PLAN.md — remediation, part 1, with test scaffolding (detail in the advisory's private fork)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-  - [ ] 72-02-PLAN.md — edge coverage and residual record
+  - [x] 72-02-PLAN.md — edge coverage and residual record
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

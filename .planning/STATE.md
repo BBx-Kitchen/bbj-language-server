@@ -5,16 +5,16 @@ milestone_name: Security Advisory Remediation
 current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
-stopped_at: "Completed 72-01-PLAN.md (test source set, NodeExecutableResolver, red evidence, launch-site fix; 3 commits pushed to ghsa-c4hw fork branch). Next: /gsd-execute-phase 72 continues at 72-02."
-last_updated: "2026-08-21T10:14:08.740Z"
+stopped_at: Completed 72-02-PLAN.md (edge-case coverage + residual-risk record for GHSA-c4hw-5j83-cx5h)
+last_updated: "2026-08-21T10:38:11.880Z"
 last_activity: 2026-08-21
 last_activity_desc: Phase 72 execution started
-state_head: e3aaab2f20a26fcd8c4ef921b2f4bdf351aba1ad
+state_head: 4ddc58f00566be0c894c35be4b606b9fd60cba67
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 20
-  completed_plans: 12
+  completed_plans: 13
   percent: 25
 ---
 
@@ -127,6 +127,7 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 72 P01 | 55min | 2 tasks | 6 files |
+| Phase 72 P02 | 50min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,7 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 - [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
 - [Phase 72]: 72-01: JUnit dependency insertions kept as pure additions inside the existing dependencies{} block (per design_decisions 9) rather than packed onto existing lines to hold a fixed line number for the publishing-token binding; content verified byte-identical instead
+- [Phase 72]: 72-02: NodeExecutableResolver's Resolution.resolved() discards prior-branch rejections on any successful resolution; fixing needs a src/main change this plan is prohibited from making, so the fall-through test was scoped to assert only true behavior and the gap is recorded in 72-RESIDUAL-RISK.md for a follow-up decision
 
 ### Tech Debt
 
@@ -202,8 +204,8 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ## Session Continuity
 
-Last session: 2026-08-21T10:14:08.671Z
-Stopped at: Completed 72-01-PLAN.md (test source set, NodeExecutableResolver, red evidence, launch-site fix; 3 commits pushed to ghsa-c4hw fork branch). Next: /gsd-execute-phase 72 continues at 72-02.
+Last session: 2026-08-21T10:38:11.822Z
+Stopped at: Completed 72-02-PLAN.md (edge-case coverage + residual-risk record for GHSA-c4hw-5j83-cx5h)
 REQUIREMENTS updated (SEC-02 done). Next: `/gsd-execute-phase 70` to close phase 70's open verify
 gate, then `/gsd-plan-phase 72`.
 Resume file: None
