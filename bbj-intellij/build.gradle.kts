@@ -39,6 +39,10 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
+tasks.named("buildPlugin") {
+    dependsOn(tasks.named("test"))
+}
+
 intellijPlatform {
     pluginConfiguration {
         name = "BBj Language Support"
