@@ -6,16 +6,16 @@ current_phase: 72
 current_phase_name: Remediate GHSA-c4hw-5j83-cx5h
 status: executing
 stopped_at: "Phase 70 filed with 2 human overrides (SC3/PROC-01 accepted via the substituted public-PR landing; truth 4 accepted as UNMET and deferred to the WINDOWS ledger). Advanced to Phase 72 under --force. Next: /gsd-execute-phase 72 — its landing step already encodes D-13, no re-plan needed."
-last_updated: "2026-08-21T09:45:00.000Z"
+last_updated: "2026-08-21T09:54:01.233Z"
 last_activity: 2026-08-21
-last_activity_desc: "Phase 70 closed out by human override (least-effort file-and-move-on); pointer advanced to Phase 72"
-state_head: a7cdebcec1c5137e95871b4d2aced232f48d35fc
+last_activity_desc: Phase 72 execution started
+state_head: 6c13bf201d0d693971751cae7c83781013d1cde7
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 20
   completed_plans: 11
-  percent: 13
+  percent: 25
 ---
 
 # Project State: BBj Language Server
@@ -28,19 +28,19 @@ See: .planning/PROJECT.md (updated 2026-08-21)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.1 Security Advisory Remediation — Phase 72 (GHSA-c4hw-5j83-cx5h), 5 plans ready to execute; 2 of 8 advisory phases closed (70 with overrides, 71 clean)
+**Current Focus:** Phase 72 — Remediate GHSA-c4hw-5j83-cx5h
 
 ---
 
 ## Current Position
 
-Phase: 72 — Remediate GHSA-c4hw-5j83-cx5h
-Plan: None started; 5 plans planned, 0 summaries
+Phase: 72 (Remediate GHSA-c4hw-5j83-cx5h) — EXECUTING
+Plan: 1 of 5
 Total Plans in Phase: 5
 Plans Complete: 0/5
-Status: Ready to execute. Next: `/gsd-execute-phase 72`. Its landing step needs no re-planning —
+Status: Executing Phase 72
 72-03 already encodes the public-PR landing (D-13) rather than the fork PR that stalled Phase 70.
-Last activity: 2026-08-21 — Phase 70 was closed out by explicit human decision ("staple and file
+Last activity: 2026-08-21 — Phase 72 execution started
 70 with least effort, then move on") and the pointer advanced past it under `--force`.
 
 **Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
@@ -53,11 +53,13 @@ findings were NOT re-run and were NOT fixed; they were accepted. What that means
    satisfying SC3 **for this advisory only** — D-12 had already found this advisory's mechanism
    public since 2026-02-17, so the embargo rationale PROC-01 protects did not apply. Does not
    generalize to 72-77.
+
 2. *CI guardrail breadth — accepted as UNMET and deferred.* The instance-level fix is real and
    live on public `main`; what remains unmet is the guardrail's breadth against equivalent-syntax
    variants, which the regression suite does not cover. Filed as `.planning/WINDOWS.md` entry 1
    (`kind: unmet-truth`, phase 70, **open**). With `workflow.windows_enforce` on, this blocks
    `/gsd-ship` until fixed or explicitly waived — the deferral is tracked, not silent.
+
 3. *no-cve stands; severity was never reassessed.* Per the standing v4.1 no-CVE decision (a
    deliberate PROC-03 waiver). GHSA-89r9-2pw4-mc7f remains live at `severity: high`,
    `cve_id: null`, `state: draft`. Phase 71-05 did reassess its advisory (high → medium); Phase 70
