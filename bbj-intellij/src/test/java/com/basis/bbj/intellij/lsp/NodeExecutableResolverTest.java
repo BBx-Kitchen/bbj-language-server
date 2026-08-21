@@ -354,6 +354,11 @@ class NodeExecutableResolverTest {
         assertTrue(result.isResolved());
         assertEquals(cached, result.path());
         assertEquals(NodeExecutableResolver.Source.CACHED, result.source());
+
+        NodeExecutableResolver.Rejected rejected = onlyRejection(result);
+        assertEquals(NodeExecutableResolver.Source.SETTINGS, rejected.source());
+        assertEquals(NodeExecutableResolver.Reason.MISSING, rejected.reason());
+        assertEquals(configuredMissing, rejected.candidate());
     }
 
     // ---- All three rejected ----

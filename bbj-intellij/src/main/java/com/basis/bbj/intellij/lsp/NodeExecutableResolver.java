@@ -102,8 +102,8 @@ public final class NodeExecutableResolver {
             this.rejections = Collections.unmodifiableList(new ArrayList<>(rejections));
         }
 
-        static Resolution resolved(String path, Source source) {
-            return new Resolution(true, path, source, Collections.emptyList());
+        static Resolution resolved(String path, Source source, List<Rejected> rejections) {
+            return new Resolution(true, path, source, rejections);
         }
 
         static Resolution unresolved(List<Rejected> rejections) {
@@ -158,15 +158,15 @@ public final class NodeExecutableResolver {
 
         String accepted = validate(Source.SETTINGS, configuredPath, probe, rejections);
         if (accepted != null) {
-            return Resolution.resolved(accepted, Source.SETTINGS);
+            return Resolution.resolved(accepted, Source.SETTINGS, rejections);
         }
         accepted = validate(Source.DETECTED, detectedPath, probe, rejections);
         if (accepted != null) {
-            return Resolution.resolved(accepted, Source.DETECTED);
+            return Resolution.resolved(accepted, Source.DETECTED, rejections);
         }
         accepted = validate(Source.CACHED, cachedPath, probe, rejections);
         if (accepted != null) {
-            return Resolution.resolved(accepted, Source.CACHED);
+            return Resolution.resolved(accepted, Source.CACHED, rejections);
         }
         return Resolution.unresolved(rejections);
     }
