@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.system.CpuArch;
+import com.basis.bbj.intellij.lsp.NodeArchiveVerifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -129,6 +130,15 @@ public final class BbjNodeDownloader {
         Path tempFile = Files.createTempFile("node-download-", platform.archiveExtension());
         try {
             download(tempFile, downloadUrl, indicator);
+
+            String archiveFileName = downloadUrl.substring(downloadUrl.lastIndexOf('/') + 1);
+            indicator.setFraction(0.4);
+            indicator.setText("Verifying Node.js archive...");
+            NodeArchiveVerifier.Result verification = NodeArchiveVerifier.verify(
+                    archiveFileName, tempFile, NodeArchiveVerifier.PINNED_DIGESTS, NodeArchiveVerifier.REAL_FILES);
+            if (!verification.isVerified()) {
+                throw new IOException(verification.failureMessage());
+            }
 
             indicator.setFraction(0.7);
             indicator.setText("Extracting Node.js binary...");
