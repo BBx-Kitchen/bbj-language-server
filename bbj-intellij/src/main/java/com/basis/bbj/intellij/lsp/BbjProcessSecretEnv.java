@@ -65,14 +65,11 @@ public final class BbjProcessSecretEnv {
      * value is empty, so an inherited parent-environment variable of the same name can
      * never be read in place of the intended value.
      */
-    // TASK-1-SKELETON: reproduces pre-fix behaviour (secrets in parameters, nothing in
-    // the environment) so the new unit tests compile and observe RED. Task 2 replaces
-    // this body with the real environment-channel implementation.
     public static Invocation emLogin(
             String scriptPath, String username, String password, String outputFile, String infoString) {
         return new Invocation(
-                List.of("-q", scriptPath, "-", username, password, outputFile, infoString),
-                Map.of()
+                List.of("-q", scriptPath, "-", outputFile, infoString),
+                Map.of(USERNAME_VAR, username, PASSWORD_VAR, password)
         );
     }
 
@@ -86,20 +83,19 @@ public final class BbjProcessSecretEnv {
      * argument only when it is non-empty, matching {@code web.bbj}'s tolerance of an
      * absent final position.
      */
-    // TASK-1-SKELETON: reproduces pre-fix behaviour (secrets in parameters, nothing in
-    // the environment) so the new unit tests compile and observe RED. Task 2 replaces
-    // this body with the real environment-channel implementation.
     public static Invocation webRun(
             String webRunnerDir, String webBbjPath, String client, String name, String programme,
             String workingDir, String classpath, String token, String configPath) {
         List<String> parameters = new ArrayList<>(List.of(
                 "-q", "-WD" + webRunnerDir, webBbjPath, "-",
-                client, name, programme, workingDir, "", "", classpath, token
+                client, name, programme, workingDir, classpath
         ));
         if (!configPath.isEmpty()) {
             parameters.add(configPath);
         }
-        return new Invocation(parameters, Map.of());
+        return new Invocation(parameters, Map.of(
+                USERNAME_VAR, "", PASSWORD_VAR, "", TOKEN_VAR, token
+        ));
     }
 
     /**

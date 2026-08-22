@@ -1,25 +1,26 @@
 rem BBj EM Login Stub - Authenticates and returns JWT token
 rem Parameters:
-rem   1) username
-rem   2) password
-rem   3) outputFile (path to temp file for writing result)
-rem   4) infoString (optional - client info string, e.g. "VS Code on MacOS as beff")
+rem   1) outputFile (path to temp file for writing result)
+rem   2) infoString (optional - client info string, e.g. "VS Code on MacOS as beff")
+rem Environment:
+rem   BBJ_EM_USERNAME - the EM username
+rem   BBJ_EM_PASSWORD - the EM password
 
 ? 'HIDE'
 
-username! = ARGV(1,err=*next)
-password! = ARGV(2,err=*next)
-outputFile! = ARGV(3,err=*next)
-infoString! = ARGV(4,err=*next)
+username! = ENV("BBJ_EM_USERNAME",err=*next)
+password! = ENV("BBJ_EM_PASSWORD",err=*next)
+outputFile! = ARGV(1,err=*next)
+infoString! = ARGV(2,err=*next)
 
-if (username! = null()) then
+if (username! = null() or username! = "") then
     ch=unt
     open(ch,mode="O_CREATE,O_TRUNC")outputFile!
     write(ch)"ERROR:Username required"
     close(ch)
     release
 fi
-if (password! = null()) then
+if (password! = null() or password! = "") then
     ch=unt
     open(ch,mode="O_CREATE,O_TRUNC")outputFile!
     write(ch)"ERROR:Password required"
