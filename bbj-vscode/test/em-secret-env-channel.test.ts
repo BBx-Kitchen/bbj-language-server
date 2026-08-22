@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
-import { buildEmValidateArgv, buildEmLoginArgv, buildWebRunArgv, type Argv } from '../src/Commands/process-args.js';
+import {
+    buildEmValidateArgv,
+    buildEmLoginArgv,
+    buildWebRunArgv,
+    createOwnerOnlyFile,
+    type Argv
+} from '../src/Commands/process-args.js';
 import { formatArgvForLog } from '../src/Commands/process-runner.js';
 
 /**
@@ -452,5 +459,93 @@ describe('em-secret-env-channel guard — VS Code call sites spread process.env 
         expect(() => readFileOrThrow(missing)).toThrow(
             new RegExp(`Guarded source file not found at .*does-not-exist-extension\\.ts`)
         );
+    });
+
+    /** Every index at which `literal` occurs in `source`, in file order. */
+    function orderedIndicesOf(source: string, literal: string): number[] {
+        const indices: number[] = [];
+        let idx = source.indexOf(literal);
+        while (idx !== -1) {
+            indices.push(idx);
+            idx = source.indexOf(literal, idx + literal.length);
+        }
+        return indices;
+    }
+
+    test('both output-file paths in extension.ts are created through createOwnerOnlyFile before their launcher call', () => {
+        const source = stripLineComments(readFileOrThrow(EXTENSION_TS));
+        const creationIndices = orderedIndicesOf(source, 'createOwnerOnlyFile(');
+        expect(creationIndices.length).toBe(2);
+        const launcherIndices = orderedIndicesOf(source, 'runProcess(argv,');
+        expect(launcherIndices.length).toBe(2);
+        for (let i = 0; i < creationIndices.length; i++) {
+            expect(creationIndices[i]).toBeLessThan(launcherIndices[i]);
+        }
+    });
+});
+
+describe('em-secret-env-channel guard — createOwnerOnlyFile', () => {
+    function tmpDir(): string {
+        return fs.mkdtempSync(path.join(os.tmpdir(), 'em-secret-owner-only-'));
+    }
+
+    test('creates a file at the caller-supplied path and returns that path', () => {
+        const target = path.join(tmpDir(), 'out.tmp');
+        const returned = createOwnerOnlyFile(target);
+        expect(returned).toBe(target);
+        expect(fs.existsSync(target)).toBe(true);
+    });
+
+    test('on a non-Windows platform, the created file\'s mode is exactly owner-read plus owner-write, and survives a restrictive process umask', () => {
+        if (process.platform === 'win32') {
+            return;
+        }
+        const target = path.join(tmpDir(), 'out.tmp');
+        // A restrictive umask (0700) would clear every bit of a 0600 creation mode
+        // down to 0000 unless the helper also chmods explicitly after creation —
+        // this is the assertion that distinguishes "set at creation time" from
+        // "relaxed then tightened".
+        const originalUmask = process.umask(0o700);
+        try {
+            createOwnerOnlyFile(target);
+        } finally {
+            process.umask(originalUmask);
+        }
+        const mode = fs.statSync(target).mode & 0o777;
+        expect(mode).toBe(0o600);
+    });
+
+    test('a truncating write to the created file leaves its mode unchanged', () => {
+        if (process.platform === 'win32') {
+            return;
+        }
+        const target = path.join(tmpDir(), 'out.tmp');
+        createOwnerOnlyFile(target);
+        const fd = fs.openSync(target, 'w');
+        fs.writeSync(fd, 'some content');
+        fs.closeSync(fd);
+        const mode = fs.statSync(target).mode & 0o777;
+        expect(mode).toBe(0o600);
+    });
+
+    test.skipIf(process.platform !== 'win32')(
+        'on Windows, the helper creates the file without asserting a POSIX mode — relies on the per-user temp directory ACL instead (skipped: this suite is not running on win32)',
+        () => {
+            const target = path.join(tmpDir(), 'out.tmp');
+            expect(createOwnerOnlyFile(target)).toBe(target);
+            expect(fs.existsSync(target)).toBe(true);
+        }
+    );
+
+    test('two calls with different paths yield two distinct files; a second call against an already-existing path fails rather than silently adopting it', () => {
+        const dir = tmpDir();
+        const first = path.join(dir, 'a.tmp');
+        const second = path.join(dir, 'b.tmp');
+        expect(createOwnerOnlyFile(first)).toBe(first);
+        expect(createOwnerOnlyFile(second)).toBe(second);
+        expect(fs.existsSync(first)).toBe(true);
+        expect(fs.existsSync(second)).toBe(true);
+
+        expect(() => createOwnerOnlyFile(first)).toThrow();
     });
 });

@@ -32,6 +32,8 @@
  * this module is unit-testable with zero mocks.
  */
 
+import * as fs from 'fs';
+
 export interface Argv {
     file: string;
     args: string[];
@@ -49,6 +51,29 @@ export const EM_ENV_VARS = Object.freeze({
     PASSWORD: 'BBJ_EM_PASSWORD',
     TOKEN: 'BBJ_EM_TOKEN'
 });
+
+/**
+ * Creates an empty file at `filePath`, owner-only from the moment it exists, and
+ * returns `filePath`. Uses an exclusive create so a pre-placed file or symlink at a
+ * guessable path (the EM login and EM validate output paths are built from
+ * `os.tmpdir()` plus a millisecond timestamp) causes a failed call rather than a
+ * silent write into an attacker-controlled target.
+ *
+ * On a non-Windows platform the resulting POSIX mode is set explicitly via
+ * `chmodSync` after creation — not relied on from the creation call's mode
+ * argument alone, because the process umask can clear bits requested at creation
+ * time. On Windows no POSIX mode is applied; the per-user temporary directory's
+ * ACL restriction is relied on instead, a reasoned position, not an equivalent
+ * guarantee (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
+export function createOwnerOnlyFile(filePath: string): string {
+    const fd = fs.openSync(filePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+    fs.closeSync(fd);
+    if (process.platform !== 'win32') {
+        fs.chmodSync(filePath, 0o600);
+    }
+    return filePath;
+}
 
 const exeSuffix = (platform: NodeJS.Platform): string => (platform === 'win32' ? '.exe' : '');
 

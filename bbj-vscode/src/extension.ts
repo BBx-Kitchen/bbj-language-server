@@ -25,7 +25,7 @@ import {
     validateOptions,
     type CompilerOption
 } from './Commands/CompilerOptions.js';
-import { buildEmValidateArgv, buildEmLoginArgv } from './Commands/process-args.js';
+import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
 
 import Commands from './Commands/Commands.cjs';
@@ -407,8 +407,10 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
         // Build path to em-validate-token.bbj
         const emValidatePath = context.asAbsolutePath(path.join('tools', 'em-validate-token.bbj'));
 
-        // Create temp file for BBj output
-        const tmpFile = path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`);
+        // Create temp file for BBj output, owner-only and exclusively before the
+        // spawn — em-validate-token.bbj truncates it in place rather than deleting
+        // and recreating it, so the mode set here survives the write.
+        const tmpFile = createOwnerOnlyFile(path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`));
 
         // Build argv: bbj -q em-validate-token.bbj - <tmpFile>; the token travels on
         // argv.env (BBJ_EM_TOKEN), never as a positional argument.
@@ -623,8 +625,11 @@ export function activate(context: vscode.ExtensionContext): void {
         // Launch em-login.bbj to validate credentials and get token
         const emLoginPath = context.asAbsolutePath(path.join('tools', 'em-login.bbj'));
 
-        // Create temp file for BBj output
-        const tmpFile = path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`);
+        // Create temp file for BBj output, owner-only and exclusively before the
+        // spawn — em-login.bbj truncates it in place rather than deleting and
+        // recreating it, so the mode set here survives the write and holds for the
+        // whole life of the file, including while it carries the returned JWT.
+        const tmpFile = createOwnerOnlyFile(path.join(os.tmpdir(), `bbj-em-login-${Date.now()}.tmp`));
 
         const platformLabel = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'MacOS' : 'Linux';
         const infoString = `VS Code on ${platformLabel} as ${os.userInfo().username}`;
