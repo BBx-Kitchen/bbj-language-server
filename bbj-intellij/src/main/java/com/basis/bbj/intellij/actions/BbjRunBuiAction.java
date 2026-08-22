@@ -4,6 +4,7 @@ import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -54,11 +55,10 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
         // Get token from PasswordSafe, auto-prompt login if not stored
         String token = BbjEMTokenStore.getToken();
         if (token == null || token.isEmpty()) {
-            int result = Messages.showYesNoDialog(
+            int result = showYesNoOnEdt(
                 project,
                 "EM login required for BUI. Login now?",
-                "Enterprise Manager Login Required",
-                Messages.getQuestionIcon()
+                "Enterprise Manager Login Required"
             );
             if (result == Messages.YES) {
                 boolean loginOk = BbjEMLoginAction.performLogin(project);
@@ -86,11 +86,10 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
 
         // If token was invalidated, re-prompt login
         if (token == null) {
-            int result = Messages.showYesNoDialog(
+            int result = showYesNoOnEdt(
                 project,
                 "EM token expired or invalid. Login again?",
-                "Enterprise Manager Token Invalid",
-                Messages.getQuestionIcon()
+                "Enterprise Manager Token Invalid"
             );
             if (result == Messages.YES) {
                 boolean loginOk = BbjEMLoginAction.performLogin(project);
@@ -130,5 +129,19 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
     @NotNull
     protected String getRunMode() {
         return "BUI";
+    }
+
+    /**
+     * Routes a blocking yes/no prompt to the EDT and returns the result to the calling
+     * thread. {@code buildCommandLine()} now runs off the EDT (CR-02, see
+     * {@code BbjRunActionBase.actionPerformed}), so this dialog -- like every other
+     * {@code Messages.*} call reachable from here -- must be explicitly dispatched back to
+     * the EDT rather than shown directly from a pooled thread.
+     */
+    private static int showYesNoOnEdt(@Nullable Project project, String message, String title) {
+        int[] holder = new int[1];
+        ApplicationManager.getApplication().invokeAndWait(() ->
+                holder[0] = Messages.showYesNoDialog(project, message, title, Messages.getQuestionIcon()));
+        return holder[0];
     }
 }

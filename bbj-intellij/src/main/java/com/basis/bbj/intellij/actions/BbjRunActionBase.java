@@ -57,15 +57,17 @@ public abstract class BbjRunActionBase extends AnAction {
             return;
         }
 
-        // Build command line (subclass responsibility)
-        GeneralCommandLine cmd = buildCommandLine(file, project);
-        if (cmd == null) {
-            // Error already shown by subclass
-            return;
-        }
-
-        // Execute the command off EDT to avoid UI freezing
+        // Build the command line and launch it off EDT to avoid UI freezing.
+        // buildCommandLine() (subclass responsibility) may perform blocking EM token
+        // server-side validation (validateTokenServerSide, up to 10s) and/or EM login
+        // (BbjEMLoginAction.performLogin, up to 15s) -- both are synchronous network I/O
+        // and must not run on the EDT (CR-02).
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            GeneralCommandLine cmd = buildCommandLine(file, project);
+            if (cmd == null) {
+                // Error already shown by subclass
+                return;
+            }
             try {
                 OSProcessHandler handler = new OSProcessHandler(cmd);
 
