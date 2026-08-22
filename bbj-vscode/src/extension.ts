@@ -410,7 +410,8 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
         // Create temp file for BBj output
         const tmpFile = path.join(os.tmpdir(), `bbj-em-validate-${Date.now()}.tmp`);
 
-        // Build argv: bbj -q em-validate-token.bbj - <token> <tmpFile>
+        // Build argv: bbj -q em-validate-token.bbj - <tmpFile>; the token travels on
+        // argv.env (BBJ_EM_TOKEN), never as a positional argument.
         const argv = buildEmValidateArgv({
             home: bbjHome,
             platform: process.platform,
@@ -427,8 +428,11 @@ async function validateTokenServerSide(context: vscode.ExtensionContext, token: 
 
         let result: string;
         try {
-            // Execute with 10s timeout
-            await runProcess(argv, { timeout: 10000 });
+            // Execute with 10s timeout. The secret env map must be spread over
+            // process.env, not passed alone — execFile replaces the child's
+            // environment wholesale when options.env is set, and omitting
+            // process.env here would strip PATH/BBJ_HOME from the child.
+            await runProcess(argv, { timeout: 10000, env: { ...process.env, ...argv.env } });
             result = fs.readFileSync(tmpFile, 'utf-8').trim();
         } finally {
             // Clean up temp file

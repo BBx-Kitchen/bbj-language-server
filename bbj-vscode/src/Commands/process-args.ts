@@ -35,7 +35,20 @@
 export interface Argv {
     file: string;
     args: string[];
+    env?: Record<string, string>;
 }
+
+/**
+ * The three Enterprise Manager secret environment-variable names, in one spelling shared
+ * by every VS Code call site. `em-validate-token.bbj`, `em-login.bbj` and `web.bbj` read
+ * the same three names via `ENV(...)` on the BBj side; `BbjProcessSecretEnv` on the
+ * IntelliJ side carries the identical literals (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
+export const EM_ENV_VARS = Object.freeze({
+    USERNAME: 'BBJ_EM_USERNAME',
+    PASSWORD: 'BBJ_EM_PASSWORD',
+    TOKEN: 'BBJ_EM_TOKEN'
+});
 
 const exeSuffix = (platform: NodeJS.Platform): string => (platform === 'win32' ? '.exe' : '');
 
@@ -181,10 +194,19 @@ export interface BuildEmValidateArgvOptions {
     tmpFile: string;
 }
 
-/** Reproduces today's `bbj -q em-validate-token.bbj - <token> <tmpFile>` invocation. */
+/**
+ * Reproduces today's `bbj -q em-validate-token.bbj - <tmpFile>` invocation. The token
+ * travels on the returned `env` map under `EM_ENV_VARS.TOKEN`, never in `args` — it is
+ * always written, even when empty, so an inherited environment variable of the same
+ * name can never be read in its place (GHSA-33x9-cpwv-xcv2).
+ */
 export function buildEmValidateArgv(opts: BuildEmValidateArgvOptions): Argv {
     const { home, platform = process.platform, scriptPath, token, tmpFile } = opts;
-    return { file: bbjBin(home, platform), args: ['-q', scriptPath, '-', token, tmpFile] };
+    return {
+        file: bbjBin(home, platform),
+        args: ['-q', scriptPath, '-', tmpFile],
+        env: { [EM_ENV_VARS.TOKEN]: token }
+    };
 }
 
 export interface BuildEmLoginArgvOptions {

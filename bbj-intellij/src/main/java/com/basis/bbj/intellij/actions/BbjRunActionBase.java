@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.configurations.GeneralCommandLine;
@@ -294,13 +295,13 @@ public abstract class BbjRunActionBase extends AnAction {
             // Create temp file for BBj output
             Path tmpFile = Files.createTempFile("bbj-em-validate-", ".tmp");
             try {
-                // Build command: bbj -q em-validate-token.bbj - <token> <tmpFile>
+                // Build command: bbj -q em-validate-token.bbj - <tmpFile>; the token
+                // travels on the environment (BbjProcessSecretEnv), never as a parameter.
+                BbjProcessSecretEnv.Invocation invocation =
+                        BbjProcessSecretEnv.emValidateToken(emValidatePath, token, tmpFile.toString());
                 GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
-                cmd.addParameter("-q");
-                cmd.addParameter(emValidatePath);
-                cmd.addParameter("-");
-                cmd.addParameter(token);
-                cmd.addParameter(tmpFile.toString());
+                cmd.addParameters(invocation.parameters());
+                cmd.withEnvironment(invocation.environment());
 
                 // Execute with 10s timeout
                 com.intellij.execution.process.CapturingProcessHandler handler =

@@ -245,7 +245,7 @@ describe('process-args - buildDecompileArgv', () => {
 });
 
 describe('process-args - EM launches', () => {
-    test('buildEmValidateArgv returns the five elements in order', () => {
+    test('buildEmValidateArgv returns the four non-secret elements in order, with the token on env instead', () => {
         const argv = buildEmValidateArgv({
             home: '/opt/bbj',
             platform: 'linux',
@@ -254,10 +254,12 @@ describe('process-args - EM launches', () => {
             tmpFile: '/tmp/out.tmp'
         });
         expect(argv.file).toBe('/opt/bbj/bin/bbj');
-        expect(argv.args).toEqual(['-q', '/ext/tools/em-validate-token.bbj', '-', 'tok-123', '/tmp/out.tmp']);
+        expect(argv.args).toEqual(['-q', '/ext/tools/em-validate-token.bbj', '-', '/tmp/out.tmp']);
+        expect(argv.args).not.toContain('tok-123');
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe('tok-123');
     });
 
-    test('buildEmValidateArgv keeps a metacharacter-bearing token in one element', () => {
+    test('buildEmValidateArgv keeps a metacharacter-bearing token in the env map, never in args', () => {
         const argv = buildEmValidateArgv({
             home: '/opt/bbj',
             platform: 'linux',
@@ -265,7 +267,8 @@ describe('process-args - EM launches', () => {
             token: METACHAR_FIXTURE,
             tmpFile: '/tmp/out.tmp'
         });
-        expect(argv.args[3]).toBe(METACHAR_FIXTURE);
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe(METACHAR_FIXTURE);
+        expect(argv.args.some((a) => a.includes(METACHAR_FIXTURE))).toBe(false);
     });
 
     test('buildEmLoginArgv returns the seven elements in order', () => {
