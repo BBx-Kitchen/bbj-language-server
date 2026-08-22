@@ -1,7 +1,15 @@
 package com.basis.bbj.intellij.lsp;
 
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Builds the parameter list and environment map for BBj processes that carry Enterprise
@@ -46,5 +54,70 @@ public final class BbjProcessSecretEnv {
                 List.of("-q", scriptPath, "-", outputFile),
                 Map.of(TOKEN_VAR, token)
         );
+    }
+
+    /**
+     * Builds the invocation for {@code em-login.bbj}: the username travels on
+     * {@link #USERNAME_VAR} and the password on {@link #PASSWORD_VAR} in the returned
+     * environment map; the returned parameter list carries only the quiet flag, the
+     * script path, the {@code -} separator, the output file and the info string —
+     * never the username or the password. Both keys are always written, even when a
+     * value is empty, so an inherited parent-environment variable of the same name can
+     * never be read in place of the intended value.
+     */
+    // TASK-1-SKELETON: reproduces pre-fix behaviour (secrets in parameters, nothing in
+    // the environment) so the new unit tests compile and observe RED. Task 2 replaces
+    // this body with the real environment-channel implementation.
+    public static Invocation emLogin(
+            String scriptPath, String username, String password, String outputFile, String infoString) {
+        return new Invocation(
+                List.of("-q", scriptPath, "-", username, password, outputFile, infoString),
+                Map.of()
+        );
+    }
+
+    /**
+     * Builds the invocation for {@code web.bbj}: the username, password and token
+     * travel on {@link #USERNAME_VAR}, {@link #PASSWORD_VAR} and {@link #TOKEN_VAR} in
+     * the returned environment map; the returned parameter list never carries any of
+     * the three. All three keys are always written, even when a value is empty, so an
+     * inherited parent-environment variable of the same name can never be read in
+     * place of the intended value. The config path is appended as a positional
+     * argument only when it is non-empty, matching {@code web.bbj}'s tolerance of an
+     * absent final position.
+     */
+    // TASK-1-SKELETON: reproduces pre-fix behaviour (secrets in parameters, nothing in
+    // the environment) so the new unit tests compile and observe RED. Task 2 replaces
+    // this body with the real environment-channel implementation.
+    public static Invocation webRun(
+            String webRunnerDir, String webBbjPath, String client, String name, String programme,
+            String workingDir, String classpath, String token, String configPath) {
+        List<String> parameters = new ArrayList<>(List.of(
+                "-q", "-WD" + webRunnerDir, webBbjPath, "-",
+                client, name, programme, workingDir, "", "", classpath, token
+        ));
+        if (!configPath.isEmpty()) {
+            parameters.add(configPath);
+        }
+        return new Invocation(parameters, Map.of());
+    }
+
+    /**
+     * Creates a new empty temporary file, named {@code prefix<random>suffix} in the
+     * platform default temporary-file directory, that is owner-only for its whole
+     * life: no group or other principal can read or write it at any point between
+     * creation and deletion. On a filesystem whose default provider reports POSIX
+     * attribute-view support, the file is created with exactly the owner-read and
+     * owner-write permission bits set at creation time — there is no window in which
+     * the file exists with a broader mode. On a filesystem without POSIX support (for
+     * example, Windows), this falls back to a plain temporary-file creation in the
+     * per-user temporary directory, which is already ACL-restricted to the owning
+     * account; this is a reasoned position, not an equivalent guarantee.
+     */
+    // TASK-1-SKELETON: reproduces pre-fix behaviour (no permission attributes applied)
+    // so the new unit tests compile and observe RED. Task 3 replaces this body with
+    // the real owner-only implementation.
+    public static Path createOwnerOnlyFile(String prefix, String suffix) throws IOException {
+        return Files.createTempFile(prefix, suffix);
     }
 }

@@ -11,11 +11,17 @@ import { formatArgvForLog } from '../src/Commands/process-runner.js';
  * BBj runtime — the same shape as no-shell-command-construction.test.ts and
  * command-argv-injection.test.ts.
  *
- * Transient state (75-01-PLAN.md): only the validate path (em-validate-token.bbj /
- * buildEmValidateArgv) is migrated in this plan. em-login.bbj and web.bbj still read
- * their secrets via ARGV until plans 02 and 03 land — the cross-layer contract test
- * below is written to hold vacuously for those two scripts until then, not to assert
- * anything about their current (pre-migration) ARGV intake.
+ * Transient state (75-02-PLAN.md): as of this plan all three scripts —
+ * em-validate-token.bbj, em-login.bbj and web.bbj — read their credentials/token via
+ * ENV() with no positional fallback. The IntelliJ callers (BbjProcessSecretEnv.emLogin
+ * / webRun) already write the corresponding environment map. The VS Code TypeScript
+ * callers (buildEmLoginArgv / buildWebRunArgv in process-args.ts and their extension.ts
+ * call sites) are NOT migrated in this plan — that is plan 03's job — so those two
+ * builders still emit the pre-migration ARGV shape. The script-side and builder-side
+ * ARGV/positional-count cross-checks below are therefore written against the scripts'
+ * OWN final numbering (fixed expected index sets), not against the still-unmigrated
+ * `buildEmLoginArgv`/`buildWebRunArgv` output, so this suite is green after this plan
+ * without also requiring plan 03's VS Code changes.
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -74,6 +80,74 @@ describe('em-secret-env-channel guard — em-validate-token.bbj reads ENV, not A
         const missing = path.join(TOOLS_DIR, 'does-not-exist-em-validate-token.bbj');
         expect(() => readStrippedScript(missing)).toThrow(
             new RegExp(`Guarded source file not found at .*${'does-not-exist-em-validate-token.bbj'}`)
+        );
+    });
+});
+
+/** ARGV index count each script's final numbering settles on (75-02-PLAN.md). */
+const FINAL_POSITIONAL_COUNT: Record<string, number> = {
+    [EM_VALIDATE_SCRIPT]: 1,
+    [EM_LOGIN_SCRIPT]: 2,
+    [WEB_SCRIPT]: 6
+};
+
+describe('em-secret-env-channel guard — em-login.bbj reads ENV, not ARGV, for the credentials', () => {
+    test('obtains its username and password from ENV("BBJ_EM_USERNAME"/"BBJ_EM_PASSWORD") and reads exactly ARGV indices 1 and 2', () => {
+        const stripped = readStrippedScript(EM_LOGIN_SCRIPT);
+        expect(stripped).toContain('ENV("BBJ_EM_USERNAME"');
+        expect(stripped).toContain('ENV("BBJ_EM_PASSWORD"');
+        expect(distinctArgvIndices(stripped)).toEqual([1, 2]);
+    });
+
+    test('assigns no credential variable from an ARGV read', () => {
+        const stripped = readStrippedScript(EM_LOGIN_SCRIPT);
+        expect(stripped).not.toMatch(/username!\s*=\s*ARGV\(/);
+        expect(stripped).not.toMatch(/password!\s*=\s*ARGV\(/);
+    });
+
+    test('contains no statement that erases or deletes the output-file path before opening it', () => {
+        const stripped = readStrippedScript(EM_LOGIN_SCRIPT);
+        expect(stripped).not.toMatch(/erase[( ]/i);
+    });
+
+    test('the number of distinct ARGV(n) indices equals this script\'s final positional-argument count', () => {
+        const stripped = readStrippedScript(EM_LOGIN_SCRIPT);
+        expect(distinctArgvIndices(stripped).length).toBe(FINAL_POSITIONAL_COUNT[EM_LOGIN_SCRIPT]);
+    });
+
+    test('fails with an explicit message naming the path when the guarded script is absent', () => {
+        const missing = path.join(TOOLS_DIR, 'does-not-exist-em-login.bbj');
+        expect(() => readStrippedScript(missing)).toThrow(
+            new RegExp(`Guarded source file not found at .*${'does-not-exist-em-login.bbj'}`)
+        );
+    });
+});
+
+describe('em-secret-env-channel guard — web.bbj reads ENV, not ARGV, for the credentials and token', () => {
+    test('obtains its username, password and token from the three BBJ_EM_* ENV reads and reads exactly ARGV indices 1 through 6', () => {
+        const stripped = readStrippedScript(WEB_SCRIPT);
+        expect(stripped).toContain('ENV("BBJ_EM_USERNAME"');
+        expect(stripped).toContain('ENV("BBJ_EM_PASSWORD"');
+        expect(stripped).toContain('ENV("BBJ_EM_TOKEN"');
+        expect(distinctArgvIndices(stripped)).toEqual([1, 2, 3, 4, 5, 6]);
+    });
+
+    test('assigns no credential or token variable from an ARGV read', () => {
+        const stripped = readStrippedScript(WEB_SCRIPT);
+        expect(stripped).not.toMatch(/username!\s*=\s*ARGV\(/);
+        expect(stripped).not.toMatch(/password!\s*=\s*ARGV\(/);
+        expect(stripped).not.toMatch(/token!\s*=\s*ARGV\(/);
+    });
+
+    test('the number of distinct ARGV(n) indices equals this script\'s final positional-argument count', () => {
+        const stripped = readStrippedScript(WEB_SCRIPT);
+        expect(distinctArgvIndices(stripped).length).toBe(FINAL_POSITIONAL_COUNT[WEB_SCRIPT]);
+    });
+
+    test('fails with an explicit message naming the path when the guarded script is absent', () => {
+        const missing = path.join(TOOLS_DIR, 'does-not-exist-web.bbj');
+        expect(() => readStrippedScript(missing)).toThrow(
+            new RegExp(`Guarded source file not found at .*${'does-not-exist-web.bbj'}`)
         );
     });
 });
