@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { buildEmValidateArgv, type Argv } from '../src/Commands/process-args.js';
+import { buildEmValidateArgv, buildEmLoginArgv, buildWebRunArgv, type Argv } from '../src/Commands/process-args.js';
 import { formatArgvForLog } from '../src/Commands/process-runner.js';
 
 /**
@@ -11,17 +11,11 @@ import { formatArgvForLog } from '../src/Commands/process-runner.js';
  * BBj runtime — the same shape as no-shell-command-construction.test.ts and
  * command-argv-injection.test.ts.
  *
- * Transient state (75-02-PLAN.md): as of this plan all three scripts —
- * em-validate-token.bbj, em-login.bbj and web.bbj — read their credentials/token via
- * ENV() with no positional fallback. The IntelliJ callers (BbjProcessSecretEnv.emLogin
- * / webRun) already write the corresponding environment map. The VS Code TypeScript
- * callers (buildEmLoginArgv / buildWebRunArgv in process-args.ts and their extension.ts
- * call sites) are NOT migrated in this plan — that is plan 03's job — so those two
- * builders still emit the pre-migration ARGV shape. The script-side and builder-side
- * ARGV/positional-count cross-checks below are therefore written against the scripts'
- * OWN final numbering (fixed expected index sets), not against the still-unmigrated
- * `buildEmLoginArgv`/`buildWebRunArgv` output, so this suite is green after this plan
- * without also requiring plan 03's VS Code changes.
+ * All three scripts — em-validate-token.bbj, em-login.bbj and web.bbj — read their
+ * credentials/token via ENV() with no positional fallback. All three VS Code builders —
+ * buildEmValidateArgv, buildEmLoginArgv and buildWebRunArgv — emit an env map alongside a
+ * secret-free args array, and every VS Code call site that launches a secret-bearing
+ * process passes that map spread over process.env.
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -67,6 +61,17 @@ function distinctArgvIndices(strippedSource: string): number[] {
 
 function bbjEmNamesIn(source: string): string[] {
     return [...new Set([...source.matchAll(/BBJ_EM_[A-Z]+/g)].map((m) => m[0]))];
+}
+
+/** Strip `//` line comments, mirroring no-shell-command-construction.test.ts. */
+function stripLineComments(source: string): string {
+    return source.replace(/\/\/.*$/gm, '');
+}
+
+/** Number of `args` elements a builder emits after the `-` separator. */
+function positionalArgCount(args: string[]): number {
+    const separatorIndex = args.indexOf('-');
+    return args.length - separatorIndex - 1;
 }
 
 describe('em-secret-env-channel guard — em-validate-token.bbj reads ENV, not ARGV, for the token', () => {
@@ -179,6 +184,110 @@ describe('em-secret-env-channel guard — buildEmValidateArgv', () => {
     });
 });
 
+describe('em-secret-env-channel guard — buildEmLoginArgv', () => {
+    const OPTS = {
+        home: '/opt/bbj',
+        platform: 'linux' as NodeJS.Platform,
+        scriptPath: '/ext/tools/em-login.bbj',
+        tmpFile: '/tmp/out.tmp',
+        infoString: 'VS Code on Linux as dev'
+    };
+
+    test('returns an env map carrying the username under BBJ_EM_USERNAME and the password under BBJ_EM_PASSWORD, and a five-element args array containing neither value', () => {
+        const username = 'admin';
+        const password = 'sup3r-secret';
+        const argv = buildEmLoginArgv({ ...OPTS, username, password });
+
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe(username);
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe(password);
+        expect(argv.args).toEqual(['-q', OPTS.scriptPath, '-', OPTS.tmpFile, OPTS.infoString]);
+        expect(argv.args).toHaveLength(5);
+        expect(argv.args.some((a) => a.includes(username))).toBe(false);
+        expect(argv.args.some((a) => a.includes(password))).toBe(false);
+    });
+
+    test('sets both credential keys even when both values are the empty string', () => {
+        const argv = buildEmLoginArgv({ ...OPTS, username: '', password: '' });
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe('');
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe('');
+    });
+
+    test('a credential containing non-ASCII characters and shell-significant bytes is carried byte-identically as an environment value and appears in no args element', () => {
+        const credential = 'pässwörd;`$(rm -rf)` ';
+        const argv = buildEmLoginArgv({ ...OPTS, username: credential, password: credential });
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe(credential);
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe(credential);
+        expect(argv.args.some((a) => a.includes(credential))).toBe(false);
+    });
+
+    test('the number of distinct ARGV(n) indices em-login.bbj reads equals the number of positional args buildEmLoginArgv emits after the "-" separator', () => {
+        const stripped = readStrippedScript(EM_LOGIN_SCRIPT);
+        const argv = buildEmLoginArgv({ ...OPTS, username: 'admin', password: 'secret' });
+        expect(distinctArgvIndices(stripped).length).toBe(positionalArgCount(argv.args));
+    });
+});
+
+describe('em-secret-env-channel guard — buildWebRunArgv', () => {
+    const OPTS = {
+        home: '/opt/bbj',
+        platform: 'linux' as NodeJS.Platform,
+        toolsDir: '/ext/tools',
+        client: 'BUI',
+        name: 'myapp',
+        programme: 'myapp.bbj',
+        workingDir: '/w',
+        classpathEntry: 'bbj_default',
+        configPath: '/cfg/config.bbx'
+    };
+
+    test('returns an env map carrying all three secrets under their keys, and a ten-element args array containing none of them', () => {
+        const username = 'admin';
+        const password = 'sup3r-secret';
+        const token = 'tok-abc-123';
+        const argv = buildWebRunArgv({ ...OPTS, username, password, token });
+
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe(username);
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe(password);
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe(token);
+        expect(argv.args).toEqual([
+            '-q',
+            `-WD${OPTS.toolsDir}`,
+            `${OPTS.toolsDir}/web.bbj`,
+            '-',
+            OPTS.client,
+            OPTS.name,
+            OPTS.programme,
+            OPTS.workingDir,
+            OPTS.classpathEntry,
+            OPTS.configPath
+        ]);
+        expect(argv.args).toHaveLength(10);
+        for (const secret of [username, password, token]) {
+            expect(argv.args.some((a) => a.includes(secret))).toBe(false);
+        }
+    });
+
+    test('sets all three keys even when all three values are empty', () => {
+        const argv = buildWebRunArgv({ ...OPTS, username: '', password: '', token: '' });
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe('');
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe('');
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe('');
+    });
+
+    test('a token containing non-ASCII characters and shell-significant bytes is carried byte-identically as an environment value and appears in no args element', () => {
+        const token = 'tökén;`$(rm -rf)` ';
+        const argv = buildWebRunArgv({ ...OPTS, username: 'admin', password: 'secret', token });
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe(token);
+        expect(argv.args.some((a) => a.includes(token))).toBe(false);
+    });
+
+    test('the number of distinct ARGV(n) indices web.bbj reads equals the number of positional args buildWebRunArgv emits after the "-" separator', () => {
+        const stripped = readStrippedScript(WEB_SCRIPT);
+        const argv = buildWebRunArgv({ ...OPTS, username: 'admin', password: 'secret', token: 'tok' });
+        expect(distinctArgvIndices(stripped).length).toBe(positionalArgCount(argv.args));
+    });
+});
+
 describe('em-secret-env-channel guard — cross-layer BBJ_EM_* name contract', () => {
     test('every BBJ_EM_* literal in BbjProcessSecretEnv.java and process-args.ts is drawn from the three-name vocabulary, and every name a script reads via ENV() is a name at least one builder writes', () => {
         const javaSource = readFileOrThrow(BBJ_PROCESS_SECRET_ENV_JAVA);
@@ -216,11 +325,6 @@ describe('em-secret-env-channel guard — the environment map has no path to the
     const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
     const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 
-    /** Strip `//` line comments, mirroring no-shell-command-construction.test.ts. */
-    function stripLineComments(source: string): string {
-        return source.replace(/\/\/.*$/gm, '');
-    }
-
     function appendLineCallArguments(filePath: string): string[] {
         const source = stripLineComments(readFileOrThrow(filePath));
         return [...source.matchAll(/outputChannel\.appendLine\((.*)\);/g)].map((m) => m[1]);
@@ -238,14 +342,15 @@ describe('em-secret-env-channel guard — the environment map has no path to the
         }
     });
 
-    test('neither file passes an options object, nor a bare argv/invocation, directly to appendLine', () => {
+    test('neither file passes an options object, an environment map, or a bare argv/invocation, directly to appendLine', () => {
         for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
             for (const call of appendLineCallArguments(filePath)) {
                 expect(call).not.toMatch(/\boptions\b/);
-                // A bare "argv" (or "invocation") mention that is not inside a
-                // formatArgvForLog( call would be a builder result logged directly.
+                // A bare "argv"/"invocation"/"env" mention that is not inside a
+                // formatArgvForLog( call would be a builder result or environment
+                // map logged directly.
                 const withoutRedactedCall = call.replace(/formatArgvForLog\([^)]*\)/g, '');
-                expect(withoutRedactedCall).not.toMatch(/\b(argv|invocation)\b/);
+                expect(withoutRedactedCall).not.toMatch(/\b(argv|invocation|env)\b/);
             }
         }
     });
@@ -261,5 +366,91 @@ describe('em-secret-env-channel guard — the environment map has no path to the
         const rendered = formatArgvForLog(argv);
 
         expect(rendered).not.toContain(secretValue);
+    });
+});
+
+describe('em-secret-env-channel guard — VS Code call sites spread process.env and reference only exported builders', () => {
+    const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
+    const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
+    const SECRET_BUILDERS = ['buildEmValidateArgv', 'buildEmLoginArgv', 'buildWebRunArgv'];
+
+    /** Returns the full text of the balanced-parens call starting at `callStartIndex` (the index of the call's identifier). */
+    function extractBalancedCall(source: string, callStartIndex: number): string {
+        const openParenIndex = source.indexOf('(', callStartIndex);
+        let depth = 0;
+        for (let i = openParenIndex; i < source.length; i++) {
+            if (source[i] === '(') depth++;
+            else if (source[i] === ')') {
+                depth--;
+                if (depth === 0) {
+                    return source.slice(callStartIndex, i + 1);
+                }
+            }
+        }
+        throw new Error(`Unbalanced parentheses for the call starting at index ${callStartIndex}`);
+    }
+
+    /**
+     * For each secret-bearing builder call site in `source`, finds the nearest following
+     * `runProcess(`/`runProcessCallback(` call and returns its full text (options object
+     * included). A non-secret-bearing launcher call (following buildRunArgv,
+     * buildCompileArgv or buildDecompileArgv) is never collected.
+     */
+    function launcherCallsFollowingSecretBuilders(filePath: string, source: string): string[] {
+        const results: string[] = [];
+        for (const builder of SECRET_BUILDERS) {
+            const builderRegex = new RegExp(`\\b${builder}\\(`, 'g');
+            let match: RegExpExecArray | null;
+            while ((match = builderRegex.exec(source)) !== null) {
+                const rest = source.slice(match.index);
+                const launcherMatch = rest.match(/\brun(?:ProcessCallback|Process)\(/);
+                if (!launcherMatch || launcherMatch.index === undefined) {
+                    throw new Error(`No process-launcher call found following ${builder}( in ${filePath}`);
+                }
+                const launcherStart = match.index + launcherMatch.index;
+                results.push(extractBalancedCall(source, launcherStart));
+            }
+        }
+        return results;
+    }
+
+    function builderCallsUsed(source: string): string[] {
+        return [...new Set([...source.matchAll(/\b(build[A-Za-z]*Argv)\(/g)].map((m) => m[1]))];
+    }
+
+    function exportedBuilderNames(tsSource: string): string[] {
+        return [...new Set([...tsSource.matchAll(/export function (build[A-Za-z]*Argv)\(/g)].map((m) => m[1]))];
+    }
+
+    test('every call to the process launcher that follows a secret-bearing builder passes an options object whose env property spreads process.env', () => {
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+            const source = stripLineComments(readFileOrThrow(filePath));
+            const launcherCalls = launcherCallsFollowingSecretBuilders(filePath, source);
+            expect(launcherCalls.length).toBeGreaterThan(0);
+            for (const call of launcherCalls) {
+                expect(call).toMatch(/env:\s*\{[^}]*\.\.\.process\.env/);
+            }
+        }
+    });
+
+    test('neither file references a builder that is not exported from process-args.ts', () => {
+        const tsSource = readFileOrThrow(PROCESS_ARGS_TS);
+        const exported = exportedBuilderNames(tsSource);
+        expect(exported.length).toBeGreaterThan(0);
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+            const source = stripLineComments(readFileOrThrow(filePath));
+            const used = builderCallsUsed(source);
+            expect(used.length).toBeGreaterThan(0);
+            for (const name of used) {
+                expect(exported).toContain(name);
+            }
+        }
+    });
+
+    test('fails with an explicit message naming the path when extension.ts or Commands.cjs is absent', () => {
+        const missing = path.join(REPO_ROOT, 'src', 'does-not-exist-extension.ts');
+        expect(() => readFileOrThrow(missing)).toThrow(
+            new RegExp(`Guarded source file not found at .*does-not-exist-extension\\.ts`)
+        );
     });
 });

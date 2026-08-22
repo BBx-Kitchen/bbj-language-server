@@ -132,7 +132,7 @@ describe('process-args - buildWebRunArgv (bbj.web.apps.<file>.name / bbj.configP
         configPath: '/cfg/config.bbx'
     };
 
-    test('emits the thirteen positional elements in today\'s order', () => {
+    test('emits the ten positional elements in today\'s order, with credentials and token on env instead', () => {
         const argv = buildWebRunArgv(baseOpts);
         expect(argv.file).toBe('/opt/bbj/bin/bbj');
         expect(argv.args).toEqual([
@@ -144,21 +144,21 @@ describe('process-args - buildWebRunArgv (bbj.web.apps.<file>.name / bbj.configP
             'myapp',
             'myapp.bbj',
             '/w',
-            'user',
-            'pass',
             'bbj_default',
-            '',
             '/cfg/config.bbx'
         ]);
-        expect(argv.args).toHaveLength(13);
+        expect(argv.args).toHaveLength(10);
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe('user');
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe('pass');
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe('');
     });
 
-    test('empty-string credentials are preserved as empty elements, not dropped', () => {
-        const argv = buildWebRunArgv({ ...baseOpts, username: '', password: '', token: 'tok' });
-        expect(argv.args[8]).toBe('');
-        expect(argv.args[9]).toBe('');
-        expect(argv.args[11]).toBe('tok');
-        expect(argv.args).toHaveLength(13);
+    test('empty credentials and token are carried as empty environment values, not dropped, and are absent from args', () => {
+        const argv = buildWebRunArgv({ ...baseOpts, username: '', password: '', token: '' });
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe('');
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe('');
+        expect(argv.env?.['BBJ_EM_TOKEN']).toBe('');
+        expect(argv.args).toHaveLength(10);
     });
 
     test('an app name carrying a shell metacharacter is one verbatim element', () => {
@@ -172,7 +172,7 @@ describe('process-args - buildWebRunArgv (bbj.web.apps.<file>.name / bbj.configP
 
     test('a configPath carrying a shell metacharacter is one verbatim element', () => {
         const argv = buildWebRunArgv({ ...baseOpts, configPath: METACHAR_FIXTURE });
-        expect(argv.args[12]).toBe(METACHAR_FIXTURE);
+        expect(argv.args[9]).toBe(METACHAR_FIXTURE);
     });
 
     test('a fileName (programme) carrying a shell metacharacter is one verbatim element', () => {
@@ -271,7 +271,7 @@ describe('process-args - EM launches', () => {
         expect(argv.args.some((a) => a.includes(METACHAR_FIXTURE))).toBe(false);
     });
 
-    test('buildEmLoginArgv returns the seven elements in order', () => {
+    test('buildEmLoginArgv returns the five elements in order, with credentials on env instead', () => {
         const argv = buildEmLoginArgv({
             home: '/opt/bbj',
             platform: 'linux',
@@ -286,14 +286,14 @@ describe('process-args - EM launches', () => {
             '-q',
             '/ext/tools/em-login.bbj',
             '-',
-            'admin',
-            'secret',
             '/tmp/out.tmp',
             'VS Code on Linux as dev'
         ]);
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe('admin');
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe('secret');
     });
 
-    test('buildEmLoginArgv keeps metacharacter-bearing credentials in their own element and preserves spaces in the info string', () => {
+    test('buildEmLoginArgv keeps metacharacter-bearing credentials on the environment side and preserves spaces in the info string at its new index', () => {
         const argv = buildEmLoginArgv({
             home: '/opt/bbj',
             platform: 'linux',
@@ -303,8 +303,9 @@ describe('process-args - EM launches', () => {
             tmpFile: '/tmp/out.tmp',
             infoString: 'VS Code on Linux as dev'
         });
-        expect(argv.args[3]).toBe(METACHAR_FIXTURE);
-        expect(argv.args[4]).toBe(METACHAR_FIXTURE);
-        expect(argv.args[6]).toBe('VS Code on Linux as dev');
+        expect(argv.env?.['BBJ_EM_USERNAME']).toBe(METACHAR_FIXTURE);
+        expect(argv.env?.['BBJ_EM_PASSWORD']).toBe(METACHAR_FIXTURE);
+        expect(argv.args.some((a) => a.includes(METACHAR_FIXTURE))).toBe(false);
+        expect(argv.args[4]).toBe('VS Code on Linux as dev');
     });
 });
