@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
-import { buildEmValidateArgv } from '../src/Commands/process-args.js';
+import { buildEmValidateArgv, type Argv } from '../src/Commands/process-args.js';
+import { formatArgvForLog } from '../src/Commands/process-runner.js';
 
 /**
  * GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8: these guards prove the Enterprise Manager
@@ -134,5 +135,57 @@ describe('em-secret-env-channel guard — cross-layer BBJ_EM_* name contract', (
         expect(() => readFileOrThrow(missing)).toThrow(
             new RegExp(`Guarded source file not found at .*does-not-exist\\.bbj`)
         );
+    });
+});
+
+describe('em-secret-env-channel guard — the environment map has no path to the debug log', () => {
+    const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
+    const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
+
+    /** Strip `//` line comments, mirroring no-shell-command-construction.test.ts. */
+    function stripLineComments(source: string): string {
+        return source.replace(/\/\/.*$/gm, '');
+    }
+
+    function appendLineCallArguments(filePath: string): string[] {
+        const source = stripLineComments(readFileOrThrow(filePath));
+        return [...source.matchAll(/outputChannel\.appendLine\((.*)\);/g)].map((m) => m[1]);
+    }
+
+    test('every appendLine call whose argument mentions an invocation (argv) renders it through formatArgvForLog', () => {
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+            const calls = appendLineCallArguments(filePath);
+            expect(calls.length).toBeGreaterThan(0);
+            for (const call of calls) {
+                if (/\bargv\b/.test(call)) {
+                    expect(call).toMatch(/formatArgvForLog\(/);
+                }
+            }
+        }
+    });
+
+    test('neither file passes an options object, nor a bare argv/invocation, directly to appendLine', () => {
+        for (const filePath of [EXTENSION_TS, COMMANDS_CJS]) {
+            for (const call of appendLineCallArguments(filePath)) {
+                expect(call).not.toMatch(/\boptions\b/);
+                // A bare "argv" (or "invocation") mention that is not inside a
+                // formatArgvForLog( call would be a builder result logged directly.
+                const withoutRedactedCall = call.replace(/formatArgvForLog\([^)]*\)/g, '');
+                expect(withoutRedactedCall).not.toMatch(/\b(argv|invocation)\b/);
+            }
+        }
+    });
+
+    test('formatArgvForLog applied to an Argv carrying a populated env map returns a string containing none of that map\'s values', () => {
+        const secretValue = 'super-secret-token-value-9f3c';
+        const argv: Argv = {
+            file: '/opt/bbj/bin/bbj',
+            args: ['-q', '/ext/tools/em-validate-token.bbj', '-', '/tmp/out.tmp'],
+            env: { BBJ_EM_TOKEN: secretValue }
+        };
+
+        const rendered = formatArgvForLog(argv);
+
+        expect(rendered).not.toContain(secretValue);
     });
 });
