@@ -36,8 +36,8 @@ reviewed, verified, merged to `main`, and released — after which the advisory 
 - [x] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
 - [x] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
 - [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
-- [ ] **SEC-06**: GHSA-33x9-cpwv-xcv2 is remediated, verified, and its fix merged
-- [ ] **SEC-07**: GHSA-xxp5-vv2w-42q8 is remediated, verified, and its fix merged
+- [x] **SEC-06**: GHSA-33x9-cpwv-xcv2 is remediated, verified, and its fix merged
+- [x] **SEC-07**: GHSA-xxp5-vv2w-42q8 is remediated, verified, and its fix merged
 - [ ] **SEC-08**: GHSA-h43f-jcjr-2g4j is remediated, verified, and its fix merged
 
 ### Process
