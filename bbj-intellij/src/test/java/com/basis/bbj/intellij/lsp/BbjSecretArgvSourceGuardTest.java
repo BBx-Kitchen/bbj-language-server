@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -84,15 +86,21 @@ class BbjSecretArgvSourceGuardTest {
                 "BbjProcessSecretEnv is not referenced in BbjRunActionBase.java");
     }
 
+    /**
+     * CR-01 / phase-75 gap fix: a source-ordering check ({@code indexOf("BbjProcessSecretEnv")
+     * < indexOf("withEnvironment(")}) is vacuous by construction, because
+     * {@code import ...BbjProcessSecretEnv;} is necessarily the first occurrence of that
+     * literal in any valid Java file — the check would pass for a regression where
+     * {@code withEnvironment(...)} receives an unrelated, independently-built map sitting
+     * anywhere after that import. This asserts the actual data-flow connection instead:
+     * the argument passed to {@code withEnvironment(...)} must be the specific
+     * {@code Invocation}'s own {@code .environment()} map, not merely textually present
+     * somewhere after an unrelated import.
+     */
     @Test
-    void theBbjProcessSecretEnvReferencePrecedesTheWithEnvironmentCall() {
+    void theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap() {
         String text = readGuardedSource(RUN_ACTION_BASE);
-        int secretEnvIndex = text.indexOf("BbjProcessSecretEnv");
-        int withEnvironmentIndex = text.indexOf("withEnvironment(");
-        assertTrue(secretEnvIndex >= 0, "BbjProcessSecretEnv is not present in BbjRunActionBase.java");
-        assertTrue(withEnvironmentIndex >= 0, "withEnvironment( is not present in BbjRunActionBase.java");
-        assertTrue(secretEnvIndex < withEnvironmentIndex,
-                "BbjProcessSecretEnv must be referenced before the withEnvironment( call");
+        assertWithEnvironmentArgumentIsInvocationEnvironment(text, RUN_ACTION_BASE.toString());
     }
 
     @Test
@@ -133,18 +141,70 @@ class BbjSecretArgvSourceGuardTest {
                 }));
     }
 
+    /** Same CR-01 fix as {@link #theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap()}, across all four call sites. */
     @Test
-    void allFourFilesReferenceBbjProcessSecretEnvBeforeCallingWithEnvironment() {
-        assertAll("BbjProcessSecretEnv precedes withEnvironment(",
+    void allFourFilesPassTheInvocationsEnvironmentMapToWithEnvironment() {
+        assertAll("withEnvironment( argument is the Invocation's own environment() map",
                 ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
                     String text = readGuardedSource(source);
-                    int secretEnvIndex = text.indexOf("BbjProcessSecretEnv");
-                    int withEnvironmentIndex = text.indexOf("withEnvironment(");
-                    assertTrue(secretEnvIndex >= 0, "BbjProcessSecretEnv is not present in " + source);
-                    assertTrue(withEnvironmentIndex >= 0, "withEnvironment( is not present in " + source);
-                    assertTrue(secretEnvIndex < withEnvironmentIndex,
-                            "BbjProcessSecretEnv must be referenced before the withEnvironment( call in " + source);
+                    assertWithEnvironmentArgumentIsInvocationEnvironment(text, source.toString());
                 }));
+    }
+
+    /**
+     * Extracts the exact argument text passed to {@code withEnvironment(...)} (balanced-
+     * parenthesis scan, so a nested call like {@code invocation.environment()} is captured
+     * whole) and asserts it is exactly {@code "<var>.environment()"} where {@code <var>} is
+     * the local variable the file itself declared via
+     * {@code BbjProcessSecretEnv.Invocation <var> = BbjProcessSecretEnv.xxx(...)}. This is a
+     * genuine data-flow assertion, not a token-ordering one: a regression where
+     * {@code withEnvironment(...)} receives an independently-built map (e.g.
+     * {@code withEnvironment(Map.of())}) — even sitting textually after the
+     * {@code BbjProcessSecretEnv} import and reachable via a bare {@code withEnvironment(}
+     * substring search — fails this assertion because the extracted argument no longer
+     * equals {@code invocation.environment()}.
+     */
+    private static void assertWithEnvironmentArgumentIsInvocationEnvironment(String text, String sourceLabel) {
+        String invocationVar = extractInvocationVariableName(text);
+        assertTrue(invocationVar != null,
+                "No \"BbjProcessSecretEnv.Invocation <var> = ...\" declaration found in " + sourceLabel);
+        String argument = extractBalancedCallArgument(text, "withEnvironment(");
+        assertTrue(argument != null, "No withEnvironment( call found in " + sourceLabel);
+        assertEquals(invocationVar + ".environment()", argument,
+                "withEnvironment( must be called with the Invocation's own environment() map ("
+                        + invocationVar + ".environment()) -- not an independently constructed value -- in "
+                        + sourceLabel + "; found: withEnvironment(" + argument + ")");
+    }
+
+    private static String extractInvocationVariableName(String text) {
+        Matcher m = Pattern.compile("BbjProcessSecretEnv\\.Invocation\\s+(\\w+)\\s*=").matcher(text);
+        return m.find() ? m.group(1) : null;
+    }
+
+    /** Scans forward from the end of {@code callPrefix} (which must end in "(") to the matching close paren. */
+    private static String extractBalancedCallArgument(String text, String callPrefix) {
+        int start = text.indexOf(callPrefix);
+        if (start < 0) {
+            return null;
+        }
+        int argsStart = start + callPrefix.length();
+        int depth = 1;
+        int i = argsStart;
+        while (i < text.length() && depth > 0) {
+            char c = text.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+            }
+            if (depth > 0) {
+                i++;
+            }
+        }
+        if (depth != 0) {
+            return null;
+        }
+        return text.substring(argsStart, i).trim();
     }
 
     @Test
