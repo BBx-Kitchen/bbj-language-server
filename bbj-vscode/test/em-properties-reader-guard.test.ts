@@ -36,14 +36,12 @@ const COMMANDS_CJS = path.join(REPO_ROOT, 'src/Commands/Commands.cjs');
 
 describe('properties-reader@3.0.1 export shape', () => {
     test('the bare module export is an object, not directly callable', () => {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const PropertiesReader = require('properties-reader');
         expect(typeof PropertiesReader).toBe('object');
         expect(() => (PropertiesReader as unknown as (p: string) => unknown)('/nonexistent/path')).toThrow(/is not a function/);
     });
 
     test('.default is the callable factory function', () => {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const PropertiesReader = require('properties-reader');
         expect(typeof PropertiesReader.default).toBe('function');
     });
