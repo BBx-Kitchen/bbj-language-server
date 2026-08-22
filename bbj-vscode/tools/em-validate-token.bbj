@@ -6,7 +6,13 @@ rem   BBJ_EM_TOKEN - the JWT to validate
 
 ? 'HIDE'
 
-token! = ENV("BBJ_EM_TOKEN",err=*next)
+rem CLIENTENV() reads the spawning process's environment; ENV() does not on
+rem macOS (confirmed by direct probe: ENV() reads back null there while
+rem CLIENTENV() sees the same value). Read CLIENTENV() first and fall back to
+rem ENV() only if it comes back empty, in case a platform not yet tested
+rem (e.g. Windows) turns out to be the mirror image.
+token! = CLIENTENV("BBJ_EM_TOKEN",err=*next)
+if (token! = null() or token! = "") then token! = ENV("BBJ_EM_TOKEN",err=*next)
 outputFile! = ARGV(1,err=*next)
 
 if (token! = null() or token! = "") then

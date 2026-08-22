@@ -8,8 +8,15 @@ rem   BBJ_EM_PASSWORD - the EM password
 
 ? 'HIDE'
 
-username! = ENV("BBJ_EM_USERNAME",err=*next)
-password! = ENV("BBJ_EM_PASSWORD",err=*next)
+rem CLIENTENV() reads the spawning process's environment; ENV() does not on
+rem macOS (confirmed by direct probe: ENV() reads back null there while
+rem CLIENTENV() sees the same value). Read CLIENTENV() first and fall back to
+rem ENV() only if it comes back empty, in case a platform not yet tested
+rem (e.g. Windows) turns out to be the mirror image.
+username! = CLIENTENV("BBJ_EM_USERNAME",err=*next)
+if (username! = null() or username! = "") then username! = ENV("BBJ_EM_USERNAME",err=*next)
+password! = CLIENTENV("BBJ_EM_PASSWORD",err=*next)
+if (password! = null() or password! = "") then password! = ENV("BBJ_EM_PASSWORD",err=*next)
 outputFile! = ARGV(1,err=*next)
 infoString! = ARGV(2,err=*next)
 
