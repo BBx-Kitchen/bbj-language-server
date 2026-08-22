@@ -32,9 +32,47 @@
  * this module is unit-testable with zero mocks.
  */
 
+import * as fs from 'fs';
+
 export interface Argv {
     file: string;
     args: string[];
+    env?: Record<string, string>;
+}
+
+/**
+ * The three Enterprise Manager secret environment-variable names, in one spelling shared
+ * by every VS Code call site. `em-validate-token.bbj`, `em-login.bbj` and `web.bbj` read
+ * the same three names via `ENV(...)` on the BBj side; `BbjProcessSecretEnv` on the
+ * IntelliJ side carries the identical literals (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
+export const EM_ENV_VARS = Object.freeze({
+    USERNAME: 'BBJ_EM_USERNAME',
+    PASSWORD: 'BBJ_EM_PASSWORD',
+    TOKEN: 'BBJ_EM_TOKEN'
+});
+
+/**
+ * Creates an empty file at `filePath`, owner-only from the moment it exists, and
+ * returns `filePath`. Uses an exclusive create so a pre-placed file or symlink at a
+ * guessable path (the EM login and EM validate output paths are built from
+ * `os.tmpdir()` plus a millisecond timestamp) causes a failed call rather than a
+ * silent write into an attacker-controlled target.
+ *
+ * On a non-Windows platform the resulting POSIX mode is set explicitly via
+ * `chmodSync` after creation — not relied on from the creation call's mode
+ * argument alone, because the process umask can clear bits requested at creation
+ * time. On Windows no POSIX mode is applied; the per-user temporary directory's
+ * ACL restriction is relied on instead, a reasoned position, not an equivalent
+ * guarantee (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
+export function createOwnerOnlyFile(filePath: string): string {
+    const fd = fs.openSync(filePath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY, 0o600);
+    fs.closeSync(fd);
+    if (process.platform !== 'win32') {
+        fs.chmodSync(filePath, 0o600);
+    }
+    return filePath;
 }
 
 const exeSuffix = (platform: NodeJS.Platform): string => (platform === 'win32' ? '.exe' : '');
@@ -95,9 +133,11 @@ export interface BuildWebRunArgvOptions {
 
 /**
  * Reproduces today's `runWeb` invocation: `bbj -q -WD<toolsDir> <toolsDir>/web.bbj -
- * <client> <name> <programme> <workingDir> <username> <password> <classpath> <token>
- * <configPath>`. Empty-string credentials are preserved as empty elements, matching
- * today's behaviour, rather than dropped.
+ * <client> <name> <programme> <workingDir> <classpath> <configPath>`. The username,
+ * password and token travel on the returned `env` map under `EM_ENV_VARS`, never in
+ * `args` — all three keys are always written, even when empty, so an inherited
+ * environment variable of the same name can never be read in their place
+ * (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
  */
 export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
     const {
@@ -123,13 +163,18 @@ export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
         name,
         programme,
         workingDir,
-        username,
-        password,
         classpathEntry,
-        token,
         configPath
     ];
-    return { file: bbjBin(home, platform), args };
+    return {
+        file: bbjBin(home, platform),
+        args,
+        env: {
+            [EM_ENV_VARS.USERNAME]: username,
+            [EM_ENV_VARS.PASSWORD]: password,
+            [EM_ENV_VARS.TOKEN]: token
+        }
+    };
 }
 
 export interface BuildCompileArgvOptions {
@@ -181,10 +226,19 @@ export interface BuildEmValidateArgvOptions {
     tmpFile: string;
 }
 
-/** Reproduces today's `bbj -q em-validate-token.bbj - <token> <tmpFile>` invocation. */
+/**
+ * Reproduces today's `bbj -q em-validate-token.bbj - <tmpFile>` invocation. The token
+ * travels on the returned `env` map under `EM_ENV_VARS.TOKEN`, never in `args` — it is
+ * always written, even when empty, so an inherited environment variable of the same
+ * name can never be read in its place (GHSA-33x9-cpwv-xcv2).
+ */
 export function buildEmValidateArgv(opts: BuildEmValidateArgvOptions): Argv {
     const { home, platform = process.platform, scriptPath, token, tmpFile } = opts;
-    return { file: bbjBin(home, platform), args: ['-q', scriptPath, '-', token, tmpFile] };
+    return {
+        file: bbjBin(home, platform),
+        args: ['-q', scriptPath, '-', tmpFile],
+        env: { [EM_ENV_VARS.TOKEN]: token }
+    };
 }
 
 export interface BuildEmLoginArgvOptions {
@@ -197,8 +251,21 @@ export interface BuildEmLoginArgvOptions {
     infoString: string;
 }
 
-/** Reproduces today's `bbj -q em-login.bbj - <username> <password> <tmpFile> <infoString>` invocation. */
+/**
+ * Reproduces today's `bbj -q em-login.bbj - <tmpFile> <infoString>` invocation. The
+ * username and password travel on the returned `env` map under `EM_ENV_VARS`, never
+ * in `args` — both keys are always written, even when empty, so an inherited
+ * environment variable of the same name can never be read in their place
+ * (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
 export function buildEmLoginArgv(opts: BuildEmLoginArgvOptions): Argv {
     const { home, platform = process.platform, scriptPath, username, password, tmpFile, infoString } = opts;
-    return { file: bbjBin(home, platform), args: ['-q', scriptPath, '-', username, password, tmpFile, infoString] };
+    return {
+        file: bbjBin(home, platform),
+        args: ['-q', scriptPath, '-', tmpFile, infoString],
+        env: {
+            [EM_ENV_VARS.USERNAME]: username,
+            [EM_ENV_VARS.PASSWORD]: password
+        }
+    };
 }

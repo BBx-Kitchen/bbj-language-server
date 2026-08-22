@@ -1,14 +1,15 @@
 rem BBj EM Token Validation - Tests token against EM before usage
 rem Parameters:
-rem   1) token
-rem   2) outputFile (path to temp file for writing result)
+rem   1) outputFile (path to temp file for writing result)
+rem Environment:
+rem   BBJ_EM_TOKEN - the JWT to validate
 
 ? 'HIDE'
 
-token! = ARGV(1,err=*next)
-outputFile! = ARGV(2,err=*next)
+token! = ENV("BBJ_EM_TOKEN",err=*next)
+outputFile! = ARGV(1,err=*next)
 
-if (token! = null()) then
+if (token! = null() or token! = "") then
     ch=unt
     open(ch,mode="O_CREATE,O_TRUNC")outputFile!
     write(ch)"INVALID"

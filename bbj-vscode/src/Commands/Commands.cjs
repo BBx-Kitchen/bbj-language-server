@@ -116,7 +116,10 @@ const runWeb = (params, client, credentials) => {
     outputChannel.appendLine(`${client} run: ${formatArgvForLog(argv, [token, password])}`);
   }
 
-  runProcessCallback(argv, {}, (err, stdout, stderr) => {
+  // The secret env map must be spread over process.env, not passed alone —
+  // execFile replaces the child's environment wholesale when options.env is
+  // set, and omitting process.env here would strip PATH/BBJ_HOME from the child.
+  runProcessCallback(argv, { env: { ...process.env, ...argv.env } }, (err, stdout, stderr) => {
     if (err) {
       const errorMsg = `Failed to run "${programme}": ${err.message || err}${stderr ? '\n\nDetails:\n' + stderr : ''}`;
       vscode.window.showErrorMessage(errorMsg);

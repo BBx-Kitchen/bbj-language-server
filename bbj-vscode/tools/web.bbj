@@ -4,11 +4,12 @@ rem   1) client [BUI|DWC]
 rem   2) app name
 rem   3) program file
 rem   4) working directory
-rem   5) username
-rem   6) password
-rem   7) session-specific classpath
-rem   8) auth token (optional, if present uses token-based auth)
-rem   9) config file path (optional, if present uses custom config.bbx)
+rem   5) session-specific classpath
+rem   6) config file path (optional, if present uses custom config.bbx)
+rem Environment:
+rem   BBJ_EM_USERNAME - EM username (legacy username/password authentication fallback)
+rem   BBJ_EM_PASSWORD - EM password (legacy username/password authentication fallback)
+rem   BBJ_EM_TOKEN - auth token (optional, if present uses token-based auth)
 
 ? 'HIDE'
 
@@ -16,19 +17,19 @@ isDWC!      = iff(ARGV(1) = "DWC", 1, 0)
 name!       = ARGV(2)
 programme!  = ARGV(3)
 wd!         = ARGV(4)
-username!   = ARGV(5,err=*next)
-password!   = ARGV(6,err=*next)
-sscp!       = ARGV(7,err=*next)
-token!      = ARGV(8,err=*next)
-configFile! = ARGV(9,err=*next)
+sscp!       = ARGV(5,err=*next)
+configFile! = ARGV(6,err=*next)
+username!   = ENV("BBJ_EM_USERNAME",err=*next)
+password!   = ENV("BBJ_EM_PASSWORD",err=*next)
+token!      = ENV("BBJ_EM_TOKEN",err=*next)
 
 rem Token-based authentication if token is provided
 if (token! <> null() and token! > "") then
     admin! = BBjAdminFactory.getBBjAdmin(token!,err=login_failed)
 else
     rem Legacy username/password authentication (backward compatible)
-    if (username! = null()) username! = "admin"
-    if (password! = null()) password! = "admin123"
+    if (username! = null() or username! = "") username! = "admin"
+    if (password! = null() or password! = "") password! = "admin123"
     admin! = BBjAdminFactory.getBBjAdmin(username!, password!,err=login_failed)
 fi
 configuration! = admin!.getRemoteConfiguration()

@@ -2,6 +2,7 @@ package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.BbjIcons;
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.Messages;
@@ -108,26 +109,17 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String classpath = (state.classpathEntry != null && !"--".equals(state.classpathEntry)) ? state.classpathEntry : "";
 
-        // Get config path - only add if configured (web.bbj handles absent ARGV(9) gracefully)
+        // Get config path - only add if configured (web.bbj handles absent ARGV(6) gracefully)
         String configPath = getConfigPath();
 
-        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme> <workingDir> "" "" <classpath> <token> <configPath>
+        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme>
+        // <workingDir> <classpath> [<configPath>]; the token travels on the environment
+        // (BbjProcessSecretEnv), never as a parameter.
+        BbjProcessSecretEnv.Invocation invocation = BbjProcessSecretEnv.webRun(
+                webRunnerDir, webBbjPath, "DWC", name, programme, workingDir, classpath, token, configPath);
         GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
-        cmd.addParameter("-q");
-        cmd.addParameter("-WD" + webRunnerDir);
-        cmd.addParameter(webBbjPath);
-        cmd.addParameter("-");
-        cmd.addParameter("DWC");
-        cmd.addParameter(name);
-        cmd.addParameter(programme);
-        cmd.addParameter(workingDir);
-        cmd.addParameter("");  // username placeholder
-        cmd.addParameter("");  // password placeholder
-        cmd.addParameter(classpath);
-        cmd.addParameter(token);
-        if (!configPath.isEmpty()) {
-            cmd.addParameter(configPath);
-        }
+        cmd.addParameters(invocation.parameters());
+        cmd.withEnvironment(invocation.environment());
 
         cmd.setWorkDirectory(webRunnerDir);
 

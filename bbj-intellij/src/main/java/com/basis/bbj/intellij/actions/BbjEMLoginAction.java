@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.process.CapturingProcessHandler;
 import com.intellij.execution.process.ProcessOutput;
@@ -92,16 +93,9 @@ public final class BbjEMLoginAction extends AnAction {
 
         // Launch em-login.bbj
         try {
-            // Create temp file for BBj output
-            Path tmpFile = Files.createTempFile("bbj-em-login-", ".tmp");
-
-            GeneralCommandLine cmd = new GeneralCommandLine(bbjPath.toString());
-            cmd.addParameter("-q");
-            cmd.addParameter(emLoginPath);
-            cmd.addParameter("-");
-            cmd.addParameter(username);
-            cmd.addParameter(password);
-            cmd.addParameter(tmpFile.toString());
+            // Create temp file for BBj output, owner-only for its whole life: em-login.bbj
+            // truncates and writes in place, which preserves the mode set here.
+            Path tmpFile = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp");
 
             // Client info for EM token payload
             String platform;
@@ -109,7 +103,15 @@ public final class BbjEMLoginAction extends AnAction {
             else if (os.contains("mac")) platform = "MacOS";
             else platform = "Linux";
             String productName = ApplicationNamesInfo.getInstance().getFullProductName();
-            cmd.addParameter(productName + " on " + platform + " as " + System.getProperty("user.name"));
+            String infoString = productName + " on " + platform + " as " + System.getProperty("user.name");
+
+            // Build the invocation: the username and password travel on the environment
+            // (BbjProcessSecretEnv), never as a parameter.
+            BbjProcessSecretEnv.Invocation invocation =
+                    BbjProcessSecretEnv.emLogin(emLoginPath, username, password, tmpFile.toString(), infoString);
+            GeneralCommandLine cmd = new GeneralCommandLine(bbjPath.toString());
+            cmd.addParameters(invocation.parameters());
+            cmd.withEnvironment(invocation.environment());
 
             CapturingProcessHandler handler = new CapturingProcessHandler(cmd);
             ProcessOutput output = handler.runProcess(15000); // 15s timeout
