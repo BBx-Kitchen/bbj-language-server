@@ -292,8 +292,8 @@ public abstract class BbjRunActionBase extends AnAction {
                 return false;
             }
 
-            // Create temp file for BBj output
-            Path tmpFile = Files.createTempFile("bbj-em-validate-", ".tmp");
+            // Create temp file for BBj output, owner-only for its whole life
+            Path tmpFile = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-validate-", ".tmp");
             try {
                 // Build command: bbj -q em-validate-token.bbj - <tmpFile>; the token
                 // travels on the environment (BbjProcessSecretEnv), never as a parameter.

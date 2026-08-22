@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
@@ -110,10 +111,16 @@ public final class BbjProcessSecretEnv {
      * per-user temporary directory, which is already ACL-restricted to the owning
      * account; this is a reasoned position, not an equivalent guarantee.
      */
-    // TASK-1-SKELETON: reproduces pre-fix behaviour (no permission attributes applied)
-    // so the new unit tests compile and observe RED. Task 3 replaces this body with
-    // the real owner-only implementation.
     public static Path createOwnerOnlyFile(String prefix, String suffix) throws IOException {
+        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+            FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(
+                    Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+            return Files.createTempFile(prefix, suffix, ownerOnly);
+        }
+        // No POSIX attribute view: fall back to the platform default temporary-file
+        // creation. On Windows this resolves under the per-user temporary directory,
+        // which is already ACL-restricted to the owning account — a reasoned position,
+        // not an equivalent guarantee.
         return Files.createTempFile(prefix, suffix);
     }
 }

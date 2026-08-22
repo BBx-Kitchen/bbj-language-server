@@ -23,16 +23,23 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 class BbjSecretArgvSourceGuardTest {
 
-    private static final Path RUN_ACTION_BASE = guardedSource("BbjRunActionBase.java");
-    private static final Path EM_LOGIN_ACTION = guardedSource("BbjEMLoginAction.java");
-    private static final Path RUN_BUI_ACTION = guardedSource("BbjRunBuiAction.java");
-    private static final Path RUN_DWC_ACTION = guardedSource("BbjRunDwcAction.java");
+    private static final Path RUN_ACTION_BASE = guardedActionSource("BbjRunActionBase.java");
+    private static final Path EM_LOGIN_ACTION = guardedActionSource("BbjEMLoginAction.java");
+    private static final Path RUN_BUI_ACTION = guardedActionSource("BbjRunBuiAction.java");
+    private static final Path RUN_DWC_ACTION = guardedActionSource("BbjRunDwcAction.java");
+
+    private static final Path BBJ_PROCESS_SECRET_ENV = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "lsp", "BbjProcessSecretEnv.java")
+            .toAbsolutePath();
 
     /** The four secret-bearing call sites, guarded identically. */
     private static final List<Path> ALL_GUARDED_ACTION_FILES =
             List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION);
 
-    private static Path guardedSource(String fileName) {
+    /** {@code createOwnerOnlyFile} must precede process-handler construction in these two. */
+    private static final List<Path> OWNER_ONLY_FILE_CALLERS = List.of(EM_LOGIN_ACTION, RUN_ACTION_BASE);
+
+    private static Path guardedActionSource(String fileName) {
         return Paths.get(
                 "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", fileName)
                 .toAbsolutePath();
@@ -154,12 +161,55 @@ class BbjSecretArgvSourceGuardTest {
                 }));
     }
 
-    // The createOwnerOnlyFile-precedence guard (BbjEMLoginAction.java and
-    // BbjRunActionBase.java each obtain their output file through createOwnerOnlyFile,
-    // preceding process-handler construction) is added in Task 3, which is the task
-    // that touches BbjRunActionBase.java — see BbjSecretArgvSourceGuardTest's Task 3
-    // additions below this class's Task-1/Task-2 baseline, per this plan's own file
-    // scoping (Task 2's <files> excludes BbjRunActionBase.java).
+    // --- Task 3: the token file is owner-only for its whole life ---
+
+    @Test
+    void emLoginAndRunActionBaseObtainTheirOutputFileThroughCreateOwnerOnlyFile() {
+        assertAll("createOwnerOnlyFile referenced",
+                OWNER_ONLY_FILE_CALLERS.stream().map(source -> () -> {
+                    String text = readGuardedSource(source);
+                    assertTrue(countOccurrences(text, "createOwnerOnlyFile") >= 1,
+                            "createOwnerOnlyFile is not referenced in " + source);
+                }));
+    }
+
+    @Test
+    void theCreateOwnerOnlyFileReferencePrecedesTheProcessHandlerConstructionInEachCaller() {
+        // Both callers build their command through CapturingProcessHandler at the
+        // relevant call site (BbjRunActionBase also constructs an unrelated
+        // OSProcessHandler elsewhere in actionPerformed(), for the main run flow —
+        // deliberately excluded here so that unrelated earlier construction cannot
+        // make this precedence check pass or fail for the wrong reason).
+        assertAll("createOwnerOnlyFile precedes process-handler construction",
+                OWNER_ONLY_FILE_CALLERS.stream().map(source -> () -> {
+                    String text = readGuardedSource(source);
+                    int createOwnerOnlyIndex = text.indexOf("createOwnerOnlyFile");
+                    int processHandlerIndex = text.indexOf("CapturingProcessHandler(");
+                    assertTrue(createOwnerOnlyIndex >= 0, "createOwnerOnlyFile is not present in " + source);
+                    assertTrue(processHandlerIndex >= 0,
+                            "no CapturingProcessHandler construction is present in " + source);
+                    assertTrue(createOwnerOnlyIndex < processHandlerIndex,
+                            "createOwnerOnlyFile must precede the CapturingProcessHandler construction in " + source);
+                }));
+    }
+
+    /**
+     * {@code java.nio.file.Files.createTempFile} already defaults to an owner-only
+     * mode on this JDK's POSIX provider, independent of the process umask — so a
+     * behavioural assertion against the returned permission set alone cannot
+     * distinguish the hardened implementation from the pre-fix skeleton (both pass).
+     * This guard makes the hardening an explicit, verifiable source property instead
+     * of an accidental default: {@code createOwnerOnlyFile} must set the permission
+     * at creation time via {@code PosixFilePermissions.asFileAttribute}, not rely on
+     * the JDK's undocumented implementation default.
+     */
+    @Test
+    void createOwnerOnlyFileSetsPosixPermissionsExplicitlyAtCreationTime() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        assertTrue(countOccurrences(text, "PosixFilePermissions.asFileAttribute") >= 1,
+                "createOwnerOnlyFile must set its permissions explicitly at creation time via "
+                        + "PosixFilePermissions.asFileAttribute, not rely on the JDK's implementation default");
+    }
 
     private static int countOccurrences(String text, String literal) {
         int count = 0;

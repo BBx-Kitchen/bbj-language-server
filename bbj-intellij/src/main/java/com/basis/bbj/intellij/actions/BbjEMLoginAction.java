@@ -93,8 +93,9 @@ public final class BbjEMLoginAction extends AnAction {
 
         // Launch em-login.bbj
         try {
-            // Create temp file for BBj output
-            Path tmpFile = Files.createTempFile("bbj-em-login-", ".tmp");
+            // Create temp file for BBj output, owner-only for its whole life: em-login.bbj
+            // truncates and writes in place, which preserves the mode set here.
+            Path tmpFile = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp");
 
             // Client info for EM token payload
             String platform;

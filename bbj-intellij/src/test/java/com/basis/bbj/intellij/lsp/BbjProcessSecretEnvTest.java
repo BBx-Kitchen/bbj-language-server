@@ -260,4 +260,41 @@ class BbjProcessSecretEnvTest {
             java.nio.file.Files.deleteIfExists(created);
         }
     }
+
+    @Test
+    void thePermissionSetSurvivesATruncatingReopenAndWriteJustLikeEmLoginBbjsOpenSequence() throws IOException {
+        boolean posixSupported = FileSystems.getDefault().supportedFileAttributeViews().contains("posix");
+        Assumptions.assumeTrue(posixSupported,
+                "this filesystem does not support POSIX file attribute views — permission bits do not apply");
+
+        Path created = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp");
+        try {
+            // Mirrors em-login.bbj's open(ch,mode="O_CREATE,O_TRUNC") against an
+            // already-existing file: truncate in place and write, never delete-and-recreate.
+            try (var channel = java.nio.file.Files.newByteChannel(created,
+                    java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
+                channel.write(java.nio.ByteBuffer.wrap("tok-abc-123".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            }
+            Set<PosixFilePermission> permissions = java.nio.file.Files.getPosixFilePermissions(created);
+            assertEquals(
+                    Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+                    permissions,
+                    "the permission set must survive a truncating reopen and write unchanged");
+        } finally {
+            java.nio.file.Files.deleteIfExists(created);
+        }
+    }
+
+    @Test
+    void twoSuccessiveCallsReturnDistinctPaths() throws IOException {
+        Path first = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp");
+        Path second = BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp");
+        try {
+            assertFalse(first.equals(second),
+                    "two successive calls must return distinct paths, so concurrent logins cannot collide on one file");
+        } finally {
+            java.nio.file.Files.deleteIfExists(first);
+            java.nio.file.Files.deleteIfExists(second);
+        }
+    }
 }
