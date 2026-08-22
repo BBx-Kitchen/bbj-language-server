@@ -32,9 +32,6 @@ class BbjSecretArgvSourceGuardTest {
     private static final List<Path> ALL_GUARDED_ACTION_FILES =
             List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION);
 
-    /** {@code createOwnerOnlyFile} must precede process-handler construction in these two. */
-    private static final List<Path> OWNER_ONLY_FILE_CALLERS = List.of(EM_LOGIN_ACTION, RUN_ACTION_BASE);
-
     private static Path guardedSource(String fileName) {
         return Paths.get(
                 "src", "main", "java", "com", "basis", "bbj", "intellij", "actions", fileName)
@@ -157,40 +154,12 @@ class BbjSecretArgvSourceGuardTest {
                 }));
     }
 
-    @Test
-    void emLoginAndRunActionBaseObtainTheirOutputFileThroughCreateOwnerOnlyFile() {
-        assertAll("createOwnerOnlyFile referenced",
-                OWNER_ONLY_FILE_CALLERS.stream().map(source -> () -> {
-                    String text = readGuardedSource(source);
-                    assertTrue(countOccurrences(text, "createOwnerOnlyFile") >= 1,
-                            "createOwnerOnlyFile is not referenced in " + source);
-                }));
-    }
-
-    @Test
-    void theCreateOwnerOnlyFileReferencePrecedesTheProcessHandlerConstructionInEachCaller() {
-        assertAll("createOwnerOnlyFile precedes process-handler construction",
-                OWNER_ONLY_FILE_CALLERS.stream().map(source -> () -> {
-                    String text = readGuardedSource(source);
-                    int createOwnerOnlyIndex = text.indexOf("createOwnerOnlyFile");
-                    int processHandlerIndex = firstIndexOfAny(text, "CapturingProcessHandler(", "OSProcessHandler(");
-                    assertTrue(createOwnerOnlyIndex >= 0, "createOwnerOnlyFile is not present in " + source);
-                    assertTrue(processHandlerIndex >= 0, "no process-handler construction is present in " + source);
-                    assertTrue(createOwnerOnlyIndex < processHandlerIndex,
-                            "createOwnerOnlyFile must precede the process-handler construction in " + source);
-                }));
-    }
-
-    private static int firstIndexOfAny(String text, String... literals) {
-        int best = -1;
-        for (String literal : literals) {
-            int index = text.indexOf(literal);
-            if (index >= 0 && (best < 0 || index < best)) {
-                best = index;
-            }
-        }
-        return best;
-    }
+    // The createOwnerOnlyFile-precedence guard (BbjEMLoginAction.java and
+    // BbjRunActionBase.java each obtain their output file through createOwnerOnlyFile,
+    // preceding process-handler construction) is added in Task 3, which is the task
+    // that touches BbjRunActionBase.java — see BbjSecretArgvSourceGuardTest's Task 3
+    // additions below this class's Task-1/Task-2 baseline, per this plan's own file
+    // scoping (Task 2's <files> excludes BbjRunActionBase.java).
 
     private static int countOccurrences(String text, String literal) {
         int count = 0;
