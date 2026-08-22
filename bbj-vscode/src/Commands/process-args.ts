@@ -108,9 +108,11 @@ export interface BuildWebRunArgvOptions {
 
 /**
  * Reproduces today's `runWeb` invocation: `bbj -q -WD<toolsDir> <toolsDir>/web.bbj -
- * <client> <name> <programme> <workingDir> <username> <password> <classpath> <token>
- * <configPath>`. Empty-string credentials are preserved as empty elements, matching
- * today's behaviour, rather than dropped.
+ * <client> <name> <programme> <workingDir> <classpath> <configPath>`. The username,
+ * password and token travel on the returned `env` map under `EM_ENV_VARS`, never in
+ * `args` — all three keys are always written, even when empty, so an inherited
+ * environment variable of the same name can never be read in their place
+ * (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
  */
 export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
     const {
@@ -136,13 +138,18 @@ export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
         name,
         programme,
         workingDir,
-        username,
-        password,
         classpathEntry,
-        token,
         configPath
     ];
-    return { file: bbjBin(home, platform), args };
+    return {
+        file: bbjBin(home, platform),
+        args,
+        env: {
+            [EM_ENV_VARS.USERNAME]: username,
+            [EM_ENV_VARS.PASSWORD]: password,
+            [EM_ENV_VARS.TOKEN]: token
+        }
+    };
 }
 
 export interface BuildCompileArgvOptions {
@@ -219,8 +226,21 @@ export interface BuildEmLoginArgvOptions {
     infoString: string;
 }
 
-/** Reproduces today's `bbj -q em-login.bbj - <username> <password> <tmpFile> <infoString>` invocation. */
+/**
+ * Reproduces today's `bbj -q em-login.bbj - <tmpFile> <infoString>` invocation. The
+ * username and password travel on the returned `env` map under `EM_ENV_VARS`, never
+ * in `args` — both keys are always written, even when empty, so an inherited
+ * environment variable of the same name can never be read in their place
+ * (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ */
 export function buildEmLoginArgv(opts: BuildEmLoginArgvOptions): Argv {
     const { home, platform = process.platform, scriptPath, username, password, tmpFile, infoString } = opts;
-    return { file: bbjBin(home, platform), args: ['-q', scriptPath, '-', username, password, tmpFile, infoString] };
+    return {
+        file: bbjBin(home, platform),
+        args: ['-q', scriptPath, '-', tmpFile, infoString],
+        env: {
+            [EM_ENV_VARS.USERNAME]: username,
+            [EM_ENV_VARS.PASSWORD]: password
+        }
+    };
 }

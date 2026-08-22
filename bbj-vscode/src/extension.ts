@@ -647,8 +647,11 @@ export function activate(context: vscode.ExtensionContext): void {
         try {
             let output: string;
             try {
-                // Execute with 15s timeout
-                await runProcess(argv, { timeout: 15000 });
+                // Execute with 15s timeout. The secret env map must be spread over
+                // process.env, not passed alone — execFile replaces the child's
+                // environment wholesale when options.env is set, and omitting
+                // process.env here would strip PATH/BBJ_HOME from the child.
+                await runProcess(argv, { timeout: 15000, env: { ...process.env, ...argv.env } });
                 output = fs.readFileSync(tmpFile, 'utf-8').trim();
             } catch (err) {
                 const pe = err as ProcessError;
