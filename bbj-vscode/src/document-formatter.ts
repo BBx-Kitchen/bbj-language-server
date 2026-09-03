@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { logger } from './language/logger.js';
+import { verifyFormatterArtifacts, FORMATTER_TOOLS_DIR, type FormatterVerificationResult } from './formatter-verifier.js';
 
 // Mirrors each open document's live content, kept in sync by the onDidChangeTextDocument
 // listener below. document.getText() already returns VS Code's live in-memory buffer for a
@@ -15,9 +16,21 @@ const unsavedContentMap = new Map<string, string>();
 // URI spawns again.
 const inFlightFormats = new Map<string, Promise<string>>();
 
+// A hash-mismatched artefact toasts once per extension-host
+// session, however many format-on-save invocations follow, so the constant format-on-save
+// cadence does not spam the user with repeat notifications. logger.warn still fires on every
+// occurrence (see runFormatter below), so a mismatch is never silent even after the toast has
+// already fired once.
+let integrityNoticeShown = false;
+
+// Rejection value for a verification refusal, distinguished from the underlying `java` process's
+// own error/stderr rejections so the reject handler below re-throws it without a second
+// logger.warn.
+class FormatterArtifactError extends Error {}
+
 export const DocumentFormatter = {
   provideDocumentFormattingEdits(document: vscode.TextDocument): Thenable<vscode.TextEdit[] | undefined> {
-    const jarPath = `${__dirname}/../tools/formatter/BBjCFCli.jar`;
+    const jarPath = `${FORMATTER_TOOLS_DIR}/BBjCFCli.jar`;
     const config = vscode.workspace.getConfiguration('bbj').formatter;
     const args: string[] = [];
 
@@ -63,6 +76,12 @@ export const DocumentFormatter = {
         return [edit];
       },
       (err: any) => {
+        if (err instanceof FormatterArtifactError) {
+          // runFormatter already logged this refusal (with the expected/actual digests, or the
+          // expected path) before rejecting — re-reject without a second logger.warn line.
+          return Promise.reject(err);
+        }
+
         if (err) {
           logger.warn(String(err));
           return Promise.reject(err);
@@ -75,6 +94,41 @@ export const DocumentFormatter = {
 
   runFormatter(formatFlags: string[], documentContent: string): Thenable<string> {
     return new Promise<string>((resolve, reject) => {
+      // Verify the bundled formatter JAR against its committed
+      // SHA-256 immediately before spawning it. Placed here (inside runFormatter, one check per
+      // actual spawn) rather than in provideDocumentFormattingEdits (which would run once per
+      // *request*), so a "Save All" burst still shares one check per URI via the existing
+      // inFlightFormats coalescing above. Synchronous — readFileSync, no await — so cp.spawn is
+      // still reached in the same tick this Promise executor runs, preserving the existing
+      // synchronous call-count assertions and the dedup timing. Not cached by mtime/size:
+      // re-checking every spawn self-heals and costs well under a millisecond for ~7KB.
+      const verification: FormatterVerificationResult = verifyFormatterArtifacts(FORMATTER_TOOLS_DIR);
+      if (!verification.ok) {
+        if (verification.reason === 'DIGEST_MISMATCH') {
+          const message =
+            `The bundled BBj formatter (${verification.relativePath}) did not match its expected checksum. ` +
+            `Formatting was cancelled. Reinstalling the extension restores the bundled formatter.`;
+          // logger.warn on every occurrence gives a permanent record; the user-facing toast
+          // below is deliberately deduplicated to once per session — format-on-save
+          // fires constantly, and a per-invocation notification would be noise, not signal.
+          logger.warn(
+            `${message} expected=${verification.expectedSha256} actual=${verification.actualSha256 ?? '(unavailable)'}`
+          );
+          if (!integrityNoticeShown) {
+            integrityNoticeShown = true;
+            vscode.window.showErrorMessage(message);
+          }
+        } else {
+          // MISSING_OR_UNREADABLE: a distinct broken-install diagnosis, not a security-grade
+          // signal — only a hash mismatch (above) warrants the user-facing toast.
+          const message =
+            `The bundled BBj formatter is unavailable (expected at ${verification.absolutePath}). ` +
+            `Formatting was cancelled.`;
+          logger.warn(message);
+        }
+        return reject(new FormatterArtifactError(`Formatter artefact verification failed: ${verification.reason}`));
+      }
+
       let t0 = Date.now();
       let stdout = '';
       let stderr = '';
