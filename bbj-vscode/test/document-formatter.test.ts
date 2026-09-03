@@ -29,6 +29,9 @@ vi.mock('vscode', () => {
             }),
             onDidCloseTextDocument: vi.fn(() => ({ dispose: () => { } })),
         },
+        window: {
+            showErrorMessage: vi.fn(),
+        },
         TextEdit,
         Range,
         __testState,
@@ -39,9 +42,19 @@ vi.mock('child_process', () => ({
     spawn: vi.fn(),
 }));
 
+// The wiring under test here is "does runFormatter call the verifier and refuse to
+// spawn on a non-ok result" — the verification logic itself is exercised for real, against
+// real bytes, by test/formatter-verifier-tamper.test.ts. Default to ok:true in beforeEach so
+// every pre-existing test above keeps its current behaviour unmodified.
+vi.mock('../src/formatter-verifier.js', () => ({
+    verifyFormatterArtifacts: vi.fn(),
+    FORMATTER_TOOLS_DIR: '/fake/tools/formatter',
+}));
+
 import * as cp from 'child_process';
 import * as vscodeMocked from 'vscode';
 import { DocumentFormatter } from '../src/document-formatter.js';
+import { verifyFormatterArtifacts } from '../src/formatter-verifier.js';
 
 /** A minimal fake ChildProcess: an EventEmitter with stdout/stderr/stdin. */
 function makeFakeProcess() {
@@ -64,6 +77,7 @@ function makeDocument(uriPath: string, text: string) {
 describe('DocumentFormatter', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        (verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ ok: true });
     });
 
     test('P62-D2-010: rejects the format promise on a non-ENOENT spawn error', async () => {
@@ -192,6 +206,138 @@ describe('DocumentFormatter', () => {
             await formatPromise;
 
             expect(proc.stdin.end).toHaveBeenCalledWith('unsaved edited text');
+        });
+    });
+
+    describe('formatter artefact verification gate', () => {
+        // The `integrityNoticeShown` once-per-session flag is module-level state in
+        // document-formatter.ts, so any test that depends on its starting value (every mismatch
+        // test below) needs its own fresh module instance — otherwise an earlier mismatch test in
+        // this file trips the flag and a later test observes it already set. vi.resetModules()
+        // forces vi.mock factories to re-run on the next dynamic import, so 'vscode',
+        // 'child_process' and '../src/formatter-verifier.js' all come back as fresh mock
+        // instances too; grab all four freshly rather than mixing fresh and outer-scope handles.
+        async function freshEnv() {
+            vi.resetModules();
+            const freshCp = await import('child_process');
+            const freshVscode = await import('vscode');
+            const freshVerifierModule = await import('../src/formatter-verifier.js');
+            const freshDocumentFormatterModule = await import('../src/document-formatter.js');
+            return {
+                cp: freshCp as unknown as { spawn: ReturnType<typeof vi.fn> },
+                vscode: freshVscode as unknown as { window: { showErrorMessage: ReturnType<typeof vi.fn> } },
+                verifyFormatterArtifacts: freshVerifierModule.verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>,
+                DocumentFormatter: freshDocumentFormatterModule.DocumentFormatter,
+            };
+        }
+
+        test('when the verifier reports ok, cp.spawn is called exactly once and synchronously, and formatting resolves as before', async () => {
+            (verifyFormatterArtifacts as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ ok: true });
+            const proc = makeFakeProcess();
+            (cp.spawn as unknown as ReturnType<typeof vi.fn>).mockReturnValue(proc);
+
+            const doc = makeDocument('/tmp/sec08-ok.bbj', 'rem hi');
+            const formatPromise = DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            // Synchronous: no await before this assertion.
+            expect(cp.spawn).toHaveBeenCalledTimes(1);
+
+            proc.stdout.emit('data', 'formatted output');
+            proc.emit('close', 0);
+
+            const result = await formatPromise;
+            expect((result as any)[0].newText).toBe('formatted output');
+        });
+
+        test('when the verifier reports DIGEST_MISMATCH, cp.spawn is never called, the promise rejects, and showErrorMessage is called exactly once', async () => {
+            const fresh = await freshEnv();
+            fresh.verifyFormatterArtifacts.mockReturnValue({
+                ok: false,
+                reason: 'DIGEST_MISMATCH',
+                relativePath: 'BBjCFCli.jar',
+                absolutePath: '/fake/tools/formatter/BBjCFCli.jar',
+                expectedSha256: 'expected-hash',
+                actualSha256: 'actual-hash',
+            });
+            const warnSpy = vi.spyOn(console, 'warn');
+
+            const doc = makeDocument('/tmp/sec08-mismatch.bbj', 'rem hi');
+            const formatPromise = fresh.DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(fresh.cp.spawn).not.toHaveBeenCalled();
+            await expect(formatPromise).rejects.toBeTruthy();
+            expect(warnSpy).toHaveBeenCalled();
+            expect(fresh.vscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+
+            warnSpy.mockRestore();
+        });
+
+        test('when a second and third mismatch follow in the same module session, logger.warn fires each time but showErrorMessage is still called exactly once in total', async () => {
+            const fresh = await freshEnv();
+            fresh.verifyFormatterArtifacts.mockReturnValue({
+                ok: false,
+                reason: 'DIGEST_MISMATCH',
+                relativePath: 'BBjCFCli.jar',
+                absolutePath: '/fake/tools/formatter/BBjCFCli.jar',
+                expectedSha256: 'expected-hash',
+                actualSha256: 'actual-hash',
+            });
+            const warnSpy = vi.spyOn(console, 'warn');
+
+            const doc1 = makeDocument('/tmp/sec08-mismatch-1.bbj', 'rem a');
+            await expect(fresh.DocumentFormatter.provideDocumentFormattingEdits(doc1)).rejects.toBeTruthy();
+
+            const doc2 = makeDocument('/tmp/sec08-mismatch-2.bbj', 'rem b');
+            await expect(fresh.DocumentFormatter.provideDocumentFormattingEdits(doc2)).rejects.toBeTruthy();
+
+            const doc3 = makeDocument('/tmp/sec08-mismatch-3.bbj', 'rem c');
+            await expect(fresh.DocumentFormatter.provideDocumentFormattingEdits(doc3)).rejects.toBeTruthy();
+
+            expect(warnSpy).toHaveBeenCalledTimes(3);
+            expect(fresh.vscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+
+            warnSpy.mockRestore();
+        });
+
+        test('when the verifier reports MISSING_OR_UNREADABLE, cp.spawn is never called, the promise rejects, logger.warn names the expected path, and showErrorMessage is NOT called', async () => {
+            const fresh = await freshEnv();
+            fresh.verifyFormatterArtifacts.mockReturnValue({
+                ok: false,
+                reason: 'MISSING_OR_UNREADABLE',
+                relativePath: 'BBjCFCli.jar',
+                absolutePath: '/fake/tools/formatter/BBjCFCli.jar',
+                expectedSha256: 'expected-hash',
+            });
+            const warnSpy = vi.spyOn(console, 'warn');
+
+            const doc = makeDocument('/tmp/sec08-missing.bbj', 'rem hi');
+            const formatPromise = fresh.DocumentFormatter.provideDocumentFormattingEdits(doc);
+
+            expect(fresh.cp.spawn).not.toHaveBeenCalled();
+            await expect(formatPromise).rejects.toBeTruthy();
+            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('/fake/tools/formatter/BBjCFCli.jar'));
+            expect(fresh.vscode.window.showErrorMessage).not.toHaveBeenCalled();
+
+            warnSpy.mockRestore();
+        });
+
+        test('a fresh module load starts the once-per-session toast flag unset, independent of any earlier test in this file', async () => {
+            const fresh = await freshEnv();
+            fresh.verifyFormatterArtifacts.mockReturnValue({
+                ok: false,
+                reason: 'DIGEST_MISMATCH',
+                relativePath: 'BBjCFCli.jar',
+                absolutePath: '/fake/tools/formatter/BBjCFCli.jar',
+                expectedSha256: 'expected-hash',
+                actualSha256: 'actual-hash',
+            });
+
+            const doc = makeDocument('/tmp/sec08-fresh-session.bbj', 'rem hi');
+            await expect(
+                fresh.DocumentFormatter.provideDocumentFormattingEdits(doc)
+            ).rejects.toBeTruthy();
+
+            expect(fresh.vscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
         });
     });
 });

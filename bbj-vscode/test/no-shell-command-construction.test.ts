@@ -100,4 +100,23 @@ describe('no-shell-command-construction guard — which modules may launch a pro
         const source = readStripped(path.join(SRC_DIR, 'language', 'bbj-cpl-service.ts'));
         expect(source).toMatch(/import\s*\{\s*resolveBbjBinary\s*\}\s*from\s*['"]\.\.\/bbj-home-layout\.js['"]/);
     });
+
+    // The bundled formatter JARs are checked against committed
+    // checksums before they run. These two tests exist so a later refactor cannot quietly drop
+    // that check — one asserts the import is still present, the other asserts the verification
+    // call still precedes the spawn it gates.
+    test('document-formatter.ts still imports the formatter verifier', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        expect(source).toMatch(/import\s*\{[^}]*\bverifyFormatterArtifacts\b[^}]*\}\s*from\s*['"]\.\/formatter-verifier\.js['"]/);
+    });
+
+    test('document-formatter.ts cannot reach cp.spawn( without first calling verifyFormatterArtifacts(', () => {
+        const source = readStripped(path.join(SRC_DIR, 'document-formatter.ts'));
+        const verifyCallIndex = source.indexOf('verifyFormatterArtifacts(');
+        const spawnCallIndex = source.indexOf('cp.spawn(');
+
+        expect(verifyCallIndex).toBeGreaterThan(-1);
+        expect(spawnCallIndex).toBeGreaterThan(-1);
+        expect(verifyCallIndex).toBeLessThan(spawnCallIndex);
+    });
 });
