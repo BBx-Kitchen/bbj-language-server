@@ -19,7 +19,8 @@ import {
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TEST_DIR, '..', '..');
-const REAL_ARTIFACT_PATH = path.join(REPO_ROOT, 'bbj-vscode', 'tools', 'formatter', 'BBjCFCli.jar');
+const FORMATTER_DIR = path.join(REPO_ROOT, 'bbj-vscode', 'tools', 'formatter');
+const REAL_ARTIFACT_PATH = path.join(FORMATTER_DIR, 'BBjCFCli.jar');
 const REAL_ARTIFACT_BYTES = fs.readFileSync(REAL_ARTIFACT_PATH);
 const REAL_ARTIFACT_RELATIVE_PATH = FORMATTER_ARTIFACT_PINS[0].relativePath;
 
@@ -29,6 +30,25 @@ function newFixtureDir(prefix: string): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
     fixtureDirs.push(dir);
     return dir;
+}
+
+/** Writes bytes for a pinned artefact into a fixture directory, creating any `lib/` parent. */
+function writeArtifact(fixtureDir: string, relativePath: string, bytes: Buffer): void {
+    const absolutePath = path.join(fixtureDir, relativePath);
+    fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
+    fs.writeFileSync(absolutePath, bytes);
+}
+
+/** Real vendored bytes for a pinned artefact, read once and reused across ordering fixtures. */
+function realBytesFor(relativePath: string): Buffer {
+    return fs.readFileSync(path.join(FORMATTER_DIR, relativePath));
+}
+
+/** Real bytes with the final byte flipped — same length, different digest. */
+function tamperedBytesFor(relativePath: string): Buffer {
+    const bytes = Buffer.from(realBytesFor(relativePath));
+    bytes[bytes.length - 1] ^= 0x01;
+    return bytes;
 }
 
 afterAll(() => {
@@ -117,15 +137,49 @@ describe('formatter-verifier-tamper: gate against real vendored bytes', () => {
         expect(result.ok).toBe(true);
     });
 
-    test('FORMATTER_ARTIFACT_PINS has exactly the number of entries this plan pins, in the order formatterArtifactNames() reports, each with a 64-character lowercase hex digest', () => {
-        // 77-01 pins one artefact (BBjCFCli.jar); a later plan in this phase adds the remaining
-        // two on top of this same structure. This count assertion is written so that plan
-        // updates one number rather than restructuring this test.
-        expect(FORMATTER_ARTIFACT_PINS).toHaveLength(1);
+    test('FORMATTER_ARTIFACT_PINS has all three vendored artefacts, in declared order, each with a 64-character lowercase hex digest and non-empty provenance', () => {
+        // All three artefacts that BBjCFCli.jar's own manifest transitively loads on every format
+        // are pinned, not only the launcher JAR itself.
+        expect(FORMATTER_ARTIFACT_PINS).toHaveLength(3);
+        expect(formatterArtifactNames()).toEqual([
+            'BBjCFCli.jar',
+            'lib/jcommander-1.71.jar',
+            'lib/BBjCodeFomatter.jar',
+        ]);
         expect(formatterArtifactNames()).toEqual(FORMATTER_ARTIFACT_PINS.map((pin) => pin.relativePath));
 
         for (const pin of FORMATTER_ARTIFACT_PINS) {
             expect(pin.sha256).toMatch(/^[0-9a-f]{64}$/);
+            expect(pin.origin.length).toBeGreaterThan(0);
+            expect(pin.vendoredOn.length).toBeGreaterThan(0);
+        }
+    });
+
+    test('with the second and third artefacts both corrupted, the reported failure is the second — declared order, first failure short-circuits', () => {
+        const fixtureDir = newFixtureDir('formatter-verifier-order-first-failure-');
+        writeArtifact(fixtureDir, 'BBjCFCli.jar', realBytesFor('BBjCFCli.jar'));
+        writeArtifact(fixtureDir, 'lib/jcommander-1.71.jar', tamperedBytesFor('lib/jcommander-1.71.jar'));
+        writeArtifact(fixtureDir, 'lib/BBjCodeFomatter.jar', tamperedBytesFor('lib/BBjCodeFomatter.jar'));
+
+        const result = verifyFormatterArtifacts(fixtureDir);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.relativePath).toBe('lib/jcommander-1.71.jar');
+        }
+    });
+
+    test('with only the third artefact corrupted, the reported failure is the third — later entries are actually reached', () => {
+        const fixtureDir = newFixtureDir('formatter-verifier-order-later-reached-');
+        writeArtifact(fixtureDir, 'BBjCFCli.jar', realBytesFor('BBjCFCli.jar'));
+        writeArtifact(fixtureDir, 'lib/jcommander-1.71.jar', realBytesFor('lib/jcommander-1.71.jar'));
+        writeArtifact(fixtureDir, 'lib/BBjCodeFomatter.jar', tamperedBytesFor('lib/BBjCodeFomatter.jar'));
+
+        const result = verifyFormatterArtifacts(fixtureDir);
+
+        expect(result.ok).toBe(false);
+        if (!result.ok) {
+            expect(result.relativePath).toBe('lib/BBjCodeFomatter.jar');
         }
     });
 });
