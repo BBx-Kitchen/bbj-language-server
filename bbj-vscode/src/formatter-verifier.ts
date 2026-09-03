@@ -36,14 +36,35 @@ export interface PinnedFormatterArtifact {
 // its manifest cannot grow a fourth Class-Path entry without failing this table's own digest
 // check first. Do not "fix" this by adding zip/manifest parsing to the format-on-save path.
 //
-// Only BBjCFCli.jar is pinned in this plan (77-01, the tracer slice); the other two vendored
-// artefacts (lib/jcommander-1.71.jar, lib/BBjCodeFomatter.jar) are added by a later plan in this
-// phase on top of exactly this structure.
+// All three artefacts BBjCFCli.jar's Class-Path transitively loads on every format are pinned
+// here, in this declared order. Verification below iterates in this order and returns on the
+// first failure, so the reported (and notified) failure is deterministic when more than one
+// artefact is bad.
 export const FORMATTER_ARTIFACT_PINS: readonly PinnedFormatterArtifact[] = [
   {
     relativePath: 'BBjCFCli.jar',
     sizeBytes: 6780,
     sha256: 'f73a8af5b6eceee3fa5ab11f71e96a629629dc4885235293cfaf6ed6e3c68bd4',
+    origin: 'BASIS-supplied build, vendored 2023-07-10; no public upstream feed — re-vendor via BASIS.',
+    vendoredOn: '2023-07-10',
+  },
+  // No authoritative upstream digest is obtainable for this coordinate: the referenced version
+  // is absent from this dependency's published release history, and its likely original
+  // distribution channel has since been retired. This entry therefore records the vendored
+  // bytes as of the date below — the same change-detection-only status as the two BASIS
+  // artefacts in this table, not a verified-upstream provenance claim. Re-vendor deliberately,
+  // from a source you can independently confirm, if this artefact is ever updated.
+  {
+    relativePath: 'lib/jcommander-1.71.jar',
+    sizeBytes: 67503,
+    sha256: 'b78ba8f80afc3defe5cbec954495d650273205b715edf4578212f78517d8b804',
+    origin: 'Vendored third-party build (jcommander 1.71); no upstream digest obtainable for this version — re-vendor deliberately from a verifiable source if updating.',
+    vendoredOn: '2023-07-10',
+  },
+  {
+    relativePath: 'lib/BBjCodeFomatter.jar',
+    sizeBytes: 38078,
+    sha256: '5df78cc81797d0c2e0c5c14eb75c5141a5edb1bb9d131e84ebaafd26a6c1cf9f',
     origin: 'BASIS-supplied build, vendored 2023-07-10; no public upstream feed — re-vendor via BASIS.',
     vendoredOn: '2023-07-10',
   },

@@ -58,9 +58,11 @@ afterAll(() => {
 });
 
 describe('formatter-verifier-tamper: gate against real vendored bytes', () => {
-    test('a fixture directory holding the real, unmodified artefact verifies ok', () => {
+    test('a fixture directory holding all three real, unmodified artefacts verifies ok', () => {
         const fixtureDir = newFixtureDir('formatter-verifier-verified-');
-        fs.writeFileSync(path.join(fixtureDir, REAL_ARTIFACT_RELATIVE_PATH), REAL_ARTIFACT_BYTES);
+        for (const relativePath of formatterArtifactNames()) {
+            writeArtifact(fixtureDir, relativePath, realBytesFor(relativePath));
+        }
 
         const result = verifyFormatterArtifacts(fixtureDir);
 
@@ -129,8 +131,17 @@ describe('formatter-verifier-tamper: gate against real vendored bytes', () => {
         expect(result.ok).toBe(false);
     });
 
-    test('an injected reader returning bytes that hash to the pinned value verifies ok, proving the seam is real', () => {
-        const injectedReader = () => Buffer.from(REAL_ARTIFACT_BYTES);
+    test('an injected reader returning bytes that hash to each pinned value verifies ok, proving the seam is real', () => {
+        // Maps the absolute path the verifier constructs back to the matching real artefact's
+        // bytes, so this still proves the seam for all three pins rather than only the first —
+        // the directory itself is never read, since every byte comes from this reader.
+        const injectedReader = (absolutePath: string) => {
+            const relativePath = formatterArtifactNames().find((name) => absolutePath.endsWith(name));
+            if (!relativePath) {
+                throw new Error(`unexpected path passed to injected reader: ${absolutePath}`);
+            }
+            return Buffer.from(realBytesFor(relativePath));
+        };
 
         const result = verifyFormatterArtifacts('/nonexistent/directory/that/is/never/read', injectedReader);
 
