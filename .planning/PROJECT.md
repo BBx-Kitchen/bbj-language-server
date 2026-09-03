@@ -22,15 +22,30 @@ taken by the maintainer at that point. Phase-level artifacts for 70-77 are archi
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Next Milestone Goals
+## Current Milestone: v4.2 IntelliJ Burn-down
 
-Candidates, to be settled by `/gsd-new-milestone`:
+**Goal:** Close every open PRIO 1 and PRIO 2 IntelliJ issue from the v4.0 audit so the plugin
+no longer freezes the IDE, handles EM tokens securely, matches VS Code on compile, and builds
+reliably on current JDKs.
 
-- Cut the tagged release that carries all nine advisory fixes (the eight from v4.1 plus
-  GHSA-p5f3-9456-9pcx from v4.0), then publish the advisories — completing PROC-03.
-- Close `WINDOWS.md` entry 1 (Phase 70 guardrail breadth) so `/gsd-ship` is unblocked.
-- Retire the DEBT.md items surfaced during v4.1: the `:5008` test-harness false positive
-  and the `getAllClassNames` interop test drift.
+**Target features:**
+- EDT responsiveness: run/EM-login token work off the EDT (#506), settings-dialog and
+  notification `node --version` spawns off the EDT and cached (#541, #543), crash auto-restart
+  delay off the EDT (#513), single guarded restart entry point (#539), serialized Node download
+  (#537)
+- EM token security: fail-closed expiry check (#535), owner-only temp files (#536),
+  non-keychain backend warning (#552), validation trust window (#542)
+- Feature parity and correctness: real "Compile BBj File" via bbjcpl (#571), string-literal
+  aware bracket lexing (#568), case-insensitive REM comment toggle (#540)
+- Composer robustness: re-validate captured offsets after the dialog closes (#567), surface
+  composer LSP failures (#538)
+- Build and platform coupling: JDK 17 toolchain pin (#570), refreshed and checksum-pinned
+  Gradle wrapper (#503, #576), fail-fast when the language server bundle is missing (#517),
+  LSP4IJ experimental-API regression tests (#554, #544), residual Node download/cache and
+  EDT coverage (#569)
+
+**Out of this milestone:** the v4.1 carry-overs (tagged release and advisory publication,
+`WINDOWS.md` entry 1, DEBT.md items) stay maintainer-owned; #566 is a VS Code-side fix.
 
 ## Requirements
 
@@ -197,6 +212,15 @@ Candidates, to be settled by `/gsd-new-milestone`:
 
 ### Active
 
+- [ ] IntelliJ plugin never blocks the EDT on token validation, login, Node detection, or crash recovery
+- [ ] EM JWT handling fails closed on malformed tokens, uses owner-only temp files, and warns on non-keychain storage
+- [ ] "Compile BBj File" invokes bbjcpl and surfaces the result in IntelliJ
+- [ ] Bracket matching ignores brackets inside string literals; REM toggle is case-insensitive
+- [ ] Composer dialogs re-validate offsets before applying edits and surface LSP failures
+- [ ] bbj-intellij builds on any JDK via a pinned toolchain, with a verified Gradle wrapper and a fail-fast LS-bundle check
+- [ ] LSP4IJ experimental-API coupling and Node download/cache paths are covered by JUnit regression tests
+
+Carried over, maintainer-owned (not GSD phases):
 - [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
 
@@ -384,4 +408,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-03 after v4.1 milestone*
+*Last updated: 2026-09-03 after starting milestone v4.2*

@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.1
-milestone_name: Security Advisory Remediation
-status: Awaiting next milestone
-stopped_at: Phase 77 complete — all phases complete
-last_updated: "2026-09-03T17:23:59.328Z"
+milestone: v4.2
+milestone_name: IntelliJ Burn-down
+status: planning
+last_updated: "2026-09-03T20:34:19.146Z"
 last_activity: 2026-09-03
-last_activity_desc: Milestone v4.1 completed and archived
-state_head: 6b3206a272ec0548c69ec9ed5ee9cd678a7f8bed
 progress:
-  total_phases: 8
-  completed_phases: 7
-  total_plans: 37
-  completed_plans: 37
-  percent: 88
-current_phase: 77
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 ## Current Position
 
-Phase: Milestone v4.1 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-03 — Milestone v4.1 completed and archived
+Status: Defining requirements
+Last activity: 2026-09-03 — Milestone v4.2 started
 
 ## Performance Metrics
 
