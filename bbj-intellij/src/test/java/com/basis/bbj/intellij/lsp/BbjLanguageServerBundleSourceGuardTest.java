@@ -95,14 +95,24 @@ class BbjLanguageServerBundleSourceGuardTest {
     void checkRunsAtExecutionTimeNotConfigurationTime() {
         String text = readGuardedSource();
         int checkTaskIndex = text.indexOf("verifyLanguageServerBundle by tasks.registering");
-        int doLastIndex = text.indexOf("doLast");
         assertTrue(checkTaskIndex >= 0,
                 "verifyLanguageServerBundle task registration not found in build.gradle.kts");
+
+        // Scope the search to verifyLanguageServerBundle's own block: from its
+        // registration up to the next top-level `val ... by tasks.registering`
+        // declaration (or end of file if it's the last one). Searching the whole
+        // file for the first "doLast" would silently bind to a different task's
+        // doLast if one were ever added earlier in the file (#517 WR-02).
+        int nextTaskIndex = text.indexOf("by tasks.registering", checkTaskIndex
+                + "verifyLanguageServerBundle by tasks.registering".length());
+        String guardBlock = nextTaskIndex >= 0
+                ? text.substring(checkTaskIndex, nextTaskIndex)
+                : text.substring(checkTaskIndex);
+
+        int doLastIndex = guardBlock.indexOf("doLast");
         assertTrue(doLastIndex >= 0,
-                "doLast is not present in build.gradle.kts — the check must run at execution time");
-        assertTrue(checkTaskIndex < doLastIndex,
-                "doLast must appear after the verifyLanguageServerBundle registration — "
-                        + "a configuration-time check would break a clean clone's wrapper/toolchain bootstrap");
+                "doLast is not present in verifyLanguageServerBundle's own block in "
+                        + "build.gradle.kts — the check must run at execution time");
     }
 
     private static int countOccurrences(String text, String literal) {
