@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 79
 current_phase_name: EDT Responsiveness
-status: executing
-stopped_at: Completed 79-02-PLAN.md (Node version cache, debounced Settings dialog, EDT-02/EDT-03)
-last_updated: "2026-09-04T10:18:32.844Z"
+status: verifying
+stopped_at: Completed 79-03-PLAN.md (Atomic DownloadGuard, off-EDT assertion tripwire; EDT-01/EDT-06; phase 79 complete)
+last_updated: "2026-09-04T10:24:43.829Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 79 execution started
-state_head: ce59b47f8c6e680f2598b750d181b87fb60531e0
+state_head: 3fac6cacd7f0eedc7c8711bbcc63bd62ef0c23fe
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 Phase: 79 (EDT Responsiveness) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-04 — Phase 79 execution started
 
 ## Performance Metrics
@@ -113,6 +113,7 @@ Last activity: 2026-09-04 — Phase 79 execution started
 | Phase 78 P03 | 52min | 3 tasks | 3 files |
 | Phase 79 P01 | 25min | 3 tasks | 13 files |
 | Phase 79 P02 | ~15min | 3 tasks | 10 files |
+| Phase 79 P03 | 20min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -161,6 +162,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 79]: Phase 79 Plan 01: Task 1 redirected all six external restart call sites (not just BbjRestartServerAction) because making doRestart() private broke compilation for the others (Rule 3 blocking-issue auto-fix); Task 2 still delivered its own scoped source-guard coverage.
 - [Phase 79]: Phase 79 Plan 01: the in-file crash-balloon Restart action (notifyCrash()) was also redirected through requestRestart(0), a superset of D-06 matching #539's 'all triggers' literally.
 - [Phase 79]: Phase 79 Plan 02: BbjNodeVersionCache memoizes node --version keyed on path + file stat (lastModified+length); KeystrokeDebouncer over the 79-01 Scheduler seam cancels only its own pending task (never cancelAll), keeping two Settings fields on one Alarm independent; BbjSettingsLookups isolates all Settings-dialog file/subprocess work off the EDT. — EDT-02/EDT-03 (#541, #543): a per-path stat-keyed cache avoids re-spawning node --version on every notification refresh, and a debounced background lookup with staleness discard removes all keystroke-path filesystem/subprocess work from the EDT while keeping the two settings fields independently coalesced.
+- [Phase 79]: Phase 79 Plan 03: DownloadGuard.tryAcquire performs the compare-and-set and completion-attachment under one lock, acquired before the Task.Backgroundable is queued (the actual EDT-06 fix, since the old persisted flag was set only after a second caller could already pass the check); assertIsNonDispatchThread() compiled without a ThreadingAssertions substitution on this platform. — EDT-06 (#537) and EDT-01 (#506) verify-and-close; both close phase 79's remaining requirements
 
 ### Tech Debt
 
@@ -199,8 +201,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T10:18:32.788Z
-Stopped at: Completed 79-02-PLAN.md (Node version cache, debounced Settings dialog, EDT-02/EDT-03)
+Last session: 2026-09-04T10:24:43.769Z
+Stopped at: Completed 79-03-PLAN.md (Atomic DownloadGuard, off-EDT assertion tripwire; EDT-01/EDT-06; phase 79 complete)
 Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build

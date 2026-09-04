@@ -249,7 +249,7 @@ Plans:
   4. All six language-server restart triggers (restart action, crash notification, both status-bar indicators, refresh Java classes, crash auto-restart) funnel through one guarded entry point, and the first-crash restart delay is scheduled via `restartAlarm` off the EDT rather than `Thread.sleep` inside `invokeLater`; regression tests confirm exactly one restart when two triggers fire in quick succession and confirm no EDT sleep (#513, #539).
   5. Two near-simultaneous Node.js download requests start exactly one download task, verified by an atomic check-and-set regression test (#537).
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 Plans:
 **Wave 1**
 
@@ -258,7 +258,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 79-02-PLAN.md — Stat-keyed Node-version cache and debounced Settings-dialog lookups (EDT-02, EDT-03, #541/#543)
-- [ ] 79-03-PLAN.md — Atomic single-download guard and off-EDT dispatch lock-in (EDT-01, EDT-06, #506/#537)
+- [x] 79-03-PLAN.md — Atomic single-download guard and off-EDT dispatch lock-in (EDT-01, EDT-06, #506/#537)
 
 ### Phase 80: EM Token Security
 
