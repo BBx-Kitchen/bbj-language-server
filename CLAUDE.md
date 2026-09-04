@@ -95,3 +95,13 @@ Both VS Code and IntelliJ consume the same language server binary (`out/language
 ### AST Type Constants
 
 Langium 4.x uses `ClassName` (the string type constant) for `$type` checks. For example: `$type: JavaClass` (not a string literal). Use `isXxx()` type guard functions from `generated/ast.ts` for runtime type checks.
+
+### Shell and File-Access Rules
+
+The Claude Code permission hooks block reads of `.env` and other secret-bearing files, and they cannot tell a scoped search from a secret read when a shell command is opaque. A chained `cd … && grep …`, a relative path, or a bare recursive `grep -r`/`find`/`cat` over a directory trips that block and forces a manual approval prompt. To keep the hooks quiet and the run autonomous:
+
+- **Search and read with the built-in tools first:** use `Grep` for content search, `Glob` for file discovery, and `Read` for file contents. Only fall back to shell `grep`/`find`/`cat` when a built-in tool genuinely cannot do the job (for example a pipeline into another program).
+- **Every shell path is absolute and complete.** Name the exact file or the exact directory from the repo root (`/home/coder/repos/bbj-language-server/...`); never rely on the current working directory, and never use `.`/`..` or `~` shortcuts as the search target.
+- **Never chain `cd` with `grep`, `find`, `cat`, `sed`, `head`, or `tail`.** Run the command directly against the absolute path instead of changing directory first. `cd` is acceptable only in front of a build tool that needs its project directory (`cd /home/coder/repos/bbj-language-server/bbj-intellij && ./gradlew …`, `npm --prefix …` is preferred where the tool supports it).
+- **No blind recursive scans.** `grep -r` and `find` over a directory sweep secret files by accident; scope the target to the specific files or subtree needed (`--include` / `-name` filters, or the `Grep` tool with a `glob`), and never point any read at `.env*`, `*.pem`, `*.key`, or credential stores.
+- **Scope commit staging the same way:** `git add <exact path>` only, never `git add -A` or `git add .`.
