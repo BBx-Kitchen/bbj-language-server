@@ -50,4 +50,76 @@ class JwtValidityTest {
         assertEquals(JwtValidity.Result.VALID, JwtValidity.check(token, 1999L));
         assertEquals(JwtValidity.Result.EXPIRED, JwtValidity.check(token, 2001L));
     }
+
+    @Test
+    void aDecodeThrowingPayloadIsMalformed() {
+        // "!!!not-base64!!!" contains characters outside the base64url alphabet, so
+        // Base64.getUrlDecoder().decode throws IllegalArgumentException.
+        String token = HEADER + ".!!!not-base64!!!." + SIGNATURE;
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(token, 1000L));
+        assertTrue(BbjEMTokenStore.isTokenExpired(token));
+    }
+
+    @Test
+    void aNullTokenIsMalformed() {
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(null, 1000L));
+        assertTrue(BbjEMTokenStore.isTokenExpired(null));
+    }
+
+    @Test
+    void anEmptyTokenIsMalformed() {
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check("", 1000L));
+        assertTrue(BbjEMTokenStore.isTokenExpired(""));
+    }
+
+    @Test
+    void anExpExactlyEqualToNowIsExpired() {
+        String token = tokenWithPayload("{\"exp\":2000}");
+
+        assertEquals(JwtValidity.Result.EXPIRED, JwtValidity.check(token, 2000L));
+    }
+
+    @Test
+    void anExpThatIsNotAnIntegerIsMalformed() {
+        String stringExp = tokenWithPayload("{\"exp\":\"soon\"}");
+        String decimalExp = tokenWithPayload("{\"exp\":12.5}");
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(stringExp, 1000L));
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(decimalExp, 1000L));
+    }
+
+    @Test
+    void anExpLargerThanLongMaxIsMalformed() {
+        // 20 nines overflows Long.parseLong (Long.MAX_VALUE has 19 digits).
+        String token = tokenWithPayload("{\"exp\":99999999999999999999}");
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(token, 1000L));
+    }
+
+    @Test
+    void aFourPartTokenIsMalformed() {
+        String token = HEADER + "." + payloadSegment("{\"exp\":2000}") + "." + SIGNATURE + ".extra";
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(token, 1000L));
+        assertTrue(BbjEMTokenStore.isTokenExpired(token));
+    }
+
+    @Test
+    void aTokenWithNoDotsIsMalformed() {
+        String token = "abcdefghij";
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(token, 1000L));
+        assertTrue(BbjEMTokenStore.isTokenExpired(token));
+    }
+
+    @Test
+    void checkIsPureAcrossRepeatedAndInterleavedCalls() {
+        String malformed = "aaa.bbb";
+        String valid = tokenWithPayload("{\"exp\":2000}");
+
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(malformed, 1000L));
+        assertEquals(JwtValidity.Result.VALID, JwtValidity.check(valid, 1000L));
+        assertEquals(JwtValidity.Result.MALFORMED, JwtValidity.check(malformed, 1000L));
+    }
 }
