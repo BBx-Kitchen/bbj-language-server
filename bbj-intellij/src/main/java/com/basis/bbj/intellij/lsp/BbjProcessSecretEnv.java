@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -103,24 +105,68 @@ public final class BbjProcessSecretEnv {
      * Creates a new empty temporary file, named {@code prefix<random>suffix} in the
      * platform default temporary-file directory, that is owner-only for its whole
      * life: no group or other principal can read or write it at any point between
-     * creation and deletion. On a filesystem whose default provider reports POSIX
-     * attribute-view support, the file is created with exactly the owner-read and
-     * owner-write permission bits set at creation time — there is no window in which
-     * the file exists with a broader mode. On a filesystem without POSIX support (for
-     * example, Windows), this falls back to a plain temporary-file creation in the
-     * per-user temporary directory, which is already ACL-restricted to the owning
-     * account; this is a reasoned position, not an equivalent guarantee.
+     * creation and deletion. Three outcomes: on a filesystem whose default provider
+     * reports POSIX attribute-view support, the file is created with exactly the
+     * owner-read and owner-write permission bits set at creation time — there is no
+     * window in which the file exists with a broader mode. On a filesystem reporting
+     * ACL attribute-view support instead (for example, Windows), the file is created
+     * with an explicit single-{@code ALLOW}-entry {@code acl:acl} attribute for the
+     * current user, supplied at creation for the same no-window guarantee as the POSIX
+     * branch; if the current user cannot be resolved by name, the file is created in
+     * the per-user temporary directory and the ACL is applied immediately afterward,
+     * with the file deleted if that restriction fails. When the default filesystem
+     * supports neither attribute view, this fails closed with an {@link IOException}
+     * rather than creating a file with default permissions.
      */
     public static Path createOwnerOnlyFile(String prefix, String suffix) throws IOException {
-        if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+        Set<String> supportedViews = FileSystems.getDefault().supportedFileAttributeViews();
+
+        if (supportedViews.contains("posix")) {
             FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(
                     Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
             return Files.createTempFile(prefix, suffix, ownerOnly);
         }
-        // No POSIX attribute view: fall back to the platform default temporary-file
-        // creation. On Windows this resolves under the per-user temporary directory,
-        // which is already ACL-restricted to the owning account — a reasoned position,
-        // not an equivalent guarantee.
-        return Files.createTempFile(prefix, suffix);
+
+        if (supportedViews.contains("acl")) {
+            UserPrincipal owner = resolveCurrentUserPrincipal();
+            if (owner != null) {
+                // Primary path: the attribute is supplied at creation, exactly as on
+                // POSIX, so the file never exists with a broader DACL.
+                return Files.createTempFile(prefix, suffix, OwnerOnlyAcl.asFileAttribute(owner));
+            }
+            // Second-best path: the lookup service could not resolve a principal by
+            // name (domain accounts can fail this lookup). Create in the per-user
+            // temp directory, then restrict immediately — unlike the primary path
+            // above, there is a small window here between creation and restriction.
+            // A file that was created but could not be restricted must not survive.
+            Path created = Files.createTempFile(
+                    Path.of(System.getProperty("java.io.tmpdir")), prefix, suffix);
+            try {
+                Files.getFileAttributeView(created, AclFileAttributeView.class)
+                        .setAcl(OwnerOnlyAcl.ownerOnlyAcl(Files.getOwner(created)));
+            } catch (IOException e) {
+                Files.deleteIfExists(created);
+                throw e;
+            }
+            return created;
+        }
+
+        throw new IOException(
+                "Cannot create an owner-only temporary file in " + System.getProperty("java.io.tmpdir")
+                        + ": the default filesystem supports neither the posix nor the acl file-attribute view");
+    }
+
+    /**
+     * Resolves the current user as a {@link UserPrincipal} by name, treating any
+     * failure — including a domain account the lookup service cannot resolve — as an
+     * unresolved principal rather than propagating the exception.
+     */
+    private static UserPrincipal resolveCurrentUserPrincipal() {
+        try {
+            return FileSystems.getDefault().getUserPrincipalLookupService()
+                    .lookupPrincipalByName(System.getProperty("user.name"));
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 }
