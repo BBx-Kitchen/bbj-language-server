@@ -222,11 +222,11 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
   2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
   3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 78-01-PLAN.md — JDK-agnostic Gradle daemon and Java 17 toolchain (BUILD-01, #570)
+- [x] 78-01-PLAN.md — JDK-agnostic Gradle daemon and Java 17 toolchain (BUILD-01, #570)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

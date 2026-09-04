@@ -36,7 +36,7 @@
 
 ### Build and Test Foundation
 
-- [ ] **BUILD-01**: `bbj-intellij` builds and tests on any host JDK via a Gradle `toolchain` pinned to Java 17 with the foojay resolver, verified by a successful `./gradlew test` on this environment's JDK 25 (#570)
+- [x] **BUILD-01**: `bbj-intellij` builds and tests on any host JDK via a Gradle `toolchain` pinned to Java 17 with the foojay resolver, verified by a successful `./gradlew test` on this environment's JDK 25 (#570)
 - [ ] **BUILD-02**: The Gradle wrapper is regenerated to a current 8.x release with a pinned distribution checksum, the committed wrapper JAR matches the declared version, a CI wrapper-validation step guards it, and `./gradlew dependencies` enumerates the transitive tree (#503, #576)
 - [ ] **BUILD-03**: `./gradlew buildPlugin` on a clean clone fails fast with a directed message when `../bbj-vscode/out/language/main.cjs` is absent, instead of assembling a plugin without its language server (#517)
 - [ ] **BUILD-04**: The existing `src/test/` source set (7 JUnit 5 classes, stale claim in #569 corrected) is extended with regression coverage for the Node download/extract/cache pipeline and the EDT-responsiveness paths this milestone changes; `./gradlew test` runs them green (#569, residual)
@@ -95,13 +95,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PARITY-03 | Phase 81 | Pending |
 | COMP-01 | Phase 82 | Pending |
 | COMP-02 | Phase 82 | Pending |
-| BUILD-01 | Phase 78 | Pending |
+| BUILD-01 | Phase 78 | Complete |
 | BUILD-02 | Phase 78 | Pending |
 | BUILD-03 | Phase 78 | Pending |
 | BUILD-04 | Phase 83 | Pending |
 | BUILD-05 | Phase 83 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 20 total
 - Mapped to phases: 20
 - Unmapped: 0 ✓

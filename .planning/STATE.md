@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 78
 current_phase_name: Build & Test Foundation
 status: executing
-stopped_at: Phase 78 context gathered
-last_updated: "2026-09-04T05:31:26.133Z"
+stopped_at: Completed 78-01-PLAN.md
+last_updated: "2026-09-04T05:52:26.902Z"
 last_activity: 2026-09-04
-last_activity_desc: Roadmap created (6 phases, 78-83); 20/20 requirements mapped
-state_head: 5f549d84aaca5db02617c5cf94c7dca97c9e8074
+last_activity_desc: Phase 78 execution started
+state_head: ccfb437457319a9d726251d6fb791a204aa3123a
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State: BBj Language Server
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.2 IntelliJ Burn-down roadmap created (Phases 78-83, 20/20 requirements mapped). Next: `/gsd-plan-phase 78`. The eight v4.1 advisories still await a tagged release and publication (see MILESTONES.md post-release actions).
+**Current Focus:** Phase 78 — Build & Test Foundation
 
 ---
 
 ## Current Position
 
-Phase: 78 (Build & Test Foundation) — READY TO EXECUTE
-Plan: —
+Phase: 78 (Build & Test Foundation) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-04 — Roadmap created (6 phases, 78-83); 20/20 requirements mapped
+Last activity: 2026-09-04 — Phase 78 execution started
 
 ## Performance Metrics
 
@@ -108,6 +108,7 @@ Last activity: 2026-09-04 — Roadmap created (6 phases, 78-83); 20/20 requireme
 | Phase 77 P05 | 15min | 3 tasks | 2 files |
 | Phase 77 P06 | 20min | 1 tasks | 1 files |
 | Phase 77 P07 | 35min | 2 tasks | 1 files |
+| Phase 78 P01 | 17min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   lexer/commenter fixes merged into one Feature Parity phase (81), matching the
   REQUIREMENTS.md category boundary; LSP4IJ coupling tests deferred to a final Regression
   Test Hardening phase (83) so it can cover both the EDT paths and the new compile surface.
+- [Phase 78]: 78-01: Daemon JVM criteria (toolchainVersion=17) plus a compile/test toolchain block fix #570; foojay resolver proven end-to-end with a real Temurin 17.0.20.1 download for the self-heal path. — Gradle 8.x cannot run its daemon on Java 25; the daemon JVM criteria file steers the daemon itself, which a build-script-level toolchain block alone cannot do.
 
 ### Tech Debt
 
@@ -188,9 +190,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T03:14:07.458Z
-Stopped at: Phase 78 context gathered
-Resume file: .planning/phases/78-build-test-foundation/78-CONTEXT.md
+Last session: 2026-09-04T05:52:26.877Z
+Stopped at: Completed 78-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
 foundation (78) gates every subsequent `./gradlew` invocation in this environment.
