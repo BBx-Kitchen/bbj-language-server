@@ -121,7 +121,18 @@ val verifyLanguageServerBundle by tasks.registering {
     // and it must re-run every time a dependent task runs.
     outputs.upToDateWhen { false }
     doLast {
-        if (!bundleFile.exists() || bundleFile.length() == 0L) {
+        // Enforce only when a task that actually ships the bundle is part of this
+        // build's task graph (D-10: buildPlugin/prepareSandbox/runIde may fail).
+        // `copyLanguageServer` (and therefore this task) is ALSO reached from
+        // `test`'s IntelliJ Platform Gradle Plugin sandbox composition
+        // (prepareTestSandbox -> composedJar -> instrumentedJar -> jar ->
+        // copyLanguageServer) even though the JUnit tests never touch the bundle
+        // themselves — that pre-existing coupling (confirmed present before this
+        // check was added) must not make `test` fail on a clean clone.
+        val packagingRequested = gradle.taskGraph.hasTask(":buildPlugin") ||
+            gradle.taskGraph.hasTask(":prepareSandbox") ||
+            gradle.taskGraph.hasTask(":runIde")
+        if (packagingRequested && (!bundleFile.exists() || bundleFile.length() == 0L)) {
             throw GradleException(
                 """
                 Missing or empty shared language-server bundle.
