@@ -201,7 +201,7 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
 <summary>🚧 v4.2 IntelliJ Burn-down (Phases 78-83) — IN PROGRESS</summary>
 
 - [x] **Phase 78: Build & Test Foundation** - JDK 17 toolchain, checksum-pinned Gradle wrapper, fail-fast LS-bundle check (completed 2026-09-04)
-- [ ] **Phase 79: EDT Responsiveness** - Off-EDT token/login, settings/notification debounce, guarded restart, serialized Node download
+- [x] **Phase 79: EDT Responsiveness** - Off-EDT token/login, settings/notification debounce, guarded restart, serialized Node download (completed 2026-09-04)
 - [ ] **Phase 80: EM Token Security** - Fail-closed JWT expiry, owner-only temp files, non-keychain warning, trust-window cache
 - [ ] **Phase 81: Feature Parity and Correctness** - Real bbjcpl compile action, string-literal-aware bracket matching, case-insensitive REM toggle
 - [ ] **Phase 82: Composer Robustness** - Visible failure notifications and stale-offset guard for composer edits

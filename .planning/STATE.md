@@ -2,41 +2,41 @@
 gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
-current_phase: 79
-current_phase_name: EDT Responsiveness
-status: verifying
-stopped_at: Completed 79-03-PLAN.md (Atomic DownloadGuard, off-EDT assertion tripwire; EDT-01/EDT-06; phase 79 complete)
-last_updated: "2026-09-04T10:24:43.829Z"
+current_phase: 80
+current_phase_name: EM Token Security
+status: planning
+stopped_at: Phase 79 complete, ready to plan Phase 80
+last_updated: "2026-09-04T12:11:25.899Z"
 last_activity: 2026-09-04
-last_activity_desc: Phase 79 execution started
-state_head: 3fac6cacd7f0eedc7c8711bbcc63bd62ef0c23fe
+last_activity_desc: Phase 79 complete, transitioned to Phase 80
+state_head: c6fc0bcb88356a2c2d1325a168aaf73666435cc4
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
   completed_plans: 6
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-04 (v4.2 roadmap created — 6 phases, 78-83)
+**Last Updated:** 2026-09-04 (Phase 79 verified and complete; Phase 80 ready to plan)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-03)
+See: .planning/PROJECT.md (updated 2026-09-04)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 79 — EDT Responsiveness
+**Current Focus:** Phase 80 — EM Token Security
 
 ---
 
 ## Current Position
 
-Phase: 79 (EDT Responsiveness) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-04 — Phase 79 execution started
+Phase: 80 — EM Token Security
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-04 — Phase 79 complete, transitioned to Phase 80
 
 ## Performance Metrics
 
@@ -163,6 +163,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 79]: Phase 79 Plan 01: the in-file crash-balloon Restart action (notifyCrash()) was also redirected through requestRestart(0), a superset of D-06 matching #539's 'all triggers' literally.
 - [Phase 79]: Phase 79 Plan 02: BbjNodeVersionCache memoizes node --version keyed on path + file stat (lastModified+length); KeystrokeDebouncer over the 79-01 Scheduler seam cancels only its own pending task (never cancelAll), keeping two Settings fields on one Alarm independent; BbjSettingsLookups isolates all Settings-dialog file/subprocess work off the EDT. — EDT-02/EDT-03 (#541, #543): a per-path stat-keyed cache avoids re-spawning node --version on every notification refresh, and a debounced background lookup with staleness discard removes all keystroke-path filesystem/subprocess work from the EDT while keeping the two settings fields independently coalesced.
 - [Phase 79]: Phase 79 Plan 03: DownloadGuard.tryAcquire performs the compare-and-set and completion-attachment under one lock, acquired before the Task.Backgroundable is queued (the actual EDT-06 fix, since the old persisted flag was set only after a second caller could already pass the check); assertIsNonDispatchThread() compiled without a ThreadingAssertions substitution on this platform. — EDT-06 (#537) and EDT-01 (#506) verify-and-close; both close phase 79's remaining requirements
+- [Phase 79 UAT]: Three live-IDE checks (classpath preserved across Settings reset, Run As BUI/DWC + EM login with the off-EDT assertion, Apply inside the debounce window after WR-03's flush) passed by hand on 2026-09-04 against a plugin built from main @ bb11133; the WR-03 synchronous-flush-on-Apply tradeoff is accepted.
 
 ### Tech Debt
 
@@ -192,6 +193,14 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
+- ⚠️ [Phase 79] UI-review follow-ups (advisory, 79-UI-REVIEW.md, 16/24): the debounced Settings
+  lookup has no failure path — neither `KeystrokeDebouncer` nor `BbjSettingsLookups` catches, so
+  an unchecked exception from a lookup would leave "Checking Node.js version…" and the disabled
+  classpath combo stuck until the next keystroke; the combo placeholder does not distinguish
+  "no home set" from "home set but invalid". Candidates for Phase 83 (BUILD-05 residual EDT coverage)
+  or a quick task. Also open from 79-REVIEW.md: IN-01 (text source guards are refactor-defeatable),
+  IN-02 (duplicated plugin-bundle path resolution), IN-03 (`deleteDirectory` follows symlinks).
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Status | Directory |
@@ -201,12 +210,14 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T10:24:43.769Z
-Stopped at: Completed 79-03-PLAN.md (Atomic DownloadGuard, off-EDT assertion tripwire; EDT-01/EDT-06; phase 79 complete)
+Last session: 2026-09-04T12:15:00Z
+Stopped at: Phase 79 complete, ready to plan Phase 80
 Resume file: None
 
-Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
-foundation (78) gates every subsequent `./gradlew` invocation in this environment.
+Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing
+constraint: TOKEN-01 (#535, fail-closed expiry) must land before TOKEN-04 (#542, trust-window
+cache). Phase 79 closed with UAT 10/10, VALIDATION nyquist-compliant, SECURITY 18/18 closed,
+UI review advisory only.
 
 ## Deferred Items
 
@@ -262,8 +273,8 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-04 after v4.2 roadmap creation (Phases 78-83)*
+*State updated: 2026-09-04 after Phase 79 verification and transition to Phase 80*
 
 ## Operator Next Steps
 
-- Plan the first phase with `/gsd-plan-phase 78`
+- Discuss or plan Phase 80 with `/gsd-discuss-phase 80` or `/gsd-plan-phase 80`
