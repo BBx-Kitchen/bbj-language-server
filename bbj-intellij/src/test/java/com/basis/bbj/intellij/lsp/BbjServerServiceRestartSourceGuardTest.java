@@ -34,6 +34,16 @@ class BbjServerServiceRestartSourceGuardTest {
                     "BbjNodeDownloader.java").toAbsolutePath(),
     };
 
+    /**
+     * The settings-apply flow (see {@code BbjServerService}'s class Javadoc) legitimately uses
+     * the debounced {@code scheduleRestart()} rather than a zero-delay {@code requestRestart(0)}
+     * call, so it is fenced by its own test below rather than folded into
+     * {@link #EXTERNAL_RESTART_SITES}, which asserts the zero-delay literal specifically.
+     */
+    private static final Path SETTINGS_CONFIGURABLE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij",
+            "BbjSettingsConfigurable.java").toAbsolutePath();
+
     private static final Path SERVER_SERVICE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "ui", "BbjServerService.java")
             .toAbsolutePath();
@@ -79,6 +89,16 @@ class BbjServerServiceRestartSourceGuardTest {
             assertEquals(0, countOccurrences(text, ".restart()"),
                     site + " must contain zero raw .restart() call sites");
         }
+    }
+
+    @Test
+    void theSettingsApplyFlowCallsScheduleRestartAndNeverTheRawRestartMethod() {
+        String text = readGuardedSource(SETTINGS_CONFIGURABLE);
+        assertTrue(countOccurrences(text, "scheduleRestart()") >= 1
+                        || countOccurrences(text, "requestRestart(") >= 1,
+                SETTINGS_CONFIGURABLE + " must call scheduleRestart() or requestRestart( at least once");
+        assertEquals(0, countOccurrences(text, ".restart()"),
+                SETTINGS_CONFIGURABLE + " must contain zero raw .restart() call sites");
     }
 
     @Test
