@@ -23,7 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Behavioural assertions on {@link OwnerOnlyAcl}'s built entry list: these run
  * unconditionally on Linux, since they assert on a value object -- not on a
  * filesystem -- and prove the shape #536's Windows ACL branch relies on (one
- * ALLOW entry, the given principal, no inherit flags, the D-09 permission floor).
+ * ALLOW entry, the given principal, no inherit flags, the read-write-delete
+ * permission floor).
  */
 class OwnerOnlyAclTest {
 
@@ -70,7 +71,7 @@ class OwnerOnlyAclTest {
                 AclEntryPermission.DELETE,
                 AclEntryPermission.SYNCHRONIZE,
                 AclEntryPermission.READ_ACL
-        )), "the D-09 permission floor must be present so em-login.bbj can truncate-and-write "
+        )), "the read-write-delete permission floor must be present so em-login.bbj can truncate-and-write "
                 + "and the caller's finally block can delete: " + entry.permissions());
     }
 
