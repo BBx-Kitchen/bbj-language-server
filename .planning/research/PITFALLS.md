@@ -1,353 +1,350 @@
 # Pitfalls Research
 
-**Domain:** Adding grammar verbs, fixing tokenizer bugs, and adding completion enhancements to an existing Langium/Chevrotain language server (BBj LS v3.9 milestone)
-**Researched:** 2026-02-20
-**Confidence:** HIGH (codebase analysis of 300+ grammar rules, token-builder, completion provider, scope provider, and 16 prior milestone decisions)
-
----
+**Domain:** IntelliJ plugin maintenance — LSP4IJ-based BBj language client, EDT threading, credential storage, native compiler integration
+**Researched:** 2026-09-04
+**Confidence:** HIGH (all findings grounded in current `bbj-intellij/src/main/java` source, `bbj-vscode/src/Commands/Commands.cjs`, `bbj-vscode/src/language/*.ts`, and `.planning/PROJECT.md`; no external ecosystem research needed — this is an internal burn-down of 21 already-triaged issues against a codebase this agent read directly)
 
 ## Critical Pitfalls
 
-### Pitfall 1: New Keyword Breaks Existing Identifiers That Start With That Word
+### Pitfall 1: Treating issue text as current source state instead of re-diffing against `main`
 
 **What goes wrong:**
-Adding a new keyword (e.g., `SERIAL`, `ADDR` with a new signature, `EXIT` with an int) causes identifiers that share the same prefix to tokenize as the new keyword instead of as `ID`. For example, adding `SERIAL` as a keyword will cause the variable `serialNumber!` to tokenize as `SERIAL` + `Number!` (two tokens), producing a parser error on any file that uses such a variable. This is the exact class of bug that was fixed for `stepXYZ!` in v3.4 and `mode$` in v3.2.
+A phase plan re-implements a fix that the CR-02 EDT-threading restructuring (shipped in v4.1, 0.12.24) already made, wasting effort and risking a regression to code that's already correct.
 
 **Why it happens:**
-Chevrotain's tokenizer is greedy and keyword-biased. Without `LONGER_ALT`, a keyword like `SERIAL` matches before the scanner can check that the next character continues the identifier. The `BBjTokenBuilder` applies `LONGER_ALT = [idWithSuffix, id]` to all uppercased keywords automatically (line 48 of `bbj-token-builder.ts`), but this only prevents suffix-bearing collisions (`serial!`). A keyword prefix match against a plain `ID` without suffix (e.g., a variable named `serial`) still needs the `[idWithSuffix, id]` ordering to fire correctly. If the `CATEGORIES` or `LONGER_ALT` arrays are modified incorrectly for the new keyword, the protection breaks.
+Issue #506 ("Run/EM-login actions perform network token validation and login synchronously on the EDT") cites `BbjRunActionBase.java:60,67` and `BbjEMLoginAction.java:34-36,115` for code that calls `buildCommandLine()`/`performLogin()` before dispatching to `executeOnPooledThread`. Reading the **current** source shows both call sites already wrapped: `BbjRunActionBase.actionPerformed()` (`:66-67`) calls `buildCommandLine()` *inside* `executeOnPooledThread(...)`, with an inline comment citing "CR-02"; `BbjEMLoginAction.actionPerformed()` (`:42`) already dispatches `performLogin(project)` to `executeOnPooledThread`. This matches PROJECT.md's Key Decision: *"EDT-threading restructuring (CR-02) shipped in 0.12.24 without live-IDE automated coverage... confirmed by hand in a running IDE... this repository has no live IntelliJ UI test coverage in CI... so the JUnit suite... cannot exercise the EDT/pooled-thread handoff."* The issue's own acceptance-criteria text was written before CR-02 landed and the tracker entry was never re-triaged against it.
 
 **How to avoid:**
-1. Verify that the new keyword is matched by the regex `[A-Z]+(?!_)` in `BBjTokenBuilder.buildTokens()` so it receives the automatic `LONGER_ALT = [idWithSuffix, id]` assignment. Do not add it to `EXCLUDED`.
-2. Write a parser test using the keyword text as a variable name with each suffix type: `serial!`, `serial$`, `serial%`, and plain `serial` as a field name, method name, and standalone variable.
-3. Run the full `example-files.test.ts` suite after the grammar change — it exercises real-world BBj programs that commonly use keyword-like identifiers.
+Before planning the #506 phase, diff `BbjRunActionBase.java` and `BbjEMLoginAction.java` against the issue's cited line numbers. If CR-02 already restructured the call sites, the phase's real remaining work is writing the JUnit regression test CR-02 shipped without (gated on #569's test source set existing at all) — not another EDT restructuring. Scope the phase as "backfill coverage for CR-02," not "fix EDT blocking."
 
 **Warning signs:**
-- Parser test for the new verb works, but `example-files.test.ts` starts failing.
-- Identifiers like `serialPort!`, `serialNumber$`, or any identifier beginning with the new keyword text produce unexpected lexer errors.
-- Chevrotain emits an ambiguity warning for the new keyword against `ID` in debug mode.
+A plan for #506 that proposes moving `buildCommandLine()`/`performLogin()` inside `executeOnPooledThread` when a `grep -n executeOnPooledThread` already shows it there.
 
-**Phase to address:** Grammar verb addition phase (first phase of v3.9).
+**Phase to address:** EDT responsiveness (#506) — verify-first before planning.
 
 ---
 
-### Pitfall 2: `releaseVersion!` Suffix Tokenization — LONGER_ALT Array Order Matters
+### Pitfall 2: New async fixes don't replicate the existing `isDisposed()`-guarded `invokeLater` pattern
 
 **What goes wrong:**
-The bug `#379 releaseVersion! flagged as parse error` arises because the `RELEASE_NL` and `RELEASE_NO_NL` terminal tokens use `LONGER_ALT = id` (singular, line 56-57 of `bbj-token-builder.ts`) instead of `LONGER_ALT = [idWithSuffix, id]`. When the identifier `releaseVersion!` is encountered, the tokenizer matches `RELEASE` against `RELEASE_NO_NL`, then the `idWithSuffix` check is not tried because `LONGER_ALT` is only `id` (not the array). The `!` suffix is orphaned and causes a parse error. This is the root cause pattern.
+A background task (settings debounce, node-version cache refresh, token-validation cache) completes after the project has closed and touches disposed UI/services, throwing `AlreadyDisposedException` or silently updating a swing component that no longer belongs to a live editor.
 
 **Why it happens:**
-`RELEASE_NL` and `RELEASE_NO_NL` are custom terminal tokens built in `buildTerminalToken()` with regex patterns (`/RELEASE(?=\s*(;\s*|\r?\n))/i` and `/RELEASE(?!\s*(;\s*|\r?\n))/i`). They are patched with `LONGER_ALT = id` (singular) rather than `[idWithSuffix, id]` (array). The v3.4 fix for generic keywords updated the keyword loop but did not update these two special cases. When `releaseVersion!` appears in code that is NOT followed by a newline or semicolon, `RELEASE_NO_NL` fires but its singular `LONGER_ALT` only checks `id` (no suffix), leaving `!` unmatched.
+`BbjServerService.updateStatus()` already establishes the correct shape — every `invokeLater` runnable checks `if (project.isDisposed()) return;` before touching `EditorNotifications`/`MessageBus` (`BbjServerService.java:121-141,152-157,163-170`). New EDT-adjacent code being added for #541 (settings dialog debounce), #543 (notification cache), and #542 (validation cache) is easy to write as "just call `invokeLater(...)`" without copying that guard, because the guard isn't part of any shared helper — it's copy-pasted at each call site today.
 
 **How to avoid:**
-Change both RELEASE special cases in `bbj-token-builder.ts` from:
-```ts
-releaseNl.LONGER_ALT = id;
-releaseNoNl.LONGER_ALT = id;
-```
-to:
-```ts
-releaseNl.LONGER_ALT = [idWithSuffix, id];
-releaseNoNl.LONGER_ALT = [idWithSuffix, id];
-```
-Write a dedicated test: variable named `releaseVersion!`, `releaseDate$`, `releaseCount%`, and a method named `release()` — all in the same file to exercise both `RELEASE_NL` (standalone) and `RELEASE_NO_NL` (inline) code paths.
+Extract the `isDisposed()` + `invokeLater` pattern into a small shared helper (e.g. `BbjEdtUtil.invokeLaterIfLive(project, runnable)`) as part of this milestone, or explicitly copy the guard verbatim at every new call site added for #541/#542/#543. Since `BbjSettingsComponent`/`BbjSettingsConfigurable` are dialog-scoped rather than project-scoped, also guard against the *dialog* having been closed/disposed, not just the project.
 
 **Warning signs:**
-- Any variable that begins with `release` and has a `!`, `$`, or `%` suffix causes a parser/lexer error.
-- The error message mentions an unexpected token at the `!` position.
-- `RELEASE` as a standalone statement works, but `releaseVersion! = "1.0"` fails.
+A new `ApplicationManager.getApplication().invokeLater(...)` call added to this milestone's diff with no `isDisposed()` check immediately inside the lambda.
 
-**Phase to address:** Parser bug fix phase (fix #379).
+**Phase to address:** EDT responsiveness (#541, #542, #543).
 
 ---
 
-### Pitfall 3: `DECLARE` Outside a Method Body Reaches a Grammar Rule That Expects It Only Inside `ClassMember`
+### Pitfall 3: Fixing a check-then-set race at the wrong scope
 
 **What goes wrong:**
-Bug `#380 DECLARE in class outside methods breaks parser`. The grammar defines `ClassMember: FieldDecl | MethodDecl`. `VariableDecl` (which uses the `declare` keyword) is a `SingleStatement` reachable only through `Statement → SingleStatement → VariableDecl`. Inside a class body, the parser expects only `ClassMember | Comments`, so a bare `declare` keyword at class scope triggers a parser error cascade. The cascade then reports errors on subsequent `FIELD` and `METHOD` declarations inside the same class, producing 10-40 noise diagnostics.
+#537's fix (an `AtomicBoolean`/`synchronized` guard around the Node.js download in-progress flag) is scoped per-instance or per-project when the bug it's fixing is scoped per-JVM (or even per-machine).
 
 **Why it happens:**
-Real-world BBj class files sometimes have `DECLARE` statements at the class body level (outside any method), possibly as a coding style artifact or editor paste. The grammar strictly requires `declare` inside method bodies, but the diagnostic suppression system introduced in v3.7 cannot suppress all cascade errors because they span across class member boundaries.
+`BbjNodeDownloader.downloadNodeAsync()` reads/writes `DOWNLOAD_IN_PROGRESS_KEY` via `PropertiesComponent.getInstance()` — the **application-level** singleton, not `PropertiesComponent.getInstance(project)`. That's deliberate: the target of the race, `getNodeDataDirectory()` (`PathManager.getPluginsPath()/bbj-intellij-data/nodejs`), is shared across every open project window in the same IDE instance. A naive fix using a local `AtomicBoolean` field on `BbjNodeDownloader` (a `final class` with only static methods, i.e. effectively a JVM-wide singleton already) is *correctly* scoped to the JVM. But if a future refactor moves this into a project-level service (to reuse the `isDisposed()`-guard pattern from Pitfall 2), the lock would silently narrow to per-project and stop protecting the two-window race the issue describes. A second, harder edge the fix should note rather than solve: two separate IDE *processes* (e.g. two IntelliJ major-version installs sharing one config/plugins directory) are not covered by any in-JVM lock at all — only a file-based lock would close that gap, and it is reasonable to leave it out of scope.
 
 **How to avoid:**
-Two safe approaches (choose one per the milestone design):
-1. **Tolerate-and-ignore approach**: Allow `VariableDecl` inside the `ClassMember` union in the grammar (add it as an optional alternative). This is the simplest grammar change. The semantic validator can then produce a targeted warning: "DECLARE is not allowed at class scope — move inside a method."
-2. **Error recovery approach**: Leave the grammar strict. Ensure `suppressCascading` logic in `bbj-document-validator.ts` correctly filters the cascade when a class-scope parse error is the root. The per-file suppression introduced in v3.7 applies, so a single root cause error should suppress follow-on class member errors.
-
-Do NOT mix both approaches — either recover in grammar or recover in the diagnostic layer. Mixing creates double-reporting of the same error.
+Keep the guard as a static field/`AtomicBoolean` on `BbjNodeDownloader` itself (JVM-wide), matching the scope of the resource it protects. Note in the phase's residual-risk record that cross-process races (two separate IDE installs) remain unguarded — that's an acceptable, explicitly-scoped gap, not a silent one.
 
 **Warning signs:**
-- A parse test for `DECLARE` inside a class shows one error in test output but users report 30+ errors in the IDE.
-- The cascade suppression test in `validation.test.ts` passes but does not cover the class-scope case.
-- `VariableDecl` appears in class-level error traces but has no specific `ClassMember` grammar production.
+A fix that introduces `project.getService(...)`-backed locking for this specific race.
 
-**Phase to address:** Parser bug fix phase (fix #380).
+**Phase to address:** EDT responsiveness / Node download (#537).
 
 ---
 
-### Pitfall 4: Generated AST Must Be Regenerated After Grammar Changes
+### Pitfall 4: New debounce `Alarm`s not parented to a `Disposable`
 
 **What goes wrong:**
-After modifying `bbj.langium` (adding `SERIAL`, `EXIT int?`, changing `AddrStatement`, adding grammar alternatives), the generated files in `bbj-vscode/src/language/generated/` (`ast.ts`, `grammar.ts`) become stale. TypeScript compilation succeeds because the old generated types still match the old grammar structure, but at runtime Langium uses the stale grammar metadata. The result is that new grammar rules are silently ignored or cause internal Langium assertion errors during parsing.
+A new `Alarm` created for #541's keystroke debounce or reused for #543's cache invalidation leaks (keeps firing after the owning dialog/editor closes) or throws once its (missing or wrong) parent is disposed.
 
 **Why it happens:**
-Langium's generator (`langium-cli generate`) must be run explicitly after grammar changes. The build pipeline (esbuild/npm) does not watch `*.langium` files for changes. The generated files look like source code and are committed to the repo, so a developer editing the grammar without running the generator will produce committed code that passes CI (TypeScript compiles) but fails at parse time.
+The one correctly-built `Alarm` in this codebase, `BbjServerService.restartAlarm`, is constructed as `new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this)` where `this` is a project-level service registered via `Disposer.register(project, this)` (`BbjServerService.java:37,47,50`) — so the alarm's lifecycle is tied to the project. `BbjSettingsComponent`/`BbjSettingsConfigurable` (needed for #541) and the static-utility `ComposerLauncher`/`BbjEMTokenStore` (needed for #538/#542) have no natural `Disposable` of their own today. A debounce `Alarm` added there without a real parent either defaults to application-lifetime (never cleaned up per-dialog) or gets built with `null`/`Disposer.newDisposable()` that nothing ever disposes.
 
 **How to avoid:**
-Always run `npm run langium:generate` (or the equivalent `langium generate` CLI command) immediately after editing `bbj.langium`. Then verify the generated `ast.ts` contains the new types (e.g., `isSerialStatement`, updated `ExitWithNumberStatement` interface with optional `exitVal`). Run `npm run build` and the test suite before committing.
-
-Add a CI check: `git diff --exit-code src/language/generated/` after running the generator — if generated files differ from what is committed, fail the build.
+For dialog-scoped debounce (#541), make `BbjSettingsComponent` (or its owning `Configurable`) implement `Disposable` and register it, or reuse an existing `Disposable` IntelliJ hands the settings UI (e.g. via `DialogWrapper`/`Configurable.disposeUIResources()`). For #543's cache, prefer a plain memoized field over an `Alarm` — there's no debounce need for a pure read-cache, only invalidation-on-settings-change, which can be a direct call from the settings-apply path rather than a timer.
 
 **Warning signs:**
-- TypeScript compiles with zero errors after grammar change, but parser tests fail with "unexpected token" on the new construct.
-- The new grammar rule node type is missing from `generated/ast.ts` after a grammar edit.
-- Langium emits a runtime warning about unrecognized rule names.
-- `expectToContainAstNodeType(result, isSerialStatement)` test helper throws "isSerialStatement is not a function".
+`new Alarm(...)` with `this` where `this` is a static utility class or a Swing component that doesn't implement `Disposable`.
 
-**Phase to address:** Any grammar-change phase — must be the first action after any `bbj.langium` edit.
+**Phase to address:** EDT responsiveness (#541), Node notification cache (#543).
 
 ---
 
-### Pitfall 5: Static Method Completion Conflates Instance Scope with Class Scope
+### Pitfall 5: "Unable to determine" security checks stay fail-open after a partial fix
 
 **What goes wrong:**
-When implementing static method completion for `USE`-imported classes (feature #374), there is a risk of returning both static and instance members when the receiver resolves to a class reference (not an instance). The existing `createBBjClassMemberScope()` in `bbj-scope.ts` and the `MemberCall` branch in `getScope()` both assume the receiver is an instance. If the type inferer returns a `BbjClass` node when `ClassName` (a USE reference) is used as a receiver, the scope provider returns all members — static and instance — mixed together. Users see instance methods on class references, which is misleading and can cause false-positive completion suggestions.
+#535's fix flips one of `isTokenExpired()`'s three "unable to determine" branches to fail closed but leaves another, because the three are easy to fix independently and the acceptance criteria (non-3-part token, exp-less payload, decode-throwing payload) can be satisfied by a test that only exercises one path per assertion.
 
 **Why it happens:**
-`BBjTypeInferer.getType()` handles `isClass(reference)` by returning `reference` directly (line 43 of `bbj-type-inferer.ts`). When a user writes `MyClass.someStaticMethod()`, the `SymbolRef` for `MyClass` resolves to the class node itself, and `getType()` returns the class. The `MemberCall` branch in `getScope()` then hits `isBbjClass(receiverType)` and calls `createBBjClassMemberScope(receiverType)`, which returns all members. The fix requires distinguishing "receiver is the class itself" (static context) from "receiver is an instance of the class" (instance context).
+`BbjEMTokenStore.isTokenExpired()` (`:56-88`) has three separate early-return-`false` sites (`:65-66` malformed part count, `:76-77` no `exp` claim, `:84-86` catch-all exception), each with its own "let server decide" comment. A code-review pass or a partial diff can plausibly touch one or two and miss the third, especially since the method has no shared "unable to determine" sentinel today — each branch independently decides to return `false`.
 
 **How to avoid:**
-Introduce a discriminator: when the receiver expression is a `SymbolRef` whose resolved `reference` is a `BbjClass` (not a `VariableDecl`, `FieldDecl`, or `Assignment`), treat it as a class reference and return only `static` members. The `FieldDecl` and `MethodDecl` nodes already carry a `static` boolean from the grammar fragment `Static: static?='STATIC'?`. Filter using `member.static === true`.
-
-Do not change the type inferer — its job is to return the type. The scope provider, which already has different branches for different reference types, is the correct place to add static vs. instance filtering.
+Introduce a single `TokenValidity` result type (e.g. `VALID`, `EXPIRED`, `MALFORMED`) instead of three independent boolean-returning branches, so a reviewer can see all three collapse to the same fail-closed outcome by construction rather than by three separate edits. Write the regression test as one parameterized test over all three malformed inputs, not three separate tests that could pass individually while one branch is missed.
 
 **Warning signs:**
-- Completion after `MyClass.` shows all methods including non-static ones.
-- A test for static method completion also returns instance methods in the completion list.
-- Instance methods appear with different icons than expected in the completion popup.
+A diff to `isTokenExpired()` that changes fewer than all three "unable to determine" `return false` sites, or a test file with only one of the three malformed-input cases.
 
-**Phase to address:** Static method completion phase (feature #374).
+**Phase to address:** EM token security (#535).
 
 ---
 
-### Pitfall 6: `.class` Property Conflicts With Langium's Cross-Reference Mechanism
+### Pitfall 6: A validation trust-window cache (#542) extends the blast radius of the fail-open bug (#535)
 
 **What goes wrong:**
-Implementing `.class` property resolution (feature #373) is tempting to implement as a special string comparison in the `MemberCall` scope provider branch: "if member name is `class`, return the java.lang.Class type." However, `.class` in the grammar's `MemberCall` rule resolves `member` as a cross-reference to a `NamedElement`. Since `class` is also a keyword in `bbj.langium` (the `CLASS` statement), the tokenizer tokenizes `.class` as `.` + `CLASS_KEYWORD`, not as `.` + `ID`. This means the cross-reference lookup for member `class` never fires — the grammar rejects it before the scope provider is reached.
+#542 asks for caching `validateTokenServerSide()`'s result "within a short trust window." If #535 isn't fixed first (or the cache keys on the wrong thing), a malformed/substituted token that the client-side `isTokenExpired()` fail-open bug waves through could now also skip the *server-side* check for the whole trust window, because the cache remembers "validated" rather than re-checking the actual bytes each time.
 
 **Why it happens:**
-`CLASS` appears in the grammar as a keyword for `ClassDecl` and `CLASSEND` is excluded from `LONGER_ALT`. In the `MemberCall` rule, `member=[NamedElement:FeatureName]` expects a `FeatureName` (which is `ID | ID_WITH_SUFFIX`). Since `CLASS` tokenizes as a keyword, not as `ID`, the reference parser fails immediately. The grammar needs to explicitly allow `class` (case-insensitive) in `FeatureName` or as a special alternative in the `MemberCall` rule.
+The two issues touch the same call site (`BbjRunActionBase.buildCommandLine()` → `validateTokenServerSide()`) and the natural cache key is the token *value*, which is correct — but only if the cache is also invalidated the moment `BbjEMTokenStore.deleteToken()`/`storeToken()` runs (logout, re-login, token replaced by another process), not just on a timer. `BbjEMLoginAction.performLogin()`'s freshly-stored token is never itself re-checked before being written to `PasswordSafe` (per #535's own evidence) — so a bad token can enter the cache-eligible state at the very first login, before any trust window logic even runs.
 
 **How to avoid:**
-Add `class` as an alternative in `FeatureName` (or in `ValidName`) explicitly: `FeatureName returns string: ID | ID_WITH_SUFFIX | 'CLASS'`. Alternatively, handle `.class` as a special `PrimaryExpression`/`MemberCall` production that bypasses normal member lookup. The scope provider then needs a special case: when `member.$refText.toUpperCase() === 'CLASS'`, return `java.lang.Class` from the java-interop resolved classes.
-
-Do not implement this as a pure runtime hack in the scope provider without the grammar fix — the grammar will reject it before the scope provider is ever called.
+Sequence #535 before or alongside #542 in the same phase (they share `BbjEMTokenStore`/`BbjRunActionBase`). Key the cache on the exact token string (not "a token exists"), invalidate on `storeToken`/`deleteToken`, and keep the trust window short (minutes, not the full BUI/DWC session) — the window is a performance optimization, not a security boundary, and should never be the sole thing standing between a revoked token and a successful run.
 
 **Warning signs:**
-- Parser error on `myObj!.class` before any scope provider code executes.
-- Test for `.class` completion shows "unexpected token 'CLASS'" in parser errors array.
-- The `member` cross-reference in MemberCall has `$refText === ''` or never resolves.
+A #542 implementation that ships without a corresponding #535 fix in the same PR, or a cache invalidation path that only fires on a timer.
 
-**Phase to address:** `.class` property resolution phase (feature #373).
+**Phase to address:** EM token security (#535, #542) — plan together.
 
 ---
 
-### Pitfall 7: Constructor Completion Fires Too Eagerly Outside `new` Context
+### Pitfall 7: PasswordSafe backend introspection relies on an API surface JetBrains doesn't promise to keep stable
 
 **What goes wrong:**
-When adding constructor completion for `new ClassName(args)` (feature), the completion provider may fire for all class name references, not just those following the `new` keyword. This results in constructor snippets appearing in `USE` statements, `CAST` expressions, type annotations in `DECLARE`, `FIELD`, and method return types — all places where a class name is typed but a constructor call is not appropriate.
+#552's "warn when the resolved backend isn't the native keychain" needs to ask `PasswordSafe`/its settings object what backend is actually active. That capability check may live on an API that isn't part of IntelliJ Platform's stable/public contract, so it silently breaks on a future platform update — the same category of risk this milestone is already tracking explicitly for LSP4IJ (#554, #544).
 
 **Why it happens:**
-The `DefaultCompletionProvider.completionFor()` mechanism in Langium triggers on any grammar position that accepts a `QualifiedClass` or `Class` reference. The `ConstructorCall` grammar rule has `klass=QualifiedClass`, making it one of many places that can produce a class reference completion. Without a context guard that checks whether the immediate grammar parent is `ConstructorCall`, the constructor snippet appears everywhere a class can be typed.
+`BbjEMTokenStore.createAttributes()` (`:26-29`) builds `CredentialAttributes` and calls `PasswordSafe.getInstance()` with no further flag — there is no code in this repo today that inspects which backend `PasswordSafe` resolved to, because nothing needed to know. `PasswordSafeSettings`/`PasswordSafeSettings.ProviderType` (or equivalent) is the natural place to look, but its exact shape and stability guarantee should be verified against the pinned platform version (`intellijIdeaCommunity("2024.2")`) rather than assumed from memory or from a JetBrains blog post.
 
 **How to avoid:**
-In the completion provider override, add a context check: inspect `context.node` and its `$container` chain. Only inject constructor snippets when the grammar path includes a `ConstructorCall` node or the cursor is immediately preceded by the `new` keyword. Use `AstUtils.getContainerOfType(context.node, isConstructorCall)` as the guard. Alternatively, implement constructor completion as a trigger on the space following `new` — filter for contexts where the keyword `new` is the last token before the cursor.
+Treat the backend-detection call the same way #554/#544 already treat `LSPCompletionFeature`/`LSPClientFeatures`: isolate it behind a single narrow method so a breaking platform change fails at one call site, add it to the same regression-test unit those issues call for (gated on #569), and prefer erring toward "warn" when the detection itself throws or returns an unrecognized value, rather than assuming native-keychain (which would silently defeat the whole point of #552).
 
 **Warning signs:**
-- Constructor snippet appears in the `USE ::path::` class reference completion list.
-- Constructor snippet appears after `CAST(` which is a class reference context but not a constructor context.
-- Test for USE completion shows constructor items mixed with class name items.
+Backend detection code that isn't isolated behind its own method, or that has no fallback branch for "detection itself failed."
 
-**Phase to address:** Constructor completion phase.
+**Phase to address:** EM token security (#552); coordinate with LSP4IJ coupling isolation (#554, #544).
 
 ---
 
-### Pitfall 8: Deprecated Method Tag Uses Wrong LSP Field and Is Stripped by Langium
+### Pitfall 8: Reinventing owner-only temp files instead of reusing `BbjProcessSecretEnv.createOwnerOnlyFile`
 
 **What goes wrong:**
-LSP `CompletionItem.tags` with `CompletionItemTag.Deprecated = 1` is the correct way to show strikethrough on deprecated methods in VS Code and IntelliJ. However, Langium's `DefaultCompletionProvider.createReferenceCompletionItem()` creates a `CompletionValueItem` (Langium's internal type) that maps to `CompletionItem` only after `fillCompletionItem()` runs. If `tags` is not explicitly set on the `CompletionValueItem` before `fillCompletionItem()`, the field is lost. Additionally, the existing `bbj-completion-provider.ts` overrides `createReferenceCompletionItem()` but only sets `kind`, `sortText`, `label`, `labelDetails`, `insertText`, and `documentation` — `tags` is not carried over.
+A new temp file that carries secret material (token, password, compiler output containing a token) is created with `Files.createTempFile(prefix, suffix)` directly, or with `PosixFilePermissions.asFileAttribute(...)` passed unconditionally — which throws `UnsupportedOperationException` on Windows/NTFS, where the default filesystem provider doesn't support the POSIX attribute view.
 
 **Why it happens:**
-`CompletionValueItem` in Langium 4.x maps to LSP `CompletionItem` but does not include `tags` in its default field mapping. The `BBjCompletionProvider.createReferenceCompletionItem()` calls `super.createReferenceCompletionItem()` and then mutates the result — but `tags` is only passed through if the parent impl sets it, which it does not for custom node types. The deprecated flag must be applied after `super()` is called, by checking `nodeDescription.node` for a `deprecated` marker.
+This exact problem is already solved correctly in this codebase: `BbjProcessSecretEnv.createOwnerOnlyFile()` checks `FileSystems.getDefault().supportedFileAttributeViews().contains("posix")` before touching `PosixFilePermissions`, falling back to a plain temp file (relying on the per-user temp directory's own ACL restriction) on Windows — and it is **already used** by both `BbjRunActionBase.validateTokenServerSide()` (`:298`) and `BbjEMLoginAction.performLogin()` (`:107`). #536's own evidence (`Files.createTempFile` with no attribute at `BbjRunActionBase.java:295,303` / `BbjEMLoginAction.java:96,104`) appears to predate this helper's introduction — re-verify #536's current state before treating it as open work, the same way Pitfall 1 applies to #506. Where it *is* still relevant: any **new** temp file this milestone adds (e.g. for a #571 compile-result surface, if one is needed) must route through the same helper rather than a fresh direct `Files.createTempFile` call.
 
 **How to avoid:**
-After the `super.createReferenceCompletionItem()` call, check if the node has a deprecated indicator (from Javadoc `@deprecated` tag stored during class resolution in `java-interop.ts`). If so, set `superImpl.tags = [CompletionItemTag.Deprecated]`. Ensure the `DocumentationInfo` interface (in `generated/ast.ts` types or as an augmentation in `java-interop.ts`) carries a `deprecated: boolean` field populated during the Javadoc parsing step in `resolveAndLinkClass()`.
-
-Import `CompletionItemTag` from `vscode-languageserver`, not from `vscode` — the language server runs in Node.js without VS Code extension APIs.
+Grep for `Files.createTempFile` across any new/changed file in this milestone's diff; every call touching secret-bearing content must go through `BbjProcessSecretEnv.createOwnerOnlyFile`, not a bespoke `PosixFilePermissions` call.
 
 **Warning signs:**
-- Methods with `@deprecated` Javadoc show in completions without strikethrough in VS Code.
-- `CompletionItemTag is not defined` runtime error if imported from wrong module.
-- Strikethrough works in VS Code but not IntelliJ — check that LSP4IJ passes `tags` through (it should, but verify with a debug completion response inspection).
+`PosixFilePermissions.asFileAttribute(...)` called without a prior `supportedFileAttributeViews().contains("posix")` guard anywhere in a new diff.
 
-**Phase to address:** Deprecated method indicator phase.
+**Phase to address:** EM token security (#536) — re-verify current state first; reuse for any new temp-file need.
 
 ---
 
-### Pitfall 9: EM Config `"--"` Argument Interpreted as Flag, Not Separator
+### Pitfall 9: Porting VS Code's `Commands.cjs` compile flow literally, instead of routing through the shared language server
 
 **What goes wrong:**
-Bug `#382 EM Config "--" causing DWC/BUI startup failure`. The `web.bbj` runner receives a `--` argument as a command-line separator (BBj's convention for separating runner options from program arguments). When the EM Config field in settings is set to `"--"` (two dashes), the value is passed as an argument to the `bbj` process. The `bbj` executable interprets `--` as "end of BBj options, start of program arguments" and either ignores subsequent arguments or enters an unexpected parsing mode, causing the BUI/DWC launch to fail silently.
+#571's own "Proposed approach" text says to mirror "VS Code's real compile flow in `Commands.cjs:294-343`" via a new `bbj/compile` LSP4IJ request. Read literally, this is misleading: VS Code's `compile` handler (`Commands.cjs:298-345`) is **client-side only** — it calls `vscode.workspace.getConfiguration('bbj')`, builds compiler options with `buildCompileOptions`/`buildCompileArgv`, and spawns `bbjcpl` directly via `execWithProgress(argv)`, entirely inside the VS Code extension process. It never goes through the language server or an LSP request at all. Implementing #571 by literally porting this logic into IntelliJ (as Java code re-reading IntelliJ settings and re-spawning `bbjcpl` independently) would create a **third**, independently-drifting BBjCPL invocation, alongside VS Code's client-side one and the language server's own `BBjCPLService` (`bbj-cpl-service.ts`, already used for automatic on-save diagnostics via `buildDocuments()`).
 
 **Why it happens:**
-The `BbjRunBuiAction` and `BbjRunDwcAction` build a `GeneralCommandLine` by calling `cmd.addParameter()` for each argument sequentially, including the configPath. If `configPath` contains `--` (or the emUrl field contains it), `GeneralCommandLine.addParameter()` on IntelliJ passes it verbatim to the process. The BBj interpreter sees `--` as its argument separator before encountering the program path argument, discarding everything after it.
+The issue text conflates "the behavior VS Code's compile command produces" with "how VS Code's compile command is implemented." The two are not the same, and only the LS-side `BBjCPLService`/`composer-commands.ts` precedent is actually shared infrastructure both clients can use without duplicating spawn/parse logic.
 
 **How to avoid:**
-Validate the configPath and emUrl settings fields on save in `BbjSettingsConfigurable.apply()`. If the value equals `--` or starts with `-` unexpectedly, show a validation error before applying. Additionally, sanitize in the action builder: if `configPath.trim() === '--'` or `emUrl.trim() === '--'`, treat as empty/default and log a warning. Do not pass the raw setting value to `addParameter()` without validation.
+Follow the `composer-commands.ts` precedent (`bbj/composer/*`, already used by both the VS Code webview and this IntelliJ plugin) rather than `Commands.cjs`: add a genuinely shared `bbj/compile` request/notification handler in the language server that wraps the **existing** `BBjCPLService.compile()`/`parseBbjcplOutput` (`bbj-cpl-service.ts`, `bbj-cpl-parser.ts`) — not a reimplementation of VS Code's client-side option-reading and process-spawning. This also respects PROJECT.md's "Existing LS unchanged" constraint in its actual intent (no IntelliJ-only special cases in the LS) rather than its literal wording (the LS has already been extended once, for composer commands, specifically because both clients needed the same capability).
 
 **Warning signs:**
-- DWC/BUI run produces no output in the log window and exits immediately with code 0 or 1.
-- Removing the `--` from the EM Config setting makes run succeed.
-- The `bbj` process exits before the web.bbj runner loads, visible only in debug-level LS logs.
+A #571 implementation that adds `ProcessBuilder`/`GeneralCommandLine` spawning `bbjcpl` directly inside `bbj-intellij/`, duplicating argument-building logic that already exists in `CompilerOptions.ts`/`process-args` on the VS Code side, instead of a new `connection.onRequest('bbj/compile', ...)` in the shared LS.
 
-**Phase to address:** Bug fix phase for #382.
+**Phase to address:** Compile action (#571).
 
 ---
 
-### Pitfall 10: `config.bbx` File Loses Syntax Highlighting After Extension Update
+### Pitfall 10: A string-aware bracket lexer that mishandles BBj's doubled-quote escape reintroduces the same bug, shifted
 
 **What goes wrong:**
-Bug `#381 config.bbx file no longer highlighted`. The `config.bbx` file is associated with the `bbx` language ID in the TextMate grammar (`bbx.tmLanguage.json`, scopeName `source.bbx`), but the `package.json` grammar contribution only registers `source.bbj` for the `bbj` language ID. The `.bbx` extension is registered under the `bbj` language in `package.json` (line 34) — so `.bbx` files are typed as `bbj`, not as `bbx`. This means `config.bbx` is parsed by the BBj Langium grammar (expecting BBj program syntax) instead of the BBx property-file grammar.
+#568's fix adds a quote-delimited scan branch to `BbjWordLexer.advance()`. If that scan naively terminates the string on the first unescaped `"`, it will mis-terminate on BBj's `""`-doubling escape (a literal quote inside a string is written as two consecutive `"` characters, not a backslash escape) — cutting the STRING token short mid-string and misclassifying everything after the doubled quote, including any real brackets that follow on the same line, as loose punctuation again. This is the same class of bug #568 exists to fix, just relocated a few characters to the right instead of eliminated.
 
 **Why it happens:**
-The `config.bbx` file is a BBx configuration file (key=value format), not a BBj program. It has its own TextMate grammar (`bbx.tmLanguage.json`) that covers `PREFIX`, `ALIAS`, and other config directives. But when `.bbx` is listed under the `bbj` language extensions (to support `.bbx` as BBj program files for run commands), the `config.bbx` file is accidentally reclassified as a BBj program. The BBj Langium parser then attempts to parse it and produces false errors.
+`BbjWordLexer` currently has no string-literal state at all (`"` falls through to the `SYMBOL` default, `:91`, with no state change), so the fix is being added from scratch rather than adjusted from an existing (even if buggy) implementation — there's no prior art in this file to anchor the escape-handling logic to. The grammar's own string terminal (`bbj.langium`) and the TextMate grammar's string pattern (`bbj.tmLanguage.json`, used for actual syntax coloring per PROJECT.md's "TextMate grammar reuse" decision) both already encode the correct `""`-doubling rule — they are the reference implementations to match, not something to re-derive.
 
 **How to avoid:**
-There are two valid approaches:
-1. **File-name-specific association**: Register `config.bbx` by exact filename in `package.json` under a `bbx` language entry (separate from `bbj`), while keeping the `*.bbx` glob under `bbj`. VS Code supports `"files"` with exact filename in language configuration.
-2. **Embedding grammar approach**: Keep `.bbx` under `bbj` but use VS Code's `"embeddedLanguages"` or override the TextMate grammar for files whose name matches `config.bbx` using a `languages[].filenamePatterns` entry.
-
-Do not remove `.bbx` from the `bbj` language entirely — that would break run commands for `.bbx` programs. The fix must be additive (config.bbx gets bbx grammar, other .bbx files stay as bbj).
+Before writing the scan loop, read the string terminal in `bbj.langium` and the string match rule in `syntaxes/bbj.tmLanguage.json` and replicate their doubled-quote handling exactly (a `"` immediately followed by another `"` inside a string is a literal quote, not a terminator). Add a test fixture containing a bracket character *after* an escaped quote in the same string literal (e.g. `PRINT "she said ""go"" (now)"`) to catch a scanner that terminates early.
 
 **Warning signs:**
-- Opening `config.bbx` shows red squiggles from the BBj parser on `PREFIX` and `ALIAS` lines.
-- Syntax highlighting in `config.bbx` shows BBj keyword coloring instead of the bbx property-file coloring.
-- The `bbx.tmLanguage.json` file exists in syntaxes/ but has no grammar contribution entry in `package.json`.
+A quote-scan implementation that treats the first bare `"` after the opening quote as the closing quote, with no lookahead for a doubled `""`.
 
-**Phase to address:** Bug fix phase for #381.
+**Phase to address:** Lexer/commenter (#568).
+
+---
+
+### Pitfall 11: Case-insensitive REM detection matches on prefix alone, catching identifiers like `REMOTE`/`REMARK`
+
+**What goes wrong:**
+#540's fix needs `getLineCommentPrefix()` (or its replacement) to recognize `rem`/`Rem`/`REM` as an existing comment regardless of case. A naive case-insensitive `startsWith("rem")` check also matches a line that legitimately starts with an identifier like `REMOTE$` or a label `REMARK:`, causing the toggle to (incorrectly) treat an uncommented statement as already commented and delete its first three characters, or fail to comment it at all.
+
+**Why it happens:**
+BBj's actual comment terminal in `bbj.langium` requires the keyword to be followed by a word boundary (whitespace, end of line, or a non-identifier character) — a plain string-prefix comparison, even case-normalized, doesn't reproduce that boundary check. The issue's own "Proposed approach" flags this tension directly: either add a lexer-level `COMMENT` token so the platform's PSI-aware commenting path applies (correct boundary handling for free), or write a custom case-insensitive commenter (which must reimplement the boundary check by hand).
+
+**How to avoid:**
+Match the grammar's own comment-terminal boundary rule (word-boundary after the keyword), not a bare case-insensitive prefix match. Test both directions: `Rem` line correctly detected as already-commented, and a `REMOTE$ = ...` or similarly-prefixed identifier line correctly treated as *not* commented.
+
+**Warning signs:**
+A fix expressed as `line.toLowerCase().startsWith("rem ")` or `line.toLowerCase().startsWith("rem")` with no following-character check.
+
+**Phase to address:** Lexer/commenter (#540).
+
+---
+
+### Pitfall 12: Fixing `.exceptionally()` (#538) without offset re-validation (#567) leaves the more dangerous case uncaught
+
+**What goes wrong:**
+#538 asks for an `.exceptionally()` handler on every composer `CompletableFuture` chain so a failed LSP request produces a visible notification instead of silently doing nothing. #567 asks for re-validating captured line/offset coordinates before `WriteCommandAction.replaceString` applies them. These read as independent fixes, but #567's failure mode — the document changed at or before the captured offsets while the modal dialog was open — usually does **not** throw. `WriteCommandAction.replaceString` either throws (offsets now exceed the line's length — the rarer, "loud" case `.exceptionally()` would actually catch) or silently rewrites whatever text now occupies that byte range — the more concerning case, which produces no exception for `.exceptionally()` to observe at all. Shipping only #538 gives a false sense that "failures are now surfaced," while the specific failure #567 documents remains silent.
+
+**Why it happens:**
+Both issues were triaged as separate findings against the same file (`ComposerLauncher.java`) with the same evidence base (`:57-159`), but their fixes target different layers: #538 is exception-handling on the async plumbing, #567 is data-validity checking on the applied result. Neither substitutes for the other.
+
+**How to avoid:**
+Plan #538 and #567 as one phase against `ComposerLauncher.java`. Implement the shared re-decode-and-validate helper #567 calls for (re-decoding the call at the captured offsets immediately before `WriteCommandAction.replaceString`, comparing against what was captured before `dialog.showAndGet()`), and route both a mismatch *and* an async exception through the same user-visible notification path #538 establishes.
+
+**Warning signs:**
+A PR that touches `ComposerLauncher.java` for only one of #538/#567.
+
+**Phase to address:** Composer robustness (#538, #567) — plan together.
+
+---
+
+### Pitfall 13: Adding JUnit regression tests before #569/#570 land produces tests that can't run
+
+**What goes wrong:**
+Several issues' acceptance criteria explicitly condition regression coverage on other issues in this same milestone: #506, #513, #571 each say "because no `src/test/` source set exists for `bbj-intellij` today, regression coverage... depends on that gap being closed first (#569), or on a recorded manual verification step." #569 itself depends on #570 (the build fails on any JDK newer than 17 before `./gradlew test` can even run). A phase plan that writes JUnit tests for #535/#536/#537/#539/#540/#541/#542/#543 without first landing #569+#570 produces test files that cannot execute in this environment (this dev container's only available JDK, per #570's own evidence, is Temurin 25).
+
+**Why it happens:**
+The 21 issues are individually scoped and individually acceptance-criteria'd, but several silently share a prerequisite that isn't called out as a phase-ordering constraint anywhere except in each issue's fine print.
+
+**How to avoid:**
+Sequence #570 (JDK toolchain pin) and #569 (test source set + first test) as an early phase that everything else's regression coverage depends on. For any fix landed before that phase completes, fall back explicitly to the "recorded manual verification step at merge time" language several issues already allow, rather than writing tests that will fail to compile/run.
+
+**Warning signs:**
+A phase plan for #535/#536/#537/#539/#540/#541/#542/#543 whose verification step is "run `./gradlew test`" scheduled before the #569/#570 phase.
+
+**Phase to address:** Build and platform coupling (#570, #569) — sequence first; all others reference it.
 
 ---
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Add keyword to grammar without adding to KEYWORD_STANDALONE regex | New verb works for most cases | Verb followed by newline with no args silently fails to tokenize correctly | Never — always check if verb can appear standalone |
-| Hardcode static method filter in completion without updating type inferer | Faster to implement | Type inferer used by 4+ consumers returns wrong type for static calls, causing future inference bugs | Never — fix in scope provider only, not type inferer |
-| Skip regenerating `generated/ast.ts` after minor grammar tweak | Faster iteration loop | Runtime-only failures that bypass TypeScript type checking | Never — always regenerate |
-| Copy-paste completion item construction for deprecated markers | Avoids refactor | Duplicated logic diverges when `DocumentationInfo` structure changes | Acceptable only if isolated to a single method |
-| Use `string.includes('deprecated')` on Javadoc text to detect deprecated | No AST change needed | Brittle — matches `"not deprecated"`, comment text, parameter names | Never — parse the `@deprecated` JSDoc tag |
-
----
+|----------|-------------------|-----------------|------------------|
+| Ship #535/#536/#537/etc. fixes with only "recorded manual verification" instead of a JUnit test (per several issues' own acceptance-criteria fallback) | Unblocks fixing real bugs before #569/#570 land | Regression risk stays open exactly as it is today — nothing catches a future re-break | Only until the #569/#570 phase lands; must be revisited immediately after, not left indefinitely |
+| Keep the six `restart()` call sites (#539) individually guarded with a simple `AtomicBoolean` in-flight flag rather than routing all six through `scheduleRestart()`'s existing debounce `Alarm` | Smaller, more localized diff; doesn't change UX latency for the "Restart Server" button (debounce would add a delay users didn't ask for) | Two coordination mechanisms (flag + alarm) now coexist in the same class, harder to reason about together | Acceptable if the in-flight flag is the chosen fix (per the issue's own "guard restart() with an in-flight AtomicBoolean, **or** make scheduleRestart() the single entry point" framing) — not acceptable if both are implemented redundantly |
+| Application-scoped `PasswordSafe`-backend warning shown once per session rather than persisted/dismissable state | Simple to implement, no new settings-persistence surface | User re-sees the same warning every IDE restart even after consciously accepting the tradeoff | Acceptable for an initial #552 fix; revisit only if user feedback calls it noisy |
 
 ## Integration Gotchas
 
-Common mistakes when connecting features to existing services.
-
 | Integration | Common Mistake | Correct Approach |
-|-------------|----------------|------------------|
-| `java-interop.ts` deprecated detection | Check `method.deprecated` field that doesn't exist on `JavaMethod` type | Add `deprecated: boolean` to `DocumentationInfo` (already has `javadoc` and `signature`) and populate it during Javadoc parsing in `resolveAndLinkClass()` |
-| Static method scope via `BbjScopeProvider` | Add new branch in `getScope()` that duplicates `createBBjClassMemberScope()` call | Reuse `createBBjClassMemberScope()` with a `staticOnly: boolean` parameter to filter `member.static` |
-| `bbj-token-builder.ts` RELEASE terminals | Treating them identically to regular keyword tokens in the `LONGER_ALT` patch loop | These are manually patched outside the keyword loop (lines 52-57); must be updated separately |
-| Grammar change and TextMate grammar | Updating Langium grammar but forgetting TextMate grammar | New keywords added to `.langium` must also be added to `bbj.tmLanguage.json` for syntax highlighting to work in the IDE (the two are independent) |
-| `config.bbx` file type fix | Registering `bbx` grammar contribution in IntelliJ's `textmateBundles` XML only | Must also update VS Code `package.json` grammars contribution; both IDEs share the TextMate file but register it independently |
-| Constructor completion filtering | Using `context.node.$type === 'ConstructorCall'` | At completion time the AST node may be partially constructed; use CST parent traversal or keyword lookahead instead |
-
----
+|-------------|-----------------|-------------------|
+| LSP4IJ 0.19.0 `@ApiStatus.Experimental` classes (`LSPCompletionFeature`, `LSPClientFeatures`, `LSPDocumentLinkFeature`) | Assuming an experimental API is stable because it hasn't changed across the pinned version | Isolate every subclass/override behind this repo's own thin wrapper, add regression tests (gated on #569) that fail loudly at compile or test time on an LSP4IJ bump, and treat any version bump of the `0.19.0` pin in `build.gradle.kts:27` as requiring a re-audit of #554/#544's file list |
+| IntelliJ `PasswordSafe` / `CredentialAttributes` | Assuming the resolved storage backend is always the native OS keychain | Query the actual resolved backend before claiming a security property about it (#552); treat "can't determine the backend" as itself warning-worthy |
+| `PropertiesComponent.getInstance()` (no project) vs `PropertiesComponent.getInstance(project)` | Picking the project-scoped overload out of habit when the resource being guarded (Node.js cache directory) is shared IDE-wide | Match the lock's scope to the resource's scope — application-level resource needs an application-level (or JVM-static) lock, not a per-project one |
+| `bbj-vscode`'s `Commands.cjs` vs the shared language server | Treating "what Commands.cjs does" as "what the language server exposes," and porting client-side logic into IntelliJ instead of routing through the LS | Only `composer-commands.ts`-style `bbj/*` custom LSP requests are genuinely shared; `Commands.cjs` is VS Code-only and must not be used as an implementation template for IntelliJ, only as a behavioral reference |
+| `bbj-vscode/src/language/bbj-cpl-parser.ts` (diagnostic-oriented BBjCPL parsing) | Writing a second, IntelliJ-specific bbjcpl stdout/stderr parser for the manual "Compile BBj File" action | Reuse the LS-side `BBjCPLService`/`parseBbjcplOutput` via a new shared `bbj/compile` request, matching the existing `bbj/composer/*` pattern |
 
 ## Performance Traps
 
-Patterns that work at small scale but fail as usage grows.
-
 | Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|----------------|
-| Static method completion iterates all members of all USE-imported classes | Completion popup delays 200-500ms on files with 10+ USE statements | Cache the `static` members per class in the `JavaInteropService` or `BbjScopeProvider`; filter at construction not at response time | Files with 20+ USE statements and large Java classpath |
-| `.class` property lookup triggers full `getResolvedClass('java.lang.Class')` on every member access | Slow completion and hover on files with many member calls | Resolve `java.lang.Class` once at startup and cache the reference; reuse the cached reference | Any file with 5+ member access chains |
-| Deprecated marker detection parses raw Javadoc text on every completion request | Completion latency proportional to Javadoc text length | Populate `deprecated` flag once during `resolveAndLinkClass()` and store on `DocumentationInfo` | Classes with long Javadoc (BBjAPI has extensive docs) |
+|------|----------|------------|-----------------|
+| `node --version` subprocess spawned per keystroke in Settings, or per editor-notification refresh | Settings dialog stutters while typing a path; every tab switch/file open re-spawns a process | Debounce (settings, ~300-500ms, matching this repo's existing `RESTART_DEBOUNCE_MS=500`/BBjCPL 500ms trailing-edge precedent) plus a memoized last-known-good result keyed on path, invalidated only on settings change | Immediately, on the first keystroke or first notification refresh — this is not a scale problem, it's present-from-first-use |
+| `validateTokenServerSide()` re-spawned on every Run click even seconds after a prior successful validation | Rapid edit-run-edit-run iteration dominated by a 10s subprocess spawn each time | Short trust-window cache keyed on exact token value (#542), invalidated on token change/logout (see Pitfall 6) | Breaks down for any workflow doing more than one Run within the trust window without caching — i.e. immediately for typical iterative development |
+| `EditorNotificationProvider.collectNotificationData` re-running the Node.js detection chain (explicit path check + PATH auto-detect + cached-download check) on every editor/tab open | Slight lag opening/switching BBj files, worse on slow filesystems or network-mounted paths | Cache the detection result at the JVM/session level, not per-editor-instance, invalidated on settings change | Compounds with tab count — many open BBj files means many redundant checks per session even with per-editor memoization; must be a single shared cache |
 
----
+## Security Mistakes
+
+| Mistake | Risk | Prevention |
+|---------|------|------------|
+| Leaving any of `isTokenExpired()`'s three "unable to determine" branches fail-open (#535) | A malformed, unsigned, or substituted token is treated as valid, protected only by an optional server-side round trip nothing forces the client to call | Fail closed on all three branches (or gate behind an explicit well-formedness check); test all three together, not independently (Pitfall 5) |
+| Caching a server-side token validation result for a "trust window" that outlives how quickly a revoked token should stop working (#542) | A just-revoked/replaced token keeps launching BUI/DWC runs until the cache entry ages out | Keep the window short (minutes); invalidate immediately on `storeToken`/`deleteToken`, not only on a timer (Pitfall 6) |
+| Assuming `PasswordSafe`'s resolved backend is the native OS keychain without checking (#552) | JWT persisted in a weaker KeePass-file store, or not persisted at all, with the user unaware their credential's protection silently changed | Detect the actual resolved backend and warn when it isn't native keychain; treat detection failure as itself warning-worthy (Pitfall 7) |
+| Creating a new temp file that holds secret content via a bare `Files.createTempFile(...)` instead of the existing owner-only helper | Plaintext JWT/credential readable by another OS user on a multi-user host during the file's lifetime | Always route through `BbjProcessSecretEnv.createOwnerOnlyFile` (Pitfall 8); never call `PosixFilePermissions.asFileAttribute` directly without the POSIX-support guard it already implements |
+| Publishing every push to `main` via `preview.yml` while a fix for a security-relevant finding (e.g. #535, #536, #552) is mid-implementation | A partially-fixed security issue (e.g. two of three fail-open branches closed) ships to the preview channel before the phase is complete | Land each of the four EM-token-security issues (#535, #536, #542, #552) as a complete, tested unit per PR, not as incremental partial commits merged to `main` between sessions |
 
 ## UX Pitfalls
 
-Common user experience mistakes in this domain.
-
 | Pitfall | User Impact | Better Approach |
-|---------|-------------|-----------------|
-| Constructor snippet for abstract classes | Users select completion, get snippet, then see "cannot instantiate abstract class" error | Suppress constructor completion for Java classes flagged as abstract (`javaClass.abstract` if available from java-interop) |
-| Deprecated strikethrough without tooltip explaining why | Users see strikethrough but don't know if they should migrate | Include the `@deprecated` Javadoc text in the `documentation` field of the completion item, not just the `tags` field |
-| Static method completion on instances (not just class references) | Users discover static methods only when typing on a class reference, not on an instance | Consider whether to also show static methods on instance receiver completions (Java allows this at runtime; BBj may too) — document the decision |
-| `EXIT` with int parameter — no documentation in hover | Users don't know what the int argument means | Add `EXIT int` to the library BBj docs file or add hover documentation that explains the exit code semantics |
-
----
+|---------|-------------|-------------------|
+| "Compile BBj File" (#571 as it stands) presents as enabled/working but only logs a line | User believes their file compiled with no errors, when nothing was checked at all | Always end in a visible terminal state — success notification or a diagnostics panel — never a click with zero observable effect |
+| Composer dialog silently stops updating its preview after an LSP request fails mid-session (#538) | User can click OK on stale, out-of-date preview content without any indication it stopped refreshing | Visibly mark the dialog as out-of-date (disable OK, show an inline banner) on a failed refresh, not just a background notification easy to miss while the modal has focus |
+| Settings dialog appears to hang for the duration of a subprocess spawn or file read while typing a path (#541) | Users may believe the IDE crashed and force-quit, losing unrelated unsaved settings changes | Debounce plus a lightweight "checking..." indicator while the background task runs, so the UI stays visibly responsive |
+| Two IDE windows or a double-click both trigger the raw `restart()` with no coordination (#539) | Overlapping stop/start calls produce an unpredictable server state the user has to notice and manually retry | Route every restart trigger through one guarded entry point so a second trigger during an in-flight restart is a no-op, not a race |
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
-
-- [ ] **SERIAL grammar rule**: After adding the verb, verify it appears in the TextMate grammar (`bbj.tmLanguage.json`) keyword list — otherwise no syntax highlighting in editor even if Langium parses correctly.
-- [ ] **EXIT int parameter**: The grammar change makes `EXIT 0` parse, but `EXIT` standalone (no int) must still work via the existing `KEYWORD_STANDALONE` or the `kind='EXIT'` alternative. Verify both `EXIT` and `EXIT 1` in parser tests.
-- [ ] **Static method completion**: After adding scope filtering, verify that auto-complete triggered on a USE class reference (`MyClass.|`) shows only static methods. Also verify that `new MyClass().|` (instance) shows only instance methods.
-- [ ] **Deprecated indicator in IntelliJ**: VS Code uses `CompletionItemTag.Deprecated` which renders as strikethrough. Verify IntelliJ/LSP4IJ also renders strikethrough — it should since LSP4IJ implements the LSP spec, but test on a real IntelliJ instance.
-- [ ] **`config.bbx` fix in IntelliJ**: The fix in VS Code `package.json` does not automatically apply to IntelliJ TextMate bundle registration. Check if IntelliJ's `textmateBundles` entry in plugin.xml needs a separate `fileNamePatterns` addition.
-- [ ] **`releaseVersion!` fix regression**: After fixing `RELEASE_NO_NL` and `RELEASE_NL` LONGER_ALT, run the full set of RELEASE tests (lines 1968-2015 of `parser.test.ts`) to ensure standalone `RELEASE`, `RELEASE expr`, and `release` as field/method names all still work.
-- [ ] **Constructor completion does not appear in USE statement**: After adding constructor snippet, open a new `.bbj` file, type `use ::path::` — verify no constructor snippets appear in the class reference completion list.
-
----
+- [ ] **EDT restructuring for #506:** Often "already fixed" by CR-02 (0.12.24) — verify against current `BbjRunActionBase.java`/`BbjEMLoginAction.java` before writing new production code; the real gap is likely regression-test backfill only (Pitfall 1).
+- [ ] **Owner-only temp files for #536:** Often already fixed by `BbjProcessSecretEnv.createOwnerOnlyFile`, already in use at both cited call sites — verify current state before treating it as open (Pitfall 8).
+- [ ] **"Compile BBj File" (#571):** Often implemented as a direct `bbjcpl` spawn duplicating VS Code's client-side `Commands.cjs` logic — verify it instead routes through a shared `bbj/compile` LSP request wrapping the LS's existing `BBjCPLService` (Pitfall 9).
+- [ ] **String-aware bracket lexer (#568):** Often handles a single embedded quote but not BBj's `""`-doubling escape — verify with a test fixture containing a bracket *after* a doubled quote on the same line (Pitfall 10).
+- [ ] **Case-insensitive REM toggle (#540):** Often implemented as a bare case-insensitive prefix match — verify it does not also match identifiers like `REMOTE$`/`REMARK` at line start (Pitfall 11).
+- [ ] **Composer robustness (#538 or #567 alone):** Often ships one without the other — verify both the `.exceptionally()` handler and the offset re-validation land together, since a stale-offset apply is the case `.exceptionally()` alone won't catch (Pitfall 12).
+- [ ] **New `Alarm`/debounce machinery (#541, #543):** Often parented to `this` where `this` isn't actually a registered `Disposable` — verify with `Disposer.isDisposed(...)` after closing the owning dialog/project in a manual test (Pitfall 4).
+- [ ] **JUnit regression tests for any of #506/#513/#535/#536/#537/#539/#540/#541/#542/#543:** Often written before #569+#570 land and therefore cannot compile/run — verify `./gradlew test` actually executes the new test class, not just that the file exists (Pitfall 13).
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover.
-
 | Pitfall | Recovery Cost | Recovery Steps |
-|---------|---------------|----------------|
-| Keyword breaks existing identifiers | MEDIUM | Revert grammar change, add targeted `LONGER_ALT` fix in `bbj-token-builder.ts`, re-run tests |
-| Generated AST stale | LOW | Run `npm run langium:generate`, rebuild, re-run tests |
-| Static + instance methods mixed in completion | LOW | Add `static` filter in scope provider branch; no grammar change needed |
-| Deprecated tag import from wrong module | LOW | Change import from `vscode` to `vscode-languageserver`; rebuild |
-| `.class` grammar rejection | MEDIUM | Add `'CLASS'` to `FeatureName` alternatives in grammar, regenerate AST, add test |
-| EM Config `--` validation missing | LOW | Add sanitize step in action builder; no grammar change needed |
-| `config.bbx` highlighting broken | MEDIUM | Add separate language registration in `package.json` for `config.bbx` by filename; update IntelliJ plugin.xml if needed |
-
----
+|---------|-----------------|-----------------|
+| #506 re-implemented despite already being fixed by CR-02 | LOW | Revert the redundant restructuring; redirect the phase's effort to the JUnit regression test instead |
+| Trust-window cache (#542) shipped without the #535 fail-open fix | MEDIUM | Ship #535 immediately after in a follow-up PR; shorten the trust window as a stop-gap in the interim |
+| New `Alarm` leaks because it wasn't parented to a real `Disposable` | LOW | Add the missing `Disposable`/`Disposer.register` call; no data corruption risk, only a resource-cleanup gap |
+| #571 implemented as a duplicate direct `bbjcpl` spawn instead of routing through the LS | HIGH | Requires reworking both the IntelliJ action and adding the missing `bbj/compile` LS-side handler — budget this as if it were unstarted work, not a small patch |
+| #538 shipped without #567 (or vice versa) | MEDIUM | The missing half is additive to the same file (`ComposerLauncher.java`) and doesn't require reverting the shipped half — land it as a follow-up phase against the same file |
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls.
-
 | Pitfall | Prevention Phase | Verification |
-|---------|------------------|--------------|
-| New keyword breaks identifiers | Grammar verb addition (SERIAL, ADDR, EXIT) | Parser test: keyword text as variable name with each suffix type |
-| RELEASE suffix LONGER_ALT (releaseVersion!) | Bug fix #379 | Parser test with releaseVersion!, releaseDate$, releaseCount% |
-| DECLARE at class scope (#380) | Bug fix #380 | Parser test: DECLARE inside class body, outside method |
-| Stale generated AST | Every grammar-change phase (run langium:generate first) | Check `generated/ast.ts` for new node type |
-| Static/instance conflation | Static method completion (#374) | Completion test: only static methods on class references |
-| .class grammar rejection | .class property (#373) | Parser test: `myObj!.class` parses; scope test: resolves to java.lang.Class |
-| Constructor completion scope leak | Constructor completion | Completion test: no constructor snippets in USE context |
-| Deprecated tag wrong module | Deprecated indicator | TypeScript compiles without `vscode` dependency; strikethrough verified in VS Code and IntelliJ |
-| EM Config `--` argument | Bug fix #382 | Settings validation test: `--` value shows error in UI |
-| config.bbx highlighting (#381) | Bug fix #381 | Open config.bbx in VS Code: bbx grammar colors apply, no parser errors |
-
----
+|---------|-------------------|----------------|
+| Stale issue text vs. current source (#506) | EDT responsiveness | `git diff`/manual read of `BbjRunActionBase.java`/`BbjEMLoginAction.java` against the issue's cited line numbers before planning |
+| EDT slip-back via unguarded `invokeLater` | EDT responsiveness (#541, #542, #543) | Every new `invokeLater` call reviewed for an `isDisposed()` (or dialog-closed) guard |
+| Check-then-set race at the wrong scope (#537) | EDT responsiveness | Confirm the guard's scope (static/JVM) matches `getNodeDataDirectory()`'s scope (shared across windows) |
+| Unparented debounce `Alarm` (#541, #543) | EDT responsiveness | Manual test: close the owning dialog/project mid-debounce, confirm no exception and no stale callback fires |
+| Partial fail-open fix (#535) | EM token security | Single parameterized test exercising all three malformed-input branches at once |
+| Trust-window cache outliving revocation (#542) | EM token security | Test: store token, validate (caches), delete token, immediately re-run — must not use the cached "valid" result |
+| PasswordSafe backend detection on unstable API (#552) | EM token security | Isolate detection behind one method; add to the #554/#544 regression-test unit once #569 lands |
+| Reinvented owner-only temp file (#536) | EM token security | Grep new diff for `Files.createTempFile` outside `BbjProcessSecretEnv` |
+| `Commands.cjs` ported literally instead of routing through the LS (#571) | Compile action | Confirm the IntelliJ change adds a `connection.onRequest('bbj/compile', ...)`-style shared handler, not a standalone `bbjcpl` spawn in Java |
+| Doubled-quote escape mishandled in string-aware lexer (#568) | Lexer/commenter | Test fixture with a bracket immediately after an escaped `""` in the same string literal |
+| REM prefix match without word-boundary check (#540) | Lexer/commenter | Test both a case-varied `rem`/`Rem` comment line and a same-prefixed identifier line (`REMOTE$`/`REMARK`) |
+| `.exceptionally()` without offset re-validation, or vice versa (#538, #567) | Composer robustness | Single phase touching `ComposerLauncher.java` covers both; test both an async-exception path and a stale-offset (no-exception) path |
+| Tests written before #569/#570 land | Build and platform coupling | `./gradlew test` actually runs (not just compiles) before any dependent phase's regression test is treated as done |
 
 ## Sources
 
-- Codebase analysis: `bbj-token-builder.ts` (LONGER_ALT patterns, lines 39-57), `bbj-completion-provider.ts` (completion override), `bbj-scope.ts` (MemberCall branch, lines 154-165), `bbj.langium` (grammar rules for ExitWithNumberStatement, AddrStatement, FeatureName, ValidName)
-- Prior milestone decisions from `PROJECT.md`: LONGER_ALT array [idWithSuffix, id] decision (v3.4), CastExpression grammar fix (v3.2), mode$ suffix fix (v3.2), stepXYZ! fix (v3.4)
-- LSP specification: CompletionItem.tags, CompletionItemTag.Deprecated — official LSP 3.17 spec (verified HIGH confidence)
-- Langium documentation: completion provider override patterns, cross-reference grammar rules — verified against Langium 4.1.3 behavior in codebase
-- Bug reports: #379 (releaseVersion!), #380 (DECLARE in class), #381 (config.bbx), #382 (EM Config "--"), #373 (.class), #374 (static methods), #375 (SERIAL), #376 (EXIT int), #377 (ADDR)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjProcessSecretEnv.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjMissingNodeNotificationProvider.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjCommenter.java`, `BbjWordLexer.java`, `BbjParserDefinition.java`, `BbjPairedBraceMatcher.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java` (current source, read in part)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java` (current source, read in full)
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java` (current source, read in part)
+- `bbj-intellij/build.gradle.kts` (current source, read in full)
+- `bbj-vscode/src/Commands/Commands.cjs` (`compile` handler, `:298-345`, read directly — confirmed client-side only, not LS-routed)
+- `bbj-vscode/src/language/bbj-cpl-service.ts`, `bbj-cpl-parser.ts` (LS-side BBjCPL integration, header/design-decision comments read)
+- `bbj-vscode/src/language/composer-commands.ts` (precedent for shared `bbj/*` LSP custom requests, read in part)
+- `bbj-vscode/src/language/main.ts` (`bbj/refreshJavaClasses`, `bbj/bbjcplAvailability` custom request/notification registrations)
+- `.planning/PROJECT.md` (Key Decisions, especially CR-02/EDT-threading restructuring and its "no live IntelliJ UI test coverage in CI" gap)
+- `/tmp/.../scratchpad/intellij-prio12.md` (full GitHub issue bodies for #506, #571, #570, #569, #568, #567, #554, #552, #544, #543, #542, #541, #540, #539, #538, #537, #536, #535, #517, #513, #503, #576)
 
 ---
-*Pitfalls research for: BBj Language Server v3.9 — grammar additions, tokenizer bug fixes, and completion enhancements*
-*Researched: 2026-02-20*
+*Pitfalls research for: IntelliJ plugin burn-down (LSP4IJ, EDT threading, credential security, native compiler integration)*
+*Researched: 2026-09-04*
