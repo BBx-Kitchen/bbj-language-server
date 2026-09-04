@@ -222,7 +222,7 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
   2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
   3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 Plans:
 **Wave 1**
 
@@ -234,7 +234,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 78-03-PLAN.md — Fail-fast language-server bundle check with source-guard test (BUILD-03, #517)
+- [x] 78-03-PLAN.md — Fail-fast language-server bundle check with source-guard test (BUILD-03, #517)
 
 ### Phase 79: EDT Responsiveness
 

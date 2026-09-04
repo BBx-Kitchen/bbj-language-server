@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 78
 current_phase_name: Build & Test Foundation
-status: executing
-stopped_at: Completed 78-02-PLAN.md
-last_updated: "2026-09-04T06:12:22.650Z"
+status: verifying
+stopped_at: Completed 78-03-PLAN.md — Phase 78 (Build & Test Foundation) complete, all 3 plans done
+last_updated: "2026-09-04T07:08:09.842Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 78 execution started
-state_head: 2d4d65eec23365520bad339de67d0ef8cd40c50f
+state_head: f5163630aeb59c1c286f916794cc8a96c4486482
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 Phase: 78 (Build & Test Foundation) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-04 — Phase 78 execution started
 
 ## Performance Metrics
@@ -110,6 +110,7 @@ Last activity: 2026-09-04 — Phase 78 execution started
 | Phase 77 P07 | 35min | 2 tasks | 1 files |
 | Phase 78 P01 | 17min | 3 tasks | 4 files |
 | Phase 78 P02 | 20min | 3 tasks | 6 files |
+| Phase 78 P03 | 52min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -154,6 +155,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   Test Hardening phase (83) so it can cover both the EDT paths and the new compile surface.
 - [Phase 78]: 78-01: Daemon JVM criteria (toolchainVersion=17) plus a compile/test toolchain block fix #570; foojay resolver proven end-to-end with a real Temurin 17.0.20.1 download for the self-heal path. — Gradle 8.x cannot run its daemon on Java 25; the daemon JVM criteria file steers the daemon itself, which a build-script-level toolchain block alone cannot do.
 - [Phase 78]: 78-02: Wrapper regenerated to Gradle 8.14.5 via the wrapper task run twice, checksums verified live against services.gradle.org, and buildPlugin proven on intellij-platform-gradle-plugin 2.11.0 after installing missing host fontconfig/libfreetype6 packages (unrelated to the version bump).
+- [Phase 78]: 78-03: fail-fast bundle guard scoped via gradle.taskGraph.hasTask(buildPlugin|prepareSandbox|runIde) so the pre-existing test-sandbox coupling (intellij-platform-gradle-plugin's prepareTestSandbox needing a composed jar) never fails ./gradlew test on a clean clone — Two Rule-1 fixes discovered only by running the build: processResources->classes->test coupling (fixed by moving copyLanguageServer's output outside sourceSets.main.output) and the deeper plugin-internal test-sandbox coupling (fixed by scoping the guard's throw to packaging tasks only)
 
 ### Tech Debt
 
@@ -192,8 +194,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T06:12:22.624Z
-Stopped at: Completed 78-02-PLAN.md
+Last session: 2026-09-04T07:08:09.820Z
+Stopped at: Completed 78-03-PLAN.md — Phase 78 (Build & Test Foundation) complete, all 3 plans done
 Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
