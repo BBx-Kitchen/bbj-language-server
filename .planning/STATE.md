@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 80
 current_phase_name: EM Token Security
 status: executing
-stopped_at: Phase 80 context gathered
-last_updated: "2026-09-04T12:49:57.903Z"
+stopped_at: Completed 80-01-PLAN.md
+last_updated: "2026-09-04T13:41:06.116Z"
 last_activity: 2026-09-04
-last_activity_desc: Phase 79 complete, transitioned to Phase 80
-state_head: 1882b06a6cca2cb0584f9e5939d406c94842cce7
+last_activity_desc: Phase 80 execution started
+state_head: 2d866ee4b8812b35c1ae9ab6838289d7f1b63d3d
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 10
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +33,10 @@ See: .planning/PROJECT.md (updated 2026-09-04)
 
 ## Current Position
 
-Phase: 80 (EM Token Security) — READY TO EXECUTE
-Plan: Not started
+Phase: 80 (EM Token Security) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-04 — Phase 79 complete, transitioned to Phase 80
+Last activity: 2026-09-04 — Phase 80 execution started
 
 ## Performance Metrics
 
@@ -114,6 +114,7 @@ Last activity: 2026-09-04 — Phase 79 complete, transitioned to Phase 80
 | Phase 79 P01 | 25min | 3 tasks | 13 files |
 | Phase 79 P02 | ~15min | 3 tasks | 10 files |
 | Phase 79 P03 | 20min | 3 tasks | 7 files |
+| Phase 80 P01 | 45min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 79]: Phase 79 Plan 02: BbjNodeVersionCache memoizes node --version keyed on path + file stat (lastModified+length); KeystrokeDebouncer over the 79-01 Scheduler seam cancels only its own pending task (never cancelAll), keeping two Settings fields on one Alarm independent; BbjSettingsLookups isolates all Settings-dialog file/subprocess work off the EDT. — EDT-02/EDT-03 (#541, #543): a per-path stat-keyed cache avoids re-spawning node --version on every notification refresh, and a debounced background lookup with staleness discard removes all keystroke-path filesystem/subprocess work from the EDT while keeping the two settings fields independently coalesced.
 - [Phase 79]: Phase 79 Plan 03: DownloadGuard.tryAcquire performs the compare-and-set and completion-attachment under one lock, acquired before the Task.Backgroundable is queued (the actual EDT-06 fix, since the old persisted flag was set only after a second caller could already pass the check); assertIsNonDispatchThread() compiled without a ThreadingAssertions substitution on this platform. — EDT-06 (#537) and EDT-01 (#506) verify-and-close; both close phase 79's remaining requirements
 - [Phase 79 UAT]: Three live-IDE checks (classpath preserved across Settings reset, Run As BUI/DWC + EM login with the off-EDT assertion, Apply inside the debounce window after WR-03's flush) passed by hand on 2026-09-04 against a plugin built from main @ bb11133; the WR-03 synchronous-flush-on-Apply tradeoff is accepted.
+- [Phase 80]: 80-01: One three-valued JwtValidity.check classification replaces four independent fail-open return-false sites; a decimal exp value regex bug (silently truncated to a verdict) was caught and fixed during Task 2's red-then-green cycle — D-03/D-04: single decode prevents a partial fix from missing a branch; performLogin now classifies before storeToken so an unusable EM login result never reaches PasswordSafe (D-05)
 
 ### Tech Debt
 
@@ -210,9 +212,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T12:24:43.640Z
-Stopped at: Phase 80 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/80-em-token-security/80-CONTEXT.md
+Last session: 2026-09-04T13:41:06.005Z
+Stopped at: Completed 80-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing
 constraint: TOKEN-01 (#535, fail-closed expiry) must land before TOKEN-04 (#542, trust-window
