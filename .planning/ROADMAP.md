@@ -219,7 +219,11 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
   1. `./gradlew test` succeeds on this environment's JDK 25 host without manual JDK switching, because the Gradle toolchain auto-provisions JDK 17 via the foojay resolver (#570).
   2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
   3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 78-01-PLAN.md — JDK-agnostic Gradle daemon and Java 17 toolchain (BUILD-01, #570)
+- [ ] 78-02-PLAN.md — Gradle 8.14.5 wrapper, publisher-verified checksums, Dependabot surveillance (BUILD-02, #503/#576)
+- [ ] 78-03-PLAN.md — Fail-fast language-server bundle check with source-guard test (BUILD-03, #517)
 
 ### Phase 79: EDT Responsiveness
 **Goal**: The IntelliJ plugin never blocks the EDT on token validation, login, Node.js detection, settings input, or crash recovery, and never races itself on restarts or downloads.
