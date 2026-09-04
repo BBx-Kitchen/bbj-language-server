@@ -40,6 +40,7 @@ public final class BbjServerService implements Disposable {
     private final Scheduler restartScheduler;
     private final RestartGate restartGate;
     private static final int RESTART_DEBOUNCE_MS = 500;
+    private static final long CRASH_RESTART_DELAY_MS = 1000;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
     private long lastCrashTime = 0;
     private int crashCount = 0;
@@ -123,17 +124,7 @@ public final class BbjServerService implements Disposable {
             if (crashCount == 1) {
                 // Auto-restart on first crash
                 logToConsole("Auto-restarting language server (attempt 1)...", ConsoleViewContentType.SYSTEM_OUTPUT);
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (project.isDisposed()) {
-                        return;
-                    }
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    doRestart();
-                });
+                requestRestart(CRASH_RESTART_DELAY_MS);
             } else if (crashCount >= 2) {
                 // Stop auto-restart after second crash
                 logToConsole("Language server crashed twice. Stopping auto-restart.", ConsoleViewContentType.ERROR_OUTPUT);

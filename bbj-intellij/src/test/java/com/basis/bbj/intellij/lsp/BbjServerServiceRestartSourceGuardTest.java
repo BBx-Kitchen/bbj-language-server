@@ -108,4 +108,32 @@ class BbjServerServiceRestartSourceGuardTest {
         String text = readGuardedSource(ALARM_SCHEDULER);
         assertEquals(1, countOccurrences(text, "Alarm.ThreadToUse.POOLED_THREAD"));
     }
+
+    @Test
+    void serverServiceNeverSleepsTheCallingThread() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        assertEquals(0, countOccurrences(text, "Thread.sleep"),
+                "no code path in BbjServerService may sleep the calling thread, including comments");
+    }
+
+    @Test
+    void crashRestartDelayConstantIsDeclaredOnceUsedOnceAndIsOneThousandMillis() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        assertEquals(2, countOccurrences(text, "CRASH_RESTART_DELAY_MS"),
+                "CRASH_RESTART_DELAY_MS must appear exactly twice: its declaration and its single use");
+        assertTrue(text.contains("CRASH_RESTART_DELAY_MS = 1000"),
+                "CRASH_RESTART_DELAY_MS must be declared with value 1000");
+    }
+
+    @Test
+    void theScheduledCrashRestartIsInsideTheFirstCrashBranch() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int firstCrashBranchIndex = text.indexOf("crashCount == 1");
+        int scheduledRestartIndex = text.indexOf("requestRestart(CRASH_RESTART_DELAY_MS)");
+        assertTrue(firstCrashBranchIndex >= 0, "crashCount == 1 is not present in BbjServerService.java");
+        assertTrue(scheduledRestartIndex >= 0,
+                "requestRestart(CRASH_RESTART_DELAY_MS) is not present in BbjServerService.java");
+        assertTrue(firstCrashBranchIndex < scheduledRestartIndex,
+                "the scheduled crash restart must be inside the first-crash branch");
+    }
 }

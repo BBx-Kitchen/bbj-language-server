@@ -99,4 +99,32 @@ class RestartGateTest {
         assertEquals(2, scheduler.cancelAllInvocations(),
                 "the second request must cancel the first request's pending task before scheduling, not skip via a busy flag");
     }
+
+    @Test
+    void theCrashDelayIsAScheduledDelayNotAnOccupiedThread() {
+        ManualScheduler scheduler = new ManualScheduler();
+        CountingAction action = new CountingAction();
+        RestartGate gate = new RestartGate(scheduler, action);
+
+        gate.request(1000);
+        scheduler.advanceBy(999);
+        assertEquals(0, action.runs(), "nothing has run yet 1 ms before the crash delay elapses");
+
+        scheduler.advanceBy(1);
+        assertEquals(1, action.runs(), "the restart must run exactly once once the full 1000 ms delay has elapsed");
+    }
+
+    @Test
+    void aManualTriggerArrivingDuringThePendingFirstCrashDelayMergesIntoIt() {
+        ManualScheduler scheduler = new ManualScheduler();
+        CountingAction action = new CountingAction();
+        RestartGate gate = new RestartGate(scheduler, action);
+
+        gate.request(1000);
+        gate.request(0);
+        scheduler.runPending();
+
+        assertEquals(1, action.runs(),
+                "a manual trigger arriving before the first-crash delay fires must merge into it, not add a second restart");
+    }
 }
