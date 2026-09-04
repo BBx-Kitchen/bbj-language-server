@@ -273,11 +273,22 @@ Plans:
   4. Two Run invocations using the same recently-validated token trigger exactly one server-side validation call; the cache is keyed on the token bytes and invalidated on store/delete (#542, depends on TOKEN-01 landing first).
 
 **Plans**: 4 plans
+**Wave 1**
 
 - [ ] 80-01-PLAN.md — Fail-closed JWT expiry classifier and login-time token gate (TOKEN-01, #535)
 - [ ] 80-02-PLAN.md — Owner-only temp files on Windows via an explicit ACL, fail-closed when unsupported (TOKEN-02, #536)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 80-03-PLAN.md — Non-keychain backend notice behind a single isolated internal-API method (TOKEN-03, #552)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 80-04-PLAN.md — Digest-keyed validation trust window with store/delete invalidation (TOKEN-04, #542)
+
+**Cross-cutting constraints:**
+
+- The failing regression tests are written and shown red before the production change lands (D-02).
 
 ### Phase 81: Feature Parity and Correctness
 
