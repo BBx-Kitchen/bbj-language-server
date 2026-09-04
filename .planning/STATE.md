@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 79
 current_phase_name: EDT Responsiveness
 status: executing
-stopped_at: Phase 79 context gathered
-last_updated: "2026-09-04T08:55:25.597Z"
+stopped_at: Completed 79-01-PLAN.md (guarded restart funnel, EDT-04/EDT-05)
+last_updated: "2026-09-04T09:58:05.977Z"
 last_activity: 2026-09-04
-last_activity_desc: Phase 78 complete, transitioned to Phase 79
-state_head: 41963c29c9976890c0a43b1bd4fb5501f31051a5
+last_activity_desc: Phase 79 execution started
+state_head: 852516be21de5b0615df555486d4d99425622694
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State: BBj Language Server
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 78 — Build & Test Foundation
+**Current Focus:** Phase 79 — EDT Responsiveness
 
 ---
 
 ## Current Position
 
-Phase: 79 (EDT Responsiveness) — READY TO EXECUTE
-Plan: Not started
+Phase: 79 (EDT Responsiveness) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-04 — Phase 78 complete, transitioned to Phase 79
+Last activity: 2026-09-04 — Phase 79 execution started
 
 ## Performance Metrics
 
@@ -111,6 +111,7 @@ Last activity: 2026-09-04 — Phase 78 complete, transitioned to Phase 79
 | Phase 78 P01 | 17min | 3 tasks | 4 files |
 | Phase 78 P02 | 20min | 3 tasks | 6 files |
 | Phase 78 P03 | 52min | 3 tasks | 3 files |
+| Phase 79 P01 | 25min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 78]: 78-01: Daemon JVM criteria (toolchainVersion=17) plus a compile/test toolchain block fix #570; foojay resolver proven end-to-end with a real Temurin 17.0.20.1 download for the self-heal path. — Gradle 8.x cannot run its daemon on Java 25; the daemon JVM criteria file steers the daemon itself, which a build-script-level toolchain block alone cannot do.
 - [Phase 78]: 78-02: Wrapper regenerated to Gradle 8.14.5 via the wrapper task run twice, checksums verified live against services.gradle.org, and buildPlugin proven on intellij-platform-gradle-plugin 2.11.0 after installing missing host fontconfig/libfreetype6 packages (unrelated to the version bump).
 - [Phase 78]: 78-03: fail-fast bundle guard scoped via gradle.taskGraph.hasTask(buildPlugin|prepareSandbox|runIde) so the pre-existing test-sandbox coupling (intellij-platform-gradle-plugin's prepareTestSandbox needing a composed jar) never fails ./gradlew test on a clean clone — Two Rule-1 fixes discovered only by running the build: processResources->classes->test coupling (fixed by moving copyLanguageServer's output outside sourceSets.main.output) and the deeper plugin-internal test-sandbox coupling (fixed by scoping the guard's throw to packaging tasks only)
+- [Phase 79]: Phase 79 Plan 01: Task 1 redirected all six external restart call sites (not just BbjRestartServerAction) because making doRestart() private broke compilation for the others (Rule 3 blocking-issue auto-fix); Task 2 still delivered its own scoped source-guard coverage.
+- [Phase 79]: Phase 79 Plan 01: the in-file crash-balloon Restart action (notifyCrash()) was also redirected through requestRestart(0), a superset of D-06 matching #539's 'all triggers' literally.
 
 ### Tech Debt
 
@@ -194,9 +197,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T08:29:17.793Z
-Stopped at: Phase 79 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/79-edt-responsiveness/79-CONTEXT.md
+Last session: 2026-09-04T09:58:05.918Z
+Stopped at: Completed 79-01-PLAN.md (guarded restart funnel, EDT-04/EDT-05)
+Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
 foundation (78) gates every subsequent `./gradlew` invocation in this environment.

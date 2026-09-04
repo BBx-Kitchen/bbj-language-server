@@ -249,11 +249,11 @@ Plans:
   4. All six language-server restart triggers (restart action, crash notification, both status-bar indicators, refresh Java classes, crash auto-restart) funnel through one guarded entry point, and the first-crash restart delay is scheduled via `restartAlarm` off the EDT rather than `Thread.sleep` inside `invokeLater`; regression tests confirm exactly one restart when two triggers fire in quick succession and confirm no EDT sleep (#513, #539).
   5. Two near-simultaneous Node.js download requests start exactly one download task, verified by an atomic check-and-set regression test (#537).
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 79-01-PLAN.md — Guarded restart funnel and scheduled crash delay, with the shared Scheduler seam (EDT-04, EDT-05, #513/#539)
+- [x] 79-01-PLAN.md — Guarded restart funnel and scheduled crash delay, with the shared Scheduler seam (EDT-04, EDT-05, #513/#539)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
