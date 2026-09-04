@@ -5,13 +5,13 @@ milestone_name: IntelliJ Burn-down
 current_phase: 79
 current_phase_name: EDT Responsiveness
 status: planning
-stopped_at: Phase 78 complete, ready to plan Phase 79
-last_updated: "2026-09-04T07:54:24.189Z"
+stopped_at: Phase 79 context gathered
+last_updated: "2026-09-04T08:29:17.849Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 78 complete, transitioned to Phase 79
-state_head: b1e031059c24bed4d84bc0785cc5217073219bb1
+state_head: 75ebf3acf1f2cc37f5e1456c918a89e331781ebf
 progress:
-  total_phases: 1
+  total_phases: 2
   completed_phases: 1
   total_plans: 3
   completed_plans: 3
@@ -194,9 +194,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T07:54:24.144Z
-Stopped at: Phase 78 complete, ready to plan Phase 79
-Resume file: None
+Last session: 2026-09-04T08:29:17.793Z
+Stopped at: Phase 79 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/79-edt-responsiveness/79-CONTEXT.md
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
 foundation (78) gates every subsequent `./gradlew` invocation in this environment.
