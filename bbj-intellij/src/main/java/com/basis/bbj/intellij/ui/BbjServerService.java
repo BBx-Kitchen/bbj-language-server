@@ -199,8 +199,7 @@ public final class BbjServerService implements Disposable {
             .addAction(new NotificationAction("Restart") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
-                    clearCrashState();
-                    doRestart();
+                    requestRestart(0);
                     n.expire();
                 }
             })
