@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 78
 current_phase_name: Build & Test Foundation
 status: executing
-stopped_at: Completed 78-01-PLAN.md
-last_updated: "2026-09-04T05:52:26.902Z"
+stopped_at: Completed 78-02-PLAN.md
+last_updated: "2026-09-04T06:12:22.650Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 78 execution started
-state_head: ccfb437457319a9d726251d6fb791a204aa3123a
+state_head: 2d4d65eec23365520bad339de67d0ef8cd40c50f
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 ## Current Position
 
 Phase: 78 (Build & Test Foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-04 — Phase 78 execution started
 
@@ -109,6 +109,7 @@ Last activity: 2026-09-04 — Phase 78 execution started
 | Phase 77 P06 | 20min | 1 tasks | 1 files |
 | Phase 77 P07 | 35min | 2 tasks | 1 files |
 | Phase 78 P01 | 17min | 3 tasks | 4 files |
+| Phase 78 P02 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -152,6 +153,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   REQUIREMENTS.md category boundary; LSP4IJ coupling tests deferred to a final Regression
   Test Hardening phase (83) so it can cover both the EDT paths and the new compile surface.
 - [Phase 78]: 78-01: Daemon JVM criteria (toolchainVersion=17) plus a compile/test toolchain block fix #570; foojay resolver proven end-to-end with a real Temurin 17.0.20.1 download for the self-heal path. — Gradle 8.x cannot run its daemon on Java 25; the daemon JVM criteria file steers the daemon itself, which a build-script-level toolchain block alone cannot do.
+- [Phase 78]: 78-02: Wrapper regenerated to Gradle 8.14.5 via the wrapper task run twice, checksums verified live against services.gradle.org, and buildPlugin proven on intellij-platform-gradle-plugin 2.11.0 after installing missing host fontconfig/libfreetype6 packages (unrelated to the version bump).
 
 ### Tech Debt
 
@@ -190,8 +192,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T05:52:26.877Z
-Stopped at: Completed 78-01-PLAN.md
+Last session: 2026-09-04T06:12:22.624Z
+Stopped at: Completed 78-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build

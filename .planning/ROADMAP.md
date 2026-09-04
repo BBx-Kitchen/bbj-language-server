@@ -222,7 +222,7 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
   2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
   3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -230,7 +230,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 78-02-PLAN.md — Gradle 8.14.5 wrapper, publisher-verified checksums, Dependabot surveillance (BUILD-02, #503/#576)
+- [x] 78-02-PLAN.md — Gradle 8.14.5 wrapper, publisher-verified checksums, Dependabot surveillance (BUILD-02, #503/#576)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
