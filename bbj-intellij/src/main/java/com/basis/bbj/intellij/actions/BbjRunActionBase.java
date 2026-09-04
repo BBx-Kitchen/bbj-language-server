@@ -63,6 +63,7 @@ public abstract class BbjRunActionBase extends AnAction {
         // (BbjEMLoginAction.performLogin, up to 15s) -- both are synchronous network I/O
         // and must not run on the EDT (CR-02).
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            ApplicationManager.getApplication().assertIsNonDispatchThread();
             GeneralCommandLine cmd = buildCommandLine(file, project);
             if (cmd == null) {
                 // Error already shown by subclass
