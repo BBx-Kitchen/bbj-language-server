@@ -148,12 +148,12 @@ public final class BbjNodeDownloader {
 
             Path tempExtractDir = Files.createTempDirectory("node-extract-");
             try {
-                extract(platform, tempFile, tempExtractDir, fileName);
+                extract(platform, tempFile, tempExtractDir, fileName, indicator);
 
                 indicator.setFraction(0.9);
                 indicator.setText("Installing Node.js to plugin directory...");
 
-                install(platform, tempExtractDir);
+                install(platform, tempExtractDir, indicator);
 
                 indicator.setFraction(1.0);
             } finally {
@@ -182,15 +182,19 @@ public final class BbjNodeDownloader {
     }
 
     private static void extract(@NotNull Platform platform, @NotNull Path tempFile,
-            @NotNull Path tempExtractDir, @NotNull String fileName) throws IOException {
+            @NotNull Path tempExtractDir, @NotNull String fileName, @NotNull ProgressIndicator indicator)
+            throws IOException {
+        indicator.checkCanceled();
         if (platform == Platform.WINDOWS) {
             extractZip(tempFile, tempExtractDir, fileName);
         } else {
-            extractTarGz(tempFile, tempExtractDir);
+            extractTarGz(tempFile, tempExtractDir, indicator);
         }
     }
 
-    private static void install(@NotNull Platform platform, @NotNull Path tempExtractDir) throws IOException {
+    private static void install(@NotNull Platform platform, @NotNull Path tempExtractDir,
+            @NotNull ProgressIndicator indicator) throws IOException {
+        indicator.checkCanceled();
         // Find the extracted node binary
         Path extractedNode;
         if (platform == Platform.WINDOWS) {
@@ -245,7 +249,8 @@ public final class BbjNodeDownloader {
         }
     }
 
-    private static void extractTarGz(@NotNull Path tarGzFile, @NotNull Path destDir) throws IOException {
+    private static void extractTarGz(@NotNull Path tarGzFile, @NotNull Path destDir,
+            @NotNull ProgressIndicator indicator) throws IOException {
         // Use tar command for extraction (available on macOS/Linux)
         ProcessBuilder pb = new ProcessBuilder(
                 "tar", "xzf", tarGzFile.toAbsolutePath().toString(),
@@ -255,12 +260,20 @@ public final class BbjNodeDownloader {
         pb.redirectErrorStream(true);
         Process process = pb.start();
 
-        // Read output for error reporting
+        // Read output for error reporting, checking for cancellation between lines so a Cancel
+        // click during a slow extraction is honored rather than silently ignored until the tar
+        // process finishes on its own.
         StringBuilder output = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 output.append(line).append("\n");
+                try {
+                    indicator.checkCanceled();
+                } catch (RuntimeException cancelled) {
+                    process.destroyForcibly();
+                    throw cancelled;
+                }
             }
         }
 
