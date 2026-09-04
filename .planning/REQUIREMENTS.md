@@ -10,8 +10,8 @@
 ### EDT Responsiveness
 
 - [ ] **EDT-01**: Run As BUI/DWC and Login to Enterprise Manager never block the EDT on token validation or login; the existing off-EDT dispatch (v4.1 CR-02, commit 06eb1a7) is confirmed against current source and locked in with a regression test that fails if `buildCommandLine()` or `performLogin()` runs on the EDT (#506, verify-and-close)
-- [ ] **EDT-02**: Typing in the Settings dialog's BBj home or Node.js path field never spawns a subprocess or reads a file on the EDT; version and classpath lookups run from a debounced background task, with a regression test simulating rapid keystrokes (#541)
-- [ ] **EDT-03**: The missing-Node-runtime editor notification caches the last known Node.js version per configured path and re-runs `node --version` only when the setting changes; a regression test asserts at most one spawn across two consecutive refresh passes (#543)
+- [x] **EDT-02**: Typing in the Settings dialog's BBj home or Node.js path field never spawns a subprocess or reads a file on the EDT; version and classpath lookups run from a debounced background task, with a regression test simulating rapid keystrokes (#541)
+- [x] **EDT-03**: The missing-Node-runtime editor notification caches the last known Node.js version per configured path and re-runs `node --version` only when the setting changes; a regression test asserts at most one spawn across two consecutive refresh passes (#543)
 - [x] **EDT-04**: The first-crash language-server auto-restart delay is scheduled via `restartAlarm` off the EDT, never via `Thread.sleep` inside `invokeLater`, with a regression test asserting no EDT sleep (#513)
 - [x] **EDT-05**: All six language-server restart triggers (restart action, crash notification, both status-bar widgets, refresh Java classes, crash auto-restart) go through one guarded entry point so overlapping restarts cannot race; a regression test fires two triggers in quick succession and asserts one restart (#539)
 - [ ] **EDT-06**: At most one Node.js download runs at a time; the in-progress check-and-set is atomic, with a regression test asserting two near-simultaneous calls start one download task (#537)
@@ -81,8 +81,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EDT-01 | Phase 79 | Pending |
-| EDT-02 | Phase 79 | Pending |
-| EDT-03 | Phase 79 | Pending |
+| EDT-02 | Phase 79 | Complete |
+| EDT-03 | Phase 79 | Complete |
 | EDT-04 | Phase 79 | Complete |
 | EDT-05 | Phase 79 | Complete |
 | EDT-06 | Phase 79 | Pending |

@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 79
 current_phase_name: EDT Responsiveness
 status: executing
-stopped_at: Completed 79-01-PLAN.md (guarded restart funnel, EDT-04/EDT-05)
-last_updated: "2026-09-04T09:58:05.977Z"
+stopped_at: Completed 79-02-PLAN.md (Node version cache, debounced Settings dialog, EDT-02/EDT-03)
+last_updated: "2026-09-04T10:18:32.844Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 79 execution started
-state_head: 852516be21de5b0615df555486d4d99425622694
+state_head: ce59b47f8c6e680f2598b750d181b87fb60531e0
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 ## Current Position
 
 Phase: 79 (EDT Responsiveness) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-04 — Phase 79 execution started
 
@@ -112,6 +112,7 @@ Last activity: 2026-09-04 — Phase 79 execution started
 | Phase 78 P02 | 20min | 3 tasks | 6 files |
 | Phase 78 P03 | 52min | 3 tasks | 3 files |
 | Phase 79 P01 | 25min | 3 tasks | 13 files |
+| Phase 79 P02 | ~15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 78]: 78-03: fail-fast bundle guard scoped via gradle.taskGraph.hasTask(buildPlugin|prepareSandbox|runIde) so the pre-existing test-sandbox coupling (intellij-platform-gradle-plugin's prepareTestSandbox needing a composed jar) never fails ./gradlew test on a clean clone — Two Rule-1 fixes discovered only by running the build: processResources->classes->test coupling (fixed by moving copyLanguageServer's output outside sourceSets.main.output) and the deeper plugin-internal test-sandbox coupling (fixed by scoping the guard's throw to packaging tasks only)
 - [Phase 79]: Phase 79 Plan 01: Task 1 redirected all six external restart call sites (not just BbjRestartServerAction) because making doRestart() private broke compilation for the others (Rule 3 blocking-issue auto-fix); Task 2 still delivered its own scoped source-guard coverage.
 - [Phase 79]: Phase 79 Plan 01: the in-file crash-balloon Restart action (notifyCrash()) was also redirected through requestRestart(0), a superset of D-06 matching #539's 'all triggers' literally.
+- [Phase 79]: Phase 79 Plan 02: BbjNodeVersionCache memoizes node --version keyed on path + file stat (lastModified+length); KeystrokeDebouncer over the 79-01 Scheduler seam cancels only its own pending task (never cancelAll), keeping two Settings fields on one Alarm independent; BbjSettingsLookups isolates all Settings-dialog file/subprocess work off the EDT. — EDT-02/EDT-03 (#541, #543): a per-path stat-keyed cache avoids re-spawning node --version on every notification refresh, and a debounced background lookup with staleness discard removes all keystroke-path filesystem/subprocess work from the EDT while keeping the two settings fields independently coalesced.
 
 ### Tech Debt
 
@@ -197,8 +199,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T09:58:05.918Z
-Stopped at: Completed 79-01-PLAN.md (guarded restart funnel, EDT-04/EDT-05)
+Last session: 2026-09-04T10:18:32.788Z
+Stopped at: Completed 79-02-PLAN.md (Node version cache, debounced Settings dialog, EDT-02/EDT-03)
 Resume file: None
 
 Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
