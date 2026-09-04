@@ -10,6 +10,11 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -295,6 +300,89 @@ class BbjProcessSecretEnvTest {
         } finally {
             java.nio.file.Files.deleteIfExists(first);
             java.nio.file.Files.deleteIfExists(second);
+        }
+    }
+
+    // --- selectOwnerOnlyStrategy ---
+
+    @Test
+    void posixSupportSelectsThePosixStrategy() throws IOException {
+        assertEquals("posix",
+                BbjProcessSecretEnv.selectOwnerOnlyStrategy(Set.of("basic", "owner", "posix", "unix")));
+    }
+
+    @Test
+    void aclSupportWithoutPosixSelectsTheAclStrategy() throws IOException {
+        assertEquals("acl",
+                BbjProcessSecretEnv.selectOwnerOnlyStrategy(Set.of("basic", "owner", "acl", "dos", "user")));
+    }
+
+    @Test
+    void posixWinsWhenBothViewsArePresent() throws IOException {
+        assertEquals("posix",
+                BbjProcessSecretEnv.selectOwnerOnlyStrategy(Set.of("basic", "posix", "acl")));
+    }
+
+    @Test
+    void neitherViewIsAFailureNamingTheTempDirectoryAndTheMissingCapability() {
+        IOException ex = assertThrows(IOException.class,
+                () -> BbjProcessSecretEnv.selectOwnerOnlyStrategy(Set.of("basic", "owner")));
+        String tmpDir = System.getProperty("java.io.tmpdir");
+        assertTrue(ex.getMessage().contains(tmpDir),
+                "the failure message must name the temp directory: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("posix"),
+                "the failure message must name the missing posix view: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains("acl"),
+                "the failure message must name the missing acl view: " + ex.getMessage());
+    }
+
+    @Test
+    void anEmptyViewSetIsAlsoAFailure() {
+        assertThrows(IOException.class, () -> BbjProcessSecretEnv.selectOwnerOnlyStrategy(Set.of()));
+    }
+
+    @Test
+    void twoConcurrentCreateCallsReturnDistinctExistingPaths() throws Exception {
+        int threadCount = 8;
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicReferenceArray<Path> results = new AtomicReferenceArray<>(threadCount);
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                int index = i;
+                pool.submit(() -> {
+                    try {
+                        ready.countDown();
+                        release.await();
+                        results.set(index, BbjProcessSecretEnv.createOwnerOnlyFile("bbj-em-login-", ".tmp"));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+            assertTrue(ready.await(10, TimeUnit.SECONDS), "all threads must reach the starting gate");
+            release.countDown();
+            pool.shutdown();
+            assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS), "all threads must finish creating files");
+
+            Set<Path> distinctPaths = new HashSet<>();
+            try {
+                for (int i = 0; i < threadCount; i++) {
+                    Path created = results.get(i);
+                    assertTrue(created != null && java.nio.file.Files.exists(created),
+                            "each thread must return an existing path");
+                    distinctPaths.add(created);
+                }
+                assertEquals(threadCount, distinctPaths.size(),
+                        "all eight concurrently created paths must be distinct");
+            } finally {
+                for (Path p : distinctPaths) {
+                    java.nio.file.Files.deleteIfExists(p);
+                }
+            }
+        } finally {
+            pool.shutdownNow();
         }
     }
 }
