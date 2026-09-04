@@ -52,18 +52,20 @@ public abstract class BbjRunActionBase extends AnAction {
         // Auto-save if enabled
         autoSaveIfNeeded();
 
-        // Validate before running
-        if (!validateBeforeRun(project)) {
-            return;
-        }
-
         // Build the command line and launch it off EDT to avoid UI freezing.
         // buildCommandLine() (subclass responsibility) may perform blocking EM token
         // server-side validation (validateTokenServerSide, up to 10s) and/or EM login
         // (BbjEMLoginAction.performLogin, up to 15s) -- both are synchronous network I/O
-        // and must not run on the EDT (CR-02).
+        // and must not run on the EDT (CR-02). validateBeforeRun() also performs
+        // blocking filesystem existence/executable checks, so it is run here too rather
+        // than synchronously on the EDT ahead of this dispatch.
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
             ApplicationManager.getApplication().assertIsNonDispatchThread();
+            if (!validateBeforeRun(project)) {
+                // Error already shown by validateBeforeRun (via logError, which
+                // dispatches its own invokeLater back to the EDT).
+                return;
+            }
             GeneralCommandLine cmd = buildCommandLine(file, project);
             if (cmd == null) {
                 // Error already shown by subclass
