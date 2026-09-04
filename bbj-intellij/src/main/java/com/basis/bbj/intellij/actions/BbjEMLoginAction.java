@@ -148,6 +148,20 @@ public final class BbjEMLoginAction extends AnAction {
                 return false;
             }
 
+            // #535: a token that is not positively decodable here would otherwise be stored
+            // and then reported expired on every subsequent Run -- surface the failure once
+            // at login instead of silently at each launch. The message is a fixed literal:
+            // it must not interpolate stdout, the classification, or any part of the
+            // payload, since a login failure dialog is user-visible and the token is a
+            // bearer credential.
+            if (JwtValidity.check(stdout, System.currentTimeMillis() / 1000) != JwtValidity.Result.VALID) {
+                showErrorOnEdt(
+                    "Enterprise Manager returned an unusable token",
+                    "EM Login Failed"
+                );
+                return false;
+            }
+
             // Store JWT securely
             BbjEMTokenStore.storeToken(stdout);
             showInfoOnEdt(

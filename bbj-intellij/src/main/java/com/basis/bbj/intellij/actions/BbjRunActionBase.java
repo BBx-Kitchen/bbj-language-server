@@ -56,7 +56,7 @@ public abstract class BbjRunActionBase extends AnAction {
         // buildCommandLine() (subclass responsibility) may perform blocking EM token
         // server-side validation (validateTokenServerSide, up to 10s) and/or EM login
         // (BbjEMLoginAction.performLogin, up to 15s) -- both are synchronous network I/O
-        // and must not run on the EDT. validateBeforeRun() also performs
+        // and must not run on the EDT (CR-02). validateBeforeRun() also performs
         // blocking filesystem existence/executable checks, so it is run here too rather
         // than synchronously on the EDT ahead of this dispatch.
         ApplicationManager.getApplication().executeOnPooledThread(() -> {
