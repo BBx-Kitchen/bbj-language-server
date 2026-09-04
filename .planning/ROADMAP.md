@@ -212,68 +212,94 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
 ## Phase Details
 
 ### Phase 78: Build & Test Foundation
+
 **Goal**: `bbj-intellij` builds and tests reliably on any host JDK, with a trustworthy Gradle wrapper and a fail-fast check for the shared language server bundle, unblocking every other phase's `./gradlew` work.
 **Depends on**: Nothing (first phase of v4.2; continues from v4.1 Phase 77)
 **Requirements**: BUILD-01, BUILD-02, BUILD-03
 **Success Criteria** (what must be TRUE):
+
   1. `./gradlew test` succeeds on this environment's JDK 25 host without manual JDK switching, because the Gradle toolchain auto-provisions JDK 17 via the foojay resolver (#570).
   2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
   3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
+
 **Plans**: 3 plans
 Plans:
+**Wave 1**
+
 - [ ] 78-01-PLAN.md — JDK-agnostic Gradle daemon and Java 17 toolchain (BUILD-01, #570)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 78-02-PLAN.md — Gradle 8.14.5 wrapper, publisher-verified checksums, Dependabot surveillance (BUILD-02, #503/#576)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 78-03-PLAN.md — Fail-fast language-server bundle check with source-guard test (BUILD-03, #517)
 
 ### Phase 79: EDT Responsiveness
+
 **Goal**: The IntelliJ plugin never blocks the EDT on token validation, login, Node.js detection, settings input, or crash recovery, and never races itself on restarts or downloads.
 **Depends on**: Phase 78
 **Requirements**: EDT-01, EDT-02, EDT-03, EDT-04, EDT-05, EDT-06
 **Success Criteria** (what must be TRUE):
+
   1. A regression test fails if `buildCommandLine()` or `performLogin()` ever runs on the EDT during Run As BUI/DWC or EM login, confirming the existing off-EDT dispatch from v4.1 (CR-02, commit 06eb1a7) stays intact (#506).
   2. Rapidly typing in the Settings dialog's BBj home or Node.js path field never spawns a subprocess or reads a file on the EDT — a regression test simulating rapid keystrokes confirms the debounced background lookup (#541).
   3. The missing-Node-runtime editor notification calls `node --version` at most once across two consecutive refresh passes for the same configured path, using a cached last-known version (#543).
   4. All six language-server restart triggers (restart action, crash notification, both status-bar indicators, refresh Java classes, crash auto-restart) funnel through one guarded entry point, and the first-crash restart delay is scheduled via `restartAlarm` off the EDT rather than `Thread.sleep` inside `invokeLater`; regression tests confirm exactly one restart when two triggers fire in quick succession and confirm no EDT sleep (#513, #539).
   5. Two near-simultaneous Node.js download requests start exactly one download task, verified by an atomic check-and-set regression test (#537).
+
 **Plans**: TBD
 
 ### Phase 80: EM Token Security
+
 **Goal**: EM JWT handling fails closed on malformed tokens, stores temp files owner-only on both POSIX and Windows, warns when the token isn't backed by the native OS keychain, and avoids redundant re-validation within a short trust window.
 **Depends on**: Phase 78
 **Requirements**: TOKEN-01, TOKEN-02, TOKEN-03, TOKEN-04
 **Success Criteria** (what must be TRUE):
+
   1. A malformed, non-3-part, exp-less, or undecodable JWT is treated as expired across all three previously fail-open branches, verified by a regression test covering each branch (#535).
   2. EM login and validate temp files holding the plaintext JWT are owner-only on POSIX (confirmed by test) and on Windows via an explicit ACL rather than the current default-permission fallback (#536).
   3. When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend, with the internal-API access isolated behind a single method covered by a regression test (#552).
   4. Two Run invocations using the same recently-validated token trigger exactly one server-side validation call; the cache is keyed on the token bytes and invalidated on store/delete (#542, depends on TOKEN-01 landing first).
+
 **Plans**: TBD
 
 ### Phase 81: Feature Parity and Correctness
+
 **Goal**: IntelliJ's Compile action, bracket matching, and REM toggle match VS Code's behavior and BBj's actual syntax rules.
 **Depends on**: Phase 78
 **Requirements**: PARITY-01, PARITY-02, PARITY-03
 **Success Criteria** (what must be TRUE):
+
   1. Invoking "Compile BBj File" in IntelliJ sends a `bbj/compile` request to the shared language server, which runs bbjcpl through the existing `BBjCPLService`, and the action displays success or the returned diagnostics — with no bbjcpl invocation logic duplicated on the IntelliJ side (#571).
   2. Typing `PRINT "value (not a bracket)"` or a doubled-quote string in a BBj file does not trigger bracket matching, navigation, or auto-close on the parenthesis inside the string literal, verified by regression tests for both cases (#568).
   3. Toggling the line-comment shortcut on a line already prefixed with `rem`, `Rem`, or `REM` (word-bounded) removes the prefix instead of adding a second one, verified by regression tests for lowercase and mixed case (#540).
+
 **Plans**: TBD
 
 ### Phase 82: Composer Robustness
+
 **Goal**: Composer dialogs surface failures visibly and never apply an edit against document state that changed while the dialog was open.
 **Depends on**: Phase 78
 **Requirements**: COMP-01, COMP-02
 **Success Criteria** (what must be TRUE):
+
   1. When a composer `CompletableFuture` chain (the launcher or any dialog's refresh) fails, a user-visible notification appears, verified by a regression test that forces one chain to fail (#538).
   2. If the document changes while a composer dialog is open, re-decoding the call at the captured offsets after the dialog closes detects the mismatch, aborts the edit, and notifies the user instead of rewriting whatever text now occupies the range, verified by a regression test that mutates the document mid-dialog (#567, decision: abort and notify).
+
 **Plans**: TBD
 
 ### Phase 83: Regression Test Hardening
+
 **Goal**: The JUnit suite gains durable coverage for the Node download/cache pipeline, this milestone's EDT-responsiveness paths, and every LSP4IJ experimental-API coupling point, including the new compile request surface.
 **Depends on**: Phase 79, Phase 81
 **Requirements**: BUILD-04, BUILD-05
 **Success Criteria** (what must be TRUE):
+
   1. `./gradlew test` runs new, green regression coverage for the Node download/extract/cache pipeline and the EDT-responsiveness paths changed in Phase 79, extending the existing 7-class `src/test/` source set (#569).
   2. Every LSP4IJ `@ApiStatus.Experimental` coupling point across the seven `lsp/`/`ui/` files, plus the new `bbj/compile` request surface from Phase 81, has a canary or source-guard regression test that fails on a breaking LSP4IJ change; this coverage closes #554 as a subset of #544's scope (#544).
+
 **Plans**: TBD
 
 ## Progress
