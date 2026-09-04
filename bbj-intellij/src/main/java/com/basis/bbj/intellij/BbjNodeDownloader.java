@@ -1,6 +1,5 @@
 package com.basis.bbj.intellij;
 
-import com.intellij.ide.util.PropertiesComponent;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationAction;
@@ -35,7 +34,6 @@ public final class BbjNodeDownloader {
 
     private static final String NODE_VERSION = "v20.18.1";
     private static final String DOWNLOAD_BASE_URL = "https://nodejs.org/dist/";
-    private static final String DOWNLOAD_IN_PROGRESS_KEY = "bbj.node.download.inProgress";
 
     private BbjNodeDownloader() {
     }
@@ -68,13 +66,17 @@ public final class BbjNodeDownloader {
      * Downloads Node.js asynchronously in the background.
      * Shows progress notification and calls onComplete callback when finished.
      *
+     * <p>Concurrency is guarded by {@link DownloadGuard#SESSION}, acquired before the background
+     * task is even queued (D-14): only the first caller in a race starts a download, and every
+     * other caller's {@code onComplete} is attached to the running download instead and still
+     * runs on the EDT when it finishes (D-15), so the editor banner refresh never depends on
+     * which click won.
+     *
      * @param project     the current project
      * @param onComplete  optional callback to run on EDT after download completes (success or failure)
      */
     public static void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete) {
-        // Check if download is already in progress
-        PropertiesComponent props = PropertiesComponent.getInstance();
-        if (props.getBoolean(DOWNLOAD_IN_PROGRESS_KEY, false)) {
+        if (!DownloadGuard.SESSION.tryAcquire(onComplete)) {
             showNotification(project, "Node.js download already in progress", NotificationType.INFORMATION);
             return;
         }
@@ -82,7 +84,6 @@ public final class BbjNodeDownloader {
         new Task.Backgroundable(project, "Downloading Node.js " + NODE_VERSION + "...", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                props.setValue(DOWNLOAD_IN_PROGRESS_KEY, true);
                 try {
                     downloadAndExtractNode(indicator, project);
                     showDownloadSuccessNotification(project);
@@ -91,9 +92,8 @@ public final class BbjNodeDownloader {
                             "Failed to download Node.js: " + e.getMessage(),
                             NotificationType.ERROR);
                 } finally {
-                    props.setValue(DOWNLOAD_IN_PROGRESS_KEY, false);
-                    if (onComplete != null) {
-                        ApplicationManager.getApplication().invokeLater(onComplete);
+                    for (Runnable completion : DownloadGuard.SESSION.release()) {
+                        ApplicationManager.getApplication().invokeLater(completion);
                     }
                 }
             }
