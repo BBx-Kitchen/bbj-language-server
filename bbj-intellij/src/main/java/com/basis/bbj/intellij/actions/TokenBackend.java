@@ -4,7 +4,7 @@ package com.basis.bbj.intellij.actions;
  * How IntelliJ's PasswordSafe is actually protecting the Enterprise Manager token (#552).
  *
  * <p>This is the plain classification the rest of the plugin speaks in, so that the platform's own
- * {@code ProviderType} never leaves {@code BbjEMTokenStore.resolveBackend()} — the single method
+ * password-provider enum never leaves {@code BbjEMTokenStore.resolveBackend()} — the single method
  * allowed to touch that unstable internal API.
  *
  * <p>Everything that is not {@link #NATIVE_KEYCHAIN} is worth warning about, {@link #UNKNOWN}
