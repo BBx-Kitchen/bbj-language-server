@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 80
 current_phase_name: EM Token Security
 status: executing
-stopped_at: Completed 80-02-PLAN.md
-last_updated: "2026-09-04T14:57:01.638Z"
+stopped_at: Completed 80-03-PLAN.md
+last_updated: "2026-09-04T15:31:50.980Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 80 execution started
-state_head: 24cd6c80deab6f778470ad60325dae24d15c26cf
+state_head: 5d59191e579af56019e833ed2cebbf52e6f95a2a
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-04)
 ## Current Position
 
 Phase: 80 (EM Token Security) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-04 — Phase 80 execution started
 
@@ -116,6 +116,7 @@ Last activity: 2026-09-04 — Phase 80 execution started
 | Phase 79 P03 | 20min | 3 tasks | 7 files |
 | Phase 80 P01 | 45min | 3 tasks | 6 files |
 | Phase 80 P02 | 70 min | 3 tasks | 5 files |
+| Phase 80 P03 | ~30min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -169,6 +170,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 80]: 80-01: One three-valued JwtValidity.check classification replaces four independent fail-open return-false sites; a decimal exp value regex bug (silently truncated to a verdict) was caught and fixed during Task 2's red-then-green cycle — D-03/D-04: single decode prevents a partial fix from missing a branch; performLogin now classifies before storeToken so an unusable EM login result never reaches PasswordSafe (D-05)
 - [Phase 80]: 80-02: createOwnerOnlyFile has three outcomes and no fourth (posix attribute, acl:acl attribute supplied at creation, or a fail-closed IOException); the default-permission fallback is deleted rather than demoted, and selectOwnerOnlyStrategy is package-private purely so its otherwise-unreachable failure branch is testable on a host that always reports posix.
 - [Phase 80]: 80-02: the Windows ACL branch is proven by a pure OwnerOnlyAcl builder test, a strategy-selection test over synthetic view sets and seven source guards, never by an executed Windows run (CI is ubuntu-latest, no Windows runner); the icacls DACL check and the write-through login check are carried as human UAT items required for #536 closure.
+- [Phase 80]: Phase 80: 80-03: resolveBackend() is the sole PasswordSafeSettings/ProviderType touch point, placed last in BbjEMTokenStore.java; BackendNoticePolicy warns once per distinct non-keychain backend and resets on keychain; a Task 3 source guard caught TokenBackend's own javadoc leaking the literal ProviderType, fixed by rewording (Rule 1).
 
 ### Tech Debt
 
@@ -215,8 +217,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T14:56:54.491Z
-Stopped at: Completed 80-02-PLAN.md
+Last session: 2026-09-04T15:31:50.886Z
+Stopped at: Completed 80-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing

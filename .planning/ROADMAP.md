@@ -272,7 +272,7 @@ Plans:
   3. When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend, with the internal-API access isolated behind a single method covered by a regression test (#552).
   4. Two Run invocations using the same recently-validated token trigger exactly one server-side validation call; the cache is keyed on the token bytes and invalidated on store/delete (#542, depends on TOKEN-01 landing first).
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 **Wave 1**
 
 - [x] 80-01-PLAN.md — Fail-closed JWT expiry classifier and login-time token gate (TOKEN-01, #535)
@@ -280,7 +280,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 80-03-PLAN.md — Non-keychain backend notice behind a single isolated internal-API method (TOKEN-03, #552)
+- [x] 80-03-PLAN.md — Non-keychain backend notice behind a single isolated internal-API method (TOKEN-03, #552)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

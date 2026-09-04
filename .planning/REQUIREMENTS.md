@@ -20,7 +20,7 @@
 
 - [x] **TOKEN-01**: A malformed, non-3-part, exp-less, or undecodable JWT is treated as expired (fail closed), with a regression test covering all three previously fail-open branches (#535)
 - [x] **TOKEN-02**: EM login and validate temp files holding plaintext JWT output are owner-only from creation on POSIX (already fixed, commit 1b731e4, confirmed by test) and on Windows via an ACL equivalent rather than the current default-permission fallback (#536, verify plus Windows half)
-- [ ] **TOKEN-03**: When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend; the internal-API access is isolated behind a single method with a regression test (#552)
+- [x] **TOKEN-03**: When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend; the internal-API access is isolated behind a single method with a regression test (#552)
 - [ ] **TOKEN-04**: Server-side token validation is skipped within a short trust window after a successful validation of the same token value; the cache is keyed on the token bytes, invalidated on store/delete, and depends on TOKEN-01 landing first; a regression test asserts one validation across two quick Run invocations (#542)
 
 ### Feature Parity and Correctness
@@ -88,7 +88,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EDT-06 | Phase 79 | Complete |
 | TOKEN-01 | Phase 80 | Complete |
 | TOKEN-02 | Phase 80 | Complete |
-| TOKEN-03 | Phase 80 | Pending |
+| TOKEN-03 | Phase 80 | Complete |
 | TOKEN-04 | Phase 80 | Pending |
 | PARITY-01 | Phase 81 | Pending |
 | PARITY-02 | Phase 81 | Pending |
