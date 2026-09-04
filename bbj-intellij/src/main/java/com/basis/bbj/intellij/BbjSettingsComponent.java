@@ -321,6 +321,22 @@ public class BbjSettingsComponent {
         return selected.toString();
     }
 
+    /**
+     * Synchronously runs the BBj-home lookup and applies its result if one is still pending,
+     * so a caller reading {@link #getClasspathEntry()} right afterward sees a classpath value
+     * derived from the live home-field text rather than whatever was pending before the last
+     * keystroke's debounce window elapses. Intended to be called from the Configurable's
+     * {@code apply()}, immediately before it reads {@link #getClasspathEntry()}, so that
+     * pressing Apply/OK within the debounce window after typing a new BBj home path does not
+     * persist a classpath entry left over from the previous home path.
+     */
+    void flushPendingHomeLookup() {
+        if (!classpathLookupPending) {
+            return;
+        }
+        applyHomeLookup(BbjSettingsLookups.lookupHome(bbjHomeField.getText().trim()));
+    }
+
     public void setClasspathEntry(@NotNull String entry) {
         pendingClasspathSelection = entry;
         classpathCombo.setSelectedItem(entry);

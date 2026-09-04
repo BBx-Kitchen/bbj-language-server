@@ -62,6 +62,11 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         if (myComponent == null) {
             return;
         }
+        // Flush any BBj-home lookup still pending from the debounce window, so a classpath
+        // entry read right below reflects the live home-field text rather than a value left
+        // over from before the last keystroke.
+        myComponent.flushPendingHomeLookup();
+
         BbjSettings.State state = BbjSettings.getInstance().getState();
         state.bbjHomePath = myComponent.getBbjHomePath();
         state.nodeJsPath = myComponent.getNodeJsPath();
