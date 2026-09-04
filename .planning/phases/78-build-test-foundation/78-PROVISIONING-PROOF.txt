@@ -1,0 +1,145 @@
+D-17 self-heal provisioning proof — Phase 78 Plan 01, Task 3
+Recorded: 2026-09-04T05:47:26Z
+
+Command:
+  cd bbj-intellij && JAVA_HOME=/opt/java/default ./gradlew --stop
+  cd bbj-intellij && JAVA_HOME=/opt/java/default ./gradlew tasks -Porg.gradle.java.installations.auto-detect=false -Porg.gradle.java.installations.paths=
+
+Purpose: with local JDK auto-detection disabled and no installation-path hints,
+Gradle cannot find /opt/java/17 or /opt/java/21 locally and must fall back to
+downloading via the toolchainUrl.LINUX.X86_64 entry in
+bbj-intellij/gradle/gradle-daemon-jvm.properties (generated in Task 2 by
+updateDaemonJvm, pointing at api.foojay.io).
+
+--- stdout+stderr ---
+WARNING: A restricted method in java.lang.System has been called
+WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/home/coder/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13/lib/native-platform-0.22-milestone-28.jar)
+WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+Starting a Gradle Daemon, 2 stopped Daemons could not be reused, use --status for details
+Daemon JVM discovery is an incubating feature.
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::objectFieldOffset has been called by com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper (file:/home/coder/.gradle/wrapper/dists/gradle-8.13-bin/5xuhj0ry160q40clulazy9h7d/gradle-8.13/lib/guava-32.1.2-jre.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.common.util.concurrent.AbstractFuture$UnsafeAtomicHelper
+WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
+
+> Task :tasks
+
+------------------------------------------------------------
+Tasks runnable from root project 'bbj-intellij'
+------------------------------------------------------------
+
+Build tasks
+-----------
+assemble - Assembles the outputs of this project.
+build - Assembles and tests this project.
+buildDependents - Assembles and tests this project and all projects that depend on it.
+buildNeeded - Assembles and tests this project and all projects it depends on.
+classes - Assembles main classes.
+clean - Deletes the build directory.
+jar - Assembles a jar archive containing the classes of the 'main' feature.
+testClasses - Assembles test classes.
+
+Build Setup tasks
+-----------------
+init - Initializes a new Gradle build.
+updateDaemonJvm - Generates or updates the Gradle Daemon JVM criteria.
+wrapper - Generates Gradle wrapper files.
+
+Documentation tasks
+-------------------
+javadoc - Generates Javadoc API documentation for the 'main' feature.
+
+Help tasks
+----------
+artifactTransforms - Displays the Artifact Transforms that can be executed in root project 'bbj-intellij'.
+buildEnvironment - Displays all buildscript dependencies declared in root project 'bbj-intellij'.
+dependencies - Displays all dependencies declared in root project 'bbj-intellij'.
+dependencyInsight - Displays the insight into a specific dependency in root project 'bbj-intellij'.
+help - Displays a help message.
+javaToolchains - Displays the detected java toolchains.
+kotlinDslAccessorsReport - Prints the Kotlin code for accessing the currently available project extensions and conventions.
+outgoingVariants - Displays the outgoing variants of root project 'bbj-intellij'.
+projects - Displays the sub-projects of root project 'bbj-intellij'.
+properties - Displays the properties of root project 'bbj-intellij'.
+resolvableConfigurations - Displays the configurations that can be resolved in root project 'bbj-intellij'.
+tasks - Displays the tasks runnable from root project 'bbj-intellij'.
+
+IDE tasks
+---------
+cleanIdea - Cleans IDEA project files (IML, IPR)
+idea - Generates IDEA project files (IML, IPR, IWS)
+openIdea - Opens the IDEA project
+
+Intellij platform tasks
+-----------------------
+buildPlugin - Builds the plugin and prepares the ZIP archive for testing and deployment.
+buildSearchableOptions - Builds the index of UI components (searchable options) for the plugin.
+composedJar - Composes a final Jar archive by combining the base jar, and instrumented classes, and declared submodules.
+generateManifest - Generates the MANIFEST.MF file with all relevant information about the project configuration.
+initializeIntellijPlatformPlugin - Initializes the IntelliJ Platform Gradle Plugin
+instrumentCode - Executes the code instrumentation.
+instrumentedJar - Creates a Jar file with instrumented classes.
+instrumentTestCode - Executes the code instrumentation.
+jarSearchableOptions - Creates a Jar file with searchable options to be distributed with the plugin.
+patchPluginXml - Patches plugin.xml file with provided values.
+prepareJarSearchableOptions - Prepares the content used by the jarSearchableOptions task.
+prepareSandbox - Prepares a sandbox environment with the plugin and its dependencies installed.
+prepareTest - Prepares the test task.
+prepareTestIdePerformanceSandbox - Prepares a sandbox environment with the plugin and its dependencies installed.
+prepareTestSandbox - Prepares a sandbox environment with the plugin and its dependencies installed.
+printBundledPlugins - Prints the list of bundled plugins available within the currently targeted IntelliJ Platform.
+printProductsReleases - Prints the list of binary product releases that match criteria.
+publishPlugin - Publishes the plugin to the remote plugins repository.
+runIde - Runs the IDE instance using the currently selected IntelliJ Platform with the built plugin loaded.
+setupDependencies - Deprecated. A deprecated method for setting up IntelliJ Platform dependencies.
+signPlugin - Signs the ZIP archive with the provided key using Marketplace ZIP Signer library.
+testIdePerformance - Runs performance tests on the IntelliJ Platform with the developed plugin installed.
+verifyPlugin - Runs the IntelliJ Plugin Verifier CLI tool to check the binary compatibility with specified IDE builds.
+verifyPluginProjectConfiguration - Validates the plugin project configuration.
+verifyPluginSignature - Validates the signature of the plugin archive file using the Marketplace ZIP Signer library.
+verifyPluginStructure - Validates completeness and contents of plugin.xml descriptors as well as plugin archive structure.
+
+Verification tasks
+------------------
+check - Runs all checks.
+test - Runs the test suite.
+
+Rules
+-----
+Pattern: clean<TaskName>: Cleans the output files of a task.
+Pattern: build<ConfigurationName>: Assembles the artifacts of a configuration.
+
+To see all tasks and more detail, run gradlew tasks --all
+
+To see more detail about a task, run gradlew help --task <task>
+
+BUILD SUCCESSFUL in 11s
+1 actionable task: 1 executed
+--- end stdout+stderr ---
+
+Exit code: 0
+
+Outcome: PROVISIONED. Gradle downloaded and installed a real JDK 17 rather than
+merely accepting one already on PATH. Evidence in ~/.gradle/jdks/ immediately
+after this run:
+
+  total 188748
+  drwxr-xr-x  3 coder coder      4096 Sep  4 05:47 .
+  drwxr-xr-x 10 coder coder      4096 Sep  4 05:46 ..
+  -rw-r--r--  1 coder coder       181 Sep  4 05:47 CACHEDIR.TAG
+  -rw-r--r--  1 coder coder 193252603 Sep  4 05:46 OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz
+  -rw-r--r--  1 coder coder        17 Sep  4 05:46 OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz.lock
+  drwxr-xr-x  9 coder coder      4096 Sep  4 05:46 eclipse_adoptium-17-amd64-linux.2
+  -rw-r--r--  1 coder coder        17 Sep  4 05:46 eclipse_adoptium-17-amd64-linux.2.reserved.lock
+
+The downloaded archive OpenJDK17U-jdk_x64_linux_hotspot_17.0.20.1_1.tar.gz is
+Eclipse Temurin (Adoptium) 17.0.20.1 for linux-x64, matching the
+toolchainUrl.LINUX.X86_64 entry's redirect target (api.foojay.io Disco API,
+id a07958869a3c7133fd4b10c5eda83472). The extracted toolchain directory is
+eclipse_adoptium-17-amd64-linux.2. Both artifacts are timestamped within this
+session, confirming the download happened during this proof run, not reused
+from a prior cache.
+
+D-17 outcome: provisioned JDK 17 from https://api.foojay.io/disco/v3.0/ids/a07958869a3c7133fd4b10c5eda83472/redirect (resolved to the Eclipse Temurin 17.0.20.1 linux-x64 archive) — egress to plugins.gradle.org (foojay plugin, Task 2) and api.foojay.io (JDK download, this proof) was available in this execution sandbox; no blocker to record.
