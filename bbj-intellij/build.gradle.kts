@@ -139,12 +139,19 @@ val verifyLanguageServerBundle by tasks.registering {
     }
 }
 
+// Deliberately NOT under build/resources/main: that directory is
+// sourceSets.main.output.resourcesDir, which the standard Java plugin makes
+// classes/compileTestJava/test transitively depend on. Landing main.cjs there
+// (as this task used to) makes verifyLanguageServerBundle's failure propagate
+// into `test` via classes -> processResources's overlapping-output detection,
+// breaking D-10's "test keeps working without the bundle" requirement. Packaging
+// (the `jar` task below) pulls this directory in explicitly instead.
 val copyLanguageServer by tasks.registering(Copy::class) {
     dependsOn(verifyLanguageServerBundle)
     from("${projectDir}/../bbj-vscode/out/language/") {
         include("main.cjs")
     }
-    into(layout.buildDirectory.dir("resources/main/language-server"))
+    into(layout.buildDirectory.dir("language-server-bundle"))
 }
 
 val copyWebRunner by tasks.registering(Copy::class) {
@@ -158,8 +165,20 @@ val copyWebRunner by tasks.registering(Copy::class) {
 
 tasks.named("processResources") {
     dependsOn(copyTextMateBundle)
-    dependsOn(copyLanguageServer)
     dependsOn(copyWebRunner)
+}
+
+// main.cjs (as a classpath-resource fallback bundled inside the plugin jar) is
+// packaged directly from copyLanguageServer's own output directory rather than
+// through sourceSets.main.output/processResources — see the comment on
+// copyLanguageServer above for why. This keeps the dependency on
+// verifyLanguageServerBundle scoped to packaging tasks (jar and, via it,
+// buildPlugin) and out of classes/compileTestJava/test's task graph.
+tasks.named<Jar>("jar") {
+    dependsOn(copyLanguageServer)
+    from(layout.buildDirectory.dir("language-server-bundle")) {
+        into("language-server")
+    }
 }
 
 tasks.named<PrepareSandboxTask>("prepareSandbox") {
