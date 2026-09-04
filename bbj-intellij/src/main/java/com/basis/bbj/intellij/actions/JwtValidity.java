@@ -23,8 +23,12 @@ import java.util.regex.Pattern;
  */
 public final class JwtValidity {
 
-    /** Pre-compiled once rather than per call. */
-    private static final Pattern EXP_PATTERN = Pattern.compile("\"exp\"\\s*:\\s*(\\d+)");
+    /**
+     * Pre-compiled once rather than per call. The trailing {@code (?![.\d])} rejects a decimal
+     * exp value (e.g. {@code 12.5}) instead of silently truncating it to the leading digits --
+     * a non-integer exp must classify {@link Result#MALFORMED}, never reach a verdict.
+     */
+    private static final Pattern EXP_PATTERN = Pattern.compile("\"exp\"\\s*:\\s*(\\d+)(?![.\\d])");
 
     public enum Result { VALID, EXPIRED, MALFORMED }
 
