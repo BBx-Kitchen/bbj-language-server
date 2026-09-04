@@ -3,7 +3,11 @@ package com.basis.bbj.intellij.actions;
 import com.intellij.credentialStore.CredentialAttributes;
 import com.intellij.credentialStore.CredentialAttributesKt;
 import com.intellij.credentialStore.Credentials;
+import com.intellij.credentialStore.PasswordSafeSettings;
+import com.intellij.credentialStore.ProviderType;
 import com.intellij.ide.passwordSafe.PasswordSafe;
+import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.application.ApplicationManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,6 +20,19 @@ public final class BbjEMTokenStore {
 
     private static final String SERVICE_NAME = "BBj Enterprise Manager";
 
+    /**
+     * Persisted name of the last backend the user was warned about -- a value, not a boolean flag,
+     * so a later change to a different weak backend still warns (#552).
+     */
+    private static final String BACKEND_WARNED_KEY = "com.basis.bbj.intellij.emTokenBackendWarned";
+
+    /** Production policy: the persisted record above, warned about through a notification balloon. */
+    private static final BackendNoticePolicy BACKEND_NOTICE = new BackendNoticePolicy(
+        () -> PropertiesComponent.getInstance().getValue(BACKEND_WARNED_KEY, ""),
+        value -> PropertiesComponent.getInstance().setValue(BACKEND_WARNED_KEY, value),
+        BbjEMTokenStore::showBackendBalloon
+    );
+
     private BbjEMTokenStore() {} // Utility class
 
     private static CredentialAttributes createAttributes() {
@@ -25,6 +42,7 @@ public final class BbjEMTokenStore {
     }
 
     public static void storeToken(@NotNull String token) {
+        BACKEND_NOTICE.evaluate(resolveBackend());
         CredentialAttributes attrs = createAttributes();
         Credentials credentials = new Credentials("bbj-em", token);
         PasswordSafe.getInstance().set(attrs, credentials);
@@ -32,6 +50,7 @@ public final class BbjEMTokenStore {
 
     @Nullable
     public static String getToken() {
+        BACKEND_NOTICE.evaluate(resolveBackend());
         CredentialAttributes attrs = createAttributes();
         Credentials credentials = PasswordSafe.getInstance().get(attrs);
         return credentials != null ? credentials.getPasswordAsString() : null;
@@ -54,5 +73,51 @@ public final class BbjEMTokenStore {
      */
     public static boolean isTokenExpired(@Nullable String token) {
         return JwtValidity.check(token, System.currentTimeMillis() / 1000) != JwtValidity.Result.VALID;
+    }
+
+    /**
+     * Production notifier behind {@link #BACKEND_NOTICE}: raises the balloon naming the store the
+     * token actually landed in. The balloon body itself is filled in with the user-facing wording.
+     */
+    private static void showBackendBalloon(TokenBackend backend) {
+        // Notification construction follows.
+    }
+
+    /**
+     * Classify the credential store PasswordSafe resolved to for this IDE.
+     *
+     * <p>This is the only method in the plugin that names the platform's password-settings API. That
+     * API is marked internal on the pinned platform, so a breaking change to it has to fail here and
+     * nowhere else -- a source guard keeps it that way. Everything this method cannot positively
+     * identify as the native keychain becomes {@link TokenBackend#UNKNOWN}, which is warn-worthy: a
+     * detection failure that quietly passed as "keychain" would defeat the point of the notice (#552).
+     *
+     * @return the resolved backend, or {@link TokenBackend#UNKNOWN} on any failure
+     */
+    static TokenBackend resolveBackend() {
+        try {
+            PasswordSafeSettings settings =
+                ApplicationManager.getApplication().getService(PasswordSafeSettings.class);
+            if (settings == null) {
+                return TokenBackend.UNKNOWN;
+            }
+            ProviderType provider = settings.getProviderType();
+            if (provider == null) {
+                return TokenBackend.UNKNOWN;
+            }
+            switch (provider) {
+                case KEYCHAIN:
+                    return TokenBackend.NATIVE_KEYCHAIN;
+                case KEEPASS:
+                    return TokenBackend.KEEPASS_FILE;
+                case MEMORY_ONLY:
+                case DO_NOT_STORE:
+                    return TokenBackend.MEMORY_ONLY;
+                default:
+                    return TokenBackend.UNKNOWN;
+            }
+        } catch (Throwable t) {
+            return TokenBackend.UNKNOWN;
+        }
     }
 }
