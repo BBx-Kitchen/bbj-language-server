@@ -39,7 +39,7 @@ public final class BbjMissingNodeNotificationProvider
         if (!nodeJsPath.isEmpty()) {
             if (new File(nodeJsPath).exists()
                     && BbjNodeDetector.meetsMinimumVersion(
-                            BbjNodeDetector.getNodeVersion(nodeJsPath))) {
+                            BbjNodeVersionCache.SESSION.getVersion(nodeJsPath))) {
                 return null;
             }
         } else {
@@ -47,7 +47,7 @@ public final class BbjMissingNodeNotificationProvider
             String detected = BbjNodeDetector.detectNodePath();
             if (detected != null
                     && BbjNodeDetector.meetsMinimumVersion(
-                            BbjNodeDetector.getNodeVersion(detected))) {
+                            BbjNodeVersionCache.SESSION.getVersion(detected))) {
                 return null;
             }
 
