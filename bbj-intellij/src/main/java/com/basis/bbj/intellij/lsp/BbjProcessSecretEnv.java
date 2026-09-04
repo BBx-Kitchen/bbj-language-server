@@ -119,38 +119,58 @@ public final class BbjProcessSecretEnv {
      * rather than creating a file with default permissions.
      */
     public static Path createOwnerOnlyFile(String prefix, String suffix) throws IOException {
-        Set<String> supportedViews = FileSystems.getDefault().supportedFileAttributeViews();
+        String strategy = selectOwnerOnlyStrategy(FileSystems.getDefault().supportedFileAttributeViews());
 
-        if (supportedViews.contains("posix")) {
+        if (strategy.equals("posix")) {
             FileAttribute<Set<PosixFilePermission>> ownerOnly = PosixFilePermissions.asFileAttribute(
                     Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
             return Files.createTempFile(prefix, suffix, ownerOnly);
         }
 
-        if (supportedViews.contains("acl")) {
-            UserPrincipal owner = resolveCurrentUserPrincipal();
-            if (owner != null) {
-                // Primary path: the attribute is supplied at creation, exactly as on
-                // POSIX, so the file never exists with a broader DACL.
-                return Files.createTempFile(prefix, suffix, OwnerOnlyAcl.asFileAttribute(owner));
-            }
-            // Second-best path: the lookup service could not resolve a principal by
-            // name (domain accounts can fail this lookup). Create in the per-user
-            // temp directory, then restrict immediately — unlike the primary path
-            // above, there is a small window here between creation and restriction.
-            // A file that was created but could not be restricted must not survive.
-            Path created = Files.createTempFile(
-                    Path.of(System.getProperty("java.io.tmpdir")), prefix, suffix);
-            try {
-                Files.getFileAttributeView(created, AclFileAttributeView.class)
-                        .setAcl(OwnerOnlyAcl.ownerOnlyAcl(Files.getOwner(created)));
-            } catch (IOException e) {
-                Files.deleteIfExists(created);
-                throw e;
-            }
-            return created;
+        // acl: the only other outcome selectOwnerOnlyStrategy can return.
+        UserPrincipal owner = resolveCurrentUserPrincipal();
+        if (owner != null) {
+            // Primary path: the attribute is supplied at creation, exactly as on
+            // POSIX, so the file never exists with a broader DACL.
+            return Files.createTempFile(prefix, suffix, OwnerOnlyAcl.asFileAttribute(owner));
         }
+        // Second-best path: the lookup service could not resolve a principal by
+        // name (domain accounts can fail this lookup). Create in the per-user
+        // temp directory, then restrict immediately — unlike the primary path
+        // above, there is a small window here between creation and restriction.
+        // A file that was created but could not be restricted must not survive.
+        Path created = Files.createTempFile(
+                Path.of(System.getProperty("java.io.tmpdir")), prefix, suffix);
+        try {
+            Files.getFileAttributeView(created, AclFileAttributeView.class)
+                    .setAcl(OwnerOnlyAcl.ownerOnlyAcl(Files.getOwner(created)));
+        } catch (IOException e) {
+            Files.deleteIfExists(created);
+            throw e;
+        }
+        return created;
+    }
 
+    /**
+     * Selects which owner-only strategy {@link #createOwnerOnlyFile} should use, given
+     * the default filesystem's reported {@code supportedFileAttributeViews()}: {@code
+     * posix} when the set contains {@code posix} (a dual-view filesystem keeps the
+     * already-proven POSIX branch), otherwise {@code acl} when it contains {@code acl}.
+     * There is no third outcome — when the set contains neither, this throws an {@link
+     * IOException} naming the temporary directory and both missing capabilities rather
+     * than letting the caller fall through to a default-permission file. Package-private
+     * so tests in this package can exercise the failure branch with a synthetic view set;
+     * on every real filesystem this process runs on, the set always reports at least one
+     * of {@code posix} or {@code acl}, so that branch is otherwise unreachable by any
+     * behavioural test.
+     */
+    static String selectOwnerOnlyStrategy(Set<String> supportedFileAttributeViews) throws IOException {
+        if (supportedFileAttributeViews.contains("posix")) {
+            return "posix";
+        }
+        if (supportedFileAttributeViews.contains("acl")) {
+            return "acl";
+        }
         throw new IOException(
                 "Cannot create an owner-only temporary file in " + System.getProperty("java.io.tmpdir")
                         + ": the default filesystem supports neither the posix nor the acl file-attribute view");
