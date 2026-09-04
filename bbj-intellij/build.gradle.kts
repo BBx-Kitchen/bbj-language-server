@@ -123,15 +123,23 @@ val verifyLanguageServerBundle by tasks.registering {
     doLast {
         // Enforce only when a task that actually ships the bundle is part of this
         // build's task graph (D-10: buildPlugin/prepareSandbox/runIde may fail).
-        // `copyLanguageServer` (and therefore this task) is ALSO reached from
-        // `test`'s IntelliJ Platform Gradle Plugin sandbox composition
-        // (prepareTestSandbox -> composedJar -> instrumentedJar -> jar ->
-        // copyLanguageServer) even though the JUnit tests never touch the bundle
-        // themselves — that pre-existing coupling (confirmed present before this
-        // check was added) must not make `test` fail on a clean clone.
+        // `assemble`/`build` are included too (#517 CR-01): `jar` is on the
+        // standard assemble/build lifecycle and packages main.cjs unconditionally
+        // (see the `jar` task below), so `./gradlew build` — the exact command
+        // CLAUDE.md's IntelliJ section documents — would otherwise silently ship
+        // a plugin jar with no language server. `:jar` itself is deliberately NOT
+        // added here: `copyLanguageServer` (and therefore this task) is ALSO
+        // reached from `test`'s IntelliJ Platform Gradle Plugin sandbox
+        // composition (prepareTestSandbox -> composedJar -> instrumentedJar ->
+        // jar -> copyLanguageServer) even though the JUnit tests never touch the
+        // bundle themselves — that pre-existing coupling (confirmed present
+        // before this check was added) must not make `test` fail on a clean
+        // clone, and `test` never puts `assemble`/`build` in its own task graph.
         val packagingRequested = gradle.taskGraph.hasTask(":buildPlugin") ||
             gradle.taskGraph.hasTask(":prepareSandbox") ||
-            gradle.taskGraph.hasTask(":runIde")
+            gradle.taskGraph.hasTask(":runIde") ||
+            gradle.taskGraph.hasTask(":assemble") ||
+            gradle.taskGraph.hasTask(":build")
         if (packagingRequested && (!bundleFile.exists() || bundleFile.length() == 0L)) {
             throw GradleException(
                 """

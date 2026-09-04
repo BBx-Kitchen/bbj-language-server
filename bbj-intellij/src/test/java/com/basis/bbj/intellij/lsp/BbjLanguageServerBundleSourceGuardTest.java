@@ -75,6 +75,23 @@ class BbjLanguageServerBundleSourceGuardTest {
     }
 
     @Test
+    void packagingConditionCoversBuildAndAssembleAsWellAsBuildPlugin() {
+        String text = readGuardedSource();
+        // #517 CR-01: `jar` is on the standard assemble/build lifecycle and
+        // packages main.cjs unconditionally, so the guard must also fire for
+        // `:assemble`/`:build` — not just `:buildPlugin`/`:prepareSandbox`/
+        // `:runIde` — or `./gradlew build` (CLAUDE.md's documented command)
+        // silently ships a plugin jar with no language server.
+        assertTrue(text.contains("gradle.taskGraph.hasTask(\":assemble\")"),
+                "packagingRequested no longer checks :assemble — ./gradlew assemble "
+                        + "could silently ship a plugin jar without the language server");
+        assertTrue(text.contains("gradle.taskGraph.hasTask(\":build\")"),
+                "packagingRequested no longer checks :build — ./gradlew build (CLAUDE.md's "
+                        + "documented command) could silently ship a plugin jar without the "
+                        + "language server");
+    }
+
+    @Test
     void checkRunsAtExecutionTimeNotConfigurationTime() {
         String text = readGuardedSource();
         int checkTaskIndex = text.indexOf("verifyLanguageServerBundle by tasks.registering");
