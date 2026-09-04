@@ -328,6 +328,22 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
+     * Validate a token against EM, consulting the trust-window cache first (#542). Within
+     * {@link TokenValidationCache#TRUST_WINDOW_MS} of a prior successful validation for the
+     * same token, this returns true without spawning the server-side subprocess at all;
+     * otherwise it delegates to {@link #validateTokenServerSide} and records success into the
+     * cache. Callers must still run the client-side expiry check first -- this method makes no
+     * expiry decision of its own.
+     *
+     * @param project the current project
+     * @param token   the JWT token to validate
+     * @return true if trusted or freshly validated, false otherwise
+     */
+    protected boolean validateTokenTrusted(@NotNull Project project, @NotNull String token) {
+        return TokenValidationCache.SESSION.validateThrough(token, () -> validateTokenServerSide(project, token));
+    }
+
+    /**
      * Returns the config.bbx path argument from settings, formatted for BBj command line.
      *
      * @return "-c<path>" if configPath is configured, or null if empty
