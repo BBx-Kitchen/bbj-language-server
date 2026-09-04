@@ -1,11 +1,12 @@
 ---
 phase: 79-edt-responsiveness
 verified: 2026-09-04T10:47:53Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Open the Settings dialog, set a valid BBj home with a classpath entry already selected, close and reopen the dialog (or trigger reset()) while the home-path background lookup is still in flight, and confirm the classpath combo does not visibly reset to empty/placeholder before the lookup lands."
     expected: "The previously-persisted classpath entry stays selected (or is silently re-applied) across the reset()-then-lookup window; isModified() never reports a spurious change and apply() never overwrites the stored entry with an empty string."
     why_human: "pendingClasspathSelection preservation across a real Settings-dialog open/reset()/apply() cycle is asserted only by source-guard text checks and by construction (no BasePlatformTestCase harness exists in this repo per REQUIREMENTS.md Out of Scope) — 79-02-SUMMARY.md's own D3 coverage entry marks this human_judgment: true."
