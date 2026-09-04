@@ -4,6 +4,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -105,5 +109,122 @@ class BackendNoticePolicyTest {
         assertTrue(second.calls.isEmpty(),
                 "the record lives in the injected store, not in policy instance state, so a fresh "
                         + "instance after an IDE restart must not warn again for the same backend");
+    }
+
+    @Test
+    void switchingBackToTheNativeKeychainClearsTheRecord() {
+        Store store = new Store("");
+        Notifier notifier = new Notifier();
+        BackendNoticePolicy policy = policyOver(store, notifier);
+
+        policy.evaluate(TokenBackend.KEEPASS_FILE);
+        policy.evaluate(TokenBackend.NATIVE_KEYCHAIN);
+        policy.evaluate(TokenBackend.KEEPASS_FILE);
+
+        assertEquals(2, notifier.calls.size(),
+                "resolving back to the native keychain clears the last-warned record, so a later "
+                        + "switch away from it must warn again");
+    }
+
+    @Test
+    void aDifferentNonKeychainBackendWarnsAgainWithoutAnInterveningKeychain() {
+        Store store = new Store("");
+        Notifier notifier = new Notifier();
+        BackendNoticePolicy policy = policyOver(store, notifier);
+
+        policy.evaluate(TokenBackend.KEEPASS_FILE);
+        policy.evaluate(TokenBackend.MEMORY_ONLY);
+
+        assertEquals(List.of(TokenBackend.KEEPASS_FILE, TokenBackend.MEMORY_ONLY), notifier.calls,
+                "a user who moves straight from one weak backend to a different weak backend, with no "
+                        + "intervening keychain use, has still changed how their token is protected and "
+                        + "must be told about the new state");
+    }
+
+    @Test
+    void anUnknownBackendIsWarnWorthy() {
+        Store store = new Store("");
+        Notifier notifier = new Notifier();
+        BackendNoticePolicy policy = policyOver(store, notifier);
+
+        policy.evaluate(TokenBackend.UNKNOWN);
+        policy.evaluate(TokenBackend.UNKNOWN);
+
+        assertEquals(List.of(TokenBackend.UNKNOWN), notifier.calls,
+                "a detection failure must never pass silently as the keychain -- UNKNOWN is warn-worthy "
+                        + "like any other non-keychain backend, and once warned it stays quiet on repeat");
+    }
+
+    @Test
+    void theNativeKeychainClearsAnExistingRecordEvenWhenItNeverWarnedInThisInstance() {
+        Store store = new Store(TokenBackend.KEEPASS_FILE.name());
+        Notifier notifier = new Notifier();
+        BackendNoticePolicy policy = policyOver(store, notifier);
+
+        policy.evaluate(TokenBackend.NATIVE_KEYCHAIN);
+
+        assertEquals("", store.get(),
+                "the record is cleared from whatever a fresh policy instance found already persisted, "
+                        + "not only from a value this instance itself wrote");
+        assertTrue(notifier.calls.isEmpty(), "the native keychain never itself raises a notification");
+    }
+
+    @Test
+    void aNullOrEmptyStoredValueIsTreatedAsNeverWarned() {
+        Store nullStore = new Store(null);
+        Notifier nullNotifier = new Notifier();
+        policyOver(nullStore, nullNotifier).evaluate(TokenBackend.MEMORY_ONLY);
+        assertEquals(1, nullNotifier.calls.size(),
+                "a null stored value (no record ever written, e.g. first run on this machine) must be "
+                        + "treated as never-warned, not as a false match for any backend name");
+
+        Store emptyStore = new Store("");
+        Notifier emptyNotifier = new Notifier();
+        policyOver(emptyStore, emptyNotifier).evaluate(TokenBackend.MEMORY_ONLY);
+        assertEquals(1, emptyNotifier.calls.size(),
+                "an empty stored value must likewise be treated as never-warned");
+    }
+
+    @Test
+    void eightConcurrentEvaluatesOfTheSameBackendProduceExactlyOneNotification() throws InterruptedException {
+        // The store itself must be synchronized so this test measures the policy's own atomicity
+        // rather than a race in the double standing in for PropertiesComponent.
+        Object storeLock = new Object();
+        String[] slot = new String[] { "" };
+        Notifier notifier = new Notifier();
+        BackendNoticePolicy policy = new BackendNoticePolicy(
+                () -> { synchronized (storeLock) { return slot[0]; } },
+                value -> { synchronized (storeLock) { slot[0] = value; } },
+                backend -> { synchronized (notifier) { notifier.notify(backend); } });
+
+        int threadCount = 8;
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch release = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    policy.evaluate(TokenBackend.KEEPASS_FILE);
+                });
+            }
+            ready.await();
+            release.countDown();
+            pool.shutdown();
+            assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS), "all evaluate() calls must finish");
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(1, notifier.calls.size(),
+                "eight Runs resolving the same non-keychain backend at nearly the same instant must "
+                        + "still produce exactly one balloon -- the synchronized read-compare-notify-write "
+                        + "sequence in evaluate() is what makes this atomic");
     }
 }
