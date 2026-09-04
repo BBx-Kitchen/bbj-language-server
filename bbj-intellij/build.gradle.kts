@@ -105,7 +105,42 @@ val copyTextMateBundle by tasks.registering(Copy::class) {
     into(layout.buildDirectory.dir("resources/main/textmate/bbj-bundle"))
 }
 
+// #517 (BUILD-03): copyLanguageServer (below) and the prepareSandbox customisation
+// are both Copy-style consumers of the shared language-server bundle built by
+// bbj-vscode. A Copy task (or PrepareSandboxTask from(...) block) with a missing
+// source silently no-sources instead of failing, which would otherwise let
+// buildPlugin ship a plugin archive with no language server inside it. This task
+// is the single execution-time guard both consumers depend on (D-09); it never
+// runs at configuration time (D-10), so a clean clone can still run `tasks`,
+// `dependencies`, `test`, `wrapper`, and `updateDaemonJvm` without the bundle
+// present. It does not, and must never, produce the bundle itself (D-11) — that
+// remains the developer's or CI's job.
+val verifyLanguageServerBundle by tasks.registering {
+    val bundleFile = layout.projectDirectory.file("../bbj-vscode/out/language/main.cjs").asFile
+    // Never up to date: this is a cheap presence/size check, not a build product,
+    // and it must re-run every time a dependent task runs.
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!bundleFile.exists() || bundleFile.length() == 0L) {
+            throw GradleException(
+                """
+                Missing or empty shared language-server bundle.
+
+                Expected file: ${bundleFile.absolutePath}
+
+                Fix: build bbj-vscode first:
+                    cd bbj-vscode && npm ci && npm run build
+
+                In CI, this file is supplied by the download-artifact step rather than
+                built by Gradle — do not add an npm/Node invocation here.
+                """.trimIndent()
+            )
+        }
+    }
+}
+
 val copyLanguageServer by tasks.registering(Copy::class) {
+    dependsOn(verifyLanguageServerBundle)
     from("${projectDir}/../bbj-vscode/out/language/") {
         include("main.cjs")
     }
@@ -128,6 +163,7 @@ tasks.named("processResources") {
 }
 
 tasks.named<PrepareSandboxTask>("prepareSandbox") {
+    dependsOn(verifyLanguageServerBundle)
     from("${projectDir}/../bbj-vscode/out/language/") {
         include("main.cjs")
         into("${pluginName.get()}/lib/language-server")
