@@ -315,7 +315,7 @@ public final class BbjNodeDownloader {
             @Override
             public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
                 n.expire();
-                BbjServerService.getInstance(project).restart();
+                BbjServerService.getInstance(project).requestRestart(0);
             }
         });
         Notifications.Bus.notify(notification, project);

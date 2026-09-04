@@ -119,7 +119,7 @@ public final class BbjStatusBarWidget implements CustomStatusBarWidget {
         // Restart Server action
         JMenuItem restartItem = new JMenuItem("Restart Server");
         restartItem.addActionListener(event -> {
-            BbjServerService.getInstance(project).restart();
+            BbjServerService.getInstance(project).requestRestart(0);
         });
         popup.add(restartItem);
 

@@ -14,8 +14,10 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.EditorNotifications;
-import com.intellij.util.Alarm;
 import com.intellij.util.messages.Topic;
+import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.RestartGate;
+import com.basis.bbj.intellij.concurrency.Scheduler;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import org.jetbrains.annotations.NotNull;
@@ -24,17 +26,19 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Project-level service managing BBj language server lifecycle.
  * Centralizes server start/stop/restart operations, crash recovery with auto-restart logic,
- * and status broadcast to UI components. {@link #scheduleRestart()} offers a debounced restart
- * path, but only the settings-apply flow ({@code BbjSettingsConfigurable#apply()}) uses it — the
- * other restart triggers (manual restart action, crash notification, status bar widgets, refresh
- * Java classes, crash auto-restart) call {@link #restart()} directly with no debounce.
+ * and status broadcast to UI components. Every restart trigger — the manual restart action, the
+ * crash notification, both status-bar widgets, refresh Java classes, the Node download-success
+ * notification, and the settings-apply flow — reaches the server only through the single guarded
+ * entry point {@link #requestRestart(long)}, which coalesces overlapping requests into one
+ * restart via a {@link RestartGate}.
  */
 public final class BbjServerService implements Disposable {
 
     private final Project project;
     private ServerStatus currentStatus = ServerStatus.stopped;
     private ServerStatus previousStatus = ServerStatus.stopped;
-    private final Alarm restartAlarm;
+    private final Scheduler restartScheduler;
+    private final RestartGate restartGate;
     private static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
     private long lastCrashTime = 0;
@@ -44,7 +48,8 @@ public final class BbjServerService implements Disposable {
 
     public BbjServerService(@NotNull Project project) {
         this.project = project;
-        this.restartAlarm = new Alarm(Alarm.ThreadToUse.POOLED_THREAD, this);
+        this.restartScheduler = new AlarmScheduler(this);
+        this.restartGate = new RestartGate(restartScheduler, this::doRestart);
 
         // Register disposal
         Disposer.register(project, this);
@@ -127,7 +132,7 @@ public final class BbjServerService implements Disposable {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    restart();
+                    doRestart();
                 });
             } else if (crashCount >= 2) {
                 // Stop auto-restart after second crash
@@ -195,7 +200,7 @@ public final class BbjServerService implements Disposable {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification n) {
                     clearCrashState();
-                    restart();
+                    doRestart();
                     n.expire();
                 }
             })
@@ -203,10 +208,19 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
-     * Restart the language server immediately.
-     * Clears crash state to ensure manual restart always works.
+     * The single guarded entry point for restarting the language server. Every restart trigger
+     * must call this method rather than performing the stop/start pair directly — overlapping
+     * requests coalesce into exactly one restart via {@link RestartGate}.
      */
-    public void restart() {
+    public void requestRestart(long delayMs) {
+        restartGate.request(delayMs);
+    }
+
+    /**
+     * Restart the language server immediately. Clears crash state first so a restart always
+     * works. Only reachable through {@link #requestRestart(long)} — never call directly.
+     */
+    private void doRestart() {
         clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
         manager.stop("bbjLanguageServer");
@@ -218,8 +232,7 @@ public final class BbjServerService implements Disposable {
      * will result in a single restart.
      */
     public void scheduleRestart() {
-        restartAlarm.cancelAllRequests();
-        restartAlarm.addRequest(this::restart, RESTART_DEBOUNCE_MS);
+        requestRestart(RESTART_DEBOUNCE_MS);
     }
 
     public ServerStatus getCurrentStatus() {

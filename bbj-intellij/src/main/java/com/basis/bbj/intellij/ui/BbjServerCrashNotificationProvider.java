@@ -45,8 +45,7 @@ public final class BbjServerCrashNotificationProvider implements EditorNotificat
             panel.setText("BBj Language Server has crashed. Language features are unavailable.");
 
             panel.createActionLabel("Restart Server", () -> {
-                service.clearCrashState();
-                service.restart();
+                service.requestRestart(0);
             });
 
             panel.createActionLabel("Show Log", () -> {
