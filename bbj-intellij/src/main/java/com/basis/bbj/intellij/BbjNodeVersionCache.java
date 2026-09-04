@@ -65,19 +65,24 @@ public final class BbjNodeVersionCache {
      * spawns, caches — replacing any prior entry for this path, never appending — and returns.
      * A null version (unreadable binary) is cached exactly like a non-null one, so a broken binary
      * is not re-spawned on every refresh pass while its stat is unchanged.
+     *
+     * <p>The read-or-spawn-and-store step runs inside {@link ConcurrentHashMap#compute}, which
+     * holds the map's per-bin lock for the whole read-check-spawn-store sequence for a given path.
+     * Without this, two threads racing a cache miss for the same path (a real scenario: the
+     * settings lookup and the missing-node notification provider can both resolve the same
+     * configured path concurrently on different background threads) could each observe a miss and
+     * both spawn {@code node --version}.
      */
     public @Nullable String getVersion(@NotNull String nodePath) {
         String currentStamp = stat.stampOf(nodePath);
         if (currentStamp == null) {
             return null;
         }
-        Entry cached = cache.get(nodePath);
-        if (cached != null && cached.stamp().equals(currentStamp)) {
-            return cached.version();
-        }
-        String version = spawner.versionOf(nodePath);
-        cache.put(nodePath, new Entry(currentStamp, version));
-        return version;
+        return cache.compute(nodePath, (path, existing) ->
+                existing != null && existing.stamp().equals(currentStamp)
+                        ? existing
+                        : new Entry(currentStamp, spawner.versionOf(path))
+        ).version();
     }
 
     /** Test-only: drop every cached entry. */
