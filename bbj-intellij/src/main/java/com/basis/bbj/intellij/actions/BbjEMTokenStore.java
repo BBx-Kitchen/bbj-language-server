@@ -7,11 +7,6 @@ import com.intellij.ide.passwordSafe.PasswordSafe;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
  * Utility for storing and retrieving EM JWT tokens via IntelliJ PasswordSafe.
  * Tokens are keyed by a service name and stored via IntelliJ's PasswordSafe, backed by
@@ -49,42 +44,15 @@ public final class BbjEMTokenStore {
 
     /**
      * Check if a JWT token is expired by decoding its payload and checking the exp claim.
-     * Returns true if token is expired, false otherwise or if unable to determine.
+     * Anything that is not positively decoded as an unexpired JWT is reported expired (#535):
+     * a non-3-part token, a payload with no {@code exp} claim, and any decode/parse failure all
+     * classify {@link JwtValidity.Result#MALFORMED} and are treated as expired here -- there is
+     * no result meaning "cannot tell, let the server decide".
      *
      * @param token the JWT token to check
-     * @return true if expired, false otherwise
+     * @return true if expired or unclassifiable, false only for a positively decoded, unexpired JWT
      */
     public static boolean isTokenExpired(@Nullable String token) {
-        if (token == null || token.isEmpty()) {
-            return false;
-        }
-
-        try {
-            // JWTs have 3 dot-separated parts: header.payload.signature
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return false; // Not a JWT, let server decide
-            }
-
-            // Base64url-decode the payload (index 1)
-            byte[] decodedBytes = Base64.getUrlDecoder().decode(parts[1]);
-            String payload = new String(decodedBytes, StandardCharsets.UTF_8);
-
-            // Parse JSON manually to extract exp claim (no external dependency)
-            Pattern expPattern = Pattern.compile("\"exp\"\\s*:\\s*(\\d+)");
-            Matcher matcher = expPattern.matcher(payload);
-
-            if (!matcher.find()) {
-                return false; // No exp claim, can't determine
-            }
-
-            long exp = Long.parseLong(matcher.group(1));
-            long now = System.currentTimeMillis() / 1000;
-
-            return exp <= now;
-        } catch (Exception e) {
-            // If any parsing fails, let server validate
-            return false;
-        }
+        return JwtValidity.check(token, System.currentTimeMillis() / 1000) != JwtValidity.Result.VALID;
     }
 }
