@@ -2,9 +2,14 @@ package com.basis.bbj.intellij.concurrency;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Behavioural coverage for {@link RestartGate}: coalescing, the adjacency edge, the ordering
@@ -126,5 +131,45 @@ class RestartGateTest {
 
         assertEquals(1, action.runs(),
                 "a manual trigger arriving before the first-crash delay fires must merge into it, not add a second restart");
+    }
+
+    @Test
+    void concurrentRequestsFromMultipleThreadsCoalesceIntoExactlyOneScheduledRestart() throws InterruptedException {
+        ManualScheduler scheduler = new ManualScheduler();
+        CountingAction action = new CountingAction();
+        RestartGate gate = new RestartGate(scheduler, action);
+
+        int threadCount = 8;
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threadCount);
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await();
+                        gate.request(500);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+            ready.await();
+            start.countDown();
+            assertTrue(done.await(5, TimeUnit.SECONDS), "all threads must finish within the timeout");
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(1, scheduler.pendingCount(),
+                "concurrent request() calls must coalesce into exactly one pending task, not one per racing caller");
+
+        scheduler.advanceBy(500);
+
+        assertEquals(1, action.runs(), "the coalesced restart must run exactly once");
     }
 }

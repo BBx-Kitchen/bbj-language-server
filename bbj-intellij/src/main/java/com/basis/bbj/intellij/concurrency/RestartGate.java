@@ -21,8 +21,12 @@ public final class RestartGate {
      * Request a restart in {@code delayMs} milliseconds. Cancels any previously pending request
      * (from this gate) before scheduling the new one, so overlapping requests coalesce into one
      * restart and the most recently requested delay always wins.
+     *
+     * <p>Synchronized so that the cancel-then-schedule pair is atomic: without this, two threads
+     * calling {@code request()} at nearly the same time could interleave as cancel/cancel/
+     * schedule/schedule, leaving two independently-scheduled restarts instead of one.
      */
-    public void request(long delayMs) {
+    public synchronized void request(long delayMs) {
         scheduler.cancelAll();
         scheduler.schedule(restartAction, delayMs);
     }
