@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
 status: planning
-last_updated: "2026-09-03T20:34:19.146Z"
-last_activity: 2026-09-03
+last_updated: "2026-09-04T00:00:00.000Z"
+last_activity: 2026-09-04
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,7 +15,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-03 (v4.1 closed and archived; awaiting next milestone)
+**Last Updated:** 2026-09-04 (v4.2 roadmap created — 6 phases, 78-83)
 
 ## Project Reference
 
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-09-03)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning the next milestone. v4.1 closed 2026-09-03; the eight advisories still await a tagged release and publication (see MILESTONES.md post-release actions).
+**Current Focus:** v4.2 IntelliJ Burn-down roadmap created (Phases 78-83, 20/20 requirements mapped). Next: `/gsd-plan-phase 78`. The eight v4.1 advisories still await a tagged release and publication (see MILESTONES.md post-release actions).
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 78 (Build & Test Foundation)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-03 — Milestone v4.2 started
+Status: Ready to plan
+Last activity: 2026-09-04 — Roadmap created (6 phases, 78-83); 20/20 requirements mapped
 
 ## Performance Metrics
 
@@ -115,6 +115,7 @@ Last activity: 2026-09-03 — Milestone v4.2 started
 - TEST-03 (DEF FN suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
+- v4.2 sequencing: TOKEN-01 (#535) must land before TOKEN-04 (#542) — a trust-window cache built on a fail-open expiry check widens the vulnerability. Phase 83 (BUILD-04, BUILD-05) depends on Phase 79 (EDT paths) and Phase 81 (new `bbj/compile` surface) landing first.
 
 ### Decisions
 
@@ -139,6 +140,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   registering in resolvedClasses
 - [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion
   filtering
+- [v4.2 roadmap]: Phases 78-83 derived from research's 8-phase grouping, merged to 6:
+  build foundation (78) gates every `./gradlew` invocation; EDT shared-state guards and the
+  new caching layer merged into one EDT Responsiveness phase (79); the compile action and
+  lexer/commenter fixes merged into one Feature Parity phase (81), matching the
+  REQUIREMENTS.md category boundary; LSP4IJ coupling tests deferred to a final Regression
+  Test Hardening phase (83) so it can cover both the EDT paths and the new compile surface.
 
 ### Tech Debt
 
@@ -177,13 +184,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-03T17:30:00.000Z
-Stopped at: Milestone v4.1 closed and archived (override closeout; PROC-01/02/03 carried as known gaps)
+Last session: 2026-09-04T00:00:00.000Z
+Stopped at: v4.2 roadmap created — Phases 78-83, 20/20 requirements mapped, 0 orphans
 Resume file: None
 
-Next: `/gsd-new-milestone`. The maintainer-owned post-release actions (tagged release,
-advisory severity/CVE decisions and publication, PROC dispositions, `WINDOWS.md` entry 1)
-are listed in MILESTONES.md under v4.1 and are not GSD phases.
+Next: `/gsd-plan-phase 78`. Roadmap for v4.2 (Phases 78-83) created 2026-09-04; build
+foundation (78) gates every subsequent `./gradlew` invocation in this environment.
 
 ## Deferred Items
 
@@ -233,13 +239,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | 2026-08-20 |
+| v4.1 Security Advisory Remediation | 70-77 | 37 | 2026-09-03 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-08-21 after Phase 74 (GHSA-9gv3-gr6g-c4rj) verification and transition*
+*State updated: 2026-09-04 after v4.2 roadmap creation (Phases 78-83)*
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Plan the first phase with `/gsd-plan-phase 78`

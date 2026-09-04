@@ -80,32 +80,32 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EDT-01 | — | Pending |
-| EDT-02 | — | Pending |
-| EDT-03 | — | Pending |
-| EDT-04 | — | Pending |
-| EDT-05 | — | Pending |
-| EDT-06 | — | Pending |
-| TOKEN-01 | — | Pending |
-| TOKEN-02 | — | Pending |
-| TOKEN-03 | — | Pending |
-| TOKEN-04 | — | Pending |
-| PARITY-01 | — | Pending |
-| PARITY-02 | — | Pending |
-| PARITY-03 | — | Pending |
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| BUILD-01 | — | Pending |
-| BUILD-02 | — | Pending |
-| BUILD-03 | — | Pending |
-| BUILD-04 | — | Pending |
-| BUILD-05 | — | Pending |
+| EDT-01 | Phase 79 | Pending |
+| EDT-02 | Phase 79 | Pending |
+| EDT-03 | Phase 79 | Pending |
+| EDT-04 | Phase 79 | Pending |
+| EDT-05 | Phase 79 | Pending |
+| EDT-06 | Phase 79 | Pending |
+| TOKEN-01 | Phase 80 | Pending |
+| TOKEN-02 | Phase 80 | Pending |
+| TOKEN-03 | Phase 80 | Pending |
+| TOKEN-04 | Phase 80 | Pending |
+| PARITY-01 | Phase 81 | Pending |
+| PARITY-02 | Phase 81 | Pending |
+| PARITY-03 | Phase 81 | Pending |
+| COMP-01 | Phase 82 | Pending |
+| COMP-02 | Phase 82 | Pending |
+| BUILD-01 | Phase 78 | Pending |
+| BUILD-02 | Phase 78 | Pending |
+| BUILD-03 | Phase 78 | Pending |
+| BUILD-04 | Phase 83 | Pending |
+| BUILD-05 | Phase 83 | Pending |
 
 **Coverage:**
 - v1 requirements: 20 total
-- Mapped to phases: 0
-- Unmapped: 20 ⚠️
+- Mapped to phases: 20
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-04*
-*Last updated: 2026-09-04 after initial definition*
+*Last updated: 2026-09-04 after roadmap creation — 20/20 requirements mapped to Phases 78-83*
