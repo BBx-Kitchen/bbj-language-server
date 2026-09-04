@@ -42,6 +42,7 @@ IntelliJ plugin (from `bbj-intellij/`):
 ```bash
 ./gradlew build
 ```
+Build `bbj-vscode` first — `./gradlew buildPlugin` fails fast if `bbj-vscode/out/language/main.cjs` is missing; any host JDK works, since JDK 17 is provisioned automatically.
 
 ## Architecture
 
