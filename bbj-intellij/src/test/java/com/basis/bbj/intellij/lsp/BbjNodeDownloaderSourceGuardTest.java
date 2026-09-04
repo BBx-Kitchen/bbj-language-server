@@ -127,6 +127,63 @@ class BbjNodeDownloaderSourceGuardTest {
                 "the sidecar must be written exactly once, for the installed file");
     }
 
+    @Test
+    void thePersistedInProgressFlagIsGone() {
+        String text = readGuardedSource();
+        assertEquals(0, countOccurrences(text, "DOWNLOAD_IN_PROGRESS_KEY"),
+                "the persisted in-progress flag must be deleted, not merely unused");
+        assertEquals(0, countOccurrences(text, "PropertiesComponent"),
+                "PropertiesComponent must no longer be referenced by the downloader");
+    }
+
+    @Test
+    void theDownloadGuardIsAcquiredOnceAndReleasedOnce() {
+        String text = readGuardedSource();
+        assertEquals(1, countOccurrences(text, "DownloadGuard.SESSION.tryAcquire("),
+                "the guard must be acquired exactly once");
+        assertEquals(1, countOccurrences(text, "DownloadGuard.SESSION.release()"),
+                "the guard must be released exactly once");
+    }
+
+    @Test
+    void theGuardIsAcquiredBeforeTheBackgroundTaskIsQueued() {
+        String text = readGuardedSource();
+        int tryAcquireIndex = text.indexOf("DownloadGuard.SESSION.tryAcquire(");
+        int backgroundableIndex = text.indexOf("new Task.Backgroundable(");
+        assertTrue(tryAcquireIndex >= 0, "DownloadGuard.SESSION.tryAcquire( is not present in the downloader file");
+        assertTrue(backgroundableIndex >= 0, "new Task.Backgroundable( is not present in the downloader file");
+        assertTrue(tryAcquireIndex < backgroundableIndex,
+                "the guard must be acquired before the Task.Backgroundable is queued, not inside it");
+    }
+
+    @Test
+    void theGuardIsReleasedInTheFinallyAfterTheFailurePath() {
+        String text = readGuardedSource();
+        int failureLiteralIndex = text.indexOf("Failed to download Node.js: ");
+        int releaseIndex = text.indexOf("DownloadGuard.SESSION.release()");
+        assertTrue(failureLiteralIndex >= 0, "the failure-path literal is not present in the downloader file");
+        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present in the downloader file");
+        assertTrue(releaseIndex > failureLiteralIndex,
+                "the release must sit in the finally after the catch, so it also runs on the failure path");
+    }
+
+    @Test
+    void drainedCompletionsAreDispatchedToTheEdt() {
+        String text = readGuardedSource();
+        int releaseIndex = text.indexOf("DownloadGuard.SESSION.release()");
+        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present in the downloader file");
+        int invokeLaterIndex = text.indexOf("invokeLater(", releaseIndex);
+        assertTrue(invokeLaterIndex >= 0,
+                "invokeLater( must appear after the release, dispatching drained completions to the EDT");
+    }
+
+    @Test
+    void theRestartRedirectFromPlan01Survives() {
+        String text = readGuardedSource();
+        assertEquals(1, countOccurrences(text, "requestRestart(0)"),
+                "plan 79-01's redirect of the download-success notification must survive this plan's edits");
+    }
+
     private static int countOccurrences(String text, String literal) {
         int count = 0;
         int index = 0;
