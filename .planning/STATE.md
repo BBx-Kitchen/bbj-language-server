@@ -5,13 +5,13 @@ milestone_name: IntelliJ Burn-down
 current_phase: 80
 current_phase_name: EM Token Security
 status: planning
-stopped_at: Phase 79 complete, ready to plan Phase 80
-last_updated: "2026-09-04T12:11:25.899Z"
+stopped_at: Phase 80 context gathered
+last_updated: "2026-09-04T12:24:43.726Z"
 last_activity: 2026-09-04
 last_activity_desc: Phase 79 complete, transitioned to Phase 80
-state_head: c6fc0bcb88356a2c2d1325a168aaf73666435cc4
+state_head: 687a68b59171111b4b0b6c24d688bd3ffb8b88b3
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
   total_plans: 6
   completed_plans: 6
@@ -210,9 +210,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T12:15:00Z
-Stopped at: Phase 79 complete, ready to plan Phase 80
-Resume file: None
+Last session: 2026-09-04T12:24:43.640Z
+Stopped at: Phase 80 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/80-em-token-security/80-CONTEXT.md
 
 Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing
 constraint: TOKEN-01 (#535, fail-closed expiry) must land before TOKEN-04 (#542, trust-window
