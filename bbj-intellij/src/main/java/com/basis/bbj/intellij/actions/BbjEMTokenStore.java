@@ -52,6 +52,7 @@ public final class BbjEMTokenStore {
         CredentialAttributes attrs = createAttributes();
         Credentials credentials = new Credentials("bbj-em", token);
         PasswordSafe.getInstance().set(attrs, credentials);
+        TokenValidationCache.SESSION.invalidate();
     }
 
     @Nullable
@@ -65,6 +66,7 @@ public final class BbjEMTokenStore {
     public static void deleteToken() {
         CredentialAttributes attrs = createAttributes();
         PasswordSafe.getInstance().set(attrs, null);
+        TokenValidationCache.SESSION.invalidate();
     }
 
     /**
