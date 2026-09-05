@@ -54,12 +54,14 @@ public final class BbjParserDefinition implements ParserDefinition {
 
     @Override
     public @NotNull TokenSet getCommentTokens() {
-        return TokenSet.EMPTY;
+        // #568: rem comments are their own token, not empty
+        return TokenSet.create(BbjTokenTypes.COMMENT);
     }
 
     @Override
     public @NotNull TokenSet getStringLiteralElements() {
-        return TokenSet.EMPTY;
+        // #568: string literals are their own token, not empty
+        return TokenSet.create(BbjTokenTypes.STRING);
     }
 
     @Override

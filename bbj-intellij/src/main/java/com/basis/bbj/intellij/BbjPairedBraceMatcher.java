@@ -27,8 +27,9 @@ public class BbjPairedBraceMatcher implements PairedBraceMatcher {
     @Override
     public boolean isPairedBracesAllowedBeforeType(@NotNull IElementType lbraceType,
                                                    @Nullable IElementType contextType) {
-        // Safe default: allow auto-closing brackets
-        return true;
+        // Auto-close and pairing are suppressed when the caret context is a string literal or a
+        // rem comment -- a bracket character there is just text, not a real bracket (#568).
+        return contextType != BbjTokenTypes.STRING && contextType != BbjTokenTypes.COMMENT;
     }
 
     @Override
