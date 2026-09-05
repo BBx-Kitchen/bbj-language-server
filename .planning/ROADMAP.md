@@ -336,7 +336,7 @@ Plans:
   1. When a composer `CompletableFuture` chain (the launcher or any dialog's refresh) fails, a user-visible notification appears, verified by a regression test that forces one chain to fail (#538).
   2. If the document changes while a composer dialog is open, re-decoding the call at the captured offsets after the dialog closes detects the mismatch, aborts the edit, and notifies the user instead of rewriting whatever text now occupies the range, verified by a regression test that mutates the document mid-dialog (#567, decision: abort and notify).
 
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 Plans:
 **Wave 1**
 
@@ -344,7 +344,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 82-02-PLAN.md — Dialog refresh terminal handlers, OK gating and once-per-session balloon (COMP-01, #538)
+- [x] 82-02-PLAN.md — Dialog refresh terminal handlers, OK gating and once-per-session balloon (COMP-01, #538)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 

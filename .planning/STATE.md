@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 82
 current_phase_name: Composer Robustness
 status: executing
-stopped_at: Completed 82-01-PLAN.md
-last_updated: "2026-09-05T19:05:52.569Z"
+stopped_at: Completed 82-02-PLAN.md
+last_updated: "2026-09-05T19:19:05.414Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 82 execution started
-state_head: f850c7987f82970d34db792692218fa441f56851
+state_head: ee05e0ff4016197f5c7f61a8d8b58b40dcc51e39
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 82 (Composer Robustness) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-05 — Phase 82 execution started
 
@@ -127,6 +127,7 @@ Last activity: 2026-09-05 — Phase 82 execution started
 | Phase 81 P06 | 13min | 3 tasks | 8 files |
 | Phase 81 P07 | 15min | 3 tasks | 5 files |
 | Phase 82 P01 | 15min | 3 tasks | 7 files |
+| Phase 82 P02 | 13min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -194,6 +195,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 07: LSP4IJ Gradle pin raised from 0.19.0 to 0.21.0 (kept, not reverted) -- resolved cleanly, whole IntelliJ module green at 326 tests, buildPlugin archive produced; CompileResultPresenter.messageTextOf reads a diagnostic's message reflectively (getMessage resolved by name, normalised across a plain string, either branch of a two-branch value, or a markup value's own text) since a plugin descriptor cannot pin the runtime version of a dependency plugin's vendored client library -- closes G-81-5's NoSuchMethodError.
 - [Phase 81 UAT]: All six live-IDE checks passed by hand 2026-09-05. Two gaps found and closed in-phase: G-81-4 (`Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's int `Position`, fixed by 81-06) and G-81-5 (`Diagnostic.getMessage()` signature skew between the 0.19.0 build pin and the IDE's LSP4IJ 0.21.0, fixed by 81-07); the final re-check rendered `16:1 Syntax error: xdd`. G-81-3 withdrawn: a Marketplace auto-update replaced the local 0.1.0 build mid-session. PARITY-01..03 (#571, #568, #540) closed.
 - [Phase 82]: [Phase 82]: 82-01: ComposerFlow's terminal handle() unwraps CompletionException/ExecutionException before classifying, so a NotReadySignal thrown at any nesting depth is recognized regardless of wrapper layers; ComposerNotices is the shared reason-keyed notice vocabulary 82-02/82-03 build on.
+- [Phase 82]: Phase 82: 82-02: ComposerFlow.observe/once seam lets each dialog's refresh() check its own sequence before touching state, so a superseded success or failure is discarded identically; ComposerLauncherChainSourceGuardTest's whole-file 'exactly one handle()' assertion was rescoped to launch()'s own body since observe() legitimately owns a second, independent terminal handler for its own chain.
 
 ### Tech Debt
 
@@ -247,8 +249,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T19:05:52.413Z
-Stopped at: Completed 82-01-PLAN.md
+Last session: 2026-09-05T19:19:05.253Z
+Stopped at: Completed 82-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
