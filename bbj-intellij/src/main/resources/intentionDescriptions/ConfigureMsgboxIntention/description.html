@@ -1,0 +1,15 @@
+<html>
+<body>
+<p>Opens the BBj visual composer for the <code>MSGBOX(...)</code> call under the caret.</p>
+<!-- tooltip end -->
+<p>
+The composer is prefilled from the current call's message, button set, icon, default button,
+title and any remaining arguments, and shows a live preview of the statement it will write.
+Pressing OK replaces the call in place; Cancel changes nothing.
+</p>
+<p>
+Available when the caret is inside such a call. The BBj language server must be running,
+because the composer decodes and re-encodes the call through it (#426).
+</p>
+</body>
+</html>

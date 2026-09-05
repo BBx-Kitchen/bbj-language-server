@@ -1,0 +1,1 @@
+result = msgbox("Delete this record?", 0, "Confirm")

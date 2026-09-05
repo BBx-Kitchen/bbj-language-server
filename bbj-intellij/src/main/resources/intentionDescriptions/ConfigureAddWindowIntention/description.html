@@ -1,0 +1,16 @@
+<html>
+<body>
+<p>Opens the BBj visual composer for the <code>addWindow(...)</code> call under the caret.</p>
+<!-- tooltip end -->
+<p>
+The composer presents the window's flag and event-mask hex arguments as named checkboxes
+(frame and chrome, title-bar controls, scrollbars, initial state, event notifications) with
+a live schematic of the resulting window. Pressing OK rewrites only the hex literals in
+place; Cancel changes nothing.
+</p>
+<p>
+Available when the caret is inside such a call. The BBj language server must be running,
+because the composer decodes and re-encodes the call through it (#430).
+</p>
+</body>
+</html>
