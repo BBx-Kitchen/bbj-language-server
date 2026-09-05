@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 80
 current_phase_name: EM Token Security
-status: verifying
-stopped_at: "Phase 80 executed and verified (human_needed): 6 UAT items pending in 80-UAT.md"
-last_updated: "2026-09-04T16:27:45.438Z"
-last_activity: 2026-09-04
+status: executing
+stopped_at: Completed 80-05-PLAN.md
+last_updated: "2026-09-05T08:01:06.058Z"
+last_activity: 2026-09-05
 last_activity_desc: Phase 80 execution started
-state_head: b60c6aea0b9db96b3bcc7aae9934c56718898f36
+state_head: f70f02c731be891b293789e1d7b6f35af6e56d4f
 progress:
   total_phases: 3
   completed_phases: 2
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 11
+  completed_plans: 11
 ---
 
 # Project State: BBj Language Server
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-04)
 ## Current Position
 
 Phase: 80 (EM Token Security) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-09-04 — Phase 80 execution started
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-09-05 — Phase 80 execution started
 
 ## Performance Metrics
 
@@ -118,6 +118,7 @@ Last activity: 2026-09-04 — Phase 80 execution started
 | Phase 80 P02 | 70 min | 3 tasks | 5 files |
 | Phase 80 P03 | ~30min | 3 tasks | 5 files |
 | Phase 80 P04 | 30min | 3 tasks | 7 files |
+| Phase 80 P05 | ~15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 80]: 80-02: the Windows ACL branch is proven by a pure OwnerOnlyAcl builder test, a strategy-selection test over synthetic view sets and seven source guards, never by an executed Windows run (CI is ubuntu-latest, no Windows runner); the icacls DACL check and the write-through login check are carried as human UAT items required for #536 closure.
 - [Phase 80]: Phase 80: 80-03: resolveBackend() is the sole PasswordSafeSettings/ProviderType touch point, placed last in BbjEMTokenStore.java; BackendNoticePolicy warns once per distinct non-keychain backend and resets on keychain; a Task 3 source guard caught TokenBackend's own javadoc leaking the literal ProviderType, fixed by rewording (Rule 1).
 - [Phase 80]: Phase 80 Plan 04: TokenValidationCache is a static AtomicReference<Entry> memo keyed on the SHA-256 digest of the token's UTF-8 bytes, five-minute window checked on read with no timer; storeToken/deleteToken invalidate unconditionally, and validateTokenTrusted collapses BUI/DWC's duplicated server-validation calls onto one base-class entry point — TOKEN-04 (#542): two Run invocations in quick succession with the same token now validate at most once; the trust window is a UX optimisation only since web.bbj still presents the token to EM at every launch
+- [Phase 80]: Widened the Windows owner ACE by exactly READ_NAMED_ATTRS and WRITE_NAMED_ATTRS (ten permissions), not full control — Windows folds FILE_READ_EA/FILE_WRITE_EA into GENERIC_READ/GENERIC_WRITE; an access check denies the whole open when any bit is ungranted; ten bits is the surgical fix, fourteen is the escalation reserved for a failing Windows recheck.
 
 ### Tech Debt
 
@@ -219,9 +221,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-04T16:27:45.329Z
-Stopped at: Phase 80 executed and verified (human_needed): 6 UAT items pending in 80-UAT.md
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/80-em-token-security/80-UAT.md
+Last session: 2026-09-05T08:00:55.848Z
+Stopped at: Completed 80-05-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing
 constraint: TOKEN-01 (#535, fail-closed expiry) must land before TOKEN-04 (#542, trust-window
