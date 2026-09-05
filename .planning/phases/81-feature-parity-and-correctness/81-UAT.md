@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T14:07:40Z
+updated: 2026-09-05T14:11:31Z
 ---
 
 ## Current Test
@@ -79,10 +79,21 @@ blocked: 0
   reason: "User reported: it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "parseBbjcplOutput() sets every syntax-error diagnostic's range.end.character to Number.MAX_SAFE_INTEGER (9007199254740991) as an end-of-line stand-in. org.eclipse.lsp4j.Position.character is a Java primitive int (max 2147483647), so when the bbj/compile response carries any diagnostic (exactly the syntax-error case) LSP4J's Gson MessageJsonHandler fails at $.result.diagnostics[0].range.end.character and surfaces MessageIssueException 'Message could not be parsed' before CompileResultPresenter runs. The success path sends diagnostics: [] so no Position is serialized, which is why the happy path works."
+  artifacts:
+    - path: "bbj-vscode/src/language/bbj-cpl-parser.ts"
+      issue: "line 47: end.character = Number.MAX_SAFE_INTEGER, outside Java int range; breaks LSP4J deserialization whenever a diagnostic is present"
+    - path: "bbj-vscode/src/language/bbj-document-validator.ts"
+      issue: "line 229: same Number.MAX_SAFE_INTEGER end.character pattern on the publishDiagnostics (on-save CPL) path; same int-overflow hazard for JVM LSP clients"
+    - path: "bbj-vscode/test/compile-request.test.ts"
+      issue: "lines 158-172: compile-errors test asserts only diagnostics.length and .source, never range bounds"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/compile/CompileResultPresenter.java"
+      issue: "lines 149-157: only reads range.start; range.end is unused on the consuming side (no Java change needed to render)"
+  missing:
+    - "Replace Number.MAX_SAFE_INTEGER with an end-of-line sentinel that fits a Java int (e.g. a shared constant capped at 2147483647, or the actual line length) in bbj-cpl-parser.ts and bbj-document-validator.ts"
+    - "Add a cross-boundary regression test that JSON-serializes a compile-errors result and asserts every Position.line/character is a non-negative integer <= 2147483647"
+    - "Optionally a Java-side fixture test deserializing a captured compile-errors JSON response through LSP4J's Gson to prove the boundary parses"
+  debug_session: ".planning/debug/compile-error-response-message-could-not-be-parsed.md"
 
 ## Deferred Follow-Ups
 
