@@ -359,6 +359,32 @@ class BbjSecretArgvSourceGuardTest {
                                 + "children and an inheriting grant would propagate"));
     }
 
+    /**
+     * A guard that searched the whole file would be satisfied by a Javadoc sentence
+     * mentioning the permissions while the set itself had been narrowed back --
+     * exactly the regression being guarded against. Scoping the assertion to the
+     * {@code Set.of(} initializer's own argument text closes that hole.
+     */
+    @Test
+    void theOwnerPermissionFloorGrantsTheExtendedAttributeBits() {
+        String text = readGuardedSource(OWNER_ONLY_ACL);
+        String permissionSet = extractBalancedCallArgument(text, "Set.of(");
+        assertTrue(permissionSet != null,
+                "OwnerOnlyAcl.java must declare its permission floor as a single Set.of( initializer -- "
+                        + "that is what this guard scopes to");
+        assertAll("owner permission floor grants the extended-attribute bits (#536)",
+                () -> assertTrue(countOccurrences(permissionSet, "READ_NAMED_ATTRS") >= 1,
+                        "Windows folds READ_NAMED_ATTRS into the GENERIC_READ right a file open requests, "
+                                + "and an access check denies the entire open when any requested bit is "
+                                + "ungranted -- removing it from the floor makes BBj unable to open the "
+                                + "owner-only temp file the plugin created for it (#536)"),
+                () -> assertTrue(countOccurrences(permissionSet, "WRITE_NAMED_ATTRS") >= 1,
+                        "Windows folds WRITE_NAMED_ATTRS into the GENERIC_WRITE right a file open requests, "
+                                + "and an access check denies the entire open when any requested bit is "
+                                + "ungranted -- removing it from the floor makes BBj unable to open the "
+                                + "owner-only temp file the plugin created for it (#536)"));
+    }
+
     @Test
     void theSupersededPerUserTempDirectoryRationaleIsGone() {
         String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
