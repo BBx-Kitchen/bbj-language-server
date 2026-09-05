@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 /**
  * Behavioural coverage for {@link CompileResultPresenter} (#571): success, every
  * reason in the vocabulary, an unrecognised reason, and the two client-side failures. A plain
- * JUnit 5 test over a plain-Java seam — no IntelliJ platform test framework (C-01).
+ * JUnit 5 test over a plain-Java seam — no IntelliJ platform test framework.
  */
 class CompileResultPresenterTest {
 

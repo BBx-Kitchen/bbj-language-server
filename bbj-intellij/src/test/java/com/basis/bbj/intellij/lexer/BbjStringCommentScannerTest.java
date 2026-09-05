@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Behavioural coverage for the #568 acceptance cases: bracket characters inside a BBj string
  * literal or a {@code rem} comment must never be classified as bracket tokens. Each method here
  * exercises {@link BbjStringCommentScanner} directly, with no IntelliJ platform dependency
- * (C-01) — the plain scanning seam is what carries the fix; {@link BbjLexerStringCommentSourceGuardTest}
+ * — the plain scanning seam is what carries the fix; {@link BbjLexerStringCommentSourceGuardTest}
  * pins the three sites that wire it into the lexer.
  */
 class BbjStringCommentScannerTest {

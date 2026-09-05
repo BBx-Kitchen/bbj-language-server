@@ -159,7 +159,7 @@ class BbjCompileActionSourceGuardTest {
         String text = readSource(PRESENTER_SOURCE);
 
         assertEquals(0, countOccurrences(text, "import com.intellij"),
-                "the rendering seam must stay a plain-Java class (C-01)");
+                "the rendering seam must stay a plain-Java class");
     }
 
     @Test

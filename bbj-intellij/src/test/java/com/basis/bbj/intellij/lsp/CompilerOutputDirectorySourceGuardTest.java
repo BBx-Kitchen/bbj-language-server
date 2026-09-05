@@ -154,6 +154,6 @@ class CompilerOutputDirectorySourceGuardTest {
     void theSeamHasNoIntellijImport() {
         String text = readSource(COMPILER_INIT_OPTIONS_SOURCE);
         assertEquals(0, countOccurrences(text, "import com.intellij"),
-                "CompilerInitOptions must have no IntelliJ platform import (C-01)");
+                "CompilerInitOptions must have no IntelliJ platform import");
     }
 }

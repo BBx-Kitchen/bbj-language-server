@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * Renders a {@code bbj/compile} result into balloon text (#571). A plain
- * Java rendering seam with no IntelliJ import (C-01): every balloon's title, body and settings
+ * Java rendering seam with no IntelliJ import: every balloon's title, body and settings
  * remedy come from here, keyed on the result's machine-readable {@code reason} — never chosen by
  * reading its {@code message} prose.
  */
