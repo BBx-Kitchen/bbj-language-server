@@ -223,11 +223,12 @@ reliably on current JDKs.
 - ✓ **TOKEN-02**: `createOwnerOnlyFile` yields a POSIX 0600 file, a Windows single-owner-ACE file, or a fail-closed `IOException` — no default-permission fallback; the owner ACE covers the extended-attribute bits Windows folds into a file open (#536) — v4.2 Phase 80 (Windows write-through and `icacls` check attested by hand 2026-09-05)
 - ✓ **TOKEN-03**: One WARNING balloon per distinct non-keychain PasswordSafe backend via `BackendNoticePolicy`, reset on return to the keychain, with an "Open Password Settings" action (#552) — v4.2 Phase 80
 - ✓ **TOKEN-04**: `TokenValidationCache` memoizes server-side token validation for five minutes keyed on the token digest; `storeToken`/`deleteToken` invalidate; BUI/DWC share one `validateTokenTrusted` entry point (#542) — v4.2 Phase 80
+- ✓ **PARITY-01**: "Compile BBj File" sends `bbj/compile` to the shared language server, which runs bbjcpl through `BBjCPLService`; success or `line:col message` diagnostics render in an IntelliJ balloon, with no bbjcpl invocation logic duplicated on the IntelliJ side (#571) — v4.2 Phase 81
+- ✓ **PARITY-02**: Brackets inside string literals (including `""`-doubled quotes) and `rem` comments are inert for matching, navigation and auto-close; `BbjStringCommentScanner` emits STRING/COMMENT tokens ahead of the word lexer (#568) — v4.2 Phase 81
+- ✓ **PARITY-03**: Ctrl+/ recognizes `rem`, `Rem` and `REM` (word-bounded) and strips the prefix instead of stacking one; `RemToggleSeam` behind a `SelfManagingCommenter`, locale-independent (#540) — v4.2 Phase 81
 
 ### Active
 
-- [ ] "Compile BBj File" invokes bbjcpl and surfaces the result in IntelliJ
-- [ ] Bracket matching ignores brackets inside string literals; REM toggle is case-insensitive
 - [ ] Composer dialogs re-validate offsets before applying edits and surface LSP failures
 - [ ] LSP4IJ experimental-API coupling and Node download/cache paths are covered by JUnit regression tests
 
@@ -412,6 +413,10 @@ Carried over, maintainer-owned (not GSD phases):
 | Windows owner ACE widened by exactly `READ_NAMED_ATTRS` and `WRITE_NAMED_ATTRS` (ten permissions), not full control | UAT on Windows showed BBj denied `open(...,"O_CREATE,O_TRUNC")` with `!ERROR=18` against the plugin-created file: Windows folds `FILE_READ_EA`/`FILE_WRITE_EA` into `GENERIC_READ`/`GENERIC_WRITE` and denies the whole open when any requested bit is ungranted. Ten bits is the surgical fix; fourteen was the escalation reserved for a still-failing recheck | ✓ Good — v4.2 Phase 80 gap closure 80-05; recheck passed by hand 2026-09-05 with the rebuilt plugin |
 | `resolveBackend()` is the sole PasswordSafe `ProviderType` touch point; `BackendNoticePolicy` warns once per distinct non-keychain backend and resets on keychain | Keeps the platform-coupled call in one place a source guard can fence, and prevents balloon spam while still re-warning on a downgrade after a return to the keychain | ✓ Good — v4.2 Phase 80 (#552); balloon behaviour verified by hand in a sandbox IDE |
 | `TokenValidationCache` is a static `AtomicReference` memo keyed on the SHA-256 of the token bytes with a five-minute window checked on read, no timer | Two quick Runs validate at most once; the window is a UX optimisation only, since `web.bbj` still presents the token to EM on every launch, and `storeToken`/`deleteToken` invalidate unconditionally so logout clears trust | ✓ Good — v4.2 Phase 80 (#542); verified by hand (two Runs, one subprocess; logout re-validates) |
+| `bbj/compile` lives on the shared language server behind a vscode-free `compiler-options.ts` table; IntelliJ passes `compilerOutputDirectory` as a flat `initializationOptions` key | No bbjcpl invocation logic may be duplicated on the IntelliJ side (#571); LSP4IJ 0.19.0 resolves `createSettings()` to null for this plugin's flat settings object, so the flat key is the only channel that reaches the server | ✓ Good — v4.2 Phase 81; compile round trip verified by hand |
+| Plain-Java seams (`BbjStringCommentScanner`, `RemToggleSeam`, `CompilerInitOptions`, `CompileResultPresenter`) with explicit ASCII case comparison, never `toLowerCase`/`equalsIgnoreCase` | The module has no IntelliJ platform test harness; seams keep the logic on plain JUnit, and per-character ASCII comparison is proven locale-independent under a Turkish default locale | ✓ Good — v4.2 Phase 81; bracket inertness and REM round trip verified by hand |
+| `END_OF_LINE_CHARACTER = 2147483647` shared sentinel replaces `Number.MAX_SAFE_INTEGER` at both whole-line-range sites | bbjcpl reports no column, and `Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's `int` `Position.character`, so any compile response carrying a diagnostic failed to parse (`MessageIssueException`) — gap G-81-4 | ✓ Good — v4.2 Phase 81 gap closure 81-06; pinned by an LSP4J JSON boundary test |
+| Diagnostic message read reflectively by name in `CompileResultPresenter`; LSP4IJ Gradle pin raised 0.19.0 → 0.21.0 | `plugin.xml` cannot pin the runtime LSP4IJ, whose bundled lsp4j 1.0.0 changed `Diagnostic.getMessage()` to return `Either`, so the 0.19.0-compiled call site hit `NoSuchMethodError` in the live IDE — gap G-81-5; one binary must render on either client-library generation | ✓ Good — v4.2 Phase 81 gap closure 81-07; live re-check 2026-09-05 rendered `16:1 Syntax error: xdd` |
 
 ## Evolution
 
@@ -431,4 +436,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-05 after Phase 80*
+*Last updated: 2026-09-05 after Phase 81*

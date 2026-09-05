@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
-current_phase: 81
-current_phase_name: Feature Parity and Correctness
-status: executing
-stopped_at: Completed 81-07-PLAN.md (gap closure for G-81-5)
-last_updated: "2026-09-05T17:49:30.440Z"
+current_phase: 82
+current_phase_name: Composer Robustness
+status: planning
+stopped_at: Phase 81 complete, ready to plan Phase 82
+last_updated: "2026-09-05T18:13:12.223Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 81 execution started
-state_head: 374f7f61b29705300f52d36de43671322274c8fe
+last_activity_desc: Phase 81 complete, transitioned to Phase 82
+state_head: 786d684489784a7e7b62f9432a41e998a9b63b92
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
   completed_plans: 18
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-05 (Phase 80 verified and complete; Phase 81 ready to plan)
+**Last Updated:** 2026-09-05 (Phase 81 verified and complete; Phase 82 ready to plan)
 
 ## Project Reference
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 81 — Feature Parity and Correctness
+**Current Focus:** Phase 82 — Composer Robustness
 
 ---
 
 ## Current Position
 
-Phase: 81 (Feature Parity and Correctness) — ALL PLANS COMPLETE
-Plan: 7 of 7 (81-07 gap closure for G-81-5)
-Status: Phase 81 execution complete, ready for UAT re-check
-Last activity: 2026-09-05 — 81-07-PLAN.md complete
+Phase: 82 — Composer Robustness
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-05 — Phase 81 complete, transitioned to Phase 82
 
 ## Performance Metrics
 
@@ -44,8 +44,8 @@ Last activity: 2026-09-05 — 81-07-PLAN.md complete
 
 **Started:** 2026-02-01
 **Milestones shipped:** 18
-**Phases completed:** 80
-**Plans completed:** 253
+**Phases completed:** 81
+**Plans completed:** 260
 **Days elapsed:** 216
 **Velocity:** ~1.1 plans/day (lifetime); v4.1 ran at ~2.6 plans/day
 
@@ -191,6 +191,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 06: END_OF_LINE_CHARACTER pinned to the LSP uinteger max (2147483647), not the real line length; both whole-line-range sites (bbj-cpl-parser.ts, bbj-document-validator.ts) import one shared lsp-position.ts constant — G-81-4: bbjcpl reports no column and no source text is in hand at either emitting site; Number.MAX_SAFE_INTEGER overflowed LSP4IJ's int-typed Position.character and crashed the compile-error balloon with MessageIssueException
 - [Phase 81]: Phase 81 Plan 06: JUnit boundary test's negative control asserts RuntimeException, not com.google.gson.JsonParseException — LSP4IJ's MessageJsonHandler wraps the Gson failure in its own MessageIssueException, confirmed empirically before asserting — The plan itself pre-authorized widening to RuntimeException if the thrown type turned out broader; confirmed via a throwaway debug run rather than guessed
 - [Phase 81]: Phase 81 Plan 07: LSP4IJ Gradle pin raised from 0.19.0 to 0.21.0 (kept, not reverted) -- resolved cleanly, whole IntelliJ module green at 326 tests, buildPlugin archive produced; CompileResultPresenter.messageTextOf reads a diagnostic's message reflectively (getMessage resolved by name, normalised across a plain string, either branch of a two-branch value, or a markup value's own text) since a plugin descriptor cannot pin the runtime version of a dependency plugin's vendored client library -- closes G-81-5's NoSuchMethodError.
+- [Phase 81 UAT]: All six live-IDE checks passed by hand 2026-09-05. Two gaps found and closed in-phase: G-81-4 (`Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's int `Position`, fixed by 81-06) and G-81-5 (`Diagnostic.getMessage()` signature skew between the 0.19.0 build pin and the IDE's LSP4IJ 0.21.0, fixed by 81-07); the final re-check rendered `16:1 Syntax error: xdd`. G-81-3 withdrawn: a Marketplace auto-update replaced the local 0.1.0 build mid-session. PARITY-01..03 (#571, #568, #540) closed.
 
 ### Tech Debt
 
@@ -233,6 +234,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   installation did not work on the Windows test machine (user installed Node by hand and set the node.exe
   home); this worked before, possible regression — candidate for Phase 83 (#569 Node download/cache coverage).
 - ⚠️ [Phase 80] Review follow-ups in 80-REVIEW.md / 80-UI-REVIEW.md are advisory; none blocked verification.
+- ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; the reflective message read covers the compile balloon, but a canary for the rest of the LSP4IJ surface belongs to Phase 83 (BUILD-05).
 
 ### Quick Tasks Completed
 
@@ -243,8 +245,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T17:49:30.255Z
-Stopped at: Completed 81-07-PLAN.md (gap closure for G-81-5)
+Last session: 2026-09-05T18:50:00Z
+Stopped at: Phase 81 complete, ready to plan Phase 82
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
@@ -306,8 +308,8 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-05 after Phase 81 Plan 3 (case-insensitive REM toggle) complete*
+*State updated: 2026-09-05 after Phase 81 verified and complete (UAT 6/6, PARITY-01..03 closed)*
 
 ## Operator Next Steps
 
-- Continue Phase 81 with `/gsd-execute-phase 81` (81-04-PLAN.md next, then Wave 2's 81-05-PLAN.md)
+- Plan Phase 82 (Composer Robustness): `/gsd-discuss-phase 82` (no CONTEXT.md yet) or `/gsd-plan-phase 82`
