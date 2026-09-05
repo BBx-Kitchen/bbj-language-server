@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
 status: executing
-stopped_at: Completed 81-06-PLAN.md
-last_updated: "2026-09-05T16:16:36.814Z"
+stopped_at: Completed 81-07-PLAN.md (gap closure for G-81-5)
+last_updated: "2026-09-05T17:49:30.440Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 81 execution started
-state_head: fc984238c2c55681cee99159947252b28f731a57
+state_head: 374f7f61b29705300f52d36de43671322274c8fe
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 17
-  completed_plans: 17
+  total_plans: 18
+  completed_plans: 18
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +33,10 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 ## Current Position
 
-Phase: 81 (Feature Parity and Correctness) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-09-05 — Phase 81 execution started
+Phase: 81 (Feature Parity and Correctness) — ALL PLANS COMPLETE
+Plan: 7 of 7 (81-07 gap closure for G-81-5)
+Status: Phase 81 execution complete, ready for UAT re-check
+Last activity: 2026-09-05 — 81-07-PLAN.md complete
 
 ## Performance Metrics
 
@@ -125,6 +125,7 @@ Last activity: 2026-09-05 — Phase 81 execution started
 | Phase 81 P04 | 10min | 3 tasks | 7 files |
 | Phase 81 P05 | 12min | 3 tasks | 6 files |
 | Phase 81 P06 | 13min | 3 tasks | 8 files |
+| Phase 81 P07 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 05: bbj/compile is declared directly on BbjComposerServer (not a new sibling interface) since getServerInterface() returns exactly one interface (RESEARCH.md Pitfall 5); CompileResultPresenter is a plain-Java seam dispatching on the machine-readable reason (never message prose, D-10); Task.Backgroundable asserts assertIsNonDispatchThread() as its first statement before any blocking LSP4IJ call, mirroring the Phase 79 convention; a 45s client-side wait bounds both requests, comfortably above the server's own 30s compile timeout.
 - [Phase 81]: Phase 81 Plan 06: END_OF_LINE_CHARACTER pinned to the LSP uinteger max (2147483647), not the real line length; both whole-line-range sites (bbj-cpl-parser.ts, bbj-document-validator.ts) import one shared lsp-position.ts constant — G-81-4: bbjcpl reports no column and no source text is in hand at either emitting site; Number.MAX_SAFE_INTEGER overflowed LSP4IJ's int-typed Position.character and crashed the compile-error balloon with MessageIssueException
 - [Phase 81]: Phase 81 Plan 06: JUnit boundary test's negative control asserts RuntimeException, not com.google.gson.JsonParseException — LSP4IJ's MessageJsonHandler wraps the Gson failure in its own MessageIssueException, confirmed empirically before asserting — The plan itself pre-authorized widening to RuntimeException if the thrown type turned out broader; confirmed via a throwaway debug run rather than guessed
+- [Phase 81]: Phase 81 Plan 07: LSP4IJ Gradle pin raised from 0.19.0 to 0.21.0 (kept, not reverted) -- resolved cleanly, whole IntelliJ module green at 326 tests, buildPlugin archive produced; CompileResultPresenter.messageTextOf reads a diagnostic's message reflectively (getMessage resolved by name, normalised across a plain string, either branch of a two-branch value, or a markup value's own text) since a plugin descriptor cannot pin the runtime version of a dependency plugin's vendored client library -- closes G-81-5's NoSuchMethodError.
 
 ### Tech Debt
 
@@ -241,8 +243,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T16:16:20.793Z
-Stopped at: Completed 81-06-PLAN.md
+Last session: 2026-09-05T17:49:30.255Z
+Stopped at: Completed 81-07-PLAN.md (gap closure for G-81-5)
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
