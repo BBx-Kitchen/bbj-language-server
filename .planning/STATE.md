@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
-status: executing
-stopped_at: Completed 81-04-PLAN.md
-last_updated: "2026-09-05T11:14:44.369Z"
+status: verifying
+stopped_at: Completed 81-05-PLAN.md
+last_updated: "2026-09-05T11:26:19.860Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 81 Plan 3 (case-insensitive REM toggle) complete
-state_head: 5a07ea0aa15781a448cfedb057db53b04c53e7b0
+state_head: cc2ab3b3faa5f4078ddcbb51dd1b5037b654ae4f
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 Phase: 81 (Feature Parity and Correctness) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) complete
 
 ## Performance Metrics
@@ -123,6 +123,7 @@ Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) comp
 | Phase 81 P02 | 15min | 3 tasks | 7 files |
 | Phase 81 P03 | 18min | 3 tasks | 4 files |
 | Phase 81 P04 | 10min | 3 tasks | 7 files |
+| Phase 81 P05 | 12min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -184,6 +185,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: [Phase 81] Phase 81 Plan 02: BbjStringCommentScanner is a plain-Java seam (scanString/scanComment/isCommentStart) mirroring the grammar's STRING_LITERAL/COMMENT terminals; BbjWordLexer dispatches to it ahead of the word branch and BbjParserDefinition/BbjPairedBraceMatcher are wired to the new STRING/COMMENT token types, so bracket characters inside a string or rem comment are never classified as brackets (#568, PARITY-02).
 - [Phase 81]: Phase 81 Plan 03: RemToggleSeam is a plain-Java seam (isCommented/comment/uncomment) recognizing rem in any case via direct ASCII comparison (never toLowerCase/equalsIgnoreCase, proven locale-independent under Turkish default locale); BbjCommenter implements both Commenter and SelfManagingCommenter<CommenterDataHolder>, delegating every line decision to the seam with the insert hard-coded to column 0 — PARITY-03 (#540): a rem/Rem/REM line now round-trips through Ctrl+/ instead of stacking a second prefix.
 - [Phase 81]: [Phase 81]: Phase 81 Plan 04: CompilerInitOptions is a plain-Java seam (COMPILER_OUTPUT_DIRECTORY_KEY, normalizeOutputDirectory) with no IntelliJ import; the value reaches the server through the flat compilerOutputDirectory initializationOptions key in BbjLanguageServerFactory, not through BbjLanguageClient.createSettings(), which LSP4IJ 0.19.0 resolves to null for this plugin's flat settings object — BbjLanguageClient stays deliberately unchanged and a source guard pins that.
+- [Phase 81]: Phase 81 Plan 05: bbj/compile is declared directly on BbjComposerServer (not a new sibling interface) since getServerInterface() returns exactly one interface (RESEARCH.md Pitfall 5); CompileResultPresenter is a plain-Java seam dispatching on the machine-readable reason (never message prose, D-10); Task.Backgroundable asserts assertIsNonDispatchThread() as its first statement before any blocking LSP4IJ call, mirroring the Phase 79 convention; a 45s client-side wait bounds both requests, comfortably above the server's own 30s compile timeout.
 
 ### Tech Debt
 
@@ -236,8 +238,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T11:14:44.253Z
-Stopped at: Completed 81-04-PLAN.md
+Last session: 2026-09-05T11:26:19.720Z
+Stopped at: Completed 81-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),

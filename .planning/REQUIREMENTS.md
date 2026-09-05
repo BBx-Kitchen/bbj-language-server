@@ -25,7 +25,7 @@
 
 ### Feature Parity and Correctness
 
-- [ ] **PARITY-01**: "Compile BBj File" in IntelliJ sends a new `bbj/compile` request to the shared language server, which invokes bbjcpl through the existing `BBjCPLService`, and the action surfaces success or the returned diagnostics to the user; no bbjcpl invocation logic is duplicated on the IntelliJ side, and full compiler-option UI parity stays out of scope (#571)
+- [x] **PARITY-01**: "Compile BBj File" in IntelliJ sends a new `bbj/compile` request to the shared language server, which invokes bbjcpl through the existing `BBjCPLService`, and the action surfaces success or the returned diagnostics to the user; no bbjcpl invocation logic is duplicated on the IntelliJ side, and full compiler-option UI parity stays out of scope (#571)
 - [x] **PARITY-02**: Bracket characters inside BBj string literals (including `""`-doubled quotes) are not treated as structural brackets for matching, navigation, or auto-close; the lexer emits a STRING token registered as a string-literal element, with regression tests for `PRINT "value (not a bracket)"` and doubled quotes (#568)
 - [x] **PARITY-03**: The line-comment toggle recognizes `rem`, `Rem`, and `REM` (word-bounded) as already commented and removes the prefix instead of adding a second one, with regression tests for lowercase and mixed case (#540)
 
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOKEN-02 | Phase 80 | Complete |
 | TOKEN-03 | Phase 80 | Complete |
 | TOKEN-04 | Phase 80 | Complete |
-| PARITY-01 | Phase 81 | Pending |
+| PARITY-01 | Phase 81 | Complete |
 | PARITY-02 | Phase 81 | Complete |
 | PARITY-03 | Phase 81 | Complete |
 | COMP-01 | Phase 82 | Pending |
