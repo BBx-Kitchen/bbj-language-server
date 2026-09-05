@@ -219,10 +219,13 @@ reliably on current JDKs.
 - ✓ **EDT-04**: First-crash restart delay scheduled on a pooled-thread Alarm; zero `Thread.sleep` in `BbjServerService` (#513) — v4.2 Phase 79
 - ✓ **EDT-05**: All eight restart triggers funnel through `requestRestart(long)` over a synchronized coalescing `RestartGate` (#539) — v4.2 Phase 79
 - ✓ **EDT-06**: In-memory atomic `DownloadGuard` replaces the persisted download flag; two concurrent requests start one download (#537) — v4.2 Phase 79
+- ✓ **TOKEN-01**: EM login classifies the JWT once through a three-valued `JwtValidity.check` and fails closed on malformed or expired tokens before anything reaches PasswordSafe (#535) — v4.2 Phase 80
+- ✓ **TOKEN-02**: `createOwnerOnlyFile` yields a POSIX 0600 file, a Windows single-owner-ACE file, or a fail-closed `IOException` — no default-permission fallback; the owner ACE covers the extended-attribute bits Windows folds into a file open (#536) — v4.2 Phase 80 (Windows write-through and `icacls` check attested by hand 2026-09-05)
+- ✓ **TOKEN-03**: One WARNING balloon per distinct non-keychain PasswordSafe backend via `BackendNoticePolicy`, reset on return to the keychain, with an "Open Password Settings" action (#552) — v4.2 Phase 80
+- ✓ **TOKEN-04**: `TokenValidationCache` memoizes server-side token validation for five minutes keyed on the token digest; `storeToken`/`deleteToken` invalidate; BUI/DWC share one `validateTokenTrusted` entry point (#542) — v4.2 Phase 80
 
 ### Active
 
-- [ ] EM JWT handling fails closed on malformed tokens, uses owner-only temp files, and warns on non-keychain storage
 - [ ] "Compile BBj File" invokes bbjcpl and surfaces the result in IntelliJ
 - [ ] Bracket matching ignores brackets inside string literals; REM toggle is case-insensitive
 - [ ] Composer dialogs re-validate offsets before applying edits and surface LSP failures
@@ -404,6 +407,11 @@ Carried over, maintainer-owned (not GSD phases):
 | Source-guard tests (whole-file text assertions) as the regression fence for wiring that only a live IDE could exercise | Off-EDT dispatch, the single restart entry point, and the download-guard ordering are properties of call-site wiring, not of any unit-testable object; text guards fail the build if a raw restart, an EDT sleep, or the persisted download flag reappears. Known limit: defeatable by a no-op refactor (79-REVIEW.md IN-01) | ✓ Good — v4.2 Phase 79; complemented by three human UAT checks in a running IDE |
 | Flush the pending BBj-home lookup synchronously on Apply/OK instead of disabling Apply while a debounce is in flight | Review fix WR-03: a user clicking Apply within the ~300 ms debounce window would otherwise persist a classpath from the previous home. The flush reintroduces a small amount of EDT filesystem I/O, but only on that narrow, low-frequency path, and needs no platform plumbing | ✓ Accepted — v4.2 Phase 79; verified by hand at UAT (test 3, 2026-09-04) |
 | Cross-process Node download races left unguarded | An in-JVM `DownloadGuard` cannot span two IDE processes sharing one plugins directory; a file lock is the only fix and is out of scope for v4.2 (research Pitfall 3) | Accepted residual — recorded in 79-SECURITY.md (T-79-23) |
+| One three-valued `JwtValidity.check` classification replaces four independent fail-open `return false` sites | A single decode means a partial fix cannot miss a branch; classifying before `storeToken` keeps an unusable EM login result out of PasswordSafe. A decimal `exp` regex bug was caught in the red-then-green cycle | ✓ Good — v4.2 Phase 80 (#535) |
+| `createOwnerOnlyFile` has exactly three outcomes: POSIX attribute, `acl:acl` attribute supplied at creation, or a fail-closed `IOException` | The default-permission fallback was deleted rather than demoted; a temp file that is not owner-only must never be created. The Windows branch cannot run in CI (ubuntu-latest only), so it is fenced by a pure ACL builder test, a strategy-selection test over synthetic view sets, and source guards, plus a human `icacls` check | ✓ Good — v4.2 Phase 80 (#536); Windows UAT first failed, then passed after the ACE widening below |
+| Windows owner ACE widened by exactly `READ_NAMED_ATTRS` and `WRITE_NAMED_ATTRS` (ten permissions), not full control | UAT on Windows showed BBj denied `open(...,"O_CREATE,O_TRUNC")` with `!ERROR=18` against the plugin-created file: Windows folds `FILE_READ_EA`/`FILE_WRITE_EA` into `GENERIC_READ`/`GENERIC_WRITE` and denies the whole open when any requested bit is ungranted. Ten bits is the surgical fix; fourteen was the escalation reserved for a still-failing recheck | ✓ Good — v4.2 Phase 80 gap closure 80-05; recheck passed by hand 2026-09-05 with the rebuilt plugin |
+| `resolveBackend()` is the sole PasswordSafe `ProviderType` touch point; `BackendNoticePolicy` warns once per distinct non-keychain backend and resets on keychain | Keeps the platform-coupled call in one place a source guard can fence, and prevents balloon spam while still re-warning on a downgrade after a return to the keychain | ✓ Good — v4.2 Phase 80 (#552); balloon behaviour verified by hand in a sandbox IDE |
+| `TokenValidationCache` is a static `AtomicReference` memo keyed on the SHA-256 of the token bytes with a five-minute window checked on read, no timer | Two quick Runs validate at most once; the window is a UX optimisation only, since `web.bbj` still presents the token to EM on every launch, and `storeToken`/`deleteToken` invalidate unconditionally so logout clears trust | ✓ Good — v4.2 Phase 80 (#542); verified by hand (two Runs, one subprocess; logout re-validates) |
 
 ## Evolution
 
@@ -423,4 +431,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-04 after Phase 79*
+*Last updated: 2026-09-05 after Phase 80*

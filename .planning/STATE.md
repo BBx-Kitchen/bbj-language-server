@@ -2,41 +2,41 @@
 gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
-current_phase: 80
-current_phase_name: EM Token Security
-status: executing
-stopped_at: Completed 80-05-PLAN.md
-last_updated: "2026-09-05T08:01:06.058Z"
+current_phase: 81
+current_phase_name: Feature Parity and Correctness
+status: planning
+stopped_at: Phase 80 complete, ready to plan Phase 81
+last_updated: "2026-09-05T08:19:02.020Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 80 execution started
-state_head: f70f02c731be891b293789e1d7b6f35af6e56d4f
+last_activity_desc: Phase 80 complete, transitioned to Phase 81
+state_head: 93b97d102bb4e503810aa64ea6824033a78daa5b
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
   completed_plans: 11
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-04 (Phase 79 verified and complete; Phase 80 ready to plan)
+**Last Updated:** 2026-09-05 (Phase 80 verified and complete; Phase 81 ready to plan)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-04)
+See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 80 — EM Token Security
+**Current Focus:** Phase 81 — Feature Parity and Correctness
 
 ---
 
 ## Current Position
 
-Phase: 80 (EM Token Security) — EXECUTING
-Plan: 2 of 5
-Status: Ready to execute
-Last activity: 2026-09-05 — Phase 80 execution started
+Phase: 81 — Feature Parity and Correctness
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-05 — Phase 80 complete, transitioned to Phase 81
 
 ## Performance Metrics
 
@@ -44,9 +44,9 @@ Last activity: 2026-09-05 — Phase 80 execution started
 
 **Started:** 2026-02-01
 **Milestones shipped:** 18
-**Phases completed:** 77
-**Plans completed:** 242
-**Days elapsed:** 214
+**Phases completed:** 80
+**Plans completed:** 253
+**Days elapsed:** 216
 **Velocity:** ~1.1 plans/day (lifetime); v4.1 ran at ~2.6 plans/day
 
 ### Recent History
@@ -175,6 +175,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 80]: Phase 80: 80-03: resolveBackend() is the sole PasswordSafeSettings/ProviderType touch point, placed last in BbjEMTokenStore.java; BackendNoticePolicy warns once per distinct non-keychain backend and resets on keychain; a Task 3 source guard caught TokenBackend's own javadoc leaking the literal ProviderType, fixed by rewording (Rule 1).
 - [Phase 80]: Phase 80 Plan 04: TokenValidationCache is a static AtomicReference<Entry> memo keyed on the SHA-256 digest of the token's UTF-8 bytes, five-minute window checked on read with no timer; storeToken/deleteToken invalidate unconditionally, and validateTokenTrusted collapses BUI/DWC's duplicated server-validation calls onto one base-class entry point — TOKEN-04 (#542): two Run invocations in quick succession with the same token now validate at most once; the trust window is a UX optimisation only since web.bbj still presents the token to EM at every launch
 - [Phase 80]: Widened the Windows owner ACE by exactly READ_NAMED_ATTRS and WRITE_NAMED_ATTRS (ten permissions), not full control — Windows folds FILE_READ_EA/FILE_WRITE_EA into GENERIC_READ/GENERIC_WRITE; an access check denies the whole open when any bit is ungranted; ten bits is the surgical fix, fourteen is the escalation reserved for a failing Windows recheck.
+- [Phase 80 UAT]: All six live-IDE checks passed by hand. The Windows owner-ACE write-through check (G-80-1) first failed with BBj !ERROR=18, was fixed by 80-05, and passed on 2026-09-05 against a plugin built from main @ 232d321. TOKEN-01..04 (#535, #536, #552, #542) closed.
 
 ### Tech Debt
 
@@ -212,6 +213,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   or a quick task. Also open from 79-REVIEW.md: IN-01 (text source guards are refactor-defeatable),
   IN-02 (duplicated plugin-bundle path resolution), IN-03 (`deleteDirectory` follows symlinks).
 
+- ⚠️ [Phase 80 UAT observations, not phase-80 gaps]: (1) an old IntelliJ 2015 install accepted the plugin
+  but it did not run — consider trimming `since-build` in the plugin descriptor; (2) automatic Node.js
+  installation did not work on the Windows test machine (user installed Node by hand and set the node.exe
+  home); this worked before, possible regression — candidate for Phase 83 (#569 Node download/cache coverage).
+- ⚠️ [Phase 80] Review follow-ups in 80-REVIEW.md / 80-UI-REVIEW.md are advisory; none blocked verification.
+
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Status | Directory |
@@ -221,14 +228,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T08:00:55.848Z
-Stopped at: Completed 80-05-PLAN.md
+Last session: 2026-09-05T08:20:15Z
+Stopped at: Phase 80 complete, ready to plan Phase 81
 Resume file: None
 
-Next: `/gsd-discuss-phase 80` (no CONTEXT.md yet) or `/gsd-plan-phase 80`. Sequencing
-constraint: TOKEN-01 (#535, fail-closed expiry) must land before TOKEN-04 (#542, trust-window
-cache). Phase 79 closed with UAT 10/10, VALIDATION nyquist-compliant, SECURITY 18/18 closed,
-UI review advisory only.
+Next: `/gsd-discuss-phase 81` (no CONTEXT.md yet) or `/gsd-plan-phase 81`. Phase 81 depends on
+Phase 78 only (build foundation, done). Phase 80 closed with UAT 6/6 (one gap closed by 80-05 and
+re-attested on Windows), VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review advisory only.
 
 ## Deferred Items
 
@@ -284,8 +290,8 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-04 after Phase 79 verification and transition to Phase 80*
+*State updated: 2026-09-05 after Phase 80 verification and transition to Phase 81*
 
 ## Operator Next Steps
 
-- Discuss or plan Phase 80 with `/gsd-discuss-phase 80` or `/gsd-plan-phase 80`
+- Discuss or plan Phase 81 with `/gsd-discuss-phase 81` or `/gsd-plan-phase 81`

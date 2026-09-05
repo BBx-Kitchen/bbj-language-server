@@ -1,7 +1,7 @@
 ---
 phase: 80-em-token-security
 verified: 2026-09-05T08:30:00Z
-status: human_needed
+status: passed
 score: 4/4 roadmap success criteria verified (55/55 plan-level must-have truths verified: 49 from 80-01..80-04 + 6 new from 80-05 gap closure)
 behavior_unverified: 0
 overrides_applied: 0
@@ -13,6 +13,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "On a Windows host with the rebuilt plugin installed, trigger Tools > Login to Enterprise Manager and, while em-login.bbj is running, run `icacls %TEMP%\\bbj-em-login-*.tmp` (a throwaway JShell call to BbjProcessSecretEnv.createOwnerOnlyFile is an acceptable substitute for observing the DACL alone)."
     expected: "Exactly one ACE granting the logged-in account; no ACE for BUILTIN\\Users, Everyone, or NT AUTHORITY\\Authenticated Users; no (I) inherited entry. AND (the load-bearing half of this recheck, previously failed as G-80-1): login/validation completes without BBj reporting !ERROR=18 \"User not allowed\"."
     why_human: "CI is ubuntu-latest only and no Windows host is reachable from this environment, so the ACL branch of createOwnerOnlyFile — and specifically whether the ten-permission floor now satisfies BBj's native open() call — is never executed by any automated test. The code-level fix (READ_NAMED_ATTRS/WRITE_NAMED_ATTRS added, permission-floor guard tightened) is proven by OwnerOnlyAclTest (7/7), BbjProcessSecretEnvTest (29/29), and BbjSecretArgvSourceGuardTest (20/20) re-run fresh this session — all 0 failures — but a value-object/guard test cannot prove a real Windows CreateFile/ACL check succeeds. This is the same UAT test 1 from 80-UAT.md, re-run once the fix landed."
@@ -30,6 +31,7 @@ human_verification:
 This is the second verification pass for Phase 80. The first pass (2026-09-04, status `human_needed`) found all four roadmap success criteria code-verified but routed six items to human UAT since no test harness in this repo can exercise a live IntelliJ notification, a live Run subprocess, or a live Windows ACL. UAT (`80-UAT.md`, 2026-09-05) then ran all six: five passed (TOKEN-03 balloon behaviour x3, TOKEN-04 cache/logout behaviour x2), and one failed as gap **G-80-1** (blocker) — on Windows, BBj's `em-login.bbj` could not even open the plugin-created owner-only temp file (`!ERROR=18`), because `OwnerOnlyAcl.OWNER_PERMISSIONS` omitted the two extended-attribute permissions (`READ_NAMED_ATTRS`, `WRITE_NAMED_ATTRS`) that Windows folds into the `GENERIC_READ`/`GENERIC_WRITE` access mask a file open requests.
 
 Gap-closure plan 80-05 (commits `e6cf0a4`, `6cb9a34`, `f70f02c`, `ee8b393`) added exactly those two permissions and a source guard to prevent future narrowing. This verification pass:
+
 1. Re-checks the fixed code at all three levels (exists, substantive, wired) — full depth, per re-verification rules for previously-failed items.
 2. Quick regression-checks the five previously-passed UAT items and the three other roadmap truths (TOKEN-01, 03, 04), whose supporting source files are confirmed unchanged since the last verification (`git diff --stat 342fb11..HEAD` for `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/` and `.../lsp/BbjProcessSecretEnv.java` is empty).
 3. Classifies the still-open Windows write-through recheck honestly as `human_needed`, not `passed` and not `gaps_found` — the code defect is fixed and unit-tested, but only a Windows host can prove BBj's actual `open()` now succeeds.
