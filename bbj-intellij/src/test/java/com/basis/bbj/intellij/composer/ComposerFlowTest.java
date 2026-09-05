@@ -21,17 +21,25 @@ import org.eclipse.lsp4j.services.WorkspaceService;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Behavioural coverage of the composer launch chain (#538) with a stubbed {@link BbjComposerServer}:
@@ -314,5 +322,180 @@ class ComposerFlowTest {
                 "the recorded body must name the original cause's message");
         assertFalse(notice.body.contains("CompletionException"),
                 "the recorded body must never show the future machinery's wrapper class name");
+    }
+
+    // -- observe()/once(): the dialog refresh() seam (#538 dialog half) -------------------------
+
+    @Test
+    void aFailedPreviewRequestReachesTheFailureCallbackWithTheCauseAndNeverTheSuccessCallback() throws Exception {
+        RecordingNotifier notifier = new RecordingNotifier();
+        RecordingEdt edt = new RecordingEdt();
+        ComposerFlow flow = new ComposerFlow(edt, notifier, ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+
+        CompletableFuture<MsgboxPreview> request = CompletableFuture.failedFuture(new RuntimeException("preview boom"));
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        flow.observe(request, ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                        value -> successRan.set(true),
+                        failure::set)
+                .get(5, TimeUnit.SECONDS);
+
+        assertNotNull(failure.get(), "the failure callback must run for an exceptionally-completed request");
+        assertEquals("preview boom", ComposerNotices.detailOf(failure.get()),
+                "the unwrapped message must be the original one");
+        assertFalse(successRan.get(), "the success callback must never run after a failure");
+        assertEquals(1, edt.invocations, "the failure callback must run through the injected EDT executor");
+    }
+
+    @Test
+    void aPreviewThatCompletesWithNullReachesTheFailureSideRatherThanBeingIgnored() throws Exception {
+        RecordingNotifier notifier = new RecordingNotifier();
+        RecordingEdt edt = new RecordingEdt();
+        ComposerFlow flow = new ComposerFlow(edt, notifier, ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+
+        CompletableFuture<MsgboxPreview> request = CompletableFuture.completedFuture(null);
+        AtomicBoolean failureRan = new AtomicBoolean(false);
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        flow.observe(request, ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                        value -> successRan.set(true),
+                        throwable -> failureRan.set(true))
+                .get(5, TimeUnit.SECONDS);
+
+        assertTrue(failureRan.get(), "a null preview must reach the failure side, not be silently ignored -- "
+                + "leaving OK enabled after a null preview is the silent no-op this work removes");
+        assertFalse(successRan.get(), "the success callback must never run for a null result");
+    }
+
+    @Test
+    void aPreviewThatNeverCompletesIsBoundedByTheRefreshWait() throws Exception {
+        RecordingNotifier notifier = new RecordingNotifier();
+        RecordingEdt edt = new RecordingEdt();
+        ComposerFlow flow = new ComposerFlow(edt, notifier, ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+
+        CompletableFuture<MsgboxPreview> request = new CompletableFuture<>(); // never completes
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+
+        flow.observe(request, 50L, value -> fail("success must not run for a hung request"), failure::set)
+                .get(5, TimeUnit.SECONDS);
+
+        assertNotNull(failure.get(), "a hung preview request must eventually surface through the bounded wait");
+        assertTrue(ComposerNotices.detailOf(failure.get()).toLowerCase(java.util.Locale.ROOT).contains("timed out"),
+                "detailOf must render the bounded wait as a timed-out message, not a raw exception class name");
+    }
+
+    @Test
+    void aSupersededSequenceDiscardsAFailureExactlyAsItDiscardsASuccess() throws Exception {
+        // Run twice: once where the superseded (first) observation eventually fails, once where it
+        // eventually succeeds. In both runs the second (current) observation has already moved the
+        // shared sequence counter on before the first settles, so neither outcome may change state.
+        for (boolean firstEventuallyFails : new boolean[] { true, false }) {
+            RecordingNotifier notifier = new RecordingNotifier();
+            RecordingEdt edt = new RecordingEdt();
+            ComposerFlow flow = new ComposerFlow(edt, notifier, ComposerFlow.REFRESH_TIMEOUT_MILLIS);
+            AtomicInteger seq = new AtomicInteger();
+            AtomicReference<String> state = new AtomicReference<>("initial");
+
+            int firstSeq = seq.incrementAndGet();
+            CompletableFuture<MsgboxPreview> firstRequest = new CompletableFuture<>();
+
+            int secondSeq = seq.incrementAndGet();
+            flow.observe(CompletableFuture.completedFuture(new MsgboxPreview()), ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                            value -> {
+                                if (secondSeq == seq.get()) {
+                                    state.set("second-applied");
+                                }
+                            },
+                            throwable -> {
+                                if (secondSeq == seq.get()) {
+                                    state.set("second-failed");
+                                }
+                            })
+                    .get(5, TimeUnit.SECONDS);
+
+            assertEquals("second-applied", state.get(), "precondition: the second (current) observation applied");
+
+            if (firstEventuallyFails) {
+                firstRequest.completeExceptionally(new RuntimeException("stale failure"));
+            } else {
+                firstRequest.complete(new MsgboxPreview());
+            }
+
+            flow.observe(firstRequest, ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                            value -> {
+                                if (firstSeq == seq.get()) {
+                                    state.set("first-applied");
+                                }
+                            },
+                            throwable -> {
+                                if (firstSeq == seq.get()) {
+                                    state.set("first-failed");
+                                }
+                            })
+                    .get(5, TimeUnit.SECONDS);
+
+            assertEquals("second-applied", state.get(),
+                    "a superseded outcome, success or failure, must change nothing -- the state must still "
+                            + "be whatever the current (second) observation left it as (firstEventuallyFails="
+                            + firstEventuallyFails + ")");
+        }
+    }
+
+    @Test
+    void theOneShotNotifierForwardsExactlyOneNoticeHoweverManyArrive() throws InterruptedException {
+        List<ComposerNotices.Notice> sequential = Collections.synchronizedList(new ArrayList<>());
+        Consumer<ComposerNotices.Notice> sequentialOnce = ComposerFlow.once(sequential::add);
+        for (int i = 0; i < 5; i++) {
+            sequentialOnce.accept(ComposerNotices.requestFailed("MSGBOX", "boom " + i));
+        }
+        assertEquals(1, sequential.size(), "sequential notices: only the first must be forwarded");
+
+        List<ComposerNotices.Notice> concurrent = Collections.synchronizedList(new ArrayList<>());
+        Consumer<ComposerNotices.Notice> concurrentOnce = ComposerFlow.once(concurrent::add);
+        int threadCount = 8;
+        CountDownLatch ready = new CountDownLatch(threadCount);
+        CountDownLatch release = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        release.await();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                    concurrentOnce.accept(ComposerNotices.requestFailed("MSGBOX", "concurrent"));
+                });
+            }
+            ready.await();
+            release.countDown();
+            pool.shutdown();
+            assertTrue(pool.awaitTermination(10, TimeUnit.SECONDS), "all accept() calls must finish");
+        } finally {
+            pool.shutdownNow();
+        }
+
+        assertEquals(1, concurrent.size(),
+                "eight near-simultaneous notices must still forward exactly one, proving the compareAndSet "
+                        + "check-and-set is atomic");
+    }
+
+    @Test
+    void theOneShotNotifierIsPerInstanceSoASecondDialogSessionCanStillWarn() {
+        List<ComposerNotices.Notice> received = new ArrayList<>();
+        Consumer<ComposerNotices.Notice> firstSession = ComposerFlow.once(received::add);
+        Consumer<ComposerNotices.Notice> secondSession = ComposerFlow.once(received::add);
+
+        firstSession.accept(ComposerNotices.requestFailed("MSGBOX", "first"));
+        firstSession.accept(ComposerNotices.requestFailed("MSGBOX", "first again"));
+        secondSession.accept(ComposerNotices.requestFailed("MSGBOX", "second"));
+        secondSession.accept(ComposerNotices.requestFailed("MSGBOX", "second again"));
+
+        assertEquals(2, received.size(),
+                "each dialog session gets its own once() instance, so a second session can still warn "
+                        + "even though the first session's allowance is already spent");
     }
 }
