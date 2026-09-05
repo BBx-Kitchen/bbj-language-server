@@ -40,6 +40,7 @@ public class BbjSettingsComponent {
 
     private final JPanel mainPanel;
     private final TextFieldWithBrowseButton bbjHomeField;
+    private final TextFieldWithBrowseButton compilerOutputDirectoryField;
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
@@ -85,6 +86,19 @@ public class BbjSettingsComponent {
                 return null;
             })
             .installOn(bbjHomeField.getTextField());
+
+        // --- Compile output directory field (#571, PARITY-01, D-05) ---
+        // A plain string field: no listener, no debounced lookup, no validator. Path validation
+        // is deliberately left to bbjcpl's own failure surfaced through the language server
+        // (RESEARCH.md Open Question 2); this component performs no filesystem work on it.
+        compilerOutputDirectoryField = new TextFieldWithBrowseButton();
+        var compilerOutputFolderDescriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                .withTitle("Select Compile Output Directory")
+                .withDescription("Choose the directory bbjcpl writes tokenized output to");
+        compilerOutputDirectoryField.addBrowseFolderListener(
+                new TextBrowseFolderListener(compilerOutputFolderDescriptor, null));
+        ((JBTextField) compilerOutputDirectoryField.getTextField()).getEmptyText()
+                .setText("Required for \"Compile BBj File\" to run");
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
@@ -216,6 +230,9 @@ public class BbjSettingsComponent {
             .addComponent(new TitledSeparator("BBj Environment"))
             .addLabeledComponent(new JBLabel("BBj home:"), bbjHomeField, 1, false)
             .addLabeledComponent(new JBLabel("config.bbx Path:"), configPathField, 1, false)
+
+            .addComponent(new TitledSeparator("BBj Compiler"))
+            .addLabeledComponent(new JBLabel("Compile output directory:"), compilerOutputDirectoryField, 1, false)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -381,6 +398,14 @@ public class BbjSettingsComponent {
 
     public void setConfigPath(@NotNull String path) {
         configPathField.setText(path);
+    }
+
+    public @NotNull String getCompilerOutputDirectory() {
+        return compilerOutputDirectoryField.getText().trim();
+    }
+
+    public void setCompilerOutputDirectory(@NotNull String path) {
+        compilerOutputDirectoryField.setText(path);
     }
 
     public @NotNull String getEmUrl() {
