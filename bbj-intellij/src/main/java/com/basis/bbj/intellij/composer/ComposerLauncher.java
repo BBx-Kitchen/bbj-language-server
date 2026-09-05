@@ -72,7 +72,7 @@ public final class ComposerLauncher {
         switch (kind) {
             case MSGBOX -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.msgboxDecodeCall(new DecodeCallParams(lineText, col)),
-                    (server, catalogs, decoded) -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line));
+                    (server, catalogs, decoded) -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line, col));
             case ADDWINDOW -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.addWindowDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line));
@@ -92,7 +92,7 @@ public final class ComposerLauncher {
     }
 
     private static void openMsgbox(Project project, Editor editor, BbjComposerServer server,
-                                   MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line) {
+                                   MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line, int col) {
         if (catalogs == null) {
             ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.MSGBOX)), null);
             return;
@@ -110,13 +110,43 @@ public final class ComposerLauncher {
         }
         if (edit) {
             MsgboxEdit ed = decoded.edit;
-            WriteCommandAction.runWriteCommandAction(project, "Configure MSGBOX", null, () -> {
-                int ls = editor.getDocument().getLineStartOffset(line);
-                editor.getDocument().replaceString(ls + ed.callStart, ls + ed.callEnd, text);
-            });
+            StaleEditGuard guard = new StaleEditGuard(
+                    documentViewOf(editor),
+                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure MSGBOX", null, body),
+                    ComposerLauncher::onEdt,
+                    notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.MSGBOX)),
+                    StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+            guard.applyIfUnchanged(labelOf(Kind.MSGBOX), line, col, decoded,
+                    (currentLineText, currentCol) -> server.msgboxDecodeCall(new DecodeCallParams(currentLineText, currentCol)),
+                    DecodeEquality::sameMsgbox,
+                    () -> {
+                        int ls = editor.getDocument().getLineStartOffset(line);
+                        editor.getDocument().replaceString(ls + ed.callStart, ls + ed.callEnd, text);
+                    });
         } else {
             insertAtCaret(project, editor, text, "Compose MSGBOX");
         }
+    }
+
+    /** The live document view every stale-edit guard reads from -- current line count/text/stamp, never captured values. */
+    private static StaleEditGuard.DocumentView documentViewOf(Editor editor) {
+        return new StaleEditGuard.DocumentView() {
+            @Override
+            public int lineCount() {
+                return editor.getDocument().getLineCount();
+            }
+
+            @Override
+            public String lineText(int line) {
+                Document doc = editor.getDocument();
+                return doc.getText(new TextRange(doc.getLineStartOffset(line), doc.getLineEndOffset(line)));
+            }
+
+            @Override
+            public long modificationStamp() {
+                return editor.getDocument().getModificationStamp();
+            }
+        };
     }
 
     private static void openAddWindow(Project project, Editor editor, BbjComposerServer server,
