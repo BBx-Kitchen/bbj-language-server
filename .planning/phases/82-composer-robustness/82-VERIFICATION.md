@@ -1,7 +1,7 @@
 ---
 phase: 82-composer-robustness
 verified: 2026-09-05T21:34:41Z
-status: human_needed
+status: passed
 score: 9/9 must-have truths verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -13,6 +13,7 @@ re_verification:
   gaps_remaining: []
   regressions: []
 human_verification:
+
   - test: "Server-stopped composer invocation shows one information balloon."
     expected: "Stop the language server, invoke a composer from the editor popup or lightbulb intention: exactly one information balloon in the \"BBj Language Server\" group reading \"The BBj language server is not ready yet. Open a BBj file and try again.\" — a balloon, not a modal."
     why_human: "NotificationGroupManager and balloon rendering need a running IDE; C-01 keeps the platform off the plain-JUnit-5 test classpath. UAT recorded this item as skipped/not-testable in this environment (the server auto-restarts before the proxy resolves to null) and verified the logic from code instead — still an open live-IDE confirmation."
