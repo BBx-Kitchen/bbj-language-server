@@ -44,6 +44,9 @@ public final class ConfigureMsgboxIntention implements IntentionAction {
 
     @Override
     public @NotNull IntentionPreviewInfo generatePreview(@NotNull Project project, @NotNull Editor editor, @NotNull PsiFile file) {
-        return IntentionPreviewInfo.EMPTY; // interactive dialog — no inline preview
+        // the popup renders this summary itself, so it never falls back to the description resource
+        return new IntentionPreviewInfo.Html(
+                "<p>Opens the BBj visual composer for the <code>MSGBOX(...)</code> call under the "
+                        + "caret, prefilled from its current arguments.</p>");
     }
 }
