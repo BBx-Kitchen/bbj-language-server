@@ -14,13 +14,13 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.TextRange;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Shared entry point for both composer UIs (#430/#433). Captures the caret context, asks the
@@ -63,34 +63,38 @@ public final class ComposerLauncher {
         String lineText = doc.getText(new TextRange(lineStart, doc.getLineEndOffset(line)));
         int col = caret - lineStart;
 
-        BbjComposerService.server(project).thenAccept(server -> {
-            if (server == null) {
-                notifyNotReady(project, kind);
-                return;
-            }
-            server.composerCatalogs().thenAccept(catalogs -> {
-                if (catalogs == null) {
-                    notifyNotReady(project, kind);
-                    return;
-                }
-                if (kind == Kind.MSGBOX) {
-                    server.msgboxDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line)));
-                } else if (kind == Kind.ADDWINDOW) {
-                    server.addWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line)));
-                } else {
-                    server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line)));
-                }
-            });
-        });
+        ComposerFlow flow = new ComposerFlow(
+                ComposerLauncher::onEdt,
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, kind)),
+                ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
+        CompletableFuture<BbjComposerServer> serverFuture = BbjComposerService.server(project);
+
+        switch (kind) {
+            case MSGBOX -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.msgboxDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line));
+            case ADDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.addWindowDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line));
+            case ADDCHILDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line));
+        }
+    }
+
+    /** The label a balloon names the invoked composer by — replaces the switch that lived in {@code notifyNotReady}. */
+    private static String labelOf(Kind kind) {
+        return switch (kind) {
+            case MSGBOX -> "MSGBOX";
+            case ADDWINDOW -> "addWindow";
+            case ADDCHILDWINDOW -> "addChildWindow";
+        };
     }
 
     private static void openMsgbox(Project project, Editor editor, BbjComposerServer server,
                                    MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.MSGBOX);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.MSGBOX)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -118,7 +122,7 @@ public final class ComposerLauncher {
     private static void openAddWindow(Project project, Editor editor, BbjComposerServer server,
                                       AddWindowCatalogs catalogs, AddWindowDecodeResult decoded, int line) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.ADDWINDOW);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDWINDOW)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -139,7 +143,7 @@ public final class ComposerLauncher {
     private static void openAddChildWindow(Project project, Editor editor, BbjComposerServer server,
                                            AddWindowCatalogs catalogs, AddChildWindowDecodeResult decoded, int line) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.ADDCHILDWINDOW);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDCHILDWINDOW)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -204,16 +208,6 @@ public final class ComposerLauncher {
             editor.getDocument().insertString(offset, text);
             editor.getCaretModel().moveToOffset(offset + text.length());
         });
-    }
-
-    private static void notifyNotReady(Project project, Kind kind) {
-        String title = switch (kind) {
-            case MSGBOX -> "Compose MSGBOX";
-            case ADDWINDOW -> "Compose addWindow";
-            case ADDCHILDWINDOW -> "Compose addChildWindow";
-        };
-        onEdt(() -> Messages.showInfoMessage(project,
-                "The BBj language server is not ready yet. Open a BBj file and try again.", title));
     }
 
     private static void onEdt(Runnable runnable) {
