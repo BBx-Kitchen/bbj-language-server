@@ -305,7 +305,7 @@ Plans:
   2. Typing `PRINT "value (not a bracket)"` or a doubled-quote string in a BBj file does not trigger bracket matching, navigation, or auto-close on the parenthesis inside the string literal, verified by regression tests for both cases (#568).
   3. Toggling the line-comment shortcut on a line already prefixed with `rem`, `Rem`, or `REM` (word-bounded) removes the prefix instead of adding a second one, verified by regression tests for lowercase and mixed case (#540).
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/6 plans executed
 Plans:
 **Wave 1**
 
@@ -317,6 +317,10 @@ Plans:
 **Wave 2** *(blocked on 81-01 and 81-04)*
 
 - [x] 81-05-PLAN.md — `BbjCompileAction` sends `bbj/compile` off the EDT and renders the result (PARITY-01, #571)
+
+**Wave 3** *(gap closure for G-81-4, blocked on 81-01 and 81-05)*
+
+- [ ] 81-06-PLAN.md — Bound every emitted LSP position to the `uinteger` maximum so a JVM client can parse the compile-errors response (PARITY-01, #571)
 
 ### Phase 82: Composer Robustness
 
