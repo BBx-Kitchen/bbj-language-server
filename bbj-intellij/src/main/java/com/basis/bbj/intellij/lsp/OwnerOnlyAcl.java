@@ -30,7 +30,15 @@ public final class OwnerOnlyAcl {
      * WRITE_DATA}, {@code APPEND_DATA}), for attribute updates ({@code READ_ATTRIBUTES},
      * {@code WRITE_ATTRIBUTES}), for the caller's {@code finally}-block delete
      * ({@code DELETE}), and for reading the ACL back ({@code READ_ACL},
-     * {@code SYNCHRONIZE}) -- the permission floor.
+     * {@code SYNCHRONIZE}) -- the permission floor. On Windows, {@code
+     * READ_NAMED_ATTRS} and {@code WRITE_NAMED_ATTRS} map onto the native {@code
+     * FILE_READ_EA} and {@code FILE_WRITE_EA} access-mask bits, which the platform
+     * folds into the {@code GENERIC_READ} and {@code GENERIC_WRITE} rights a file
+     * open requests; an access check grants nothing unless the ACE covers the
+     * entire requested mask, so omitting them denied BBj's open of a file it owned
+     * and surfaced as a "User not allowed" error at the {@code open} in {@code
+     * em-login.bbj} (#536). This set is a floor: narrowing it back reintroduces
+     * that failure.
      */
     static final Set<AclEntryPermission> OWNER_PERMISSIONS = Set.of(
             AclEntryPermission.READ_DATA,
@@ -40,7 +48,9 @@ public final class OwnerOnlyAcl {
             AclEntryPermission.WRITE_ATTRIBUTES,
             AclEntryPermission.DELETE,
             AclEntryPermission.SYNCHRONIZE,
-            AclEntryPermission.READ_ACL
+            AclEntryPermission.READ_ACL,
+            AclEntryPermission.READ_NAMED_ATTRS,
+            AclEntryPermission.WRITE_NAMED_ATTRS
     );
 
     /**
