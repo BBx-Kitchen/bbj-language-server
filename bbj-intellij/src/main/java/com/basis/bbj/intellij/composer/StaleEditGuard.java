@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * outside this guard: it has no captured range to go stale.
  *
  * <p>A plain Java class with no IntelliJ import, driven entirely by injected collaborators so it is
- * exercised by behavioural JUnit 5 tests over a fake document double (C-01).
+ * exercised by behavioural JUnit 5 tests over a fake document double.
  */
 public final class StaleEditGuard {
 

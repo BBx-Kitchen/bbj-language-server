@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * REQUEST_FAILED} notice and no write, while an unchanged document still applies exactly the edit it
  * did before. Driven entirely through {@link StaleEditGuard.DocumentView}/{@link
  * StaleEditGuard.WriteGate} doubles, following {@code BackendNoticePolicyTest}'s injected-double
- * style — the guard carries no IntelliJ import and runs on the plain JUnit 5 classpath (C-01).
+ * style — the guard carries no IntelliJ import and runs on the plain JUnit 5 classpath.
  */
 class StaleEditGuardTest {
 
