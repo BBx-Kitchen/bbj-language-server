@@ -179,12 +179,28 @@ class ComposerApplyGuardSourceGuardTest {
         assertTrue(countOccurrences(text, "runWriteCommand(") >= 1,
                 "the guard must dispatch its write through the injected write gate");
 
-        int runWriteCommandIndex = text.indexOf("runWriteCommand(");
+        // WR-03: the FIRST occurrence of "runWriteCommand(" is the WriteGate interface's own method
+        // declaration near the top of the file (`void runWriteCommand(Runnable body);`), not the
+        // actual call site further down (`write.runWriteCommand(() -> {...})`). Anchoring on the
+        // interface declaration made this assertion nearly vacuous -- almost any placement of the
+        // stamp re-check later in the file, including one moved outside the write-command body
+        // entirely, would still satisfy "after the interface declaration". The LAST occurrence is
+        // the real call site, so anchoring there actually proves the check sits inside the guarded
+        // write body.
+        int runWriteCommandCallSiteIndex = text.lastIndexOf("runWriteCommand(");
         int lastModificationStampIndex = text.lastIndexOf("modificationStamp()");
-        assertTrue(runWriteCommandIndex >= 0 && lastModificationStampIndex > runWriteCommandIndex,
+        assertTrue(runWriteCommandCallSiteIndex >= 0 && lastModificationStampIndex > runWriteCommandCallSiteIndex,
                 "the modification-stamp re-check must sit inside the write command, not before it -- "
                         + "that is what closes the async window between the re-decode completing and the "
                         + "write starting");
+
+        // Prove the check is inside the guarded body, not merely after the call site's opening
+        // parenthesis: it must also precede applyEdit.run(), the guarded body's terminal call.
+        int applyEditRunIndex = text.indexOf("applyEdit.run()");
+        assertTrue(applyEditRunIndex > 0 && lastModificationStampIndex < applyEditRunIndex,
+                "the modification-stamp re-check must run before applyEdit.run() inside the same "
+                        + "write-command body -- proving the check is genuinely inside the guarded write, "
+                        + "not just textually below the interface declaration");
     }
 
     @Test
