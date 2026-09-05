@@ -32,7 +32,7 @@
 ### Composer Robustness
 
 - [x] **COMP-01**: Every composer CompletableFuture chain (launcher and each dialog's refresh) has a terminal exception handler that shows a user-visible notification on failure; a regression test forces one chain to fail and asserts the notification (#538)
-- [ ] **COMP-02**: Before applying a composer edit after the modal dialog closes, the launcher re-decodes the call at the captured offsets and, on mismatch with the pre-dialog decode, aborts the edit and notifies the user rather than rewriting whatever text now occupies the range; a regression test mutates the document while the dialog is open and asserts no edit is applied (#567, decision: abort and notify)
+- [x] **COMP-02**: Before applying a composer edit after the modal dialog closes, the launcher re-decodes the call at the captured offsets and, on mismatch with the pre-dialog decode, aborts the edit and notifies the user rather than rewriting whatever text now occupies the range; a regression test mutates the document while the dialog is open and asserts no edit is applied (#567, decision: abort and notify)
 
 ### Build and Test Foundation
 
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PARITY-02 | Phase 81 | Complete |
 | PARITY-03 | Phase 81 | Complete |
 | COMP-01 | Phase 82 | Complete |
-| COMP-02 | Phase 82 | Pending |
+| COMP-02 | Phase 82 | Complete |
 | BUILD-01 | Phase 78 | Complete |
 | BUILD-02 | Phase 78 | Complete |
 | BUILD-03 | Phase 78 | Complete |
