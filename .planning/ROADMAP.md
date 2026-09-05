@@ -305,11 +305,11 @@ Plans:
   2. Typing `PRINT "value (not a bracket)"` or a doubled-quote string in a BBj file does not trigger bracket matching, navigation, or auto-close on the parenthesis inside the string literal, verified by regression tests for both cases (#568).
   3. Toggling the line-comment shortcut on a line already prefixed with `rem`, `Rem`, or `REM` (word-bounded) removes the prefix instead of adding a second one, verified by regression tests for lowercase and mixed case (#540).
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 81-01-PLAN.md — Language-server `bbj/compile`: one shared option table, options-aware `BBjCPLService` entry point, output-location guard (PARITY-01, #571)
+- [x] 81-01-PLAN.md — Language-server `bbj/compile`: one shared option table, options-aware `BBjCPLService` entry point, output-location guard (PARITY-01, #571)
 - [ ] 81-02-PLAN.md — String- and comment-aware IntelliJ lexer so brackets inside literals are inert (PARITY-02, #568)
 - [ ] 81-03-PLAN.md — Case-insensitive REM toggle via `SelfManagingCommenter` and a plain-Java seam (PARITY-03, #540)
 - [ ] 81-04-PLAN.md — "Compile output directory" setting delivered as a flat initialization option (PARITY-01, #571)

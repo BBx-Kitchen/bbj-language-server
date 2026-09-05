@@ -216,6 +216,10 @@ None - no external service configuration required.
 - `PARITY-01` is a shared requirement across 81-01/81-04/81-05 (the shared-ID gate in `requirements.ready-ids`); it stays unmarked in REQUIREMENTS.md until all three plans have summaries, even though this plan's language-server-side half is fully verified.
 - No blockers for 81-02/81-03 (independent IntelliJ lexer/commenter work) or the remaining plans in this phase.
 
+## Self-Check: PASSED
+
+All created files verified present on disk; all four task/summary commit hashes (8c44409, d3ff419, 31dba62, 6134228) verified present in `git log`.
+
 ---
 *Phase: 81-feature-parity-and-correctness*
 *Completed: 2026-09-05*

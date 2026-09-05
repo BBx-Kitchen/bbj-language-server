@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
 status: executing
-stopped_at: Phase 81 context gathered
-last_updated: "2026-09-05T09:54:59.974Z"
+stopped_at: Completed 81-01-PLAN.md
+last_updated: "2026-09-05T10:30:18.916Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 80 complete, transitioned to Phase 81
-state_head: 98d5b7e14d89138b11e08754e24c74f3175f83a0
+last_activity_desc: Phase 81 execution started
+state_head: 61342285ec4f4f3eef7befbe6f1eb0800a15d344
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +33,10 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 ## Current Position
 
-Phase: 81 (Feature Parity and Correctness) — READY TO EXECUTE
-Plan: Not started
+Phase: 81 (Feature Parity and Correctness) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-09-05 — Phase 80 complete, transitioned to Phase 81
+Last activity: 2026-09-05 — Phase 81 execution started
 
 ## Performance Metrics
 
@@ -119,6 +119,7 @@ Last activity: 2026-09-05 — Phase 80 complete, transitioned to Phase 81
 | Phase 80 P03 | ~30min | 3 tasks | 5 files |
 | Phase 80 P04 | 30min | 3 tasks | 7 files |
 | Phase 80 P05 | ~15min | 2 tasks | 3 files |
+| Phase 81 P01 | 15min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 80]: Phase 80 Plan 04: TokenValidationCache is a static AtomicReference<Entry> memo keyed on the SHA-256 digest of the token's UTF-8 bytes, five-minute window checked on read with no timer; storeToken/deleteToken invalidate unconditionally, and validateTokenTrusted collapses BUI/DWC's duplicated server-validation calls onto one base-class entry point — TOKEN-04 (#542): two Run invocations in quick succession with the same token now validate at most once; the trust window is a UX optimisation only since web.bbj still presents the token to EM at every launch
 - [Phase 80]: Widened the Windows owner ACE by exactly READ_NAMED_ATTRS and WRITE_NAMED_ATTRS (ten permissions), not full control — Windows folds FILE_READ_EA/FILE_WRITE_EA into GENERIC_READ/GENERIC_WRITE; an access check denies the whole open when any bit is ungranted; ten bits is the surgical fix, fourteen is the escalation reserved for a failing Windows recheck.
 - [Phase 80 UAT]: All six live-IDE checks passed by hand. The Windows owner-ACE write-through check (G-80-1) first failed with BBj !ERROR=18, was fixed by 80-05, and passed on 2026-09-05 against a plugin built from main @ 232d321. TOKEN-01..04 (#535, #536, #552, #542) closed.
+- [Phase 81]: Phase 81 Plan 01: bbj/compile re-homes the 20-entry compiler-option table into a vscode-free compiler-options.ts driven by a plain CompilerConfigReader; BBjCPLService.compileWithOptions never touches the abort-on-resave inFlight map so an explicit compile and a background validate-only compile of the same file never cancel each other. — PARITY-01 (#571): IntelliJ's compile action must reach bbjcpl through the shared language server with zero duplicated bbjcpl-invocation logic; compilerOutputDirectory reaches the server via the flat initializationOptions key (compilerTrigger's channel), not config.compiler, per RESEARCH.md's correction that IntelliJ's createSettings() never resolves that path.
 
 ### Tech Debt
 
@@ -228,9 +230,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T08:59:27.387Z
-Stopped at: Phase 81 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/81-feature-parity-and-correctness/81-CONTEXT.md
+Last session: 2026-09-05T10:30:18.792Z
+Stopped at: Completed 81-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 81` (no CONTEXT.md yet) or `/gsd-plan-phase 81`. Phase 81 depends on
 Phase 78 only (build foundation, done). Phase 80 closed with UAT 6/6 (one gap closed by 80-05 and
