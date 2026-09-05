@@ -3,7 +3,7 @@ status: complete
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T18:40:00Z
+updated: 2026-09-05T18:45:00Z
 ---
 
 ## Current Test
@@ -39,8 +39,9 @@ steps: With a BBj home and a compile output directory configured, invoke Tools >
 expected: A progress indicator titled "Compiling <file>…" appears, then an information balloon reading `Compiled "<file>"`, and a tokenized file appears in the configured directory. A syntax error shows an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. A cleared output directory shows an error balloon naming the missing setting with a working "Open Settings" action. Editing without saving still compiles the edited content. The IDE stays responsive during a large-file compile. The action stays hidden for `.bbl` files and when the server is not started.
 why_human: The action, the balloons and the full save → request → render round trip require the IntelliJ platform and a running language server, which the test module excludes. The wiring is unit- and source-guard-tested (CompileResultPresenterTest 12/12, BbjCompileActionSourceGuardTest 8/8, compile-request.test.ts 12/12).
 coverage_id: 81-05 D7
-result: issue
-reported: "it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
+result: pass
+resolution: "Gap G-81-4 fixed by 81-06 (END_OF_LINE_CHARACTER sentinel); syntax-error balloon re-verified live in test 6 (2026-09-05). All other steps were reported working at first run."
+originally_reported: "it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
 severity: major
 
 ### 5. Compile-error balloon after the G-81-4 fix (PARITY-01, #571)
@@ -48,8 +49,9 @@ steps: Rebuild and install the plugin from this branch (bbj-vscode `npm run buil
 expected: The syntax-error file shows an error balloon whose body lists the compiler's errors as `line:col message`, and the same text appears in the language-server console. The former `Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed` no longer appears. The valid file still shows `Compiled "<file>"`.
 why_human: The fix (a shared END_OF_LINE_CHARACTER = 2147483647 sentinel replacing Number.MAX_SAFE_INTEGER at both range-emitting sites) is proven on both sides of the JSON-RPC boundary by lsp-position.test.ts, compile-request.test.ts and CompileResultJsonBoundaryTest (LSP4J MessageJsonHandler parse), but the on-screen balloon after a plugin rebuild has not been re-exercised in a live IDE since 81-06 landed.
 coverage_id: 81-06 D1
-result: issue
-reported: "First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
+result: pass
+resolution: "Gap G-81-5 fixed by 81-07 (lsp4j-generation-tolerant Diagnostic message read, LSP4IJ pin 0.21.0); re-verified live in test 6 (2026-09-05)."
+originally_reported: "First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
 severity: blocker
 
 ### 6. Compile-error balloon after the G-81-5 fix (PARITY-01, #571)
@@ -63,8 +65,8 @@ note: "User confirmed: the message now correctly shows `16:1 Syntax error: xdd`.
 ## Summary
 
 total: 6
-passed: 4
-issues: 2
+passed: 6
+issues: 0
 issues_resolved: 2
 pending: 0
 skipped: 0
