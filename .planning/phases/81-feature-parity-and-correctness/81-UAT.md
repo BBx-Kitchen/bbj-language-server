@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T16:28:09Z
+updated: 2026-09-05T17:01:36Z
 ---
 
 ## Current Test
 
-number: 5
-name: Compile-error balloon after the G-81-4 fix (PARITY-01, #571)
-expected: |
-  With the plugin rebuilt from this branch (81-06 landed), Tools > Compile BBj File on a .bbj file containing a syntax error shows an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. No `MessageIssueException: Message could not be parsed` appears.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -52,14 +48,16 @@ steps: Rebuild and install the plugin from this branch (bbj-vscode `npm run buil
 expected: The syntax-error file shows an error balloon whose body lists the compiler's errors as `line:col message`, and the same text appears in the language-server console. The former `Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed` no longer appears. The valid file still shows `Compiled "<file>"`.
 why_human: The fix (a shared END_OF_LINE_CHARACTER = 2147483647 sentinel replacing Number.MAX_SAFE_INTEGER at both range-emitting sites) is proven on both sides of the JSON-RPC boundary by lsp-position.test.ts, compile-request.test.ts and CompileResultJsonBoundaryTest (LSP4J MessageJsonHandler parse), but the on-screen balloon after a plugin rebuild has not been re-exercised in a live IDE since 81-06 landed.
 coverage_id: 81-06 D1
-result: [pending]
+result: issue
+reported: "First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
+severity: blocker
 
 ## Summary
 
 total: 5
 passed: 3
-issues: 1
-pending: 1
+issues: 2
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -87,7 +85,9 @@ blocked: 0
 - gap_id: G-81-4
   status_note: "FIX SHIPPED 2026-09-05 by gap-closure plan 81-06 (commits 03506428, 744993fb, fc984238): shared END_OF_LINE_CHARACTER = 2147483647 in bbj-vscode/src/language/lsp-position.ts, used by bbj-cpl-parser.ts and bbj-document-validator.ts; pinned by lsp-position.test.ts, compile-request.test.ts and CompileResultJsonBoundaryTest.java. Live re-check is test 5."
   truth: "Compile BBj File on a file with a syntax error shows an error balloon whose body lists the compiler's errors as line:col message, with the same text in the language-server console"
-  status: failed
+  status: resolved
+  resolved_by: 81-06-PLAN.md
+  resolved_at: 2026-09-05
   reason: "User reported: it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
   severity: major
   test: 4
@@ -106,6 +106,17 @@ blocked: 0
     - "Add a cross-boundary regression test that JSON-serializes a compile-errors result and asserts every Position.line/character is a non-negative integer <= 2147483647"
     - "Optionally a Java-side fixture test deserializing a captured compile-errors JSON response through LSP4J's Gson to prove the boundary parses"
   debug_session: ".planning/debug/compile-error-response-message-could-not-be-parsed.md"
+
+- gap_id: G-81-5
+  truth: "With the rebuilt plugin, Compile BBj File on a file with a syntax error shows an error balloon listing the compiler's errors as line:col message (same text in the language-server console); the valid file still shows Compiled \"<file>\""
+  status: failed
+  reason: "User reported: First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
+  severity: blocker
+  test: 5
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
 
 ## Deferred Follow-Ups
 
