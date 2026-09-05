@@ -5,13 +5,13 @@ milestone_name: IntelliJ Burn-down
 current_phase: 82
 current_phase_name: Composer Robustness
 status: planning
-stopped_at: Phase 81 complete, ready to plan Phase 82
-last_updated: "2026-09-05T18:13:12.223Z"
+stopped_at: Phase 82 context gathered
+last_updated: "2026-09-05T18:20:46.011Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 81 complete, transitioned to Phase 82
-state_head: 786d684489784a7e7b62f9432a41e998a9b63b92
+state_head: cb61766d41e29ec48d3b36eaf487c69fbe693406
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 4
   total_plans: 18
   completed_plans: 18
@@ -245,9 +245,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T18:50:00Z
-Stopped at: Phase 81 complete, ready to plan Phase 82
-Resume file: None
+Last session: 2026-09-05T18:20:45.813Z
+Stopped at: Phase 82 context gathered
+Resume file: .planning/phases/82-composer-robustness/82-CONTEXT.md
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
 then Wave 2's 81-05-PLAN.md (blocked on 81-01 and 81-04). Phase 80 closed with UAT 6/6 (one gap
