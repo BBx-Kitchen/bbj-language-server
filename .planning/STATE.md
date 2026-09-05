@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
-status: verifying
-stopped_at: Completed 81-05-PLAN.md
-last_updated: "2026-09-05T11:26:19.860Z"
+status: executing
+stopped_at: Completed 81-06-PLAN.md
+last_updated: "2026-09-05T16:16:36.814Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 81 Plan 3 (case-insensitive REM toggle) complete
-state_head: cc2ab3b3faa5f4078ddcbb51dd1b5037b654ae4f
+last_activity_desc: Phase 81 execution started
+state_head: fc984238c2c55681cee99159947252b28f731a57
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 17
+  completed_plans: 17
 ---
 
 # Project State: BBj Language Server
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 81 (Feature Parity and Correctness) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) complete
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-09-05 — Phase 81 execution started
 
 ## Performance Metrics
 
@@ -124,6 +124,7 @@ Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) comp
 | Phase 81 P03 | 18min | 3 tasks | 4 files |
 | Phase 81 P04 | 10min | 3 tasks | 7 files |
 | Phase 81 P05 | 12min | 3 tasks | 6 files |
+| Phase 81 P06 | 13min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 03: RemToggleSeam is a plain-Java seam (isCommented/comment/uncomment) recognizing rem in any case via direct ASCII comparison (never toLowerCase/equalsIgnoreCase, proven locale-independent under Turkish default locale); BbjCommenter implements both Commenter and SelfManagingCommenter<CommenterDataHolder>, delegating every line decision to the seam with the insert hard-coded to column 0 — PARITY-03 (#540): a rem/Rem/REM line now round-trips through Ctrl+/ instead of stacking a second prefix.
 - [Phase 81]: [Phase 81]: Phase 81 Plan 04: CompilerInitOptions is a plain-Java seam (COMPILER_OUTPUT_DIRECTORY_KEY, normalizeOutputDirectory) with no IntelliJ import; the value reaches the server through the flat compilerOutputDirectory initializationOptions key in BbjLanguageServerFactory, not through BbjLanguageClient.createSettings(), which LSP4IJ 0.19.0 resolves to null for this plugin's flat settings object — BbjLanguageClient stays deliberately unchanged and a source guard pins that.
 - [Phase 81]: Phase 81 Plan 05: bbj/compile is declared directly on BbjComposerServer (not a new sibling interface) since getServerInterface() returns exactly one interface (RESEARCH.md Pitfall 5); CompileResultPresenter is a plain-Java seam dispatching on the machine-readable reason (never message prose, D-10); Task.Backgroundable asserts assertIsNonDispatchThread() as its first statement before any blocking LSP4IJ call, mirroring the Phase 79 convention; a 45s client-side wait bounds both requests, comfortably above the server's own 30s compile timeout.
+- [Phase 81]: Phase 81 Plan 06: END_OF_LINE_CHARACTER pinned to the LSP uinteger max (2147483647), not the real line length; both whole-line-range sites (bbj-cpl-parser.ts, bbj-document-validator.ts) import one shared lsp-position.ts constant — G-81-4: bbjcpl reports no column and no source text is in hand at either emitting site; Number.MAX_SAFE_INTEGER overflowed LSP4IJ's int-typed Position.character and crashed the compile-error balloon with MessageIssueException
+- [Phase 81]: Phase 81 Plan 06: JUnit boundary test's negative control asserts RuntimeException, not com.google.gson.JsonParseException — LSP4IJ's MessageJsonHandler wraps the Gson failure in its own MessageIssueException, confirmed empirically before asserting — The plan itself pre-authorized widening to RuntimeException if the thrown type turned out broader; confirmed via a throwaway debug run rather than guessed
 
 ### Tech Debt
 
@@ -238,8 +241,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T11:26:19.720Z
-Stopped at: Completed 81-05-PLAN.md
+Last session: 2026-09-05T16:16:20.793Z
+Stopped at: Completed 81-06-PLAN.md
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
