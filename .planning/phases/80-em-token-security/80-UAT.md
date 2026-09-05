@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 80-em-token-security
 source: [80-VERIFICATION.md]
 started: 2026-09-04T16:27:35Z
-updated: 2026-09-05T07:15:23Z
+updated: 2026-09-05T08:18:21Z
 ---
 
 ## Current Test
@@ -12,14 +12,14 @@ updated: 2026-09-05T07:15:23Z
 
 ## Tests
 
-### 1. Windows temp file carries exactly one owner ACE (TOKEN-02, #536)
-steps: On a Windows host with the plugin installed, trigger Tools > Login to Enterprise Manager and, while em-login.bbj is running, run `icacls %TEMP%\bbj-em-login-*.tmp` (a throwaway JShell call to BbjProcessSecretEnv.createOwnerOnlyFile is an acceptable substitute).
-expected: Exactly one ACE granting the logged-in account; no ACE for BUILTIN\Users, Everyone, or NT AUTHORITY\Authenticated Users; no (I) inherited entry. Login/validation still completes (write-through proof).
+### 1. Windows temp file carries exactly one owner ACE and login writes through (TOKEN-02, #536)
+steps: On a Windows host with the REBUILT plugin (containing commit 6cb9a34, plan 80-05) installed, trigger Tools > Login to Enterprise Manager and, while em-login.bbj is running, run `icacls %TEMP%\bbj-em-login-*.tmp` (a throwaway JShell call to BbjProcessSecretEnv.createOwnerOnlyFile is an acceptable substitute for observing the DACL alone).
+expected: Login/validation completes without BBj reporting !ERROR=18 "User not allowed" (the load-bearing half; previously failed as G-80-1). Exactly one ACE granting the logged-in account; no ACE for BUILTIN\Users, Everyone, or NT AUTHORITY\Authenticated Users; no (I) inherited entry.
 why_human: CI is ubuntu-latest only and the verification host has a POSIX filesystem, so the acl branch of createOwnerOnlyFile is never executed by any automated test; it is proven by OwnerOnlyAclTest, the strategy test in BbjProcessSecretEnvTest, and BbjSecretArgvSourceGuardTest.
-coverage_id: 80-02 D-10d
-result: issue
-reported: "BBj can't create the tmp file in the first place: !ERROR=18 ([C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp] User not allowed: C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp) at [49] open(ch,mode=\"O_CREATE,O_TRUNC\")outputFile! in C:\Users\beff\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\bbj-intellij\lib\tools\em-login.bbj"
-severity: blocker
+coverage_id: 80-02 D-10d / 80-05 D3
+recheck_of: G-80-1 (first run 2026-09-05 reported !ERROR=18; fixed by 80-05, widened OWNER_PERMISSIONS to include READ_NAMED_ATTRS/WRITE_NAMED_ATTRS)
+result: pass
+recheck_passed_at: 2026-09-05
 
 ### 2. Live KeePass balloon, exactly once (TOKEN-03, #552)
 steps: In a sandbox IDE, set Settings > Appearance & Behavior > System Settings > Passwords to "In KeePass", then Tools > Login to Enterprise Manager. Log in again and run a BUI or DWC file.
@@ -59,8 +59,8 @@ result: pass
 ## Summary
 
 total: 6
-passed: 5
-issues: 1
+passed: 6
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
@@ -69,7 +69,9 @@ blocked: 0
 
 - gap_id: G-80-1
   truth: "On Windows, em-login.bbj writes through to the owner-only temp file (bbj-em-login-*.tmp) created by BbjProcessSecretEnv.createOwnerOnlyFile: the file carries exactly one ACE for the logged-in account and login/validation completes."
-  status: failed
+  status: resolved
+  resolved_by: 80-05-PLAN.md
+  resolved_at: 2026-09-05
   reason: "User reported: BBj can't create the tmp file in the first place: !ERROR=18 ([C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp] User not allowed) at line 49 open(ch,mode=\"O_CREATE,O_TRUNC\")outputFile! in em-login.bbj (IntelliJ 2026.2 plugin, Windows host)"
   severity: blocker
   test: 1
