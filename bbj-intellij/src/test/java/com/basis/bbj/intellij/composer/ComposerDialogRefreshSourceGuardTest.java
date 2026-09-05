@@ -173,7 +173,7 @@ class ComposerDialogRefreshSourceGuardTest {
     void theFlowSeamStillCarriesNoIntelliJImportAndTheRateLimiterIsAtomic() {
         String text = withoutCommentLines(readSource(FLOW_SOURCE));
         assertEquals(0, countOccurrences(text, "import com.intellij"),
-                "ComposerFlow must stay a plain-Java class runnable on the plain JUnit 5 classpath (C-01)");
+                "ComposerFlow must stay a plain-Java class runnable on the plain JUnit 5 classpath");
         assertTrue(readSource(FLOW_SOURCE).contains("REFRESH_TIMEOUT_MILLIS"),
                 "ComposerFlow must declare REFRESH_TIMEOUT_MILLIS");
         assertEquals(1, countOccurrences(readSource(FLOW_SOURCE), "compareAndSet(false, true)"),
@@ -184,7 +184,7 @@ class ComposerDialogRefreshSourceGuardTest {
     void noPlatformTestFrameworkCreptIn() {
         String buildText = withoutCommentLines(readSource(BUILD_GRADLE_KTS));
         assertEquals(0, countOccurrences(buildText, "TestFrameworkType"),
-                "no platform test framework may be declared in the Gradle build (C-01)");
+                "no platform test framework may be declared in the Gradle build");
         assertEquals(0, countOccurrences(buildText, "BasePlatformTestCase"),
                 "no BasePlatformTestCase-derived test may be declared for composer dialog behaviour");
     }

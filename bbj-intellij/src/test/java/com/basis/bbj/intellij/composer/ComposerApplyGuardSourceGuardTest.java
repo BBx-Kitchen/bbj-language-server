@@ -194,10 +194,10 @@ class ComposerApplyGuardSourceGuardTest {
 
         assertEquals(0, countOccurrences(guardText, "import com.intellij"),
                 "the stale-edit guard must stay a plain-Java class runnable on the plain JUnit 5 "
-                        + "classpath (C-01)");
+                        + "classpath");
         assertEquals(0, countOccurrences(decodeEqualityText, "import com.intellij"),
                 "the decode-equality comparator must stay a plain-Java class runnable on the plain "
-                        + "JUnit 5 classpath (C-01)");
+                        + "JUnit 5 classpath");
     }
 
     @Test
@@ -226,7 +226,7 @@ class ComposerApplyGuardSourceGuardTest {
         String buildText = withoutCommentLines(readSource(BUILD_GRADLE_KTS));
 
         assertEquals(0, countOccurrences(buildText, "TestFrameworkType"),
-                "no platform test framework may be declared in the Gradle build (C-01)");
+                "no platform test framework may be declared in the Gradle build");
         assertEquals(0, countOccurrences(buildText, "BasePlatformTestCase"),
                 "no BasePlatformTestCase-derived test may be declared for the stale-edit guard");
     }

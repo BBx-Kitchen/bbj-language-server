@@ -142,11 +142,11 @@ class ComposerLauncherChainSourceGuardTest {
         String text = readSource(FLOW_SOURCE);
 
         assertTrue(countOccurrences(text, "orTimeout(") >= 1,
-                "every stage must be bounded by a wait (D-04)");
+                "every stage must be bounded by a wait");
 
-        // The "exactly one handle(" count is scoped to launch()'s own body: a later plan (82-02)
-        // adds observe(), a second, independent request-observing method with its own single
-        // terminal handler for its own chain (D-06 -- observe() does not notify, so its handle() is
+        // The "exactly one handle(" count is scoped to launch()'s own body: the dialog refresh
+        // path adds observe(), a second, independent request-observing method with its own single
+        // terminal handler for its own chain (observe() does not notify, so its handle() is
         // not "a second handler for this chain", it is the one handler for a different chain
         // entirely). A whole-file count would conflate the two.
         int launchStart = text.indexOf("public <D> CompletableFuture<Void> launch(");
@@ -168,9 +168,9 @@ class ComposerLauncherChainSourceGuardTest {
         String noticesText = withoutCommentLines(readSource(NOTICES_SOURCE));
 
         assertEquals(0, countOccurrences(flowText, "import com.intellij"),
-                "the flow seam must stay a plain-Java class runnable on the plain JUnit 5 classpath (C-01)");
+                "the flow seam must stay a plain-Java class runnable on the plain JUnit 5 classpath");
         assertEquals(0, countOccurrences(noticesText, "import com.intellij"),
-                "the notice seam must stay a plain-Java class runnable on the plain JUnit 5 classpath (C-01)");
+                "the notice seam must stay a plain-Java class runnable on the plain JUnit 5 classpath");
     }
 
     @Test
@@ -205,6 +205,6 @@ class ComposerLauncherChainSourceGuardTest {
         assertEquals(0, countOccurrences(noticesText, "BasePlatformTestCase"), "the notice seam stays plain Java");
         assertEquals(0, countOccurrences(rendererText, "BasePlatformTestCase"), "the renderer stays plain Java");
         assertEquals(0, countOccurrences(buildText, "TestFrameworkType"),
-                "no platform test framework may be declared in the Gradle build (C-01)");
+                "no platform test framework may be declared in the Gradle build");
     }
 }

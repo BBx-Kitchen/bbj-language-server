@@ -44,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * Behavioural coverage of the composer launch chain (#538) with a stubbed {@link BbjComposerServer}:
  * a failing stage, a null server, null catalogs, a hung request, and the happy path. This is the
- * literal COMP-01 acceptance criterion — a failure anywhere in the chain must produce exactly one
+ * literal #538 acceptance criterion — a failure anywhere in the chain must produce exactly one
  * notification rather than a silent no-op.
  */
 class ComposerFlowTest {
