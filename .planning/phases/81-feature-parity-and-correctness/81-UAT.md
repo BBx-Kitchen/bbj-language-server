@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T14:04:41Z
+updated: 2026-09-05T14:07:40Z
 ---
 
 ## Current Test
 
-number: 4
-name: "Compile BBj File" round trip through the language server (PARITY-01, #571)
-expected: |
-  A progress indicator titled "Compiling <file>…" appears, then an information balloon reading `Compiled "<file>"`, and a tokenized file appears in the configured directory. A syntax error shows an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. A cleared output directory shows an error balloon naming the missing setting with a working "Open Settings" action. Editing without saving still compiles the edited content. The IDE stays responsive during a large-file compile. The action stays hidden for `.bbl` files and when the server is not started.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -43,14 +39,16 @@ steps: With a BBj home and a compile output directory configured, invoke Tools >
 expected: A progress indicator titled "Compiling <file>…" appears, then an information balloon reading `Compiled "<file>"`, and a tokenized file appears in the configured directory. A syntax error shows an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. A cleared output directory shows an error balloon naming the missing setting with a working "Open Settings" action. Editing without saving still compiles the edited content. The IDE stays responsive during a large-file compile. The action stays hidden for `.bbl` files and when the server is not started.
 why_human: The action, the balloons and the full save → request → render round trip require the IntelliJ platform and a running language server, which the test module excludes. The wiring is unit- and source-guard-tested (CompileResultPresenterTest 12/12, BbjCompileActionSourceGuardTest 8/8, compile-request.test.ts 12/12).
 coverage_id: 81-05 D7
-result: [pending]
+result: issue
+reported: "it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
+severity: major
 
 ## Summary
 
 total: 4
 passed: 3
-issues: 0
-pending: 1
+issues: 1
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -74,6 +72,17 @@ blocked: 0
   missing:
     - "Discriminating live-IDE fact: did the rest of the BBj settings page render, and does idea.log show an exception from BbjSettingsComponent?"
   debug_session: ".planning/debug/compile-output-directory-row-not-visible.md"
+
+- gap_id: G-81-4
+  truth: "Compile BBj File on a file with a syntax error shows an error balloon whose body lists the compiler's errors as line:col message, with the same text in the language-server console"
+  status: failed
+  reason: "User reported: it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
+  severity: major
+  test: 4
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
 
 ## Deferred Follow-Ups
 
