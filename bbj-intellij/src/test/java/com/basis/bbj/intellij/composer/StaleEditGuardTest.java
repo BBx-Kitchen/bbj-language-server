@@ -1,5 +1,8 @@
 package com.basis.bbj.intellij.composer;
 
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
@@ -7,6 +10,7 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -90,6 +94,24 @@ class StaleEditGuardTest {
 
     private static StaleEditGuard guardOver(FakeDocument doc, NoticeRecorder notices, long waitMillis) {
         return new StaleEditGuard(doc, Runnable::run, Runnable::run, notices::record, waitMillis);
+    }
+
+    private static AddWindowDecodeResult addWindowDecode(int flagsStart, int flagsEnd, int maskStart, int maskEnd, long preservedFlagBits) {
+        AddWindowDecodeResult decoded = new AddWindowDecodeResult();
+        decoded.found = true;
+        AddWindowEdit edit = new AddWindowEdit();
+        edit.flagsRange = new int[] {flagsStart, flagsEnd};
+        edit.eventMaskRange = new int[] {maskStart, maskEnd};
+        edit.preservedFlagBits = preservedFlagBits;
+        edit.preservedEventBits = 0L;
+        decoded.edit = edit;
+        AddWindowInitial initial = new AddWindowInitial();
+        initial.flags = List.of(1L);
+        initial.eventMaskEnabled = true;
+        initial.eventMask = List.of(2L);
+        initial.title = "\"Window\"";
+        decoded.initial = initial;
+        return decoded;
     }
 
     private static MsgboxDecodeResult msgboxDecode(String message, int callStart, int callEnd, List<String> trailingArgs) {
@@ -329,5 +351,55 @@ class StaleEditGuardTest {
                         + "before the dialog opened");
         assertEquals(List.of(6), recordedCol, "the column passed to the re-decode must be exactly the "
                 + "captured column");
+    }
+
+    @Test
+    void theWindowApplyPathEmitsItsOperationsFromHighestOffsetDownWhenTheDecodeMatches() {
+        FakeDocument doc = new FakeDocument(List.of("addwindow(...)"));
+        NoticeRecorder notices = new NoticeRecorder();
+        List<String> ops = new ArrayList<>();
+        StaleEditGuard guard = guardOver(doc, notices, 1_000L);
+
+        AddWindowDecodeResult captured = addWindowDecode(1, 5, 10, 15, 7L);
+        AddWindowDecodeResult same = addWindowDecode(1, 5, 10, 15, 7L);
+
+        guard.applyIfUnchanged("addWindow", 0, 0, captured,
+                (currentText, currentCol) -> CompletableFuture.completedFuture(same),
+                DecodeEquality::sameAddWindow,
+                () -> {
+                    // Mirrors applyHexEdit's own op-building + descending sort for a flags range and
+                    // an event-mask range, so an earlier rewrite cannot shift a later range.
+                    List<int[]> ranges = new ArrayList<>();
+                    ranges.add(new int[] {1, 5});
+                    ranges.add(new int[] {10, 15});
+                    ranges.sort(Comparator.comparingInt((int[] r) -> r[0]).reversed());
+                    for (int[] range : ranges) {
+                        ops.add(range[0] + "-" + range[1]);
+                    }
+                }).join();
+
+        assertTrue(notices.notices.isEmpty(), "a matching window decode must raise no notice");
+        assertEquals(List.of("10-15", "1-5"), ops,
+                "operations must be recorded from the highest start offset down, exactly two of them");
+    }
+
+    @Test
+    void theWindowApplyPathEmitsNothingWhenTheDecodeDoesNotMatch() {
+        FakeDocument doc = new FakeDocument(List.of("addwindow(...)"));
+        NoticeRecorder notices = new NoticeRecorder();
+        List<String> ops = new ArrayList<>();
+        StaleEditGuard guard = guardOver(doc, notices, 1_000L);
+
+        AddWindowDecodeResult captured = addWindowDecode(1, 5, 10, 15, 7L);
+        AddWindowDecodeResult changed = addWindowDecode(1, 5, 10, 15, 999L); // preserved-bit change only
+
+        guard.applyIfUnchanged("addWindow", 0, 0, captured,
+                (currentText, currentCol) -> CompletableFuture.completedFuture(changed),
+                DecodeEquality::sameAddWindow,
+                () -> ops.add("apply")).join();
+
+        assertEquals(1, notices.notices.size(), "a changed preserved-bit value must still raise one notice");
+        assertEquals(ComposerNotices.Reason.STALE_DOCUMENT, notices.notices.get(0).reason);
+        assertTrue(ops.isEmpty(), "no operation is applied when the window decode does not match");
     }
 }
