@@ -30,6 +30,16 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private bbjdir = "";
     private classpathFromSettings = "";
     private configPath = "";
+    /**
+     * The effective `bbj.compiler.*` configuration, nested one level under `compiler`
+     * (e.g. `{ output: { directory: '/tmp/out' } }`), consumed by `bbj/compile`'s
+     * `readerFromCompilerConfig` (#571). Seeded at `onInitialize` from the flat
+     * `compilerOutputDirectory` initialization option (IntelliJ's channel, since its
+     * `createSettings()` object never reaches this class through `onDidChangeConfiguration`
+     * — RESEARCH.md Pitfall 2) and merged (never replaced) by `setCompilerConfig` when VS
+     * Code pushes its full `bbj.compiler` settings object.
+     */
+    private compilerConfig: Record<string, unknown> = {};
 
     constructor(services: LangiumSharedServices) {
         super(services);
@@ -92,6 +102,17 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                     logger.info(`Compiler trigger mode: ${compilerTrigger}`);
                 } else {
                     setCompilerTrigger('debounced');
+                }
+
+                // Set compile output directory from the flat initializationOptions key —
+                // the load-bearing channel for IntelliJ's "Compile output directory" setting,
+                // exactly like compilerTrigger above (#571, RESEARCH.md Pitfall 2: IntelliJ's
+                // createSettings() object never reaches config.compiler for this class).
+                const compilerOutputDirectory = params.initializationOptions.compilerOutputDirectory;
+                if (typeof compilerOutputDirectory === 'string' && compilerOutputDirectory.trim().length > 0) {
+                    const trimmed = compilerOutputDirectory.trim();
+                    this.compilerConfig = { ...this.compilerConfig, output: { directory: trimmed } };
+                    logger.info(`Compiler output directory: ${trimmed}`);
                 }
 
                 // Set parameter name inlay hint mode (invalid/missing values keep the default)
@@ -259,6 +280,24 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     public setConfigPath(path: string): void {
         this.configPath = path;
+    }
+
+    /** The effective `bbj.compiler.*` configuration, nested one level under `compiler` (#571). */
+    public getCompilerConfig(): Record<string, unknown> {
+        return this.compilerConfig;
+    }
+
+    /**
+     * Merge `config` into the current compiler configuration: keys present in `config` win,
+     * keys absent from it keep their current value. This is a merge (never a wholesale
+     * replace) so a VS Code settings push that carries no output directory can never erase
+     * the `compilerOutputDirectory` seed set at `onInitialize` (#571).
+     */
+    public setCompilerConfig(config: Record<string, unknown> | undefined): void {
+        if (!config) {
+            return;
+        }
+        this.compilerConfig = { ...this.compilerConfig, ...config };
     }
 }
 

@@ -15,6 +15,7 @@ import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-do
 import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
 import { initNotifications } from './bbj-notifications.js';
 import { registerComposerRequests } from './composer-commands.js';
+import { registerCompileRequest } from './compile-command.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -38,6 +39,13 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
         connection.window.showErrorMessage(`Failed to refresh Java classes: ${error}`);
         return false;
     }
+});
+
+// A real, options-aware bbjcpl compile that both IDEs can reach through the shared
+// language server, with no bbjcpl invocation logic duplicated on the IntelliJ side (#571).
+registerCompileRequest(connection, {
+    cplService: BBj.compiler.BBjCPLService,
+    wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
 });
 
 // Start the language server with the shared services
@@ -135,6 +143,14 @@ connection.onDidChangeConfiguration(async (change) => {
         if (trigger === 'debounced' || trigger === 'on-save' || trigger === 'off') {
             setCompilerTrigger(trigger);
         }
+    }
+
+    // Forward VS Code's full bbj.compiler.* option set to bbj/compile's config source. Merged
+    // (never replaced), so this can never erase an IntelliJ-seeded compilerOutputDirectory
+    // (#571 — this branch is currently VS Code-only; IntelliJ never delivers config.compiler,
+    // RESEARCH.md Pitfall 2).
+    if (config.compiler !== undefined) {
+        (shared.workspace.WorkspaceManager as BBjWorkspaceManager).setCompilerConfig(config.compiler);
     }
 
     // Apply inlay hint mode (no startup gate — apply immediately) and repaint open editors
