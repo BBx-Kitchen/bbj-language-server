@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins the #571 (PARITY-01) compile wiring: the round trip stays off the dispatch thread, the
+ * Pins the #571 compile wiring: the round trip stays off the dispatch thread, the
  * document save always precedes the request, and no compiler invocation logic has reappeared on
  * the IntelliJ side. A future regression means one of three things happened — the round trip
  * moved back onto the dispatch thread, the save stopped happening before the request, or compiler
@@ -115,7 +115,7 @@ class BbjCompileActionSourceGuardTest {
         String text = withoutCommentLines(readSource(COMPILE_ACTION_SOURCE));
 
         assertEquals(0, countOccurrences(text, "autoSaveBeforeRun"),
-                "the compile save must not be gated on autoSaveBeforeRun (D-04)");
+                "the compile save must not be gated on autoSaveBeforeRun");
         assertEquals(0, countOccurrences(text, "BbjSettings.getInstance()"),
                 "the save path must not read any BbjSettings value");
     }
@@ -125,9 +125,9 @@ class BbjCompileActionSourceGuardTest {
         String text = withoutCommentLines(readSource(COMPILE_ACTION_SOURCE));
 
         assertEquals(0, countOccurrences(text, "ProcessBuilder"),
-                "no process launch belongs on the IntelliJ side (PARITY-01)");
+                "no process launch belongs on the IntelliJ side (#571)");
         assertEquals(0, countOccurrences(text, "GeneralCommandLine"),
-                "no command line construction belongs on the IntelliJ side (PARITY-01)");
+                "no command line construction belongs on the IntelliJ side (#571)");
         assertEquals(0, countOccurrences(text, "resolveBbjBinary"),
                 "bbjcpl resolution belongs to the language server, not this action");
         assertEquals(0, countOccurrences(readSource(COMPILE_ACTION_SOURCE), "Triggered for file"),

@@ -9,7 +9,7 @@ import { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 import { createCompileHandler, type CompileRequestDeps } from '../src/language/compile-command.js';
 
 /**
- * End-to-end coverage for the `bbj/compile` request handler (#571, PARITY-01): a real,
+ * End-to-end coverage for the `bbj/compile` request handler (#571): a real,
  * options-aware bbjcpl compile that both IDEs reach through the shared language server.
  * Every test that spawns a fixture bbjcpl is skipped on win32 — the fixtures are POSIX
  * shell scripts; a Windows substitute would need a .bat/.exe equivalent.
@@ -84,7 +84,7 @@ describe('bbj/compile request handler', () => {
         const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
 
         // Mirrors what onInitialize's compilerOutputDirectory branch does when the flat
-        // initializationOptions key `compilerOutputDirectory` is set (RESEARCH.md Pitfall 2).
+        // initializationOptions key `compilerOutputDirectory` is set.
         wsManager.setCompilerConfig({ output: { directory: '/tmp/out' } });
         expect((wsManager.getCompilerConfig().output as { directory: string }).directory).toBe('/tmp/out');
 

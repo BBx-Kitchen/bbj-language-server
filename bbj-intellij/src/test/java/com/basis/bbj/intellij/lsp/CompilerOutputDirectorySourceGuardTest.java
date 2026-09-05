@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Source-guard fence for the "Compile output directory" setting (#571, PARITY-01). Pins all four
+ * Source-guard fence for the "Compile output directory" setting (#571). Pins all four
  * wiring sites — {@code BbjSettings}, {@code BbjSettingsComponent}, {@code BbjSettingsConfigurable}
  * and {@code BbjLanguageServerFactory} — plus the deliberate non-change to
  * {@code BbjLanguageClient}.
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * A failure here means either the setting stopped reaching the initialization options — in which
  * case the compile action would refuse on every invocation with no visible cause — or someone
  * re-routed the value through {@link BbjLanguageClient#createSettings()}, which LSP4IJ 0.19.0
- * resolves to null for this plugin's flat settings shape (RESEARCH.md Pitfall 2). Do not "fix" the
+ * resolves to null for this plugin's flat settings shape (LSP4IJ resolves section "bbj" to null against a flat settings object). Do not "fix" the
  * omission from {@code BbjLanguageClient} without re-reading that finding first.
  */
 class CompilerOutputDirectorySourceGuardTest {
@@ -141,7 +141,7 @@ class CompilerOutputDirectorySourceGuardTest {
         assertEquals(0, countOccurrences(text, "compilerOutputDirectory"),
                 "BbjLanguageClient must not carry compilerOutputDirectory — LSP4IJ's settings "
                         + "resolution returns null for this plugin's flat client settings object "
-                        + "(RESEARCH.md Pitfall 2)");
+                        + "(LSP4IJ section \"bbj\" lookup)");
         assertEquals(1, countOccurrences(text, "settings.addProperty(\"home\""),
                 "createSettings() must still add exactly the pre-existing three properties");
         assertEquals(1, countOccurrences(text, "settings.addProperty(\"classpath\""),

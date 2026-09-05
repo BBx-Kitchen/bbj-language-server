@@ -11,7 +11,7 @@
  * It is imported directly by the language server's `bbj/compile` request handler
  * (`compile-command.ts`) and, via a thin `vscode`-typed adapter
  * (`src/Commands/CompilerOptions.ts`), by VS Code's `bbj.compile` command — so the
- * option table exists exactly once in the repository (D-02).
+ * option table exists exactly once in the repository.
  *
  * No `vscode` import of any kind: every function here takes a plain
  * {@link CompilerConfigReader} instead of a `vscode.WorkspaceConfiguration`, so this
@@ -555,7 +555,7 @@ export function readerFromCompilerConfig(compilerConfig: unknown): CompilerConfi
 }
 
 /**
- * D-05's guard predicate: an explicit output location is required so a compile never
+ * The output-location guard predicate: an explicit output location is required so a compile never
  * writes anywhere the user did not name. bbjcpl's own default (no `-d`, no `-N`) does
  * NOT overwrite the source in place — it writes a sibling file with the `.bbj`
  * extension flipped, and refuses on its own when the derived name collides with the

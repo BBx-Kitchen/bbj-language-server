@@ -21,7 +21,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * The BBj language server, extended with the custom {@code bbj/composer/*} requests (#433) so the
  * visual composers can reuse the server's flag/hex arithmetic instead of re-implementing it in
- * Java, and with the {@code bbj/compile} request (#571, PARITY-01) so "Compile BBj File" reaches
+ * Java, and with the {@code bbj/compile} request (#571) so "Compile BBj File" reaches
  * bbjcpl through the server instead of duplicating compiler-invocation logic on this side.
  * Registered as the server proxy interface via {@code BbjLanguageServerFactory#getServerInterface()};
  * LSP4IJ builds a dynamic proxy that dispatches these methods over LSP.
@@ -58,7 +58,7 @@ public interface BbjComposerServer extends LanguageServer {
 
     /**
      * Runs bbjcpl through the server's own compiler service and returns the result rather than
-     * publishing diagnostics (#571, PARITY-01). Declared here rather than on a new interface
+     * publishing diagnostics (#571). Declared here rather than on a new interface
      * because {@code BbjLanguageServerFactory#getServerInterface()} returns exactly one
      * interface, so every custom request family has to live on it.
      */

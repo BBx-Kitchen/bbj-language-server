@@ -35,8 +35,8 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
      * (e.g. `{ output: { directory: '/tmp/out' } }`), consumed by `bbj/compile`'s
      * `readerFromCompilerConfig` (#571). Seeded at `onInitialize` from the flat
      * `compilerOutputDirectory` initialization option (IntelliJ's channel, since its
-     * `createSettings()` object never reaches this class through `onDidChangeConfiguration`
-     * — RESEARCH.md Pitfall 2) and merged (never replaced) by `setCompilerConfig` when VS
+     * `createSettings()` object never reaches this class through `onDidChangeConfiguration`)
+     * and merged (never replaced) by `setCompilerConfig` when VS
      * Code pushes its full `bbj.compiler` settings object.
      */
     private compilerConfig: Record<string, unknown> = {};
@@ -106,7 +106,7 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
                 // Set compile output directory from the flat initializationOptions key —
                 // the load-bearing channel for IntelliJ's "Compile output directory" setting,
-                // exactly like compilerTrigger above (#571, RESEARCH.md Pitfall 2: IntelliJ's
+                // exactly like compilerTrigger above (#571: IntelliJ's
                 // createSettings() object never reaches config.compiler for this class).
                 const compilerOutputDirectory = params.initializationOptions.compilerOutputDirectory;
                 if (typeof compilerOutputDirectory === 'string' && compilerOutputDirectory.trim().length > 0) {

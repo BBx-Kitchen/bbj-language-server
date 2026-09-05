@@ -39,7 +39,7 @@ interface CompileHandle {
  *
  * Unlike {@link BBjCPLService.compile}'s `Diagnostic[]`-only return, this shape carries the raw
  * `stderr` text alongside the parsed diagnostics, so a caller can distinguish "compiled cleanly"
- * from "bbjcpl reported something `parseBbjcplOutput` could not parse" (#571, RESEARCH.md Pitfall 3)
+ * from "bbjcpl reported something `parseBbjcplOutput` could not parse" (#571)
  * — the exit code carries no information (bbjcpl always exits 0), so success is classified as
  * `stderr.trim() === ''`, never as an empty `diagnostics` array and never from the process's
  * completion status.
@@ -226,14 +226,14 @@ export class BBjCPLService {
      *
      * This is a sibling to {@link compile}, not a replacement: it never reads, writes or
      * clears {@link inFlight}, so the background validate-only path's abort-on-resave map is
-     * untouched and an explicit compile is never cancelled by a save (D-01), nor does an
+     * untouched and an explicit compile is never cancelled by a save, nor does an
      * explicit compile cancel a concurrent background compile of the same file. Two
      * concurrent calls to this method for the same file both run to completion independently.
      *
      * Success is classified as `stderr.trim() === ''` — never from the process's exit status
      * (bbjcpl always exits 0) and never from an empty `diagnostics` array, since a fatal
      * bbjcpl error that `parseBbjcplOutput` cannot parse (an overwrite refusal, an invalid
-     * output directory) produces empty diagnostics too (RESEARCH.md Pitfall 3).
+     * output directory) produces empty diagnostics too.
      *
      * @param filePath Absolute path to the .bbj file to compile.
      * @param compilerArgs The bbjcpl argument array built from the effective `bbj.compiler.*`
@@ -268,7 +268,7 @@ export class BBjCPLService {
 
             try {
                 // Argument array, never a shell string — each configured option string maps
-                // to exactly one array element (GHSA-p5f3-9456-9pcx convention).
+                // to exactly one array element (one option string, one argv element).
                 proc = spawn(bbjcplBin, [...compilerArgs, filePath]);
             } catch (spawnErr: unknown) {
                 // Synchronous spawn error (rare — usually ENOENT comes as async 'error' event)

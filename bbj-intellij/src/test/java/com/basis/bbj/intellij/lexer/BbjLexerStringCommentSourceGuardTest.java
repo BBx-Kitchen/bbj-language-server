@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins the three D-13 wiring sites for #568 so a future refactor cannot silently disconnect the
+ * Pins the three wiring sites for #568 so a future refactor cannot silently disconnect the
  * {@link BbjStringCommentScanner} seam from the lexer, the parser definition, or the brace
  * matcher: {@link BbjStringCommentScannerTest} proves the seam's own behaviour; this test proves
  * the seam is actually wired in.

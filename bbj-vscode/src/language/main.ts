@@ -147,8 +147,7 @@ connection.onDidChangeConfiguration(async (change) => {
 
     // Forward VS Code's full bbj.compiler.* option set to bbj/compile's config source. Merged
     // (never replaced), so this can never erase an IntelliJ-seeded compilerOutputDirectory
-    // (#571 — this branch is currently VS Code-only; IntelliJ never delivers config.compiler,
-    // RESEARCH.md Pitfall 2).
+    // (#571 — this branch is currently VS Code-only; IntelliJ never delivers config.compiler).
     if (config.compiler !== undefined) {
         (shared.workspace.WorkspaceManager as BBjWorkspaceManager).setCompilerConfig(config.compiler);
     }

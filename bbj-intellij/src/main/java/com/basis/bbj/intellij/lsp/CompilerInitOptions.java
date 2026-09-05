@@ -32,10 +32,10 @@ public final class CompilerInitOptions {
      * <p>
      * Returns the empty string for {@code null} or a value that is blank after trimming — the
      * language server treats the empty string as "no output directory configured" and refuses to
-     * compile in place (D-05). A non-blank value is returned trimmed but otherwise untouched: no
+     * compile in place. A non-blank value is returned trimmed but otherwise untouched: no
      * filesystem check, no path canonicalisation, no separator rewriting, and interior whitespace
      * is preserved because the value becomes exactly one argument-array element on the server side
-     * (GHSA-p5f3-9456-9pcx's one-string-one-argument convention).
+     * (the server's one-string-one-argument argv convention).
      *
      * @param raw the raw field value, or {@code null}
      * @return the trimmed value, or the empty string when unset or blank

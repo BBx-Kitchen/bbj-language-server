@@ -87,10 +87,10 @@ public class BbjSettingsComponent {
             })
             .installOn(bbjHomeField.getTextField());
 
-        // --- Compile output directory field (#571, PARITY-01, D-05) ---
+        // --- Compile output directory field (#571) ---
         // A plain string field: no listener, no debounced lookup, no validator. Path validation
         // is deliberately left to bbjcpl's own failure surfaced through the language server
-        // (RESEARCH.md Open Question 2); this component performs no filesystem work on it.
+        //; this component performs no filesystem work on it.
         compilerOutputDirectoryField = new TextFieldWithBrowseButton();
         var compilerOutputFolderDescriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
                 .withTitle("Select Compile Output Directory")

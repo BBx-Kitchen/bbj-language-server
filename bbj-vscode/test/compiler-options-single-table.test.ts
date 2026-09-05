@@ -12,7 +12,7 @@ import {
 import type { WorkspaceConfiguration } from 'vscode';
 
 /**
- * Proof that both entry points read one table (#571, D-02): the VS Code adapter
+ * Proof that both entry points read one table (#571): the VS Code adapter
  * (`src/Commands/CompilerOptions.ts`) and the language-server module
  * (`src/language/compiler-options.ts`) it delegates to are not two copies of the same
  * data — they are the same array, and the two config-driven code paths (a

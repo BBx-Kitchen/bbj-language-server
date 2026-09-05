@@ -6,7 +6,7 @@ import org.eclipse.lsp4j.Range;
 import java.util.List;
 
 /**
- * Renders a {@code bbj/compile} result into balloon text (#571, PARITY-01, D-07, D-10). A plain
+ * Renders a {@code bbj/compile} result into balloon text (#571). A plain
  * Java rendering seam with no IntelliJ import (C-01): every balloon's title, body and settings
  * remedy come from here, keyed on the result's machine-readable {@code reason} — never chosen by
  * reading its {@code message} prose.
@@ -33,7 +33,7 @@ public final class CompileResultPresenter {
     /**
      * Renders one {@code bbj/compile} result. Success yields an information presentation naming
      * the file with an empty body. Every failure switches on {@code reason} — never {@code
-     * message} prose (D-10) — to pick the title's tail clause and whether a settings remedy
+     * message} prose — to pick the title's tail clause and whether a settings remedy
      * applies: the four reasons a setting can fix append a short clause naming the cause and set
      * {@code offerSettings} true; {@code compile-errors} renders the diagnostics into the body;
      * {@code bbjcpl-error} puts the raw {@code message} text into the body verbatim; the

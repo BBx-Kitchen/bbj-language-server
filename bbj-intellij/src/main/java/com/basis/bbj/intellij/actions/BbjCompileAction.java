@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
- * Action to compile the current BBj file (#571, PARITY-01). Saves the document, sends {@code
+ * Action to compile the current BBj file (#571). Saves the document, sends {@code
  * bbj/compile} to the shared language server from a background task, and shows the result the
  * way VS Code shows its own compile result. No bbjcpl invocation, argument list or option read
  * lives on this side of the request — the language server owns all of that.
@@ -63,7 +63,7 @@ public final class BbjCompileAction extends AnAction {
         }
 
         // Save unconditionally, independent of autoSaveBeforeRun: bbjcpl compiles the file on
-        // disk (D-04). This runs on the dispatch thread, where the platform requires a document
+        // disk. This runs on the dispatch thread, where the platform requires a document
         // save to happen -- the only step here that does.
         Document document = FileDocumentManager.getInstance().getDocument(file);
         if (document != null) {
@@ -120,7 +120,7 @@ public final class BbjCompileAction extends AnAction {
     /**
      * Renders a {@link Presentation} on the dispatch thread: a balloon in the "BBj Language
      * Server" notification group, plus -- on failure -- the same text written to the
-     * language-server console (D-07). Diagnostics are never turned into editor markers (D-08).
+     * language-server console. Diagnostics are never turned into editor markers.
      */
     private static void render(@NotNull Project project, String fileName, Presentation presentation) {
         ApplicationManager.getApplication().invokeLater(() -> {

@@ -5,7 +5,7 @@
  ******************************************************************************/
 
 /**
- * `bbj/compile` request handler (#571, PARITY-01): a real, options-aware bbjcpl compile
+ * `bbj/compile` request handler (#571): a real, options-aware bbjcpl compile
  * that BOTH IDEs can reach through the shared language server, with no bbjcpl invocation
  * logic duplicated on the IntelliJ side.
  *
@@ -18,7 +18,7 @@
  * `bbj/compile` returns its diagnostics to the caller only — it never publishes them via
  * `textDocument/publishDiagnostics`. Editor squiggles stay with the existing background
  * validate-only path (`BBjCPLService.compile`, wired into `bbj-document-builder.ts`); this
- * request must not become a second source of the same diagnostics (D-08).
+ * request must not become a second source of the same diagnostics.
  */
 import type { Connection, Diagnostic } from 'vscode-languageserver';
 import { URI } from 'vscode-uri';
@@ -40,7 +40,7 @@ export interface CompileParams {
 
 /**
  * Machine-readable reason for a non-success {@link CompileResult}. This vocabulary is a
- * client-facing contract (CONTEXT.md D-01/Flagged assumption 1): the IntelliJ plugin (81-05)
+ * client-facing contract: the IntelliJ plugin
  * matches on these strings to pick its balloon text and its "Open Settings" action, so a
  * client never has to string-match prose. Adding a value later is safe; renaming one is not.
  */
@@ -83,7 +83,7 @@ export interface CompileRequestDeps {
  *
  * Order of checks, each refusing before any bbjcpl spawn: the URI must resolve to a `file`
  * scheme (`invalid-file-uri`); the effective compiler options must name either an output
- * directory or validate-only (`output-directory-required`, D-05); the effective options must
+ * directory or validate-only (`output-directory-required`); the effective options must
  * not conflict (`invalid-options`). Only once all three pass does it call
  * {@link CompileRequestDeps.cplService.compileWithOptions}.
  */
@@ -136,7 +136,7 @@ export function createCompileHandler(deps: CompileRequestDeps): (params: Compile
             return { success: false, diagnostics: run.diagnostics, reason: 'compile-errors', file: filePath };
         }
         // Non-empty stderr that parseBbjcplOutput could not turn into diagnostics (an overwrite
-        // refusal, an invalid output directory) — a failure carrying the raw text (D-07, D-10).
+        // refusal, an invalid output directory) — a failure carrying the raw text.
         return { success: false, diagnostics: [], reason: 'bbjcpl-error', message: run.stderr, file: filePath };
     };
 }
