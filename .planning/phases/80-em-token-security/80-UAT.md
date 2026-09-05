@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 80-em-token-security
 source: [80-VERIFICATION.md]
 started: 2026-09-04T16:27:35Z
-updated: 2026-09-05T07:08:36Z
+updated: 2026-09-05T07:15:23Z
 ---
 
 ## Current Test
@@ -73,10 +73,19 @@ blocked: 0
   reason: "User reported: BBj can't create the tmp file in the first place: !ERROR=18 ([C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp] User not allowed) at line 49 open(ch,mode=\"O_CREATE,O_TRUNC\")outputFile! in em-login.bbj (IntelliJ 2026.2 plugin, Windows host)"
   severity: blocker
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "OwnerOnlyAcl.OWNER_PERMISSIONS omits AclEntryPermission.READ_NAMED_ATTRS and WRITE_NAMED_ATTRS. Windows maps these to FILE_READ_EA/FILE_WRITE_EA, which CreateFile folds into GENERIC_READ/GENERIC_WRITE; an open is denied outright when any requested bit is not granted by the single owner ACE. em-login.bbj's open(ch,mode=\"O_CREATE,O_TRUNC\") on the plugin-created file therefore fails with BBj !ERROR=18. The POSIX 0600 branch has no EA sub-permission, so the gap is invisible on Linux/macOS and on CI (ubuntu-latest only). The Windows ACL branch was pre-flagged in 80-02 as never executed by automation."
+  artifacts:
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/OwnerOnlyAcl.java"
+      issue: "OWNER_PERMISSIONS floor lacks READ_NAMED_ATTRS/WRITE_NAMED_ATTRS, so a GENERIC_READ|GENERIC_WRITE open by bbj.exe is denied"
+    - path: "bbj-intellij/src/test/java/com/basis/bbj/intellij/lsp/OwnerOnlyAclTest.java"
+      issue: "permission-floor assertion mirrors the same incomplete set"
+    - path: "bbj-vscode/tools/em-login.bbj"
+      issue: "observation point only (line 49 open); not defective. em-validate-token.bbj shares the same helper via BbjRunActionBase"
+  missing:
+    - "Add AclEntryPermission.READ_NAMED_ATTRS and WRITE_NAMED_ATTRS to OwnerOnlyAcl.OWNER_PERMISSIONS (still exactly one ALLOW ACE for the owner, no inherit flags)"
+    - "Update OwnerOnlyAclTest's floor assertion and add a regression test asserting the two named-attribute bits are present"
+    - "Re-run the manual Windows icacls/write-through check (UAT test 1) since CI has no Windows runner"
+  debug_session: ".planning/debug/windows-owner-only-tmp-error18.md"
 
 ## Observations
 
