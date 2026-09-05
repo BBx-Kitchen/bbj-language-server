@@ -3,7 +3,7 @@ status: partial
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T13:30:56Z
+updated: 2026-09-05T13:42:17Z
 ---
 
 ## Current Test
@@ -61,7 +61,14 @@ blocked: 1
   reason: "User reported: not visible"
   severity: major
   test: 3
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Investigation inconclusive - manual review needed. Shipped jar (built 2026-09-05 13:21) verifiably contains BbjSettingsComponent with the 'BBj Compiler' separator and 'Compile output directory:' row, added unconditionally to the single FormBuilder chain; plugin.xml registration under parentId=language unchanged. Remaining hypothesis: a runtime exception in the BbjSettingsComponent constructor (candidate: the (JBTextField) cast on compilerOutputDirectoryField.getTextField() for the empty-text hint) would blank the WHOLE BBj settings page, not just the row. Needs idea.log + confirmation whether the rest of the page rendered."
+  artifacts:
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java"
+      issue: "lines 90-101 add the row; the JBTextField cast at 100-101 is the only novel runtime risk"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsConfigurable.java"
+      issue: "wiring confirmed correct"
+    - path: "bbj-intellij/gradle.properties"
+      issue: "plugin version has always been 0.1.0 (pre-existing; IntelliJ may keep a same-version install)"
+  missing:
+    - "Discriminating live-IDE fact: did the rest of the BBj settings page render, and does idea.log show an exception from BbjSettingsComponent?"
+  debug_session: ".planning/debug/compile-output-directory-row-not-visible.md"
