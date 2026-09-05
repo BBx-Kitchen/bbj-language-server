@@ -4,6 +4,7 @@ import { AstNode, DefaultDocumentValidator, DiagnosticData, DiagnosticInfo, Docu
 import { CancellationToken, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, Range } from "vscode-languageserver";
 import { isSymbolRef } from "./generated/ast.js";
 import { isInstanceAccessAssignment } from "./bbj-scope.js";
+import { END_OF_LINE_CHARACTER } from "./lsp-position.js";
 
 interface LinkingErrorData extends DiagnosticData {
     containerType: string;
@@ -226,7 +227,7 @@ export class BBjDocumentValidator extends DefaultDocumentValidator {
 
             const range: Range = {
                 start: { line: Math.max(0, line), character: 0 },
-                end: { line: Math.max(0, line), character: Number.MAX_SAFE_INTEGER }
+                end: { line: Math.max(0, line), character: END_OF_LINE_CHARACTER }
             };
 
             relatedInfo.push({

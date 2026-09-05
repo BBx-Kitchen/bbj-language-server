@@ -118,6 +118,15 @@ describe('parseBbjcplOutput', () => {
         expect(diagnostics[0].range.end.character).toBe(END_OF_LINE_CHARACTER);
     });
 
+    test('a whole-line range ends at the LSP uinteger maximum, which a JVM client can read as an int', () => {
+        const input = '/some/file.bbj: error at line 10 (1):     bad code here';
+        const diagnostics = parseBbjcplOutput(input);
+        expect(diagnostics).toHaveLength(1);
+        expect(diagnostics[0].range.end.character).toBe(2147483647);
+        expect(Number.isInteger(diagnostics[0].range.end.character)).toBe(true);
+        expect(diagnostics[0].range.end.character).toBeLessThanOrEqual(2147483647);
+    });
+
     test('all diagnostics have Error severity and BBj Compiler source', () => {
         const input = [
             '/some/file.bbj: error at line 10 (1):     code',
