@@ -272,7 +272,7 @@ Plans:
   3. When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend, with the internal-API access isolated behind a single method covered by a regression test (#552).
   4. Two Run invocations using the same recently-validated token trigger exactly one server-side validation call; the cache is keyed on the token bytes and invalidated on store/delete (#542, depends on TOKEN-01 landing first).
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/5 plans executed (80-05 closes UAT gap G-80-1)
 **Wave 1**
 
 - [x] 80-01-PLAN.md — Fail-closed JWT expiry classifier and login-time token gate (TOKEN-01, #535)
@@ -285,6 +285,10 @@ Plans:
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [x] 80-04-PLAN.md — Digest-keyed validation trust window with store/delete invalidation (TOKEN-04, #542)
+
+**Gap closure** *(from UAT test 1, blocker G-80-1)*
+
+- [ ] 80-05-PLAN.md — Grant the two extended-attribute permissions Windows folds into GENERIC_READ/GENERIC_WRITE so BBj can open the owner-only temp file (TOKEN-02, #536, G-80-1)
 
 **Cross-cutting constraints:**
 
