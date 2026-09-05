@@ -27,7 +27,11 @@ dependencies {
     intellijPlatform {
         intellijIdeaCommunity("2024.2")
         bundledPlugin("org.jetbrains.plugins.textmate")
-        plugin("com.redhat.devtools.lsp4ij:0.19.0")
+        // The plugin descriptor cannot constrain the version of a dependency plugin the IDE
+        // resolves at run time (no version attribute exists on <depends>), so this pin decides
+        // only what the code compiles and tests against. Tracking the Marketplace's current
+        // release keeps that classpath aligned with what users actually run (#571).
+        plugin("com.redhat.devtools.lsp4ij:0.21.0")
         pluginVerifier()
         zipSigner()
         instrumentationTools()
