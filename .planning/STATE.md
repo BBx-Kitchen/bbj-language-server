@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 82
-current_phase_name: composer-robustness
+current_phase_name: Composer Robustness
 status: executing
-stopped_at: Phase 82 context gathered
-last_updated: "2026-09-05T18:48:13.193Z"
+stopped_at: Completed 82-01-PLAN.md
+last_updated: "2026-09-05T19:05:52.569Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 81 complete, transitioned to Phase 82
-state_head: 72655661f5ca6546544c8d07c94a540b279b81ba
+last_activity_desc: Phase 82 execution started
+state_head: f850c7987f82970d34db792692218fa441f56851
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +33,10 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 ## Current Position
 
-Phase: 82 (composer-robustness) — READY TO EXECUTE
-Plan: Not started
+Phase: 82 (Composer Robustness) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-05 — Phase 81 complete, transitioned to Phase 82
+Last activity: 2026-09-05 — Phase 82 execution started
 
 ## Performance Metrics
 
@@ -126,6 +126,7 @@ Last activity: 2026-09-05 — Phase 81 complete, transitioned to Phase 82
 | Phase 81 P05 | 12min | 3 tasks | 6 files |
 | Phase 81 P06 | 13min | 3 tasks | 8 files |
 | Phase 81 P07 | 15min | 3 tasks | 5 files |
+| Phase 82 P01 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 06: JUnit boundary test's negative control asserts RuntimeException, not com.google.gson.JsonParseException — LSP4IJ's MessageJsonHandler wraps the Gson failure in its own MessageIssueException, confirmed empirically before asserting — The plan itself pre-authorized widening to RuntimeException if the thrown type turned out broader; confirmed via a throwaway debug run rather than guessed
 - [Phase 81]: Phase 81 Plan 07: LSP4IJ Gradle pin raised from 0.19.0 to 0.21.0 (kept, not reverted) -- resolved cleanly, whole IntelliJ module green at 326 tests, buildPlugin archive produced; CompileResultPresenter.messageTextOf reads a diagnostic's message reflectively (getMessage resolved by name, normalised across a plain string, either branch of a two-branch value, or a markup value's own text) since a plugin descriptor cannot pin the runtime version of a dependency plugin's vendored client library -- closes G-81-5's NoSuchMethodError.
 - [Phase 81 UAT]: All six live-IDE checks passed by hand 2026-09-05. Two gaps found and closed in-phase: G-81-4 (`Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's int `Position`, fixed by 81-06) and G-81-5 (`Diagnostic.getMessage()` signature skew between the 0.19.0 build pin and the IDE's LSP4IJ 0.21.0, fixed by 81-07); the final re-check rendered `16:1 Syntax error: xdd`. G-81-3 withdrawn: a Marketplace auto-update replaced the local 0.1.0 build mid-session. PARITY-01..03 (#571, #568, #540) closed.
+- [Phase 82]: [Phase 82]: 82-01: ComposerFlow's terminal handle() unwraps CompletionException/ExecutionException before classifying, so a NotReadySignal thrown at any nesting depth is recognized regardless of wrapper layers; ComposerNotices is the shared reason-keyed notice vocabulary 82-02/82-03 build on.
 
 ### Tech Debt
 
@@ -245,9 +247,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T18:20:45.813Z
-Stopped at: Phase 82 context gathered
-Resume file: .planning/phases/82-composer-robustness/82-CONTEXT.md
+Last session: 2026-09-05T19:05:52.413Z
+Stopped at: Completed 82-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
 then Wave 2's 81-05-PLAN.md (blocked on 81-01 and 81-04). Phase 80 closed with UAT 6/6 (one gap
