@@ -226,10 +226,11 @@ reliably on current JDKs.
 - ✓ **PARITY-01**: "Compile BBj File" sends `bbj/compile` to the shared language server, which runs bbjcpl through `BBjCPLService`; success or `line:col message` diagnostics render in an IntelliJ balloon, with no bbjcpl invocation logic duplicated on the IntelliJ side (#571) — v4.2 Phase 81
 - ✓ **PARITY-02**: Brackets inside string literals (including `""`-doubled quotes) and `rem` comments are inert for matching, navigation and auto-close; `BbjStringCommentScanner` emits STRING/COMMENT tokens ahead of the word lexer (#568) — v4.2 Phase 81
 - ✓ **PARITY-03**: Ctrl+/ recognizes `rem`, `Rem` and `REM` (word-bounded) and strips the prefix instead of stacking one; `RemToggleSeam` behind a `SelfManagingCommenter`, locale-independent (#540) — v4.2 Phase 81
+- ✓ **COMP-01**: Every composer `CompletableFuture` chain (launcher and each dialog's refresh) terminates in one `ComposerFlow` handler that renders exactly one reason-keyed `ComposerNotices` balloon; a hung request is bounded (30 s launch, 10 s refresh), OK is disabled while the preview is unavailable, and one balloon per dialog session (#538) — v4.2 Phase 82
+- ✓ **COMP-02**: `StaleEditGuard` re-decodes the captured line against the live document and re-checks the modification stamp inside the write command; on any mismatch the edit aborts with a warning balloon and a "Reopen composer" action instead of rewriting the range, for all three composers (#567); the three composer intentions ship `intentionDescriptions/` resources and an `Html` preview so the lightbulb popup no longer throws (#433) — v4.2 Phase 82
 
 ### Active
 
-- [ ] Composer dialogs re-validate offsets before applying edits and surface LSP failures
 - [ ] LSP4IJ experimental-API coupling and Node download/cache paths are covered by JUnit regression tests
 
 Carried over, maintainer-owned (not GSD phases):
@@ -417,6 +418,9 @@ Carried over, maintainer-owned (not GSD phases):
 | Plain-Java seams (`BbjStringCommentScanner`, `RemToggleSeam`, `CompilerInitOptions`, `CompileResultPresenter`) with explicit ASCII case comparison, never `toLowerCase`/`equalsIgnoreCase` | The module has no IntelliJ platform test harness; seams keep the logic on plain JUnit, and per-character ASCII comparison is proven locale-independent under a Turkish default locale | ✓ Good — v4.2 Phase 81; bracket inertness and REM round trip verified by hand |
 | `END_OF_LINE_CHARACTER = 2147483647` shared sentinel replaces `Number.MAX_SAFE_INTEGER` at both whole-line-range sites | bbjcpl reports no column, and `Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's `int` `Position.character`, so any compile response carrying a diagnostic failed to parse (`MessageIssueException`) — gap G-81-4 | ✓ Good — v4.2 Phase 81 gap closure 81-06; pinned by an LSP4J JSON boundary test |
 | Diagnostic message read reflectively by name in `CompileResultPresenter`; LSP4IJ Gradle pin raised 0.19.0 → 0.21.0 | `plugin.xml` cannot pin the runtime LSP4IJ, whose bundled lsp4j 1.0.0 changed `Diagnostic.getMessage()` to return `Either`, so the 0.19.0-compiled call site hit `NoSuchMethodError` in the live IDE — gap G-81-5; one binary must render on either client-library generation | ✓ Good — v4.2 Phase 81 gap closure 81-07; live re-check 2026-09-05 rendered `16:1 Syntax error: xdd` |
+| One composed `CompletableFuture` chain per composer request with a single terminal `handle()`, behind plain-Java `ComposerFlow`/`ComposerNotices` seams; the modal info dialog is deleted | Nested `thenAccept` pyramids left failures unobserved (#538); a reason-keyed notice table (never message-prose matching, mirroring Phase 81's `CompileResultPresenter`) and a `once()` wrapper give exactly one balloon per failure and per dialog session. Review fix WR-01 made the launch deadline one per chain instead of per stage | ✓ Good — v4.2 Phase 82; balloons, OK gating and rate limiting verified by hand (UAT 8/8) |
+| Stale composer edits abort and notify rather than re-apply: re-decode the captured line via the same `decodeCall`, compare the whole decode field-wise, re-check the document modification stamp as the write command's first statement | Captured offsets can point at text that changed while the modal dialog was open (#567); a partial comparison or a stamp check outside the write command leaves a window. Review fix WR-03 anchored the stamp guard on the real `WriteCommandAction` call site | ✓ Good — v4.2 Phase 82; split-editor abort and "Reopen composer" verified by hand |
+| Composer intentions ship `intentionDescriptions/<Class>/` resources *and* return `IntentionPreviewInfo.Html`, kept deliberately redundant; the resource test enumerates `plugin.xml` registrations | The lightbulb preview threw `PluginException: Intention Description Dir URL is null` on every computation (UAT gap G-82-6, #433/#426/#430/#473); either half alone silences it, but a future intention reverting to `EMPTY` would re-enter the fallback path, and a descriptor-driven test covers a fourth intention the moment it is registered | ✓ Good — v4.2 Phase 82 gap closure 82-04; popup and Settings › Intentions page verified by hand |
 
 ## Evolution
 
@@ -436,4 +440,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-05 after Phase 81*
+*Last updated: 2026-09-05 after Phase 82*

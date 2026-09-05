@@ -204,7 +204,7 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
 - [x] **Phase 79: EDT Responsiveness** - Off-EDT token/login, settings/notification debounce, guarded restart, serialized Node download (completed 2026-09-04)
 - [x] **Phase 80: EM Token Security** - Fail-closed JWT expiry, owner-only temp files, non-keychain warning, trust-window cache (completed 2026-09-05)
 - [x] **Phase 81: Feature Parity and Correctness** - Real bbjcpl compile action, string-literal-aware bracket matching, case-insensitive REM toggle (completed 2026-09-05)
-- [ ] **Phase 82: Composer Robustness** - Visible failure notifications and stale-offset guard for composer edits
+- [x] **Phase 82: Composer Robustness** - Visible failure notifications and stale-offset guard for composer edits (completed 2026-09-05)
 - [ ] **Phase 83: Regression Test Hardening** - Node download/cache + EDT regression coverage, LSP4IJ experimental-API canary tests
 
 </details>

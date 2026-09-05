@@ -2,24 +2,24 @@
 gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
-current_phase: 82
-current_phase_name: Composer Robustness
-status: executing
-stopped_at: Completed 82-04-PLAN.md
-last_updated: "2026-09-05T21:29:29.698Z"
+current_phase: 83
+current_phase_name: Regression Test Hardening
+status: planning
+stopped_at: Phase 82 complete, ready to plan Phase 83
+last_updated: "2026-09-05T22:16:13.157Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 82 execution started
-state_head: e5c5ec20644cae0114e814e6c96c09918a451fb2
+last_activity_desc: Phase 82 complete, transitioned to Phase 83
+state_head: 5907880663e6c62dbbea12e803c51e02eab0fde0
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 22
   completed_plans: 22
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-05 (Phase 81 verified and complete; Phase 82 ready to plan)
+**Last Updated:** 2026-09-05 (Phase 82 verified and complete; Phase 83 ready to plan)
 
 ## Project Reference
 
@@ -27,16 +27,16 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 82 — Composer Robustness
+**Current Focus:** Phase 83 — Regression Test Hardening
 
 ---
 
 ## Current Position
 
-Phase: 82 (Composer Robustness) — EXECUTING
-Plan: 2 of 4
-Status: Ready to execute
-Last activity: 2026-09-05 — Phase 82 execution started
+Phase: 83 — Regression Test Hardening
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-05 — Phase 82 complete, transitioned to Phase 83
 
 ## Performance Metrics
 
@@ -199,6 +199,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 82]: [Phase 82]: 82-01: ComposerFlow's terminal handle() unwraps CompletionException/ExecutionException before classifying, so a NotReadySignal thrown at any nesting depth is recognized regardless of wrapper layers; ComposerNotices is the shared reason-keyed notice vocabulary 82-02/82-03 build on.
 - [Phase 82]: Phase 82: 82-02: ComposerFlow.observe/once seam lets each dialog's refresh() check its own sequence before touching state, so a superseded success or failure is discarded identically; ComposerLauncherChainSourceGuardTest's whole-file 'exactly one handle()' assertion was rescoped to launch()'s own body since observe() legitimately owns a second, independent terminal handler for its own chain.
 - [Phase 82]: [Phase 82]: 82-03: StaleEditGuard.applyIfUnchanged re-decodes the captured line's current text and modification stamp, re-runs the same decodeCall the launch used, and writes only on a full-decode match with the stamp re-checked as the write command's first statement; DecodeEquality compares found/edit/initial/trailingArgs field-wise with Arrays.equals for int[] ranges; all three edit-in-place apply paths (MSGBOX, addWindow, addChildWindow) now route through the guard, closing COMP-02 (#567).
+- [Phase 82 UAT]: Round 1 (2026-09-05) passed 5/7 with one gap: every lightbulb preview threw `PluginException: Intention Description Dir URL is null` (G-82-6), closed by 82-04. Round 2 passed 8/8 by hand against the rebuilt plugin; test 3 (server-stopped balloon) is accepted from code because `BbjComposerService.server` auto-restarts a stopped server. COMP-01/COMP-02 (#538, #567) closed; VALIDATION nyquist-compliant (12 tasks), SECURITY threats_open 0 (27 threats).
 - [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
 
 ### Tech Debt
@@ -242,6 +243,10 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
   installation did not work on the Windows test machine (user installed Node by hand and set the node.exe
   home); this worked before, possible regression — candidate for Phase 83 (#569 Node download/cache coverage).
 - ⚠️ [Phase 80] Review follow-ups in 80-REVIEW.md / 80-UI-REVIEW.md are advisory; none blocked verification.
+- ⚠️ [Phase 82] UI-review follow-ups (advisory, 82-UI-REVIEW.md, 17/24): the in-dialog "Preview unavailable — <reason>" label
+  uses the same plain gray as healthy status text (the dialogs already have a red `errorLabel()` convention); that red is a
+  hardcoded `Color(0xC0392B)` rather than a theme-aware `JBColor`; `ComposerNotices.detailOf()` puts raw exception text
+  into the balloon body with no user-oriented rewrite. Candidates for a quick task. 82-REVIEW.md findings were all fixed in-phase.
 - ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; the reflective message read covers the compile balloon, but a canary for the rest of the LSP4IJ surface belongs to Phase 83 (BUILD-05).
 
 ### Quick Tasks Completed
@@ -253,14 +258,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T21:29:19.856Z
-Stopped at: Completed 82-04-PLAN.md
+Last session: 2026-09-05T22:17:16Z
+Stopped at: Phase 82 complete, ready to plan Phase 83
 Resume file: None
 
-Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
-then Wave 2's 81-05-PLAN.md (blocked on 81-01 and 81-04). Phase 80 closed with UAT 6/6 (one gap
-closed by 80-05 and re-attested on Windows), VALIDATION nyquist-compliant, SECURITY threats_open 0,
-UI review advisory only.
+Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
+depends on Phases 79 and 81, both complete). Phase 82 closed with UAT 8/8 (one gap closed by 82-04 and
+re-verified in round 2), VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review advisory only.
 
 ## Deferred Items
 
@@ -316,8 +320,8 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-05 after Phase 81 verified and complete (UAT 6/6, PARITY-01..03 closed)*
+*State updated: 2026-09-05 after Phase 82 verified and complete (UAT 8/8, COMP-01..02 closed)*
 
 ## Operator Next Steps
 
-- Plan Phase 82 (Composer Robustness): `/gsd-discuss-phase 82` (no CONTEXT.md yet) or `/gsd-plan-phase 82`
+- Plan Phase 83 (Regression Test Hardening, last phase of v4.2): `/gsd-discuss-phase 83` (no CONTEXT.md yet) or `/gsd-plan-phase 83`
