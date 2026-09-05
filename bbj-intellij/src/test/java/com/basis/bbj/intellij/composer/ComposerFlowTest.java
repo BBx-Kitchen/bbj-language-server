@@ -81,9 +81,16 @@ class ComposerFlowTest {
         CompletableFuture<ComposerCatalogs> catalogs = CompletableFuture.completedFuture(new ComposerCatalogs());
         CompletableFuture<MsgboxDecodeResult> msgboxDecode = CompletableFuture.completedFuture(new MsgboxDecodeResult());
 
+        /** Non-zero only for the WR-01 stacking regression test: delays the stage's own future
+         * starting from the moment the stage is actually invoked (lazily), not from test setup, so
+         * sequential per-stage delays genuinely stack in real elapsed time the way slow (not hung)
+         * server round-trips would. */
+        long catalogsDelayMillis;
+        long msgboxDecodeDelayMillis;
+
         @Override
         public CompletableFuture<ComposerCatalogs> composerCatalogs() {
-            return catalogs;
+            return catalogsDelayMillis > 0 ? delayedCopy(catalogs, catalogsDelayMillis) : catalogs;
         }
 
         @Override
@@ -98,7 +105,7 @@ class ComposerFlowTest {
 
         @Override
         public CompletableFuture<MsgboxDecodeResult> msgboxDecodeCall(DecodeCallParams params) {
-            return msgboxDecode;
+            return msgboxDecodeDelayMillis > 0 ? delayedCopy(msgboxDecode, msgboxDecodeDelayMillis) : msgboxDecode;
         }
 
         @Override
@@ -145,6 +152,50 @@ class ComposerFlowTest {
         public WorkspaceService getWorkspaceService() {
             throw new UnsupportedOperationException();
         }
+    }
+
+    /** Completes with {@code value} on a background thread after {@code delayMillis}, starting the
+     * timer the moment this method is called -- used to simulate a stage that is merely slow, not
+     * hung, and whose delay begins only once the stage is actually reached. */
+    private static <T> CompletableFuture<T> delayed(T value, long delayMillis) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                Thread.sleep(delayMillis);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            future.complete(value);
+        });
+        thread.setDaemon(true);
+        thread.start();
+        return future;
+    }
+
+    /** Like {@link #delayed(Object, long)} but relays {@code source}'s eventual outcome (value or
+     * exception) instead of a fixed value -- {@code source} is already completed in every caller,
+     * so this only delays when the caller of this method observes that outcome. */
+    private static <T> CompletableFuture<T> delayedCopy(CompletableFuture<T> source, long delayMillis) {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        Thread thread = new Thread(() -> {
+            try {
+                Thread.sleep(delayMillis);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            source.whenComplete((value, throwable) -> {
+                if (throwable != null) {
+                    future.completeExceptionally(throwable);
+                } else {
+                    future.complete(value);
+                }
+            });
+        });
+        thread.setDaemon(true);
+        thread.start();
+        return future;
     }
 
     private static CompletableFuture<Void> driveMsgboxLaunch(ComposerFlow flow, CompletableFuture<BbjComposerServer> serverFuture,
@@ -267,6 +318,42 @@ class ComposerFlowTest {
         assertTrue(notice.body.toLowerCase(java.util.Locale.ROOT).contains("timed out"),
                 "the balloon body must say the request timed out, not show a raw exception class name");
         assertFalse(successRan.get());
+    }
+
+    @Test
+    void threeMerelySlowStagesShareOneDeadlineRatherThanEachGettingTheFullWait() throws Exception {
+        // WR-01: each stage's delay starts only once the stage is actually invoked, so a 40ms delay
+        // on the server future, then a 40ms delay on composerCatalogs(), then a 40ms delay on
+        // msgboxDecodeCall(), stack in real elapsed time to roughly 120ms -- comfortably past a
+        // single 60ms bound. Before this fix, each stage got its own full 60ms timeout, so none of
+        // these individually-fast-enough (40ms < 60ms) stages would ever fire a timeout and the
+        // chain would eventually succeed at ~120ms, well past the documented "one deadline" bound.
+        FakeComposerServer server = new FakeComposerServer();
+        server.catalogsDelayMillis = 40L;
+        server.msgboxDecodeDelayMillis = 40L;
+        CompletableFuture<BbjComposerServer> serverFuture = delayed(server, 40L);
+
+        RecordingNotifier notifier = new RecordingNotifier();
+        ComposerFlow flow = new ComposerFlow(new RecordingEdt(), notifier, 60L);
+        AtomicBoolean decodeCalled = new AtomicBoolean(false);
+        AtomicBoolean successRan = new AtomicBoolean(false);
+
+        long startNanos = System.nanoTime();
+        driveMsgboxLaunch(flow, serverFuture, decodeCalled, successRan)
+                .get(5, TimeUnit.SECONDS);
+        long elapsedMillis = (System.nanoTime() - startNanos) / 1_000_000L;
+
+        assertEquals(1, notifier.notices.size(),
+                "three stages that are each individually under the 60ms bound (40ms each) but sum to "
+                        + "~120ms of real elapsed time must still surface exactly one notice -- one "
+                        + "deadline for the whole chain, not 60ms renewed at every stage");
+        assertEquals(ComposerNotices.Reason.REQUEST_FAILED, notifier.notices.get(0).reason,
+                "the whole-chain deadline elapsing is reported the same way a hung request is");
+        assertTrue(elapsedMillis < 100,
+                "the chain must fail close to the single 60ms deadline for the whole chain, not wait "
+                        + "for all three 40ms stages to run to completion (~120ms) before timing out -- "
+                        + "elapsed=" + elapsedMillis + "ms");
+        assertFalse(successRan.get(), "the success continuation must never run once the chain has timed out");
     }
 
     @Test

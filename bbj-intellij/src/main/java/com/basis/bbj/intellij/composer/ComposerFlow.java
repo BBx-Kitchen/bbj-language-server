@@ -52,30 +52,40 @@ public final class ComposerFlow {
 
     /**
      * Composes {@code serverFuture -> composerCatalogs() -> decodeCall} into one chain and hands
-     * the result to {@code onDecoded} through the injected EDT executor. Every stage is bounded by
-     * the configured wait, applied to a {@link CompletableFuture#copy()} so the receiver the LSP4IJ
-     * proxy owns is never force-completed. The returned future always completes normally — a
-     * failure is reported through the notifier from the single terminal handler, never thrown.
+     * the result to {@code onDecoded} through the injected EDT executor. The whole composed chain
+     * shares a single bounded wait (the configured {@code waitMillis}), not one per stage: each
+     * {@code thenCompose} produces a brand-new dependent future owned by this chain, never the
+     * proxy's own future, so {@code orTimeout} can be applied directly to the composed result
+     * without a defensive {@link CompletableFuture#copy()} — timing out the chain never
+     * force-completes {@code serverFuture}, {@code composerCatalogs()}, or {@code decodeCall}'s own
+     * receiver. A per-stage timeout here would let three merely-slow (not hung) stages each burn
+     * close to the full wait, stacking up to roughly 3x the documented bound before anything
+     * surfaces; one deadline for the entire chain keeps the total wait within {@code waitMillis}
+     * regardless of how the time is distributed across stages. The returned future always completes
+     * normally — a failure is reported through the notifier from the single terminal handler, never
+     * thrown.
      */
     public <D> CompletableFuture<Void> launch(String kindLabel,
             CompletableFuture<BbjComposerServer> serverFuture,
             BiFunction<BbjComposerServer, ComposerCatalogs, CompletableFuture<D>> decodeCall,
             Decoded<D> onDecoded) {
 
-        return bounded(serverFuture)
+        CompletableFuture<Void> chain = serverFuture
                 .thenCompose(server -> {
                     if (server == null) {
                         throw new NotReadySignal();
                     }
-                    return bounded(server.composerCatalogs())
+                    return server.composerCatalogs()
                             .thenCompose(catalogs -> {
                                 if (catalogs == null) {
                                     throw new NotReadySignal();
                                 }
-                                return bounded(decodeCall.apply(server, catalogs))
+                                return decodeCall.apply(server, catalogs)
                                         .thenCompose(decoded -> runOnEdt(() -> onDecoded.accept(server, catalogs, decoded)));
                             });
-                })
+                });
+
+        return chain.orTimeout(waitMillis, TimeUnit.MILLISECONDS)
                 .handle((ignoredResult, throwable) -> {
                     if (throwable != null) {
                         if (unwrap(throwable) instanceof NotReadySignal) {
@@ -134,10 +144,6 @@ public final class ComposerFlow {
                 delegate.accept(notice);
             }
         };
-    }
-
-    private <T> CompletableFuture<T> bounded(CompletableFuture<T> future) {
-        return bounded(future, waitMillis);
     }
 
     private <T> CompletableFuture<T> bounded(CompletableFuture<T> future, long timeoutMillis) {
