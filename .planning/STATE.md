@@ -5,13 +5,13 @@ milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
 status: planning
-stopped_at: Phase 80 complete, ready to plan Phase 81
-last_updated: "2026-09-05T08:19:02.020Z"
+stopped_at: Phase 81 context gathered
+last_updated: "2026-09-05T08:59:27.510Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 80 complete, transitioned to Phase 81
-state_head: 93b97d102bb4e503810aa64ea6824033a78daa5b
+state_head: 9a9406af7eb84e66c1ebb9c09076b45d1e4ebc7f
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 3
   total_plans: 11
   completed_plans: 11
@@ -228,9 +228,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T08:20:15Z
-Stopped at: Phase 80 complete, ready to plan Phase 81
-Resume file: None
+Last session: 2026-09-05T08:59:27.387Z
+Stopped at: Phase 81 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/81-feature-parity-and-correctness/81-CONTEXT.md
 
 Next: `/gsd-discuss-phase 81` (no CONTEXT.md yet) or `/gsd-plan-phase 81`. Phase 81 depends on
 Phase 78 only (build foundation, done). Phase 80 closed with UAT 6/6 (one gap closed by 80-05 and
