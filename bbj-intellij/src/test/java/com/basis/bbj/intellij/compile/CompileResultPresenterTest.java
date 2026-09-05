@@ -17,7 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 /**
  * Behavioural coverage for {@link CompileResultPresenter} (#571): success, every
  * reason in the vocabulary, an unrecognised reason, and the two client-side failures. A plain
- * JUnit 5 test over a plain-Java seam — no IntelliJ platform test framework.
+ * JUnit 5 test over a plain-Java seam — no IntelliJ platform test framework. Several tests below
+ * drive {@code messageTextOf} with small duck-typed stand-ins: a diagnostic's message accessor
+ * shape is decided by whichever client library the IDE loads at run time, and this classpath can
+ * only ever produce one of those shapes, so the other shapes have to be supplied by hand.
  */
 class CompileResultPresenterTest {
 
@@ -165,5 +168,154 @@ class CompileResultPresenterTest {
         assertEquals(firstFailure.error, secondFailure.error);
         assertEquals(firstFailure.offerSettings, secondFailure.offerSettings);
         assertEquals("Compiled \"hello.bbj\"", success.title);
+    }
+
+    /** A stand-in exposing only a no-argument {@code getMessage()} returning a plain string. */
+    private static final class StringMessageStandIn {
+        private final String message;
+
+        StringMessageStandIn(String message) {
+            this.message = message;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
+    /**
+     * A stand-in exposing only a no-argument {@code getMessage()} whose return value is
+     * whatever object is supplied — used to drive {@code messageTextOf} with an
+     * {@link EitherStandIn} or a thrown/null result.
+     */
+    private static final class ObjectMessageStandIn {
+        private final Object message;
+        private final boolean throwOnAccess;
+
+        ObjectMessageStandIn(Object message) {
+            this(message, false);
+        }
+
+        private ObjectMessageStandIn(Object message, boolean throwOnAccess) {
+            this.message = message;
+            this.throwOnAccess = throwOnAccess;
+        }
+
+        static ObjectMessageStandIn throwing() {
+            return new ObjectMessageStandIn(null, true);
+        }
+
+        public Object getMessage() {
+            if (throwOnAccess) {
+                throw new RuntimeException("accessor deliberately fails for the test");
+            }
+            return message;
+        }
+    }
+
+    /** Duck-typed stand-in for a two-branch (either-left-or-right) value. */
+    private static final class EitherStandIn {
+        private final boolean left;
+        private final Object leftValue;
+        private final Object rightValue;
+
+        private EitherStandIn(boolean left, Object leftValue, Object rightValue) {
+            this.left = left;
+            this.leftValue = leftValue;
+            this.rightValue = rightValue;
+        }
+
+        static EitherStandIn ofLeft(Object value) {
+            return new EitherStandIn(true, value, null);
+        }
+
+        static EitherStandIn ofRight(Object value) {
+            return new EitherStandIn(false, null, value);
+        }
+
+        public boolean isLeft() {
+            return left;
+        }
+
+        public Object getLeft() {
+            return leftValue;
+        }
+
+        public Object getRight() {
+            return rightValue;
+        }
+    }
+
+    /** Duck-typed stand-in for a markup-shaped value exposing a plain-string {@code getValue()}. */
+    private static final class MarkupStandIn {
+        private final String value;
+
+        MarkupStandIn(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    @Test
+    void aStringShapedMessageValueIsUsedAsIs() {
+        String text = CompileResultPresenter.messageTextOf(new StringMessageStandIn("plain text message"));
+
+        assertEquals("plain text message", text);
+    }
+
+    @Test
+    void aTwoWayMessageValueIsReadFromItsLeftBranch() {
+        Object diagnostic = new ObjectMessageStandIn(EitherStandIn.ofLeft("left branch text"));
+
+        String text = CompileResultPresenter.messageTextOf(diagnostic);
+
+        assertEquals("left branch text", text);
+    }
+
+    @Test
+    void aTwoWayMessageValueIsReadFromItsMarkupRightBranch() {
+        Object diagnostic = new ObjectMessageStandIn(EitherStandIn.ofRight(new MarkupStandIn("markup branch text")));
+
+        String text = CompileResultPresenter.messageTextOf(diagnostic);
+
+        assertEquals("markup branch text", text);
+    }
+
+    @Test
+    void anUnreadableMessageValueYieldsEmptyTextInsteadOfThrowing() {
+        Object noAccessorAtAll = new Object();
+        Object accessorThrows = ObjectMessageStandIn.throwing();
+        Object accessorReturnsNull = new ObjectMessageStandIn(null);
+
+        assertEquals("", CompileResultPresenter.messageTextOf(noAccessorAtAll),
+            "an object with no getMessage() accessor at all must yield empty text, not throw");
+        assertEquals("", CompileResultPresenter.messageTextOf(accessorThrows),
+            "an accessor that throws must yield empty text, not propagate");
+        assertEquals("", CompileResultPresenter.messageTextOf(accessorReturnsNull),
+            "an accessor returning null must yield empty text");
+    }
+
+    @Test
+    void aRealDiagnosticFromThisClasspathStillYieldsItsMessage() {
+        Diagnostic diagnostic = diagnosticAt(0, 0, "a genuine diagnostic message");
+
+        String text = CompileResultPresenter.messageTextOf(diagnostic);
+
+        assertEquals("a genuine diagnostic message", text);
+    }
+
+    @Test
+    void aDiagnosticWithNoMessageStillRendersItsLocation() {
+        Diagnostic diagnostic = new Diagnostic();
+        diagnostic.setRange(new Range(new Position(2, 4), new Position(2, 5)));
+        // setMessage is never called, so getMessage() returns null.
+
+        Presentation presentation = CompileResultPresenter.present(
+            "hello.bbj", false, "compile-errors", null, List.of(diagnostic));
+
+        assertEquals("3:5", presentation.body);
     }
 }
