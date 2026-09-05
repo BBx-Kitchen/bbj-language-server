@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
 status: executing
-stopped_at: Completed 81-03-PLAN.md
-last_updated: "2026-09-05T11:02:13.000Z"
+stopped_at: Completed 81-04-PLAN.md
+last_updated: "2026-09-05T11:14:44.369Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 81 Plan 3 (case-insensitive REM toggle) complete
-state_head: 5fae064e36924af00d3221e7a9d2a99cc156471c
+state_head: 5a07ea0aa15781a448cfedb057db53b04c53e7b0
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 81 (Feature Parity and Correctness) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) complete
 
@@ -122,6 +122,7 @@ Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) comp
 | Phase 81 P01 | 15min | 3 tasks | 10 files |
 | Phase 81 P02 | 15min | 3 tasks | 7 files |
 | Phase 81 P03 | 18min | 3 tasks | 4 files |
+| Phase 81 P04 | 10min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 81]: Phase 81 Plan 01: bbj/compile re-homes the 20-entry compiler-option table into a vscode-free compiler-options.ts driven by a plain CompilerConfigReader; BBjCPLService.compileWithOptions never touches the abort-on-resave inFlight map so an explicit compile and a background validate-only compile of the same file never cancel each other. — PARITY-01 (#571): IntelliJ's compile action must reach bbjcpl through the shared language server with zero duplicated bbjcpl-invocation logic; compilerOutputDirectory reaches the server via the flat initializationOptions key (compilerTrigger's channel), not config.compiler, per RESEARCH.md's correction that IntelliJ's createSettings() never resolves that path.
 - [Phase 81]: [Phase 81] Phase 81 Plan 02: BbjStringCommentScanner is a plain-Java seam (scanString/scanComment/isCommentStart) mirroring the grammar's STRING_LITERAL/COMMENT terminals; BbjWordLexer dispatches to it ahead of the word branch and BbjParserDefinition/BbjPairedBraceMatcher are wired to the new STRING/COMMENT token types, so bracket characters inside a string or rem comment are never classified as brackets (#568, PARITY-02).
 - [Phase 81]: Phase 81 Plan 03: RemToggleSeam is a plain-Java seam (isCommented/comment/uncomment) recognizing rem in any case via direct ASCII comparison (never toLowerCase/equalsIgnoreCase, proven locale-independent under Turkish default locale); BbjCommenter implements both Commenter and SelfManagingCommenter<CommenterDataHolder>, delegating every line decision to the seam with the insert hard-coded to column 0 — PARITY-03 (#540): a rem/Rem/REM line now round-trips through Ctrl+/ instead of stacking a second prefix.
+- [Phase 81]: [Phase 81]: Phase 81 Plan 04: CompilerInitOptions is a plain-Java seam (COMPILER_OUTPUT_DIRECTORY_KEY, normalizeOutputDirectory) with no IntelliJ import; the value reaches the server through the flat compilerOutputDirectory initializationOptions key in BbjLanguageServerFactory, not through BbjLanguageClient.createSettings(), which LSP4IJ 0.19.0 resolves to null for this plugin's flat settings object — BbjLanguageClient stays deliberately unchanged and a source guard pins that.
 
 ### Tech Debt
 
@@ -234,8 +236,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T11:02:13.000Z
-Stopped at: Completed 81-03-PLAN.md
+Last session: 2026-09-05T11:14:44.253Z
+Stopped at: Completed 81-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
