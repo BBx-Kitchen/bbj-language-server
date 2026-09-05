@@ -143,10 +143,21 @@ class ComposerLauncherChainSourceGuardTest {
 
         assertTrue(countOccurrences(text, "orTimeout(") >= 1,
                 "every stage must be bounded by a wait (D-04)");
-        assertEquals(1, countOccurrences(text, "handle("),
-                "exactly one terminal handler must exist for the whole chain");
-        int lastThenCompose = text.lastIndexOf("thenCompose(");
-        int firstHandle = text.indexOf("handle(");
+
+        // The "exactly one handle(" count is scoped to launch()'s own body: a later plan (82-02)
+        // adds observe(), a second, independent request-observing method with its own single
+        // terminal handler for its own chain (D-06 -- observe() does not notify, so its handle() is
+        // not "a second handler for this chain", it is the one handler for a different chain
+        // entirely). A whole-file count would conflate the two.
+        int launchStart = text.indexOf("public <D> CompletableFuture<Void> launch(");
+        int launchEnd = text.indexOf("private static final class EmptyPreviewException");
+        assertTrue(launchStart >= 0 && launchEnd > launchStart, "the launch() method must be found intact");
+        String launchMethod = text.substring(launchStart, launchEnd);
+
+        assertEquals(1, countOccurrences(launchMethod, "handle("),
+                "exactly one terminal handler must exist for the launch chain");
+        int lastThenCompose = launchMethod.lastIndexOf("thenCompose(");
+        int firstHandle = launchMethod.indexOf("handle(");
         assertTrue(lastThenCompose >= 0 && firstHandle >= 0 && lastThenCompose < firstHandle,
                 "the terminal handler must sit after every composed stage, not in the middle of the chain");
     }

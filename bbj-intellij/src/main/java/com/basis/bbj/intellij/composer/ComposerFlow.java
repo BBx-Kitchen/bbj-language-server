@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
@@ -25,6 +26,9 @@ public final class ComposerFlow {
 
     /** Comfortably under a minute, bounding a request that would otherwise hang forever. */
     public static final long LAUNCH_TIMEOUT_MILLIS = 30_000L;
+
+    /** An order of magnitude below {@link #LAUNCH_TIMEOUT_MILLIS} -- a preview is a pure local computation on the server. */
+    public static final long REFRESH_TIMEOUT_MILLIS = 10_000L;
 
     private final Consumer<Runnable> onEdt;
     private final Consumer<ComposerNotices.Notice> notifier;
@@ -84,10 +88,62 @@ public final class ComposerFlow {
                 });
     }
 
+    /** Raised internally when a request completes normally with {@code null} rather than exceptionally. */
+    private static final class EmptyPreviewException extends RuntimeException {
+        EmptyPreviewException() {
+            super("The preview request completed with no result.");
+        }
+    }
+
+    /**
+     * Observes a single request without notifying: the caller decides whether the outcome is still
+     * current, because only the caller's sequence number can say whether a superseded failure should
+     * be allowed to consume the session's single balloon. Bound the same way {@link #launch} bounds
+     * each stage, on a {@link CompletableFuture#copy()} of {@code request} so the receiver the
+     * LSP4IJ proxy owns is never force-completed. A throwable and a normal completion with
+     * {@code null} both reach {@code onFailure} — a null preview left unobserved is exactly the
+     * silent no-op this seam exists to remove. A non-null result reaches {@code onSuccess}. Both
+     * callbacks run through the injected EDT executor. The returned future always completes
+     * normally, so nothing calling this method is left unobserved.
+     */
+    public <T> CompletableFuture<Void> observe(CompletableFuture<T> request, long timeoutMillis,
+            Consumer<T> onSuccess, Consumer<Throwable> onFailure) {
+        return bounded(request, timeoutMillis).handle((value, throwable) -> {
+            if (throwable != null) {
+                onEdt.accept(() -> onFailure.accept(throwable));
+            } else if (value == null) {
+                onEdt.accept(() -> onFailure.accept(new EmptyPreviewException()));
+            } else {
+                onEdt.accept(() -> onSuccess.accept(value));
+            }
+            return null;
+        });
+    }
+
+    /**
+     * Returns a consumer that forwards at most one notice to {@code delegate} and drops the rest,
+     * using an {@link AtomicBoolean#compareAndSet(boolean, boolean)} so two near-simultaneous
+     * failures cannot both pass — the same atomicity discipline {@code BackendNoticePolicy} uses for
+     * its check-then-set. State lives in the returned instance, so a fresh {@code once(...)} for a
+     * new dialog session gets a fresh allowance.
+     */
+    public static Consumer<ComposerNotices.Notice> once(Consumer<ComposerNotices.Notice> delegate) {
+        AtomicBoolean sent = new AtomicBoolean(false);
+        return notice -> {
+            if (sent.compareAndSet(false, true)) {
+                delegate.accept(notice);
+            }
+        };
+    }
+
     private <T> CompletableFuture<T> bounded(CompletableFuture<T> future) {
+        return bounded(future, waitMillis);
+    }
+
+    private <T> CompletableFuture<T> bounded(CompletableFuture<T> future, long timeoutMillis) {
         // copy() because orTimeout completes its receiver exceptionally, and the receiver here
         // belongs to the LSP4IJ proxy — timing out a copy leaves the proxy's own future untouched.
-        return future.copy().orTimeout(waitMillis, TimeUnit.MILLISECONDS);
+        return future.copy().orTimeout(timeoutMillis, TimeUnit.MILLISECONDS);
     }
 
     private CompletableFuture<Void> runOnEdt(Runnable body) {
