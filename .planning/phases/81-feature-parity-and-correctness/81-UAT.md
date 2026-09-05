@@ -1,14 +1,18 @@
 ---
-status: diagnosed
+status: testing
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T14:11:31Z
+updated: 2026-09-05T16:28:09Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 5
+name: Compile-error balloon after the G-81-4 fix (PARITY-01, #571)
+expected: |
+  With the plugin rebuilt from this branch (81-06 landed), Tools > Compile BBj File on a .bbj file containing a syntax error shows an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. No `MessageIssueException: Message could not be parsed` appears.
+awaiting: user response
 
 ## Tests
 
@@ -43,12 +47,19 @@ result: issue
 reported: "it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
 severity: major
 
+### 5. Compile-error balloon after the G-81-4 fix (PARITY-01, #571)
+steps: Rebuild and install the plugin from this branch (bbj-vscode `npm run build`, then bbj-intellij `./gradlew buildPlugin`; confirm the installed build is the local one, not a Marketplace auto-update). With a BBj home and a compile output directory configured, invoke Tools > Compile BBj File on a `.bbj` file that contains a syntax error. Compare against a valid file to confirm the success balloon still appears.
+expected: The syntax-error file shows an error balloon whose body lists the compiler's errors as `line:col message`, and the same text appears in the language-server console. The former `Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed` no longer appears. The valid file still shows `Compiled "<file>"`.
+why_human: The fix (a shared END_OF_LINE_CHARACTER = 2147483647 sentinel replacing Number.MAX_SAFE_INTEGER at both range-emitting sites) is proven on both sides of the JSON-RPC boundary by lsp-position.test.ts, compile-request.test.ts and CompileResultJsonBoundaryTest (LSP4J MessageJsonHandler parse), but the on-screen balloon after a plugin rebuild has not been re-exercised in a live IDE since 81-06 landed.
+coverage_id: 81-06 D1
+result: [pending]
+
 ## Summary
 
-total: 4
+total: 5
 passed: 3
 issues: 1
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
@@ -74,6 +85,7 @@ blocked: 0
   debug_session: ".planning/debug/compile-output-directory-row-not-visible.md"
 
 - gap_id: G-81-4
+  status_note: "FIX SHIPPED 2026-09-05 by gap-closure plan 81-06 (commits 03506428, 744993fb, fc984238): shared END_OF_LINE_CHARACTER = 2147483647 in bbj-vscode/src/language/lsp-position.ts, used by bbj-cpl-parser.ts and bbj-document-validator.ts; pinned by lsp-position.test.ts, compile-request.test.ts and CompileResultJsonBoundaryTest.java. Live re-check is test 5."
   truth: "Compile BBj File on a file with a syntax error shows an error balloon whose body lists the compiler's errors as line:col message, with the same text in the language-server console"
   status: failed
   reason: "User reported: it works, but the error message when a syntax error is in the source file is not useful: Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed."
