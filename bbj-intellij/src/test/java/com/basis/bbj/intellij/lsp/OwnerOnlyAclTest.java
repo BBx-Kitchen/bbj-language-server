@@ -13,6 +13,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.UserPrincipal;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -70,9 +71,26 @@ class OwnerOnlyAclTest {
                 AclEntryPermission.WRITE_ATTRIBUTES,
                 AclEntryPermission.DELETE,
                 AclEntryPermission.SYNCHRONIZE,
-                AclEntryPermission.READ_ACL
+                AclEntryPermission.READ_ACL,
+                AclEntryPermission.READ_NAMED_ATTRS,
+                AclEntryPermission.WRITE_NAMED_ATTRS
         )), "the read-write-delete permission floor must be present so em-login.bbj can truncate-and-write "
-                + "and the caller's finally block can delete: " + entry.permissions());
+                + "and the caller's finally block can delete, and the floor must also cover the "
+                + "extended-attribute bits an open request carries: " + entry.permissions());
+    }
+
+    @Test
+    void theOwnerPermissionsCoverTheExtendedAttributeBitsFoldedIntoGenericReadAndGenericWrite() {
+        AclEntry entry = OwnerOnlyAcl.ownerOnlyAcl(principal).get(0);
+        assertAll("extended-attribute bits Windows folds into GENERIC_READ/GENERIC_WRITE (#536)",
+                () -> assertTrue(entry.permissions().contains(AclEntryPermission.READ_NAMED_ATTRS),
+                        "Windows folds READ_NAMED_ATTRS into GENERIC_READ, and an access check denies the "
+                                + "whole open when any requested bit is ungranted -- omitting it is what made "
+                                + "BBj report \"User not allowed\" against a file the plugin had just created"),
+                () -> assertTrue(entry.permissions().contains(AclEntryPermission.WRITE_NAMED_ATTRS),
+                        "Windows folds WRITE_NAMED_ATTRS into GENERIC_WRITE, and an access check denies the "
+                                + "whole open when any requested bit is ungranted -- omitting it is what made "
+                                + "BBj report \"User not allowed\" against a file the plugin had just created"));
     }
 
     @Test
