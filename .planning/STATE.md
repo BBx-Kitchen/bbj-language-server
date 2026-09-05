@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 82
 current_phase_name: Composer Robustness
-status: verifying
-stopped_at: Completed 82-03-PLAN.md
-last_updated: "2026-09-05T19:38:45.775Z"
+status: executing
+stopped_at: Completed 82-04-PLAN.md
+last_updated: "2026-09-05T21:29:29.698Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 82 execution started
-state_head: 8cc527823acfc2a09bd8fc5087633f6e17228f5d
+state_head: e5c5ec20644cae0114e814e6c96c09918a451fb2
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 21
-  completed_plans: 21
+  total_plans: 22
+  completed_plans: 22
 ---
 
 # Project State: BBj Language Server
@@ -34,8 +34,8 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 82 (Composer Robustness) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-09-05 — Phase 82 execution started
 
 ## Performance Metrics
@@ -129,6 +129,7 @@ Last activity: 2026-09-05 — Phase 82 execution started
 | Phase 82 P01 | 15min | 3 tasks | 7 files |
 | Phase 82 P02 | 13min | 3 tasks | 7 files |
 | Phase 82 P03 | 12min | 3 tasks | 6 files |
+| Phase 82 P04 | 10min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -198,6 +199,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 82]: [Phase 82]: 82-01: ComposerFlow's terminal handle() unwraps CompletionException/ExecutionException before classifying, so a NotReadySignal thrown at any nesting depth is recognized regardless of wrapper layers; ComposerNotices is the shared reason-keyed notice vocabulary 82-02/82-03 build on.
 - [Phase 82]: Phase 82: 82-02: ComposerFlow.observe/once seam lets each dialog's refresh() check its own sequence before touching state, so a superseded success or failure is discarded identically; ComposerLauncherChainSourceGuardTest's whole-file 'exactly one handle()' assertion was rescoped to launch()'s own body since observe() legitimately owns a second, independent terminal handler for its own chain.
 - [Phase 82]: [Phase 82]: 82-03: StaleEditGuard.applyIfUnchanged re-decodes the captured line's current text and modification stamp, re-runs the same decodeCall the launch used, and writes only on a full-decode match with the stamp re-checked as the write command's first statement; DecodeEquality compares found/edit/initial/trailingArgs field-wise with Arrays.equals for int[] ranges; all three edit-in-place apply paths (MSGBOX, addWindow, addChildWindow) now route through the guard, closing COMP-02 (#567).
+- [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
 
 ### Tech Debt
 
@@ -251,8 +253,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T19:38:45.612Z
-Stopped at: Completed 82-03-PLAN.md
+Last session: 2026-09-05T21:29:19.856Z
+Stopped at: Completed 82-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),

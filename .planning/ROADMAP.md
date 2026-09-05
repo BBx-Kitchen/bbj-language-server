@@ -336,7 +336,7 @@ Plans:
   1. When a composer `CompletableFuture` chain (the launcher or any dialog's refresh) fails, a user-visible notification appears, verified by a regression test that forces one chain to fail (#538).
   2. If the document changes while a composer dialog is open, re-decoding the call at the captured offsets after the dialog closes detects the mismatch, aborts the edit, and notifies the user instead of rewriting whatever text now occupies the range, verified by a regression test that mutates the document mid-dialog (#567, decision: abort and notify).
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans executed
 Plans:
 **Wave 1**
 
@@ -352,7 +352,7 @@ Plans:
 
 **Wave 4** *(gap closure — blocked on Wave 3 completion)*
 
-- [ ] 82-04-PLAN.md — Intention description resources + Html preview so the lightbulb popup stops throwing (gap G-82-6, #433)
+- [x] 82-04-PLAN.md — Intention description resources + Html preview so the lightbulb popup stops throwing (gap G-82-6, #433)
 
 ### Phase 83: Regression Test Hardening
 
