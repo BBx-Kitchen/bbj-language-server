@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 82-composer-robustness
 source: [82-VERIFICATION.md]
 started: 2026-09-05T20:35:00Z
-updated: 2026-09-05T20:53:35Z
+updated: 2026-09-05T20:54:41Z
 ---
 
 ## Current Test
@@ -82,6 +82,21 @@ blocked: 0
   reason: "User reported: While the dialog is open I see \"Start BBjServices to...\" warning banner; closing the dialog (MSGBOX configurator e.g.) the banner disappeared. During testing also produced: Unhandled exception ... com.intellij.openapi.diagnostic.UnhandledException: Intention Description Dir URL is null: BBj visual composer; ConfigureMsgboxIntention; while looking for description.html [Plugin: com.basis.bbj] (Caused by com.intellij.diagnostic.PluginException at IntentionActionMetaData.getResourceLocation, raised from IntentionPreviewComputable.tryCreateFallbackDescriptionContent via IntentionPreviewPopupUpdateProcessor)"
   severity: major
   test: 6
-  artifacts: []  # Filled by diagnosis
-  missing: []    # Filled by diagnosis
+  root_cause: "The three composer intentions (ConfigureMsgboxIntention, ConfigureAddWindowIntention, ConfigureAddChildWindowIntention) return IntentionPreviewInfo.EMPTY, so the lightbulb popup falls back to the per-intention description resource intentionDescriptions/<SimpleClassName>/description.html, which the plugin never ships (no intentionDescriptions/ directory under bbj-intellij/src/main/resources). IntentionActionMetaData.getResourceLocation throws PluginException on every preview computation. Pre-dates phase 82 (registered in cdbd1699, #433/#435). The 'Start BBjServices for Java completions' banner is the unrelated BbjJavaInteropNotificationProvider panel, not a gap."
+  artifacts:
+    - path: "bbj-intellij/src/main/resources/"
+      issue: "no intentionDescriptions/ tree for the three registered composer intentions"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureMsgboxIntention.java"
+      issue: "generatePreview returns EMPTY, triggering the description.html fallback lookup"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureAddWindowIntention.java"
+      issue: "same as above"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureAddChildWindowIntention.java"
+      issue: "same as above"
+    - path: "bbj-intellij/src/main/resources/META-INF/plugin.xml"
+      issue: "three <intentionAction> registrations (lines 112-126) without matching description resources"
+  missing:
+    - "Add src/main/resources/intentionDescriptions/{ConfigureMsgboxIntention,ConfigureAddWindowIntention,ConfigureAddChildWindowIntention}/description.html (plus before.bbj.template / after.bbj.template)"
+    - "Add a plain-JUnit test that reads plugin.xml's <intentionAction> classNames and asserts each intentionDescriptions/<SimpleName>/description.html exists on the classpath"
+    - "Optionally return IntentionPreviewInfo.Html from generatePreview so the fallback path is never taken"
+  debug_session: ".planning/debug/composer-intention-description-missing.md"
 
