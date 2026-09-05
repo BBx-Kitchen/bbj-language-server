@@ -2,7 +2,10 @@ package com.basis.bbj.intellij.lexer;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Locale;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -48,5 +51,111 @@ class BbjStringCommentScannerTest {
         int end = BbjStringCommentScanner.scanComment(text, 0, text.length());
 
         assertEquals(newlineIndex, end);
+    }
+
+    @Test
+    void anUnterminatedQuoteRunsToTheEndOfItsLineOnly() {
+        String text = "PRINT \"oops\ny = (1)";
+        int quoteIndex = text.indexOf('"');
+        int newlineIndex = text.indexOf('\n');
+
+        int end = BbjStringCommentScanner.scanString(text, quoteIndex, text.length());
+
+        assertEquals(newlineIndex, end);
+        int parenIndexOnNextLine = text.indexOf('(', end);
+        assertTrue(parenIndexOnNextLine > end, "the bracket on the following line stays reachable for normal lexing");
+    }
+
+    @Test
+    void anEmptyStringLiteralIsOneTokenWithNothingInsideIt() {
+        String text = "\"\"";
+
+        int end = BbjStringCommentScanner.scanString(text, 0, text.length());
+
+        assertEquals(2, end);
+        String literal = text.substring(0, end);
+        assertFalse(literal.contains("("), "an empty literal holds no opening bracket");
+        assertFalse(literal.contains(")"), "an empty literal holds no closing bracket");
+    }
+
+    @Test
+    void aStringAtTheVeryEndOfTheBufferWithNoClosingQuoteStopsAtTheBufferEnd() {
+        String text = "\"abc";
+
+        int end = BbjStringCommentScanner.scanString(text, 0, text.length());
+
+        assertEquals(text.length(), end);
+    }
+
+    @Test
+    void remarkIsNotACommentStart() {
+        String text = "remark = 1";
+
+        assertFalse(BbjStringCommentScanner.isCommentStart(text, 0, text.length()));
+    }
+
+    @Test
+    void rem15IsNotACommentStart() {
+        String text = "rem15 = 1";
+
+        assertFalse(BbjStringCommentScanner.isCommentStart(text, 0, text.length()));
+    }
+
+    @Test
+    void remDollarIsNotACommentStart() {
+        String text = "rem$ = \"x\"";
+
+        assertFalse(BbjStringCommentScanner.isCommentStart(text, 0, text.length()));
+    }
+
+    @Test
+    void remFollowedByATabOrByEndOfLineIsACommentStart() {
+        String tabSeparated = "rem\tx";
+        assertTrue(BbjStringCommentScanner.isCommentStart(tabSeparated, 0, tabSeparated.length()));
+
+        String bareAtBufferEnd = "rem";
+        assertTrue(BbjStringCommentScanner.isCommentStart(bareAtBufferEnd, 0, bareAtBufferEnd.length()));
+
+        String upperCase = "REM";
+        assertTrue(BbjStringCommentScanner.isCommentStart(upperCase, 0, upperCase.length()));
+
+        String mixedCase = "Rem";
+        assertTrue(BbjStringCommentScanner.isCommentStart(mixedCase, 0, mixedCase.length()));
+    }
+
+    @Test
+    void remRecognitionIsUnaffectedByTheDefaultLocale() {
+        Locale previousLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(new Locale("tr", "TR"));
+
+            assertTrue(BbjStringCommentScanner.isCommentStart("REM x", 0, "REM x".length()));
+            assertTrue(BbjStringCommentScanner.isCommentStart("Rem x", 0, "Rem x".length()));
+        } finally {
+            Locale.setDefault(previousLocale);
+        }
+    }
+
+    @Test
+    void aStringContainingASurrogatePairIsOneTokenAndOffsetsCountCodeUnits() {
+        // U+1F600 GRINNING FACE, encoded as a UTF-16 surrogate pair.
+        String text = "\"😀\"";
+
+        int end = BbjStringCommentScanner.scanString(text, 0, text.length());
+
+        assertEquals(text.length(), end);
+        assertEquals(4, text.length(), "the literal is four UTF-16 code units: two quotes plus the surrogate pair");
+        assertEquals(3, text.codePointCount(0, text.length()),
+                "the same span is three code points, confirming the offset counts code units, not code points");
+    }
+
+    @Test
+    void aCommentRunsToTheEndOfTheLineAndLeavesTheLineTerminator() {
+        String text = "rem (x\r\ny";
+        int carriageReturnIndex = text.indexOf('\r');
+
+        int end = BbjStringCommentScanner.scanComment(text, 0, text.length());
+
+        assertEquals(carriageReturnIndex, end);
     }
 }
