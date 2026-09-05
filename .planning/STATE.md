@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 81
 current_phase_name: Feature Parity and Correctness
 status: executing
-stopped_at: Completed 81-02-PLAN.md
-last_updated: "2026-09-05T10:40:42.922Z"
+stopped_at: Completed 81-03-PLAN.md
+last_updated: "2026-09-05T11:02:13.000Z"
 last_activity: 2026-09-05
-last_activity_desc: Phase 81 execution started
+last_activity_desc: Phase 81 Plan 3 (case-insensitive REM toggle) complete
 state_head: 5fae064e36924af00d3221e7a9d2a99cc156471c
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State: BBj Language Server
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 81 (Feature Parity and Correctness) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
-Last activity: 2026-09-05 — Phase 81 execution started
+Last activity: 2026-09-05 — Phase 81 Plan 3 (case-insensitive REM toggle) complete
 
 ## Performance Metrics
 
@@ -121,6 +121,7 @@ Last activity: 2026-09-05 — Phase 81 execution started
 | Phase 80 P05 | ~15min | 2 tasks | 3 files |
 | Phase 81 P01 | 15min | 3 tasks | 10 files |
 | Phase 81 P02 | 15min | 3 tasks | 7 files |
+| Phase 81 P03 | 18min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -180,6 +181,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 80 UAT]: All six live-IDE checks passed by hand. The Windows owner-ACE write-through check (G-80-1) first failed with BBj !ERROR=18, was fixed by 80-05, and passed on 2026-09-05 against a plugin built from main @ 232d321. TOKEN-01..04 (#535, #536, #552, #542) closed.
 - [Phase 81]: Phase 81 Plan 01: bbj/compile re-homes the 20-entry compiler-option table into a vscode-free compiler-options.ts driven by a plain CompilerConfigReader; BBjCPLService.compileWithOptions never touches the abort-on-resave inFlight map so an explicit compile and a background validate-only compile of the same file never cancel each other. — PARITY-01 (#571): IntelliJ's compile action must reach bbjcpl through the shared language server with zero duplicated bbjcpl-invocation logic; compilerOutputDirectory reaches the server via the flat initializationOptions key (compilerTrigger's channel), not config.compiler, per RESEARCH.md's correction that IntelliJ's createSettings() never resolves that path.
 - [Phase 81]: [Phase 81] Phase 81 Plan 02: BbjStringCommentScanner is a plain-Java seam (scanString/scanComment/isCommentStart) mirroring the grammar's STRING_LITERAL/COMMENT terminals; BbjWordLexer dispatches to it ahead of the word branch and BbjParserDefinition/BbjPairedBraceMatcher are wired to the new STRING/COMMENT token types, so bracket characters inside a string or rem comment are never classified as brackets (#568, PARITY-02).
+- [Phase 81]: Phase 81 Plan 03: RemToggleSeam is a plain-Java seam (isCommented/comment/uncomment) recognizing rem in any case via direct ASCII comparison (never toLowerCase/equalsIgnoreCase, proven locale-independent under Turkish default locale); BbjCommenter implements both Commenter and SelfManagingCommenter<CommenterDataHolder>, delegating every line decision to the seam with the insert hard-coded to column 0 — PARITY-03 (#540): a rem/Rem/REM line now round-trips through Ctrl+/ instead of stacking a second prefix.
 
 ### Tech Debt
 
@@ -232,13 +234,14 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T10:40:36.042Z
-Stopped at: Completed 81-02-PLAN.md
+Last session: 2026-09-05T11:02:13.000Z
+Stopped at: Completed 81-03-PLAN.md
 Resume file: None
 
-Next: `/gsd-discuss-phase 81` (no CONTEXT.md yet) or `/gsd-plan-phase 81`. Phase 81 depends on
-Phase 78 only (build foundation, done). Phase 80 closed with UAT 6/6 (one gap closed by 80-05 and
-re-attested on Windows), VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review advisory only.
+Next: `/gsd-execute-phase 81` to continue with 81-04-PLAN.md (compiler output directory setting),
+then Wave 2's 81-05-PLAN.md (blocked on 81-01 and 81-04). Phase 80 closed with UAT 6/6 (one gap
+closed by 80-05 and re-attested on Windows), VALIDATION nyquist-compliant, SECURITY threats_open 0,
+UI review advisory only.
 
 ## Deferred Items
 
@@ -294,8 +297,8 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-05 after Phase 80 verification and transition to Phase 81*
+*State updated: 2026-09-05 after Phase 81 Plan 3 (case-insensitive REM toggle) complete*
 
 ## Operator Next Steps
 
-- Discuss or plan Phase 81 with `/gsd-discuss-phase 81` or `/gsd-plan-phase 81`
+- Continue Phase 81 with `/gsd-execute-phase 81` (81-04-PLAN.md next, then Wave 2's 81-05-PLAN.md)
