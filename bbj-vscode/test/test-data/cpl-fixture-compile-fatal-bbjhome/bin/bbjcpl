@@ -1,0 +1,11 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary (#571). A controlled substitute the
+# repo owns, reproducing the two-line "invalid output directory" fatal stderr shape
+# observed from a real bbjcpl run (RESEARCH.md Pitfall 3). The wording mirrors that
+# observed run and is deliberately NOT parsed by any assertion beyond a substring check —
+# parseBbjcplOutput's ERROR_LINE_RE does not match either line, so this fixture proves the
+# "non-empty stderr with zero parsed diagnostics is still a failure" classification.
+# Exits 0, exactly like the real binary always does.
+echo "Directory /nonexistent does not exist.  Exiting..." >&2
+echo "stdin: error: Invalid output directory" >&2
+exit 0
