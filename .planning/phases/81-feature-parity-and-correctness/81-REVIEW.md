@@ -2,7 +2,7 @@
 phase: 81-feature-parity-and-correctness
 reviewed: 2026-09-05T00:00:00Z
 depth: standard
-files_reviewed: 38
+files_reviewed: 45
 files_reviewed_list:
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjCommenter.java
@@ -23,19 +23,26 @@ files_reviewed_list:
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/commenter/BbjCommenterSelfManagingSourceGuardTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/commenter/RemToggleSeamTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/compile/BbjCompileActionSourceGuardTest.java
+  - bbj-intellij/src/test/java/com/basis/bbj/intellij/compile/CompileResultJsonBoundaryTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/compile/CompileResultPresenterTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/lexer/BbjLexerStringCommentSourceGuardTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/lexer/BbjStringCommentScannerTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/lsp/CompilerInitOptionsTest.java
   - bbj-intellij/src/test/java/com/basis/bbj/intellij/lsp/CompilerOutputDirectorySourceGuardTest.java
   - bbj-vscode/src/Commands/CompilerOptions.ts
+  - bbj-vscode/src/language/bbj-cpl-parser.ts
   - bbj-vscode/src/language/bbj-cpl-service.ts
+  - bbj-vscode/src/language/bbj-document-validator.ts
   - bbj-vscode/src/language/bbj-ws-manager.ts
   - bbj-vscode/src/language/compile-command.ts
   - bbj-vscode/src/language/compiler-options.ts
+  - bbj-vscode/src/language/lsp-position.ts
   - bbj-vscode/src/language/main.ts
   - bbj-vscode/test/compile-request.test.ts
   - bbj-vscode/test/compiler-options-single-table.test.ts
+  - bbj-vscode/test/cpl-integration.test.ts
+  - bbj-vscode/test/cpl-parser.test.ts
+  - bbj-vscode/test/lsp-position.test.ts
   - bbj-vscode/test/test-data/cpl-fixture-compile-fatal-bbjhome/bin/bbj
   - bbj-vscode/test/test-data/cpl-fixture-compile-fatal-bbjhome/bin/bbjcpl
   - bbj-vscode/test/test-data/cpl-fixture-compile-fatal-bbjhome/cfg/.gitkeep
@@ -44,9 +51,9 @@ files_reviewed_list:
   - bbj-vscode/test/test-data/cpl-fixture-compile-ok-bbjhome/cfg/.gitkeep
 findings:
   critical: 0
-  warning: 4
-  info: 4
-  total: 8
+  warning: 6
+  info: 6
+  total: 12
 status: issues_found
 ---
 
@@ -54,27 +61,37 @@ status: issues_found
 
 **Reviewed:** 2026-09-05T00:00:00Z
 **Depth:** standard
-**Files Reviewed:** 38
+**Files Reviewed:** 45
 **Status:** issues_found
 
 ## Summary
 
-Reviewed the shared `bbj/compile` request handler and its bbjcpl argv/option-table logic
-(`compile-command.ts`, `compiler-options.ts`, `bbj-cpl-service.ts`, `bbj-ws-manager.ts`,
-`main.ts`), the VS Code adapter over the shared option table, and the IntelliJ-side lexer
-seam (`BbjStringCommentScanner`/`BbjWordLexer`/`BbjPairedBraceMatcher`), commenter toggle
-seam (`RemToggleSeam`/`BbjCommenter`), compile-output-directory setting plumbing
-(`BbjSettings*`, `CompilerInitOptions`, `BbjLanguageServerFactory`), and the "Compile BBj
-File" action/presenter (`BbjCompileAction`, `CompileResultPresenter`).
+Re-review after gap-closure plan 81-06 landed, widening scope from the previous 38 files to
+45: the new `lsp-position.ts` sentinel module, its two emitting sites
+(`bbj-cpl-parser.ts`, `bbj-document-validator.ts`), their four touched/added test files, and
+the new `CompileResultJsonBoundaryTest.java` cross-language boundary test.
 
-No security vulnerabilities or crash/data-loss-grade defects were found — the process is
-always spawned with an argv array (never a shell string), so no command injection is
-possible from configured option values, and the new "explicit output location required"
-guard does block a compile before any bbjcpl invocation in the tested cases. However,
-several correctness/robustness gaps weaken the guarantees the code's own comments claim,
-and there is a small amount of duplicated recognition logic and stale documentation. None
-of the findings below are exercised by the existing test suite, which is why they survived
-this far.
+81-06's core fix is correct and well-covered: `Number.MAX_SAFE_INTEGER` is gone from both
+`character:` emitting sites, `END_OF_LINE_CHARACTER` (2147483647) is now the single shared
+sentinel, the TypeScript source guard (`lsp-position.test.ts`) will catch a future
+`character:` literal regression, and `CompileResultJsonBoundaryTest` proves the fix against
+LSP4J's own `MessageJsonHandler`/Gson, including a pinned negative control for the old value.
+No security vulnerabilities or crash/data-loss-grade defects were found in this pass either —
+bbjcpl is still always spawned with an argv array (never a shell string), and the new
+"explicit output location required" guard still blocks a compile before any bbjcpl invocation.
+
+However, the fix is asymmetric: it bounds `character` but not `line`, and the new source
+guard is explicitly scoped to `character:` literals only, so nothing in the test suite would
+catch a `line` value doing the same thing `character` used to do (WR-05). The four warnings
+and four info items carried over from the previous review's 38-file scope
+(`bbj-ws-manager.ts`, `compiler-options.ts`, `compile-command.ts`,
+`BbjCompileAction.java`/`CompileResultPresenter.java`, `RemToggleSeam.java` /
+`BbjStringCommentScanner.java`) are unchanged — none of those files were touched by 81-06 —
+and are restated below for a self-contained report. Two further findings are new to this
+pass, found while reading the newly-in-scope lexer seam and CPL service files at this depth:
+`BbjStringCommentScanner` over-extends a `rem` comment past what the grammar terminal it
+claims to mirror actually matches (WR-06), and `BBjCPLService`'s two compile methods
+duplicate the same ~60-line spawn/timeout/stdout/stderr wiring (IN-05).
 
 ## Warnings
 
@@ -93,7 +110,12 @@ bearing object in the same server process as a VS Code push (per the source-guar
 own account of the wiring). The implementation itself does not enforce the invariant the
 comment claims, so a later change to either client's config-push wiring (or a test/refactor
 that calls `setCompilerConfig` with a partial `output` object) would silently regress
-`bbj/compile`'s output-directory seeding with no error and no test to catch it.
+`bbj/compile`'s output-directory seeding with no error and no test to catch it. Confirmed by
+direct trace: `setCompilerConfig({output:{directory:'/tmp/out'}})` followed by
+`setCompilerConfig({output:{validateOnly:true}})` leaves `getCompilerConfig().output.directory`
+`undefined` — no test in `compile-request.test.ts` exercises two consecutive calls where the
+second carries a (different) `output` sub-key, only the top-level-disjoint-key case
+(`{trigger:'off'}`).
 **Fix:**
 ```ts
 public setCompilerConfig(config: Record<string, unknown> | undefined): void {
@@ -181,6 +203,66 @@ isBbjFile = ext != null && switch (ext.toLowerCase(Locale.ROOT)) {
 };
 ```
 
+### WR-05 (new): The `character` bound from 81-06 has no `line` counterpart, on either emitting site
+
+**File:** `bbj-vscode/src/language/bbj-cpl-parser.ts:43` and `bbj-vscode/src/language/bbj-document-validator.ts:218-231`
+**Issue:** 81-06's own `must_haves.truths` states: "Every LSP `Position` the language server
+emits... carries a `line` and a `character` that are non-negative integers no greater than
+2147483647." The fix delivers this for `character` (now `END_OF_LINE_CHARACTER`,
+imported at both sites) but not for `line`. In `bbj-cpl-parser.ts`,
+`physicalLine = Math.max(0, parseInt(match[1], 10) - 1)` clamps only the lower bound (the
+pre-existing P61-D2-009 zero-clamp); `parseInt` on the regex's unbounded `\d+` capture can
+produce any positive integer, and that value becomes `range.start.line`/`range.end.line`
+directly, un-clamped on the high end. The same pattern repeats in
+`extractCyclicReferenceRelatedInfo`: `line = parsedLine - 1` (from `parseInt` on a
+`[in path:line]` message fragment), again `Math.max(0, line)`-clamped low but not high. This
+is exactly the class of defect 81-06 exists to close (T-81-24: "a `bbj/compile` response
+carrying a position a JVM client cannot represent") — a `range.start.line`/`range.end.line`
+above `2147483647` would fail to deserialize into `org.eclipse.lsp4j.Position`'s `int` field
+the same way the old `character` value did. The new source guard in `lsp-position.test.ts`
+is explicitly and deliberately scoped to `character:` properties only ("an unrelated future
+use of the large global elsewhere in the language server does not trip it" —
+by the same construction it also does not watch `line:`), so nothing in the suite would catch
+this. Practical risk is low — `physicalLine` reflects bbjcpl's own count of physical lines in
+the compiled file, not attacker-controlled input, so reaching 2^31 requires an implausibly
+large source file — but the fix as shipped does not fully satisfy its own stated invariant,
+and the gap is cheap to close for defense-in-depth/symmetry with the `character` fix.
+**Fix:** Clamp the high end the same way the low end already is, e.g. add a
+`clampUinteger(n: number): number` helper to `lsp-position.ts`
+(`Math.min(Math.max(0, n), LSP_MAX_UINTEGER)`) and use it for `physicalLine` in
+`bbj-cpl-parser.ts` and for `line` in `bbj-document-validator.ts`'s
+`extractCyclicReferenceRelatedInfo`.
+
+### WR-06 (new): `BbjStringCommentScanner` over-extends a `rem` comment past what the grammar terminal it claims to mirror actually matches
+
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/lexer/BbjStringCommentScanner.java:63-94` (`isCommentStart`/`scanComment`), grammar terminal at `bbj-vscode/src/language/bbj.langium:923`
+**Issue:** The class doc claims to mirror `terminal COMMENT:
+/([rR][eE][mM])(?![\w!$%@])([ \t][^\n\r]*)?([\n\r]+)?/;` "verbatim." That terminal's
+`([ \t][^\n\r]*)?` group — the part that consumes the rest of the line — is itself
+conditioned on the very next character being a space or a tab; if `rem` is immediately
+followed by anything else that still passes the negative lookahead (e.g. `(`, `:`, `,`), the
+terminal matches only the 3-letter `rem` itself and nothing more, confirmed against the live
+regex: `/(...)/.exec("rem(x)")` → `"rem"` only, vs. `.exec("rem (x)")` → `"rem (x)"` (the
+whole line). `isCommentStart` correctly reuses the same negative-lookahead character set, but
+`scanComment` — called whenever `isCommentStart` is true, with no re-check of what the next
+character actually was — unconditionally scans to end of line regardless of whether that next
+character is whitespace. So for `rem(x)`, the Java scanner classifies the whole line as one
+COMMENT token (making `(`/`)` invisible to `BbjPairedBraceMatcher`), while the grammar it
+claims to mirror would treat `rem` as an (empty) comment and `(x)` as ordinary tokens.
+Practical impact is limited — the tests (`remOpensACommentThatRunsToTheEndOfTheLine` and
+`BbjStringCommentScannerTest` generally) only exercise the whitespace-after-`rem` case, and a
+well-formed BBj program is unlikely to contain `rem` immediately followed by punctuation with
+intent other than "comment" — but this is exactly the transient/in-progress-typing state (a
+user typing `rem(` mid-edit) that bracket-matching and auto-close need to behave reasonably
+through, and it is the same terminal `RemToggleSeam` in the same module additionally chose
+to require a literal space/tab/EOL for (a narrower, but here more grammar-accurate, rule than
+`BbjStringCommentScanner`'s).
+**Fix:** In `scanComment`, check whether the character at `start + 3` is a space or tab (or
+end of buffer/line) before scanning to end of line; when it is present but not whitespace,
+have `advance()` in `BbjWordLexer` treat the 3 letters as a (short) COMMENT token and resume
+normal tokenization from `start + 3`, matching the terminal's actual match length in that
+case.
+
 ## Info
 
 ### IN-01: Duplicated case-insensitive `r`/`e`/`m` matching between two classes
@@ -233,6 +315,38 @@ failure.
 **Fix:** HTML-escape `presentation.body` (e.g. via `StringUtil.escapeXmlEntities`) at the one
 call site that constructs the `Notification`, without changing `CompileResultPresenter`'s
 own "verbatim" contract.
+
+### IN-05 (new): `BBjCPLService.compile` and `.compileWithOptions` duplicate ~60 lines of spawn/timeout/stdout/stderr wiring
+
+**File:** `bbj-vscode/src/language/bbj-cpl-service.ts:103-221` (`compile`) and `:242-314` (`compileWithOptions`)
+**Issue:** Both methods independently: build the same three-variable closure
+(`stderr`/`stdout`/`proc`/`settled`), define an equivalent `settle()` guard, set up a
+`setTimeout` that kills the process and settles with an empty/failure result, wrap `spawn()`
+in an identical try/catch distinguishing `ENOENT` from other errors, and wire near-identical
+`stdout`/`stderr`/`close`/`error` handlers. The two genuinely differ only in the abort-on-resave
+`inFlight` bookkeeping, the argv (`['-N', filePath]` vs. `[...compilerArgs, filePath]`), and the
+return shape (`Diagnostic[]` vs. `CompileRun`). This is a maintainability/DRY concern, not a
+correctness bug — both copies are internally consistent — but a future change to timeout or
+error-classification behavior (a common source of past bugs in this area, per the extensive
+inline commentary on race-safety in both methods) has to be made twice and kept in sync by hand.
+**Fix:** Extract a shared `spawnBbjcpl(bbjcplBin, args, { timeoutMs, onSettle })`-style helper
+that both methods call, parameterizing only the argv, the `inFlight`/abort wiring, and the
+result-shaping step each needs.
+
+### IN-06 (new): Unchecked platform cast in `BbjSettingsComponent`
+
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java:100`
+**Issue:** `((JBTextField) compilerOutputDirectoryField.getTextField())` casts the result of
+`TextFieldWithBrowseButton.getTextField()` (declared to return `JTextField`) to the narrower
+`JBTextField`, purely to reach `.getEmptyText().setText(...)`. Every other
+`TextFieldWithBrowseButton` in this same class (`bbjHomeField`, `nodeJsField`) avoids this by
+never calling a `JBTextField`-only method on the result. This relies on the current IntelliJ
+Platform version's default `TextFieldWithBrowseButton` implementation happening to construct a
+`JBTextField`-based field internally; if a future platform version (or a different
+`TextFieldWithBrowseButton` constructor were used later) returns a plain `JTextField`, this
+line throws `ClassCastException` during settings-panel construction, breaking the whole BBj
+settings page. No test in the reviewed scope exercises `createComponent()` to catch this.
+**Fix:** Guard with `instanceof` (`if (getTextField() instanceof JBTextField jbf) jbf.getEmptyText().setText(...)`) or use `TextFieldWithBrowseButton`'s own placeholder-text API if one exists in this platform version, so a future platform change degrades gracefully instead of throwing.
 
 ---
 
