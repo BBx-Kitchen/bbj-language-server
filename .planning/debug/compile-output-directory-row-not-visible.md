@@ -67,3 +67,8 @@ root_cause: "Not conclusively identified. All 5 hint hypotheses (H1-H5) are elim
 fix: ""
 verification: ""
 files_changed: []
+
+
+## Resolution (2026-09-05T14:04:41Z)
+
+User re-tested: the row IS visible. Root cause was environmental, not code: IntelliJ auto-updated the BBj plugin from the Marketplace during the UAT session, replacing the locally installed build (same version string 0.1.0). Gap G-81-3 withdrawn. Follow-up idea captured in 81-UAT.md Deferred Follow-Ups: give interim/local builds a version that always sorts above Marketplace releases.
