@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * Renders a {@link ComposerNotices.Notice} as a balloon in the existing "BBj Language Server"
+ * Renders a {@link ComposerNotices.Notice} as a balloon in the existing BBj Language Server
  * notification group (#538) — information for {@code NOT_READY}, warning for
  * {@code STALE_DOCUMENT}, error for {@code REQUEST_FAILED} — and mirrors an error-severity notice
  * to the language-server console. The only IntelliJ-coupled file this plan adds: every decision
