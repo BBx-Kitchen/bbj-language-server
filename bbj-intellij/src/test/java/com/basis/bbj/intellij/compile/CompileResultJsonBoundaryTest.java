@@ -21,7 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * {@link MessageJsonHandler} and its Gson instance, not a bare {@code new Gson()}. This class
  * exists because the JVM client's {@code Position.character} is a primitive {@code int}, and a
  * language-server response carrying a larger number is rejected during message parsing, before
- * any handler ever runs.
+ * any handler ever runs. It also covers the render step, not just the parse: one test drives a
+ * parsed envelope all the way through {@link CompileResultPresenter#present} into balloon body
+ * text, the same two steps the background task performs.
  */
 class CompileResultJsonBoundaryTest {
 
@@ -116,5 +118,28 @@ class CompileResultJsonBoundaryTest {
 
         assertTrue(result.success);
         assertEquals(0, result.diagnostics.size());
+    }
+
+    /**
+     * The wire-to-balloon path, end to end: a real response envelope, parsed through the
+     * plugin's own deserializer, fed straight into {@link CompileResultPresenter#present}
+     * exactly as {@code BbjCompileAction} does. This is shape-agnostic — it passes whichever
+     * client-library generation the message accessor returns on, which is the executable form
+     * of the claim #571's live-IDE crash falsified.
+     */
+    @Test
+    void aParsedCompileErrorsResponseRendersAsLineColumnMessage() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{"success":false,"diagnostics":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":2147483647}},"severity":1,"source":"BBjCPL","message":"Syntax error: bad code"}],"reason":"compile-errors","file":"file:///tmp/fake.bbj"}}""";
+
+        CompileModels.CompileResult result = parse(envelope);
+
+        CompileResultPresenter.Presentation presentation = CompileResultPresenter.present(
+            "fake.bbj", result.success, result.reason, result.message, result.diagnostics);
+
+        assertTrue(presentation.error);
+        assertTrue(presentation.title.startsWith("Failed to compile \"fake.bbj\""),
+            "expected title to start with Failed to compile \"fake.bbj\", got: " + presentation.title);
+        assertEquals("3:1 Syntax error: bad code", presentation.body);
     }
 }
