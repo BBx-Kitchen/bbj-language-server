@@ -1,18 +1,14 @@
 ---
-status: diagnosed
+status: complete
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T17:55:24Z
+updated: 2026-09-05T18:40:00Z
 ---
 
 ## Current Test
 
-number: 6
-name: Compile-error balloon after the G-81-5 fix (PARITY-01, #571)
-expected: |
-  With the plugin rebuilt after 81-07, Tools > Compile BBj File on a .bbj file containing a syntax error (twice) shows an error balloon listing the compiler's errors as `line:col message`, with the same text in the language-server console; no NoSuchMethodError or MessageIssueException; the valid file still shows `Compiled "<file>"`.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -61,14 +57,16 @@ steps: Rebuild and install the plugin from this branch after gap-closure plan 81
 expected: Both syntax-error compiles show an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. No `NoSuchMethodError` and no `MessageIssueException` appears in idea.log or the IDE fatal-error notifier. The valid file still shows `Compiled "<file>"`.
 why_human: The fix makes the message read tolerant of both lsp4j generations and is pinned by plain-JUnit tests on both shapes, but the only place the real runtime LSP4IJ (and its bundled lsp4j) is exercised is a live IDE, which the test module excludes.
 coverage_id: 81-07 D1
-result: [pending]
+result: pass
+note: "User confirmed: the message now correctly shows `16:1 Syntax error: xdd`. Closes G-81-5 live re-check."
 
 ## Summary
 
 total: 6
-passed: 3
+passed: 4
 issues: 2
-pending: 1
+issues_resolved: 2
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -121,7 +119,9 @@ blocked: 0
 - gap_id: G-81-5
   status_note: "ROOT CAUSE CONFIRMED 2026-09-05: user reports the IDE has LSP4IJ 0.21.0 installed (Settings > Plugins), which bundles lsp4j 1.0.0 (Either<String, MarkupContent> getMessage()) while the plugin is built against LSP4IJ 0.19.0 / lsp4j 0.21.1. Fix plan 81-07 executed 2026-09-05 (commits 7537fce5..f17c92ea; LSP4IJ pin raised to 0.21.0, module green at 326 tests, buildPlugin archive produced); live re-check is test 6."
   truth: "With the rebuilt plugin, Compile BBj File on a file with a syntax error shows an error balloon listing the compiler's errors as line:col message (same text in the language-server console); the valid file still shows Compiled \"<file>\""
-  status: failed
+  status: resolved
+  resolved_by: 81-07-PLAN.md
+  resolved_at: 2026-09-05
   reason: "User reported: First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
   severity: blocker
   test: 5
