@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -44,9 +45,12 @@ import javax.swing.event.DocumentListener;
  * Create flow only for now — inserts a fresh {@code addWindow(...)} statement.
  */
 public final class AddWindowComposerDialog extends DialogWrapper {
+    private final Project project;
     private final BbjComposerServer server;
     private final AddWindowCatalogs catalogs;
     private final AtomicInteger seq = new AtomicInteger();
+    private final ComposerFlow flow;
+    private final Consumer<ComposerNotices.Notice> balloonOnce;
 
     private final Map<Long, JBCheckBox> flagChecks = new LinkedHashMap<>();
     private final Map<Long, JBCheckBox> eventChecks = new LinkedHashMap<>();
@@ -86,12 +90,18 @@ public final class AddWindowComposerDialog extends DialogWrapper {
                                    @Nullable ComposerModels.AddWindowInitial initial, boolean editMode,
                                    long preservedFlagBits, long preservedEventBits) {
         super(project);
+        this.project = project;
         this.server = server;
         this.catalogs = catalogs;
         this.initial = initial;
         this.editMode = editMode;
         this.preservedFlagBits = preservedFlagBits;
         this.preservedEventBits = preservedEventBits;
+        this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
+        this.flow = new ComposerFlow(
+                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
+                balloonOnce,
+                ComposerFlow.REFRESH_TIMEOUT_MILLIS);
         setTitle(editMode ? "Configure window flags" : "Compose addWindow");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
@@ -235,12 +245,28 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         input.preservedEventBits = preservedEventBits;
 
         int mySeq = seq.incrementAndGet();
-        server.addWindowPreview(new AddWindowPreviewParams(input)).thenAccept(preview ->
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (mySeq == seq.get() && preview != null) {
+        flow.observe(server.addWindowPreview(new AddWindowPreviewParams(input)), ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                preview -> {
+                    if (mySeq == seq.get()) {
                         apply(preview);
                     }
-                }, ModalityState.any()));
+                },
+                throwable -> {
+                    if (mySeq == seq.get()) {
+                        previewUnavailable(ComposerNotices.shortReason(throwable));
+                        balloonOnce.accept(ComposerNotices.requestFailed("addWindow", ComposerNotices.detailOf(throwable)));
+                    }
+                });
+    }
+
+    /**
+     * A refresh request failed (or completed with no preview) while this dialog's sequence is still
+     * current: label the flags summary stale and refuse OK so it can never be accepted (#538).
+     * Cleared the next time {@link #apply(AddWindowPreview)} runs after a successful preview.
+     */
+    private void previewUnavailable(String reason) {
+        flagsSummary.setText("Preview unavailable — " + reason);
+        setOKActionEnabled(false);
     }
 
     private void apply(AddWindowPreview p) {
@@ -251,6 +277,7 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         flagsSummary.setText("flags = " + p.flagsHex + "   ·   " + p.flagsSummary);
         eventSummary.setText("event_mask = " + (p.eventHex == null ? "(unset)" : p.eventHex) + "   ·   " + p.eventSummary);
         schematic.setRender(p.render);
+        setOKActionEnabled(true);
     }
 
     /** Prefill flag/event selections and title from a decoded call (edit-in-place). */
