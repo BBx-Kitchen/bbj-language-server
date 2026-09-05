@@ -81,7 +81,7 @@ class ComposerFlowTest {
         CompletableFuture<ComposerCatalogs> catalogs = CompletableFuture.completedFuture(new ComposerCatalogs());
         CompletableFuture<MsgboxDecodeResult> msgboxDecode = CompletableFuture.completedFuture(new MsgboxDecodeResult());
 
-        /** Non-zero only for the WR-01 stacking regression test: delays the stage's own future
+        /** Non-zero only for the timeout-stacking regression test: delays the stage's own future
          * starting from the moment the stage is actually invoked (lazily), not from test setup, so
          * sequential per-stage delays genuinely stack in real elapsed time the way slow (not hung)
          * server round-trips would. */
@@ -322,7 +322,7 @@ class ComposerFlowTest {
 
     @Test
     void threeMerelySlowStagesShareOneDeadlineRatherThanEachGettingTheFullWait() throws Exception {
-        // WR-01: each stage's delay starts only once the stage is actually invoked, so a 40ms delay
+        // Each stage's delay starts only once the stage is actually invoked, so a 40ms delay
         // on the server future, then a 40ms delay on composerCatalogs(), then a 40ms delay on
         // msgboxDecodeCall(), stack in real elapsed time to roughly 120ms -- comfortably past a
         // single 60ms bound. Before this fix, each stage got its own full 60ms timeout, so none of

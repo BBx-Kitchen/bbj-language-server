@@ -123,7 +123,7 @@ class ComposerDialogRefreshSourceGuardTest {
     }
 
     /**
-     * CR-01: a premature OK click landing before the constructor's own first preview round-trip
+     * A premature OK click landing before the constructor's own first preview round-trip
      * resolves must never be acceptable -- otherwise the field defaults (empty flagsHex / null
      * eventHex) get written into the document. Each dialog constructor must call
      * {@code setOKActionEnabled(false)} before its own initial {@code refresh()} call, in addition
@@ -206,7 +206,7 @@ class ComposerDialogRefreshSourceGuardTest {
     }
 
     /**
-     * WR-02: every dialog constructor wires {@code project} straight into
+     * Every dialog constructor wires {@code project} straight into
      * {@link ComposerNoticeRenderer#render}'s {@code @NotNull Project} parameter (via
      * {@code balloonOnce}), so the constructor's own {@code project} parameter must carry a matching
      * {@code @NotNull}, never {@code @Nullable} -- a mismatched {@code @Nullable} would let a future

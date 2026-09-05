@@ -179,7 +179,7 @@ class ComposerApplyGuardSourceGuardTest {
         assertTrue(countOccurrences(text, "runWriteCommand(") >= 1,
                 "the guard must dispatch its write through the injected write gate");
 
-        // WR-03: the FIRST occurrence of "runWriteCommand(" is the WriteGate interface's own method
+        // The FIRST occurrence of "runWriteCommand(" is the WriteGate interface's own method
         // declaration near the top of the file (`void runWriteCommand(Runnable body);`), not the
         // actual call site further down (`write.runWriteCommand(() -> {...})`). Anchoring on the
         // interface declaration made this assertion nearly vacuous -- almost any placement of the
