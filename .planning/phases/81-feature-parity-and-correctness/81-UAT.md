@@ -3,12 +3,16 @@ status: diagnosed
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T17:08:44Z
+updated: 2026-09-05T17:23:50Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 6
+name: Compile-error balloon after the G-81-5 fix (PARITY-01, #571)
+expected: |
+  With the plugin rebuilt after 81-07, Tools > Compile BBj File on a .bbj file containing a syntax error (twice) shows an error balloon listing the compiler's errors as `line:col message`, with the same text in the language-server console; no NoSuchMethodError or MessageIssueException; the valid file still shows `Compiled "<file>"`.
+awaiting: fix execution (81-07), then user response
 
 ## Tests
 
@@ -52,12 +56,19 @@ result: issue
 reported: "First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
 severity: blocker
 
+### 6. Compile-error balloon after the G-81-5 fix (PARITY-01, #571)
+steps: Rebuild and install the plugin from this branch after gap-closure plan 81-07 has executed (bbj-vscode `npm run build`, then bbj-intellij `./gradlew buildPlugin`; install the zip from disk and confirm the installed BBj build is the local one, not a Marketplace auto-update; note which LSP4IJ version the IDE has installed under Settings > Plugins). With a BBj home and a compile output directory configured, invoke Tools > Compile BBj File on a `.bbj` file that contains a syntax error, then a second time on the same file, then on a valid file.
+expected: Both syntax-error compiles show an error balloon whose body lists the compiler's errors as `line:col message`, with the same text in the language-server console. No `NoSuchMethodError` and no `MessageIssueException` appears in idea.log or the IDE fatal-error notifier. The valid file still shows `Compiled "<file>"`.
+why_human: The fix makes the message read tolerant of both lsp4j generations and is pinned by plain-JUnit tests on both shapes, but the only place the real runtime LSP4IJ (and its bundled lsp4j) is exercised is a live IDE, which the test module excludes.
+coverage_id: 81-07 D1
+result: [pending]
+
 ## Summary
 
-total: 5
+total: 6
 passed: 3
 issues: 2
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
