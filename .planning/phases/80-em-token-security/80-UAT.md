@@ -1,14 +1,14 @@
 ---
-status: partial
+status: complete
 phase: 80-em-token-security
 source: [80-VERIFICATION.md]
 started: 2026-09-04T16:27:35Z
-updated: 2026-09-04T21:45:00Z
+updated: 2026-09-05T07:08:36Z
 ---
 
 ## Current Test
 
-[testing paused — 1 item outstanding: test 1 blocked (no Windows host available)]
+[testing complete]
 
 ## Tests
 
@@ -17,9 +17,9 @@ steps: On a Windows host with the plugin installed, trigger Tools > Login to Ent
 expected: Exactly one ACE granting the logged-in account; no ACE for BUILTIN\Users, Everyone, or NT AUTHORITY\Authenticated Users; no (I) inherited entry. Login/validation still completes (write-through proof).
 why_human: CI is ubuntu-latest only and the verification host has a POSIX filesystem, so the acl branch of createOwnerOnlyFile is never executed by any automated test; it is proven by OwnerOnlyAclTest, the strategy test in BbjProcessSecretEnvTest, and BbjSecretArgvSourceGuardTest.
 coverage_id: 80-02 D-10d
-result: blocked
-blocked_by: physical-device
-reason: "we need to defer this test - no Windows machine available at this moment"
+result: issue
+reported: "BBj can't create the tmp file in the first place: !ERROR=18 ([C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp] User not allowed: C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp) at [49] open(ch,mode=\"O_CREATE,O_TRUNC\")outputFile! in C:\Users\beff\AppData\Roaming\JetBrains\IntelliJIdea2026.2\plugins\bbj-intellij\lib\tools\em-login.bbj"
+severity: blocker
 
 ### 2. Live KeePass balloon, exactly once (TOKEN-03, #552)
 steps: In a sandbox IDE, set Settings > Appearance & Behavior > System Settings > Passwords to "In KeePass", then Tools > Login to Enterprise Manager. Log in again and run a BUI or DWC file.
@@ -60,9 +60,30 @@ result: pass
 
 total: 6
 passed: 5
-issues: 0
+issues: 1
 pending: 0
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
+
+- gap_id: G-80-1
+  truth: "On Windows, em-login.bbj writes through to the owner-only temp file (bbj-em-login-*.tmp) created by BbjProcessSecretEnv.createOwnerOnlyFile: the file carries exactly one ACE for the logged-in account and login/validation completes."
+  status: failed
+  reason: "User reported: BBj can't create the tmp file in the first place: !ERROR=18 ([C:\Users\beff\AppData\Local\Temp\bbj-em-login-8853933440741698129.tmp] User not allowed) at line 49 open(ch,mode=\"O_CREATE,O_TRUNC\")outputFile! in em-login.bbj (IntelliJ 2026.2 plugin, Windows host)"
+  severity: blocker
+  test: 1
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
+
+## Observations
+
+<!-- Side notes reported during UAT; not phase-80 gaps, captured for follow-up -->
+- observed_during: test 1
+  note: "An old IntelliJ 2015 installation accepted the plugin but it did not run correctly; consider trimming the supported IntelliJ version range (since-build)."
+  reported_at: 2026-09-05
+- observed_during: test 1
+  note: "Auto-installation of Node.js did not work on the Windows test machine; user had to install Node manually and configure the node.exe home. This had been working before (possible regression)."
+  reported_at: 2026-09-05
