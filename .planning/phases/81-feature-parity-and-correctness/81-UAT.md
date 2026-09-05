@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 81-feature-parity-and-correctness
 source: [81-VERIFICATION.md]
 started: 2026-09-05T13:05:00Z
-updated: 2026-09-05T17:01:36Z
+updated: 2026-09-05T17:08:44Z
 ---
 
 ## Current Test
@@ -113,10 +113,21 @@ blocked: 0
   reason: "User reported: First compile with syntax error produced: java.lang.NoSuchMethodError: 'java.lang.String org.eclipse.lsp4j.Diagnostic.getMessage()' at com.basis.bbj.intellij.compile.CompileResultPresenter.renderOne(CompileResultPresenter.java:156) <- renderDiagnostics(CompileResultPresenter.java:143) <- present(CompileResultPresenter.java:83) <- BbjCompileAction$1.run(BbjCompileAction.java:108) (inside ProgressManager task). Subsequent compiles with syntax error remained silent (no balloon at all)."
   severity: blocker
   test: 5
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "Compile-time vs runtime lsp4j API skew. bbj-intellij compiles and tests only against the lsp4j that LSP4IJ 0.19.0 vendors (org.eclipse.lsp4j-0.21.1.jar, where Diagnostic.getMessage() returns String, confirmed by javap). plugin.xml's <depends>com.redhat.devtools.lsp4ij</depends> carries no version pin, so the live IDE resolves/auto-updates LSP4IJ independently; LSP4IJ builds bundling lsp4j >= 0.24.0 changed Diagnostic.getMessage() to return Either<String, MarkupContent> (LSP 3.18 message: string | MarkupContent). Return type is part of the JVM method descriptor, so CompileResultPresenter.renderOne's call site becomes unresolvable the first time a diagnostic is rendered. The success path sends diagnostics: [] and never touches Diagnostic, which is why valid-file compiles work. Tests pass because they share the pinned 0.19.0 classpath. 'Subsequent compiles silent' is explained by the Error being thrown while evaluating present(...) before render()/any notification runs, plus IntelliJ deduplicating repeated identical background-task errors; not independently confirmed against idea.log."
+  artifacts:
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/compile/CompileResultPresenter.java"
+      issue: "lines 149-157 (renderOne): diagnostic.getMessage() assumes the String-returning signature that only holds for lsp4j < 0.24.0; the only two getMessage() call sites in bbj-intellij/src/main/java (152, 156) match the stack trace"
+    - path: "bbj-intellij/src/main/resources/META-INF/plugin.xml"
+      issue: "line 8: unpinned <depends>com.redhat.devtools.lsp4ij</depends> lets the runtime LSP4IJ (and its bundled lsp4j) diverge from the Gradle-time 0.19.0 pin"
+    - path: "bbj-intellij/build.gradle.kts"
+      issue: "line 30: plugin(\"com.redhat.devtools.lsp4ij:0.19.0\") is the only place lsp4j's version is fixed and affects only the build/test classpath"
+    - path: "bbj-intellij/src/test/java/com/basis/bbj/intellij/compile/CompileResultPresenterTest.java"
+      issue: "shares the pinned classpath, so structurally blind to the runtime skew (12/12 green alongside the live crash)"
+  missing:
+    - "Version-tolerant diagnostic message access in CompileResultPresenter: a helper that yields the message text whether Diagnostic.getMessage() returns String or Either<String, MarkupContent> (reflective lookup of the accessor, or an LSP4IJ-provided accessor), with a graceful fallback when neither shape resolves"
+    - "A test that pins the tolerant behaviour against both return shapes (e.g. a reflection-based fixture or a second lsp4j jar), since the existing suite runs only against the 0.19.0-vendored lsp4j"
+    - "Optionally: align the Gradle-time LSP4IJ pin with what current Marketplace LSP4IJ ships (and/or a since-build/version constraint in plugin.xml) so the build fails fast on drift instead of the live IDE"
+  debug_session: ".planning/debug/compile-diagnostic-getmessage-nosuchmethoderror.md"
 
 ## Deferred Follow-Ups
 
