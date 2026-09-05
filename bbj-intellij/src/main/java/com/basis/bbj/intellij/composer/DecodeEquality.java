@@ -1,9 +1,14 @@
 package com.basis.bbj.intellij.composer;
 
+import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 /**
@@ -63,5 +68,54 @@ public final class DecodeEquality {
                 && Objects.equals(a.trailingArgs, b.trailingArgs)
                 && Objects.equals(a.editMode, b.editMode)
                 && Objects.equals(a.useConstants, b.useConstants);
+    }
+
+    /**
+     * True when both are null, false when exactly one is null, and otherwise a field-wise
+     * comparison of {@code found}, the {@code edit} payload and the {@code initial} payload,
+     * delegating to the private helpers shared with {@link #sameAddChildWindow}, since both decode
+     * results carry the same edit and initial shapes.
+     */
+    public static boolean sameAddWindow(AddWindowDecodeResult a, AddWindowDecodeResult b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.found == b.found && sameWindowEdit(a.edit, b.edit) && sameWindowInitial(a.initial, b.initial);
+    }
+
+    /**
+     * True when both are null, false when exactly one is null, and otherwise the same field-wise
+     * comparison {@link #sameAddWindow} performs -- {@code AddChildWindowDecodeResult} reuses
+     * {@link AddWindowEdit} and {@link AddWindowInitial} for its {@code edit}/{@code initial} shapes.
+     */
+    public static boolean sameAddChildWindow(AddChildWindowDecodeResult a, AddChildWindowDecodeResult b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.found == b.found && sameWindowEdit(a.edit, b.edit) && sameWindowInitial(a.initial, b.initial);
+    }
+
+    private static boolean sameWindowEdit(AddWindowEdit a, AddWindowEdit b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        // int[] ranges are compared element-wise with Arrays.equals -- reference equality would be
+        // wrong, since a fresh decode never returns the same array instance as the captured one.
+        return Arrays.equals(a.flagsRange, b.flagsRange)
+                && Objects.equals(a.flagsInsertOffset, b.flagsInsertOffset)
+                && Arrays.equals(a.eventMaskRange, b.eventMaskRange)
+                && Objects.equals(a.eventMaskInsertOffset, b.eventMaskInsertOffset)
+                && a.preservedFlagBits == b.preservedFlagBits
+                && a.preservedEventBits == b.preservedEventBits;
+    }
+
+    private static boolean sameWindowInitial(AddWindowInitial a, AddWindowInitial b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return Objects.equals(a.flags, b.flags)
+                && a.eventMaskEnabled == b.eventMaskEnabled
+                && Objects.equals(a.eventMask, b.eventMask)
+                && Objects.equals(a.title, b.title);
     }
 }
