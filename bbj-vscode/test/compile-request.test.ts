@@ -171,6 +171,37 @@ describe('bbj/compile request handler', () => {
         expect(result.diagnostics[0].source).toBe('BBjCPL');
     }, 10000);
 
+    test('everyPositionInACompileErrorsResultFitsAJavaInt', async () => {
+        if (process.platform === 'win32') return;
+        const tmpDir = makeTmpDir();
+        const handler = createCompileHandler({
+            cplService: createCplService(FIXTURE_PARSE_HOME),
+            wsManager: withCompilerConfig({ output: { directory: tmpDir } }),
+        });
+
+        const result = await handler({ uri: 'file:///tmp/fake.bbj' });
+        // Round-trip through JSON so the assertion runs on the wire shape, not the
+        // in-memory object — this is what an LSP4J-based JVM client actually receives.
+        const wireResult = JSON.parse(JSON.stringify(result));
+
+        expect(wireResult.reason).toBe('compile-errors');
+        expect(wireResult.diagnostics.length).toBeGreaterThan(0);
+        for (const diagnostic of wireResult.diagnostics) {
+            for (const value of [
+                diagnostic.range.start.line,
+                diagnostic.range.start.character,
+                diagnostic.range.end.line,
+                diagnostic.range.end.character,
+            ]) {
+                expect(Number.isInteger(value)).toBe(true);
+                expect(value).toBeGreaterThanOrEqual(0);
+                // 2147483647 is the LSP uinteger maximum, and the largest value a JVM
+                // client's int-typed org.eclipse.lsp4j.Position field can hold.
+                expect(value).toBeLessThanOrEqual(2147483647);
+            }
+        }
+    }, 10000);
+
     test('anUnconfiguredBbjHomeIsRefusedWithItsOwnReason', async () => {
         const handler = createCompileHandler({
             cplService: createCplService(''),

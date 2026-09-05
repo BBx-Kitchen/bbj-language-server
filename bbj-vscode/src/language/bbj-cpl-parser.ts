@@ -1,4 +1,5 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
+import { END_OF_LINE_CHARACTER } from './lsp-position.js';
 
 /**
  * Matches a bbjcpl error line.
@@ -44,7 +45,7 @@ export function parseBbjcplOutput(stderr: string): Diagnostic[] {
 
         const range: Range = {
             start: { line: physicalLine, character: 0 },
-            end:   { line: physicalLine, character: Number.MAX_SAFE_INTEGER },
+            end:   { line: physicalLine, character: END_OF_LINE_CHARACTER },
         };
 
         // Use the source snippet from bbjcpl output if available, otherwise

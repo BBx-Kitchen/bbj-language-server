@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll } from 'vitest';
 import { parseBbjcplOutput } from '../src/language/bbj-cpl-parser.js';
+import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
 import { DiagnosticSeverity } from 'vscode-languageserver';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -30,14 +31,14 @@ describe('parseBbjcplOutput', () => {
         expect(first.source).toBe('BBjCPL');
         expect(first.range.start.line).toBe(2);
         expect(first.range.start.character).toBe(0);
-        expect(first.range.end.character).toBe(Number.MAX_SAFE_INTEGER);
+        expect(first.range.end.character).toBe(END_OF_LINE_CHARACTER);
 
         // Line 5 (physical) -> 0-based line 4
         expect(second.severity).toBe(DiagnosticSeverity.Error);
         expect(second.source).toBe('BBjCPL');
         expect(second.range.start.line).toBe(4);
         expect(second.range.start.character).toBe(0);
-        expect(second.range.end.character).toBe(Number.MAX_SAFE_INTEGER);
+        expect(second.range.end.character).toBe(END_OF_LINE_CHARACTER);
     });
 
     test('multiple-errors fixture produces 4 diagnostics with correct independent line numbers', () => {
@@ -107,14 +108,14 @@ describe('parseBbjcplOutput', () => {
         expect(diagnostics[0].range.start.line).toBe(33);
     });
 
-    test('each diagnostic has range covering full line (character 0 to MAX_SAFE_INTEGER)', () => {
+    test('each diagnostic has range covering full line (character 0 to the end-of-line sentinel)', () => {
         const input = '/some/file.bbj: error at line 10 (1):     bad code here';
         const diagnostics = parseBbjcplOutput(input);
         expect(diagnostics).toHaveLength(1);
         expect(diagnostics[0].range.start.line).toBe(0);
         expect(diagnostics[0].range.start.character).toBe(0);
         expect(diagnostics[0].range.end.line).toBe(0);
-        expect(diagnostics[0].range.end.character).toBe(Number.MAX_SAFE_INTEGER);
+        expect(diagnostics[0].range.end.character).toBe(END_OF_LINE_CHARACTER);
     });
 
     test('all diagnostics have Error severity and BBj Compiler source', () => {
