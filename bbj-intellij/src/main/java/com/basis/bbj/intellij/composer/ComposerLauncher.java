@@ -220,6 +220,12 @@ public final class ComposerLauncher {
                                          String kindLabel, D capturedDecode,
                                          BiFunction<String, Integer, CompletableFuture<D>> reDecode,
                                          BiPredicate<D, D> sameDecode, Kind kind) {
+        // Defense in depth for #538: OK is disabled until the dialog's first preview resolves, so
+        // flagsHex should never still be empty here -- but if it somehow were, writing it would
+        // corrupt the statement's flags literal. Mirrors openMsgbox's own empty-statement guard.
+        if (flagsHex == null || flagsHex.isEmpty()) {
+            return;
+        }
         StaleEditGuard guard = new StaleEditGuard(
                 documentViewOf(editor),
                 body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),

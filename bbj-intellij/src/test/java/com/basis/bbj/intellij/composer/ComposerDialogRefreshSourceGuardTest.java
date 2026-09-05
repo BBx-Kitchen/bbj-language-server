@@ -114,13 +114,38 @@ class ComposerDialogRefreshSourceGuardTest {
     }
 
     @Test
-    void eachDialogLabelsAFailureAndDisablesOkExactlyOnce() {
+    void eachDialogLabelsAFailureOnAFailedPreviewExactlyOnce() {
         for (Path source : DIALOG_SOURCES) {
             String text = readSource(source);
             assertEquals(1, countOccurrences(text, "Preview unavailable — "),
                     source.getFileName() + " must show the \"Preview unavailable\" label exactly once");
-            assertEquals(1, countOccurrences(text, "setOKActionEnabled(false)"),
-                    source.getFileName() + " must disable OK exactly once on a failed or empty preview");
+        }
+    }
+
+    /**
+     * CR-01: a premature OK click landing before the constructor's own first preview round-trip
+     * resolves must never be acceptable -- otherwise the field defaults (empty flagsHex / null
+     * eventHex) get written into the document. Each dialog constructor must call
+     * {@code setOKActionEnabled(false)} before its own initial {@code refresh()} call, in addition
+     * to the existing failure-path disable (on a later failed or empty preview), so this asserts
+     * both occurrences exist and that the first one is positioned ahead of the first literal
+     * {@code refresh();} call site in the file (the constructor's own initial refresh -- later
+     * {@code refresh();} call sites belong to input listeners).
+     */
+    @Test
+    void eachDialogDisablesOkBeforeItsFirstPreviewRoundTripAndOnAnyLaterFailure() {
+        for (Path source : DIALOG_SOURCES) {
+            String text = readSource(source);
+            assertEquals(2, countOccurrences(text, "setOKActionEnabled(false)"),
+                    source.getFileName() + " must disable OK twice: once up front before the "
+                            + "constructor's first preview round-trip, once on a later failed preview");
+
+            int firstDisable = text.indexOf("setOKActionEnabled(false)");
+            int firstRefreshCall = text.indexOf("refresh();");
+            assertTrue(firstDisable >= 0 && firstRefreshCall >= 0 && firstDisable < firstRefreshCall,
+                    source.getFileName() + " must disable OK before the constructor's own first "
+                            + "refresh() call -- otherwise OK is clickable during the async window "
+                            + "before any preview has ever resolved");
         }
     }
 
@@ -178,6 +203,27 @@ class ComposerDialogRefreshSourceGuardTest {
                 "ComposerFlow must declare REFRESH_TIMEOUT_MILLIS");
         assertEquals(1, countOccurrences(readSource(FLOW_SOURCE), "compareAndSet(false, true)"),
                 "the one-shot notifier's check-and-set must be atomic");
+    }
+
+    /**
+     * WR-02: every dialog constructor wires {@code project} straight into
+     * {@link ComposerNoticeRenderer#render}'s {@code @NotNull Project} parameter (via
+     * {@code balloonOnce}), so the constructor's own {@code project} parameter must carry a matching
+     * {@code @NotNull}, never {@code @Nullable} -- a mismatched {@code @Nullable} would let a future
+     * null-project construction throw inside the notifier instead of failing at the call site.
+     */
+    @Test
+    void eachDialogConstructorRequiresANonNullProjectMatchingTheRendererContract() {
+        for (Path source : DIALOG_SOURCES) {
+            String text = readSource(source);
+            assertEquals(0, countOccurrences(text, "@Nullable Project project"),
+                    source.getFileName() + " must never declare its project parameter @Nullable -- "
+                            + "every constructor wires it straight into ComposerNoticeRenderer.render's "
+                            + "@NotNull Project parameter");
+            assertTrue(countOccurrences(text, "@NotNull Project project") >= 1,
+                    source.getFileName() + " must declare its project parameter @NotNull, matching "
+                            + "ComposerNoticeRenderer.render's contract");
+        }
     }
 
     @Test

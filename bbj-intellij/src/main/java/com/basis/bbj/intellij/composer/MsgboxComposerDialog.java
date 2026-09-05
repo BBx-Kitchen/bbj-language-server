@@ -77,7 +77,7 @@ public final class MsgboxComposerDialog extends DialogWrapper {
 
     private volatile String statement = "";
 
-    public MsgboxComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
+    public MsgboxComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
                                @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs) {
         super(project);
         this.project = project;
@@ -94,6 +94,10 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         setTitle(editMode ? "Configure MSGBOX" : "Compose MSGBOX");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
+        // Disable OK until the first preview round-trip resolves (#538): otherwise a fast/keyboard
+        // accept landing before any preview arrives would keep OK enabled while apply() has never
+        // run. Re-enabled by apply() on a successful preview.
+        setOKActionEnabled(false);
         if (initial != null) {
             prefill(initial);
         }

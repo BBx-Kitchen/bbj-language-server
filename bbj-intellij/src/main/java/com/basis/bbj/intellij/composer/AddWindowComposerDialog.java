@@ -81,12 +81,12 @@ public final class AddWindowComposerDialog extends DialogWrapper {
     private volatile String eventHex;
 
     /** Create flow. */
-    public AddWindowComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs) {
+    public AddWindowComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs) {
         this(project, server, catalogs, null, false, 0L, 0L);
     }
 
     /** Full constructor; pass a non-null {@code initial} for edit-in-place. */
-    public AddWindowComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs,
+    public AddWindowComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull AddWindowCatalogs catalogs,
                                    @Nullable ComposerModels.AddWindowInitial initial, boolean editMode,
                                    long preservedFlagBits, long preservedEventBits) {
         super(project);
@@ -105,6 +105,10 @@ public final class AddWindowComposerDialog extends DialogWrapper {
         setTitle(editMode ? "Configure window flags" : "Compose addWindow");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
+        // Disable OK until the first preview round-trip resolves (#538): otherwise a fast/keyboard
+        // accept landing before any preview arrives would write the field defaults (empty flagsHex,
+        // null eventHex) into the document. Re-enabled by apply() on a successful preview.
+        setOKActionEnabled(false);
         if (initial != null) {
             prefill(initial);
         } else {
