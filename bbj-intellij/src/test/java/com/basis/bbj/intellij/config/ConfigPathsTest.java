@@ -55,4 +55,93 @@ class ConfigPathsTest {
     void configPathArgReturnsTheDashCFlagConcatenatedWithThePathOtherwise() {
         assertEquals("-c/home/user/config.bbx", ConfigPaths.configPathArg("/home/user/config.bbx"));
     }
+
+    // ---- BbjConfigPathService's static helpers -----------------------------------------------
+    // BbjConfigPathService.getInstance()/activeConfigPath() need a live IntelliJ Application
+    // (BbjSettings.getInstance()), so the pure decisions it delegates to are asserted here
+    // directly against the package-visible static helpers instead -- the service itself is a
+    // thin platform-bound wrapper over them.
+
+    @Test
+    void resolveActivePathPrefersTheCachedPushedPathOverTheExplicitSetting() {
+        assertEquals("/pushed/config.bbx",
+            BbjConfigPathService.resolveActivePath("/pushed/config.bbx", "/explicit/config.bbx"));
+    }
+
+    @Test
+    void resolveActivePathFallsBackToTheExplicitSettingNormalizedVerbatimWhenNothingWasPushed() {
+        assertEquals("/explicit/config.bbx",
+            BbjConfigPathService.resolveActivePath(null, "  /explicit/config.bbx  "));
+        // The sentinel and blank/whitespace collapse identically to unset -- no BBj-home
+        // derivation happens here.
+        assertEquals("", BbjConfigPathService.resolveActivePath(null, ConfigPaths.EM_CONFIG_SENTINEL));
+    }
+
+    @Test
+    void resolveActivePathIsEmptyWithNoPushAndNoExplicitSetting() {
+        assertEquals("", BbjConfigPathService.resolveActivePath(null, null));
+        assertEquals("", BbjConfigPathService.resolveActivePath("", ""));
+    }
+
+    @Test
+    void resolveActivePathClearsBackToTheExplicitSettingWhenAPushedPathIsNull() {
+        // A second push whose path is null (e.g. the server lost track of the config path)
+        // clears back to the explicit-setting-only behavior instead of retaining a stale path.
+        assertEquals("/explicit/config.bbx",
+            BbjConfigPathService.resolveActivePath(null, "/explicit/config.bbx"));
+    }
+
+    @Test
+    void isConfigFileNameMatchesTheActiveConfigFile() {
+        assertTrue(BbjConfigPathService.isConfigFileName(
+            "/active/custom.bbj", "/active/custom.bbj", "custom.bbj"));
+        assertFalse(BbjConfigPathService.isConfigFileName(
+            "/active/custom.bbj", "/other/custom.bbj", "custom.bbj"));
+    }
+
+    @Test
+    void isConfigFileNameMatchesDefaultFilenamesInAnyLetterCaseEvenWhenNotActive() {
+        assertTrue(BbjConfigPathService.isConfigFileName("", "/anywhere/config.bbx", "config.bbx"));
+        assertTrue(BbjConfigPathService.isConfigFileName("", "/anywhere/Config.BBX", "Config.BBX"));
+        assertTrue(BbjConfigPathService.isConfigFileName("", "/anywhere/CONFIG.MIN", "CONFIG.MIN"));
+    }
+
+    @Test
+    void isConfigFileNameIsFalseForAnUnrelatedBbjFile() {
+        assertFalse(BbjConfigPathService.isConfigFileName("/active/config.bbx", "/other/program.bbj", "program.bbj"));
+    }
+
+    @Test
+    void isDefaultConfigFilenameIsCaseInsensitive() {
+        assertTrue(BbjConfigPathService.isDefaultConfigFilename("config.bbx"));
+        assertTrue(BbjConfigPathService.isDefaultConfigFilename("CONFIG.BBX"));
+        assertTrue(BbjConfigPathService.isDefaultConfigFilename("config.min"));
+        assertFalse(BbjConfigPathService.isDefaultConfigFilename("program.bbj"));
+        assertFalse(BbjConfigPathService.isDefaultConfigFilename(null));
+    }
+
+    @Test
+    void lastPushWinsWhenTheCacheIsUpdatedTwice() {
+        BbjConfigPathService service = new BbjConfigPathService();
+        ConfigModels.ResolvedConfigPathResult first = new ConfigModels.ResolvedConfigPathResult();
+        first.path = "/first/config.bbx";
+        ConfigModels.ResolvedConfigPathResult second = new ConfigModels.ResolvedConfigPathResult();
+        second.path = "/second/config.bbx";
+
+        service.update(first);
+        assertEquals("/first/config.bbx", service.getResolvedConfigPath().path);
+
+        service.update(second);
+        assertEquals("/second/config.bbx", service.getResolvedConfigPath().path,
+            "the last push must win over the first");
+    }
+
+    @Test
+    void shouldWarnOnceReturnsTrueOncePerDistinctPathAndFalseForRepeats() {
+        BbjConfigPathService service = new BbjConfigPathService();
+        assertTrue(service.shouldWarnOnce("/missing/config.bbx"));
+        assertFalse(service.shouldWarnOnce("/missing/config.bbx"));
+        assertTrue(service.shouldWarnOnce("/other/config.bbx"));
+        assertFalse(service.shouldWarnOnce("/other/config.bbx"));
+    }
 }

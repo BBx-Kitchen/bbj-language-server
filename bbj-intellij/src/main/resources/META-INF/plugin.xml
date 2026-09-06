@@ -175,6 +175,10 @@
         <applicationService
             serviceImplementation="com.basis.bbj.intellij.BbjSettings"/>
 
+        <!-- Application-level warm cache for the resolved config path (#485) -->
+        <applicationService
+            serviceImplementation="com.basis.bbj.intellij.config.BbjConfigPathService"/>
+
         <!-- Settings page under Languages & Frameworks > BBj -->
         <applicationConfigurable
             parentId="language"
