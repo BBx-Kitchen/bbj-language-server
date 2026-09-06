@@ -21,7 +21,7 @@ import { builtinEvents } from "./lib/events.js";
 import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
-import { resolveConfigPath, type ResolvedConfigPath } from "./config-path-resolver.js";
+import { resolveConfigPath, extractConsumedConfigContent, consumedConfigSnapshot, type ResolvedConfigPath } from "./config-path-resolver.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -31,6 +31,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
     private bbjdir = "";
     private classpathFromSettings = "";
     private configPath = "";
+    /**
+     * The config content the server actually consumes (the PREFIX line), normalized through
+     * `consumedConfigSnapshot`. Captured at the same instant `initializeWorkspace` reads the
+     * config file — in all three branches (successful read, failed read, no resolved path) —
+     * so the hot-reload relevance gate can never describe different bytes than what
+     * `initializeWorkspace` actually saw.
+     */
+    private consumedConfigSnapshotValue = '';
     /**
      * The effective `bbj.compiler.*` configuration, nested one level under `compiler`
      * (e.g. `{ output: { directory: '/tmp/out' } }`), consumed by `bbj/compile`'s
@@ -137,12 +145,15 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
                 if (resolvedConfig.path) {
                     try {
                         const configContents = await this.fileSystemProvider.readFile(safeUri(resolvedConfig.path));
-                        prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
+                        prefixfromconfig = extractConsumedConfigContent(configContents);
+                        this.consumedConfigSnapshotValue = consumedConfigSnapshot(configContents);
                         logger.info(`Loaded config.bbx from resolved path: ${resolvedConfig.path}`);
                     } catch (e) {
+                        this.consumedConfigSnapshotValue = consumedConfigSnapshot(null);
                         logger.warn(`Failed to load config.bbx from resolved path ${resolvedConfig.path}${resolvedConfig.problem ? ` (${resolvedConfig.problem})` : ''}: ${e}`);
                     }
                 } else {
+                    this.consumedConfigSnapshotValue = consumedConfigSnapshot(null);
                     logger.warn(`No config path resolved (source: ${resolvedConfig.source}). No prefixes loaded.`);
                 }
 
@@ -281,6 +292,17 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
      */
     public getResolvedConfigPath(): ResolvedConfigPath {
         return resolveConfigPath({ configPathSetting: this.configPath, bbjHome: this.bbjdir });
+    }
+
+    /**
+     * The snapshot the hot-reload relevance gate compares against: the normalized consumed
+     * config content (see `consumedConfigSnapshot`) captured at the instant `initializeWorkspace`
+     * last read the resolved config path. Set in all three read branches, so a file going
+     * missing after a successful earlier read is a detectable transition rather than a stale
+     * leftover value.
+     */
+    public getConsumedConfigSnapshot(): string {
+        return this.consumedConfigSnapshotValue;
     }
 
     /** The effective `bbj.compiler.*` configuration, nested one level under `compiler` (#571). */
