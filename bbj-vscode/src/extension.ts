@@ -904,12 +904,14 @@ export function activate(context: vscode.ExtensionContext): void {
     // Apply bbx-config to the configured file on every classification trigger. A single
     // trigger (e.g. only at activation) silently regresses to the reopen/revert failure
     // this covers — the association must survive close/reopen and a config-path change (#485).
+    // Deliberately no onDidChangeTextDocument listener here: open/rename and the two
+    // config-path-changing paths (the server push above and the settings listener below)
+    // already cover every case a config file's association needs to (re)evaluate, and wiring
+    // this to every keystroke would run isActiveConfigPath's synchronous filesystem checks on
+    // a hot, high-frequency event path before the server's first push has warmed the cache.
     sweepOpenDocumentsForConfigAssociation();
     context.subscriptions.push(
         vscode.workspace.onDidOpenTextDocument((doc) => applyConfigAssociation(doc))
-    );
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument((event) => applyConfigAssociation(event.document))
     );
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((event) => {
