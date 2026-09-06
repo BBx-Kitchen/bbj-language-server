@@ -1,5 +1,113 @@
 # Project Milestones: BBj Language Server
 
+## v4.2 IntelliJ Burn-down (Shipped: 2026-09-06)
+
+**Closed 2026-09-06** as an override closeout. All six phases (78-83) carry a `passed`
+verification report and 20/20 requirements are checked off, but no milestone-level audit
+was run (`/gsd-audit-milestone` was skipped, as at the v4.1 close) and eight open
+artifacts were acknowledged rather than resolved (see Known verification overrides).
+
+**Where the code lives — not yet on `origin/main`.** Every v4.2 source change (153
+files, +15,274 / −1,140 outside `.planning/`) is on local `main` only. Local `main` also
+carries the unpushable v4.0 archive commit, so the `pre-push` hook refuses the branch as a
+whole; the v4.2 commits have to be cherry-picked onto a branch cut from `origin/main`,
+register-checked for embargoed advisory detail, and landed through a pull request.
+Phases 78-83 close public IntelliJ issues and describe no advisory mechanism, so their
+archive under `.planning/milestones/v4.2-phases/` is tracked and pushable — unlike v4.0
+and v4.1.
+
+**Delivered:** the IntelliJ plugin no longer freezes the IDE on token, login, settings
+or restart paths; EM JWT handling fails closed and its temp files are owner-only on both
+POSIX and Windows; "Compile BBj File" runs bbjcpl through the shared language server's new
+`bbj/compile` request; brackets inside string literals and the `rem` toggle behave; the
+composers surface failures and refuse stale edits; `bbj-intellij` builds on any host JDK
+with a checksum-pinned wrapper and fails fast without its language-server bundle; and the
+JUnit suite grew from 96 to 504 tests, fencing every LSP4IJ experimental coupling point.
+
+**Phases completed:** 78-83 (6 phases, 25 plans, 74 tasks)
+
+| Phase | Name | Plans | Issues closed |
+|-------|------|-------|---------------|
+| 78 | Build & Test Foundation | 3 | #570, #503, #576, #517 |
+| 79 | EDT Responsiveness | 3 | #506, #541, #543, #513, #539, #537 |
+| 80 | EM Token Security | 5 (80-05 closed UAT gap G-80-1) | #535, #536, #552, #542 |
+| 81 | Feature Parity and Correctness | 7 (81-06/81-07 closed UAT gaps G-81-4/G-81-5) | #571, #568, #540 |
+| 82 | Composer Robustness | 4 (82-04 closed UAT gap G-82-6) | #538, #567, #433 |
+| 83 | Regression Test Hardening | 3 | #569, #544 (closes #554) |
+
+**Key accomplishments:**
+
+- Gradle daemon and compile/test JVM pinned to JDK 17 through committed daemon-JVM
+  criteria plus a toolchain block (foojay self-provisioning proven by a real download);
+  wrapper regenerated to checksum-pinned 8.14.5 with publisher-verified bytes; packaging
+  tasks fail fast with a directed message when `bbj-vscode/out/language/main.cjs` is missing.
+- Every language-server restart trigger funnels through one coalescing `RestartGate`;
+  the crash-recovery delay, Settings-dialog lookups and `node --version` all left the EDT
+  behind a plain-Java `Scheduler` seam, a stat-keyed version cache and a per-field
+  keystroke debouncer; an atomic in-memory `DownloadGuard` serialises Node downloads.
+- EM JWTs are classified once by a three-valued `JwtValidity.check` that fails closed;
+  temp files are POSIX 0600 or a single-owner Windows ACE (ten permissions, after a live
+  `!ERROR=18` on Windows), never a default-permission fallback; a non-keychain PasswordSafe
+  backend warns once; a five-minute digest-keyed trust window collapses duplicate validations.
+- A vscode-free `bbj/compile` request on the shared language server, driven from IntelliJ
+  off the EDT and rendered as balloons; two live-IDE gaps closed in-phase (an LSP
+  `uinteger` overflow in whole-line ranges and a `Diagnostic.getMessage()` signature skew
+  between LSP4IJ 0.19.0 and 0.21.0, now read reflectively).
+- String-literal- and comment-aware IntelliJ lexing so brackets inside `"..."` or `rem`
+  are inert, and a locale-independent `RemToggleSeam` that strips `rem`/`Rem`/`REM`.
+- Composer chains end in exactly one reason-keyed balloon, OK is gated on a live preview,
+  a `StaleEditGuard` re-decodes the captured line and re-checks the modification stamp
+  inside the write command before any edit, and the three intentions ship description
+  resources so the lightbulb preview no longer throws.
+- Plain-JUnit coverage for the whole Node install pipeline against committed fixture
+  archives (fixing a symlink-following delete on the way), for both settings-lookup
+  failure paths, and an asserted inventory of LSP4IJ coupling: signature canaries, a
+  class-file experimental-marker reader, an eleven-file import allowlist, a cross-language
+  `bbj/*` request-name contract and a version-pin test.
+
+**Stats:** 256 commits on local `main` between 2026-09-04 and 2026-09-06 (3 days);
+153 source files changed, +15,274 / −1,140 lines outside `.planning/`; vitest suite green at
+`numFailedTests: 0` (~1,127 tests), IntelliJ JUnit suite 504 tests (96 at milestone start).
+Six UAT rounds by hand in a running IDE on macOS/Linux and Windows; four UAT gaps found and
+closed in-phase (G-80-1, G-81-4, G-81-5, G-82-6).
+
+### Known Gaps
+
+- No milestone-level audit (`/gsd-audit-milestone`) was run; the close rests on six
+  per-phase `passed` verification reports, the UAT records, and the 20/20 traceability table.
+- The v4.2 code is not on `origin/main` and no preview build carrying it has been
+  published; the 22 GitHub issues above stay open until a pull request lands and a release
+  ships.
+- Human attestation still open: a live Windows check of Node.js auto-install (Phase 80 UAT
+  observed it failing; Phase 83's fixture-driven Windows-branch tests pass on Linux) —
+  todo `2026-09-06-live-windows-check-for-node-auto-install-failure.md`.
+- Deliberately pinned as-is with a todo: a configured-but-unusable Node.js path suppresses
+  the cached-download fallback (`2026-09-06-configured-node-path-suppresses-cached-download-fallback.md`).
+- Advisory review follow-ups carried, none blocking: 83-REVIEW.md (5 warnings on the Node
+  install pipeline and the accepted Phase 79 WR-03 Apply-time flush), 82-UI-REVIEW.md
+  (dialog error styling), 79-REVIEW IN-01/IN-02.
+- v4.1 carry-overs unchanged: PROC-01/02/03 (tagged release and advisory publication) and
+  `WINDOWS.md` entry 1 remain maintainer-owned.
+
+Known verification overrides: 8 newly acknowledged, 20 carried forward from a prior close
+(see STATE.md Deferred Items). The 8 are five `diagnosed` debug sessions whose fixes
+shipped in-phase (80-05, 81-04, 81-06, 81-07, 82-04) and three follow-up todos (the two
+above plus a stale-Gradle-version claim in the wrapper-hygiene test fixture).
+
+### Post-close actions (owned by the maintainer)
+
+1. Cut a branch from `origin/main`, cherry-pick the v4.2 commits, register-check the diff
+   for advisory detail, push over HTTPS and open a pull request.
+2. Publish a preview build from the merged tree and close the 22 GitHub issues.
+3. Run the live Windows Node auto-install check and close or act on its todo.
+4. The v4.1 post-release checklist (tagged release, advisory publication, `WINDOWS.md`
+   entry 1) still stands.
+
+No `v4.2` git tag was created: this repository's tags are release versions
+(`v0.12.0`, …), and v4.0/v4.1 were not tagged either.
+
+---
+
 ## v4.1 Security Advisory Remediation (Shipped: 2026-09-03)
 
 **Closed 2026-09-03** as an override closeout, by maintainer decision, without a

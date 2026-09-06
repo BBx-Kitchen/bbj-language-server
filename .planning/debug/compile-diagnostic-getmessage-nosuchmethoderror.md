@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "G-81-5: NoSuchMethodError on Diagnostic.getMessage() in CompileResultPresenter.renderOne when compiling a syntax-error .bbj file in the rebuilt IntelliJ plugin"
 created: 2026-09-05T00:00:00Z
 updated: 2026-09-05T00:30:00Z
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
+  status: diagnosed
 ---
 
 ## Current Focus

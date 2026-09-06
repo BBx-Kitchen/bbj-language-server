@@ -10,42 +10,50 @@ BBj developers get consistent, high-quality language intelligence — syntax hig
 
 ## Current State
 
+**v4.2 IntelliJ Burn-down shipped 2026-09-06** (override closeout: all six phases verified
+and 20/20 requirements closed, but no milestone-level audit was run and eight artifacts were
+acknowledged as deferred). The IntelliJ plugin no longer blocks the EDT on token, login,
+settings or restart paths; EM JWT handling fails closed with owner-only temp files on POSIX
+and Windows; "Compile BBj File" runs bbjcpl through the shared language server's new
+`bbj/compile` request; composers surface failures and refuse stale edits; the build pins
+JDK 17 and a checksum-verified Gradle wrapper; and the IntelliJ JUnit suite grew from 96 to
+504 tests. **The v4.2 code (153 files) is on local `main` only** — it still has to be
+cherry-picked onto a branch from `origin/main`, register-checked and landed by pull request,
+then released as a preview build, before the 22 IntelliJ issues it closes can be closed on
+GitHub. Phase artifacts for 78-83 are archived under `.planning/milestones/v4.2-phases/`
+(tracked, no embargo).
+
 **v4.1 Security Advisory Remediation shipped 2026-09-03** (override closeout). All eight
 remaining high-severity advisories have their fixes merged to public `main` through
-human-gated pull requests (#638-#647), each with regression coverage observed failing
-before the fix. Preview builds up to 0.12.27 are live on both marketplaces. No advisory is
-published yet: publication is gated on a tagged release, and the severity/CVE decisions are
-taken by the maintainer at that point. Phase-level artifacts for 70-77 are archived off
-`main` under `.planning/milestones/v4.1-phases/` (embargoed until publication).
+human-gated pull requests (#638-#647). Preview builds up to 0.12.27 are live on both
+marketplaces. No advisory is published yet: publication is gated on a tagged release, and
+the severity/CVE decisions are taken by the maintainer at that point. Phase-level artifacts
+for 70-77 are archived off `main` under `.planning/milestones/v4.1-phases/` (embargoed
+until publication).
 
 <!-- Do NOT list advisory ids grouped by flaw class here, or anywhere under .planning/ on
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Current Milestone: v4.2 IntelliJ Burn-down
+## Next Milestone Goals
 
-**Goal:** Close every open PRIO 1 and PRIO 2 IntelliJ issue from the v4.0 audit so the plugin
-no longer freezes the IDE, handles EM tokens securely, matches VS Code on compile, and builds
-reliably on current JDKs.
+Not yet defined — `/gsd-new-milestone` decides. Candidates, in rough priority order:
 
-**Target features:**
-- EDT responsiveness: run/EM-login token work off the EDT (#506), settings-dialog and
-  notification `node --version` spawns off the EDT and cached (#541, #543), crash auto-restart
-  delay off the EDT (#513), single guarded restart entry point (#539), serialized Node download
-  (#537)
-- EM token security: fail-closed expiry check (#535), owner-only temp files (#536),
-  non-keychain backend warning (#552), validation trust window (#542)
-- Feature parity and correctness: real "Compile BBj File" via bbjcpl (#571), string-literal
-  aware bracket lexing (#568), case-insensitive REM comment toggle (#540)
-- Composer robustness: re-validate captured offsets after the dialog closes (#567), surface
-  composer LSP failures (#538)
-- Build and platform coupling: JDK 17 toolchain pin (#570), refreshed and checksum-pinned
-  Gradle wrapper (#503, #576), fail-fast when the language server bundle is missing (#517),
-  LSP4IJ experimental-API regression tests (#554, #544), residual Node download/cache and
-  EDT coverage (#569)
-
-**Out of this milestone:** the v4.1 carry-overs (tagged release and advisory publication,
-`WINDOWS.md` entry 1, DEBT.md items) stay maintainer-owned; #566 is a VS Code-side fix.
+- **Land and release v4.2** (maintainer-owned, precondition for everything below): pull
+  request from a filtered branch, preview build, close the 22 IntelliJ issues; then the
+  v4.1 tagged release and advisory publication (PROC-03).
+- **IntelliJ PRIO 3 parity** (carried from v4.2's v2 list): formatter, denumber,
+  tokenized-file detection and decompile actions (#634, #631); SETOPTS composer for
+  config.bbx (#633); Refresh Java Classes via a targeted LSP request instead of a full
+  restart (#632); full BBjCPL compiler-option UI (follow-on to `bbj/compile`).
+- **IntelliJ PRIO 3 cleanups**: duplication across run actions, composer dialogs,
+  intentions, widgets and notification providers (#615-#622, #630); java-interop health
+  probe via a protocol handshake rather than a bare TCP connect (#587, DEBT.md item 5,
+  also the root cause of the local vitest false positives); remaining findings
+  (#586, #588-#594, #607-#614).
+- **Carried follow-ups**: live Windows Node auto-install check (todo), configured-but-unusable
+  Node path vs. cached download (todo), 83-REVIEW warnings on the Node install pipeline,
+  82-UI-REVIEW dialog error styling, interim-build versioning above Marketplace releases.
 
 ## Requirements
 
@@ -234,8 +242,10 @@ reliably on current JDKs.
 ### Active
 
 Carried over, maintainer-owned (not GSD phases):
+- [ ] v4.2 code landed on `origin/main` through a register-checked pull request and shipped as a preview build; the 22 IntelliJ issues closed on GitHub
 - [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
+- [ ] Live Windows attestation of Node.js auto-install (todo filed by Phase 83)
 
 ### Out of Scope
 
@@ -249,7 +259,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.2 phases 78-83 all complete (Phase 83 verified 2026-09-06), 83 phases and 263 plans done lifetime; milestone close pending. Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green at 504 tests after Phase 83's 11 new test classes and two plain-Java seams. All nine known advisory fixes merged; publication awaits a tagged release.
+**Current state:** v4.2 shipped 2026-09-06; 19 milestones, 83 phases and 267 plans done lifetime; no next milestone defined yet. Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green at 504 tests. All nine known advisory fixes merged; publication awaits a tagged release. The v4.2 source changes are not yet on `origin/main` (local `main` is push-blocked by the v4.0 archive commit; land via a filtered branch).
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -424,6 +434,9 @@ Carried over, maintainer-owned (not GSD phases):
 | Node install pipeline extracted into a plain-Java `NodeInstallPipeline` seam with injected `Target`/`Fetcher`/`Progress`/`CancelProbe`, driven against four committed fixture archives; fixture digests are literal pins transcribed from a provenance README, never computed at test time | The old adapter wired fetch/verify/extract/install/cleanup straight to platform statics, so no step ran under any test; a test-computed digest hashes the same bytes the verifier reads and makes verification vacuous. The seam also let the symlink-following recursive delete be fixed with a no-follow `walkFileTree` | ✓ Good — v4.2 Phase 83 (#569); Windows-branch cases pass on Linux, so the Windows auto-install failure from Phase 80 UAT is not reproducible from branch logic alone (todo filed for a live Windows check) |
 | Settings-lookup failure is caught at the lookup layer (`BbjSettingsLookups` returns a failure-marked result) rather than in the debouncer, and the missing-Node banner decision moves into a plain-Java `NodeAvailability` seam | A throwing lookup previously left "Checking Node.js version…" and the disabled classpath combo stuck until the next keystroke; catching at the layer that owns the result keeps `KeystrokeDebouncer` generic and lets both banner branches execute under plain JUnit | ✓ Good — v4.2 Phase 83 (#569); a configured-but-unusable Node path deliberately never falls back to the cached download (pinned as-is, todo filed) |
 | LSP4IJ coupling asserted as an inventory: constant-pool class-file reader proves `ApiStatus.Experimental` is class-file-retention-only, an eleven-file symbol-level import allowlist fences `src/main/java`, and measured facts win over the plan's wording (`ServerStatus` has 9 constants in 0.21.0; the interop icon heuristic leaves `Interface` unchanged) | A runtime `isAnnotationPresent` check on a class-file-retained annotation is provably vacuous, so the canaries read class files directly; hand-written allowlists fail on drift in either direction, and tests must pin what the jar and code actually do | ✓ Good — v4.2 Phase 83 (#544, closes #554); 504-test suite green, no production change |
+| v4.2 closed as an override closeout without a milestone-level audit, with eight open artifacts acknowledged as deferred | Close taken 2026-09-06 with all six phases `passed`, 20/20 requirements checked, six hand UAT rounds and four in-phase gap closures on record; the five open debug sessions were all `diagnosed` with their fixes shipped in-phase and the three todos are follow-ups, so an audit pass was judged unlikely to change the outcome. Same shape as the v4.1 close | Applied — v4.2 archived 2026-09-06; gaps listed in MILESTONES.md |
+| v4.2 phase artifacts archived on-tree (`milestones/v4.2-phases/`), not embargoed; no `v4.2` git tag | Phases 78-83 close public IntelliJ issues and contain no advisory mechanism, so the v4.0/v4.1 exclude-and-hook arrangement does not apply; repository tags are release versions (`v0.12.x`) and neither v4.0 nor v4.1 was tagged | Applied — archive tracked; tag skipped by precedent |
+| v4.2 code stays on local `main` until a filtered pull request lands it | Local `main` carries the push-blocked v4.0 archive commit, so the branch cannot be pushed as-is; the v4.2 commits (256, all after `2072844`) must be cherry-picked onto a branch from `origin/main` and register-checked for advisory detail first. Landing is a human-gated, outward-facing action and was not performed at close | — Pending — maintainer post-close action 1 |
 
 ## Evolution
 
@@ -443,4 +456,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-06 after Phase 83*
+*Last updated: 2026-09-06 after v4.2 milestone*

@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "Investigate issue G-80-1 (windows-owner-only-tmp-error18): On a Windows host, the IntelliJ plugin's Login to Enterprise Manager action fails because em-login.bbj cannot open the owner-only temp file created by BbjProcessSecretEnv.createOwnerOnlyFile. BBj reports !ERROR=18 User not allowed."
 created: 2026-09-05T00:00:00Z
 updated: 2026-09-05T00:00:00Z
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
+  status: diagnosed
 ---
 
 ## Current Focus

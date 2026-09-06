@@ -20,7 +20,7 @@
 - ✅ **v3.9 Quick Wins** — Phases 57-59 (shipped 2026-02-21)
 - ✅ **v4.0 Stability and Quality** — Phases 60-69 (shipped 2026-08-20; artifacts held off `main` by decision — see MILESTONES.md)
 - ✅ **v4.1 Security Advisory Remediation** — Phases 70-77 (shipped 2026-09-03; artifacts archived off `main` under an embargo — see MILESTONES.md)
-- 🚧 **v4.2 IntelliJ Burn-down** — Phases 78-83 (in progress, roadmap created 2026-09-04)
+- ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; code on local `main` only, pull request pending — see MILESTONES.md)
 
 ## Phases
 
@@ -197,180 +197,22 @@ carried as known gaps until a tagged release and advisory publication (MILESTONE
 
 </details>
 
-<details open>
-<summary>🚧 v4.2 IntelliJ Burn-down (Phases 78-83) — IN PROGRESS</summary>
+<details>
+<summary>✅ v4.2 IntelliJ Burn-down (Phases 78-83) — SHIPPED 2026-09-06</summary>
 
-- [x] **Phase 78: Build & Test Foundation** - JDK 17 toolchain, checksum-pinned Gradle wrapper, fail-fast LS-bundle check (completed 2026-09-04)
-- [x] **Phase 79: EDT Responsiveness** - Off-EDT token/login, settings/notification debounce, guarded restart, serialized Node download (completed 2026-09-04)
-- [x] **Phase 80: EM Token Security** - Fail-closed JWT expiry, owner-only temp files, non-keychain warning, trust-window cache (completed 2026-09-05)
-- [x] **Phase 81: Feature Parity and Correctness** - Real bbjcpl compile action, string-literal-aware bracket matching, case-insensitive REM toggle (completed 2026-09-05)
-- [x] **Phase 82: Composer Robustness** - Visible failure notifications and stale-offset guard for composer edits (completed 2026-09-05)
-- [x] **Phase 83: Regression Test Hardening** - Node download/cache + EDT regression coverage, LSP4IJ experimental-API canary tests (completed 2026-09-06)
+- [x] Phase 78: Build & Test Foundation (3/3 plans) — completed 2026-09-04
+- [x] Phase 79: EDT Responsiveness (3/3 plans) — completed 2026-09-04
+- [x] Phase 80: EM Token Security (5/5 plans, 80-05 closed UAT gap G-80-1) — completed 2026-09-05
+- [x] Phase 81: Feature Parity and Correctness (7/7 plans, 81-06/81-07 closed UAT gaps G-81-4/G-81-5) — completed 2026-09-05
+- [x] Phase 82: Composer Robustness (4/4 plans, 82-04 closed UAT gap G-82-6) — completed 2026-09-05
+- [x] Phase 83: Regression Test Hardening (3/3 plans) — completed 2026-09-06
+
+Full phase detail: `.planning/milestones/v4.2-ROADMAP.md`; phase artifacts under
+`.planning/milestones/v4.2-phases/` (tracked — no embargo). Override closeout: no
+milestone-level audit, 8 artifacts acknowledged as deferred, code not yet on `origin/main`
+(MILESTONES.md).
 
 </details>
-
-## Phase Details
-
-### Phase 78: Build & Test Foundation
-
-**Goal**: `bbj-intellij` builds and tests reliably on any host JDK, with a trustworthy Gradle wrapper and a fail-fast check for the shared language server bundle, unblocking every other phase's `./gradlew` work.
-**Depends on**: Nothing (first phase of v4.2; continues from v4.1 Phase 77)
-**Requirements**: BUILD-01, BUILD-02, BUILD-03
-**Success Criteria** (what must be TRUE):
-
-  1. `./gradlew test` succeeds on this environment's JDK 25 host without manual JDK switching, because the Gradle toolchain auto-provisions JDK 17 via the foojay resolver (#570).
-  2. The committed Gradle wrapper JAR matches its declared current 8.x version and pinned distribution checksum, a CI wrapper-validation step guards against tampering, and `./gradlew dependencies` enumerates the full transitive tree (#503, #576).
-  3. Running `./gradlew buildPlugin` on a clean clone with `../bbj-vscode/out/language/main.cjs` absent fails immediately with a directed error message naming the missing file, instead of silently assembling a plugin without a language server (#517).
-
-**Plans**: 3/3 plans executed
-Plans:
-**Wave 1**
-
-- [x] 78-01-PLAN.md — JDK-agnostic Gradle daemon and Java 17 toolchain (BUILD-01, #570)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 78-02-PLAN.md — Gradle 8.14.5 wrapper, publisher-verified checksums, Dependabot surveillance (BUILD-02, #503/#576)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 78-03-PLAN.md — Fail-fast language-server bundle check with source-guard test (BUILD-03, #517)
-
-### Phase 79: EDT Responsiveness
-
-**Goal**: The IntelliJ plugin never blocks the EDT on token validation, login, Node.js detection, settings input, or crash recovery, and never races itself on restarts or downloads.
-**Depends on**: Phase 78
-**Requirements**: EDT-01, EDT-02, EDT-03, EDT-04, EDT-05, EDT-06
-**Success Criteria** (what must be TRUE):
-
-  1. A regression test fails if `buildCommandLine()` or `performLogin()` ever runs on the EDT during Run As BUI/DWC or EM login, confirming the existing off-EDT dispatch from v4.1 (CR-02, commit 06eb1a7) stays intact (#506).
-  2. Rapidly typing in the Settings dialog's BBj home or Node.js path field never spawns a subprocess or reads a file on the EDT — a regression test simulating rapid keystrokes confirms the debounced background lookup (#541).
-  3. The missing-Node-runtime editor notification calls `node --version` at most once across two consecutive refresh passes for the same configured path, using a cached last-known version (#543).
-  4. All six language-server restart triggers (restart action, crash notification, both status-bar indicators, refresh Java classes, crash auto-restart) funnel through one guarded entry point, and the first-crash restart delay is scheduled via `restartAlarm` off the EDT rather than `Thread.sleep` inside `invokeLater`; regression tests confirm exactly one restart when two triggers fire in quick succession and confirm no EDT sleep (#513, #539).
-  5. Two near-simultaneous Node.js download requests start exactly one download task, verified by an atomic check-and-set regression test (#537).
-
-**Plans**: 3/3 plans executed
-Plans:
-**Wave 1**
-
-- [x] 79-01-PLAN.md — Guarded restart funnel and scheduled crash delay, with the shared Scheduler seam (EDT-04, EDT-05, #513/#539)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 79-02-PLAN.md — Stat-keyed Node-version cache and debounced Settings-dialog lookups (EDT-02, EDT-03, #541/#543)
-- [x] 79-03-PLAN.md — Atomic single-download guard and off-EDT dispatch lock-in (EDT-01, EDT-06, #506/#537)
-
-### Phase 80: EM Token Security
-
-**Goal**: EM JWT handling fails closed on malformed tokens, stores temp files owner-only on both POSIX and Windows, warns when the token isn't backed by the native OS keychain, and avoids redundant re-validation within a short trust window.
-**Depends on**: Phase 78
-**Requirements**: TOKEN-01, TOKEN-02, TOKEN-03, TOKEN-04
-**Success Criteria** (what must be TRUE):
-
-  1. A malformed, non-3-part, exp-less, or undecodable JWT is treated as expired across all three previously fail-open branches, verified by a regression test covering each branch (#535).
-  2. EM login and validate temp files holding the plaintext JWT are owner-only on POSIX (confirmed by test) and on Windows via an explicit ACL rather than the current default-permission fallback (#536).
-  3. When PasswordSafe's resolved backend for the EM token is not the native OS keychain (KeePass file or memory-only), the plugin shows a one-time notification naming the backend, with the internal-API access isolated behind a single method covered by a regression test (#552).
-  4. Two Run invocations using the same recently-validated token trigger exactly one server-side validation call; the cache is keyed on the token bytes and invalidated on store/delete (#542, depends on TOKEN-01 landing first).
-
-**Plans**: 5/5 plans executed (80-05 closes UAT gap G-80-1)
-**Wave 1**
-
-- [x] 80-01-PLAN.md — Fail-closed JWT expiry classifier and login-time token gate (TOKEN-01, #535)
-- [x] 80-02-PLAN.md — Owner-only temp files on Windows via an explicit ACL, fail-closed when unsupported (TOKEN-02, #536)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 80-03-PLAN.md — Non-keychain backend notice behind a single isolated internal-API method (TOKEN-03, #552)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 80-04-PLAN.md — Digest-keyed validation trust window with store/delete invalidation (TOKEN-04, #542)
-
-**Gap closure** *(from UAT test 1, blocker G-80-1)*
-
-- [x] 80-05-PLAN.md — Grant the two extended-attribute permissions Windows folds into GENERIC_READ/GENERIC_WRITE so BBj can open the owner-only temp file (TOKEN-02, #536, G-80-1)
-
-**Cross-cutting constraints:**
-
-- The failing regression tests are written and shown red before the production change lands (D-02).
-
-### Phase 81: Feature Parity and Correctness
-
-**Goal**: IntelliJ's Compile action, bracket matching, and REM toggle match VS Code's behavior and BBj's actual syntax rules.
-**Depends on**: Phase 78
-**Requirements**: PARITY-01, PARITY-02, PARITY-03
-**Success Criteria** (what must be TRUE):
-
-  1. Invoking "Compile BBj File" in IntelliJ sends a `bbj/compile` request to the shared language server, which runs bbjcpl through the existing `BBjCPLService`, and the action displays success or the returned diagnostics — with no bbjcpl invocation logic duplicated on the IntelliJ side (#571).
-  2. Typing `PRINT "value (not a bracket)"` or a doubled-quote string in a BBj file does not trigger bracket matching, navigation, or auto-close on the parenthesis inside the string literal, verified by regression tests for both cases (#568).
-  3. Toggling the line-comment shortcut on a line already prefixed with `rem`, `Rem`, or `REM` (word-bounded) removes the prefix instead of adding a second one, verified by regression tests for lowercase and mixed case (#540).
-
-**Plans**: 7/7 plans executed
-Plans:
-**Wave 1**
-
-- [x] 81-01-PLAN.md — Language-server `bbj/compile`: one shared option table, options-aware `BBjCPLService` entry point, output-location guard (PARITY-01, #571)
-- [x] 81-02-PLAN.md — String- and comment-aware IntelliJ lexer so brackets inside literals are inert (PARITY-02, #568)
-- [x] 81-03-PLAN.md — Case-insensitive REM toggle via `SelfManagingCommenter` and a plain-Java seam (PARITY-03, #540)
-- [x] 81-04-PLAN.md — "Compile output directory" setting delivered as a flat initialization option (PARITY-01, #571)
-
-**Wave 2** *(blocked on 81-01 and 81-04)*
-
-- [x] 81-05-PLAN.md — `BbjCompileAction` sends `bbj/compile` off the EDT and renders the result (PARITY-01, #571)
-
-**Wave 3** *(gap closure for G-81-4, blocked on 81-01 and 81-05)*
-
-- [x] 81-06-PLAN.md — Bound every emitted LSP position to the `uinteger` maximum so a JVM client can parse the compile-errors response (PARITY-01, #571)
-
-**Wave 4** *(gap closure for G-81-5, blocked on 81-05 and 81-06)*
-
-- [x] 81-07-PLAN.md — Read a diagnostic's message by name so the compile balloon renders on either LSP4IJ client-library generation (PARITY-01, #571)
-
-### Phase 82: Composer Robustness
-
-**Goal**: Composer dialogs surface failures visibly and never apply an edit against document state that changed while the dialog was open.
-**Depends on**: Phase 78
-**Requirements**: COMP-01, COMP-02
-**Success Criteria** (what must be TRUE):
-
-  1. When a composer `CompletableFuture` chain (the launcher or any dialog's refresh) fails, a user-visible notification appears, verified by a regression test that forces one chain to fail (#538).
-  2. If the document changes while a composer dialog is open, re-decoding the call at the captured offsets after the dialog closes detects the mismatch, aborts the edit, and notifies the user instead of rewriting whatever text now occupies the range, verified by a regression test that mutates the document mid-dialog (#567, decision: abort and notify).
-
-**Plans**: 4/4 plans executed
-Plans:
-**Wave 1**
-
-- [x] 82-01-PLAN.md — Composer notice seam, flow seam and flattened launcher chain (COMP-01, #538)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 82-02-PLAN.md — Dialog refresh terminal handlers, OK gating and once-per-session balloon (COMP-01, #538)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 82-03-PLAN.md — Stale-edit guard: re-decode, full-result comparison, abort and notify (COMP-02, #567)
-
-**Wave 4** *(gap closure — blocked on Wave 3 completion)*
-
-- [x] 82-04-PLAN.md — Intention description resources + Html preview so the lightbulb popup stops throwing (gap G-82-6, #433)
-
-### Phase 83: Regression Test Hardening
-
-**Goal**: The JUnit suite gains durable coverage for the Node download/cache pipeline, this milestone's EDT-responsiveness paths, and every LSP4IJ experimental-API coupling point, including the new compile request surface.
-**Depends on**: Phase 79, Phase 81
-**Requirements**: BUILD-04, BUILD-05
-**Success Criteria** (what must be TRUE):
-
-  1. `./gradlew test` runs new, green regression coverage for the Node download/extract/cache pipeline and the EDT-responsiveness paths changed in Phase 79, extending the existing 7-class `src/test/` source set (#569).
-  2. Every LSP4IJ `@ApiStatus.Experimental` coupling point across the seven `lsp/`/`ui/` files, plus the new `bbj/compile` request surface from Phase 81, has a canary or source-guard regression test that fails on a breaking LSP4IJ change; this coverage closes #554 as a subset of #544's scope (#544).
-
-**Plans**: 3/3 plans executed
-Plans:
-**Wave 1**
-
-- [x] 83-01-PLAN.md — Node install pipeline seam, committed fixtures, both platform branches, symlink-safe cleanup (BUILD-04, #569)
-- [x] 83-02-PLAN.md — Settings lookup failure path and both editor-banner branches, with the EDT-01..06 coverage map (BUILD-04, #569/#541/#543)
-- [x] 83-03-PLAN.md — LSP4IJ signature canaries, eleven-file allowlist fence, request contract, JSON boundary and version pin (BUILD-05, #544/#554)
 
 ## Progress
 
@@ -394,19 +236,22 @@ Plans:
 | v3.9 Quick Wins | 57-59 | 8 | Complete | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | Complete | 2026-09-03 |
-| v4.2 IntelliJ Burn-down | 78-83 | TBD | In Progress | - |
+| v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
 
-**Total:** 18 milestones shipped, 77 phases complete, 242 plans shipped.
+**Total:** 19 milestones shipped, 83 phases complete, 267 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
 here but have no `.planning/milestones/v4.0-phases/` archive on `main`. v4.1's phase
 artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, excluded from git
-and push-blocked until each advisory is published. Both asymmetries are intended.
+and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's
+artifacts (78-83) carry no advisory detail and are tracked normally.
 
-**In progress:** v4.2 IntelliJ Burn-down — Phases 78-83 (6 phases, 20/20 requirements
-mapped, plans not yet created). Not counted in the shipped totals above.
+**Next milestone:** not yet defined — run `/gsd-new-milestone`. Candidates recorded in
+`.planning/milestones/v4.2-REQUIREMENTS.md` under v2 Requirements (PRIO 3 IntelliJ parity
+and cleanups: #631-#634, #615-#622, #630, #586-#594, #607-#614, #587) and in PROJECT.md
+under Next Milestone Goals.
 
 ---
 
-*Roadmap last updated: 2026-09-04 — v4.2 IntelliJ Burn-down roadmap created (Phases 78-83, 20/20 requirements mapped). Next: `/gsd-plan-phase 78`.*
+*Roadmap last updated: 2026-09-06 — v4.2 IntelliJ Burn-down shipped and archived (Phases 78-83, 25 plans). Next: `/gsd-new-milestone`.*

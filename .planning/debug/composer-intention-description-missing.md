@@ -4,6 +4,10 @@ trigger: "Phase 82 UAT test 6 (G-82-6)"
 created: 2026-09-05
 updated: 2026-09-05
 goal: find_root_cause_only
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
+  status: diagnosed
 ---
 
 ## Symptoms

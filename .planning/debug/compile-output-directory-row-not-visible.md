@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "compile-output-directory-row-not-visible: After installing the freshly built IntelliJ plugin zip (bbj-intellij/build/distributions/bbj-intellij-0.1.0.zip, built from HEAD 537546ec), the user opened Settings > Languages & Frameworks > BBj and reports the \"BBj Compiler\" section / \"Compile output directory:\" row is NOT visible. Phase 81 plan 81-04 (PARITY-01, GitHub issue #571) claims to have added this row to the BBj settings configurable."
 created: 2026-09-05T00:00:00Z
 updated: 2026-09-05T00:00:00Z
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
+  status: diagnosed
 ---
 
 ## Current Focus
@@ -67,7 +71,6 @@ root_cause: "Not conclusively identified. All 5 hint hypotheses (H1-H5) are elim
 fix: ""
 verification: ""
 files_changed: []
-
 
 ## Resolution (2026-09-05T14:04:41Z)
 

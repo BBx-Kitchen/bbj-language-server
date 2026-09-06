@@ -7,6 +7,10 @@ files:
 
   - bbj-vscode/test/gradle-wrapper-hygiene.test.ts:24-30 (GOOD_PROPERTIES_LINES)
   - bbj-intellij/gradle/wrapper/gradle-wrapper.properties:4
+
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
 ---
 
 ## Problem

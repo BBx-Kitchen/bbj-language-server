@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "compile-error-response-message-could-not-be-parsed: In the IntelliJ plugin, Tools > Compile BBj File works for a valid file, but a file with a syntax error produces `Failed to compile xxx.bbj org.eclipse.lsp4j.jsonrpc.MessageIssueException: Message could not be parsed.` instead of the expected error balloon listing `line:col message`."
 created: 2026-09-05T00:00:00Z
 updated: 2026-09-05T00:00:00Z
+audit_acknowledged:
+  milestone: v4.2
+  at: 2026-09-06
+  status: diagnosed
 ---
 
 ## Current Focus

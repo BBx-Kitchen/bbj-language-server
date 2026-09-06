@@ -2,23 +2,23 @@
 gsd_state_version: 1.0
 milestone: v4.2
 milestone_name: IntelliJ Burn-down
-current_phase: 83
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 83 complete — all phases complete
-last_updated: "2026-09-06T09:12:02.067Z"
+last_updated: "2026-09-06T09:23:01.405Z"
 last_activity: 2026-09-06
-last_activity_desc: Phase 83 complete
-state_head: 0e97cb98e99e792f9b3a887d06786c8d1d708266
+last_activity_desc: Milestone v4.2 completed and archived
+state_head: 9983514bed4fd204bd50c5bc4be8dffd81ce8318
 progress:
   total_phases: 6
   completed_phases: 6
   total_plans: 25
   completed_plans: 25
+current_phase: 83
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-06 (Phase 83 verified and complete; all v4.2 phases done, milestone close pending)
+**Last Updated:** 2026-09-06 (v4.2 IntelliJ Burn-down shipped and archived; awaiting next milestone)
 
 ## Project Reference
 
@@ -26,29 +26,36 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.2 milestone close — all six phases (78-83) verified; next is `/gsd-complete-milestone`
+**Current Focus:** Planning next milestone (`/gsd-new-milestone`); maintainer to land the v4.2 code on `origin/main` via a filtered pull request
 
 ---
 
 ## Current Position
 
-Phase: 83
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-09-06 — Phase 83 complete
+Phase: Milestone v4.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-06 — Milestone v4.2 completed and archived
 
 ## Performance Metrics
 
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 18
-**Phases completed:** 81
-**Plans completed:** 260
-**Days elapsed:** 216
-**Velocity:** ~1.1 plans/day (lifetime); v4.1 ran at ~2.6 plans/day
+**Milestones shipped:** 19
+**Phases completed:** 83
+**Plans completed:** 267
+**Days elapsed:** 217
+**Velocity:** ~1.2 plans/day (lifetime); v4.2 ran at ~8 plans/day over 3 days
 
 ### Recent History
+
+**v4.2 (Shipped: 2026-09-06):**
+
+- Duration: 3 days
+- Phases: 6 (78-83)
+- Plans: 25 (74 tasks)
+- Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; override closeout (no milestone audit, 8 artifacts deferred); code not yet on `origin/main`
 
 **v4.1 (Shipped: 2026-09-03):**
 
@@ -218,6 +225,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ### Blockers/Concerns
 
+- **v4.2 code is on local `main` only.** 256 commits since `2072844` (2026-09-04) carry the
+  153-file source change; `origin/main` has none of it. Local `main` cannot be pushed as-is
+  (the v4.0 archive commit trips the `pre-push` hook), so the v4.2 commits must be
+  cherry-picked onto a branch from `origin/main`, register-checked, pushed over HTTPS and
+  landed by pull request, then released as a preview build. Human-gated; not done at close.
+
 - **8 draft advisories — every fix merged to `main`, none yet published.** v4.1 closed
   2026-09-03 with all eight phases verified (70 and 77 with recorded overrides). Publication
   for each waits on a tagged `manual-release.yml` release, then per-advisory severity/CVE
@@ -262,13 +275,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T09:20:00Z
-Stopped at: Phase 83 complete — v4.2 phases 78-83 all verified; milestone close pending
+Last session: 2026-09-06T09:30:00Z
+Stopped at: v4.2 IntelliJ Burn-down closed and archived (phases 78-83 → `milestones/v4.2-phases/`)
 Resume file: None
 
-Next: `/gsd-complete-milestone` (v4.2 IntelliJ Burn-down). Phase 83 closed with VERIFICATION passed 2/2,
-504-test IntelliJ suite green, code review advisory only (5 warnings), two todos filed (live Windows Node
-auto-install check; configured Node path suppresses cached-download fallback).
+Next: `/gsd-new-milestone`. Before or alongside that, the maintainer lands the v4.2 code on
+`origin/main` (see Blockers/Concerns) — the 22 IntelliJ issues stay open until it ships.
 
 ## Deferred Items
 
@@ -276,6 +288,14 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
+| debug_sessions | compile-diagnostic-getmessage-nosuchmethoderror | diagnosed (fixed by 81-07) | 2026-09-06 | v4.2 |
+| debug_sessions | compile-error-response-message-could-not-be-parsed | diagnosed (fixed by 81-06) | 2026-09-06 | v4.2 |
+| debug_sessions | compile-output-directory-row-not-visible | diagnosed (fixed by 81-04) | 2026-09-06 | v4.2 |
+| debug_sessions | composer-intention-description-missing | diagnosed (fixed by 82-04) | 2026-09-06 | v4.2 |
+| debug_sessions | windows-owner-only-tmp-error18 | diagnosed (fixed by 80-05) | 2026-09-06 | v4.2 |
+| todos | 2026-09-05-gradle-wrapper-hygiene-fixture-declares-stale-gradle-version.md | (presence-only) | 2026-09-06 | v4.2 |
+| todos | 2026-09-06-configured-node-path-suppresses-cached-download-fallback.md | (presence-only) | 2026-09-06 | v4.2 |
+| todos | 2026-09-06-live-windows-check-for-node-auto-install-failure.md | (presence-only) | 2026-09-06 | v4.2 |
 | debug_sessions | constructor-completion | diagnosed | 2026-09-03 | v4.1 |
 | debug_sessions | deprecated-strikethrough | diagnosed | 2026-09-03 | v4.1 |
 | debug_sessions | prefix-diagnostic-reconciliation | diagnosed | 2026-09-03 | v4.1 |
@@ -319,15 +339,17 @@ Items acknowledged and deferred at milestone close, most recent first:
 | v3.9 Quick Wins | 57-59 | 8 | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | 2026-09-03 |
+| v4.2 IntelliJ Burn-down | 78-83 | 25 | 2026-09-06 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-06 after Phase 83 verified and complete (BUILD-04/05 closed; v4.2 phases all done)*
+*State updated: 2026-09-06 after v4.2 milestone close (phases 78-83 archived; 8 artifacts deferred)*
 
 ## Operator Next Steps
 
-- Close the milestone: `/gsd-complete-milestone` (v4.2 IntelliJ Burn-down, phases 78-83, 25 plans)
-- Optional before close: `/gsd-code-review 83 --fix` for the five advisory warnings in 83-REVIEW.md
+- Land v4.2: cut a branch from `origin/main`, cherry-pick the 256 commits since `2072844`, run the register-check grep over the diff, push over HTTPS, open a PR; then publish a preview build and close the 22 issues
+- Start the next milestone: `/gsd-new-milestone` (candidates in PROJECT.md › Next Milestone Goals)
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
+- v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)
