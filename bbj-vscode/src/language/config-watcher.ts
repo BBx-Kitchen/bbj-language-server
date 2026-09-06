@@ -108,6 +108,10 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
     let handle: WatchHandle | null = null;
     let snapshot = '';
     let pendingTimer: unknown = null;
+    /** Canonical paths that already produced an arm-failure or watch-error warning, so a
+     * repeated failure on the SAME path stays silent while a failure on a DIFFERENT path is
+     * always eligible to warn again. */
+    const warnedPaths = new Set<string>();
 
     function closeHandle(): void {
         if (handle) {
@@ -128,10 +132,20 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
         }
     }
 
+    function warnOnce(key: string, msg: string): void {
+        if (warnedPaths.has(key)) {
+            return;
+        }
+        warnedPaths.add(key);
+        logWarn(msg);
+    }
+
     function onWatchError(err: unknown): void {
         try {
+            const key = canonicalPath ?? watchedDir ?? 'unknown config path';
             closeHandle();
-            logWarn(`Config watch on ${watchedDir ?? canonicalPath} failed: ${err}`);
+            watchedDir = null;
+            warnOnce(key, `Config watch on ${key} failed: ${err}`);
         } catch (e) {
             logWarn(`Config watcher error handler failed: ${e}`);
         }
@@ -178,11 +192,16 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
     function armWatch(dir: string): void {
         closeHandle();
         watchedDir = dir;
+        const key = canonicalPath ?? dir;
         try {
             handle = watchDirectory(dir, onDirectoryEvent, onWatchError);
+            // A successful arm means a FUTURE failure on this exact path is a new problem,
+            // worth warning about again.
+            warnedPaths.delete(key);
         } catch (err) {
             handle = null;
-            logWarn(`Failed to watch config directory ${dir}: ${err}`);
+            watchedDir = null;
+            warnOnce(key, `Failed to watch config directory ${dir}: ${err}`);
         }
     }
 
@@ -208,8 +227,25 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
             canonicalPath = resolved.path;
             if (resolved.path) {
                 armWatch(path.dirname(resolved.path));
+                // A settings change is a discrete user action, not a file-event burst — run
+                // the relevance gate immediately, no debounce.
+                try {
+                    const contents = readFile(resolved.path);
+                    const next = consumedConfigSnapshot(contents);
+                    if (next !== snapshot) {
+                        snapshot = next;
+                        notify({ path: resolved.path, reason: 'config-path-changed' });
+                    }
+                } catch (err) {
+                    logWarn(`Config watcher relevance evaluation failed for ${resolved.path}: ${err}`);
+                }
             } else {
                 watchedDir = null;
+                const next = consumedConfigSnapshot(null);
+                if (next !== snapshot) {
+                    snapshot = next;
+                    notify({ path: null, reason: 'config-path-changed' });
+                }
             }
         },
         dispose(): void {
