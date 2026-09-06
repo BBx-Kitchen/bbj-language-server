@@ -881,11 +881,21 @@ export function activate(context: vscode.ExtensionContext): void {
     // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
     // throws and never blocks activation — a bad payload just means no cache update.
     client.onNotification(RESOLVED_CONFIG_PATH_METHOD, (params: ResolvedConfigPathResult) => {
+        const previousActive = lastKnownActiveConfigPath;
         setResolvedConfigPath(params);
         if (params.path && !params.exists && shouldWarnOnce(params.path)) {
             vscode.window.showWarningMessage(
                 `BBj config file not found or unreadable: ${params.path}. No prefixes were loaded.`
             );
+        }
+        // This push always arrives after the local bbj.configPath settings-change listener has
+        // already fired and re-swept using the stale (pre-update) cache, so that listener's
+        // release is a no-op — this handler must release the previously-active path itself
+        // whenever the resolution actually changed, rather than relying on the settings listener
+        // to have done it (#485).
+        const newActive = getActiveConfigPath();
+        if (previousActive && (!newActive || !samePath(previousActive, newActive))) {
+            releaseConfigAssociation(previousActive);
         }
         // The first server answer may associate files that were already open before it arrived.
         sweepOpenDocumentsForConfigAssociation();

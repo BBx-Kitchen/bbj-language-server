@@ -107,6 +107,7 @@ import {
 } from '../src/config-path-cache.js';
 import { argForActiveEditor } from '../src/setopts-composer-ui.js';
 import type { ResolvedConfigPath } from '../src/language/config-path-resolver.js';
+import { RESOLVED_CONFIG_PATH_METHOD } from '../src/language/resolved-config-path-request.js';
 
 /** Point the mocked `bbj.configPath` workspace setting at `value` (or unset when `null`). */
 function mockConfigPathSetting(value: string | null): void {
@@ -269,6 +270,45 @@ describe('bbx-config editor association', () => {
 
         expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, undefined);
         expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docB, 'bbx-config');
+    });
+
+    test('the resolvedConfigPath push releases the old path even when the settings listener already fired and no-op\'d', () => {
+        // Realistic ordering: the local bbj.configPath settings-change listener always fires
+        // before the server's async bbj/resolvedConfigPath push arrives, and at that point the
+        // cache still holds the OLD path — so the listener's release-and-resweep is a no-op (it
+        // re-applies the still-active old path right after releasing it). The push handler must
+        // be able to release the stale association itself once the resolution actually changes
+        // (#485). This mock reacts to setTextDocumentLanguage (unlike the sibling tests in this
+        // file) so the resweep-after-release step below observes the released state, matching
+        // real VS Code's document.languageId after the association is dropped.
+        (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockImplementation(
+            (doc: { languageId: string }, langId: string | undefined) => {
+                doc.languageId = langId ?? 'plaintext';
+            }
+        );
+        const docA = fakeDoc('/srv/custom/old-config.bbx', 'plaintext');
+        const docB = fakeDoc('/srv/custom/new-config.bbx', 'plaintext');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA, docB];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/old-config.bbx' }));
+
+        activate(fakeContext());
+        expect(docA.languageId).toBe('bbx-config');
+
+        // The setting change fires first, BEFORE the cache is updated with the new path: it
+        // releases A, then immediately resweeps and finds A still active (cache unchanged) —
+        // re-associating A right back. Net effect on A: unchanged.
+        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.configPath' });
+        expect(docA.languageId).toBe('bbx-config');
+        expect(docB.languageId).toBe('plaintext');
+
+        // The server's push then arrives with the new path (the handler itself updates the cache).
+        const onResolvedConfigPath = clientOnNotificationMock.mock.calls
+            .find(([method]) => method === RESOLVED_CONFIG_PATH_METHOD)?.[1];
+        onResolvedConfigPath!(pushedPath({ path: '/srv/custom/new-config.bbx' }));
+
+        expect(docA.languageId).toBe('plaintext');
+        expect(docB.languageId).toBe('bbx-config');
     });
 
     test('a configuration change unrelated to bbj.configPath is ignored', () => {
