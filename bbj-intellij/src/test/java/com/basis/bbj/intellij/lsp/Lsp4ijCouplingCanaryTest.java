@@ -22,6 +22,7 @@ import java.lang.annotation.Retention;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import static com.basis.bbj.intellij.lsp.Lsp4ijClassFileMarkers.EXPERIMENTAL_DESCRIPTOR;
 import static com.basis.bbj.intellij.lsp.Lsp4ijClassFileMarkers.referencesAnnotation;
@@ -212,5 +213,78 @@ class Lsp4ijCouplingCanaryTest {
                 "a detail matching none of the heuristic's substrings must select the same icon as "
                     + "a null detail for kind " + kind);
         }
+    }
+
+    @Test
+    void theServerStatusConstantsThisPluginBranchesOnStillExist() {
+        // Look each up by name so a rename fails; the plugin branches on exactly these four.
+        for (String name : new String[] {"stopped", "starting", "started", "stopping"}) {
+            assertDoesNotThrow(() -> ServerStatus.valueOf(name),
+                "ServerStatus no longer declares the constant '" + name + "' this plugin branches on");
+        }
+        // Measured against the 0.21.0 jar: nine constants exist today, not the four this plugin
+        // branches on -- five install-lifecycle states (none, checking_installed, installing,
+        // installed, not_installed) were added upstream since #554 was filed. Asserting the full
+        // count, not just the four this plugin uses, means a tenth constant is also noticed.
+        assertEquals(9, ServerStatus.values().length,
+            "ServerStatus's constant count changed since it was last measured -- re-audit whether "
+                + "this plugin needs to branch on the new value(s)");
+    }
+
+    @Test
+    void theLanguageServerManagerMembersThisPluginCallsStillExist() throws NoSuchMethodException {
+        Method getInstance = LanguageServerManager.class.getMethod("getInstance",
+            com.intellij.openapi.project.Project.class);
+        assertEquals(LanguageServerManager.class, getInstance.getReturnType());
+
+        Method start = LanguageServerManager.class.getMethod("start", String.class);
+        assertEquals(void.class, start.getReturnType());
+
+        Method stop = LanguageServerManager.class.getMethod("stop", String.class);
+        assertEquals(void.class, stop.getReturnType());
+
+        Method getLanguageServer = LanguageServerManager.class.getMethod("getLanguageServer", String.class);
+        assertEquals(CompletableFuture.class, getLanguageServer.getReturnType());
+    }
+
+    @Test
+    void theClientMembersThisPluginOverridesStillExist() throws NoSuchMethodException {
+        // createSettings and handleServerStatusChanged are declared on the superclass, and this
+        // plugin overrides both, so a superclass-level lookup is the one this canary must pin.
+        Method createSettings = LanguageClientImpl.class.getDeclaredMethod("createSettings");
+        assertEquals(Object.class, createSettings.getReturnType());
+
+        Method handleServerStatusChanged = LanguageClientImpl.class.getMethod(
+            "handleServerStatusChanged", ServerStatus.class);
+        assertEquals(void.class, handleServerStatusChanged.getReturnType());
+
+        assertDoesNotThrow(() -> LanguageClientImpl.class.getConstructor(
+            com.intellij.openapi.project.Project.class));
+    }
+
+    @Test
+    void theConnectionProviderMembersThisPluginUsesStillExist() throws NoSuchMethodException {
+        Method setCommandLine = OSProcessStreamConnectionProvider.class.getMethod(
+            "setCommandLine", com.intellij.execution.configurations.GeneralCommandLine.class);
+        assertEquals(void.class, setCommandLine.getReturnType());
+
+        assertTrue(StreamConnectionProvider.class.isAssignableFrom(OSProcessStreamConnectionProvider.class));
+    }
+
+    @Test
+    void theFactoryInterfaceMembersThisPluginImplementsStillExist() throws NoSuchMethodException {
+        Method createConnectionProvider = LanguageServerFactory.class.getMethod(
+            "createConnectionProvider", com.intellij.openapi.project.Project.class);
+        assertEquals(StreamConnectionProvider.class, createConnectionProvider.getReturnType());
+
+        Method createLanguageClient = LanguageServerFactory.class.getMethod(
+            "createLanguageClient", com.intellij.openapi.project.Project.class);
+        assertEquals(LanguageClientImpl.class, createLanguageClient.getReturnType());
+
+        Method getServerInterface = LanguageServerFactory.class.getMethod("getServerInterface");
+        assertEquals(Class.class, getServerInterface.getReturnType());
+
+        Method createClientFeatures = LanguageServerFactory.class.getMethod("createClientFeatures");
+        assertEquals(LSPClientFeatures.class, createClientFeatures.getReturnType());
     }
 }
