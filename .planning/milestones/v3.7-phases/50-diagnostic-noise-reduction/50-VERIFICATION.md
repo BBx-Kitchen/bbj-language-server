@@ -5,12 +5,17 @@ status: human_needed
 score: 2/3 success criteria verified (third requires runtime observation)
 re_verification: false
 human_verification:
+
   - test: "Edit a BBj file to introduce one syntax error, observe Problems panel"
     expected: "Only the parse error appears (1-3 diagnostics). No downstream linking errors flood the panel."
     why_human: "Requires a running VS Code instance with the extension loaded; cannot verify filtered LSP output programmatically."
   - test: "With a syntax error present, fix it (edit the file — no save/reload)"
     expected: "Warnings and hints reappear in the Problems panel without requiring a file save or manual reload."
     why_human: "Depends on Langium's incremental re-validation trigger on text change; cannot observe live LSP event loop from the CLI."
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: human_needed
 ---
 
 # Phase 50: Diagnostic Noise Reduction Verification Report
@@ -133,6 +138,7 @@ No blockers or phase-specific warnings found.
 | Tests passing | 468 |
 
 Pre-existing failures (confirmed in both SUMMARY files as pre-existing):
+
 - `test/classes.test.ts` — 2 failures (access-level message text mismatch)
 - `test/completion-test.test.ts` — 1 failure (DEF FN parameter suffix)
 - `test/imports.test.ts` — 1 failure (USE unresolvable binary file)

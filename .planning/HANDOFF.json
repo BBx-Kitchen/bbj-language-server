@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-08-22T16:14:08.914Z",
+  "phase": "77",
+  "phase_name": "Remediate GHSA-h43f-jcjr-2g4j",
+  "phase_dir": ".planning/phases/77-remediate-ghsa-h43f-jcjr-2g4j",
+  "plan": 5,
+  "task": 2,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "77-01", "name": "Tracer slice: pin module, sync verify, gate at spawn site, tamper + source guards", "status": "done", "commit": "8e913a7"},
+    {"id": "77-02", "name": "jcommander provenance check - outcome: NOT PERFORMED / unverified, by maintainer decision", "status": "done", "commit": "1fe6675"},
+    {"id": "77-03", "name": "Full three-artefact pin table, drift guard, CI-gate evidence", "status": "done", "commit": "543712c"},
+    {"id": "77-04", "name": "Residual-risk, waivers, deferred-items records (item 8 added on orchestrator spot-check)", "status": "done", "commit": "3b4589b"},
+    {"id": "77-05/task-1", "name": "Package branch build and write the QA script", "status": "done", "commit": null, "progress": "vsix built and installed into ext-test VS Code; all three installed artefacts hash-match the committed pins; 77-MANUAL-QA.md written (7 checks, exact commands and verbatim expected wording)"}
+  ],
+  "remaining_tasks": [
+    {"id": "77-05/task-2", "name": "Run the manual QA against the packaged build", "status": "blocked", "blocking_reason": "gate=blocking-human, requires human observation"},
+    {"id": "77-05/task-3", "name": "Transcribe observed results into 77-MANUAL-QA.md section 4 (Outcome)", "status": "not_started"},
+    {"id": "77-06", "name": "Public pull request and gated merge to main (triggers preview publish to BOTH marketplaces)", "status": "not_started"},
+    {"id": "77-07", "name": "Publication-readiness record", "status": "not_started"}
+  ],
+  "blockers": [
+    {
+      "description": "77-05 task 2 requires a human to run seven QA checks against the packaged extension at http://localhost:13338. Gate is blocking-human; no mode may auto-approve it.",
+      "type": "human_action",
+      "workaround": "None by design. This is the last gate before 77-06's one-way merge to public main."
+    }
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {
+      "action": "Run checks 1-7 plus the section 3 final-state check in .planning/phases/77-remediate-ghsa-h43f-jcjr-2g4j/77-MANUAL-QA.md at http://localhost:13338, and report the two verbatim log lines from checks 3 and 6 plus which output channel actually showed them",
+      "context": "No automated check in this repository invokes java -jar or exercises the packaged __dirname layout. A wrong resolved path or mistranscribed digest would ship green and silently disable format-on-save for every user. 77-06 merges to main and publishes to both marketplaces, so this is the last point where the failure costs a commit rather than a release.",
+      "blocking": true
+    }
+  ],
+  "decisions": [
+    {"decision": "jcommander-1.71 pin recorded as UNVERIFIED (outcome: not performed)", "rationale": "com.beust:jcommander:1.71 was never published to Maven Central (metadata goes 1.69 -> 1.72, verified via the GCS mirror's genuine NoSuchKey). A third-party aggregating proxy serves a byte-identical artefact, but the maintainer explicitly declined to accept a proxy as provenance.", "phase": "77"},
+    {"decision": "The repo1.maven.org key_link in 77-03 was deliberately left unsatisfied", "rationale": "Satisfying it would have required writing a Maven Central citation into formatter-verifier.ts, fabricating the exact provenance claim the maintainer declined.", "phase": "77"},
+    {"decision": "All three pins are change-detection only; none carries verified upstream provenance", "rationale": "Two are proprietary BASIS builds with no public feed; the third is absent from Central and its original channel (JCenter) was sunset in 2021.", "phase": "77"},
+    {"decision": "Executors dispatched sequentially on the main working tree", "rationale": "workflow.use_worktrees=false, so ISOLATION resolves to none; --force-isolation none written as the final dispatch-isolation call.", "phase": "77"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Resume 77-05 task 2: have the human run the seven checks in 77-MANUAL-QA.md section 2 at http://localhost:13338, then spawn a continuation gsd-executor to transcribe the real observations into section 4 and complete the plan. Do NOT record any check as passed without a reported observation.",
+  "context_notes": "Phase 77 is a 7-wave strictly-serial chain, executed via gsd-executor subagents on the main tree. Waves 1-4 are complete and spot-checked. The whole phase directory is git-excluded (D-18 embargo) via .git/info/exclude, so SUMMARY/evidence files live on disk and are never committed - only STATE.md/ROADMAP.md commits mark plan progress. Two things bit this session and are recorded as anti-patterns in .continue-here.md: an executor self-check reporting PASSED while an explicit success criterion was unmet, and vitest rejecting unknown CLI flags by aborting instantly in a way that reads like a fast clean run."
+}

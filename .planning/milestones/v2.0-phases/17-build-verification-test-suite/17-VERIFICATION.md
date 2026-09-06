@@ -4,6 +4,7 @@ verified: 2026-02-03T14:30:26Z
 status: gaps_found
 score: 6/7 must-haves verified
 gaps:
+
   - truth: "`npm test` (vitest run) passes with zero failures"
     status: partial
     reason: "56/58 tests pass. 2 tests fail during initialization due to Chevrotain lexer warnings about 'unreachable' tokens (EXTRACT, DELETE, INPUT, ENTER, SAVE, READ, FIND). These are false positives - KEYWORD_STANDALONE uses lookahead patterns that Chevrotain's static analysis doesn't recognize."
@@ -17,6 +18,10 @@ gaps:
       - "IntelliJ plugin builds and loads successfully"
     mitigation: "The 2 test failures are initialization errors only, not functional failures. All 56 meaningful tests pass. The warnings don't affect runtime behavior."
     blocking: false
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: gaps_found
 ---
 
 # Phase 17: Build Verification & Test Suite Verification Report
@@ -103,6 +108,7 @@ gaps:
 **Test:** Run `npx @vscode/vsce package` in bbj-vscode/ directory to create .vsix file
 
 **Expected:** 
+
 - Command succeeds without errors
 - Produces .vsix file in bbj-vscode/ directory
 - File size is reasonable (likely 2-3 MB based on bundle sizes)
@@ -112,12 +118,14 @@ gaps:
 #### 2. Chevrotain Lexer False Positive Verification
 
 **Test:** 
+
 1. Open a BBj file containing statements like `READ RECORD (1)data$`
 2. Verify syntax highlighting and parsing work correctly
 3. Try code completion after typing `READ` - should offer `READ` and `RECORD` as separate tokens
 4. Verify diagnostic errors are correct for malformed statements
 
 **Expected:** 
+
 - `READ` keyword works both standalone (e.g., `READ\n`) and as part of compound statements (e.g., `READ RECORD`)
 - No parsing errors related to the 7 "unreachable" tokens (EXTRACT, DELETE, INPUT, ENTER, SAVE, READ, FIND)
 - Language features work correctly with these keywords
@@ -129,6 +137,7 @@ gaps:
 **Test:** Investigate why comment-provider.test.ts and completion-test.test.ts fail during initialization
 
 **Expected:** 
+
 - Determine if there's a way to suppress Chevrotain validation warnings without breaking tests
 - Or confirm that tests only fail during initialization, not during actual test execution
 

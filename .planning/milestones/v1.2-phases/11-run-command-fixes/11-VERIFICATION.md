@@ -3,6 +3,10 @@ phase: 11-run-command-fixes
 verified: 2026-02-02T18:50:36Z
 status: human_needed
 score: 5/5 must-haves verified (automated checks)
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: human_needed
 ---
 
 # Phase 11: Run Command Fixes Verification Report
@@ -63,6 +67,7 @@ score: 5/5 must-haves verified (automated checks)
 | (none) | - | - | - | No anti-patterns detected |
 
 **Notes:**
+
 - No TODO/FIXME/placeholder comments found
 - No stub implementations (return null, console.log only, etc.)
 - No notification balloons for run errors (removed as per plan)
@@ -76,6 +81,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On macOS with BBj installed, configure BBj Home in Settings > Languages & Frameworks > BBj. Open a .bbj file, right-click in editor or project tree, select "Run As BBj Program" (or press Alt+G).
 
 **Expected:** 
+
 - BBj Home auto-detected (if standard installation)
 - BBj executable resolved correctly (no "not found" error)
 - Program launches as GUI application
@@ -89,6 +95,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On macOS with BBj installed, right-click a .bbj file, select "Run As BUI Program" (or press Alt+B).
 
 **Expected:**
+
 - web.bbj runner found in plugin bundle
 - Program launches as BUI application in browser
 - Launch message appears in log window
@@ -101,6 +108,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On macOS with BBj installed, right-click a .bbj file, select "Run As DWC Program" (or press Alt+D).
 
 **Expected:**
+
 - web.bbj runner found in plugin bundle
 - Program launches as DWC application in browser
 - Launch message appears in log window
@@ -113,6 +121,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On Windows with BBj installed, configure BBj Home, right-click a .bbj file, select "Run As BBj Program" (or press Alt+G).
 
 **Expected:**
+
 - BBj Home auto-detected (if standard installation)
 - bbj.exe executable resolved correctly (Windows path handling)
 - Program launches as GUI application
@@ -126,6 +135,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On Windows with BBj installed, right-click a .bbj file, select "Run As BUI Program" (or press Alt+B).
 
 **Expected:**
+
 - web.bbj runner found in plugin bundle
 - Windows path handling works correctly
 - Program launches as BUI application in browser
@@ -138,6 +148,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On Windows with BBj installed, right-click a .bbj file, select "Run As DWC Program" (or press Alt+D).
 
 **Expected:**
+
 - web.bbj runner found in plugin bundle
 - Windows path handling works correctly
 - Program launches as DWC application in browser
@@ -150,6 +161,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Clear BBj Home setting (Settings > Languages & Frameworks > BBj, set BBj Home to empty). Try to run a .bbj file.
 
 **Expected:**
+
 - Error message in LS log window: "BBj Home is not configured. Set it in Settings > Languages & Frameworks > BBj."
 - Log window auto-opens
 - No notification balloon
@@ -162,6 +174,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Set BBj Home to a nonexistent directory (e.g., /tmp/nonexistent). Try to run a .bbj file.
 
 **Expected:**
+
 - Error message in LS log window: "BBj Home directory does not exist: /tmp/nonexistent"
 - Log window auto-opens
 - No notification balloon
@@ -174,6 +187,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Set BBj Home to a directory that exists but does NOT contain bin/bbj or bin/bbj.exe. Try to run a .bbj file.
 
 **Expected:**
+
 - Error message in LS log window: "BBj executable not found in <bbjHomePath>/bin/. Verify your BBj installation."
 - Log window auto-opens
 - No notification balloon
@@ -186,6 +200,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** In IntelliJ with a BBj project, right-click a .bbj file in the Project View (left sidebar tree).
 
 **Expected:**
+
 - "BBj Run" submenu appears in context menu (before Cut action)
 - Submenu contains: "Run As BBj Program", "Run As BUI Program", "Run As DWC Program"
 - Clicking any option triggers the respective run action
@@ -198,6 +213,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Open a .bbj file in IntelliJ editor, right-click in the editor.
 
 **Expected:**
+
 - Run actions appear at top of context menu (not in submenu)
 - Three options: "Run As BBj Program", "Run As BUI Program", "Run As DWC Program"
 - Clicking any option triggers the respective run action
@@ -210,6 +226,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Open a .bbj file in IntelliJ editor. Press Alt+G, then Alt+B, then Alt+D.
 
 **Expected:**
+
 - Alt+G triggers GUI run action
 - Alt+B triggers BUI run action
 - Alt+D triggers DWC run action
@@ -223,6 +240,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** In IntelliJ 2024.2+ with new UI enabled (default), check the main toolbar.
 
 **Expected:**
+
 - BBj run buttons (GUI/BUI/DWC) do NOT appear in main toolbar
 - This is intentional — MainToolBar actions hidden in new UI
 - Run actions still accessible via context menus and keyboard shortcuts
@@ -234,6 +252,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Open a .bbj file. Use "Tools > Restart BBj Language Server" to stop the server. Try to run a .bbj file while LS is stopped or in grace period.
 
 **Expected:**
+
 - Run actions are grayed out (disabled) when LS is not in "started" status
 - No crash or bad state when attempting to run with LS stopped
 - Run actions re-enable when LS starts
@@ -245,6 +264,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Create a .bbj file with syntax error or invalid code that causes BBj process to write to stderr. Run the file as GUI.
 
 **Expected:**
+
 - BBj process stderr output appears in "BBj Language Server" log window
 - Each stderr line prefixed with "[GUI]" (or [BUI]/[DWC] for other modes)
 - Log window auto-opens when stderr is detected
@@ -257,6 +277,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Create a .bbj file that exits with non-zero code. Run the file.
 
 **Expected:**
+
 - Log window shows: "[GUI] Process exited with code <N>" where N is the exit code
 - Message appears in error output (red text)
 - No notification balloon
@@ -268,6 +289,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On macOS or Linux, create a symbolic link to BBj installation. Set BBj Home to the symlink path. Try to run a .bbj file.
 
 **Expected:**
+
 - BBj executable resolved correctly through symbolic link
 - No "not found" error (this was the original bug)
 - Program launches normally
@@ -279,6 +301,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On Windows, verify paths with backslashes work. On macOS/Linux, verify paths with forward slashes work.
 
 **Expected:**
+
 - Path separators handled correctly on each platform
 - Working directory set correctly for bbj process
 - web.bbj runner directory resolved correctly for BUI/DWC
@@ -290,6 +313,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** On a fresh IntelliJ installation (or after clearing settings), install BBj in standard location. Open IntelliJ, create a BBj project, open a .bbj file.
 
 **Expected:**
+
 - BBj Home auto-detected without visiting Settings dialog
 - Run actions work immediately (no "not configured" error)
 - If standard installation not found, clear error message in log window
@@ -301,6 +325,7 @@ score: 5/5 must-haves verified (automated checks)
 **Test:** Run a .bbj file successfully (no errors). Then run a .bbj file that fails with an error.
 
 **Expected:**
+
 - Success case: log window does NOT auto-open (launch message logged but not intrusive)
 - Failure case: log window auto-opens to show error
 - User can manually open log window at any time via bottom panel
@@ -325,6 +350,7 @@ score: 5/5 must-haves verified (automated checks)
 - All files compile successfully
 
 **Human verification required** to confirm:
+
 - Actual execution on macOS (GUI/BUI/DWC modes)
 - Actual execution on Windows (GUI/BUI/DWC modes)
 - Symbolic link handling in real environment

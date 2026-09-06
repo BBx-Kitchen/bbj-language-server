@@ -8,24 +8,29 @@ A Langium-based language server for BBj that powers both the VS Code extension a
 
 BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-## Current Milestone: v4.1 Security Advisory Remediation
+## Current State
 
-**Goal:** Remediate the eight remaining high-severity security advisories, each in its own
-temporary private fork, so every fix ships before its advisory is published.
-
-**Target features:**
-- Eight advisories remediated, one per phase (70-77), each verified and merged before publication
-- Every fix carries a regression test proven to fail against the pre-fix code
-- Each advisory published only after its fix is released
+**v4.1 Security Advisory Remediation shipped 2026-09-03** (override closeout). All eight
+remaining high-severity advisories have their fixes merged to public `main` through
+human-gated pull requests (#638-#647), each with regression coverage observed failing
+before the fix. Preview builds up to 0.12.27 are live on both marketplaces. No advisory is
+published yet: publication is gated on a tagged release, and the severity/CVE decisions are
+taken by the maintainer at that point. Phase-level artifacts for 70-77 are archived off
+`main` under `.planning/milestones/v4.1-phases/` (embargoed until publication).
 
 <!-- Do NOT list advisory ids grouped by flaw class here, or anywhere under .planning/ on
      public main. Grouping ids by what they have in common discloses the flaw class of each
-     one. See the disclosure notice in REQUIREMENTS.md. -->
+     one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-**Working model:** one phase per advisory, one temporary private fork per advisory, one PR per
-fork. Detailed findings, plans and summaries live **inside the private forks**. Artifacts on
-public `main` reference advisories by GHSA id only and describe no flaw mechanism, so the eight
-unfixed surfaces are not published ahead of their fixes.
+## Next Milestone Goals
+
+Candidates, to be settled by `/gsd-new-milestone`:
+
+- Cut the tagged release that carries all nine advisory fixes (the eight from v4.1 plus
+  GHSA-p5f3-9456-9pcx from v4.0), then publish the advisories — completing PROC-03.
+- Close `WINDOWS.md` entry 1 (Phase 70 guardrail breadth) so `/gsd-ship` is unblocked.
+- Retire the DEBT.md items surfaced during v4.1: the `:5008` test-harness false positive
+  and the `getAllClassNames` interop test drift.
 
 ## Requirements
 
@@ -182,16 +187,18 @@ unfixed surfaces are not published ahead of their fixes.
 - ✓ Constructor completion for `new ClassName()` expressions — v3.9
 - ✓ GHSA-p5f3-9456-9pcx remediated: shell-string command construction replaced with argument arrays — v4.1 (PR #637)
 - ✓ **SEC-02**: GHSA-5f22-gqrx-xr22 remediated, verified, and its fix merged — v4.1 Phase 71 (PR #639)
+- ✓ **SEC-05**: GHSA-9gv3-gr6g-c4rj remediated, verified, and its fix merged — v4.1 Phase 74 (PR #642)
+- ✓ **SEC-06**: GHSA-33x9-cpwv-xcv2 remediated, verified, and its fix merged — v4.1 Phase 75 (PR #643, released 0.12.24)
+- ✓ **SEC-07**: GHSA-xxp5-vv2w-42q8 remediated, verified, and its fix merged — v4.1 Phase 75 (same commits as SEC-06; Phase 76 closed by Phase 75)
+- ✓ **SEC-08**: GHSA-h43f-jcjr-2g4j remediated, verified, and its fix merged — v4.1 Phase 77 (PR #647, preview 0.12.27; publication awaits a tagged release)
+- ✓ **SEC-01**: GHSA-89r9-2pw4-mc7f remediated, verified, and its fix merged — v4.1 Phase 70 (PR #638; verified with 2 recorded overrides)
+- ✓ **SEC-03**: GHSA-c4hw-5j83-cx5h remediated, verified, and its fix merged — v4.1 Phase 72 (PR #640)
+- ✓ **SEC-04**: GHSA-5vrp-fj75-pm5q remediated, verified, and its fix merged — v4.1 Phase 73 (PR #641)
 
 ### Active
 
-- [ ] **SEC-01**: GHSA-89r9-2pw4-mc7f is remediated, verified, and its fix merged
-- [ ] **SEC-03**: GHSA-c4hw-5j83-cx5h is remediated, verified, and its fix merged
-- [ ] **SEC-04**: GHSA-5vrp-fj75-pm5q is remediated, verified, and its fix merged
-- [ ] **SEC-05**: GHSA-9gv3-gr6g-c4rj is remediated, verified, and its fix merged
-- [ ] **SEC-06**: GHSA-33x9-cpwv-xcv2 is remediated, verified, and its fix merged
-- [ ] **SEC-07**: GHSA-xxp5-vv2w-42q8 is remediated, verified, and its fix merged
-- [ ] **SEC-08**: GHSA-h43f-jcjr-2g4j is remediated, verified, and its fix merged
+- [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
+- [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
 
 ### Out of Scope
 
@@ -205,7 +212,7 @@ unfixed surfaces are not published ahead of their fixes.
 
 ## Context
 
-**Current state:** v3.9 shipped 2026-02-21 (16 milestones shipped, 59 phases). Test suite fully green (511 passed, 4 skipped). Java class reference features (static methods, deprecated indicators, constructors, .class resolution) complete.
+**Current state:** v4.1 shipped 2026-09-03 (18 milestones shipped, 77 phases, 242 plans). Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green (96 tests). All nine known advisory fixes merged; publication awaits a tagged release.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.19.0, TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -352,6 +359,12 @@ unfixed surfaces are not published ahead of their fixes.
 | No CVE for any remaining v4.1 advisory (standing) | User decision, 2026-08-21, taken once for all remaining advisories rather than per-advisory. Supersedes D-17 ("the CVE question is decided per advisory") for phases 72-77. **This is a deliberate departure from PROC-03's "assigned a CVE where severity warrants" clause, not a finding of compliance:** unlike phase 71 — where `no-cve` rested on a recorded severity reassessment (`high` → `medium`) — this decision carries no severity basis, and the remaining advisories' severities are unchanged and NOT reassessed by it. Phases 72-77 must not re-ask the CVE question; they record this decision and proceed. | Applied — phase 71 already executed `no-cve`; phases 72-77 pending |
 | Whole-suite regression gate: project-wide `numFailedTests: 0` plus deterministic targeted-file runs, in place of a failing-suite identity delta (standing) | User decision, 2026-08-21, at the phase 71 UAT checkpoint. The whole-suite failure *count* is unstable in this environment — observed at 4, 10 and 15 for the same command — because `shouldRunBBjTests()` gates on a bare TCP connect to port 5008 and BBjServices squats on that port without speaking the interop protocol (DEBT.md item 5). Four separate phase-71 plans each propagated a request for human sign-off without it ever being answered; it is now answered once. Acceptance extends to phases 72-77. | Accepted as equivalent-in-rigor — phases 72-77 must not re-ask |
 | Residual-risk wording for GHSA-5f22-gqrx-xr22 accepted as written | User decision, 2026-08-21, at the phase 71 UAT checkpoint. A code-review finding showed one paragraph of the phase's residual-risk note overstated a platform-specific claim. The behaviour in question fails closed and is not attacker-reachable, so the wording was accepted rather than patched. The finding's detail is held in the embargoed phase directory, not on `main`. | Accepted as-is — no patch applied |
+| Three post-hoc code-review findings on GHSA-9gv3-gr6g-c4rj accepted as residual | User decision, 2026-08-21, at the phase 74 UAT checkpoint. The phase's code review ran *after* its residual-risk register and publication-readiness plan had already closed, so its three findings were never triaged — an ordering artifact, not a judgement that they were acceptable. All three were reviewed and consciously carried rather than fixed before publication: none contradicts the guarantee the phase established (verifier confirmed 7/7 must-haves on the shipped code), and the merged tree stays identical to what CI already observed green. One of the three narrows what the phase's PROC-02 non-vacuity evidence proves; the narrowed basis was judged sufficient and that honest scope is now recorded. The findings and their dispositions are held in the embargoed phase directory, not on `main`. | Accepted as residual — recorded in the phase's residual-risk register; a window to act remains open through the release that triggers publication |
+| Phase 75 scope widened to absorb GHSA-xxp5-vv2w-42q8 (SEC-07), closing Phase 76 | Decided during Phase 75. The two advisories share one remediation surface, so a single set of commits fixes both; splitting them across phases would have produced a Phase 76 with no work of its own. Phase 76 keeps its roadmap entry annotated per-criterion, satisfied by Phase 75's evidence, and has no plans. | Applied — SEC-06 and SEC-07 both satisfied by Phase 75 (PR #643, released 0.12.24); Phase 76 closed by Phase 75 |
+| EDT-threading restructuring (CR-02) shipped in 0.12.24 without live-IDE automated coverage | User decision, 2026-08-22, at the phase 75 UAT checkpoint. CR-02 is not one of SEC-06/SEC-07/PROC-01/02/03's must-haves — it was authorized separately and landed after this phase's only live IntelliJ manual QA (8/8 checks against 0.12.23). This repository has no live IntelliJ UI test coverage in CI, the same structural gap already recorded for the CLIENTENV macOS regression, so the JUnit suite and `./gradlew buildPlugin` (both green) cannot exercise the EDT/pooled-thread handoff. The restructuring was instead confirmed by hand in a running IDE at the UAT checkpoint. | Verified manually — UAT test 1 passed 2026-08-22; the underlying secret-channel security property (SEC-06/SEC-07) rests on the earlier 0.12.23 QA pass, which the gap closure left unchanged |
+| Phase 77 human-attestation items closed at UAT rather than deferred | User decision, 2026-09-03, at the phase 77 UAT checkpoint. The verifier's report asked for two items to be closed by a human rather than carried: a manual-QA transcription gap (verbatim log lines and the test machine's identity, carried from 77-05 as a deferred item) and a dependency-provenance cross-check the verifier's sandbox could not re-run because of the same egress limit the phase record documents. Both were attested by the maintainer; the phase closes with 4/4 must-haves and 3 recorded overrides (PROC-01 fork waiver, public-PR landing, standing no-CVE). Detail is held in the embargoed phase directory, not on `main`. | Verified manually — UAT tests 1 and 2 passed 2026-09-03; v4.1 phases 70-77 all complete, milestone close pending a tagged release and the advisory publication decisions |
+| v4.1 closed as an override closeout without a milestone-level audit | Maintainer decision, 2026-09-03. Phase 76 has no artifacts of its own (closed by Phase 75) and PROC-01/02/03 span all eight phases and cannot be satisfied before a tagged release and publication; the close rests on the eight per-phase verification reports and UAT records instead of `/gsd-audit-milestone`. PROC gaps are recorded under Known Gaps in MILESTONES.md. | Applied — v4.1 archived 2026-09-03; PROC-01/02/03 carried forward |
+| v4.1 phase artifacts archived off `main` with extended embargo controls | Decided at the v4.1 close. `milestones/v4.1-phases/` added to `.git/info/exclude` and the `pre-push` hook pattern widened to `milestones/v4\.[01]`, mirroring v4.0. The per-phase decision detail earlier sessions had written into STATE.md was removed at the same time. | Applied — archived tree ignored and push-blocked until publication |
 
 ## Evolution
 
@@ -371,4 +384,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-21 after Phase 71 (GHSA-5f22-gqrx-xr22)*
+*Last updated: 2026-09-03 after v4.1 milestone*

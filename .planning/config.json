@@ -8,7 +8,7 @@
     "plan_check": true,
     "verifier": true,
     "use_worktrees": false,
-    "_auto_chain_active": true
+    "_auto_chain_active": false
   },
   "granularity": "standard"
 }

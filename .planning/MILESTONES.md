@@ -1,5 +1,77 @@
 # Project Milestones: BBj Language Server
 
+## v4.1 Security Advisory Remediation (Shipped: 2026-09-03)
+
+**Closed 2026-09-03** as an override closeout, by maintainer decision, without a
+milestone-level audit (`/gsd-audit-milestone` was not run; the close rests on the eight
+per-phase verification reports and UAT records). Every one of the eight remaining
+high-severity advisories has its fix merged to public `main`; none is yet published,
+because publication is gated on a tagged release that has not happened.
+
+**Where the artifacts live — by decision, not by accident.** Phases 70-77 are archived
+under `.planning/milestones/v4.1-phases/`, which is listed in `.git/info/exclude` and
+matched by the `pre-push` hook (pattern extended from `milestones/v4\.0` to
+`milestones/v4\.[01]` at this close). They describe fix mechanisms for advisories that
+are still `draft`, so they stay off public `main` until each advisory is published — the
+same arrangement v4.0 established. `v4.1-ROADMAP.md` and `v4.1-REQUIREMENTS.md` are
+opaque (GHSA ids and neutral outcomes only) and are committed.
+
+**Delivered:** eight advisories remediated, one phase per advisory, each with a
+regression test observed failing before its fix and passing after it, each landed on
+`main` through a human-gated pull request, with preview builds published to both
+marketplaces along the way. Phase 76 was closed by Phase 75, whose single set of commits
+fixed both of their advisories.
+
+**Phases completed:** 70-77 (8 phases; 7 with directories, 37 plans, 93 tasks)
+
+| Phase | Advisory | Landed via | Notes |
+|-------|----------|------------|-------|
+| 70 | GHSA-89r9-2pw4-mc7f | PR #638 (`528889d`) | verified with 2 recorded overrides; one truth accepted as unmet — `WINDOWS.md` entry 1, still open |
+| 71 | GHSA-5f22-gqrx-xr22 | PR #639 (`f6cf64b`) | clean; severity reassessed high → medium |
+| 72 | GHSA-c4hw-5j83-cx5h | PR #640 (`0296086`) | clean |
+| 73 | GHSA-5vrp-fj75-pm5q | PR #641 (`7c10be1`) | clean |
+| 74 | GHSA-9gv3-gr6g-c4rj | PR #642 (`421b40e`) | clean; three post-hoc review findings accepted as residual |
+| 75 | GHSA-33x9-cpwv-xcv2 | PR #643 (`a6e6e05`), fix-ups #644-#646 | clean; released 0.12.23/0.12.24, manually QA'd 8/8 on macOS and Windows |
+| 76 | GHSA-xxp5-vv2w-42q8 | same commits as 75 | closed by Phase 75; no plans of its own |
+| 77 | GHSA-h43f-jcjr-2g4j | PR #647 (`0a89624`) | verified with 3 recorded overrides; preview 0.12.27 live |
+
+**Stats:** 156 commits on `main` between 2026-08-20 and 2026-09-03 (14 days); 120 files
+changed, +9,385 / −1,778 lines.
+
+### Known Gaps
+
+Carried forward at close by maintainer decision — not silently satisfied:
+
+- **PROC-01** (private-fork development and fork-PR merge): waived for phases 70, 75/76
+  and 77 with recorded grounds in each phase's embargoed waiver record; every fix
+  landed through a public PR instead because a fork PR resolves its base to the public
+  repository.
+- **PROC-02** (non-vacuous regression test): satisfied per phase, but the requirement
+  spans all eight phases and its cross-phase checkbox was never ticked.
+- **PROC-03** (publish after release, CVE where severity warrants): not satisfied. No
+  advisory is published, no tagged release exists, and the standing v4.1 decision is
+  that no CVE is requested during implementation — the CVE and severity questions are
+  the maintainer's, taken at publication time.
+- **`WINDOWS.md` entry 1** (Phase 70 guardrail breadth): open; blocks `/gsd-ship` while
+  `workflow.windows_enforce` is on.
+
+Known verification overrides: 20 newly acknowledged, 0 carried forward from a prior
+close (see STATE.md Deferred Items). All 20 are artifacts of earlier milestones (v1.1
+through v3.9) or backlog todos; none belongs to phases 70-77.
+
+### Post-release actions (owned by the maintainer)
+
+1. Run the tagged `manual-release.yml` release carrying all eight fixes.
+2. Decide severity and CVE per advisory, then publish each advisory.
+3. Tick PROC-01/02/03 in the archived requirements once publication is done, or record
+   their final waivers.
+4. Clear or waive `WINDOWS.md` entry 1.
+5. Scrub or keep the per-phase decision detail that earlier sessions wrote into
+   `STATE.md` (removed at this close; see the Decisions section there).
+
+No `v4.1` git tag was created: this repository's tags are release versions
+(`v0.12.0`, …) and v4.0 was not tagged either.
+
 ## v4.0 Stability and Quality (Shipped: 2026-08-20)
 
 **Closed 2026-08-20** on records. The audit scored 40/40 requirements with no blockers
@@ -121,6 +193,7 @@ WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-
 **Git range:** `576b61b` → `2194616`
 
 **Tech debt accepted:**
+
 - IntelliJ TextMate bundle cannot exclude config.bbx by filename (platform limitation)
 - FQN path static-only filtering deferred (USE alias path works; requires JAR redeployment)
 - Static method return type inference gap (future work)
@@ -163,6 +236,7 @@ WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-
 **Phases completed:** 53 phases, 102 plans, 18 tasks
 
 **Key accomplishments:**
+
 - (none recorded)
 
 ---
@@ -198,6 +272,7 @@ WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-
 **Phases completed:** 47 phases, 93 plans, 14 tasks
 
 **Key accomplishments:**
+
 - (none recorded)
 
 ---
@@ -508,6 +583,7 @@ WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-
 **Phases completed:** 1-6 (19 plans total)
 
 **Key accomplishments:**
+
 - Gradle-based IntelliJ plugin with BBj file type registration and custom icons for Community and Ultimate editions
 - TextMate grammar integration for instant syntax highlighting of BBj and BBx code
 - Configuration UI with auto-detection of BBj home, classpath entries, and Node.js runtime
@@ -516,6 +592,7 @@ WR-01..WR-06 items are tracked as issues #497–#500 (two were already fixed in-
 - Cross-platform distribution with bundled language server and automatic Node.js download
 
 **Stats:**
+
 - 96 files created/modified
 - 7,253 lines of Java (plugin source)
 - 6 phases, 19 plans
