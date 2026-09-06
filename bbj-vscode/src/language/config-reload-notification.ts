@@ -47,7 +47,7 @@ export const CONFIG_RELOAD_REASONS: readonly ConfigReloadReason[] = [
 
 /** Payload of a `bbj/configReloadRequired` notification. */
 export interface ConfigReloadNotification {
-    /** The canonical resolved config path (Phase 84 D-04 form), or `null` if none is resolved. */
+    /** The canonical resolved config path (absolute, symlink-resolved, normalized), or `null` if none is resolved. */
     path: string | null;
     /** Why the reload is required. Machine-readable — dispatch on this, never on message prose. */
     reason: ConfigReloadReason;
