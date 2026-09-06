@@ -1,5 +1,6 @@
 package com.basis.bbj.intellij;
 
+import com.basis.bbj.intellij.lsp.NodeAvailability;
 import com.intellij.ide.BrowserUtil;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.options.ShowSettingsUtil;
@@ -13,8 +14,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
-import java.io.File;
-import java.nio.file.Path;
 import java.util.function.Function;
 
 /**
@@ -35,27 +34,15 @@ public final class BbjMissingNodeNotificationProvider
 
         String nodeJsPath = BbjSettings.getInstance().getState().nodeJsPath;
 
-        // Check explicitly configured path
-        if (!nodeJsPath.isEmpty()) {
-            if (new File(nodeJsPath).exists()
-                    && BbjNodeDetector.meetsMinimumVersion(
-                            BbjNodeVersionCache.SESSION.getVersion(nodeJsPath))) {
-                return null;
-            }
-        } else {
-            // Try auto-detection from PATH
-            String detected = BbjNodeDetector.detectNodePath();
-            if (detected != null
-                    && BbjNodeDetector.meetsMinimumVersion(
-                            BbjNodeVersionCache.SESSION.getVersion(detected))) {
-                return null;
-            }
-
-            // Check for cached downloaded Node.js
-            Path cachedNode = BbjNodeDownloader.getCachedNodePath();
-            if (cachedNode != null) {
-                return null;
-            }
+        NodeAvailability.Decision decision = NodeAvailability.decide(
+                nodeJsPath,
+                NodeAvailability.REAL_FILES,
+                BbjNodeVersionCache.SESSION::getVersion,
+                BbjNodeDetector::meetsMinimumVersion,
+                BbjNodeDetector::detectNodePath,
+                BbjNodeDownloader::getCachedNodePath);
+        if (!NodeAvailability.bannerNeeded(decision)) {
+            return null;
         }
 
         return fileEditor -> {
