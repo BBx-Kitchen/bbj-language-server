@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 83
 current_phase_name: Regression Test Hardening
 status: executing
-stopped_at: Phase 83 context gathered
-last_updated: "2026-09-06T06:54:01.636Z"
-last_activity: 2026-09-05
-last_activity_desc: Phase 82 complete, transitioned to Phase 83
-state_head: aee515ea4c5cb9c723ed6009dec81194e0bd4022
+stopped_at: Completed 83-01-PLAN.md
+last_updated: "2026-09-06T08:00:55.577Z"
+last_activity: 2026-09-06
+last_activity_desc: Phase 83 execution started
+state_head: 39efcaaf9ded6a562b8617a521b0560899e57545
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
 ---
 
 # Project State: BBj Language Server
@@ -33,10 +33,10 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 ## Current Position
 
-Phase: 83 (Regression Test Hardening) — READY TO EXECUTE
-Plan: Not started
+Phase: 83 (Regression Test Hardening) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-05 — Phase 82 complete, transitioned to Phase 83
+Last activity: 2026-09-06 — Phase 83 execution started
 
 ## Performance Metrics
 
@@ -130,6 +130,7 @@ Last activity: 2026-09-05 — Phase 82 complete, transitioned to Phase 83
 | Phase 82 P02 | 13min | 3 tasks | 7 files |
 | Phase 82 P03 | 12min | 3 tasks | 6 files |
 | Phase 82 P04 | 10min | 3 tasks | 14 files |
+| Phase 83 P01 | 63min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 82]: [Phase 82]: 82-03: StaleEditGuard.applyIfUnchanged re-decodes the captured line's current text and modification stamp, re-runs the same decodeCall the launch used, and writes only on a full-decode match with the stamp re-checked as the write command's first statement; DecodeEquality compares found/edit/initial/trailingArgs field-wise with Arrays.equals for int[] ranges; all three edit-in-place apply paths (MSGBOX, addWindow, addChildWindow) now route through the guard, closing COMP-02 (#567).
 - [Phase 82 UAT]: Round 1 (2026-09-05) passed 5/7 with one gap: every lightbulb preview threw `PluginException: Intention Description Dir URL is null` (G-82-6), closed by 82-04. Round 2 passed 8/8 by hand against the rebuilt plugin; test 3 (server-stopped balloon) is accepted from code because `BbjComposerService.server` auto-restarts a stopped server. COMP-01/COMP-02 (#538, #567) closed; VALIDATION nyquist-compliant (12 tasks), SECURITY threats_open 0 (27 threats).
 - [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
+- [Phase 83]: Phase 83 Plan 01: NodeInstallPipeline seam with injected Target/Fetcher/Progress/CancelProbe drives the whole Node.js download pipeline under plain JUnit 5 against committed fixtures; fixture digests are literal pins transcribed from a provenance README (never test-computed, or the verify step is vacuous); the 79-REVIEW symlink-following delete bug is fixed via a no-follow-links Files.walkFileTree; DownloadCompletions.dispatch isolates one throwing UI-refresh completion from the rest.
 
 ### Tech Debt
 
@@ -258,9 +260,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T05:41:53.980Z
-Stopped at: Phase 83 context gathered
-Resume file: .planning/phases/83-regression-test-hardening/83-CONTEXT.md
+Last session: 2026-09-06T08:00:55.373Z
+Stopped at: Completed 83-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
 depends on Phases 79 and 81, both complete). Phase 82 closed with UAT 8/8 (one gap closed by 82-04 and

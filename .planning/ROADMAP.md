@@ -364,11 +364,11 @@ Plans:
   1. `./gradlew test` runs new, green regression coverage for the Node download/extract/cache pipeline and the EDT-responsiveness paths changed in Phase 79, extending the existing 7-class `src/test/` source set (#569).
   2. Every LSP4IJ `@ApiStatus.Experimental` coupling point across the seven `lsp/`/`ui/` files, plus the new `bbj/compile` request surface from Phase 81, has a canary or source-guard regression test that fails on a breaking LSP4IJ change; this coverage closes #554 as a subset of #544's scope (#544).
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 Plans:
 **Wave 1**
 
-- [ ] 83-01-PLAN.md — Node install pipeline seam, committed fixtures, both platform branches, symlink-safe cleanup (BUILD-04, #569)
+- [x] 83-01-PLAN.md — Node install pipeline seam, committed fixtures, both platform branches, symlink-safe cleanup (BUILD-04, #569)
 - [ ] 83-02-PLAN.md — Settings lookup failure path and both editor-banner branches, with the EDT-01..06 coverage map (BUILD-04, #569/#541/#543)
 - [ ] 83-03-PLAN.md — LSP4IJ signature canaries, eleven-file allowlist fence, request contract, JSON boundary and version pin (BUILD-05, #544/#554)
 
