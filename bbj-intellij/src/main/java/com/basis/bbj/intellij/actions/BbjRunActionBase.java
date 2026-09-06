@@ -529,7 +529,8 @@ public abstract class BbjRunActionBase extends AnAction {
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String classpath = (state.classpathEntry != null && !"--".equals(state.classpathEntry)) ? state.classpathEntry : "";
 
-        // Get config path - only add if configured (web.bbj handles absent ARGV(6) gracefully)
+        // A real config path is required here (not merely preferred) — see issue #382: a
+        // blank/sentinel value would register an unusable EM app config.
         String configPath = getConfigPath();
         if (configPath.isBlank()) {
             logError(project, "No BBj config file is configured. Set it in Settings > Languages & Frameworks > BBj.");
