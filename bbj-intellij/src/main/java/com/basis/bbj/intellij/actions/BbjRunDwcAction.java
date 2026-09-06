@@ -111,6 +111,10 @@ public final class BbjRunDwcAction extends BbjRunActionBase {
 
         // Get config path - only add if configured (web.bbj handles absent ARGV(6) gracefully)
         String configPath = getConfigPath();
+        if (configPath.isBlank()) {
+            logError(project, "No BBj config file is configured. Set it in Settings > Languages & Frameworks > BBj.");
+            return null;
+        }
 
         // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - "DWC" <name> <programme>
         // <workingDir> <classpath> [<configPath>]; the token travels on the environment
