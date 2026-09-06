@@ -158,6 +158,12 @@ Ready for `85-02` — wiring the watcher into `main.ts` (arm after first validat
 
 No blockers or concerns.
 
+## Self-Check: PASSED
+
+- All key-files.created verified present on disk (`config-reload-notification.ts`, `config-watcher.ts`, `test/config-hot-reload.test.ts`, this SUMMARY.md).
+- All 7 task/plan commit hashes (`2f5ea509`, `0c103218`, `2990bd48`, `bce67074`, `4c5189ee`, `86b8dcb8`, `4914aa57`) confirmed present via `git log --oneline --all`.
+- Full plan `<verification>` re-run: `npx vitest run test/config-hot-reload.test.ts test/ws-manager.test.ts test/lazy-prefix-loading.test.ts test/use-project-root.test.ts test/notifications.test.ts test/config-path-resolution.test.ts` — 65/65 passed. `npm run build` and `npm run lint` both exit 0.
+
 ---
 *Phase: 85-config-hot-reload-with-restart-coalescing*
 *Completed: 2026-09-06*
