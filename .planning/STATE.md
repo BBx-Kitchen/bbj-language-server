@@ -5,13 +5,13 @@ milestone_name: IntelliJ Burn-down
 current_phase: 83
 current_phase_name: Regression Test Hardening
 status: planning
-stopped_at: Phase 82 complete, ready to plan Phase 83
-last_updated: "2026-09-05T22:16:13.157Z"
+stopped_at: Phase 83 context gathered
+last_updated: "2026-09-06T05:41:54.185Z"
 last_activity: 2026-09-05
 last_activity_desc: Phase 82 complete, transitioned to Phase 83
-state_head: 5907880663e6c62dbbea12e803c51e02eab0fde0
+state_head: 30751854d826187ba5426ae491e0b8c77d188b8d
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
   total_plans: 22
   completed_plans: 22
@@ -258,9 +258,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-05T22:17:16Z
-Stopped at: Phase 82 complete, ready to plan Phase 83
-Resume file: None
+Last session: 2026-09-06T05:41:53.980Z
+Stopped at: Phase 83 context gathered
+Resume file: .planning/phases/83-regression-test-hardening/83-CONTEXT.md
 
 Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
 depends on Phases 79 and 81, both complete). Phase 82 closed with UAT 8/8 (one gap closed by 82-04 and
