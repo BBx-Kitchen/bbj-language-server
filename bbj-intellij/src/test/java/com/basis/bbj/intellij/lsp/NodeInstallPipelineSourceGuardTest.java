@@ -105,14 +105,14 @@ class NodeInstallPipelineSourceGuardTest {
 
     @Test
     void everyPlatformAndArchitectureTheFileCanProduceHasAPinnedDigest() {
-        String text = readGuardedSource();
+        String classBody = bodyOf(readGuardedSource(), "public final class NodeInstallPipeline");
         String marker = "NODE_VERSION = \"";
-        int versionStart = text.indexOf(marker);
-        assertTrue(versionStart >= 0, marker + " is not present in the guarded source");
+        int versionStart = classBody.indexOf(marker);
+        assertTrue(versionStart >= 0, marker + " is not present inside the class body");
         versionStart += marker.length();
-        int versionEnd = text.indexOf('"', versionStart);
+        int versionEnd = classBody.indexOf('"', versionStart);
         assertTrue(versionEnd >= 0, "NODE_VERSION declaration is not properly quoted");
-        String version = text.substring(versionStart, versionEnd);
+        String version = classBody.substring(versionStart, versionEnd);
 
         String[] platforms = {"darwin", "linux", "win"};
         String[] archs = {"arm64", "x64"};
