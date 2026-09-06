@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 84
 current_phase_name: Config Path Resolution & Discoverability Foundation
 status: executing
-stopped_at: Completed 84-02-PLAN.md
-last_updated: "2026-09-06T15:05:23.901Z"
+stopped_at: Completed 84-04-PLAN.md
+last_updated: "2026-09-06T15:19:10.678Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 84 execution started
-state_head: 152d50e56e11520f4e54e17f098e6efd32c92364
+state_head: 0484bc8c95ce836596130626c186cd01f5aa0aa5
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 6
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 ## Current Position
 
 Phase: 84 (Config Path Resolution & Discoverability Foundation) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-06 — Phase 84 execution started
 
@@ -143,6 +143,7 @@ Last activity: 2026-09-06 — Phase 84 execution started
 | Phase 83 P03 | 23min | 3 tasks | 7 files |
 | Phase 84 P01 | 35min | 3 tasks | 6 files |
 | Phase 84 P02 | 20min | 3 tasks | 6 files |
+| Phase 84 P04 | 12min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -219,6 +220,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 83]: Phase 83 Plan 03: Lsp4ijClassFileMarkers reads a class file's constant pool directly to prove ApiStatus.Experimental is retained class-file-only, so a runtime isAnnotationPresent lookup is provably vacuous for it; Lsp4ijImportAllowlistTest turns the plugin's LSP4IJ coupling into a hand-written eleven-file, symbol-level allowlist that fails when a use drifts anywhere in src/main/java; ComposerModelsJsonBoundaryTest generalises the compile-result MessageJsonHandler harness across all seven composer DTOs. Two measured facts were corrected against the live 0.21.0 jar and actual code rather than forced to the plan's original wording: ServerStatus now has 9 constants (not 4), and the Java-interop icon heuristic does not change Interface's icon (only Class/Method/Function).
 - [Phase 84]: Config-path resolution centralized in config-path-resolver.ts (84-01): single resolveConfigPath() owns the fallback, exposed via bbj/resolvedConfigPath request + notification; initializeWorkspace's PREFIX read now goes through it, and every bbj.configPath setting change re-resolves and re-pushes.
 - [Phase 84]: [Phase 84]: Phase 84 Plan 02: config-path-cache.ts is the VS Code host's warm cache (getActiveConfigPath prefers the last pushed path, falls back to the explicit setting canonicalized, never derives a home default); applyConfigAssociation/releaseConfigAssociation in extension.ts wire four triggers (activation sweep, open, change, config-path setting change) so bbx-config survives reopen/revert and the old path is released on a setting change; extension.ts tracks lastKnownActiveConfigPath itself rather than re-deriving the previous path from the cache, since the cache only moves once the server's next push arrives; setopts-composer-ui.ts's argForActiveEditor (now exported) shows a non-blocking hint naming the active config file when the open bbx-config document is a different one.
+- [Phase 84]: 84-04: static-helper-plus-thin-wrapper on BbjConfigPathService (resolveActivePath/isConfigFileName/isDefaultConfigFilename are package-private static) so the pure decisions are unit-testable without a live IntelliJ Application; a source-guard test covers the remaining platform-bound wiring.
 
 ### Tech Debt
 
@@ -281,8 +283,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T15:05:23.874Z
-Stopped at: Completed 84-02-PLAN.md
+Last session: 2026-09-06T15:19:10.650Z
+Stopped at: Completed 84-04-PLAN.md
 Resume file: None
 
 Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
