@@ -4,17 +4,17 @@ milestone: v4.2
 milestone_name: IntelliJ Burn-down
 current_phase: 83
 current_phase_name: Regression Test Hardening
-status: executing
-stopped_at: Completed 83-02-PLAN.md
-last_updated: "2026-09-06T08:36:44.432Z"
+status: verifying
+stopped_at: Completed 83-03-PLAN.md
+last_updated: "2026-09-06T09:02:50.988Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 83 execution started
-state_head: d10ba9cc7f6d17d9f929081a0d3f9ae0a4912419
+state_head: 94894a328b203e1cbdc20e8ebd8c37e34a4be599
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 25
-  completed_plans: 24
+  completed_plans: 25
 ---
 
 # Project State: BBj Language Server
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 
 Phase: 83 (Regression Test Hardening) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-06 — Phase 83 execution started
 
 ## Performance Metrics
@@ -132,6 +132,7 @@ Last activity: 2026-09-06 — Phase 83 execution started
 | Phase 82 P04 | 10min | 3 tasks | 14 files |
 | Phase 83 P01 | 63min | 3 tasks | 12 files |
 | Phase 83 P02 | 27min | 3 tasks | 10 files |
+| Phase 83 P03 | 23min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -205,6 +206,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
 - [Phase 83]: Phase 83 Plan 01: NodeInstallPipeline seam with injected Target/Fetcher/Progress/CancelProbe drives the whole Node.js download pipeline under plain JUnit 5 against committed fixtures; fixture digests are literal pins transcribed from a provenance README (never test-computed, or the verify step is vacuous); the 79-REVIEW symlink-following delete bug is fixed via a no-follow-links Files.walkFileTree; DownloadCompletions.dispatch isolates one throwing UI-refresh completion from the rest.
 - [Phase 83]: Phase 83 Plan 02: Settings-lookup catch lives at the lookup layer (BbjSettingsLookups), not the debouncer, so a throwing lookup returns a failure-marked NodeLookup/HomeLookup instead of leaving the dialog stuck; NodeAvailability extracts the missing-Node banner decision into a plain-Java seam so both branches execute under plain JUnit; a configured-but-unusable Node path never falls back to the cached download, pinned as-is and filed as a todo
+- [Phase 83]: Phase 83 Plan 03: Lsp4ijClassFileMarkers reads a class file's constant pool directly to prove ApiStatus.Experimental is retained class-file-only, so a runtime isAnnotationPresent lookup is provably vacuous for it; Lsp4ijImportAllowlistTest turns the plugin's LSP4IJ coupling into a hand-written eleven-file, symbol-level allowlist that fails when a use drifts anywhere in src/main/java; ComposerModelsJsonBoundaryTest generalises the compile-result MessageJsonHandler harness across all seven composer DTOs. Two measured facts were corrected against the live 0.21.0 jar and actual code rather than forced to the plan's original wording: ServerStatus now has 9 constants (not 4), and the Java-interop icon heuristic does not change Interface's icon (only Class/Method/Function).
 
 ### Tech Debt
 
@@ -262,8 +264,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T08:36:44.222Z
-Stopped at: Completed 83-02-PLAN.md
+Last session: 2026-09-06T09:02:50.790Z
+Stopped at: Completed 83-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
