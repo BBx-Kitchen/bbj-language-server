@@ -53,6 +53,15 @@ export const EM_ENV_VARS = Object.freeze({
 });
 
 /**
+ * The EM Config sentinel value meaning "not configured". `config-path-resolver.ts`'s
+ * `resolveConfigPath` is the primary neutralization point (it never returns this literal as a
+ * resolved path); refusing it here too is a second, defensive layer, mirroring the sentinel
+ * guard already applied to classpath (`Commands.cjs`'s `stripSentinel`) and its IntelliJ
+ * counterpart in `BbjRunActionBase.java`'s `getClasspathArg()` (issue #382).
+ */
+const EM_CONFIG_SENTINEL = '--';
+
+/**
  * Creates an empty file at `filePath`, owner-only from the moment it exists, and
  * returns `filePath`. Uses an exclusive create so a pre-placed file or symlink at a
  * guessable path (the EM login and EM validate output paths are built from
@@ -101,7 +110,7 @@ export interface BuildRunArgvOptions {
 /**
  * Reproduces today's `Commands.run` invocation: `bbj -q [-CP<classpath>] [-c<configPath>]
  * -WD<workingDir> <fileName>`. `-CP` and `-c` are omitted entirely when the corresponding
- * value is empty or absent, matching the existing `sscp > ''` guard.
+ * value is empty, absent, or the EM Config sentinel, matching the existing `sscp > ''` guard.
  */
 export function buildRunArgv(opts: BuildRunArgvOptions): Argv {
     const { home, platform = process.platform, classpathEntry, configPath, workingDir, fileName } = opts;
@@ -109,7 +118,7 @@ export function buildRunArgv(opts: BuildRunArgvOptions): Argv {
     if (classpathEntry) {
         args.push(`-CP${classpathEntry}`);
     }
-    if (configPath) {
+    if (configPath && configPath !== EM_CONFIG_SENTINEL) {
         args.push(`-c${configPath}`);
     }
     args.push(`-WD${workingDir}`, fileName);
@@ -138,6 +147,11 @@ export interface BuildWebRunArgvOptions {
  * `args` — all three keys are always written, even when empty, so an inherited
  * environment variable of the same name can never be read in their place
  * (GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8).
+ *
+ * `configPath` is positional (it becomes `web.bbj`'s `ARGV(9)`), so the EM Config sentinel
+ * cannot simply be omitted the way `-c` is in {@link buildRunArgv} without shifting every
+ * later positional argument — it is replaced with an empty string instead, matching how an
+ * absent config path is already represented on this path.
  */
 export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
     const {
@@ -154,6 +168,7 @@ export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
         token,
         configPath
     } = opts;
+    const safeConfigPath = configPath === EM_CONFIG_SENTINEL ? '' : configPath;
     const args: string[] = [
         '-q',
         `-WD${toolsDir}`,
@@ -164,7 +179,7 @@ export function buildWebRunArgv(opts: BuildWebRunArgvOptions): Argv {
         programme,
         workingDir,
         classpathEntry,
-        configPath
+        safeConfigPath
     ];
     return {
         file: bbjBin(home, platform),

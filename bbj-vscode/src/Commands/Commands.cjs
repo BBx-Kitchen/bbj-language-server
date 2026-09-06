@@ -6,6 +6,7 @@ const PropertiesReader = require("properties-reader").default;
 const { buildCompileOptions, validateOptions } = require("./CompilerOptions");
 const { buildRunArgv, buildWebRunArgv, buildCompileArgv, buildDecompileArgv } = require("./process-args");
 const { runProcess, runProcessCallback, formatArgvForLog } = require("./process-runner");
+const { getActiveConfigPath, getResolvedConfigPath } = require("../config-path-cache");
 
 // Shared output channel from extension.ts
 let outputChannel = null;
@@ -17,6 +18,13 @@ let outputChannel = null;
  * @returns {string} Empty string if v is "--", otherwise v or "" if falsy
  */
 const stripSentinel = (v) => v === '--' ? '' : (v || '');
+
+/**
+ * Shown when a run needs the language server's resolved config path (the one shared
+ * answer to "which file is the BBj config file") but neither the host cache nor an
+ * explicit setting has one yet. The run does not proceed with a guessed path.
+ */
+const NO_CONFIG_PATH_MESSAGE = 'No config file could be resolved for this run. Set the "bbj.configPath" setting, or configure "bbj.home" so the default config file can be found.';
 
 const setOutputChannel = (channel) => {
   outputChannel = channel;
@@ -91,10 +99,15 @@ const runWeb = (params, client, credentials) => {
       .slice(0, -1)
       .join(".");
 
-  // Get custom config.bbx path if configured; otherwise fall back to the
-  // installation default. This must be a real path so the app registered in EM
-  // never ends up with the "--" sentinel as its config file (issue #382).
-  const configPath = vscode.workspace.getConfiguration('bbj').configPath || `${home}/cfg/config.bbx`;
+  // Use the language server's resolved config path (cached on this host), never a
+  // locally-derived home fallback. This must be a real path so the app registered in
+  // EM never ends up with the "--" sentinel as its config file (issue #382); stripSentinel
+  // is a second defensive layer, buildWebRunArgv also refuses the sentinel.
+  const configPath = stripSentinel(getActiveConfigPath());
+  if (!configPath) {
+    vscode.window.showErrorMessage(NO_CONFIG_PATH_MESSAGE);
+    return;
+  }
 
   const argv = buildWebRunArgv({
     home,
@@ -209,13 +222,28 @@ const decompileInPlace = (resolvedFileName, options = {}) => {
 
 const Commands = {
   openConfigFile: function () {
-    const home = getBBjHome();
-
-    if (home) {
-      return vscode.workspace.openTextDocument(`${home}/cfg/config.bbx`).then((doc) => {
-        vscode.window.showTextDocument(doc);
-      });
+    const configPath = getActiveConfigPath();
+    if (!configPath) {
+      vscode.window.showErrorMessage(
+        'No config file is configured. Set the "bbj.configPath" setting to choose one.'
+      );
+      return;
     }
+
+    // The resolved payload (pushed by the language server) is the source of truth for
+    // whether the active path exists — never a fallback to the home default.
+    const cached = getResolvedConfigPath();
+    const knownMissing = cached && cached.path === configPath && !cached.exists;
+    if (knownMissing) {
+      vscode.window.showErrorMessage(`Config file not found: ${configPath}`);
+      return;
+    }
+
+    return vscode.workspace.openTextDocument(configPath).then((doc) => {
+      vscode.window.showTextDocument(doc);
+    }, (err) => {
+      vscode.window.showErrorMessage(`Config file not found: ${configPath}${err && err.message ? ` (${err.message})` : ''}`);
+    });
   },
 
   openPropertiesFile: function () {
@@ -254,8 +282,14 @@ const Commands = {
     const fileName = active ? active.document.fileName : params.fsPath;
     const workingDir = path.dirname(fileName);
 
-    // Add custom config.bbx path if configured
-    const configPath = vscode.workspace.getConfiguration('bbj').configPath || '';
+    // Use the language server's resolved config path (cached on this host), never a
+    // locally-guessed fallback. stripSentinel is a second defensive layer;
+    // buildRunArgv also refuses the sentinel.
+    const configPath = stripSentinel(getActiveConfigPath());
+    if (!configPath) {
+      vscode.window.showErrorMessage(NO_CONFIG_PATH_MESSAGE);
+      return;
+    }
 
     const argv = buildRunArgv({
       home,
