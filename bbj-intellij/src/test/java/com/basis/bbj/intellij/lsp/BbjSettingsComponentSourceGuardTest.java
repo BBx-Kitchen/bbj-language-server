@@ -78,6 +78,17 @@ class BbjSettingsComponentSourceGuardTest {
         String text = readGuardedSource();
         assertEquals(1, countOccurrences(text, "nodeDebouncer.onTextChanged("));
         assertEquals(1, countOccurrences(text, "homeDebouncer.onTextChanged("));
+        assertEquals(1, countOccurrences(text, "configDebouncer.onTextChanged("),
+                "the config-path field's DocumentAdapter must schedule its own debounced lookup exactly once");
+    }
+
+    @Test
+    void theConfigDebouncerSharesTheSingleAlarmSchedulerAndCreatesNoSecondOne() {
+        String text = readGuardedSource();
+        assertEquals(1, countOccurrences(text, "new AlarmScheduler(parentDisposable)"),
+                "the config debouncer must share the component's one Alarm, not construct a second");
+        assertEquals(0, countOccurrences(text, "new Alarm("),
+                "no bare Alarm may be created outside the AlarmScheduler seam");
     }
 
     @Test

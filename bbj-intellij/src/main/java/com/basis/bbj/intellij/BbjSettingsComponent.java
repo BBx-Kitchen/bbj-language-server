@@ -54,9 +54,11 @@ public class BbjSettingsComponent {
     private final Scheduler lookupScheduler;
     private final KeystrokeDebouncer<BbjSettingsLookups.NodeLookup> nodeDebouncer;
     private final KeystrokeDebouncer<BbjSettingsLookups.HomeLookup> homeDebouncer;
+    private final KeystrokeDebouncer<BbjSettingsLookups.ConfigLookup> configDebouncer;
 
     private volatile BbjSettingsLookups.NodeLookup lastNodeLookup;
     private volatile BbjSettingsLookups.HomeLookup lastHomeLookup;
+    private volatile BbjSettingsLookups.ConfigLookup lastConfigLookup;
     private String pendingClasspathSelection = "";
     private boolean classpathLookupPending;
 
@@ -151,6 +153,29 @@ public class BbjSettingsComponent {
         configPathField = new JBTextField();
         configPathField.getEmptyText().setText("{BBj Home}/cfg/config.bbx (default)");
 
+        new ComponentValidator(parentDisposable)
+            .withValidator(() -> {
+                String path = configPathField.getText().trim();
+                BbjSettingsLookups.ConfigLookup lookup = lastConfigLookup;
+                if (path.isEmpty() || lookup == null || !lookup.path().equals(path)) {
+                    return null;
+                }
+                if (lookup.failed()) {
+                    return null;
+                }
+                if (!lookup.absolute()) {
+                    return new ValidationInfo(
+                        "Config path must be absolute (a leading ~ is expanded first)",
+                        configPathField
+                    );
+                }
+                if (!lookup.exists()) {
+                    return new ValidationInfo("File not found: " + path, configPathField);
+                }
+                return null;
+            })
+            .installOn(configPathField);
+
         // --- Java Interop Host field ---
         javaInteropHostField = new JBTextField();
         javaInteropHostField.setText("localhost");
@@ -204,6 +229,15 @@ public class BbjSettingsComponent {
             BbjSettingsLookups::lookupHome,
             this::applyHomeLookup
         );
+        configDebouncer = new KeystrokeDebouncer<>(
+            lookupScheduler,
+            () -> ApplicationManager.getApplication().isDispatchThread(),
+            DEBOUNCE_MS,
+            () -> configPathField.getText().trim(),
+            ApplicationManager.getApplication()::invokeLater,
+            BbjSettingsLookups::lookupConfig,
+            this::applyConfigLookup
+        );
 
         // --- Wire document listeners: schedule only, no filesystem/subprocess work here ---
         bbjHomeField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
@@ -227,6 +261,15 @@ public class BbjSettingsComponent {
                 nodeVersionLabel.setText(path.isEmpty() ? " " : "Checking Node.js version…");
                 nodeDebouncer.onTextChanged(path);
                 ComponentValidator.getInstance(nodeJsField.getTextField())
+                    .ifPresent(ComponentValidator::revalidate);
+            }
+        });
+
+        configPathField.getDocument().addDocumentListener(new DocumentAdapter() {
+            @Override
+            protected void textChanged(@NotNull DocumentEvent e) {
+                configDebouncer.onTextChanged(configPathField.getText().trim());
+                ComponentValidator.getInstance(configPathField)
                     .ifPresent(ComponentValidator::revalidate);
             }
         });
@@ -313,6 +356,17 @@ public class BbjSettingsComponent {
             nodeVersionLabel.setText("Detected: " + lookup.version());
         }
         ComponentValidator.getInstance(nodeJsField.getTextField())
+            .ifPresent(ComponentValidator::revalidate);
+    }
+
+    /**
+     * Applies a background config-path lookup result. Called only via {@link #configDebouncer}'s
+     * {@code UiThread} hook, after the staleness check already passed. Performs no filesystem
+     * work itself — every probe lives in {@link BbjSettingsLookups}.
+     */
+    private void applyConfigLookup(BbjSettingsLookups.ConfigLookup lookup) {
+        lastConfigLookup = lookup;
+        ComponentValidator.getInstance(configPathField)
             .ifPresent(ComponentValidator::revalidate);
     }
 

@@ -2,6 +2,7 @@ package com.basis.bbj.intellij;
 
 import java.io.File;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -98,5 +99,89 @@ final class BbjSettingsLookups {
         } catch (RuntimeException e) {
             return new HomeLookup(path, false, List.of(), true);
         }
+    }
+
+    /**
+     * Result of resolving the configured config path: whether the path, after a single leading
+     * {@code ~} is expanded, is absolute, whether a file exists there, and whether the lookup
+     * itself could be completed. A {@code failed} result means one of its collaborators threw,
+     * so {@code absolute} and {@code exists} carry no information and the caller must clear its
+     * pending state without drawing any conclusion from them.
+     */
+    record ConfigLookup(String path, boolean absolute, boolean exists, boolean failed) {
+    }
+
+    /**
+     * Resolves {@code path} to a {@link ConfigLookup} using the production collaborators: a
+     * file-exists probe backed by {@link File#isFile()}, the current user's home directory for
+     * tilde expansion, and the host platform's name for the absolute-path rule.
+     */
+    static ConfigLookup lookupConfig(String path) {
+        return lookupConfig(path, p -> new File(p).isFile());
+    }
+
+    /**
+     * Resolves {@code path} to a {@link ConfigLookup} against an injected file-exists
+     * collaborator, so a test can drive a throwing collaborator without a real filesystem. An
+     * empty path or a path that is not absolute after tilde expansion consults no collaborator.
+     * Neither this method nor {@link #lookupConfig(String)} declares a checked exception; an
+     * unchecked exception from the collaborator is caught here and turned into a failed result
+     * rather than propagating out of the debounced background task.
+     */
+    static ConfigLookup lookupConfig(String path, Predicate<String> fileIsFile) {
+        try {
+            if (path.isEmpty()) {
+                return new ConfigLookup(path, false, false, false);
+            }
+            String expanded = expandHome(path, System.getProperty("user.home"));
+            if (!isAbsolutePath(expanded, System.getProperty("os.name"))) {
+                return new ConfigLookup(path, false, false, false);
+            }
+            boolean exists = fileIsFile.test(expanded);
+            return new ConfigLookup(path, true, exists, false);
+        } catch (RuntimeException e) {
+            return new ConfigLookup(path, false, false, true);
+        }
+    }
+
+    /**
+     * Expands a single LEADING {@code ~} segment ({@code ~} or {@code ~/...}/{@code ~\...})
+     * against {@code homeDir}. A tilde appearing anywhere else in the path is left untouched.
+     * Package-visible and static so it is testable with an injected home directory.
+     */
+    static String expandHome(String path, String homeDir) {
+        if (path.equals("~")) {
+            return homeDir;
+        }
+        if (path.startsWith("~/") || path.startsWith("~\\")) {
+            return homeDir + path.substring(1);
+        }
+        return path;
+    }
+
+    /**
+     * Whether {@code path} is absolute under {@code osName}'s rules: on a Windows-named
+     * platform, a drive-letter-rooted path ({@code C:\...} / {@code C:/...}) or a path rooted at
+     * {@code /} or {@code \} with no drive letter; on every other platform, a leading {@code /}.
+     * Matches the language server's {@code path.isAbsolute} for the same input. Package-visible
+     * and static, with an injectable OS name, so the win32 rule is testable on this Linux-only
+     * CI (a backstop verification).
+     */
+    static boolean isAbsolutePath(String path, String osName) {
+        if (path.isEmpty()) {
+            return false;
+        }
+        if (isWindowsPlatform(osName)) {
+            if (path.length() >= 3 && Character.isLetter(path.charAt(0)) && path.charAt(1) == ':'
+                    && (path.charAt(2) == '/' || path.charAt(2) == '\\')) {
+                return true;
+            }
+            return path.charAt(0) == '/' || path.charAt(0) == '\\';
+        }
+        return path.charAt(0) == '/';
+    }
+
+    private static boolean isWindowsPlatform(String osName) {
+        return osName != null && osName.toLowerCase(Locale.ROOT).contains("win");
     }
 }
