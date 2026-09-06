@@ -404,3 +404,62 @@ describe('inactive-config hint in the SETOPTS composer', () => {
         );
     });
 });
+
+describe('missing config file warning', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        resetConfigPathCacheForTests();
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [];
+        (vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValue({
+            get: vi.fn((_key: string, def?: unknown) => def),
+        });
+    });
+
+    /** Grabs the handler registered for the resolved-config-path push, after activation. */
+    function getResolvedConfigPathHandler(): (params: ResolvedConfigPath) => void {
+        activate(fakeContext());
+        const call = clientOnNotificationMock.mock.calls
+            .find(([method]) => method === RESOLVED_CONFIG_PATH_METHOD);
+        return call![1];
+    }
+
+    test('a push for a missing config file warns once with the path in the message', () => {
+        const onPush = getResolvedConfigPathHandler();
+
+        onPush(pushedPath({ path: '/srv/custom/missing.bbx', exists: false }));
+
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+            expect.stringContaining('/srv/custom/missing.bbx')
+        );
+    });
+
+    test('a second push for the same missing path does not warn again', () => {
+        const onPush = getResolvedConfigPathHandler();
+
+        onPush(pushedPath({ path: '/srv/custom/missing.bbx', exists: false }));
+        onPush(pushedPath({ path: '/srv/custom/missing.bbx', exists: false }));
+
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledTimes(1);
+    });
+
+    test('a push for a different missing path warns again', () => {
+        const onPush = getResolvedConfigPathHandler();
+
+        onPush(pushedPath({ path: '/srv/custom/missing.bbx', exists: false }));
+        onPush(pushedPath({ path: '/srv/custom/other-missing.bbx', exists: false }));
+
+        expect(vscode.window.showWarningMessage).toHaveBeenCalledTimes(2);
+        expect(vscode.window.showWarningMessage).toHaveBeenLastCalledWith(
+            expect.stringContaining('/srv/custom/other-missing.bbx')
+        );
+    });
+
+    test('a push whose file exists never warns', () => {
+        const onPush = getResolvedConfigPathHandler();
+
+        onPush(pushedPath({ path: '/srv/custom/present.bbx', exists: true }));
+
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    });
+});
