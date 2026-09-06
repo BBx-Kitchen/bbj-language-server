@@ -4,16 +4,16 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 85
 current_phase_name: Config Hot-Reload With Restart Coalescing
-status: planning
+status: executing
 stopped_at: Phase 85 context gathered
-last_updated: "2026-09-06T22:43:34.930Z"
+last_updated: "2026-09-06T23:18:27.613Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 84 complete, transitioned to Phase 85
-state_head: ffd2948a9bd945bb37771a5fe7eeee2dd5649486
+state_head: 8aa88b662f02750f4f37b1b29fe571fcf4221b82
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 6
+  total_plans: 11
   completed_plans: 6
   percent: 11
 ---
@@ -34,9 +34,9 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 ## Current Position
 
-Phase: 85 — Config Hot-Reload With Restart Coalescing
+Phase: 85 (Config Hot-Reload With Restart Coalescing) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-09-06 — Phase 84 complete, transitioned to Phase 85
 
 ## Performance Metrics
