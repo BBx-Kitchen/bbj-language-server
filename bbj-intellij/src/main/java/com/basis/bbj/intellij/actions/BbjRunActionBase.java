@@ -1,6 +1,8 @@
 package com.basis.bbj.intellij.actions;
 
 import com.basis.bbj.intellij.BbjSettings;
+import com.basis.bbj.intellij.config.BbjConfigPathService;
+import com.basis.bbj.intellij.config.ConfigPaths;
 import com.basis.bbj.intellij.lsp.BbjProcessSecretEnv;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ExecutionException;
@@ -344,44 +346,33 @@ public abstract class BbjRunActionBase extends AnAction {
     }
 
     /**
-     * Returns the config.bbx path argument from settings, formatted for BBj command line.
+     * Returns the resolved config path argument, formatted for the BBj command line.
      *
-     * @return "-c<path>" if configPath is configured, or null if empty
+     * The value comes from {@link BbjConfigPathService#activeConfigPath()} rather than the raw
+     * setting, and {@link ConfigPaths#configPathArg(String)} refuses the EM Config sentinel the
+     * same way {@link #getClasspathArg()} refuses it for the classpath -- the plain GUI run has
+     * no downstream script to absorb a sentinel that reaches the command line.
+     *
+     * @return "-c<path>" when a real path is resolved, or null otherwise
      */
     @Nullable
     protected String getConfigPathArg() {
-        BbjSettings.State state = BbjSettings.getInstance().getState();
-        String configPath = state.configPath;
-
-        if (configPath == null || configPath.isEmpty()) {
-            return null;
-        }
-
-        return "-c" + configPath;
+        return ConfigPaths.configPathArg(BbjConfigPathService.getInstance().activeConfigPath());
     }
 
     /**
-     * Returns the config.bbx path from settings, falling back to the
-     * installation default ({bbjHome}/cfg/config.bbx) when not configured.
+     * Returns the resolved config path.
      *
-     * The web.bbj registration stub writes this into the EM app's config file,
-     * so it must be a real path: leaving it empty makes BBj report the "--"
-     * sentinel, which registers an unusable config (issue #382).
+     * The web.bbj registration stub writes this into the EM app's config file, so it must be a
+     * real path: leaving it empty makes BBj report the "--" sentinel, which registers an unusable
+     * config (issue #382). This reads the one cached resolved answer rather than deriving a
+     * BBj-home-based default itself -- that derivation belongs to the language server alone.
      *
-     * @return config path string, or empty string if neither is available
+     * @return the resolved config path, or empty string when none is available
      */
     @NotNull
     protected String getConfigPath() {
-        BbjSettings.State state = BbjSettings.getInstance().getState();
-        String configPath = state.configPath;
-        if (configPath != null && !configPath.isEmpty()) {
-            return configPath;
-        }
-        String bbjHome = state.bbjHomePath;
-        if (bbjHome != null && !bbjHome.isEmpty()) {
-            return Paths.get(bbjHome, "cfg", "config.bbx").toString();
-        }
-        return "";
+        return BbjConfigPathService.getInstance().activeConfigPath();
     }
 
     /**
