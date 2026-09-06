@@ -1,179 +1,179 @@
 # Project Research Summary
 
-**Project:** BBj Language Server — v4.2 IntelliJ Burn-down
-**Domain:** IntelliJ Platform plugin hardening (LSP4IJ-based language client) — subsequent milestone, not greenfield
-**Researched:** 2026-09-04
+**Project:** BBj Language Server — v4.3 Polish & Quality milestone
+**Domain:** Polish/quality milestone for an existing dual-IDE (VS Code + IntelliJ via LSP4IJ) Langium-based language server; 23 already-triaged GitHub issues (milestone #5) across three themes: composer discoverability & coverage, config changes without restart, and responsiveness/hangs
+**Researched:** 2026-09-06
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This is a **fix-burn-down milestone**, not a new-feature milestone: 21 (actually 22, per FEATURES.md's own count) open PRIO 1/2 issues against the already-shipped `bbj-intellij` plugin, grouped into EDT responsiveness, EM token security, feature parity/correctness, composer robustness, and build/test foundation. All four research passes agree the plugin needs almost no new dependencies — every threading fix reuses the IntelliJ Platform SDK's existing `executeOnPooledThread`/`Alarm`/`invokeLater` idiom (already proven in `BbjServerService`), every security fix reuses JDK 17 APIs already on the classpath, and the one genuinely new capability (#571, a real "Compile BBj File" action) extends the `@JsonRequest`-on-`LanguageServer`-interface pattern the codebase already ships for `bbj/composer/*`. The build/test foundation work (JDK 17 toolchain pin, Gradle wrapper refresh, checksum validation) is a `build.gradle.kts`-only change with a well-defined installation recipe.
+This is not a green-field feature build — it is an integration and hardening pass across 23 pre-triaged issues that all attach to four existing seams: the shared editor-agnostic composer modules (`*-composer.ts` + `composer-commands.ts`/`BbjComposerServer.java`), the Phase 79 `Scheduler`/`RestartGate` concurrency seam on IntelliJ, the Phase 82 `ComposerFlow`/`StaleEditGuard`/`ComposerNotices` composer-robustness seam, and the java-interop client's caching/locking internals. No new runtime dependency is needed anywhere in scope: every capability (per-document caching, AST pruning, debounced file watching, dynamic language association, targeted no-restart requests, LSP CodeLens) is reachable through APIs already vendored by Langium 4.3.1, VS Code's API, IntelliJ Platform 2024.2 Community Edition, and LSP4IJ 0.21.0 — the work is "use more of what's installed," not "install something new." One housekeeping note: PROJECT.md's recorded stack versions (Langium 4.1.3/Chevrotain 11.0.3/Vitest 1.6.1) are stale relative to `package.json`'s actual pins (4.3.1/12.0.0/4.1.10) and should be corrected outside this milestone.
 
-The most important cross-cutting finding, surfaced independently by ARCHITECTURE.md and PITFALLS.md after reading current `main` (not the 2026-08-20 issue text the milestone doc was scoped from): **#506 and #536 are already fixed on `main`** (shipped as CR-02 in v4.1/0.12.24), and the "no `src/test/` source set" claim underlying #569 is also stale — 7 JUnit 5 test classes already exist. These three items should be re-scoped to verify-and-close (write/confirm a regression test, close the issue) rather than re-implemented, or a phase will waste effort re-doing already-correct work and risks introducing a regression into code that currently works.
+The recommended approach is architecturally opinionated in one important way: composer discoverability (#650) should be implemented once, as a shared `textDocument/codeLens` handler on the language server, rather than as separate per-IDE mechanisms. VS Code renders LSP CodeLens natively; LSP4IJ maps the same protocol response into IntelliJ's native "Code Vision" inline entries — meaning one server-side implementation (reusing the `*decodeCall`/`*parseLine` detectors that already exist per composer in `composer-commands.ts`) gives both IDEs a working, always-visible cue with zero PSI/LineMarkerProvider work on the IntelliJ side (this plugin has no native BBj PSI — a `LineMarkerProvider` would need a `PsiElement` it cannot supply without a shadow PSI tree). This single decision upstream-unblocks #648, #649, and #633's own discoverability stories "for free."
 
-The key remaining risk is **sequencing, not technology**. Several issues share files, root causes, or prerequisite state: #535 must land before #542 (a trust-window cache built on a fail-open expiry check widens the vulnerability, it doesn't just duplicate it); #570 (JDK 17 toolchain) gates every `./gradlew` invocation in this environment and therefore gates #503/#576 (wrapper checksum/staleness) and any test-writing phase; #571 is the only issue crossing the `bbj-vscode`/`bbj-intellij` boundary and must route through a new `bbj/compile` LSP4IJ request wrapping the LS's existing `BBjCPLService`, never a literal port of VS Code's client-side `Commands.cjs` (which has no LSP relationship at all — it's extension-host-only code that would create a third, drifting bbjcpl invocation if copied). #567 also carries an explicitly open UX question (re-prompt vs. silent-abort on a stale-offset mismatch) that must be decided before implementation, not discovered mid-PR.
+Key risks cluster in two places. First, config hot-reload (#486/#485) introduces a *new* failure class this codebase has been burned by before (#232's rebuild-loop CPU spike): a watcher that isn't scoped to the resolved, symlink-followed, out-of-workspace absolute path will silently no-op; and once #633's SETOPTS composer can write `config.bbx` itself, the watcher must suppress reacting to its own writes or it creates a self-inflicted restart loop mid-composer-session. Second, the responsiveness fixes (#505, #504, #497, #498) are non-trivial concurrency corrections to already-subtle code (LRU eviction races, shared cancellation tokens, unbounded scans) where the "obvious" fix commonly reintroduces the same class of bug one layer down (e.g., an LRU pin that's never unpinned on the timeout/cancellation exit path, or a request-scoped cancel token that's accidentally memoized). Both risk clusters have concrete, already-modeled mitigations in this repo's own history (Phase 79's `RestartGate`, Phase 82's `StaleEditGuard`, the "no fourth outcome" guarantee pattern) — the roadmap should sequence work to reuse those seams rather than re-deriving them.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Almost no new third-party dependency is needed. The stack changes are three, all confined to `bbj-intellij/`: a Gradle `toolchain { languageVersion = JavaLanguageVersion.of(17) }` block plus the `foojay-resolver-convention` settings plugin (so the toolchain pin self-heals by auto-downloading JDK 17 rather than failing on whatever JDK is present — this environment's own JDK 25 reproduces the exact #570 failure); a Gradle wrapper refresh to 8.14.5 via `./gradlew wrapper --gradle-version ... --gradle-distribution-sha256-sum ...` (regenerates the actual JAR, not just the properties file, fixing the #503 checksum mismatch and #576 staleness together — stay on the 8.x line, since jumping to Gradle 9 would force an unplanned `intellij-platform-gradle-plugin` minimum-version bump and sandbox-path migration this milestone doesn't ask for); and a `testFramework(TestFrameworkType.Platform)` + JUnit Vintage engine addition so `BasePlatformTestCase`-style tests can run in the existing JUnit 5 `useJUnitPlatform()` task.
+No new npm packages or Gradle dependencies for any of the 23 issues. Core technologies are unchanged: Langium 4.3.1 (`DocumentCache`/`WorkspaceCache` and `AstUtils.streamAst().iterator().prune()` ship in the exact installed version, unused so far), LSP4IJ 0.21.0 (`getServerInterface()` + `@JsonRequest` custom-request pattern already proven in this repo for `bbj/composer/*`), and IntelliJ Platform SDK 2024.2+ Community Edition (hard compatibility constraint). New capabilities are all reached via already-vendored APIs: `vscode.workspace.createFileSystemWatcher(new RelativePattern(...))` for out-of-workspace config watching, `vscode.languages.setTextDocumentLanguage` for dynamic language association, `AsyncFileListener`/`FileTypeOverrider` for the IntelliJ-side equivalents, and `com.intellij.util.Alarm` (via the existing `Scheduler` seam) for debounce. The one open, LOW-confidence spike needed is IntelliJ's composer-cue rendering mechanism if LSP CodeLens/Code-Vision doesn't read as visible enough in UAT (`LineMarkerProvider` vs. `CodeVisionProvider`, the latter carrying more API-churn risk).
 
 **Core technologies:**
-- `org.gradle.toolchains.foojay-resolver-convention` (1.0.0, settings plugin) — auto-provisions JDK 17 for the Gradle toolchain, closing #570 for real rather than relocating the failure
-- Gradle wrapper 8.14.5 (stay on 8.x) — closes #503 (checksum) and #576 (staleness) in one regenerate step
-- `gradle/actions/wrapper-validation@v6` (CI step) — closes the detection gap #503 identifies (no CI check ever caught the wrapper mismatch)
-- IntelliJ Platform SDK (`ApplicationManager.executeOnPooledThread`, `Alarm`, `ReadAction`/`WriteAction`, `ModalityState`) — already the established async idiom; no new concurrency library (no coroutines, no RxJava)
-- JDK 17 `Base64`, `PosixFilePermissions`, `AclFileAttributeView` — token-expiry and temp-file-permission fixes need no JWT library or keychain library
-- `@JsonRequest` on `BbjComposerServer` (or a sibling interface) — the extension point for #571's `bbj/compile`, already proven by 7 existing `bbj/composer/*` methods
-
-**What NOT to add:** any JWT library, `kotlinx-coroutines`/RxJava, `java-keyring`, Gradle 9.x this milestone, a second `LanguageServerFactory` registration, or a dedicated platform-test source set (the existing single `test` task + vintage engine suffices).
+- Langium 4.3.1 — language server framework — already in place; ships the caching/AST-pruning primitives this milestone needs but hasn't used yet
+- LSP4IJ 0.21.0 — IntelliJ↔LSP bridge — its custom-request extension pattern is already proven in this repo (`BbjComposerServer.java`)
+- IntelliJ Platform SDK 2024.2+ (Community Edition) — plugin host — all new-feature APIs are Community-Edition-available, verified because this constraint is load-bearing
 
 ### Expected Features
 
-This milestone has no differentiators to chase — "table stakes" means restoring behaviour a mature IntelliJ plugin (or this plugin's own VS Code sibling) already exhibits. The 22 issues span 5 groups; treat the 21-vs-22 discrepancy as a milestone-doc rounding artifact.
+Scope is fixed to 23 already-triaged issues, not an open feature set to prioritize from — the research instead surfaces which issues are "table stakes per their own acceptance criteria" vs. worth extending, and one architecture-shaping decision (CodeLens routing) that changes what several issues actually build.
 
-**Must have (table stakes), by group:**
-- **EDT responsiveness:** network/token work off the EDT before UI-blocking calls (#506 — verify only, already fixed), debounced settings/notification `node --version` spawns (#541, #543), crash-restart delay via `Alarm` not `Thread.sleep` in `invokeLater` (#513), single guarded restart entry point (#539), serialized Node download (#537)
-- **EM token security:** fail-closed token expiry on all three "unable to determine" branches (#535), owner-only temp file permissions (#536 — verify only, already fixed via `BbjProcessSecretEnv.createOwnerOnlyFile`), non-keychain backend warning (#552), short trust-window cache before re-validating server-side (#542)
-- **Feature parity/correctness:** "Compile BBj File" actually invokes bbjcpl and surfaces success/diagnostics (#571), string-literal-aware bracket matching (#568), case-insensitive REM comment toggle (#540)
-- **Composer robustness:** re-validated document offsets before post-dialog apply (#567), visible signal on composer LSP request failure (#538)
-- **Build/test foundation:** JDK 17 toolchain pin (#570), checksum-verified current Gradle wrapper (#503, #576), fail-fast when the LS bundle copy is missing (#517), regression tests for the behaviours this milestone changes (#569 — largely already satisfied; #554/#544 for LSP4IJ-experimental-API coupling)
+**Must have (table stakes — committed per each issue's own acceptance criteria):**
+- Visible, non-intrusive composer cue in both IDEs for all five composers (#650)
+- MSGBOX composer offered for expression-valued options, not just bare integers (#648)
+- CVS() visual composer, parity with existing three composers (#649)
+- SETOPTS composer ported to IntelliJ (#633) + SETOPTS-in-code decode hovers and tri-state composer (#475)
+- Composer edit validation before applying + re-validation of captured coordinates + webview listener disposal (#623, #532, #530)
+- IntelliJ composer dialog debounce + server/catalog caching (#611, #612)
+- Config file watched and reloaded on change (#486), custom-named/located config honored everywhere including editor language association (#485)
+- IntelliJ targeted "Refresh Java Classes" without full restart (#632), java-interop port auto-detection fixed for every settings reader (#608)
+- Workspace-size-independent scope resolution (#505), interop reachability circuit breaker (#504), LRU eviction race fix (#497), shared cancellation-token fix (#498), mtime-safe decompile freshness check (#500), stale in-flight format promise fix (#499)
+- Small hygiene fixes: no-editor-focused command guards (#512), disposed VS Code registrations (#531), IntelliJ status-bar widgets following tab switches (#610)
 
-**Should have:** none scoped as differentiators — the one arguable one is *framing*, not code: shipping the fail-closed security posture across #535/#536/#552/#567 coherently in release notes is free differentiation once the fixes land.
+**Should have (differentiators worth doing because the codebase already pays for it):**
+- Route all five composers' discoverability cues through one shared LSP `textDocument/codeLens` handler instead of per-client/per-composer mechanisms
+- Resolve `BBjMsgBox.X+BBjMsgBox.Y`-style constant-sum expressions to a numeric preview via java-interop before falling back to compose-only mode
+- Give CVS()'s new catalog the same `since`-version-gate annotation shape `setopts-catalog.ts` already uses
+- Debounce + silent auto-restart with a status-bar breadcrumb for config-watcher reload (not a blocking prompt), consistent with the existing BBjCPL "status bar over notification balloons" convention
 
-**Defer (explicitly out of this milestone):** full BBjCPL 18-option UI parity beyond success/diagnostics surfacing; any `BbjWordLexer`/parser rewrite beyond the #568 string-scan addition (ruled out by standing "no native lexer rewrite" project decision); broader dependency-locking/SCA tooling beyond the wrapper pin + Dependabot entry; #566 and other v4.1 carry-overs; a general-purpose async/threading abstraction (route each fix through the existing `Alarm`/`executeOnPooledThread` patterns instead); forcing `PasswordSafe` to always use the native keychain (a warning, not an override, per #552's own scoping).
+**Explicitly out of scope / anti-features (tempting but wrong here):**
+- General constant-folding/expression evaluation for MSGBOX/CVS() options beyond the specific `+`-joined constant-field pattern
+- "Decode-and-edit-in-place" for every SETOPTS-in-code shape (the effective options vector is a runtime value; only two statically-safe shapes are soundly decodable)
+- Silent unconditional auto-restart on every config write with no debounce/signal
+- A native IntelliJ `LineMarkerProvider` built independently of the language server (no PSI to attach to in this LSP4IJ-only architecture)
+- Purely client-side filename-pattern extension for #485 (solves syntax highlighting only, not the runtime-path-gated tooling)
 
 ### Architecture Approach
 
-The 22 fixes attach to existing, unchanged component boundaries — there is no new architectural layer to design except two small, genuinely-new shared components both research passes independently flag: a token-validation trust-window cache next to `BbjEMTokenStore` (needed by #542), and a shared Node-version cache in front of the stateless `BbjNodeDetector` (needed by both #541 and #543, to avoid duplicating cache logic in two files). The one cross-package change is #571: a new `bbj/compile` LSP4IJ custom request added to the shared Langium LS (`bbj-vscode/src/language/main.ts`), following the exact precedent already set by `bbj/refreshJavaClasses` and the 7-method `bbj/composer/*` family, wrapping the LS's existing, editor-agnostic `BBjCPLService.compile()` rather than re-implementing compiler invocation on the IntelliJ side.
+Every one of the 23 issues attaches to one of four existing seams — none require a new subsystem. The shared composer modules (`*-composer.ts` + `composer-commands.ts`) are the single source of truth for composer logic, reached in-process by VS Code's webviews and over LSP custom requests (`bbj/composer/*`) by IntelliJ; a fix to the shared module benefits both hosts automatically. The config path is today resolved in exactly one place (`bbj-ws-manager.ts`), read once at `initializeWorkspace()` with no watcher — #485 must expose that resolution to both hosts (recommended via a new small `bbj/resolvedConfigPath`-style LSP query, avoiding duplicated fallback logic per host) before #486 can watch the right file. IntelliJ has three mature, testable seams from Phase 79/81/82 (`Scheduler`/`AlarmScheduler`, `RestartGate`, `ComposerFlow`/`StaleEditGuard`/`ComposerNotices`) that this milestone's IntelliJ-side issues should extend rather than duplicate.
 
 **Major components:**
-1. `actions/BbjRunActionBase.java` + `BbjEMTokenStore.java` — off-EDT run/login pipeline (already correctly pooled per CR-02) and token validity/caching (#535, #542, #552 land here)
-2. `ui/BbjServerService.java` — LS lifecycle, crash detection, the one proven `Alarm`-based debounce pattern (`restartAlarm`) that #513/#539 extend to more call sites
-3. `BbjSettingsComponent.java` / `BbjMissingNodeNotificationProvider.java` + new `BbjNodeVersionCache` — settings-dialog and editor-notification debounce/caching (#541, #543)
-4. `composer/ComposerLauncher.java` + 3 dialog classes — capture-decode-apply flow needing both exception handling (#538) and offset re-validation (#567), which must be planned together
-5. `lsp/BbjCompletionFeature.java` etc. (7 files) — LSP4IJ `@ApiStatus.Experimental` coupling, isolated behind thin wrappers with canary regression tests (#544, #554)
-6. `bbj-vscode/src/language/main.ts` + `bbj-cpl-service.ts` (shared LS) — new `bbj/compile` request wrapping the already-existing, vscode-free `BBjCPLService.compile()` (#571)
-7. `build.gradle.kts` + Gradle wrapper — toolchain pin, wrapper regeneration, fail-fast LS-bundle copy check (#570, #503/#576, #517)
+1. `composer-commands.ts` / `BbjComposerServer.java` — single source of truth for all composer flag arithmetic and per-line applicability detection; net-new `setopts`/`cvs` sections follow the exact msgbox/addwindow/addchildwindow three-part shape (catalog, preview/compose/decodeCall handlers, auto-registration loop)
+2. `bbj-ws-manager.ts` — sole owner of config-path resolution; needs to expose its resolved-path logic to both hosts and gain a debounced watch-and-restart path
+3. IntelliJ concurrency/composer seams (`Scheduler`/`AlarmScheduler`, `RestartGate`, `ComposerFlow`/`StaleEditGuard`) — reusable infrastructure for debounce, coalesced restarts, and re-validation-before-apply, already proven in Phase 79-83
+4. `java-interop.ts` — locking, LRU cache, and resolution-timeout internals underlying the four responsiveness fixes (#505, #504, #497 all trace back to issue #232's original CPU-spike report but are independently fixable)
 
 ### Critical Pitfalls
 
-1. **Treating issue text as current source state instead of re-diffing against `main`** — #506, #536, and the "#569 has no test source set" claim are all stale; verify against current source before writing any production code, or a phase wastes effort re-implementing (and risks regressing) already-correct fixes.
-2. **A validation trust-window cache (#542) extends the blast radius of the fail-open bug (#535) if sequenced wrong** — key the cache on the exact token value, invalidate on `storeToken`/`deleteToken` (not only a timer), and land #535 first or in the same PR; a cache that remembers "validated" without re-checking bytes can wave a malformed token through the server-side check too.
-3. **New debounce `Alarm`s not parented to a real `Disposable`** — the one correct example (`BbjServerService.restartAlarm`) is parented to a project-level service; `BbjSettingsComponent`/static utilities have no natural `Disposable` today, so #541/#543's new `Alarm`s need one added or they leak or throw.
-4. **Porting VS Code's `Commands.cjs` compile flow literally instead of routing through the shared LS** — `Commands.cjs` is extension-host-only code (`vscode.workspace.getConfiguration`, direct `execFile`), not LSP-routed; #571 must add a `bbj/compile` request wrapping `BBjCPLService.compile()`, or the milestone creates a third, independently-drifting bbjcpl invocation.
-5. **Fixing `.exceptionally()` (#538) without offset re-validation (#567) leaves the more dangerous case uncaught** — a stale-offset apply after a modal dialog closes usually does *not* throw, so `.exceptionally()` alone gives false confidence; plan both against `ComposerLauncher.java` as one phase.
+1. **Config watcher scoped like the existing workspace-relative `**/*.bbj` watcher misses out-of-workspace config files entirely** — build it from an absolute `RelativePattern` on the symlink-resolved directory/filename, never a bare glob; same for IntelliJ's VFS listener, which is project-content-scoped by default.
+2. **The config watcher and #633's SETOPTS composer write-path race into a self-inflicted restart loop** — reproduces #232's CPU-loop history; needs a self-write suppression window (record write timestamp/hash, skip the next matching watcher-fired reload), and these two issues should be sequenced or coupled in the same phase.
+3. **LRU pinning added to fix #497 leaks if unpin isn't guaranteed on every exit path** (success, per-branch failure, 30s timeout, upstream cancellation) — must use a `finally`-guaranteed unpin and a bounded pinned set, with a regression test that forces cancellation mid-recursion.
+4. **The interop circuit breaker (#504) never resets or trips on a merely-slow-but-healthy peer** — needs a real closed/open/half-open state machine, not a boolean latch cleared only by `clearCache()`; a slow cold-JVM warm-up must not count the same as connection-refused.
+5. **New composer discoverability cues and SETOPTS decode hovers reparse/re-walk the whole document per keystroke**, reintroducing the exact unbounded-scan cost pattern #505 is fixing elsewhere — compute cue positions and decode results as part of the existing debounced document-build/validation cycle, not an independent full walk per request.
 
 ## Implications for Roadmap
 
-Both FEATURES.md's "Sequence First/Together/Independent/Last" ordering and ARCHITECTURE.md's explicit 8-wave build order converge on the same structure. Recommended phase grouping, reconciling both:
+Based on research, suggested phase structure (23 issues grouped by shared seam and dependency, following the Architecture doc's Build Order):
 
-### Phase 1: Build & Test Foundation (verify-first)
-**Rationale:** #570 gates every subsequent `./gradlew` invocation in this dev environment (current JDK 25 reproduces the exact #570 failure); #569's test-source-set claim is stale (7 JUnit 5 classes already exist) but needs explicit verify-and-close; #506 and #536 are also already-fixed and belong in this same "confirm, don't reimplement" pass since they're cheap wins that close 2 of 22 items immediately with zero production-code risk.
-**Delivers:** working `./gradlew` on any JDK, verified wrapper checksum (#503+#576, same command), fail-fast LS-bundle copy check (#517), #506/#536/#569 closed as verify-only with backfilled regression tests.
-**Addresses:** Group 5 (build/platform coupling) table stakes; unblocks regression coverage for every other group.
-**Avoids:** Pitfall 1 (stale-issue-text re-implementation), Pitfall 13 (tests written before #569/#570 land and unable to compile/run).
+### Phase 1: Config path resolution & discoverability foundation
+**Rationale:** #485 must resolve/expose the effective config path before anything can watch it correctly (Pitfall 1); doing this first prevents every downstream config feature from re-deriving fallback logic independently.
+**Delivers:** Dynamic language association in both IDEs; a resolved-path query usable by the watcher and by IntelliJ's file-type override.
+**Addresses:** #485
+**Avoids:** Pitfall 5 (dynamic association fighting the static filenames manifest — must survive document reopen/revert, not just first open)
 
-### Phase 2: EDT Responsiveness — Shared-State Guards
-**Rationale:** #539 and #513 touch the same file (`BbjServerService.java`) and the same `Alarm`; do #539 (guarded restart entry point) first so #513's crash-delay fix lands on top of the already-guarded `restart()`. #537 (Node download CAS guard) is a different file, no ordering dependency, can run in parallel.
-**Delivers:** single guarded restart path, no EDT-blocking `Thread.sleep`, no download race.
-**Uses:** `AtomicBoolean`/`synchronized` (JDK), `Alarm.ThreadToUse.POOLED_THREAD` (already proven in this class).
-**Implements:** the `ui/BbjServerService` component; extends the anti-pattern guidance in PITFALLS.md (Pitfall 3: keep the guard scoped to match the resource — JVM-wide, not per-project).
+### Phase 2: Config hot-reload with restart coalescing
+**Rationale:** Depends directly on Phase 1's resolved path; must land its self-write suppression window before #633 (Phase 4) starts writing to the same file, or sequence/gate explicitly.
+**Delivers:** Debounced file watcher (VS Code `RelativePattern`, IntelliJ `AsyncFileListener`), routed through a single restart-coalescing choke point (extending IntelliJ's existing `RestartGate`; VS Code needs an equivalent introduced), with a status-bar breadcrumb rather than a blocking prompt.
+**Uses:** `RestartGate`/`Scheduler` seam (Phase 79)
+**Avoids:** Pitfalls 1-4 (workspace-scoping, atomic-save, self-restart loop, debounce collision with the existing 500ms BBjCPL debounce)
 
-### Phase 3: EM Token Security
-**Rationale:** #535 must land before #542 — caching a fail-open expiry check widens the vulnerability rather than duplicating it (PITFALLS.md Pitfall 6, cross-confirmed by FEATURES.md's dependency graph). #552 touches the same file (`BbjEMTokenStore.java`) as #535 and can batch together but is logically independent of #542.
-**Delivers:** fail-closed token expiry (all three branches, ideally collapsed into one `TokenValidity` result type per Pitfall 5), short trust-window validation cache, non-keychain backend warning.
-**Addresses:** Group 2 table stakes in full.
-**Avoids:** Pitfall 5 (partial fail-open fix), Pitfall 6 (cache outliving revocation), Pitfall 7 (unstable `PasswordSafeSettings` API — isolate behind one method).
+### Phase 3: IntelliJ interop settings & targeted refresh
+**Rationale:** Independent of config-reload data flow; pure `BbjSettings.java`/action-layer changes, safe to parallelize.
+**Delivers:** Port auto-detection moved into `getState()` (#608); `bbj/refreshJavaClasses` added to `BbjComposerServer`'s single interface, ported from `BbjCompileAction`'s background-task pattern instead of a full restart (#632).
+**Research flag:** LSP4IJ's custom-request-without-restart capability is an open question (#632's own acceptance criteria) — resolve once, early, since it also shapes Phase 4's composer command layer (see Research Flags below).
 
-### Phase 4: Settings/Notification Caching Layer
-**Rationale:** #541 and #543 both need a new shared Node-version cache to exist before either lands cleanly — build once, wire both consumers, rather than duplicating cache logic per issue (this is architecture's one genuinely-new shared component beyond the token cache).
-**Delivers:** `BbjNodeVersionCache` (or equivalent), debounced settings-dialog updates, cached notification-provider lookups.
-**Uses:** the `Alarm` debounce idiom from Phase 2; a plain memoized field (not a timer) for the pure read-cache side per Pitfall 4's recommendation.
-**Implements:** the new cache-layer boundary between `BbjSettingsComponent`/`BbjMissingNodeNotificationProvider` and `BbjNodeDetector`.
+### Phase 4: Shared SETOPTS composer command layer + IntelliJ dialog
+**Rationale:** #633 is a net-new `bbj/composer/setopts/*` LS layer that must exist before `SetoptsComposerDialog.java` can compile against it; follows the exact shared-layer-first ordering `composer-commands.ts`'s own history establishes for the other three composers.
+**Delivers:** `bbj/composer/setopts/*` handlers, `SetoptsComposerDialog.java`, composed through `ComposerFlow`/`StaleEditGuard`/`ComposerNotices`.
+**Implements:** Composer command-layer seam
+**Research flag:** New shared DTO surface crossing the LSP4IJ boundary — extend `ComposerModelsJsonBoundaryTest` and keep numeric sentinels in-range to avoid repeating the Phase 81 G-81-4/G-81-5 version-skew bugs (Pitfall 13)
 
-### Phase 5: Compile Action (#571)
-**Rationale:** the only issue crossing the `bbj-vscode`/`bbj-intellij` boundary and the largest single change; best run after Phase 1 so a missing/stale `main.cjs` fails fast (via #517's check) rather than silently. No hard dependency on Phases 2-4 — could run in parallel with them if capacity allows, but sequence after Phase 1's build-foundation work lands.
-**Delivers:** a real `bbj/compile` LSP4IJ request in the shared LS wrapping `BBjCPLService.compile()`, plus the IntelliJ-side action and server-proxy interface extension.
-**Uses:** the `@JsonRequest`/`BbjComposerServer` extension pattern from STACK.md; `bbj-vscode/src/language/main.ts` changes require `npm run build` before the IntelliJ side can call the request end-to-end.
-**Implements:** the compile-action data flow in ARCHITECTURE.md; **must not** literally port `Commands.cjs` (Pitfall 9) — deliberately smaller scope than VS Code's 18-option-aware compile flow, worth calling out explicitly in this phase's acceptance criteria so it isn't read as scope creep.
+### Phase 5: SETOPTS-in-code hovers + tri-state composer
+**Rationale:** Explicitly depends on Phase 4's shared catalog per #475's own issue text; tier 2 (read-only decode hovers) can ship independently of tiers 3-4 if descoping is needed.
+**Delivers:** Per-statement SETOPTS decode hovers (always sound); tri-state Set/Clear/Leave composer for the two statically-safe shapes only.
+**Avoids:** Pitfall 11 (full-AST-walk-per-keystroke for hover computation — hook into the existing debounced build cycle)
 
-### Phase 6: Lexer/Commenter (#568, #540)
-**Rationale:** fully independent files, zero shared state with anything else in this milestone — safe to parallelize with any other phase, sequenced late here only because it's structurally the most involved of the "quick fix" issues (3 coordinated files for #568).
-**Delivers:** string-literal-aware bracket matching (with correct BBj `""`-doubling escape handling — Pitfall 10), case-insensitive REM toggle with word-boundary matching, not a bare prefix match (Pitfall 11).
-**Addresses:** Group 3 remaining items.
+### Phase 6: CVS() composer + MSGBOX expression support + shared discoverability CodeLens
+**Rationale:** #648 (MSGBOX regex fix) should land before #650 (visible cue) so the new cue mechanism doesn't silently fail to appear on the very lines #648 fixes; #649 (CVS()) is built cue-aware from day one.
+**Delivers:** `cvs-composer.ts`/`-ui.ts`/`-webview.ts` (new, cloned from msgbox's shape); generalized options-expression parser in `msgbox-composer.ts`; one shared `textDocument/codeLens` LS handler rendering in both VS Code (native) and IntelliJ (LSP4IJ Code Vision bridge).
+**Implements:** The Architecture Recommendation's CodeLens-first discoverability decision
+**Research flag:** IntelliJ visual-cue mechanism needs a same-phase spike if Code Vision reads as insufficiently visible (LineMarkerProvider fallback)
 
-### Phase 7: Composer Robustness (#538, #567)
-**Rationale:** must be planned as one phase against `ComposerLauncher.java` — #538's `.exceptionally()` handlers alone won't catch #567's stale-offset failure mode (which usually doesn't throw). Do #538 first so #567's new re-validation call sites inherit the same failure-surfacing convention.
-**Delivers:** every composer `CompletableFuture` chain gets a terminal exception handler; a shared re-decode-and-validate helper guards all three apply paths (`openMsgbox`, `applyAddWindowEdit`, `applyHexEdit`).
-**Avoids:** Pitfall 12 (fixing one without the other leaves the more dangerous case uncaught). **Open UX decision that must be resolved before/during planning, not discovered mid-PR:** on an offset mismatch, does the plugin re-prompt to reopen against current state, or abort silently with a notification? Both FEATURES.md and ARCHITECTURE.md recommend **abort + notify** (matches the fail-safe posture already used for #535, and reuses the visible-notification convention #538 establishes) over silent reopening, which risks losing dialog state the user already entered — but the issue itself leaves this open, so it should be an explicit discussion/decision checkpoint at the start of this phase, not an implementation-time guess.
+### Phase 7: VS Code composer robustness + IntelliJ composer perf (batchable, independent)
+**Rationale:** #623/#532/#530 are VS Code-only, small, near-identical-shape diffs across the same webview files; #611/#612 are IntelliJ-only and touch the same three dialog-launch call sites. Both clusters are independent of every other phase and cheap — good candidates to batch alongside whichever composer phase touches the same files, or run standalone.
+**Delivers:** `valid`-field validation gating on addwindow/addchildwindow inserts; re-validation before applying captured MSGBOX coordinates; `onDidDispose` webview cleanup; IntelliJ composer dialog debounce via the existing `Scheduler`/`Alarm` seam (not three new ad-hoc `Alarm` instances); cached server/catalog handles.
+**Avoids:** Pitfall 12 (hand-rolled per-dialog debounce instead of extending `KeystrokeDebouncer`)
 
-### Phase 8: LSP4IJ Coupling Regression Tests (#544, #554)
-**Rationale:** do this last relative to #571 — #571 adds a new LSP4IJ-coupled surface (the compile request/interface extension) that these regression tests should also cover; writing them before #571 lands means writing them twice. #544 supersedes #554 (same 2 files are a strict subset of #544's 7 files); implement #544's scope once and close #554 as covered.
-**Delivers:** reflective canary assertions + structural source-guard tests (following the existing `BbjLanguageServerSourceGuardTest` pattern) for every LSP4IJ `@ApiStatus.Experimental` coupling point.
-**Uses:** the existing plain-JUnit-5 source-guard test pattern — explicitly NOT a new `BasePlatformTestCase`/live-IDE fixture investment (out of scope for this milestone per STACK.md).
+### Phase 8: Responsiveness & hangs (java-interop + completion + misc hygiene)
+**Rationale:** #505, #504, #497, #498 are independent of each other and of every other cluster (different files/mechanisms), all traceable to #232's original CPU-spike report — safe to parallelize within the phase, but each is a non-trivial concurrency fix in its own right (all effort-8 per issue traceability) and deserves careful, isolated testing.
+**Delivers:** Per-file cache + AST pruning for scope resolution (#505); circuit breaker with open/half-open state for interop (#504); `finally`-guaranteed LRU unpin (#497); cancel token threaded as a parameter, not a shared field (#498); mtime-slack (or delete-before-decompile) fix (#500); stale-in-flight-format-promise fix (#499); plus the small, fully independent hygiene items (#512, #531, #610).
+**Avoids:** Pitfalls 6, 7, 8, 9, 10 — each requires a specific "recovers/resets/isolates correctly under adversarial conditions" regression test, not just a happy-path fix
 
 ### Phase Ordering Rationale
 
-- **#570 → #576/#503, and #570/#569 → everything else's regression coverage**: hard dependencies — every `./gradlew` invocation in this environment fails before task listing without the toolchain pin, and several issues' acceptance criteria explicitly condition their regression test on the test-source-set gap (already closed, per architecture's correction) or fall back to "recorded manual verification."
-- **#535 → #542**: hard dependency, security-correctness reason (caching a fail-open result widens rather than duplicates the bug).
-- **new node-version cache → #541, #543**: hard dependency — both fixes need the cache to exist first; they're then parallelizable.
-- **bbj-vscode main.ts change → npm run build → bbj-intellij side of #571**: hard dependency — IntelliJ cannot call a request the shipped `main.cjs` doesn't implement yet.
-- **#538 → #567 (soft)**: shared failure-surfacing convention should exist before the code that needs to use it; both belong in one phase regardless.
-- **#571 → #544/#554 (soft)**: avoids writing the LSP4IJ-coupling regression test twice.
-- **#506, #536 (no edges)**: verify-and-close, can happen at any point — do them early as cheap wins.
+- Config-path resolution (Phase 1) must precede config watching (Phase 2) and the SETOPTS composer's write path (Phase 4) because watching or writing the wrong (unresolved/default) path silently reintroduces the exact confusion #485 exists to close.
+- Composer command-layer work (Phases 4-6) follows the established "shared LS layer first, per-IDE dialog second" pattern already proven by msgbox/addwindow/addchildwindow's own history — this ordering isn't a new convention, it's continuity with what already shipped.
+- Responsiveness fixes (Phase 8) are isolated last not because they're less important (several are severity "high" per their own traceability) but because they touch different files/mechanisms with no cross-dependency on the composer/config work, so they can run in parallel with earlier phases if resourcing allows, and grouping them together keeps their shared root cause (#232) visible for whoever tests them.
+- Every phase boundary above avoids the specific pitfalls PITFALLS.md flags for that exact issue cluster — most critically, config-reload (Phase 2) and the SETOPTS write path (Phase 4) are explicitly sequenced or coupled to prevent the self-inflicted restart loop (Pitfall 3).
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 5 (Compile Action, #571):** the only cross-package (`bbj-vscode` + `bbj-intellij`) change in this milestone; needs careful review of the LS-side `bbj/compile` request shape and how diagnostics are rendered on the IntelliJ side (standard LSP diagnostics channel vs. a custom panel) — not yet fully specified.
-- **Phase 3 (EM Token Security, #552 specifically):** relies on `PasswordSafeSettings`/`ProviderType`, an `@ApiStatus.Internal` unversioned-contract API — confirm its exact shape against the pinned `intellijIdeaCommunity("2024.2")` platform version at implementation time, don't assume from research alone.
-- **Phase 7 (Composer Robustness, #567):** the re-prompt-vs-abort UX decision is explicitly unresolved in the source issue; needs a discussion/decision checkpoint before coding starts, not deep technical research, but should not be skipped.
+- **Phase 3 (IntelliJ targeted refresh):** LSP4IJ's custom-request-without-restart capability is an open, unresolved question per #632's own acceptance criteria — needs to be settled once (possibly via `workspace/executeCommand` as a fallback) before Phase 3 and Phase 4 both proceed on the assumption it works.
+- **Phase 4 (shared SETOPTS composer layer):** New cross-boundary DTO surface at risk of repeating Phase 81's G-81-4/G-81-5 LSP4IJ/lsp4j version-skew bugs; needs the boundary-test extension pattern researched/confirmed before implementation.
+- **Phase 6 (discoverability CodeLens):** IntelliJ's Code Vision vs. LineMarkerProvider choice is LOW-confidence (community-forum-sourced only) and needs a same-phase compile+run spike against the plugin's actual `sinceBuild=242` range.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1 (Build Foundation):** STACK.md's installation recipe is copy-paste-ready (exact Gradle version, checksum, plugin blocks already specified).
-- **Phase 2 (EDT Guards) and Phase 4 (Caching Layer):** reuse the codebase's own proven `Alarm`/`executeOnPooledThread` patterns verbatim — no new research needed, just careful application.
-- **Phase 6 (Lexer/Commenter):** the reference implementations (`bbj.langium`'s string/comment terminals, `bbj.tmLanguage.json`) already exist in-repo to replicate against.
-- **Phase 8 (LSP4IJ Regression Tests):** follows an established in-repo test pattern (`BbjLanguageServerSourceGuardTest`) exactly.
+- **Phase 7 (composer robustness/perf batch):** Every fix is a direct port of an already-proven pattern in the same codebase (an existing `valid` field, an existing `Scheduler` seam, an existing `onDidDispose` pattern) — no new research needed.
+- **Phase 8 (responsiveness, most items):** #500, #499, #512, #531, #610 are single-file, well-scoped fixes with clear existing precedent to mirror; only #505/#504/#497/#498's concurrency-correctness edge cases need extra care during planning (not external research — the pitfalls are already fully specified above).
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions/APIs cross-checked against JetBrains/Gradle/redhat-developer source or official docs; two items (exact Gradle-9-minimum-bump version for the platform plugin, `BasePlatformTestCase`'s precise JUnit-version specifics) are MEDIUM within an overall HIGH file |
-| Features | HIGH | All 22 issues have concrete file:line evidence read directly from `main`; VS Code parity claims verified against source, not assumed |
-| Architecture | HIGH | Every claim verified against current `bbj-intellij/src/main/java/...` and `bbj-vscode/src/...` as they exist today, not against the 2026-08-20 issue text — this is what surfaced the #506/#536/#569-staleness correction |
-| Pitfalls | HIGH | Grounded in current source plus `.planning/PROJECT.md`'s own decision log (CR-02); no external ecosystem research needed for an internal burn-down |
+| Stack | MEDIUM-HIGH | Core findings verified against installed `node_modules` source and this repo's own existing code; IntelliJ-side visual-cue APIs (LineMarkerProvider/CodeVisionProvider choice) are LOW-confidence, community-forum-only |
+| Features | HIGH for composer/config mechanics (read directly off this repo's shared modules and official IDE docs); MEDIUM for BASIS CVS()/SETOPTS bit semantics (two BASIS doc pages disagree on one bit, both cited); MEDIUM for IntelliJ CodeLens/Code-Vision rendering (inferred from LSP4IJ docs, not hand-verified in a running IDE) | |
+| Architecture | HIGH | Every claim grounded in a file read during this research session, with line numbers current as of `origin/main` @ `c0b113c7` |
+| Pitfalls | HIGH | Grounded in this repo's own source, its GitHub issues' own evidence sections, and its own phase history (not generic advice) |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **#552's `PasswordSafeSettings`/`ProviderType` API stability**: confirmed present in source but explicitly `@ApiStatus.Internal` with no regression guarantee — isolate behind one method and add a canary test (per Phase 8's pattern) rather than treating it as settled.
-- **#567's re-prompt-vs-abort UX decision**: not a research gap so much as an explicit open product decision the issue itself flags — surface it as a discussion checkpoint at the start of Phase 7, don't let it be decided implicitly by whoever implements first.
-- **Exact Gradle version at which `intellij-platform-gradle-plugin` first requires Gradle 9.0.0**: STACK.md flags this as MEDIUM confidence (a search-summary claim, not read from the plugin's own changelog) — irrelevant to this milestone's Gradle-8.14.5 recommendation, but worth a quick re-check if a future milestone considers the Gradle 9 jump.
-- **Diagnostics-rendering UX for #571**: the research establishes the LS-side request shape and the `{ success, diagnostics }` return contract, but not how IntelliJ should visually surface a failed compile (notification vs. Problems-panel-style display) — worth a small discussion at the start of Phase 5, not a blocking gap.
+- **LSP4IJ custom-request-without-restart capability (#632, and by extension #633's design):** genuinely unresolved by this research; requires either reading LSP4IJ's source directly or a same-phase spike before Phase 3/4 implementation begins. Flag as a go/no-go gate, not an implementation detail.
+- **IntelliJ composer-cue rendering mechanism (#650):** LineMarkerProvider vs. CodeVisionProvider is a LOW-confidence choice pending a same-phase spike; default to LineMarkerProvider's lower API-churn risk if Code Vision's registration issues (reported in a JetBrains support thread) prove real.
+- **CVS() bit 64 exact wording discrepancy between the two BASIS doc pages** (generic PRO/5 page says "as specified in OPTS" vs. BBj-specific page's fuller description) — low-impact, but worth a final read of both pages during Phase 6 planning before finalizing the CVS_BITS catalog.
+- **Auto-restart vs. prompt for config reload (#486):** the issue itself frames this as an open call; this research recommends auto-restart-with-status-bar-signal (consistent with PROJECT.md's existing BBjCPL precedent), but this is a judgment call to confirm during Phase 2 discussion, not a settled fact.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/**/*.java` (read in full across all four research passes) — current, ground-truth source for every fix site and the #506/#536/#569 staleness correction
-- `bbj-vscode/src/language/main.ts`, `composer-commands.ts`, `bbj-cpl-service.ts`, `bbj-cpl-parser.ts` — shared LS precedents and reuse targets for #571
-- `bbj-vscode/src/Commands/Commands.cjs`, `CompilerOptions.ts` — read directly, confirmed extension-host-only, not LSP-routed (grounds Pitfall 9)
-- `bbj-intellij/build.gradle.kts`, `settings.gradle.kts`, `gradle/wrapper/gradle-wrapper.properties` — current pinned versions, existing test suite shape
-- `docs.gradle.org`, `plugins.gradle.org`, `services.gradle.org` (toolchain/wrapper checksum docs) — official Gradle sources
-- `github.com/JetBrains/intellij-community` (`PasswordSafe.kt`, `PasswordSafeSettings.kt`, `ProviderType.kt`) — read directly for #552 grounding
-- `github.com/redhat-developer/lsp4ij` `0.19.0` git tag — confirmed `getServerInterface()`/`LanguageServerManager` present, no version bump needed for #571
-- `.planning/PROJECT.md`, `CLAUDE.md` — milestone goal, Active Requirements, Out of Scope, Key Decisions (CR-02, LSP4IJ-over-native-parser)
+- Direct reads of `bbj-vscode/src/language/{bbj-ws-manager,bbj-scope,bbj-scope-local,bbj-linker,java-interop,bbj-completion-provider,composer-commands,main}.ts`, `bbj-vscode/src/{msgbox,addwindow,addchildwindow,setopts,cvs}-composer{,-ui,-webview}.ts`, `setopts-catalog.ts`, `extension.ts`, `decompile-io.ts`, `document-formatter.ts`, `Commands/Commands.cjs`, `package.json`
+- Direct reads of `bbj-intellij/.../{BbjSettings,BbjSettingsConfigurable}.java`, `actions/{BbjRefreshJavaClassesAction,BbjCompileAction}.java`, `composer/{ComposerLauncher,BbjComposerService,BbjComposerServer,ComposerFlow,StaleEditGuard,ComposerModels,MsgboxComposerDialog}.java`, `concurrency/{Scheduler,AlarmScheduler,RestartGate,KeystrokeDebouncer}.java`, `ui/{BbjServerService,BbjStatusBarWidget}.java`
+- `bbj-vscode/node_modules/langium/lib/utils/caching.js`/`.d.ts` and `package.json` (installed package source)
+- `.planning/PROJECT.md`, `.planning/STATE.md` — Key Decisions, Active Constraints, Tech Debt
+- [redhat-developer/lsp4ij DeveloperGuide.md](https://github.com/redhat-developer/lsp4ij/blob/main/docs/DeveloperGuide.md) — confirms `getServerInterface()`/`LanguageServerManager` custom-request flow and the CodeLens-to-Code-Vision bridge
+- [BASIS: CVS() Function (BBj-specific)](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/cvs_function_bbj.htm), [SETOPTS Verb (BBj-specific)](https://documentation.basis.cloud/BASISHelp/WebHelp/commands/bbj-commands/setopts_verb_bbj.htm)
 
 ### Secondary (MEDIUM confidence)
-- Web search on `intellij-platform-gradle-plugin`'s Gradle-9-minimum-version bump — fact of the bump confirmed, exact version unconfirmed
-- `plugins.jetbrains.com` docs on `BasePlatformTestCase`'s JUnit-version-shaped hierarchy — corroborated by source but not fully read line-by-line
+- [microsoft/vscode-go PR #3211](https://github.com/microsoft/vscode-go/pull/3211) and [microsoft/vscode issue #76405](https://github.com/microsoft/vscode/issues/76405) — auto-restart-over-prompt precedent for LS config changes
+- JetBrains Support community threads on VFS refresh / `EditorNotificationPanel` reload behavior — convention evidence, no single canonical doc page
+- [JetBrains: Intention Actions](https://www.jetbrains.com/help/idea/intention-actions.html), [JetBrains Platform SDK: Line Marker Provider](https://plugins.jetbrains.com/docs/intellij/line-marker-provider.html)
 
 ### Tertiary (LOW confidence)
-- None identified — all four research files report HIGH confidence overall, with only the two MEDIUM caveats noted above.
+- WebSearch summaries on `LineMarkerProvider`, `FileTypeOverrider`, `BulkFileListener`/`AsyncFileListener`, `CodeVisionProvider` registration-churn risk — not independently cross-verified against a second authoritative source; treat as needing a same-phase spike
+- VS Code issue-tracker discussion on `RelativePattern`-based out-of-workspace watching and `setTextDocumentLanguage` persistence caveats — community/issue-tracker discussion, not official reference text
 
 ---
-*Research completed: 2026-09-04*
+*Research completed: 2026-09-06*
 *Ready for roadmap: yes*

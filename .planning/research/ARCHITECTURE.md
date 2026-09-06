@@ -1,368 +1,419 @@
-# Architecture Research
+# Architecture Research — v4.3 Polish & Quality
 
-**Domain:** IntelliJ plugin burn-down (21 PRIO 1/2 issues) integrating into an existing LSP4IJ-based plugin
-**Researched:** 2026-09-04
-**Confidence:** HIGH (every claim below is verified against `bbj-intellij/src/main/java/...` and `bbj-vscode/src/...` as they exist on `main` today, not against the 2026-08-20 issue text)
+**Domain:** Integration of 23 polish issues into an existing dual-IDE Langium language server
+**Researched:** 2026-09-06
+**Confidence:** HIGH (every claim below is grounded in a file read during this research; line numbers cited are current as of `origin/main` @ `c0b113c7`)
 
-## Critical Correction: Two "open" issues are already fixed on `main`
+This is not new-system research — it is an integration map. No new subsystem is introduced;
+every issue attaches to one of four existing seams: the shared editor-agnostic composer modules
+(`bbj-vscode/src/*-composer.ts`), the `bbj/composer/*` / `bbj/*` custom-request layer
+(`composer-commands.ts` + `BbjComposerServer.java`), the Phase 79 `Scheduler`/`RestartGate`
+concurrency seam (`bbj-intellij/.../concurrency/`), and the Phase 82 `ComposerFlow`/
+`StaleEditGuard`/`ComposerNotices` composer-robustness seam.
 
-Before any build-order planning: **#506 and #536 are already resolved in the current codebase.** Both issue bodies (read from the scratchpad) describe a pre-CR-02 state. `PROJECT.md`'s Key Decisions log records "EDT-threading restructuring (CR-02) shipped in 0.12.24" (v4.1 Phase 75), and the diff is visible in the source today:
-
-- **#506** (`BbjRunActionBase`/`BbjEMLoginAction` block the EDT on token validation/login) — **FIXED.** `BbjRunActionBase.actionPerformed()` (`bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java:65-110`) now calls `buildCommandLine()` *inside* `ApplicationManager.getApplication().executeOnPooledThread(...)`, with an explicit comment citing "CR-02". `BbjEMLoginAction.actionPerformed()` (`BbjEMLoginAction.java:36-43`) likewise dispatches `performLogin(project)` to a pooled thread. Every `Messages.*` dialog inside `performLogin()` is individually routed back to the EDT via `invokeAndWait` (`promptUsername`, `promptPassword`, `showErrorOnEdt`, `showInfoOnEdt`, lines 166-201).
-- **#536** (EM login temp files created without owner-only permissions) — **FIXED.** `BbjProcessSecretEnv.createOwnerOnlyFile()` (`bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjProcessSecretEnv.java:114-125`) sets `PosixFilePermissions.asFileAttribute(Set.of(OWNER_READ, OWNER_WRITE))` on POSIX, with a documented Windows-ACL-is-different-but-reasoned fallback. Both call sites the issue names (`BbjRunActionBase.java:298`, `BbjEMLoginAction.java:107`) already call it.
-
-Treat these two as **verify-and-close**, not implement: write (or extend) a regression test asserting the pooled-thread dispatch and the owner-only permission, and close the issue. No production code changes are needed. This matters for build-order because the milestone's first target-features bullet ("single off-EDT pipeline for run/login token work") is **already satisfied by the existing `executeOnPooledThread` wrapping** — there is no new shared pipeline component to design for #506/#536; the remaining EDT work in this milestone (#541, #543, #513) is about *other* call sites that don't yet use this pattern.
-
-A second stale claim, repeated across #569/#571/#513/#554: **"no `src/test/` source set exists."** False today — `bbj-intellij/src/test/java/com/basis/bbj/intellij/lsp/` has 7 JUnit 5 test classes (`BbjProcessSecretEnvTest`, `BbjLanguageServerSourceGuardTest`, `NodeArchiveVerifierTest`, `NodeInstallIntegrityTest`, `NodeExecutableResolverTest`, `BbjNodeDownloaderSourceGuardTest`, `BbjSecretArgvSourceGuardTest`), and `build.gradle.kts:33-40` declares `junit-jupiter` + `useJUnitPlatform()`, with `buildPlugin` already `dependsOn(tasks.named("test"))` (line 43). #569's *actionable* remainder is not "add a test source set" (done) but "add regression coverage for the specific behaviors this phase changes" — which falls out naturally as each functional fix below lands with its own test, per that fix's own acceptance criteria. No dependency on #569 as a gating task.
-
-## Standard Architecture (where the 21 fixes attach)
+## System Overview (unchanged — where the 23 issues attach)
 
 ```
-┌───────────────────────────────────────────────────────────────────────────┐
-│  IntelliJ Platform (Swing EDT)                                              │
-│  ┌──────────────┐ ┌───────────────┐ ┌──────────────────┐ ┌──────────────┐ │
-│  │ actions/      │ │ BbjSettings-  │ │ BbjMissingNode-   │ │ composer/    │ │
-│  │ BbjRun*Action │ │ Component     │ │ NotificationProv. │ │ *Dialog      │ │
-│  │ BbjEMLogin-   │ │ (Settings UI) │ │ (editor banner)   │ │ Composer-    │ │
-│  │ Action        │ │               │ │                   │ │ Launcher     │ │
-│  └──────┬───────┘ └──────┬────────┘ └─────────┬─────────┘ └──────┬───────┘ │
-│         │ pooled thread  │ EDT-blocking calls  │ EDT-blocking     │ CompletableFuture
-│         │ (fixed, #506)  │ (#541 open)          │ spawn (#543 open)│ (no .exceptionally, #538)
-│  ┌──────▼───────┐        │                     │                  │
-│  │ BbjEMToken-   │        │                     │                  │
-│  │ Store         │◄───────┴─────────────────────┘                  │
-│  │ (#535,#552    │        BbjNodeDetector.getNodeVersion()          │
-│  │  open)        │        — stateless, spawns every call           │
-│  └───────────────┘        (no cache layer exists yet)              │
-│                                                                      │
-│  ┌───────────────────────────────┐   ┌─────────────────────────┐  │
-│  │ ui/BbjServerService            │   │ lsp/BbjCompletionFeature │  │
-│  │  restart() — 6 unguarded       │   │ lsp/BbjLanguageServer-   │  │
-│  │  callers (#539 open)           │   │ Factory                  │  │
-│  │  crash Thread.sleep(1000) in   │   │ lsp/BbjLanguageClient    │  │
-│  │  invokeLater (#513 open)       │   │ lsp/BbjLanguageServer    │  │
-│  │  scheduleRestart()/restartAlarm│   │  — 7 files coupled to    │  │
-│  │  (Alarm, POOLED_THREAD) exists │   │  @ApiStatus.Experimental │  │
-│  │  but only 1 of 7 callers uses  │   │  LSP4IJ classes, no test │  │
-│  │  it                            │   │  (#544/#554 open)        │  │
-│  └───────────────┬────────────────┘   └─────────────────────────┘  │
-└──────────────────┼──────────────────────────────────────────────────┘
-                    │ LanguageServerManager.start/stop("bbjLanguageServer")
-                    │ stdio (LSP4IJ-managed OSProcessStreamConnectionProvider)
-┌───────────────────▼──────────────────────────────────────────────────┐
-│  bbj-vscode/out/language/main.cjs  (shared Langium LS, stdio)         │
-│  main.ts:                                                             │
-│    connection.onRequest('bbj/refreshJavaClasses', ...)  ← precedent   │
-│    registerComposerRequests(connection)  ← bbj/composer/* precedent   │
-│    NO bbj/compile request exists yet (#571 — new surface needed)      │
-│  bbj-cpl-service.ts: BBjCPLService.compile(filePath) — pure, already  │
-│    used internally for diagnostics-on-save; no vscode dependency      │
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────── VS Code host ─────────────────────────────────┐
+│ extension.ts (activate: 16 undisposed regs #531, refreshJavaClasses :700-709)  │
+│  msgbox/addwindow/addchildwindow/setopts -composer-{ui,webview}.ts (#530 #623) │
+│  Commands/Commands.cjs (#512)   document-formatter.ts (#499)   decompile-io.ts │
+│  (#500)   package.json contributes.languages (#485 — static filenames array)  │
+└───────────────────────┬─────────────────────────────────────────┬─────────────┘
+                         │ LSP stdio                                 │ vscode.workspace
+                         ▼                                           ▼ FileSystemWatcher (NEW, #486)
+┌────────────────────────────────── Language Server (main.cjs) ──────────────────┐
+│ bbj-ws-manager.ts: onInitialize reads configPath from initializationOptions,   │
+│   initializeWorkspace() reads it ONCE at startup, no watcher (#485 #486)      │
+│ composer-commands.ts: bbj/composer/{msgbox,addwindow,addchildwindow}/* — NOT  │
+│   setopts (#633 gap) — thin pass-throughs to editor-agnostic *-composer.ts    │
+│ msgbox-composer.ts buildCallInfo(): literal-int-only regex (#648)             │
+│ bbj-scope.ts getBBjClassesFromFile() full index scan (#505)                   │
+│ bbj-scope-local.ts collectLocalSymbols() unpruned streamAllContents (#505)    │
+│ bbj-linker.ts link(): isExternalDocument + treeIter.prune() — the pattern to  │
+│   mirror for #505                                                             │
+│ java-interop.ts: acquireLock/lockQueue (#504), _resolvedClasses LruMap (#497) │
+│ bbj-completion-provider.ts: activeCancelToken singleton field (#498)          │
+│ main.ts: connection.onRequest('bbj/refreshJavaClasses', ...) — already exists │
+└───────────────────────┬──────────────────────────────────────────┬────────────┘
+                         │ LSP stdio                                 │ workspace/didChangeWatchedFiles
+                         ▼ (LS-agnostic to host)                     │ (candidate mechanism, see #486)
+┌───────────────────────────────── IntelliJ host (LSP4IJ) ───────────────────────┐
+│ BbjLanguageServerFactory.getServerInterface() -> BbjComposerServer.class       │
+│ BbjComposerServer.java: bbj/composer/* + bbj/compile (Phase 81 pattern) —      │
+│   #632 adds bbj/refreshJavaClasses here                                       │
+│ ComposerLauncher.java -> BbjComposerService.server() [no cache, #612] ->       │
+│   ComposerFlow (Phase 82) -> {Msgbox,AddWindow,AddChildWindow}ComposerDialog   │
+│   -> StaleEditGuard (Phase 82, pattern for #532)                              │
+│ Msgbox/AddWindow/AddChildWindowComposerDialog: SimpleDocumentListener calls    │
+│   refresh() synchronously, no Scheduler (#611)                                │
+│ ConfigureMsgbox/AddWindow/AddChildWindowIntention: Alt+Enter only, no gutter  │
+│   cue (#650)                                                                  │
+│ BbjServerService.java: RestartGate + requestRestart(long) (Phase 79 seam) —   │
+│   BbjRefreshJavaClassesAction calls requestRestart(0) today (#632)            │
+│ BbjSettings.java getState(): auto-detects bbjHomePath/nodeJsPath, NOT         │
+│   javaInteropPort (#608, only in BbjSettingsConfigurable.reset())             │
+│ BbjStatusBarWidget / BbjJavaInteropStatusBarWidget: messageBusConnection on   │
+│   status events only, no FileEditorManagerListener (#610)                    │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Component Responsibilities
+## New vs. Modified Components
 
-| Component | Responsibility | Fix(es) that touch it |
-|-----------|----------------|------------------------|
-| `actions/BbjRunActionBase.java` | Shared run-action skeleton; off-EDT dispatch (already fixed), token cache to add | #506 (done), #542 |
-| `actions/BbjRunBuiAction.java`, `BbjRunDwcAction.java` | Mode-specific `buildCommandLine()`; call `validateTokenServerSide()` and `isTokenExpired()` | #535, #542 (indirectly, via base class) |
-| `actions/BbjEMLoginAction.java` | Credential prompt + `em-login.bbj` launch + token store | #506 (done), #536 (done) |
-| `actions/BbjEMTokenStore.java` | PasswordSafe read/write + client-side expiry decode | #535, #552 |
-| `actions/BbjCompileAction.java` | Compile command entry point — currently only logs | #571 |
-| `ui/BbjServerService.java` | LS lifecycle, crash detection, restart, debounced `scheduleRestart()`/`Alarm` | #539, #513 |
-| `ui/BbjRestartServerAction.java`, `BbjServerCrashNotificationProvider.java`, `BbjStatusBarWidget.java`, `BbjJavaInteropStatusBarWidget.java`, `actions/BbjRefreshJavaClassesAction.java`, `BbjNodeDownloader.java` (success-notification action) | 6 direct `restart()` callers | #539 |
-| `BbjSettingsComponent.java` | Settings dialog Swing form; document listeners spawn `node --version` / read files synchronously | #541 |
-| `BbjMissingNodeNotificationProvider.java` | Editor banner; calls `BbjNodeDetector.getNodeVersion()` on every refresh | #543 |
-| `BbjNodeDetector.java` | Stateless `node --version` spawn + version-compare helper — no cache today | #541, #543 (both need a cache layer built on top of this) |
-| `BbjNodeDownloader.java` | Download/extract/cache Node.js; check-then-set in-progress flag | #537 |
-| `BbjWordLexer.java`, `BbjTokenTypes.java`, `BbjParserDefinition.java`, `BbjPairedBraceMatcher.java` | Minimal PSI lexer for bracket-matching/navigation only (TextMate does highlighting) | #568 |
-| `BbjCommenter.java` | REM toggle prefix, case-sensitive literal match | #540 |
-| `composer/ComposerLauncher.java` | Capture caret offsets → decode via LSP → open dialog → apply edits at captured offsets | #567 |
-| `composer/MsgboxComposerDialog.java`, `AddWindowComposerDialog.java`, `AddChildWindowComposerDialog.java` | `refresh()` → `server.*Preview(...).thenAccept(...)`, no `.exceptionally()` | #538 |
-| `lsp/BbjCompletionFeature.java`, `BbjLanguageServerFactory.java`, `BbjLanguageClient.java`, `BbjLanguageServer.java`, `ui/BbjServerService.java`, `ui/BbjJavaInteropService.java`, `ui/BbjStatusBarWidget.java` | Subclass/consume `@ApiStatus.Experimental` LSP4IJ classes, no regression coverage | #544 (superset), #554 (subset — same 2 files as #544's first two) |
-| `build.gradle.kts` | Toolchain, `copyLanguageServer`/`prepareSandbox` tasks, test deps | #570, #517, (#569's test-infra request — already satisfied) |
-| `gradle/wrapper/gradle-wrapper.{properties,jar}` | Gradle bootstrap; JAR checksum unverifiable against declared 8.13 | #503, #576 |
-| `bbj-vscode/src/language/main.ts` | LS-side custom-request registration point (`bbj/refreshJavaClasses`, `bbj/composer/*`) | #571 (new `bbj/compile` request) |
-| `bbj-vscode/src/language/bbj-cpl-service.ts` | `BBjCPLService.compile(filePath)` — already vscode-free, already used for diagnostics | #571 (reuse target) |
-| `bbj-vscode/src/Commands/Commands.cjs` + `CompilerOptions.ts` | VS Code **extension-host** compile command (`vscode.commands.registerCommand("bbj.compile", ...)`), reads `vscode.workspace.getConfiguration('bbj')` for 18 compiler flags, shells out via `execFile` directly — **not** LS code, has `vscode` import | #571 (reference implementation only; do not literally reuse — see below) |
+| Component | Status | Issues | Notes |
+|---|---|---|---|
+| `bbj-vscode/src/cvs-composer.ts` + `cvs-composer-ui.ts` + `cvs-composer-webview.ts` | **NEW** | #649 | Clone of `msgbox-composer.ts`/`-ui.ts`/`-webview.ts`'s three-file shape |
+| `bbj/composer/cvs/*` handlers in `composer-commands.ts` | **NEW** | #649 | Same thin-pass-through shape as the msgbox/addwindow/addchildwindow sections |
+| `bbj/composer/setopts/*` handlers in `composer-commands.ts` | **NEW** | #633 | Today SETOPTS is the only composer NOT in this file — `grep -c setopts composer-commands.ts` = 0, confirmed |
+| `SetoptsComposerDialog.java`, `CvsComposerDialog.java` | **NEW** | #633, #649 | Follow `MsgboxComposerDialog.java`'s constructor/`ComposerFlow`/`StaleEditGuard` shape |
+| `ComposerModels.SetOpts*`, `ComposerModels.Cvs*` DTOs | **NEW** | #633, #649 | Added to the existing `ComposerModels.java` (24 existing nested classes) |
+| `BbjComposerServer.setopts*()`, `.cvs*()`, `.refreshJavaClasses()` methods | **NEW methods on existing interface** | #633, #649, #632 | `getServerInterface()` returns exactly one interface (comment at `BbjComposerServer.java:62-63`) — every new request family is added here, not a new interface |
+| `ConfigureCvsIntention.java`, `ConfigureSetoptsIntention.java` (or gutter LineMarkerProvider) | **NEW** | #649, #633, #650 | Mirrors `ConfigureMsgboxIntention.java` |
+| A VS Code "additive expression" evaluator inside `msgbox-composer.ts` | **NEW logic in existing file** | #648 | No numeric-expression parser or `BBjMsgBox.*` reverse-constant-lookup exists today |
+| An IntelliJ persistent visual cue (`LineMarkerProvider` or inlay hint) | **NEW mechanism** | #650 | IntelliJ has zero always-visible composer cue today — only `IntentionAction`s reachable via Alt+Enter |
+| VS Code `CodeLensProvider` for msgbox/addwindow/addchildwindow | **NEW** | #650 | Today only `setopts-composer-ui.ts` has a `CodeLensProvider` (`:82-96`); msgbox/addwindow/addchildwindow have only a `CodeActionProvider` (lightbulb) |
+| VS Code dynamic language-association listener | **NEW** | #485 | No `vscode.languages.setTextDocumentLanguage` call exists anywhere in `extension.ts` today |
+| Config-file watcher (VS Code `FileSystemWatcher`, IntelliJ VFS/`BulkFileListener`) | **NEW** | #486 | Neither host watches the config file today; `bbj-ws-manager.ts` reads it once in `initializeWorkspace()` |
+| A resolved-config-path query (new tiny LSP request, or duplicated fallback logic per host) | **NEW (design choice)** | #485, #486 | See "Config Path Data Flow" below |
+| `KeystrokeDebouncer`-style wrapper (or direct `Scheduler.schedule`) for composer `refresh()` | **NEW usage of existing seam** | #611 | Reuses Phase 79's `Scheduler`/`AlarmScheduler`, not `KeystrokeDebouncer<T>` verbatim (see caveat below) |
+| Server/catalogs cache in `ComposerLauncher`/`BbjComposerService` | **NEW cache, existing classes** | #612 | Invalidated by the same restart path `RestartGate.doRestart` already drives |
+| `addwindowPreview`/`addchildwindowPreview`'s `valid` field | **MODIFIED** | #623 | `msgboxPreview()` already returns `valid`; the other two previews don't yet |
+| `addwindow-composer-webview.ts`, `addchildwindow-composer-webview.ts` insert handlers | **MODIFIED** | #623, #530 | Add `r.valid` gate + `panel.onDidDispose` |
+| `msgbox-composer-webview.ts`, `setopts-composer-webview.ts` | **MODIFIED** | #530 | Add `panel.onDidDispose` only (already gate on `r.valid`) |
+| `msgbox-composer-ui.ts` `runComposer()` | **MODIFIED** | #532 | Add a re-decode/re-validate step before `editor.edit()`, mirroring `StaleEditGuard.java` |
+| `bbj-scope.ts`, `bbj-scope-local.ts` | **MODIFIED** | #505 | Add per-file cache + external-document pruning |
+| `java-interop.ts` | **MODIFIED** | #504, #497 | Add circuit breaker + LRU pinning; no new files |
+| `bbj-completion-provider.ts` | **MODIFIED** | #498 | Thread cancel token through `completionForCrossReference`'s own extension point instead of the shared field |
+| `decompile-io.ts`, `document-formatter.ts`, `Commands.cjs`, `extension.ts` | **MODIFIED** | #500, #499, #512, #531 | Single-file, localized fixes |
+| `BbjSettings.java`, `BbjSettingsConfigurable.java` | **MODIFIED** | #608 | Move port auto-detect into `getState()`; replace `== 5008` equality check with a real sentinel |
+| `BbjRefreshJavaClassesAction.java`, `BbjComposerServer.java` | **MODIFIED** | #632 | Swap `requestRestart(0)` for the `BbjCompileAction.java` pattern (background task + targeted request) |
+| `BbjStatusBarWidget.java`, `BbjJavaInteropStatusBarWidget.java` | **MODIFIED** | #610 | Add `FileEditorManagerListener` subscription |
 
-## New vs Modified Components (explicit)
+## Config Path Data Flow (#485, #486, #632, #608)
 
-### Modified (existing file, in-place fix)
+**Today:** the resolved config path is computed in exactly one place —
+`bbj-ws-manager.ts` (`BBjWorkspaceManager`), and it is read exactly once:
 
-| File | Fix | Nature of change |
-|------|-----|-------------------|
-| `ui/BbjServerService.java` | #539 | Add a guard (in-flight `AtomicBoolean` or make `scheduleRestart()`/`restartAlarm` the sole path) around `restart()`; update its own Javadoc (currently documents the gap as "only one caller ... uses it," `:27-30`) |
-| `ui/BbjServerService.java` | #513 | Replace `Thread.sleep(1000)` inside `invokeLater` (`:121-131`) with `restartAlarm.addRequest(this::restart, 1000)` — **same file as #539, do serially** |
-| `ui/BbjRestartServerAction.java`, `BbjServerCrashNotificationProvider.java`, `ui/BbjStatusBarWidget.java`, `ui/BbjJavaInteropStatusBarWidget.java`, `actions/BbjRefreshJavaClassesAction.java`, `BbjNodeDownloader.java` | #539 | Change `.restart()` call to `.scheduleRestart()` (6 one-line call-site edits, mechanical once the guard lands) |
-| `actions/BbjEMTokenStore.java` | #535 | Three "unable to determine" branches in `isTokenExpired()` (`:64-66,76-77,84-86`) flip to fail-closed, or gate behind a new `isTokenWellFormed()` |
-| `actions/BbjEMTokenStore.java` | #552 | Add a one-time notification when `PasswordSafe`'s resolved backend isn't the native keychain — same file as #535, batch together |
-| `actions/BbjRunActionBase.java`, `BbjRunBuiAction.java`, `BbjRunDwcAction.java` | #542 | `buildCommandLine()` skips `validateTokenServerSide()` inside a short trust window — depends on #535 landing first (don't cache a fail-open result) |
-| `BbjNodeDownloader.java` | #537 | Guard `props.getBoolean(...)`/`props.setValue(...)` (`:77,85`) with a `synchronized` block or `AtomicBoolean` CAS |
-| `BbjSettingsComponent.java` | #541 | Move `updateNodeVersionLabel()`/`updateClasspathDropdown()` off the `DocumentAdapter`'s synchronous path onto a debounced background task (`Alarm`, same idiom as `BbjServerService.restartAlarm`) |
-| `BbjMissingNodeNotificationProvider.java` | #543 | Route through the new node-version cache instead of calling `BbjNodeDetector.getNodeVersion()` directly at `:42,50` |
-| `BbjWordLexer.java`, `BbjParserDefinition.java`, `BbjPairedBraceMatcher.java`, `BbjTokenTypes.java` | #568 | Add quote-delimited scan branch + `STRING` `IElementType`; register it in `getStringLiteralElements()`; guard `isPairedBracesAllowedBeforeType` |
-| `BbjCommenter.java` | #540 | Case-insensitive REM recognition (either a real `COMMENT` PSI token via the lexer, or a custom `Commenter`/`CommenterDataHolder`) |
-| `composer/MsgboxComposerDialog.java`, `AddWindowComposerDialog.java`, `AddChildWindowComposerDialog.java`, `ComposerLauncher.java` | #538 | Add `.exceptionally(...)` to every chain listed in the issue (`ComposerLauncher.launch()`'s nested chain, each dialog's `refresh()` chain) |
-| `composer/ComposerLauncher.java` | #567 | `openMsgbox`/`applyAddWindowEdit`/`applyHexEdit` re-decode via the new shared helper before `WriteCommandAction.replaceString` |
-| `actions/BbjCompileAction.java` | #571 | Replace the log-only `actionPerformed()` (`:27-41`) with a call through the new server interface method + result surfacing |
-| `bbj-vscode/src/language/main.ts` | #571 | Add `connection.onRequest('bbj/compile', ...)` alongside the existing `bbj/refreshJavaClasses` handler |
-| `build.gradle.kts` | #570 | Add `java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }` |
-| `build.gradle.kts` | #517 | `copyLanguageServer`/`prepareSandbox` gain a `doFirst` existence check or a real `dependsOn` |
-| `gradle/wrapper/gradle-wrapper.properties`, `gradle-wrapper.jar` | #503, #576 | Regenerate via `./gradlew wrapper --gradle-version <N> --gradle-distribution-sha256-sum <hash>` — single command fixes both |
+- `onInitialize` (`bbj-ws-manager.ts:46-121`) stores `this.configPath` from
+  `params.initializationOptions.configPath` (`:68`) — the VS Code `bbj.configPath` setting or
+  IntelliJ's `BbjSettings.State.configPath`, sent flat in `initializationOptions` by both hosts
+  (VS Code's `startLanguageClient`; IntelliJ's `BbjLanguageServerFactory.initializeParams`,
+  `:53-54`).
+- `initializeWorkspace()` (`bbj-ws-manager.ts:127-154`) resolves the PREFIX either from
+  `this.configPath` directly (custom path branch, `:133-141`) or by falling back to
+  `{bbjdir}/cfg/config.bbx` (`:142-154`) — **this fallback derivation logic exists only inside
+  the language server.** Neither host currently knows or computes the effective resolved path;
+  each only knows its own two raw settings (`configPath` and `bbjHome`/`bbjHomePath`).
+- This happens once, at `initializeWorkspace` time. There is no watcher, no re-read, no
+  `workspace/didChangeWatchedFiles` registration anywhere in `bbj-ws-manager.ts` or `main.ts`.
 
-### New (files/classes that don't exist yet)
+**#485 requires:** every consumer of the config path (PREFIX resolution, project-wide USE
+from #83/#484 — same `initializeWorkspace` code path — plus each host's own run commands, the
+VS Code SETOPTS CodeLens, and the language/file-type association) to honor a **custom name**,
+not just a custom location. The LS side already does (it reads whatever file is at
+`this.configPath` regardless of name). The gaps are host-side:
+- **VS Code:** `package.json`'s `contributes.languages` (`:44-60`) is a *static filename array*
+  (`config.bbx`, `Config.bbx`, `config.min`, `Config.min`). A file at a custom path with any
+  other name never gets the `bbx-config` language, so `setopts-composer-ui.ts`'s
+  `argForActiveEditor()` (`:57-60`) — gated on `editor.document.languageId !== 'bbx-config'` —
+  and the TextMate grammar never activate on it. Fix: a new `onDidOpenTextDocument` listener in
+  `extension.ts` that calls `vscode.languages.setTextDocumentLanguage(doc, 'bbx-config')` when
+  the opened file's path matches the resolved config path — no such dynamic call exists in
+  `extension.ts` today.
+- **IntelliJ:** same problem, but the TextMate-bundle association mechanism
+  (`bbj-intellij/src/main/resources/textmate/bbj-bundle/package.json`) is filename-list-based
+  with no documented per-file runtime override — PROJECT.md's own tech-debt list already
+  records "IntelliJ TextMate bundle cannot exclude config.bbx by filename" as a platform
+  limitation. This needs the same kind of platform-capability check #632 already had to do for
+  its own custom-request question before a single edit can be named as buildable.
 
-| New component | Needed by | Why it must be new, not folded into an existing file |
-|----------------|-----------|--------------------------------------------------------|
-| A token-validation trust-window cache (e.g. `TokenValidationCache`, a small static/`Map`-backed helper next to `BbjEMTokenStore`) | #542 | `BbjRunActionBase`/subclasses are `AnAction` singletons reused across invocations with no per-call state; a "validated at T, trust until T+window" fact needs a place to live that survives across `actionPerformed()` calls without being reset each time (unlike a local variable). No such cache exists anywhere in the module today. |
-| A shared Node-version cache (e.g. `BbjNodeVersionCache`) sitting in front of `BbjNodeDetector.getNodeVersion()` | #541, #543 | Both consumers (`BbjSettingsComponent`, `BbjMissingNodeNotificationProvider`) currently call the stateless detector directly; today there is genuinely nothing to reuse. Building it once and pointing both call sites at it is the only way to satisfy both issues' acceptance criteria ("cache invalidated on settings change" for #543, debounce for #541) without duplicating cache logic in two files. |
-| A shared re-decode-and-validate helper on the composer's apply path (per #567's own "Proposed approach": *"add a shared re-decode-and-validate helper reachable from all three apply paths"*) | #567 | `openMsgbox`, `applyAddWindowEdit`, `applyHexEdit` each currently apply captured offsets with no common validation step; the issue explicitly asks for one shared helper, not three parallel copies. This is a genuinely open UX question the issue itself flags (mismatch → re-open dialog vs. silently abort) — resolve it once at the top of this wave, not per call site. |
-| `bbj/compile` LSP request (server-side handler in `main.ts`, or a new sibling module `compile-commands.ts` mirroring `composer-commands.ts`'s shape) | #571 | No such request exists; `bbj/refreshJavaClasses` and `bbj/composer/*` are the only precedents. |
-| A `bbj/compile` method on the IntelliJ-side server-proxy interface (extend `composer/BbjComposerServer.java`, or add a sibling `BbjCompileServer` interface if scope separation is preferred) plus a resolver mirroring `BbjComposerService.server(project)` | #571 | `BbjLanguageServerFactory.getServerInterface()` (`lsp/BbjLanguageServerFactory.java:34-37`) returns exactly one proxy type (`BbjComposerServer`); a second custom request needs either a new method on that same interface or LSP4IJ's generic `LanguageServer.getWorkspaceService()`-style escape hatch — adding it to the existing interface is the path of least resistance since it's already the extension point in use. |
-| Source-guard/canary regression tests for the LSP4IJ-experimental surface (extending the existing `BbjLanguageServerSourceGuardTest`-style pattern, not new IDE-fixture infrastructure) | #544, #554 | No IntelliJ Platform test-fixture dependency (`testFramework`, `BasePlatformTestCase`, `LightPlatform*`) is declared in `build.gradle.kts` today, and none of the 7 existing tests use one — they're plain JUnit 5 unit tests or text/regex assertions against `.java` source files (see `BbjLanguageServerSourceGuardTest.java:38-53`, which asserts ordering of tokens inside `BbjLanguageServer.java`'s source text). Adding a live-IDE test harness would be a much larger, separately-scoped investment; the established, low-cost pattern already answers "how do we test LSP4IJ-coupled classes" for this milestone: reflective canary assertions (e.g. `LSPCompletionFeature.class.getMethod("getIcon", CompletionItem.class)` — throws `NoSuchMethodException` at test time if the vendor breaks the signature) plus structural source-guard checks. |
+**#486 requires** watching the *resolved* file and debounce-restarting. This needs the
+resolved path to exist on the host side first — which is exactly what #485 has to establish
+(both the custom-location and custom-name cases). Two designs surfaced by reading the code:
 
-## Data Flow
+1. **Duplicate the fallback logic per host** (simplest): both hosts already hold `bbj.home`/
+   `bbjHomePath` and `configPath`, so each can locally compute
+   `configPath || join(bbjHome, 'cfg', 'config.bbx')` and watch that. Risk: two independent
+   reimplementations of `bbj-ws-manager.ts:132-154`'s branch can drift (e.g. if the LS's
+   fallback logic changes, e.g. to also try `config.min`).
+2. **A new tiny read-only LSP query** (e.g. `bbj/resolvedConfigPath`), following the exact
+   precedent set by `composer-commands.ts`'s `bbj/composer/*` layer and `bbj/compile`: a small,
+   named custom request added to the existing custom-request surface, single source of truth.
+   Given this milestone already treats "duplicate logic across two hosts" as a defect class
+   (#623's whole justification, #648's shared-module fix), option 2 is the architecturally
+   consistent choice — it costs one new one-line LS handler and one new interface method on
+   `BbjComposerServer.java`/one new VS Code custom request, and removes drift risk entirely.
 
-### 1. Run/EM-login pipeline (already off-EDT; #542/#535/#552 land inside it)
+Once each host knows the resolved absolute path: VS Code watches it via
+`vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(dirname, basename))` (the
+file typically lives outside the workspace root, so a workspace-relative watcher pattern is
+insufficient — `RelativePattern` with an explicit base URI is required, exactly as #486's own
+issue text specifies). IntelliJ registers a `BulkFileListener`/`AsyncFileListener` on the VFS
+for that path. Both then call the **existing** Phase 79 restart machinery — IntelliJ already
+has it (`BbjServerService.requestRestart(long)` / `RestartGate`); VS Code has no equivalent
+today and would call `client.stop()`/`startLanguageClient()` again, optionally gated behind a
+"config.bbx changed — reload?" prompt as the issue itself suggests.
+
+**#608** (java-interop port auto-detection) and **#632** (targeted `bbj/refreshJavaClasses` on
+IntelliJ) sit in the same PROJECT.md theme bucket but have **no data-flow dependency** on #485/
+#486 — #608 is a pure `BbjSettings.java`/`BbjSettingsConfigurable.java` change, and #632 reuses
+the language server's *existing* `bbj/refreshJavaClasses` handler
+(`main.ts:33`, confirmed registered) which VS Code already calls today
+(`extension.ts:700-709`, `client.sendRequest('bbj/refreshJavaClasses')`). #632's own IntelliJ
+code has already moved past the issue's stale evidence: `BbjRefreshJavaClassesAction.java:30`
+now calls `BbjServerService.requestRestart(0)` (the Phase 79 `RestartGate` coalescing entry
+point), not a raw `restart()` — but it is still a full server restart under the hood
+(`requestRestart` → `RestartGate` → `doRestart` → `LanguageServerManager` stop/start), so the
+issue's complaint (every language feature goes offline) still holds. The fix is a direct port
+of the **Phase 81 `bbj/compile` pattern**: `BbjComposerServer.java` already demonstrates the
+exact shape needed — add
+`@JsonRequest("bbj/refreshJavaClasses") CompletableFuture<Void> refreshJavaClasses();`
+to that one interface (the same interface `bbj/compile` lives on, for the same reason: LSP4IJ's
+`getServerInterface()` returns exactly one class), then rewrite the action to mirror
+`BbjCompileAction.java`'s `Task.Backgroundable` + `BbjComposerService.server(project)` +
+bounded `.get(timeout, unit)` shape instead of calling `requestRestart`.
+
+## Composer Command-Layer Data Flow (composer commands → both hosts)
+
+`composer-commands.ts` is the single source of truth for msgbox/addwindow/addchildwindow flag
+arithmetic, reached by both hosts over LSP custom requests (`bbj/composer/*`, doc comment at
+`composer-commands.ts:1-13` states this explicitly: "the language server and the VS Code UI stay
+a single source of truth"). VS Code's own webviews (`msgbox-composer-webview.ts` etc.) call the
+same pure functions **in-process** (they import `../msgbox-composer.js` directly, not over LSP —
+VS Code doesn't need the network hop since it's the same Node process), while IntelliJ reaches
+the identical logic through `BbjComposerServer`'s `@JsonRequest` methods. **This means a fix to
+the shared module benefits both hosts automatically, without touching either host's UI code** —
+this is the load-bearing fact behind several of this milestone's build-order decisions:
+
+- **#648** (MSGBOX composer not offered for expression-valued options): the bug is entirely in
+  `msgbox-composer.ts`'s `buildCallInfo()` (`:507-515`) — its options-argument regex is
+  `/^(\s*)(\d+)\s*$/`, matching only a bare integer literal. `BBjMsgBox.X+BBjMsgBox.Y` and
+  `1+256` both fail this regex, so `exprRange`/`exprValue` stay `undefined`, and since
+  `argRanges.length > 1` the `optionInsertOffset` branch (`:516-519`) is also skipped — the
+  Code Action provider (`msgbox-composer-ui.ts:49,66`) then returns `[]`, exactly reproducing
+  the reported symptom. **Fixing this in `msgbox-composer.ts` alone (a numeric additive-sum
+  parser plus a reverse lookup from `BBjMsgBox.*` constant names back to the catalog values —
+  no such reverse map exists today, only the forward `msgboxConstantsExpr()` at `:170-179`)
+  ships to both VS Code (via `msgbox-composer-ui.ts`'s direct import) and IntelliJ (via
+  `composer-commands.ts`'s `bbj/composer/msgbox/decodeCall` handler, `:82-104`, which
+  `BbjComposerServer.msgboxDecodeCall` calls over LSP) with zero IDE-specific code.**
+- **#623** (VS Code addwindow/addchildwindow insert applied unconditionally): the missing
+  `valid` gate could be patched purely in the VS Code webviews, but `addwindowPreview()`/
+  `addchildwindowPreview()` in `composer-commands.ts` already compute a full preview payload the
+  same way `msgboxPreview()` does — `msgboxPreview()` already returns `valid` (`msgbox-composer.ts:415,420`);
+  the addwindow/addchildwindow preview functions do not yet. Adding a `valid` field to those two
+  preview functions (in the shared `addwindow-composer.ts`/`addchildwindow-composer.ts` modules)
+  and gating both the VS Code webview's insert handler AND `AddWindowComposerDialog.java`/
+  `AddChildWindowComposerDialog.java`'s OK button on the same field is the shape consistent with
+  how `MsgboxComposerDialog.java` already disables its OK button on `!p.valid` (`apply()`,
+  `:255`). The issue is scoped to VS Code only, but the architecturally consistent fix touches
+  the shared module and closes a latent IntelliJ gap for free.
+- **#633 / #649** (new SETOPTS / CVS composer layers): both are net-new additions to
+  `composer-commands.ts`, following the exact same three-part shape already established by the
+  msgbox/addwindow/addchildwindow sections (catalogs export, preview/compose/decodeCall
+  handlers, `registerComposerRequests` auto-registration via `Object.entries(composerHandlers)`
+  at `:204-208` — new handlers need no change to that registration loop, only new entries in the
+  `composerHandlers` object).
+
+## IntelliJ Composer Seams to Reuse (Phase 79 / 81 / 82)
+
+| Seam | Defined in | Reused by (this milestone) |
+|---|---|---|
+| `Scheduler` interface + `AlarmScheduler` (Alarm-backed) | `concurrency/Scheduler.java`, `concurrency/AlarmScheduler.java` | #611 (composer debounce) — same underlying mechanism as `RestartGate`/`KeystrokeDebouncer` |
+| `RestartGate` (coalescing restart entry point `requestRestart(long)`) | `concurrency/RestartGate.java` | #486 (IntelliJ config-watch restart), #612 (cache-invalidation hook), #632 (contrast case — what NOT to keep using) |
+| `KeystrokeDebouncer<T>` (per-field debounce + staleness discard) | `concurrency/KeystrokeDebouncer.java` | #611 — **caveat:** its `lookup: Function<String,T>` is a *synchronous* off-EDT call (used for filesystem lookups in `BbjSettingsConfigurable`); composer `refresh()` is inherently async (`CompletableFuture` via `ComposerFlow.observe`), so #611 needs a thinner wrapper built directly on `Scheduler.schedule`/`cancel` — reusing the *scheduling primitive*, not the generic class as-is |
+| `BbjComposerServer` as the single `getServerInterface()` proxy, extended per-feature with `@JsonRequest` methods (the `bbj/compile` precedent) | `composer/BbjComposerServer.java` | #632 (`bbj/refreshJavaClasses`), #633 (`bbj/composer/setopts/*`), #649 (`bbj/composer/cvs/*`) |
+| `BbjCompileAction`'s background-task + bounded-future request shape | `actions/BbjCompileAction.java` | #632 — direct template for the rewritten `BbjRefreshJavaClassesAction` |
+| `ComposerFlow` (single terminal `handle()`, one balloon per chain, `launch`/`observe`/`once`) | `composer/ComposerFlow.java` | #633, #649 (new dialogs must compose through this, not a raw `thenAccept` chain) |
+| `StaleEditGuard` (re-decode + field-wise compare + modification-stamp check inside the write command) | `composer/StaleEditGuard.java` | **#532** — this is the exact IntelliJ-side fix for the VS Code-side problem #532 describes; the port is conceptual (TypeScript has no `WriteCommandAction`, but the "re-fetch document text, re-run the same decode/parse function, compare before applying, abort on mismatch" three-step shape ports directly to `msgbox-composer-ui.ts`'s `runComposer`) |
+| `ComposerNotices` / `ComposerNoticeRenderer` (reason-keyed balloon, one per session) | `composer/ComposerNotices.java` | #633, #649 (new dialogs need the same failure surfacing, not silent) |
+
+## Build Order
 
 ```
-User clicks "Run As BUI"                                    [EDT]
-  → BbjRunActionBase.actionPerformed()                       [EDT: fast local checks only]
-      autoSaveIfNeeded() / validateBeforeRun()  (fast, local fs checks — fine on EDT)
-  → executeOnPooledThread(() -> { ... })                     [pooled thread — CR-02, done]
-      → buildCommandLine(file, project)                      [pooled thread]
-          BbjEMTokenStore.getToken()                          — PasswordSafe read
-          BbjEMTokenStore.isTokenExpired(token)                — #535 fixes fail-open here
-          validateTokenServerSide(project, token)              — #542 adds a trust-window
-                                                                   short-circuit here, built
-                                                                   ON TOP of #535's fixed check
-          [if invalid] BbjEMLoginAction.performLogin(project)  — already pooled-thread-safe,
-                                                                   dialogs already EDT-routed
-      → OSProcessHandler launch, stderr → BbjServerService.logToConsole
+#485 (custom config name/location honored everywhere)
+   │  must resolve/expose the effective path before it can be watched correctly
+   ▼
+#486 (watch + debounced restart)
+   │  (independent of #608, #632 below)
+
+#648 (msgbox-composer.ts: accept expression-valued options)
+   │  the discoverability cue can only fire on lines the parser recognizes
+   ▼
+#650 (visible composer cue, both IDEs) ── also needs a NEW CodeLens (VS Code)
+   │                                        and a NEW LineMarkerProvider/inlay
+   │                                        (IntelliJ) — neither exists today
+   ▼
+#649 (CVS() composer) — built as a #650-style-cue-from-day-one composer,
+                         so it doesn't need a discoverability follow-up
+
+#633 (shared bbj/composer/setopts/* LS layer)
+   │  the Java dialog is a pure consumer of these LS methods
+   ▼
+SetoptsComposerDialog.java + ComposerLauncher wiring
+   │
+   ▼
+#475 (SETOPTS-in-BBj-code hovers + tri-state composer)
+   — issue's own text: "narrower...a natural prerequisite subset of #475's
+     fuller scope" — #633 supplies the reusable byte/bit catalog and the
+     bbj/composer/setopts/* request pattern; #475 adds NEW decode-hover and
+     tri-state/IOR-AND-aware logic the config.bbx composer never needed
+
+#623, #532, #530 — independent of every other cluster; VS Code-only;
+   sensible to batch together (near-identical touch points across the
+   same four webview files)
+
+#611, #612 — independent of every other cluster; IntelliJ-only;
+   sensible to batch together (same three dialog-launch call sites)
+
+#505, #504, #497, #498 — independent of each other and of every other
+   cluster (different files/mechanisms in java-interop.ts /
+   bbj-scope*.ts / bbj-completion-provider.ts); safe to parallelize
+
+#500, #499, #512, #531, #610, #608, #632 — each fully independent,
+   single-component fixes; no ordering constraints
 ```
 
-### 2. Restart guard (#539 wraps #513)
+**Why #485 before #486:** watching the wrong file (stale default, or a
+custom-named file the watcher doesn't know to target) is worse than not
+watching at all — a debounced restart triggered by changes to a file the
+user *isn't* editing, while the file they *are* editing is silently ignored,
+actively erodes trust in the feature. #486 needs #485's "what is the
+resolved path, by name and location" answer as an input.
 
-```
-6 call sites: BbjRestartServerAction, BbjServerCrashNotificationProvider,
-BbjStatusBarWidget, BbjJavaInteropStatusBarWidget, BbjRefreshJavaClassesAction,
-BbjNodeDownloader (post-download notification action)
-        │  currently: each calls service.restart() directly — UNGUARDED
-        ▼
-BbjServerService.restart()  →  manager.stop(...); manager.start(...)   [race today]
-        │  #539: make scheduleRestart() (already exists, restartAlarm,
-        │  Alarm.ThreadToUse.POOLED_THREAD, 500ms debounce) the ONLY path;
-        │  either rename restart()→private and have scheduleRestart() call it,
-        │  or add an AtomicBoolean in-flight guard directly to restart()
-        ▼
-crash-path (updateStatus(), crashCount==1 branch)
-        │  today: invokeLater(() -> { Thread.sleep(1000); restart(); })  — EDT-blocking
-        │  #513: restartAlarm.addRequest(this::restart, 1000)  — reuses the SAME Alarm
-        ▼                                                          #539 formalizes
-     (no EDT block; single debounced entry point for every trigger)
-```
+**Why #648 before #650:** #650's own issue text is about making the
+*existing* composer affordance more visible — but for MSGBOX specifically,
+the affordance doesn't exist yet on expression-valued lines (that's exactly
+what #648 reports). Shipping a visible cue mechanism first and then fixing
+the underlying detection second would mean the new cue silently fails to
+appear on the very lines the issue calls out, reproducing the confusion in
+a new UI element instead of removing it.
 
-### 3. New `bbj/compile` surface (#571) — the one fix that crosses the LS/plugin boundary
+**Why the shared `bbj/composer/setopts/*` layer before `SetoptsComposerDialog.java`:**
+this is the same "shared layer first, per-IDE dialog second" ordering
+`composer-commands.ts`'s existing history already establishes for msgbox/
+addwindow/addchildwindow (the LS-side catalog and handlers shipped, then
+each IDE UI followed) — `SetoptsComposerDialog.java` has nothing to call
+until the LS methods exist, and `BbjComposerServer.java`'s single-interface
+constraint means the interface method signatures need to be fixed before
+Java code can compile against them.
 
-```
-IntelliJ: BbjCompileAction.actionPerformed()
-    │  today: only service.logToConsole(...) — TODO comment, no LSP call at all
-    ▼ (new)
-BbjComposerServer (or new interface) . compile(CompileParams)   [@JsonRequest("bbj/compile")]
-    │  same shape as BbjComposerService.server(project) resolving the running proxy
-    ▼  JSON-RPC over stdio (LSP4IJ-managed connection, existing transport — no new plumbing)
-bbj-vscode main.cjs: connection.onRequest('bbj/compile', async (params) => { ... })
-    │  NEW handler, added next to the existing 'bbj/refreshJavaClasses' registration
-    │  reuses BBjCPLService.compile(filePath) — already pure/vscode-free, already the
-    │  server's own internal compile-for-diagnostics path (bbj-cpl-service.ts:52,86)
-    ▼
-returns { success, diagnostics: Diagnostic[] }  — same shape BBjCPLService already produces
-    ▼
-BbjCompileAction surfaces success/diagnostics (notification or Problems-style display)
-```
+**Why #633 before #475:** #475's own issue body states the dependency
+directly ("depends on `setopts-catalog.ts` from #474") and #633's issue
+body characterizes itself as "a natural prerequisite subset of #475's fuller
+scope" — #633 ports the already-shipped absolute-vector composer to
+IntelliJ over a new shared layer; #475 extends that same catalog with the
+IOR/AND-aware, tri-state, BBj-code-scoped logic. Building #633's LS layer
+first gives #475 a proven `bbj/composer/setopts/*` request shape and an
+IntelliJ dialog skeleton to extend, rather than inventing both the shared
+layer and the tri-state logic in one larger, riskier phase.
 
-**Do not literally port `Commands.cjs`'s `compile` function (`:298-343`).** That function is VS Code **extension-host** code — it `require("vscode")`, reads `vscode.workspace.getConfiguration('bbj')` for 18 compiler flags via `CompilerOptions.ts`'s `buildCompileOptions(config)`, and shells out directly with `execFile`. It is not reachable from, or callable by, the language server process, and the language server has no equivalent of `vscode.workspace.getConfiguration`. The right server-side reuse target is `BBjCPLService.compile(filePath)` (`bbj-vscode/src/language/bbj-cpl-service.ts:52-86`), which is already editor-agnostic and already runs inside the LS process. This means v4.2's `bbj/compile` request is, by design, a simpler compile (no 18-option UI) than VS Code's command-palette "Compile BBj File" — an intentional, smaller scope than a literal parity port, and worth calling out explicitly in the phase's acceptance criteria so it isn't read as scope creep against `CLAUDE.md`'s "Existing LS unchanged" constraint. The precedent that makes this acceptable is `registerComposerRequests(connection)` (`main.ts:26`) and `bbj/refreshJavaClasses` (`main.ts:32-39`): the project has already extended the shared LS with IntelliJ-motivated custom requests twice before (#426/#430/#433, and the Java-classes refresh command), so a third instance following the same shape is consistent with existing practice, not a new precedent.
+## Anti-Patterns Already Fixed Once (don't reintroduce them here)
 
-### 4. Composer edit-application (#538 wraps #567)
+### Anti-Pattern: nested `thenAccept` pyramids in new composer code (IntelliJ)
 
-```
-ComposerLauncher.launch()  [EDT: capture line/lineText/col]
-    ▼
-BbjComposerService.server(project).thenAccept(...)     — #538: needs .exceptionally() here
-    .composerCatalogs().thenAccept(...)                — and here
-    .msgboxDecodeCall(...).thenAccept(decoded -> ...)  — and here
-    ▼ onEdt(() -> openMsgbox/openAddWindow/openAddChildWindow(...))
-dialog.showAndGet()   [modal, EDT — arbitrary time passes, document may change]
-    ▼
-openMsgbox/applyAddWindowEdit/applyHexEdit(captured offsets)
-    │  today: applies WriteCommandAction.replaceString(capturedStart, capturedEnd, text)
-    │  directly — no re-check
-    ▼ (new, #567)
-sharedReDecodeAndValidate(project, editor, line, capturedOffsets)
-    → re-run the same decodeCall request the launch used, compare to captured offsets
-    → on mismatch: (UX decision the issue leaves open — recommend prompting to reopen
-      rather than silently aborting, since #538's new .exceptionally() handlers already
-      establish "surface a visible notification on failure" as this unit's convention)
-    ▼
-WriteCommandAction.replaceString(...)  — only reached if validation passed
-```
+**What happened before:** pre-Phase-82 `ComposerLauncher.launch()` ran a nested `thenAccept`
+chain where an inner future's exception was stored on a future nobody held a reference to —
+silently swallowed, no balloon, no log line (`ComposerFlow.java:17-23`'s own doc comment
+describes this exact failure mode).
+**Why it matters here:** #633's `SetoptsComposerDialog.java` and #649's `CvsComposerDialog.java`
+must compose their launch chains through `ComposerFlow.launch`/`.observe`, not a fresh ad hoc
+`CompletableFuture` chain — the seam exists precisely so every new composer inherits the fix for
+free.
 
-## Build Order (minimizes rework)
+### Anti-Pattern: validating in the webview instead of the shared preview payload
 
-```
-Wave 0 — Build foundation (nothing else should start before this; low risk, no code coupling)
-  #570 (toolchain pin)  ──┐
-                          ├──► #503 + #576 (single `./gradlew wrapper --gradle-version ...
-  [requires #570 to run ─┘     --gradle-distribution-sha256-sum ...` regenerates both
-   `./gradlew dependencies`    the properties file's declared version AND re-derives a
-   at all, per #576's own      verifiable jar in one step)
-   evidence]
-  #517 (fail-fast LS-bundle copy)  — independent, do anytime in this wave
+**What happened before:** `msgbox-composer-webview.ts` gates `insert` on `r.valid` computed by
+the shared `msgboxPreview()`; `addwindow`/`addchildwindow` never got the same field added to
+their own preview functions, so their webviews had nothing to gate on (#623). A per-webview
+patch (adding a validity check only inside `addwindow-composer-webview.ts`) would repeat this
+mistake in the opposite direction — VS Code fixed, IntelliJ's dialogs still ungated.
+**Do instead:** add the `valid` field to the shared preview function's return type first (as
+`msgboxPreview` already does), then gate both hosts on it.
 
-Wave 1 — Shared mutable-state guards (two unrelated concerns, both "guard a check-then-set race")
-  #539 (guarded restart entry point) → #513 (crash delay via restartAlarm)
-    — SAME FILE (BbjServerService.java), same Alarm; do #539 first so #513's fix lands on
-      top of the already-guarded restart() rather than needing its own separate guard
-  #537 (Node download CAS guard) — different file (BbjNodeDownloader.java), no ordering
-    dependency on #539/#513, can run in parallel
+### Anti-Pattern: per-host duplicated path-resolution logic
 
-Wave 2 — Token/EM pipeline (fixes land INSIDE the already-off-EDT pipeline from #506 — no new
-  pipeline component needed, #506/#536 are verify-and-close only)
-  #535 (fail-closed isTokenExpired) ──► #542 (trust-window cache)
-    — #542's cache must be built on TOP of #535's fixed semantics; caching a fail-open
-      result would widen the vulnerability window, not just duplicate it
-  #552 (non-keychain storage warning) — same file as #535 (BbjEMTokenStore.java), batch
-    together in one PR since both are small and touch the same class, but logically
-    independent of #542
+**What happened before:** IntelliJ's port auto-detection duplicated `bbjHomePath`/`nodeJsPath`'s
+pattern inconsistently — implemented only in `BbjSettingsConfigurable.reset()`, not
+`BbjSettings.getState()` (#608), guarded by an equality check standing in for a real
+"configured" sentinel.
+**Why it matters here:** the config-path resolution needed for #486's watcher (see "Config Path
+Data Flow" above) is exactly this shape of problem one level up — a fallback computation
+(`configPath || {bbjHome}/cfg/config.bbx`) that both hosts would otherwise reimplement
+independently. Prefer exposing it once from the LS (a small custom request) over reimplementing
+`bbj-ws-manager.ts:132-154`'s branch twice.
 
-Wave 3 — Settings/Node-notification caching layer
-  New: shared Node-version cache class ──► #543 (notification provider, simple consumer)
-                                       └──► #541 (settings dialog, adds debounce on top)
-    — build the cache once, wire both consumers to it; #541 additionally needs the
-      Alarm-based debounce pattern already established in BbjServerService (Wave 1)
+## Integration Points (file:line, verified by reading the code)
 
-Wave 4 — Compile (#571) — the only fix touching bbj-vscode, largest single change
-  (a) bbj-vscode/src/language/main.ts: add `bbj/compile` request, reusing
-      BBjCPLService.compile() — requires `npm run build` in bbj-vscode/ to regenerate
-      out/language/main.cjs
-  (b) bbj-intellij: extend the server-proxy interface + BbjCompileAction — CANNOT be
-      built/tested end-to-end until (a)'s main.cjs is copied in by copyLanguageServer/
-      prepareSandbox (Wave 0's #517 fail-fast check makes this dependency loud instead
-      of silent if forgotten)
-  Recommend running this wave after Wave 0 (so a missing/stale main.cjs fails fast) but
-  it has no dependency on Waves 1-3; could run in parallel with them if capacity allows.
-
-Wave 5 — Lexer/Commenter (#568, #540) — fully independent files, zero shared state with
-  anything else in this milestone; safe to parallelize with any other wave
-  #568 (BbjWordLexer/BbjParserDefinition/BbjPairedBraceMatcher/BbjTokenTypes)
-  #540 (BbjCommenter) — can literally run concurrently with #568, no file overlap
-
-Wave 6 — Composer (#538 wraps #567)
-  #538 (.exceptionally() on every composer CompletableFuture chain) ──► #567 (shared
-    re-decode-and-validate helper, itself another CompletableFuture-returning LSP call)
-    — do #538 first: #567's new re-validation call sites should inherit the same
-      failure-surfacing convention #538 establishes, not invent a second one
-
-Wave 7 — LSP4IJ coupling regression tests (#544 supersedes #554 — same 2 files are a
-  strict subset of #544's 7; implement #544's scope once, close #554 as covered)
-  — do this LAST relative to #571, since #571 adds a NEW LSP4IJ-coupled surface
-    (the compile request/interface extension) that these regression tests should also
-    cover; writing them before #571 lands means writing them twice
-  — follow the existing BbjLanguageServerSourceGuardTest.java pattern (text/regex
-    assertions + reflective canary checks on vendor method signatures), NOT new
-    IntelliJ Platform test-fixture infrastructure (none exists, none is declared in
-    build.gradle.kts, and introducing BasePlatformTestCase-style fixtures is a
-    separately-scoped investment this milestone doesn't need)
-  — #569's "add regression coverage" ask is satisfied cumulatively by every wave above
-    following its own issue's acceptance criteria (each of #535/#537/#541/#542/#543/
-    #513/#539 already specifies its own regression test in the issue text); no
-    standalone #569 implementation step remains
-```
-
-### Why this order, restated as dependency edges
-
-- `#570 → #576/#503` (hard: `./gradlew dependencies` cannot even run without a toolchain, per #576's own reproduction)
-- `#539 → #513` (soft: same file, same `Alarm`; sequential avoids rework/merge churn)
-- `#535 → #542` (hard: caching a fail-open expiry check widens the bug rather than just duplicating it)
-- `new node-version cache → #541, #543` (hard: both fixes need the cache to exist first; #541/#543 are then parallelizable)
-- `bbj-vscode main.ts change → npm run build → bbj-intellij side of #571` (hard: IntelliJ cannot call a request the shipped `main.cjs` doesn't implement yet)
-- `#538 → #567` (soft: shared failure-surfacing convention should exist before the code that needs to use it)
-- `#571 → #544/#554 regression tests` (soft: avoids writing the LSP4IJ-coupling test twice)
-- `#506, #536` — no edges; verify-and-close, can happen at any point, ideally early (cheap wins, closes 2 of 21 items immediately)
-
-## Anti-Patterns Specific to This Codebase
-
-### Anti-Pattern 1: `Thread.sleep()` (or any blocking call) inside `invokeLater()`
-**What people do:** Treat `invokeLater` as "off the main flow" and put a delay/sleep inside it, forgetting the runnable still executes ON the EDT.
-**Why it's wrong:** `invokeLater` schedules the runnable to run on the Swing EDT, not on a background thread — `Thread.sleep()` there blocks the *entire IDE UI*, not just the calling code path. This is exactly the bug #513 documents, and the project's own established pattern (`executeOnPooledThread` for #506, `Alarm.ThreadToUse.POOLED_THREAD` for `restartAlarm`) already shows the fix.
-**Do this instead:** Use `Alarm.addRequest(runnable, delayMs)` (with `Alarm.ThreadToUse.POOLED_THREAD` or `SWING_THREAD` chosen deliberately) for any delayed/debounced work, never a raw sleep inside a UI callback.
-
-### Anti-Pattern 2: check-then-set on a shared flag with no synchronization
-**What people do:** `if (!flag) { doWork(); flag = true; }` split across two unsynchronized calls (`PropertiesComponent.getBoolean`/`setValue` in #537 is exactly this shape).
-**Why it's wrong:** Two near-simultaneous invocations (two IDE windows, or a double-click) can both observe the flag as false before either sets it, defeating the guard entirely.
-**Do this instead:** `AtomicBoolean.compareAndSet(false, true)` or a `synchronized` block around both the check and the set as one atomic unit.
-
-### Anti-Pattern 3: unhandled `CompletableFuture` chains from LSP requests
-**What people do:** `server.someRequest(...).thenAccept(result -> ...)` with no `.exceptionally()`, assuming LSP requests always succeed.
-**Why it's wrong:** A failed future (server restart mid-request, timeout, connection drop) stores its exception unobserved; the continuation silently never runs, producing a "nothing happened" UX with no log entry — the exact failure mode #538 documents across every composer chain.
-**Do this instead:** Every `CompletableFuture` chain that originates from an LSP4IJ server-proxy call gets a terminal `.exceptionally(t -> onEdt(() -> notifyNotReady(...)))`, mirroring `ComposerLauncher.notifyNotReady()`'s existing shape.
-
-### Anti-Pattern 4: applying captured document offsets after a modal dialog closes, without re-validating
-**What people do:** Capture line/offset coordinates before showing a modal dialog, then apply them unconditionally after the dialog returns.
-**Why it's wrong:** The document can change while the modal is open (the user can, in some IDE configurations, still interact with other editors); applying stale offsets either throws or silently corrupts unrelated text — #567's exact failure mode.
-**Do this instead:** Re-decode/re-validate captured offsets against the live document immediately before the write, and fail visibly (not silently) on mismatch — the same visibility convention #538 establishes for LSP failures.
-
-## Integration Points
-
-### External Services
-
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Shared Langium LS (`main.cjs`) | LSP4IJ-managed stdio process; custom `bbj/*` requests via `@JsonRequest` on a server-proxy interface | `bbj/refreshJavaClasses` and `bbj/composer/*` are the two existing precedents; `bbj/compile` (#571) is the third. Add new requests either to `BbjComposerServer` or a sibling interface — `BbjLanguageServerFactory.getServerInterface()` returns exactly one proxy type today. |
-| PasswordSafe (`com.intellij.ide.passwordSafe`) | `CredentialAttributes` + `Credentials`, backend resolved by IDE-wide "Save passwords" setting | #552 needs to *inspect* which backend was resolved and warn — no PasswordSafe API for this is confirmed read yet; check `PasswordSafe`'s settings-introspection surface during implementation. |
-| nodejs.org distribution server | `HttpRequests.request(...)`, pinned digests via `NodeArchiveVerifier` | Unrelated to any of the 21 fixes directly, but #537's CAS guard wraps the `Task.Backgroundable` that calls into this path. |
-| bbjcpl (native BBj compiler binary) | Already spawned via `execFile`-style process launch inside `BBjCPLService.compile()` (LS-side) and inside `Commands.cjs`'s `compile` (VS Code extension-side) — two independent call sites today | #571 adds a THIRD caller only if IntelliJ's `bbj/compile` handler reuses `BBjCPLService.compile()` (recommended) rather than re-implementing the invocation. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| `actions/*` ↔ `ui/BbjServerService` | Direct method calls (`getInstance(project)`, `.restart()`/`.scheduleRestart()`, `.logToConsole()`) | #539 changes the *contract* here: after the fix, callers should treat `scheduleRestart()` as the only supported entry point; `restart()` may become effectively private/guarded. |
-| `actions/*` ↔ `BbjEMTokenStore` | Static method calls, no async boundary | #535/#542/#552 all land here; #542's new cache should probably live adjacent to (or inside) this class rather than in the action classes, to keep the "is this token trustworthy right now" question in one place. |
-| `BbjSettingsComponent`/`BbjMissingNodeNotificationProvider` ↔ `BbjNodeDetector` | Direct static calls today, no cache | #541/#543 insert a new cache layer between these UI consumers and the detector — this is the one place in the whole milestone where a genuinely new shared component is unambiguously required by two separate issues. |
-| `bbj-intellij` ↔ `bbj-vscode` | Build-time file copy only (`copyLanguageServer`, `copyTextMateBundle`, `copyWebRunner` in `build.gradle.kts:95-141`), no source-level dependency | #517 hardens this boundary (fail fast on missing `main.cjs`); #571 is the only fix in this milestone that requires a *source* change on the `bbj-vscode` side, which then flows through this same build-time copy. |
+| Issue | File(s) | Lines | What's there today |
+|---|---|---|---|
+| #485 | `bbj-vscode/src/language/bbj-ws-manager.ts` | 32, 68, 132-154 | Sole owner of resolved config path; no exposure to host |
+| #485 | `bbj-vscode/package.json` | 44-60 | Static `filenames` array for `bbx-config` language |
+| #485 | `bbj-vscode/src/extension.ts` | (absent) | No dynamic `setTextDocumentLanguage` call exists |
+| #486 | `bbj-vscode/src/language/bbj-ws-manager.ts` | 127-154 | `initializeWorkspace()` reads config once, no watcher |
+| #486 | `bbj-intellij/.../ui/BbjServerService.java` | 32-33, 41, 53, 205, 224-225 | `RestartGate`/`requestRestart(long)`/`scheduleRestart()` already exist for settings changes |
+| #608 | `bbj-intellij/.../BbjSettings.java` | 44-60, 110-152 | `getState()` auto-detects home/node, not port; `detectJavaInteropPort()` exists but is only called from Configurable |
+| #608 | `bbj-intellij/.../BbjSettingsConfigurable.java` | 130-148 | Port auto-detect gated on `== 5008` literal equality |
+| #632 | `bbj-intellij/.../actions/BbjRefreshJavaClassesAction.java` | 22-32 | Calls `requestRestart(0)` (full LS restart via RestartGate) |
+| #632 | `bbj-intellij/.../composer/BbjComposerServer.java` | 29-67 | Single server-interface class; `bbj/compile` is the precedent to follow |
+| #632 | `bbj-intellij/.../actions/BbjCompileAction.java` | 56-113 | Background-task + bounded-future request pattern to port |
+| #632 | `bbj-vscode/src/language/main.ts` | 33 | `bbj/refreshJavaClasses` handler already registered LS-side |
+| #632 | `bbj-vscode/src/extension.ts` | 700-709 | VS Code's existing targeted-request call, the behavior to match |
+| #648 | `bbj-vscode/src/msgbox-composer.ts` | 500-522 (`buildCallInfo`), 170-179 (`msgboxConstantsExpr`, forward-only) | Options regex accepts only a bare integer literal |
+| #648 | `bbj-vscode/src/msgbox-composer-ui.ts` | 37-79 | `MsgboxCodeActionProvider` returns `[]` when neither `exprRange` nor `optionInsertOffset` is set |
+| #649 | `bbj-vscode/src/language/composer-commands.ts` | 1-208 (whole file) | Three-section shape to clone for `cvs` |
+| #650 | `bbj-vscode/src/setopts-composer-ui.ts` | 82-96 | Only existing `CodeLensProvider` in this codebase |
+| #650 | `bbj-vscode/src/msgbox-composer-ui.ts` | 25-35 | Only a `CodeActionProvider` (lightbulb), no CodeLens |
+| #650 | `bbj-intellij/.../composer/ConfigureMsgboxIntention.java` (+ AddWindow/AddChildWindow variants) | whole files | `IntentionAction` only, Alt+Enter/right-click, no persistent gutter cue |
+| #633 | `bbj-vscode/src/language/composer-commands.ts` | (absent) | Zero `setopts` matches — confirmed via grep |
+| #633 | `bbj-vscode/src/setopts-catalog.ts`, `setopts-composer-ui.ts`, `setopts-composer-webview.ts` | whole files | Existing VS Code-only implementation to expose through the LS layer |
+| #475 | `bbj-vscode/src/setopts-catalog.ts` | 1-52 | Byte/bit catalog `#475` explicitly depends on |
+| #623 | `bbj-vscode/src/addwindow-composer-webview.ts` | 108-135 (per issue; insert arm at ~121-131) | Unconditional `applyEdit`, no `r.valid` gate |
+| #623 | `bbj-vscode/src/addchildwindow-composer-webview.ts` | 113-140 (per issue; insert arm at ~126-137) | Same gap |
+| #623 | `bbj-vscode/src/msgbox-composer-webview.ts` | 97-101, 415, 420 | The `r.valid` pattern to mirror; `msgboxPreview`'s existing `valid` field |
+| #532 | `bbj-vscode/src/msgbox-composer-ui.ts` | 87-133 (`runComposer`), 136-160 (`runWizard`) | Applies captured coordinates with no re-validation after the QuickPick wizard |
+| #532 | `bbj-intellij/.../composer/StaleEditGuard.java` | 1-60+ | The re-decode/compare/write-guarded pattern to port conceptually |
+| #530 | `bbj-vscode/src/msgbox-composer-webview.ts` | 82, 112, 116, 119 | `onDidReceiveMessage(..., context.subscriptions)`, no `onDidDispose` |
+| #530 | `addwindow-composer-webview.ts`, `addchildwindow-composer-webview.ts`, `setopts-composer-webview.ts` | (identical pattern per issue) | Same gap, 4 files total |
+| #611 | `bbj-intellij/.../composer/MsgboxComposerDialog.java` | 145, 166-168, 298-302 | `SimpleDocumentListener` calls `refresh()` synchronously on every keystroke |
+| #611 | `bbj-intellij/.../concurrency/Scheduler.java`, `KeystrokeDebouncer.java` | whole files | The seam to reuse (with the sync-vs-async caveat noted above) |
+| #612 | `bbj-intellij/.../composer/ComposerLauncher.java` | 59-72 | `flow.launch` fetches `serverFuture` + calls `composerCatalogs()` on every invocation |
+| #612 | `bbj-intellij/.../composer/BbjComposerService.java` | 23-29 | `server(project)` re-resolves `LanguageServerManager` every call, no cache |
+| #505 | `bbj-vscode/src/language/bbj-scope.ts` | 308-331 | `getBBjClassesFromFile()` — full `indexManager.allElements(...)` scan, no cache |
+| #505 | `bbj-vscode/src/language/bbj-scope-local.ts` | 106-126 | `collectLocalSymbols()` — unpruned `AstUtils.streamAllContents` |
+| #505 | `bbj-vscode/src/language/bbj-linker.ts` | 41-62 | `isExternalDocument` + `treeIter.prune()` — the pattern to mirror (note: uses `streamAst(...).iterator()`, not `streamAllContents`) |
+| #504 | `bbj-vscode/src/language/java-interop.ts` | 42-46, 106-107, 545-611, 875, 914-943 | `acquireLock`/`lockQueue`, `_pendingResolutions`, `resolveClassByName`/`doResolveClassByName`, `clearCache()` |
+| #497 | `bbj-vscode/src/language/java-interop.ts` | 103, 550-559, 704-708 | `_resolvedClasses` `LruMap`; registration-before-recursion ordering that can be evicted mid-recursion |
+| #498 | `bbj-vscode/src/language/bbj-completion-provider.ts` | 59, 94-102, 242-291 | `activeCancelToken` shared singleton field |
+| #500 | `bbj-vscode/src/decompile-io.ts` | 74-96 | `mtimeMs >= callStartMs` with no coarse-filesystem slack |
+| #499 | `bbj-vscode/src/document-formatter.ts` | 54-67 | `inFlightFormats` shares the earlier request's captured `documentContent` |
+| #512 | `bbj-vscode/src/Commands/Commands.cjs` | 84, 137-142, 149, 254, 303, 356, 367 | `resolveTargetFileName()`'s guard exists but isn't applied to `run`/`runWeb`/`decompile`/`compile` |
+| #531 | `bbj-vscode/src/extension.ts` | 582-709 (activate), esp. 592-707 | 16 registrations not pushed to `context.subscriptions`; the correct pattern is already used at 584-587 for the composer commands |
+| #610 | `bbj-intellij/.../ui/BbjStatusBarWidget.java` | 35, 57-64, 67-101, 103, 163-164 | `messageBusConnection` subscribes to server-status only; no `FileEditorManagerListener` |
 
 ## Sources
 
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunActionBase.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMLoginAction.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjEMTokenStore.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjRunBuiAction.java`, `BbjRunDwcAction.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjProcessSecretEnv.java` (read relevant sections)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/ui/BbjServerService.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjCompileAction.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjSettingsComponent.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjMissingNodeNotificationProvider.java`, `BbjNodeDetector.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjNodeDownloader.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/BbjWordLexer.java`, `BbjParserDefinition.java`, `BbjPairedBraceMatcher.java`, `BbjCommenter.java`, `BbjTokenTypes.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java` (read in full); `MsgboxComposerDialog.java`, `AddWindowComposerDialog.java`, `AddChildWindowComposerDialog.java` (grepped for async patterns)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/lsp/BbjCompletionFeature.java`, `BbjLanguageServerFactory.java` (read in full)
-- `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/BbjComposerServer.java`, `BbjComposerService.java` (read relevant sections — the `@JsonRequest` template for #571)
-- `bbj-intellij/build.gradle.kts` (read in full)
-- `bbj-intellij/gradle/wrapper/gradle-wrapper.properties` (read); `gradle-wrapper.jar` sha256 computed locally (`81a82aae...`); `git log` on both files
-- `bbj-intellij/src/test/java/com/basis/bbj/intellij/lsp/BbjProcessSecretEnvTest.java`, `BbjLanguageServerSourceGuardTest.java` (read — establishes the existing test pattern)
-- `bbj-intellij/src/main/resources/META-INF/plugin.xml` (grepped for action registrations)
-- `.github/workflows/pr-validation.yml` (read — confirms CI already pins JDK 17 and runs `gradle/actions/wrapper-validation@v6`)
-- `bbj-vscode/src/Commands/Commands.cjs` (read `compile` function, lines ~298-343, and imports)
-- `bbj-vscode/src/Commands/CompilerOptions.ts` (read header/types)
-- `bbj-vscode/src/language/bbj-cpl-service.ts` (grepped — `BBjCPLService.compile()` signature and doc comment)
-- `bbj-vscode/src/language/main.ts` (read head — `bbj/refreshJavaClasses` and `registerComposerRequests` precedents)
-- `bbj-vscode/src/language/composer-commands.ts` (read head — the `bbj/composer/*` request-registration template)
-- `/home/coder/repos/bbj-language-server/.planning/PROJECT.md` (required reading — milestone goal, constraints, decision log)
-- `/home/coder/repos/bbj-language-server/CLAUDE.md` (required reading — repo structure, LS/IDE boundary)
-- `/tmp/claude-1000/.../scratchpad/intellij-prio12.md` (the 21 issue bodies, dated 2026-08-20 — used only as a checklist, every claim cross-checked against source above)
+All findings above are grounded in direct reads of the following files (this session,
+2026-09-06), plus the 23 GitHub issue bodies supplied as required reading:
+
+- `bbj-vscode/src/language/{bbj-ws-manager,bbj-scope,bbj-scope-local,bbj-linker,java-interop,
+  bbj-completion-provider,composer-commands,main}.ts`
+- `bbj-vscode/src/{msgbox,addwindow,addchildwindow,setopts}-composer{,-ui,-webview}.ts`,
+  `setopts-catalog.ts`
+- `bbj-vscode/src/{extension,decompile-io,document-formatter}.ts`,
+  `bbj-vscode/src/Commands/Commands.cjs`, `bbj-vscode/package.json`
+- `bbj-intellij/src/main/java/com/basis/bbj/intellij/{BbjSettings,BbjSettingsConfigurable}.java`
+- `bbj-intellij/.../actions/{BbjRefreshJavaClassesAction,BbjCompileAction}.java`
+- `bbj-intellij/.../composer/{ComposerLauncher,BbjComposerService,BbjComposerServer,ComposerFlow,
+  StaleEditGuard,ComposerModels,MsgboxComposerDialog,Configure{Msgbox,AddWindow,AddChildWindow}
+  Intention}.java`
+- `bbj-intellij/.../concurrency/{Scheduler,AlarmScheduler,RestartGate,KeystrokeDebouncer}.java`
+- `bbj-intellij/.../ui/{BbjServerService,BbjStatusBarWidget}.java`
+- `bbj-intellij/.../lsp/BbjLanguageServerFactory.java`
+- `.planning/PROJECT.md` (Current Milestone, Context, Key Decisions)
+- `.planning/milestones/v4.2-phases/` directory listing (78-83; confirmed Phase 79/81/82 map to
+  EDT-responsiveness/feature-parity/composer-robustness as named in PROJECT.md's Validated list)
 
 ---
-*Architecture research for: BBj IntelliJ plugin v4.2 burn-down milestone*
-*Researched: 2026-09-04*
+*Architecture research for: BBj Language Server v4.3 Polish & Quality milestone*
+*Researched: 2026-09-06*
