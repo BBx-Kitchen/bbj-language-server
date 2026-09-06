@@ -139,7 +139,7 @@
             implementationClass="com.basis.bbj.intellij.BbjConfigFileType"
             fieldName="INSTANCE"
             language="BBx Config"
-            fileNamesCaseInsensitive="config.bbx;Config.bbx;config.min;Config.min"/>
+            fileNamesCaseInsensitive="config.bbx;config.min"/>
 
         <!-- Runtime file-type override: applies the config file type to the active config file
              (or a default-named one) whatever its extension, at indexing time -->
