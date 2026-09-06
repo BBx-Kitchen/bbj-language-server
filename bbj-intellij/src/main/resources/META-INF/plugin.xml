@@ -154,6 +154,15 @@
             language="BBj"
             implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateSyntaxHighlighterFactory"/>
 
+        <!-- Config files carry the bbx grammar via the plugin's own factory, which resolves by a
+             constant filename rather than the opened file's name, see BbxConfigSyntaxHighlighterFactory -->
+        <editorHighlighterProvider
+            filetype="BBx Config"
+            implementationClass="org.jetbrains.plugins.textmate.language.syntax.highlighting.TextMateEditorHighlighterProvider"/>
+        <lang.syntaxHighlighterFactory
+            language="BBx Config"
+            implementationClass="com.basis.bbj.intellij.BbxConfigSyntaxHighlighterFactory"/>
+
         <!-- Register TextMate grammar bundle -->
         <textmate.bundleProvider
             implementation="com.basis.bbj.intellij.BbjTextMateBundleProvider"/>
