@@ -273,7 +273,17 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A SETOPTS composer write to the same config file does not itself cascade into a restart loop — the self-write suppression window absorbs it (research Pitfall 3).
   4. Saving a `.bbj` file and the config file in the same edit burst never lands a restart mid-validation (research Pitfall 4).
 
-**Plans**: TBD
+**Plans**: 5 plans (2 waves)
+**Wave 1**
+
+- [ ] 85-01-PLAN.md — Server detection: shared consumed-content extraction, `bbj/configReloadRequired` channel, directory watcher with debounce and relevance gate (wave 1)
+- [ ] 85-05-PLAN.md — QA checklist rows for the five hand-only reload behaviors + API-coverage declaration (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 85-02-PLAN.md — Build-quiescence predicate, bounded wait, and the `main.ts` arm/re-arm wiring (wave 2)
+- [ ] 85-03-PLAN.md — VS Code restart choke point, reload handler, status-bar signal, source guard (wave 2)
+- [ ] 85-04-PLAN.md — IntelliJ notification DTO, coalesced restart handler, status reason, contract and guard tests (wave 2)
 
 ### Phase 86: IntelliJ Interop Settings & Targeted Refresh
 
