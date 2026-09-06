@@ -1,8 +1,10 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { URI } from 'langium';
+import { NodeFileSystem } from 'langium/node';
+import type { WorkspaceFolder, Connection } from 'vscode-languageserver';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import type { Connection } from 'vscode-languageserver';
 import {
     EM_CONFIG_SENTINEL,
     canonicalizeConfigPath,
@@ -17,6 +19,8 @@ import {
     type ResolvedConfigPathDeps,
     type ResolvedConfigPathResult,
 } from '../src/language/resolved-config-path-request.js';
+import { createBBjTestServices } from './bbj-test-module.js';
+import type { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 
 /**
  * End-to-end and unit coverage for the one shared answer to "which file is the BBj config
@@ -291,5 +295,82 @@ describe('notifyResolvedConfigPath dedup', () => {
         // Repeating the same (now current) value again must not send a third notification.
         mod.notifyResolvedConfigPath(second);
         expect(connection.sendNotification).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('initializeWorkspace reads PREFIX through the resolver', () => {
+    /**
+     * A real BBjWorkspaceManager backed by an actual disk filesystem (`NodeFileSystem`), so
+     * the same real-fs existence/symlink probes `resolveConfigPath` itself uses agree with
+     * what `initializeWorkspace` reads. The fast, hermetic Java-interop test double from
+     * `bbj-test-module.ts` keeps this from reaching the real interop socket.
+     */
+    function createRealFsWorkspaceManager(): BBjWorkspaceManager {
+        const services = createBBjTestServices(NodeFileSystem);
+        return services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+    }
+
+    function singleFolder(root: string): WorkspaceFolder[] {
+        return [{ uri: URI.file(root).toString(), name: 'root' }];
+    }
+
+    test('a custom configured path: PREFIX is read from that file, via the canonical resolved path rather than the raw setting string', async () => {
+        const configDir = makeTmpDir();
+        const realConfigFile = path.join(configDir, 'my-config.bbx');
+        fs.writeFileSync(realConfigFile, 'PREFIX "/custom-prefix/"\n');
+        const linkConfigFile = path.join(configDir, 'link-config.bbx');
+        fs.symlinkSync(realConfigFile, linkConfigFile);
+
+        const wsManager = createRealFsWorkspaceManager();
+        wsManager.setConfigPath(linkConfigFile);
+
+        await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+
+        expect(wsManager.getSettings()?.prefixes).toContain('/custom-prefix/');
+        const resolved = wsManager.getResolvedConfigPath();
+        expect(resolved.path).toBe(fs.realpathSync.native(realConfigFile));
+        expect(resolved.path).not.toBe(linkConfigFile);
+    });
+
+    test('no configured path and a BBj home whose cfg/config.bbx exists: PREFIX is read from the same file the resolver names', async () => {
+        const tmpHome = makeTmpDir();
+        fs.mkdirSync(path.join(tmpHome, 'cfg'), { recursive: true });
+        fs.writeFileSync(path.join(tmpHome, 'cfg', 'config.bbx'), 'PREFIX "/home-prefix/"\n');
+
+        const wsManager = createRealFsWorkspaceManager();
+        (wsManager as unknown as { bbjdir: string }).bbjdir = tmpHome;
+
+        await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+
+        expect(wsManager.getSettings()?.prefixes).toContain('/home-prefix/');
+        const resolved = wsManager.getResolvedConfigPath();
+        expect(resolved.path).toBe(fs.realpathSync.native(path.join(tmpHome, 'cfg', 'config.bbx')));
+        expect(resolved.source).toBe('default');
+    });
+
+    test('a configured path that does not exist: no prefixes load, and getResolvedConfigPath reports exists:false with a problem naming the path', async () => {
+        const configDir = makeTmpDir();
+        const missingConfig = path.join(configDir, 'missing-config.bbx');
+
+        const wsManager = createRealFsWorkspaceManager();
+        wsManager.setConfigPath(missingConfig);
+
+        await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+
+        const settings = wsManager.getSettings();
+        expect(settings?.prefixes.filter(Boolean)).toEqual([]);
+        const resolved = wsManager.getResolvedConfigPath();
+        expect(resolved.exists).toBe(false);
+        expect(resolved.problem).toContain(path.normalize(missingConfig));
+    });
+
+    test('neither setting: no prefixes load, and getResolvedConfigPath reports source none', async () => {
+        const wsManager = createRealFsWorkspaceManager();
+
+        await wsManager.initializeWorkspace(singleFolder(makeTmpDir()));
+
+        const settings = wsManager.getSettings();
+        expect(settings?.prefixes.filter(Boolean)).toEqual([]);
+        expect(wsManager.getResolvedConfigPath().source).toBe('none');
     });
 });

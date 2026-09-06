@@ -130,28 +130,20 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
             if (folders.length > 0) {
                 let prefixfromconfig;
 
-                // Resolve config.bbx location: use configPath setting if set, otherwise default to bbjdir/cfg/config.bbx
-                if (this.configPath) {
+                // Resolve config.bbx location through the single shared resolver — the only
+                // place in the repository that derives a config path from a configured
+                // setting or a BBj home fallback.
+                const resolvedConfig = this.getResolvedConfigPath();
+                if (resolvedConfig.path) {
                     try {
-                        const configUri = safeUri(this.configPath);
-                        const configContents = await this.fileSystemProvider.readFile(configUri);
+                        const configContents = await this.fileSystemProvider.readFile(safeUri(resolvedConfig.path));
                         prefixfromconfig = configContents.split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
-                        logger.info(`Loaded config.bbx from custom path: ${this.configPath}`);
+                        logger.info(`Loaded config.bbx from resolved path: ${resolvedConfig.path}`);
                     } catch (e) {
-                        logger.warn(`Failed to load config.bbx from custom path ${this.configPath}: ${e}`);
-                    }
-                } else if (this.bbjdir) {
-                    try {
-                        const bbjcfgdir = await this.fileSystemProvider.readDirectory(joinPath(safeUri(this.bbjdir), 'cfg'));
-                        const configbbx = bbjcfgdir.find(file => file.isFile && file.uri.path.endsWith("config.bbx"));
-                        if (configbbx) {
-                            prefixfromconfig = (await this.fileSystemProvider.readFile(configbbx.uri)).split('\n').find(line => line.startsWith("PREFIX"))?.substring(7) || "";
-                        }
-                    } catch (e) {
-                        logger.warn("No cfg/config.bbx found in bbjdir. No prefixes loaded.")
+                        logger.warn(`Failed to load config.bbx from resolved path ${resolvedConfig.path}${resolvedConfig.problem ? ` (${resolvedConfig.problem})` : ''}: ${e}`);
                     }
                 } else {
-                    logger.warn("No bbjdir set. No classpath and prefixes loaded.")
+                    logger.warn(`No config path resolved (source: ${resolvedConfig.source}). No prefixes loaded.`);
                 }
 
                 // Read project.properties from EVERY workspace folder — not just folders[0] —
