@@ -5,16 +5,16 @@ milestone_name: IntelliJ Burn-down
 current_phase: 83
 current_phase_name: Regression Test Hardening
 status: executing
-stopped_at: Completed 83-01-PLAN.md
-last_updated: "2026-09-06T08:00:55.577Z"
+stopped_at: Completed 83-02-PLAN.md
+last_updated: "2026-09-06T08:36:44.432Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 83 execution started
-state_head: 39efcaaf9ded6a562b8617a521b0560899e57545
+state_head: d10ba9cc7f6d17d9f929081a0d3f9ae0a4912419
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 25
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State: BBj Language Server
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-05)
 ## Current Position
 
 Phase: 83 (Regression Test Hardening) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-06 — Phase 83 execution started
 
@@ -131,6 +131,7 @@ Last activity: 2026-09-06 — Phase 83 execution started
 | Phase 82 P03 | 12min | 3 tasks | 6 files |
 | Phase 82 P04 | 10min | 3 tasks | 14 files |
 | Phase 83 P01 | 63min | 3 tasks | 12 files |
+| Phase 83 P02 | 27min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 82 UAT]: Round 1 (2026-09-05) passed 5/7 with one gap: every lightbulb preview threw `PluginException: Intention Description Dir URL is null` (G-82-6), closed by 82-04. Round 2 passed 8/8 by hand against the rebuilt plugin; test 3 (server-stopped balloon) is accepted from code because `BbjComposerService.server` auto-restarts a stopped server. COMP-01/COMP-02 (#538, #567) closed; VALIDATION nyquist-compliant (12 tasks), SECURITY threats_open 0 (27 threats).
 - [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
 - [Phase 83]: Phase 83 Plan 01: NodeInstallPipeline seam with injected Target/Fetcher/Progress/CancelProbe drives the whole Node.js download pipeline under plain JUnit 5 against committed fixtures; fixture digests are literal pins transcribed from a provenance README (never test-computed, or the verify step is vacuous); the 79-REVIEW symlink-following delete bug is fixed via a no-follow-links Files.walkFileTree; DownloadCompletions.dispatch isolates one throwing UI-refresh completion from the rest.
+- [Phase 83]: Phase 83 Plan 02: Settings-lookup catch lives at the lookup layer (BbjSettingsLookups), not the debouncer, so a throwing lookup returns a failure-marked NodeLookup/HomeLookup instead of leaving the dialog stuck; NodeAvailability extracts the missing-Node banner decision into a plain-Java seam so both branches execute under plain JUnit; a configured-but-unusable Node path never falls back to the cached download, pinned as-is and filed as a todo
 
 ### Tech Debt
 
@@ -260,8 +262,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T08:00:55.373Z
-Stopped at: Completed 83-01-PLAN.md
+Last session: 2026-09-06T08:36:44.222Z
+Stopped at: Completed 83-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
