@@ -12,6 +12,7 @@
 
 import type { Connection } from 'vscode-languageserver';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './resolved-config-path-request.js';
+import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './config-reload-notification.js';
 
 /** The LSP connection — set by main.ts via initNotifications(). */
 let _connection: Connection | null = null;
@@ -55,6 +56,17 @@ export function notifyResolvedConfigPath(result: ResolvedConfigPathResult): void
         resolvedConfigPathState = serialized;
         _connection?.sendNotification(RESOLVED_CONFIG_PATH_METHOD, result);
     }
+}
+
+/**
+ * Send a `bbj/configReloadRequired` notification to the client. Deliberately NOT deduplicated,
+ * unlike `notifyResolvedConfigPath` — every call is a discrete reload event (the config content
+ * the server consumes actually changed since the last-seen snapshot), not an idempotent state
+ * push, so the caller (the relevance gate in `config-watcher.ts`) is the one place that decides
+ * whether to call this at all. No-op if the connection has not been initialized yet.
+ */
+export function notifyConfigReloadRequired(params: ConfigReloadNotification): void {
+    _connection?.sendNotification(CONFIG_RELOAD_METHOD, params);
 }
 
 /**

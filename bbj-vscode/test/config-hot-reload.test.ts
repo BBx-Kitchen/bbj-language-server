@@ -75,9 +75,12 @@ describe('extractConsumedConfigContent matches the pre-extraction expression byt
         expect(extractConsumedConfigContent(contents)).toBe('/a/b/\r');
     });
 
-    test('a line that merely starts with the letters of the directive as part of a longer word does not match', () => {
+    test('a line that merely starts with the letters of the directive as part of a longer word is still matched by startsWith, substring(7) taken verbatim', () => {
         const contents = 'PREFIXED /a/b/\n';
-        expect(extractConsumedConfigContent(contents)).toBe('ED /a/b/');
+        expect(extractConsumedConfigContent(contents)).toBe(
+            contents.split('\n').find(line => line.startsWith('PREFIX'))?.substring(7) || ''
+        );
+        expect(extractConsumedConfigContent(contents)).toBe('D /a/b/');
     });
 
     test('a PREFIX line with trailing spaces', () => {

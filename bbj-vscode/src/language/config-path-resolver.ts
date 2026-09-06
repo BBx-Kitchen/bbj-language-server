@@ -205,3 +205,36 @@ export function resolveConfigPath(input: ResolveConfigPathInput, deps: ConfigPat
 
     return { path: null, source: 'none', exists: false, problem: null };
 }
+
+/**
+ * Extract the config content the server actually consumes today: the `PREFIX` directive read
+ * during `initializeWorkspace`. Moved verbatim from `bbj-ws-manager.ts` (the expression that
+ * used to live inline there) so `initializeWorkspace` and the hot-reload relevance gate call
+ * the exact same function — there is no second PREFIX parser anywhere in the repository.
+ *
+ * Behavior is byte-identical to the pre-extraction read for every input, including the
+ * empty-string fallback when no line starts with `PREFIX`. The directive keyword match stays
+ * case-sensitive: changing it would change PREFIX resolution itself, which is out of scope for
+ * config hot-reload.
+ */
+export function extractConsumedConfigContent(contents: string): string {
+    return contents.split('\n').find(line => line.startsWith('PREFIX'))?.substring(7) || '';
+}
+
+/**
+ * The comparison form of {@link extractConsumedConfigContent}: `null` (file absent or
+ * unreadable) maps to the empty string; otherwise the extracted value with a trailing carriage
+ * return and any other trailing whitespace stripped (`String.prototype.trimEnd` already treats
+ * `\r` as whitespace, so both normalizations happen in one step). Value case is preserved —
+ * PREFIX values are filesystem paths, and case matters there.
+ *
+ * This normalized string *is* the snapshot the hot-reload relevance gate compares against: an
+ * exact-equality comparison over it is strictly stronger than a digest and has no collision
+ * class, so no hashing is introduced.
+ */
+export function consumedConfigSnapshot(contents: string | null): string {
+    if (contents === null) {
+        return '';
+    }
+    return extractConsumedConfigContent(contents).trimEnd();
+}
