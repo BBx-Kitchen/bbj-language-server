@@ -28,7 +28,7 @@ Committed scope. Each maps to exactly one roadmap phase.
 ### Config changes without restart
 
 - [ ] **CFG-01**: User's configured config file, of any name and location, is honored by every consumer of the config path: PREFIX and project-wide USE resolution, run and compile commands, and the SETOPTS composer, in both IDEs (#485)
-- [ ] **CFG-02**: User opening the configured config file sees it treated as a config file (highlighting, composer, tooling) regardless of its filename, in both IDEs (#485)
+- [x] **CFG-02**: User opening the configured config file sees it treated as a config file (highlighting, composer, tooling) regardless of its filename, in both IDEs (#485)
 - [ ] **CFG-03**: User's change to the resolved config file (PREFIX, project-wide USE) takes effect without a manual restart, through a debounced reload with a non-blocking status signal, and the composer's own writes to that file cannot trigger a reload loop (#486)
 - [ ] **CFG-04**: User's Refresh Java Classes on IntelliJ completes without taking diagnostics, completion, hover or Structure View offline (#632)
 - [ ] **CFG-05**: User's java-interop port is auto-detected for every reader of the settings, not only the Settings dialog, and an explicitly confirmed port 5008 is never silently overwritten (#608)
@@ -106,7 +106,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISC-10 | Phase 90 | Pending |
 | DISC-11 | Phase 90 | Pending |
 | CFG-01 | Phase 84 | Pending |
-| CFG-02 | Phase 84 | Pending |
+| CFG-02 | Phase 84 | Complete |
 | CFG-03 | Phase 85 | Pending |
 | CFG-04 | Phase 86 | Pending |
 | CFG-05 | Phase 86 | Pending |
@@ -121,6 +121,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RESP-09 | Phase 92 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 25 total
 - Mapped to phases: 25
 - Unmapped: 0 ✓

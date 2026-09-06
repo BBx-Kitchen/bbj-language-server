@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 84
 current_phase_name: Config Path Resolution & Discoverability Foundation
 status: executing
-stopped_at: Completed 84-03-PLAN.md
-last_updated: "2026-09-06T15:38:46.632Z"
+stopped_at: Completed 84-05-PLAN.md
+last_updated: "2026-09-06T15:52:41.751Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 84 execution started
-state_head: fa89ffacdd463e1c0aa760a01c693b22a5988db9
+state_head: ba0162b4f1f59ab3b8eba68e305b822ae49880e6
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 ## Current Position
 
 Phase: 84 (Config Path Resolution & Discoverability Foundation) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-06 — Phase 84 execution started
 
@@ -145,6 +145,7 @@ Last activity: 2026-09-06 — Phase 84 execution started
 | Phase 84 P02 | 20min | 3 tasks | 6 files |
 | Phase 84 P04 | 12min | 3 tasks | 11 files |
 | Phase 84 P03 | 25min | 3 tasks | 7 files |
+| Phase 84 P05 | 25min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84]: 84-04: static-helper-plus-thin-wrapper on BbjConfigPathService (resolveActivePath/isConfigFileName/isDefaultConfigFilename are package-private static) so the pure decisions are unit-testable without a live IntelliJ Application; a source-guard test covers the remaining platform-bound wiring.
 - [Phase 84]: Show-config's missing-file check reads the cached exists flag, not a live fs check — The resolved payload is the single source of truth for existence, and the test suite seeds cache state with synthetic paths that never exist on disk.
 - [Phase 84]: readerWithResolvedConfigFile is a reader wrapper, not an edit to buildCompileOptionsFrom — Keeps the -c argument's argv position and the existing -c/-P conflict rule provably unchanged whether the value came from injection or an explicit setting.
+- [Phase 84]: Phase 84 Plan 05: BbxConfigLanguage/BbjConfigFileType give IntelliJ its own config Language and file type (no parser, unmapped to the server); BbxConfigSyntaxHighlighterFactory resolves the bbx grammar by a constant default filename instead of the opened file's name; BbjConfigFileTypeOverrider delegates entirely to BbjConfigPathService.isConfigFile at runtime; update() re-parses the previously/newly active config files via reparseFiles inside invokeLater only when the active path actually changes, guarded for the no-live-Application plain-JUnit case.
 
 ### Tech Debt
 
@@ -286,8 +288,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T15:38:46.603Z
-Stopped at: Completed 84-03-PLAN.md
+Last session: 2026-09-06T15:52:41.717Z
+Stopped at: Completed 84-05-PLAN.md
 Resume file: None
 
 Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
