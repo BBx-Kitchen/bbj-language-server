@@ -6,9 +6,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -19,6 +17,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  * that both store mutations clear it. The ordering assertions matter most -- a refactor
  * that moved the trusted check ahead of the expiry check would silently let a malformed
  * token populate the cache, the exact interaction this plan follows 80-01 to avoid.
+ *
+ * <p>BbjRunBuiAction and BbjRunDwcAction now share one buildCommandLine body --
+ * {@code BbjRunActionBase.buildWebRunCommandLine} -- so the token-handling flow these guards
+ * pin lives there exactly once rather than duplicated per subclass; the subclass-level checks
+ * below instead assert that both delegate to it.
  */
 class EmTokenTrustWindowSourceGuardTest {
 
@@ -28,9 +31,33 @@ class EmTokenTrustWindowSourceGuardTest {
     private static final Path TOKEN_STORE = guardedActionSource("BbjEMTokenStore.java");
     private static final Path TOKEN_VALIDATION_CACHE = guardedActionSource("TokenValidationCache.java");
 
-    private static final List<Path> RUN_ACTIONS = List.of(RUN_BUI_ACTION, RUN_DWC_ACTION);
-
     private static final String REPROMPT_LITERAL = "EM token expired or invalid. Login again?";
+
+    /** Extracts a brace-balanced method body starting from the first '{' after {@code signatureFragment}. */
+    private static String extractMethodBody(String text, String signatureFragment) {
+        int sigIndex = text.indexOf(signatureFragment);
+        assertTrue(sigIndex >= 0, "method signature not found: " + signatureFragment);
+        int braceStart = text.indexOf('{', sigIndex);
+        assertTrue(braceStart >= 0, "opening brace not found for: " + signatureFragment);
+        int depth = 0;
+        for (int i = braceStart; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(braceStart, i + 1);
+                }
+            }
+        }
+        fail("unbalanced braces for: " + signatureFragment);
+        return "";
+    }
+
+    private static String sharedWebRunHelperBody() {
+        return extractMethodBody(readGuardedSource(RUN_ACTION_BASE), "protected GeneralCommandLine buildWebRunCommandLine(");
+    }
 
     private static Path guardedActionSource(String fileName) {
         return Paths.get(
@@ -66,45 +93,45 @@ class EmTokenTrustWindowSourceGuardTest {
     }
 
     @Test
-    void theRunActionsNoLongerCallTheServerCheckDirectly() {
-        assertAll(RUN_ACTIONS.stream().map(path -> () -> {
-            String text = readGuardedSource(path);
-            assertEquals(0, countOccurrences(text, "validateTokenServerSide"),
-                    path + " must not call validateTokenServerSide directly any more -- "
-                            + "the trusted read-through path is the only entry point");
-        }));
+    void bothRunActionsDelegateToTheSharedWebRunHelper() {
+        assertEquals(1, countOccurrences(readGuardedSource(RUN_BUI_ACTION), "buildWebRunCommandLine(file, project, \"BUI\")"),
+                RUN_BUI_ACTION + " must delegate to buildWebRunCommandLine with client type \"BUI\"");
+        assertEquals(1, countOccurrences(readGuardedSource(RUN_DWC_ACTION), "buildWebRunCommandLine(file, project, \"DWC\")"),
+                RUN_DWC_ACTION + " must delegate to buildWebRunCommandLine with client type \"DWC\"");
     }
 
     @Test
-    void theRunActionsCallValidateTokenTrustedExactlyOnce() {
-        assertAll(RUN_ACTIONS.stream().map(path -> () -> {
-            String text = readGuardedSource(path);
-            assertEquals(1, countOccurrences(text, "validateTokenTrusted(project, token)"),
-                    path + " must call validateTokenTrusted(project, token) exactly once");
-        }));
+    void theSharedWebRunHelperNoLongerCallsTheServerCheckDirectly() {
+        String body = sharedWebRunHelperBody();
+        assertEquals(0, countOccurrences(body, "validateTokenServerSide"),
+                "buildWebRunCommandLine must not call validateTokenServerSide directly -- "
+                        + "the trusted read-through path is the only entry point");
     }
 
     @Test
-    void theExpiryCheckPrecedesTheTrustedValidationInBothRunActions() {
-        assertAll(RUN_ACTIONS.stream().map(path -> () -> {
-            String text = readGuardedSource(path);
-            int expiryIndex = text.indexOf("isTokenExpired(token)");
-            int trustedIndex = text.indexOf("validateTokenTrusted(project, token)");
-            assertTrue(expiryIndex >= 0 && trustedIndex >= 0 && expiryIndex < trustedIndex,
-                    path + " must run isTokenExpired(token) before validateTokenTrusted(project, token) -- "
-                            + "the fail-closed expiry gate from 80-01 must still run first");
-        }));
+    void theSharedWebRunHelperCallsValidateTokenTrustedExactlyOnce() {
+        String body = sharedWebRunHelperBody();
+        assertEquals(1, countOccurrences(body, "validateTokenTrusted(project, token)"),
+                "buildWebRunCommandLine must call validateTokenTrusted(project, token) exactly once");
     }
 
     @Test
-    void theTrustedValidationPrecedesTheRepromptInBothRunActions() {
-        assertAll(RUN_ACTIONS.stream().map(path -> () -> {
-            String text = readGuardedSource(path);
-            int trustedIndex = text.indexOf("validateTokenTrusted(project, token)");
-            int repromptIndex = text.indexOf(REPROMPT_LITERAL);
-            assertTrue(trustedIndex >= 0 && repromptIndex >= 0 && trustedIndex < repromptIndex,
-                    path + " must run validateTokenTrusted(project, token) before the re-prompt literal");
-        }));
+    void theExpiryCheckPrecedesTheTrustedValidationInTheSharedWebRunHelper() {
+        String body = sharedWebRunHelperBody();
+        int expiryIndex = body.indexOf("isTokenExpired(token)");
+        int trustedIndex = body.indexOf("validateTokenTrusted(project, token)");
+        assertTrue(expiryIndex >= 0 && trustedIndex >= 0 && expiryIndex < trustedIndex,
+                "buildWebRunCommandLine must run isTokenExpired(token) before validateTokenTrusted(project, token) -- "
+                        + "the fail-closed expiry gate from 80-01 must still run first");
+    }
+
+    @Test
+    void theTrustedValidationPrecedesTheRepromptInTheSharedWebRunHelper() {
+        String body = sharedWebRunHelperBody();
+        int trustedIndex = body.indexOf("validateTokenTrusted(project, token)");
+        int repromptIndex = body.indexOf(REPROMPT_LITERAL);
+        assertTrue(trustedIndex >= 0 && repromptIndex >= 0 && trustedIndex < repromptIndex,
+                "buildWebRunCommandLine must run validateTokenTrusted(project, token) before the re-prompt literal");
     }
 
     @Test

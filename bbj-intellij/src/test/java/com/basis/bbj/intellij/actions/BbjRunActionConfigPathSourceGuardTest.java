@@ -104,19 +104,30 @@ class BbjRunActionConfigPathSourceGuardTest {
     }
 
     @Test
-    void buiAndDwcActionsGuardTheBlankConfigPathBeforeLaunching() {
-        for (String simpleName : new String[] {"BbjRunBuiAction", "BbjRunDwcAction"}) {
-            String text = readSource(simpleName);
-            assertEquals(1, countOccurrences(text, "getConfigPath()"),
-                    simpleName + " must call getConfigPath() exactly once");
-            int callIndex = text.indexOf("getConfigPath()");
-            int guardIndex = text.indexOf("configPath.isBlank()", callIndex);
-            assertTrue(guardIndex > callIndex,
-                    simpleName + " must guard against a blank config path immediately after the call");
-            int returnAfterGuard = text.indexOf("return null;", guardIndex);
-            assertTrue(returnAfterGuard > guardIndex,
-                    simpleName + " must return without launching when no config path is available");
-        }
+    void sharedWebRunHelperGuardsTheBlankConfigPathBeforeLaunching() {
+        // BbjRunBuiAction and BbjRunDwcAction share one buildCommandLine body -- the
+        // buildWebRunCommandLine() helper on BbjRunActionBase -- so the blank-config-path guard
+        // lives there exactly once rather than duplicated per subclass. Scoped to the helper's
+        // own body (not the whole file) because the file also contains the one-line
+        // getConfigPath() method declaration itself, which would otherwise double-count.
+        String text = extractMethodBody(readSource("BbjRunActionBase"), "protected GeneralCommandLine buildWebRunCommandLine(");
+        assertEquals(1, countOccurrences(text, "getConfigPath()"),
+                "buildWebRunCommandLine must call getConfigPath() exactly once");
+        int callIndex = text.indexOf("getConfigPath()");
+        int guardIndex = text.indexOf("configPath.isBlank()", callIndex);
+        assertTrue(guardIndex > callIndex,
+                "buildWebRunCommandLine must guard against a blank config path immediately after the call");
+        int returnAfterGuard = text.indexOf("return null;", guardIndex);
+        assertTrue(returnAfterGuard > guardIndex,
+                "buildWebRunCommandLine must return without launching when no config path is available");
+    }
+
+    @Test
+    void buiAndDwcActionsEachDelegateToTheSharedWebRunHelperWithTheirOwnClientType() {
+        assertEquals(1, countOccurrences(readSource("BbjRunBuiAction"), "buildWebRunCommandLine(file, project, \"BUI\")"),
+                "BbjRunBuiAction must delegate to the shared web-run helper with client type \"BUI\"");
+        assertEquals(1, countOccurrences(readSource("BbjRunDwcAction"), "buildWebRunCommandLine(file, project, \"DWC\")"),
+                "BbjRunDwcAction must delegate to the shared web-run helper with client type \"DWC\"");
     }
 
     @Test

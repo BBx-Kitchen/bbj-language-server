@@ -18,10 +18,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 /**
  * GHSA-33x9-cpwv-xcv2 / GHSA-xxp5-vv2w-42q8: this guard is what keeps the environment-
  * channel fix from silently regressing back to a secret-bearing {@code addParameter}
- * call. Covers all four secret-bearing call sites: {@code BbjRunActionBase.java} (the
- * JWT validate path, highest-frequency exposure — plan 01), and {@code
- * BbjEMLoginAction.java}, {@code BbjRunBuiAction.java} and {@code BbjRunDwcAction.java}
- * (EM login, BUI run and DWC run — plan 02).
+ * call. Covers all secret-bearing call sites: {@code BbjRunActionBase.java} hosts two of
+ * them directly -- the JWT validate path (highest-frequency exposure — plan 01) in
+ * {@code validateTokenServerSide}, and the BUI/DWC web-run path (plan 02) in the shared
+ * {@code buildWebRunCommandLine} helper both {@code BbjRunBuiAction.java} and {@code
+ * BbjRunDwcAction.java} now delegate to rather than duplicating; {@code
+ * BbjEMLoginAction.java} (EM login) is the fourth.
  */
 class BbjSecretArgvSourceGuardTest {
 
@@ -39,9 +41,17 @@ class BbjSecretArgvSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "lsp", "OwnerOnlyAcl.java")
             .toAbsolutePath();
 
-    /** The four secret-bearing call sites, guarded identically. */
+    /**
+     * The files that directly construct a {@code BbjProcessSecretEnv.Invocation} and call
+     * {@code withEnvironment(...)} themselves. {@code BbjRunBuiAction.java}/{@code
+     * BbjRunDwcAction.java} are deliberately excluded here -- their web-run secret flow now
+     * lives once in {@code BbjRunActionBase.buildWebRunCommandLine}, checked below by
+     * {@link #theWebRunHelperCallsWithEnvironmentAndReferencesBbjProcessSecretEnv()} and
+     * {@link #theWebRunHelperPassesTheInvocationsEnvironmentMapToWithEnvironment()}, with
+     * {@link #buiAndDwcActionsDelegateToTheSharedWebRunHelper()} pinning the delegation itself.
+     */
     private static final List<Path> ALL_GUARDED_ACTION_FILES =
-            List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION);
+            List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION);
 
     /** {@code createOwnerOnlyFile} must precede process-handler construction in these two. */
     private static final List<Path> OWNER_ONLY_FILE_CALLERS = List.of(EM_LOGIN_ACTION, RUN_ACTION_BASE);
@@ -110,7 +120,7 @@ class BbjSecretArgvSourceGuardTest {
 
     @Test
     void allFourGuardedActionFilesArePresent() {
-        for (Path source : ALL_GUARDED_ACTION_FILES) {
+        for (Path source : List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION)) {
             if (!Files.exists(source)) {
                 fail("Guarded source file not found at " + source);
             }
@@ -120,7 +130,7 @@ class BbjSecretArgvSourceGuardTest {
     @Test
     void noneOfTheFourFilesRetainsASecretBearingParameterCall() {
         assertAll("secret-bearing addParameter calls",
-                ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
+                List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION).stream().map(source -> () -> {
                     String text = readGuardedSource(source);
                     assertEquals(0, countOccurrences(text, "addParameter(username)"),
                             source + " must not call addParameter(username) — "
@@ -135,7 +145,7 @@ class BbjSecretArgvSourceGuardTest {
     }
 
     @Test
-    void allFourFilesCallWithEnvironmentAndReferenceBbjProcessSecretEnv() {
+    void theRemainingTwoDirectCallSitesCallWithEnvironmentAndReferenceBbjProcessSecretEnv() {
         assertAll("withEnvironment/BbjProcessSecretEnv presence",
                 ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
                     String text = readGuardedSource(source);
@@ -146,9 +156,39 @@ class BbjSecretArgvSourceGuardTest {
                 }));
     }
 
-    /** Same CR-01 fix as {@link #theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap()}, across all four call sites. */
     @Test
-    void allFourFilesPassTheInvocationsEnvironmentMapToWithEnvironment() {
+    void buiAndDwcActionsDelegateToTheSharedWebRunHelper() {
+        assertEquals(1, countOccurrences(readGuardedSource(RUN_BUI_ACTION), "buildWebRunCommandLine(file, project, \"BUI\")"),
+                RUN_BUI_ACTION + " must delegate its secret-bearing web-run flow to buildWebRunCommandLine");
+        assertEquals(1, countOccurrences(readGuardedSource(RUN_DWC_ACTION), "buildWebRunCommandLine(file, project, \"DWC\")"),
+                RUN_DWC_ACTION + " must delegate its secret-bearing web-run flow to buildWebRunCommandLine");
+    }
+
+    @Test
+    void theWebRunHelperCallsWithEnvironmentAndReferencesBbjProcessSecretEnv() {
+        String body = webRunHelperBody();
+        assertTrue(countOccurrences(body, "withEnvironment(") >= 1,
+                "withEnvironment( is not present in buildWebRunCommandLine");
+        assertTrue(countOccurrences(body, "BbjProcessSecretEnv") >= 1,
+                "BbjProcessSecretEnv is not referenced in buildWebRunCommandLine");
+    }
+
+    @Test
+    void theWebRunHelperPassesTheInvocationsEnvironmentMapToWithEnvironment() {
+        String body = webRunHelperBody();
+        assertWithEnvironmentArgumentIsInvocationEnvironment(body, "BbjRunActionBase.buildWebRunCommandLine");
+    }
+
+    private static String webRunHelperBody() {
+        String body = extractMethodBody(readGuardedSource(RUN_ACTION_BASE),
+                "protected GeneralCommandLine buildWebRunCommandLine(");
+        assertTrue(body != null, "buildWebRunCommandLine( was not found in " + RUN_ACTION_BASE);
+        return body;
+    }
+
+    /** Same CR-01 fix as {@link #theWithEnvironmentCallArgumentIsTheInvocationsEnvironmentMap()}, across both direct call sites. */
+    @Test
+    void bothDirectCallSitesPassTheInvocationsEnvironmentMapToWithEnvironment() {
         assertAll("withEnvironment( argument is the Invocation's own environment() map",
                 ALL_GUARDED_ACTION_FILES.stream().map(source -> () -> {
                     String text = readGuardedSource(source);

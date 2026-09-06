@@ -19,6 +19,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -425,6 +426,143 @@ public abstract class BbjRunActionBase extends AnAction {
      */
     @Nullable
     protected abstract GeneralCommandLine buildCommandLine(@NotNull VirtualFile file, @NotNull Project project);
+
+    /**
+     * Shared body for the BUI and DWC web-run actions: resolves the BBj executable and bundled
+     * web.bbj runner, derives the file's name/programme/working directory, acquires and validates
+     * an EM login token (prompting/re-prompting as needed), resolves the classpath and config
+     * path, and assembles the command line that spawns {@code bbj -q -WD<webRunnerDir>
+     * <webBbjPath> - <clientType> <name> <programme> <workingDir> <classpath> [<configPath>]}
+     * with the token traveling on the environment ({@link BbjProcessSecretEnv}), never as a
+     * parameter. Only the ARGV client-type value and its login/expiry dialog copy differ between
+     * the BUI and DWC actions, both supplied by the caller, so this body stays identical between
+     * them rather than hand-duplicated in each subclass.
+     *
+     * @param file the BBj file to execute
+     * @param project the current project
+     * @param clientType the ARGV client-type value {@code BbjProcessSecretEnv.webRun} sends --
+     *     {@code "BUI"} or {@code "DWC"}; also substituted into the login/expiry dialog copy
+     * @return the assembled command line, or null if it cannot be built (error already shown)
+     */
+    @Nullable
+    protected GeneralCommandLine buildWebRunCommandLine(@NotNull VirtualFile file, @NotNull Project project, @NotNull String clientType) {
+        // Get BBj executable path (validation already done in actionPerformed)
+        String bbjPath = getBbjExecutablePath();
+
+        // Get web.bbj path
+        String webBbjPath = getWebBbjPath();
+        if (webBbjPath == null) {
+            logError(project, "web.bbj runner not found in plugin bundle");
+            return null;
+        }
+
+        // Get web.bbj directory (working directory for the runner)
+        java.io.File webBbjFile = new java.io.File(webBbjPath);
+        String webRunnerDir = webBbjFile.getParent();
+
+        // Derive name (filename without extension)
+        String fileName = file.getName();
+        String name = fileName.contains(".")
+            ? fileName.substring(0, fileName.lastIndexOf('.'))
+            : fileName;
+
+        // Programme is the filename only (basename)
+        String programme = fileName;
+
+        // Working directory is the file's parent directory
+        String workingDir = file.getParent().getPath();
+
+        // Get token from PasswordSafe, auto-prompt login if not stored
+        String token = BbjEMTokenStore.getToken();
+        if (token == null || token.isEmpty()) {
+            int result = showYesNoOnEdt(
+                project,
+                "EM login required for " + clientType + ". Login now?",
+                "Enterprise Manager Login Required"
+            );
+            if (result == Messages.YES) {
+                boolean loginOk = BbjEMLoginAction.performLogin(project);
+                if (loginOk) {
+                    token = BbjEMTokenStore.getToken();
+                }
+            }
+            if (token == null || token.isEmpty()) {
+                logError(project, "EM login required for " + clientType + " run. Use Tools > Login to Enterprise Manager.");
+                return null;
+            }
+        }
+
+        // Client-side JWT expiry check (fast path)
+        if (BbjEMTokenStore.isTokenExpired(token)) {
+            BbjEMTokenStore.deleteToken();
+            token = null;
+        }
+
+        // Server-side validation now runs only outside the trust window (#542); a call inside
+        // the window is a hit and skips the subprocess entirely.
+        if (token != null && !validateTokenTrusted(project, token)) {
+            BbjEMTokenStore.deleteToken();
+            token = null;
+        }
+
+        // If token was invalidated, re-prompt login
+        if (token == null) {
+            int result = showYesNoOnEdt(
+                project,
+                "EM token expired or invalid. Login again?",
+                "Enterprise Manager Token Invalid"
+            );
+            if (result == Messages.YES) {
+                boolean loginOk = BbjEMLoginAction.performLogin(project);
+                if (loginOk) {
+                    token = BbjEMTokenStore.getToken();
+                }
+            }
+            if (token == null || token.isEmpty()) {
+                logError(project, "EM login required for " + clientType + " run.");
+                return null;
+            }
+        }
+
+        // Get classpath from settings
+        // "--" is the EM Config sentinel meaning "not configured" — treat as empty
+        BbjSettings.State state = BbjSettings.getInstance().getState();
+        String classpath = (state.classpathEntry != null && !"--".equals(state.classpathEntry)) ? state.classpathEntry : "";
+
+        // Get config path - only add if configured (web.bbj handles absent ARGV(6) gracefully)
+        String configPath = getConfigPath();
+        if (configPath.isBlank()) {
+            logError(project, "No BBj config file is configured. Set it in Settings > Languages & Frameworks > BBj.");
+            return null;
+        }
+
+        // Build command line: bbj -q -WD<webRunnerDir> <webBbjPath> - <clientType> <name>
+        // <programme> <workingDir> <classpath> [<configPath>]; the token travels on the
+        // environment (BbjProcessSecretEnv), never as a parameter.
+        BbjProcessSecretEnv.Invocation invocation = BbjProcessSecretEnv.webRun(
+                webRunnerDir, webBbjPath, clientType, name, programme, workingDir, classpath, token, configPath);
+        GeneralCommandLine cmd = new GeneralCommandLine(bbjPath);
+        cmd.addParameters(invocation.parameters());
+        cmd.withEnvironment(invocation.environment());
+
+        cmd.setWorkDirectory(webRunnerDir);
+
+        return cmd;
+    }
+
+    /**
+     * Routes a blocking yes/no prompt to the EDT and returns the result to the calling thread.
+     * {@link #buildWebRunCommandLine} runs off the EDT (CR-02, see {@link #actionPerformed}
+     * above), so this dialog -- like every other {@code Messages.*} call reachable from it --
+     * must be explicitly dispatched back to the EDT rather than shown directly from a pooled
+     * thread.
+     */
+    protected static int showYesNoOnEdt(@Nullable Project project, String message, String title) {
+        int[] holder = new int[1];
+        ApplicationManager.getApplication().invokeAndWait(() ->
+                holder[0] = Messages.showYesNoDialog(project, message, title, Messages.getQuestionIcon()));
+        return holder[0];
+    }
 
     /**
      * Returns the run mode name for success messages (e.g., "GUI", "BUI", "DWC").
