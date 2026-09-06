@@ -36,6 +36,16 @@ class ConfigPathsTest {
     }
 
     @Test
+    void samePathNormalizesBackslashesSoAWindowsNativePathMatchesAVirtualFilePath() {
+        // VirtualFile.getPath() always returns forward slashes on every platform, while the
+        // language server's resolved path uses backslashes on win32 -- samePath must treat the
+        // two conventions as equivalent, not just fold case.
+        assertTrue(ConfigPaths.samePath("C:\\bbj\\cfg\\config.bbx", "C:/bbj/cfg/config.bbx", "Windows 11"));
+        assertTrue(ConfigPaths.samePath("C:\\bbj\\cfg\\Config.bbx", "C:/bbj/cfg/config.bbx", "Windows 11"));
+        assertFalse(ConfigPaths.samePath("C:\\bbj\\cfg\\config.bbx", "C:/bbj/cfg/other.bbx", "Windows 11"));
+    }
+
+    @Test
     void samePathIsFalseWhenEitherSideIsNullOrEmpty() {
         assertFalse(ConfigPaths.samePath(null, "/home/user/config.bbx", "Linux"));
         assertFalse(ConfigPaths.samePath("/home/user/config.bbx", null, "Linux"));
