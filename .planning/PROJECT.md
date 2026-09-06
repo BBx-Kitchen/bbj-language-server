@@ -280,7 +280,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 **Current state:** v4.3 Polish & Quality started 2026-09-06, scoped to the 23 issues on GitHub milestone #5; 19 milestones, 83 phases and 267 plans done lifetime. v4.2 landed on `origin/main` via PR #651 (preview 0.12.28). Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green at 504 tests. All nine known advisory fixes merged; publication awaits a tagged release.
 
-**Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
+**Tech stack:** Java 17, Gradle 8.14.5 (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium ~4.3.1 (langium-cli ~4.3.0), Chevrotain ~12.0.0, TypeScript ^5.8.3, esbuild ^0.28.1, Vitest ^4.1.10 with V8 coverage (pins read from `bbj-vscode/package.json` on 2026-09-06; the earlier 4.1.3/11.0.3/1.6.1 figures were stale).
 
 **Existing architecture:** The language server (`bbj-vscode/src/language/main.ts`) is cleanly decoupled from VS Code. It produces a standalone bundle (`out/language/main.cjs`) with zero VS Code imports. The IntelliJ plugin consumes the exact same language server binary. BBjCPL compiler integration lives in `bbj-document-builder.ts` with lazy service resolution and availability detection via `bbj-notifications.ts`.
 
