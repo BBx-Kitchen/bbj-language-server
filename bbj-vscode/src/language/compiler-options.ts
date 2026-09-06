@@ -555,6 +555,48 @@ export function readerFromCompilerConfig(compilerConfig: unknown): CompilerConfi
 }
 
 /**
+ * Wraps `read` so that, when nothing else claims the `-c` (`typeChecking.configFile`) slot, the
+ * resolved config path takes its place. Building this as a reader wrapper — rather than editing
+ * {@link buildCompileOptionsFrom} directly — keeps the substituted value flowing through the
+ * exact same `COMPILER_OPTIONS` declaration-order loop and {@link validateOptionsFrom} pass an
+ * explicit value would, so the `-c` argument's position in the argv and the existing `-c` versus
+ * `-P` conflict rule are both unchanged.
+ *
+ * Substitution happens only when ALL of these hold: `resolvedConfigPath` is a non-empty string,
+ * `typeChecking.enabled` reads true, the explicit `typeChecking.configFile` value is
+ * null/undefined/empty, and `typeChecking.prefixDirectories` is null/undefined/empty. In every
+ * other case the returned reader delegates to `read` untouched, for every key including
+ * `typeChecking.configFile` itself.
+ *
+ * @param read The underlying compiler-config reader.
+ * @param resolvedConfigPath The language server's resolved config path, or `null` when none
+ * could be determined.
+ */
+export function readerWithResolvedConfigFile(
+    read: CompilerConfigReader,
+    resolvedConfigPath: string | null
+): CompilerConfigReader {
+    const configFileKey = getFullConfigKey('typeChecking.configFile');
+    return (fullKey: string): unknown => {
+        if (fullKey !== configFileKey || !resolvedConfigPath) {
+            return read(fullKey);
+        }
+        if (!isOptionEnabled(read, 'typeChecking.enabled')) {
+            return read(fullKey);
+        }
+        const explicit = read(configFileKey);
+        if (explicit !== null && explicit !== undefined && explicit !== '') {
+            return read(fullKey);
+        }
+        const prefixDirectories = read(getFullConfigKey('typeChecking.prefixDirectories'));
+        if (prefixDirectories !== null && prefixDirectories !== undefined && prefixDirectories !== '') {
+            return read(fullKey);
+        }
+        return resolvedConfigPath;
+    };
+}
+
+/**
  * The output-location guard predicate: an explicit output location is required so a compile never
  * writes anywhere the user did not name. bbjcpl's own default (no `-d`, no `-N`) does
  * NOT overwrite the source in place — it writes a sibling file with the `.bbj`

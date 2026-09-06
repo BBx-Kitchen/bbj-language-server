@@ -31,9 +31,15 @@ function createCplService(bbjHome: string): BBjCPLService {
     return new BBjCPLService(services as any);
 }
 
-/** A minimal wsManager stub exposing only what CompileRequestDeps needs. */
-function withCompilerConfig(compilerConfig: unknown): CompileRequestDeps['wsManager'] {
-    return { getCompilerConfig: () => compilerConfig };
+/**
+ * A minimal wsManager stub exposing only what CompileRequestDeps needs. `resolvedConfigPath`
+ * defaults to `null` (no injection), matching every pre-existing call site's behavior exactly.
+ */
+function withCompilerConfig(compilerConfig: unknown, resolvedConfigPath: string | null = null): CompileRequestDeps['wsManager'] {
+    return {
+        getCompilerConfig: () => compilerConfig,
+        getResolvedConfigPath: () => ({ path: resolvedConfigPath }),
+    };
 }
 
 function makeTmpDir(): string {

@@ -27,6 +27,7 @@ import {
     buildCompileOptionsFrom,
     lacksExplicitOutputLocation,
     readerFromCompilerConfig,
+    readerWithResolvedConfigFile,
     validateOptionsFrom,
 } from './compiler-options.js';
 
@@ -75,6 +76,7 @@ export interface CompileRequestDeps {
     };
     wsManager: {
         getCompilerConfig(): unknown;
+        getResolvedConfigPath(): { path: string | null };
     };
 }
 
@@ -100,7 +102,8 @@ export function createCompileHandler(deps: CompileRequestDeps): (params: Compile
         }
         const filePath = uri.fsPath;
 
-        const read = readerFromCompilerConfig(deps.wsManager.getCompilerConfig());
+        const rawRead = readerFromCompilerConfig(deps.wsManager.getCompilerConfig());
+        const read = readerWithResolvedConfigFile(rawRead, deps.wsManager.getResolvedConfigPath().path);
 
         if (lacksExplicitOutputLocation(read)) {
             return {

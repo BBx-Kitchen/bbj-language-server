@@ -2,10 +2,17 @@ import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { buildRunArgv, buildWebRunArgv } from '../src/Commands/process-args.js';
+import {
+    buildCompileOptionsFrom,
+    readerFromCompilerConfig,
+    readerWithResolvedConfigFile,
+    validateOptionsFrom,
+} from '../src/language/compiler-options.js';
 
 /**
  * Covers every VS Code consumer of the one shared resolved config path: the run-argument
- * builders' sentinel guard and the Show-config/run/web-run command paths in Commands.cjs.
+ * builders' sentinel guard, the Show-config/run/web-run command paths in Commands.cjs, and
+ * bbjcpl's `-c` injection when nothing else claims it.
  */
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -199,5 +206,80 @@ describe('Commands.cjs - Show-config and run paths read the resolved config path
         const returnAfterError = body.indexOf('return', errorIndex);
         expect(returnAfterError).toBeGreaterThan(-1);
         expect(returnAfterError).toBeLessThan(argvIndex);
+    });
+});
+
+describe('compiler-options - readerWithResolvedConfigFile', () => {
+    test('injects the resolved path as -c when type checking is on, with no explicit config-file and no prefix-directories', () => {
+        const read = readerFromCompilerConfig({ typeChecking: { enabled: true } });
+        const wrapped = readerWithResolvedConfigFile(read, '/resolved/config.bbx');
+        const argv = buildCompileOptionsFrom(wrapped);
+        expect(argv.filter((a) => a.startsWith('-c'))).toEqual(['-c/resolved/config.bbx']);
+    });
+
+    test('an explicit typeChecking.configFile is not overwritten, and exactly one -c argument is produced', () => {
+        const read = readerFromCompilerConfig({
+            typeChecking: { enabled: true, configFile: '/explicit/config.bbx' }
+        });
+        const wrapped = readerWithResolvedConfigFile(read, '/resolved/config.bbx');
+        const argv = buildCompileOptionsFrom(wrapped);
+        expect(argv.filter((a) => a.startsWith('-c'))).toEqual(['-c/explicit/config.bbx']);
+    });
+
+    test('with prefix-directories set, no injection occurs and validateOptionsFrom reports no conflict', () => {
+        const read = readerFromCompilerConfig({
+            typeChecking: { enabled: true, prefixDirectories: '/prefix/dir' }
+        });
+        const wrapped = readerWithResolvedConfigFile(read, '/resolved/config.bbx');
+        const argv = buildCompileOptionsFrom(wrapped);
+        expect(argv.some((a) => a.startsWith('-c'))).toBe(false);
+        expect(argv).toContain('-P/prefix/dir');
+
+        const validation = validateOptionsFrom(wrapped);
+        expect(validation.isValid).toBe(true);
+        expect(validation.errors).toEqual([]);
+    });
+
+    test('type checking off: no injection regardless of the resolved path', () => {
+        const read = readerFromCompilerConfig({ typeChecking: { enabled: false } });
+        const wrapped = readerWithResolvedConfigFile(read, '/resolved/config.bbx');
+        const argv = buildCompileOptionsFrom(wrapped);
+        expect(argv.some((a) => a.startsWith('-c'))).toBe(false);
+    });
+
+    test('a null resolved path never injects', () => {
+        const read = readerFromCompilerConfig({ typeChecking: { enabled: true } });
+        const wrapped = readerWithResolvedConfigFile(read, null);
+        const argv = buildCompileOptionsFrom(wrapped);
+        expect(argv.some((a) => a.startsWith('-c'))).toBe(false);
+    });
+
+    test('the argument order is unchanged from a reader without injection when injection does not apply', () => {
+        const config = {
+            typeChecking: { enabled: true, configFile: '/explicit/config.bbx', warnings: true },
+            output: { directory: '/tmp/out' }
+        };
+        const read = readerFromCompilerConfig(config);
+        const wrapped = readerWithResolvedConfigFile(read, '/resolved/config.bbx');
+        expect(buildCompileOptionsFrom(wrapped)).toEqual(buildCompileOptionsFrom(read));
+    });
+
+    test('the injected -c argument lands at the same argv position an explicit value would', () => {
+        const explicitConfig = {
+            typeChecking: { enabled: true, configFile: '/explicit/config.bbx', warnings: true },
+            output: { directory: '/tmp/out' }
+        };
+        const explicitArgv = buildCompileOptionsFrom(readerFromCompilerConfig(explicitConfig));
+
+        const injectedConfig = {
+            typeChecking: { enabled: true, warnings: true },
+            output: { directory: '/tmp/out' }
+        };
+        const injectedRead = readerFromCompilerConfig(injectedConfig);
+        const injectedArgv = buildCompileOptionsFrom(
+            readerWithResolvedConfigFile(injectedRead, '/explicit/config.bbx')
+        );
+
+        expect(injectedArgv).toEqual(explicitArgv);
     });
 });
