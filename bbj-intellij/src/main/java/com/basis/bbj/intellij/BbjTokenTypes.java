@@ -10,6 +10,10 @@ public final class BbjTokenTypes {
     public static final IElementType WORD = new IElementType("BBJ_WORD", BbjLanguage.INSTANCE);
     public static final IElementType SYMBOL = new IElementType("BBJ_SYMBOL", BbjLanguage.INSTANCE);
 
+    // String literal and rem comment token types (#568) — see BbjStringCommentScanner
+    public static final IElementType STRING = new IElementType("BBJ_STRING", BbjLanguage.INSTANCE);
+    public static final IElementType COMMENT = new IElementType("BBJ_COMMENT", BbjLanguage.INSTANCE);
+
     // Bracket token types for PairedBraceMatcher
     public static final IElementType LPAREN = new IElementType("BBJ_LPAREN", BbjLanguage.INSTANCE);
     public static final IElementType RPAREN = new IElementType("BBJ_RPAREN", BbjLanguage.INSTANCE);

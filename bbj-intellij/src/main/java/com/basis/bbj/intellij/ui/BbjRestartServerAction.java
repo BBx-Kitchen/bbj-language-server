@@ -24,7 +24,7 @@ public final class BbjRestartServerAction extends AnAction {
         if (project == null) {
             return;
         }
-        BbjServerService.getInstance(project).restart();
+        BbjServerService.getInstance(project).requestRestart(0);
     }
 
     @Override

@@ -1,0 +1,1 @@
+window! = SYSGUI!.addWindow(10, 10, 400, 300, "Report", $00040083$)

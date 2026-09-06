@@ -11,6 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+/**
+ * Structural guards over what remains of {@code BbjNodeDownloader} once the pipeline logic moved
+ * into {@link NodeInstallPipeline}: the download guard, the background task, the notifications,
+ * and the wiring of the production collaborators. Each method-scoped assertion first locates the
+ * body of the method it describes and asserts inside that window.
+ */
 class BbjNodeDownloaderSourceGuardTest {
 
     private static final Path GUARDED_SOURCE = Paths.get(
@@ -35,98 +41,6 @@ class BbjNodeDownloaderSourceGuardTest {
         }
     }
 
-    @Test
-    void verificationCallPrecedesTheExtractionCall() {
-        String text = readGuardedSource();
-        int verifyIndex = text.indexOf("NodeArchiveVerifier.verify(");
-        int extractIndex = text.indexOf("extract(platform");
-        assertTrue(verifyIndex >= 0, "NodeArchiveVerifier.verify( is not present in the downloader file");
-        assertTrue(extractIndex >= 0, "extract(platform is not present in the downloader file");
-        assertTrue(verifyIndex < extractIndex,
-                "NodeArchiveVerifier.verify( must precede the extraction call");
-    }
-
-    @Test
-    void theExtractionCallSiteAppearsExactlyOnce() {
-        String text = readGuardedSource();
-        assertEquals(1, countOccurrences(text, "extract(platform"));
-    }
-
-    @Test
-    void verificationCallPrecedesTheInstallCall() {
-        String text = readGuardedSource();
-        int verifyIndex = text.indexOf("NodeArchiveVerifier.verify(");
-        int installIndex = text.indexOf("install(platform");
-        assertTrue(verifyIndex >= 0, "NodeArchiveVerifier.verify( is not present in the downloader file");
-        assertTrue(installIndex >= 0, "install(platform is not present in the downloader file");
-        assertTrue(verifyIndex < installIndex,
-                "NodeArchiveVerifier.verify( must precede the install call");
-    }
-
-    @Test
-    void everyPlatformAndArchitectureTheFileCanProduceHasAPinnedDigest() {
-        String text = readGuardedSource();
-        String marker = "NODE_VERSION = \"";
-        int versionStart = text.indexOf(marker);
-        assertTrue(versionStart >= 0, "NODE_VERSION = \" is not present in the downloader file");
-        versionStart += marker.length();
-        int versionEnd = text.indexOf('"', versionStart);
-        assertTrue(versionEnd >= 0, "NODE_VERSION declaration is not properly quoted");
-        String version = text.substring(versionStart, versionEnd);
-
-        String[] platforms = {"darwin", "linux", "win"};
-        String[] archs = {"arm64", "x64"};
-        for (String platform : platforms) {
-            for (String arch : archs) {
-                String extension = platform.equals("win") ? ".zip" : ".tar.gz";
-                String archiveFileName = "node-" + version + "-" + platform + "-" + arch + extension;
-                assertTrue(NodeArchiveVerifier.pinnedArchiveNames().contains(archiveFileName),
-                        "No pinned digest for " + archiveFileName
-                                + " — bumping NODE_VERSION requires adding pins for every combination");
-            }
-        }
-    }
-
-    @Test
-    void theFileNamesExactlyTheThreePlatformLiteralsAndTwoArchitectureLiterals() {
-        String text = readGuardedSource();
-        assertEquals(1, countOccurrences(text, "return \"darwin\";"));
-        assertEquals(1, countOccurrences(text, "return \"linux\";"));
-        assertEquals(1, countOccurrences(text, "return \"win\";"));
-        assertEquals(1, countOccurrences(text, "return \"arm64\";"));
-        assertEquals(1, countOccurrences(text, "return \"x64\";"));
-    }
-
-    @Test
-    void theCacheHitPathConsultsTheRecordedDigestBeforeReturning() {
-        String text = readGuardedSource();
-        int executableIndex = text.indexOf("Files.isExecutable(nodePath)");
-        int matchesIndex = text.indexOf("matchesRecordedDigest(");
-        int returnIndex = text.indexOf("return nodePath;");
-        assertTrue(executableIndex >= 0, "Files.isExecutable(nodePath) is not present in the downloader file");
-        assertTrue(matchesIndex >= 0, "matchesRecordedDigest( is not present in the downloader file");
-        assertTrue(returnIndex >= 0, "return nodePath; is not present in the downloader file");
-        assertTrue(executableIndex < matchesIndex,
-                "Files.isExecutable(nodePath) must precede matchesRecordedDigest(");
-        assertTrue(matchesIndex < returnIndex,
-                "matchesRecordedDigest( must precede the cached-path return");
-        assertEquals(1, countOccurrences(text, "return nodePath;"),
-                "there must be exactly one, guarded return of the cached path");
-    }
-
-    @Test
-    void theInstalledDigestIsRecordedAfterTheCopy() {
-        String text = readGuardedSource();
-        int copyIndex = text.indexOf("Files.copy(");
-        int recordIndex = text.indexOf("SESSION.record(");
-        assertTrue(copyIndex >= 0, "Files.copy( is not present in the downloader file");
-        assertTrue(recordIndex >= 0, "SESSION.record( is not present in the downloader file");
-        assertTrue(copyIndex < recordIndex,
-                "SESSION.record( must come after Files.copy( so it describes the installed file");
-        assertEquals(1, countOccurrences(text, "SESSION.record("),
-                "the sidecar must be written exactly once, for the installed file");
-    }
-
     private static int countOccurrences(String text, String literal) {
         int count = 0;
         int index = 0;
@@ -135,5 +49,114 @@ class BbjNodeDownloaderSourceGuardTest {
             index += literal.length();
         }
         return count;
+    }
+
+    /**
+     * Locates {@code declarationMarker} in {@code text}, then returns the substring from that
+     * declaration's opening brace to its matching closing brace, counted by simple depth.
+     */
+    private static String bodyOf(String text, String declarationMarker) {
+        int markerIndex = text.indexOf(declarationMarker);
+        assertTrue(markerIndex >= 0, declarationMarker + " is not present in the downloader file");
+        int openBrace = text.indexOf('{', markerIndex);
+        assertTrue(openBrace >= 0, "no opening brace found after " + declarationMarker);
+        int depth = 0;
+        for (int i = openBrace; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(openBrace, i + 1);
+                }
+            }
+        }
+        fail("no matching closing brace found for " + declarationMarker);
+        throw new IllegalStateException("unreachable");
+    }
+
+    @Test
+    void thePersistedInProgressFlagIsGone() {
+        String text = readGuardedSource();
+        assertEquals(0, countOccurrences(text, "DOWNLOAD_IN_PROGRESS_KEY"),
+                "the persisted in-progress flag must be deleted, not merely unused");
+        assertEquals(0, countOccurrences(text, "PropertiesComponent"),
+                "PropertiesComponent must no longer be referenced by the downloader");
+    }
+
+    @Test
+    void theDownloadGuardIsAcquiredOnceAndReleasedOnceInsideDownloadNodeAsync() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadGuard.SESSION.tryAcquire("),
+                "the guard must be acquired exactly once");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadGuard.SESSION.release()"),
+                "the guard must be released exactly once");
+    }
+
+    @Test
+    void theGuardIsAcquiredBeforeTheBackgroundTaskIsQueued() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        int tryAcquireIndex = downloadNodeAsync.indexOf("DownloadGuard.SESSION.tryAcquire(");
+        int backgroundableIndex = downloadNodeAsync.indexOf("new Task.Backgroundable(");
+        assertTrue(tryAcquireIndex >= 0, "DownloadGuard.SESSION.tryAcquire( is not present inside downloadNodeAsync(...)");
+        assertTrue(backgroundableIndex >= 0, "new Task.Backgroundable( is not present inside downloadNodeAsync(...)");
+        assertTrue(tryAcquireIndex < backgroundableIndex,
+                "the guard must be acquired before the Task.Backgroundable is queued, not inside it");
+    }
+
+    @Test
+    void theGuardIsReleasedInTheFinallyAfterTheFailurePath() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        int failureLiteralIndex = downloadNodeAsync.indexOf("Failed to download Node.js: ");
+        int releaseIndex = downloadNodeAsync.indexOf("DownloadGuard.SESSION.release()");
+        assertTrue(failureLiteralIndex >= 0, "the failure-path literal is not present inside downloadNodeAsync(...)");
+        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present inside downloadNodeAsync(...)");
+        assertTrue(releaseIndex > failureLiteralIndex,
+                "the release must sit in the finally after the catch, so it also runs on the failure path");
+    }
+
+    @Test
+    void drainedCompletionsAreDispatchedThroughDownloadCompletionsExactlyOnce() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadCompletions.dispatch("),
+                "drained completions must be dispatched through DownloadCompletions.dispatch( exactly once");
+        int dispatchIndex = downloadNodeAsync.indexOf("DownloadCompletions.dispatch(");
+        int invokeLaterIndex = downloadNodeAsync.indexOf("invokeLater", dispatchIndex);
+        assertTrue(invokeLaterIndex >= 0,
+                "the dispatch call must name the platform's invokeLater as the executor");
+    }
+
+    @Test
+    void theRestartRedirectSurvives() {
+        String text = readGuardedSource();
+        assertEquals(1, countOccurrences(text, "requestRestart(0)"),
+                "the download-success notification's restart redirect must survive this rewrite");
+    }
+
+    @Test
+    void productionPipelineWiresEachProductionCollaboratorExactlyOnce() {
+        String productionPipeline = bodyOf(readGuardedSource(),
+                "private static NodeInstallPipeline productionPipeline()");
+        assertEquals(1, countOccurrences(productionPipeline, "NodeArchiveVerifier.PINNED_DIGESTS"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeArchiveVerifier.REAL_FILES"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeInstallIntegrity.SESSION"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeExecutableResolver.REAL_FILESYSTEM"));
+        assertEquals(1, countOccurrences(productionPipeline, "new NodeInstallPipeline("),
+                "the seam must be constructed exactly once, in the production factory");
+    }
+
+    @Test
+    void theFetcherBuildsThePlatformHttpRequestWithTheProductUserAgentAndSavesToFile() {
+        String productionPipeline = bodyOf(readGuardedSource(),
+                "private static NodeInstallPipeline productionPipeline()");
+        assertEquals(1, countOccurrences(productionPipeline, "productNameAsUserAgent()"),
+                "the platform HTTP request must still be built with the product user agent");
+        assertEquals(1, countOccurrences(productionPipeline, "saveToFile("),
+                "the fetcher must still save the response body to the requested target file");
     }
 }

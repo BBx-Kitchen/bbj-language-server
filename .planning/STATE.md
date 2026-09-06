@@ -1,106 +1,68 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.1
-milestone_name: Security Advisory Remediation
-current_phase: 74
-current_phase_name: Remediate GHSA-9gv3-gr6g-c4rj
-status: executing
-stopped_at: "Phase 74 plan 03 complete — PR #642 merged to public main, publish/hygiene runs observed green"
-last_updated: "2026-08-21T16:50:00.000Z"
-last_activity: 2026-08-21
-last_activity_desc: Phase 74 plan 03 complete — GHSA-9gv3-gr6g-c4rj fix merged to public main via PR #642, publication pending
-state_head: eed1a2cdf632e16975b3c327ebc8d062c671ef0a
+milestone: v4.2
+milestone_name: IntelliJ Burn-down
+status: Awaiting next milestone
+stopped_at: Phase 83 complete — all phases complete
+last_updated: "2026-09-06T09:23:01.405Z"
+last_activity: 2026-09-06
+last_activity_desc: Milestone v4.2 completed and archived
+state_head: 9983514bed4fd204bd50c5bc4be8dffd81ce8318
 progress:
-  total_phases: 8
-  completed_phases: 4
-  total_plans: 24
-  completed_plans: 22
-  percent: 50
+  total_phases: 6
+  completed_phases: 6
+  total_plans: 25
+  completed_plans: 25
+current_phase: 83
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-08-21 (Phase 74 plan 02)
+**Last Updated:** 2026-09-06 (v4.2 IntelliJ Burn-down shipped and archived; awaiting next milestone)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-21)
+See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 74 — Remediate GHSA-9gv3-gr6g-c4rj
+**Current Focus:** Planning next milestone (`/gsd-new-milestone`); maintainer to land the v4.2 code on `origin/main` via a filtered pull request
 
 ---
 
 ## Current Position
 
-Phase: 74 (Remediate GHSA-9gv3-gr6g-c4rj) — EXECUTING
-Plan: 4 of 4
-Total Plans in Phase: 4
-Plans Complete: 3/4
-Status: Plan 03 (landing) complete — fix merged to public `main`; plan 04 (publication readiness) next
-74-03 landed the fix on public `main` via PR #642 (merge commit `421b40e086335b3d670ad1d907729b4384be05d9`),
-authorised at its `blocking-human` checkpoint (`merge-now`). The merge-triggered
-`Publish Preview Extension` and `Workflow Hygiene` runs both observed concluding `success`, with the
-new test suite proven executing inside the exact job holding the JetBrains publishing credential.
-Last activity: 2026-08-21 — Phase 74 plan 03 complete
-
-**Phase 70 (GHSA-89r9-2pw4-mc7f) — FILED WITH OVERRIDES, not cleanly verified.**
-`70-VERIFICATION.md` now reads `status: passed` with `overrides_applied: 2`. The adversarial
-findings were NOT re-run and were NOT fixed; they were accepted. What that means concretely:
-
-1. *SC3 / PROC-01 (fork-PR merge) — waived by substitution.* The fork's `main` is still at its
-   pre-fix tip `c6eb3b2`; PR #1's base resolved to the public repo and closed unmerged. The fix
-   landed via public PR #638 (`528889d`), CI and workflow-hygiene both green. Accepted as
-   satisfying SC3 **for this advisory only** — D-12 had already found this advisory's mechanism
-   public since 2026-02-17, so the embargo rationale PROC-01 protects did not apply. Does not
-   generalize to 72-77.
-
-2. *CI guardrail breadth — accepted as UNMET and deferred.* The instance-level fix is real and
-   live on public `main`; what remains unmet is the guardrail's breadth against equivalent-syntax
-   variants, which the regression suite does not cover. Filed as `.planning/WINDOWS.md` entry 1
-   (`kind: unmet-truth`, phase 70, **open**). With `workflow.windows_enforce` on, this blocks
-   `/gsd-ship` until fixed or explicitly waived — the deferral is tracked, not silent.
-
-3. *no-cve stands; severity was never reassessed.* Per the standing v4.1 no-CVE decision (a
-   deliberate PROC-03 waiver). GHSA-89r9-2pw4-mc7f remains live at `severity: high`,
-   `cve_id: null`, `state: draft`. Phase 71-05 did reassess its advisory (high → medium); Phase 70
-   did not, and no advisory mutation was made here, because reassessing severity is a human
-   judgment. **Revisit before this advisory is published.**
-
-Two items are routed to human judgment, not verifier adjudication: ratifying the `no-cve` decision
-while `severity` is still `high`, and accepting the substituted public-PR landing for PROC-01.
-
-Phase 70 (GHSA-89r9-2pw4-mc7f) established the landing shape: the advisory's private fork cannot
-take a same-repo pull request (its PR base resolves to the public repo), so the planned fork-PR
-flow was dropped in favor of a normal public PR — see the embargoed
-`70-DECISION-fork-flow.md` and `70-04-SUMMARY.md`. Phase 71 reused that same landing shape (D-11)
-without re-litigating it.
-
-Phases 72 and 73 were planned AFTER Phase 70 hit the fork-PR wall and already encode the public-PR
-landing (72-03 and 73-03, both D-13: "no pull request against the advisory's private fork; a fork
-PR resolves its base to the public repository and would merge publicly outside any human gate").
-They need no landing re-plan. Phases 74-77 are still unplanned — carry D-13 into them when planned.
-
-Note: Phase 70 and 71 planning artifacts are held off public `main` (REQUIREMENTS.md PROC-01);
-`.git/info/exclude` covers `.planning/phases/70-*/` and the `pre-push` hook covers `phases/7[0-7]`.
-Phase 71's `71-UAT.md` and `71-VERIFICATION.md` are therefore untracked by design — their absence
-from git is correct, not a lost artifact.
-
-Progress: [███████████░░░░░░░░░] 11/20 plans ([█████░░░░░] 50%) — 2/8 phases closed (70 w/ overrides, 71 clean)
+Phase: Milestone v4.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-09-06 — Milestone v4.2 completed and archived
 
 ## Performance Metrics
 
 ### Cumulative
 
 **Started:** 2026-02-01
-**Milestones shipped:** 17
-**Phases completed:** 69
-**Plans completed:** 205
-**Days elapsed:** 21
-**Velocity:** ~6.8 plans/day
+**Milestones shipped:** 19
+**Phases completed:** 83
+**Plans completed:** 267
+**Days elapsed:** 217
+**Velocity:** ~1.2 plans/day (lifetime); v4.2 ran at ~8 plans/day over 3 days
 
 ### Recent History
+
+**v4.2 (Shipped: 2026-09-06):**
+
+- Duration: 3 days
+- Phases: 6 (78-83)
+- Plans: 25 (74 tasks)
+- Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; override closeout (no milestone audit, 8 artifacts deferred); code not yet on `origin/main`
+
+**v4.1 (Shipped: 2026-09-03):**
+
+- Duration: 14 days
+- Phases: 8 (70-77; 76 closed by 75)
+- Plans: 37
+- Key: Eight advisories remediated 1:1 per phase, each fix merged to `main` via a human-gated public PR with red-then-green regression coverage; override closeout — PROC-01/02/03 carried as known gaps until a tagged release and publication
 
 **v4.0 (Shipped: 2026-08-20):**
 
@@ -139,6 +101,44 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 | Phase 74 P01 | 55min | 3 tasks | 8 files |
 | Phase 74 P02 | 35min | 3 tasks | 4 files |
 | Phase 74 P03 | 20min | 1 tasks | 1 files |
+| Phase 75 P01 | 65min | 3 tasks | 9 files |
+| Phase 75 P02 | 58min | 3 tasks | 10 files |
+| Phase 75 P03 | 14min | 3 tasks | 5 files |
+| Phase 75 P04 | 8 min | 3 tasks | 4 files |
+| Phase 75 P05 | 26min | 3 tasks | 1 files |
+| Phase 75 P06 | 65min | 2 tasks | 2 files |
+| Phase 77 P01 | 20min | 3 tasks | 6 files |
+| Phase 77 P02 | 12min | 3 tasks | 1 files |
+| Phase 77 P03 | 10min | 3 tasks | 5 files |
+| Phase 77 P04 | 20min | 3 tasks | 3 files |
+| Phase 77 P05 | 15min | 3 tasks | 2 files |
+| Phase 77 P06 | 20min | 1 tasks | 1 files |
+| Phase 77 P07 | 35min | 2 tasks | 1 files |
+| Phase 78 P01 | 17min | 3 tasks | 4 files |
+| Phase 78 P02 | 20min | 3 tasks | 6 files |
+| Phase 78 P03 | 52min | 3 tasks | 3 files |
+| Phase 79 P01 | 25min | 3 tasks | 13 files |
+| Phase 79 P02 | ~15min | 3 tasks | 10 files |
+| Phase 79 P03 | 20min | 3 tasks | 7 files |
+| Phase 80 P01 | 45min | 3 tasks | 6 files |
+| Phase 80 P02 | 70 min | 3 tasks | 5 files |
+| Phase 80 P03 | ~30min | 3 tasks | 5 files |
+| Phase 80 P04 | 30min | 3 tasks | 7 files |
+| Phase 80 P05 | ~15min | 2 tasks | 3 files |
+| Phase 81 P01 | 15min | 3 tasks | 10 files |
+| Phase 81 P02 | 15min | 3 tasks | 7 files |
+| Phase 81 P03 | 18min | 3 tasks | 4 files |
+| Phase 81 P04 | 10min | 3 tasks | 7 files |
+| Phase 81 P05 | 12min | 3 tasks | 6 files |
+| Phase 81 P06 | 13min | 3 tasks | 8 files |
+| Phase 81 P07 | 15min | 3 tasks | 5 files |
+| Phase 82 P01 | 15min | 3 tasks | 7 files |
+| Phase 82 P02 | 13min | 3 tasks | 7 files |
+| Phase 82 P03 | 12min | 3 tasks | 6 files |
+| Phase 82 P04 | 10min | 3 tasks | 14 files |
+| Phase 83 P01 | 63min | 3 tasks | 12 files |
+| Phase 83 P02 | 27min | 3 tasks | 10 files |
+| Phase 83 P03 | 23min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -150,43 +150,74 @@ Progress: [███████████░░░░░░░░░] 11/20 p
 - TEST-03 (DEF FN suffix completion) skipped — Langium grammar follower limitation
 - bbj-notifications.ts isolation module must be preserved — importing main.ts from shared services crashes tests
 - 3 parser.test.ts assertions DISABLED — require Java classpath unavailable in EmptyFileSystem test environment
+- v4.2 sequencing: TOKEN-01 (#535) must land before TOKEN-04 (#542) — a trust-window cache built on a fail-open expiry check widens the vulnerability. Phase 83 (BUILD-04, BUILD-05) depends on Phase 79 (EDT paths) and Phase 81 (new `bbj/compile` surface) landing first.
 
 ### Decisions
 
-Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
+Full decision log in PROJECT.md Key Decisions table. Per-phase decision detail for phases
+70-77 was archived with the phase directories under `.planning/milestones/v4.1-phases/`
+(embargoed, off `main`) and removed from this file at the v4.1 close — it described fix
+mechanisms for advisories that are still unpublished. Standing decisions that still apply:
 
-- [Phase 71 UAT]: Whole-suite regression gate accepted as project-wide `numFailedTests: 0` plus
-  deterministic targeted-file runs, in place of a failing-suite identity delta — standing for
-  phases 72-77, do not re-ask (whole-suite failure *count* is unstable here; DEBT.md item 5)
-
-- [Phase 71 UAT]: GHSA-5f22-gqrx-xr22 residual-risk wording accepted as written rather than
-  patched — the overstated claim concerns behaviour that fails closed and is not attacker-reachable
-
-- [v4.1 roadmap]: One phase per advisory, 1:1, fixed order (Phase 70-77 = SEC-01..SEC-08) — mapping fixed by REQUIREMENTS.md traceability, not re-derived
-- [v4.1 roadmap]: PROC-01/02/03 (private fork per advisory, non-vacuous regression test, publish-after-release) mapped across the full Phase 70-77 range rather than to a single phase
-- [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before registering in resolvedClasses
-- [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion filtering
-- [Phase 72]: 72-01: JUnit dependency insertions kept as pure additions inside the existing dependencies{} block (per design_decisions 9) rather than packed onto existing lines to hold a fixed line number for the publishing-token binding; content verified byte-identical instead
-- [Phase 72]: 72-02: NodeExecutableResolver's Resolution.resolved() discards prior-branch rejections on any successful resolution; fixing needs a src/main change this plan is prohibited from making, so the fall-through test was scoped to assert only true behavior and the gap is recorded in 72-RESIDUAL-RISK.md for a follow-up decision
-- [Phase 72]: Landed GHSA-c4hw-5j83-cx5h fix on public origin via PR #640 (fix/node-executable-validation), authorised at a blocking-human checkpoint (land-now); not merged, merge is 72-04's gated decision
-- [Phase 72]: Scoped the fork-tip-to-public-tip content-equality check to bbj-intellij (not the unrestricted repo diff) because the fork base and origin/main diverged by ~34 unrelated commits; no rebase or history rewrite was used
-- [Phase 73]: 73-01: kept distributionUrl at Gradle 8.13, regenerated the wrapper JAR to match, rather than downgrading the URL to fit the old JAR
-- [Phase 73]: 73-01: private advisory fork's main predates several files/edits already on public main; synced them verbatim in prerequisite commits before the intended fix (kept out of the eventual cherry-pick set)
-- [Phase 73]: 73-02: private advisory fork's main was also missing bbj-vscode/test/workflow-secret-hygiene.test.ts and .github/workflows/workflow-hygiene.yml entirely (beyond the three files 73-01 already found); synced verbatim from public main in a third prerequisite commit before writing the regression suite and CI job
-- [Phase 73]: 73-02: added the wrapper-hygiene job as a second job (not a second step) on workflow-hygiene.yml, keeping the pre-existing secret-hygiene job's id, name, and steps byte-identical to main
-- [Phase 73]: 73-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #641 merged with a merge commit, no rebase needed (origin/main unchanged since the branch was cut)
-- [Phase 73]: 73-04: GHSA-5vrp-fj75-pm5q — fix merged; publication awaits a release
-- [Phase 74]: 74-01: fork remote ghsa-9gv3 added over HTTPS; subtree diff re-derived live (7 paths, matched plan exactly); fork synced verbatim to a green 31-test baseline in a separable prerequisite commit (cc7ea61, excluded from the eventual cherry-pick set)
-- [Phase 74]: 74-01: the hardening change and its regression coverage landed on `ghsa-9gv3-gr6g-c4rj/verify-node-archive` in the advisory's private fork; the regression check was observed failing before the change and passing after it (PROC-02), and the module suite is green at 49 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
-- [Phase 74]: 74-02: a further hardening change and its offline regression coverage landed on the same fork branch, and the existing release build config was confirmed (by reading it) to already gate on the module test suite. The whole-suite gate is green at 61 tests. Nothing pushed to `origin`. Technical detail stays in the fork and the embargoed phase directory.
-- [Phase 74]: 74-03: human answered the Task 2 `checkpoint:decision` `merge-now`; PR #642 merged with a merge commit (`421b40e086335b3d670ad1d907729b4384be05d9`), no rebase needed (origin/main unchanged since the branch was cut). Merge-triggered `Publish Preview Extension` (version bumped to `0.12.18`) and `Workflow Hygiene` runs both observed concluding `success`; the new test suite ran inside the exact job holding the JetBrains publishing credential.
-- [Phase 74]: 74-04: GHSA-9gv3-gr6g-c4rj — fix merged; publication awaits a release
-- [Phase 77]: 77-07: GHSA-h43f-jcjr-2g4j — fix merged; publication awaits a release
+- [v4.1, standing]: No CVE is requested for any v4.1 advisory during implementation; CVE
+  and severity are decided by the maintainer at publication time (a deliberate PROC-03
+  departure, recorded per phase).
+- [v4.1, standing]: Whole-suite regression gate is project-wide `numFailedTests: 0` plus
+  deterministic targeted-file runs, not a failing-suite identity delta (DEBT.md item 5).
+- [v4.1, landing shape]: An advisory's private fork cannot take a same-repo pull request
+  (its base resolves to the public repo), so every fix landed via a normal public PR under a
+  recorded PROC-01 waiver.
+- [Phase 74 UAT]: Three post-hoc code-review findings accepted as residual before
+  publication; detail embargoed.
+- [Phase 77 UAT]: Two human-attestation items closed at the UAT checkpoint 2026-09-03;
+  detail embargoed.
+- [Phase 59]: Two-phase resolveClass: synchronously set isStatic/deprecated before
+  registering in resolvedClasses
+- [Phase 59]: isClassRef via SymbolRef.symbol.ref → isJavaClass for static-only completion
+  filtering
+- [v4.2 roadmap]: Phases 78-83 derived from research's 8-phase grouping, merged to 6:
+  build foundation (78) gates every `./gradlew` invocation; EDT shared-state guards and the
+  new caching layer merged into one EDT Responsiveness phase (79); the compile action and
+  lexer/commenter fixes merged into one Feature Parity phase (81), matching the
+  REQUIREMENTS.md category boundary; LSP4IJ coupling tests deferred to a final Regression
+  Test Hardening phase (83) so it can cover both the EDT paths and the new compile surface.
+- [Phase 78]: 78-01: Daemon JVM criteria (toolchainVersion=17) plus a compile/test toolchain block fix #570; foojay resolver proven end-to-end with a real Temurin 17.0.20.1 download for the self-heal path. — Gradle 8.x cannot run its daemon on Java 25; the daemon JVM criteria file steers the daemon itself, which a build-script-level toolchain block alone cannot do.
+- [Phase 78]: 78-02: Wrapper regenerated to Gradle 8.14.5 via the wrapper task run twice, checksums verified live against services.gradle.org, and buildPlugin proven on intellij-platform-gradle-plugin 2.11.0 after installing missing host fontconfig/libfreetype6 packages (unrelated to the version bump).
+- [Phase 78]: 78-03: fail-fast bundle guard scoped via gradle.taskGraph.hasTask(buildPlugin|prepareSandbox|runIde) so the pre-existing test-sandbox coupling (intellij-platform-gradle-plugin's prepareTestSandbox needing a composed jar) never fails ./gradlew test on a clean clone — Two Rule-1 fixes discovered only by running the build: processResources->classes->test coupling (fixed by moving copyLanguageServer's output outside sourceSets.main.output) and the deeper plugin-internal test-sandbox coupling (fixed by scoping the guard's throw to packaging tasks only)
+- [Phase 79]: Phase 79 Plan 01: Task 1 redirected all six external restart call sites (not just BbjRestartServerAction) because making doRestart() private broke compilation for the others (Rule 3 blocking-issue auto-fix); Task 2 still delivered its own scoped source-guard coverage.
+- [Phase 79]: Phase 79 Plan 01: the in-file crash-balloon Restart action (notifyCrash()) was also redirected through requestRestart(0), a superset of D-06 matching #539's 'all triggers' literally.
+- [Phase 79]: Phase 79 Plan 02: BbjNodeVersionCache memoizes node --version keyed on path + file stat (lastModified+length); KeystrokeDebouncer over the 79-01 Scheduler seam cancels only its own pending task (never cancelAll), keeping two Settings fields on one Alarm independent; BbjSettingsLookups isolates all Settings-dialog file/subprocess work off the EDT. — EDT-02/EDT-03 (#541, #543): a per-path stat-keyed cache avoids re-spawning node --version on every notification refresh, and a debounced background lookup with staleness discard removes all keystroke-path filesystem/subprocess work from the EDT while keeping the two settings fields independently coalesced.
+- [Phase 79]: Phase 79 Plan 03: DownloadGuard.tryAcquire performs the compare-and-set and completion-attachment under one lock, acquired before the Task.Backgroundable is queued (the actual EDT-06 fix, since the old persisted flag was set only after a second caller could already pass the check); assertIsNonDispatchThread() compiled without a ThreadingAssertions substitution on this platform. — EDT-06 (#537) and EDT-01 (#506) verify-and-close; both close phase 79's remaining requirements
+- [Phase 79 UAT]: Three live-IDE checks (classpath preserved across Settings reset, Run As BUI/DWC + EM login with the off-EDT assertion, Apply inside the debounce window after WR-03's flush) passed by hand on 2026-09-04 against a plugin built from main @ bb11133; the WR-03 synchronous-flush-on-Apply tradeoff is accepted.
+- [Phase 80]: 80-01: One three-valued JwtValidity.check classification replaces four independent fail-open return-false sites; a decimal exp value regex bug (silently truncated to a verdict) was caught and fixed during Task 2's red-then-green cycle — D-03/D-04: single decode prevents a partial fix from missing a branch; performLogin now classifies before storeToken so an unusable EM login result never reaches PasswordSafe (D-05)
+- [Phase 80]: 80-02: createOwnerOnlyFile has three outcomes and no fourth (posix attribute, acl:acl attribute supplied at creation, or a fail-closed IOException); the default-permission fallback is deleted rather than demoted, and selectOwnerOnlyStrategy is package-private purely so its otherwise-unreachable failure branch is testable on a host that always reports posix.
+- [Phase 80]: 80-02: the Windows ACL branch is proven by a pure OwnerOnlyAcl builder test, a strategy-selection test over synthetic view sets and seven source guards, never by an executed Windows run (CI is ubuntu-latest, no Windows runner); the icacls DACL check and the write-through login check are carried as human UAT items required for #536 closure.
+- [Phase 80]: Phase 80: 80-03: resolveBackend() is the sole PasswordSafeSettings/ProviderType touch point, placed last in BbjEMTokenStore.java; BackendNoticePolicy warns once per distinct non-keychain backend and resets on keychain; a Task 3 source guard caught TokenBackend's own javadoc leaking the literal ProviderType, fixed by rewording (Rule 1).
+- [Phase 80]: Phase 80 Plan 04: TokenValidationCache is a static AtomicReference<Entry> memo keyed on the SHA-256 digest of the token's UTF-8 bytes, five-minute window checked on read with no timer; storeToken/deleteToken invalidate unconditionally, and validateTokenTrusted collapses BUI/DWC's duplicated server-validation calls onto one base-class entry point — TOKEN-04 (#542): two Run invocations in quick succession with the same token now validate at most once; the trust window is a UX optimisation only since web.bbj still presents the token to EM at every launch
+- [Phase 80]: Widened the Windows owner ACE by exactly READ_NAMED_ATTRS and WRITE_NAMED_ATTRS (ten permissions), not full control — Windows folds FILE_READ_EA/FILE_WRITE_EA into GENERIC_READ/GENERIC_WRITE; an access check denies the whole open when any bit is ungranted; ten bits is the surgical fix, fourteen is the escalation reserved for a failing Windows recheck.
+- [Phase 80 UAT]: All six live-IDE checks passed by hand. The Windows owner-ACE write-through check (G-80-1) first failed with BBj !ERROR=18, was fixed by 80-05, and passed on 2026-09-05 against a plugin built from main @ 232d321. TOKEN-01..04 (#535, #536, #552, #542) closed.
+- [Phase 81]: Phase 81 Plan 01: bbj/compile re-homes the 20-entry compiler-option table into a vscode-free compiler-options.ts driven by a plain CompilerConfigReader; BBjCPLService.compileWithOptions never touches the abort-on-resave inFlight map so an explicit compile and a background validate-only compile of the same file never cancel each other. — PARITY-01 (#571): IntelliJ's compile action must reach bbjcpl through the shared language server with zero duplicated bbjcpl-invocation logic; compilerOutputDirectory reaches the server via the flat initializationOptions key (compilerTrigger's channel), not config.compiler, per RESEARCH.md's correction that IntelliJ's createSettings() never resolves that path.
+- [Phase 81]: [Phase 81] Phase 81 Plan 02: BbjStringCommentScanner is a plain-Java seam (scanString/scanComment/isCommentStart) mirroring the grammar's STRING_LITERAL/COMMENT terminals; BbjWordLexer dispatches to it ahead of the word branch and BbjParserDefinition/BbjPairedBraceMatcher are wired to the new STRING/COMMENT token types, so bracket characters inside a string or rem comment are never classified as brackets (#568, PARITY-02).
+- [Phase 81]: Phase 81 Plan 03: RemToggleSeam is a plain-Java seam (isCommented/comment/uncomment) recognizing rem in any case via direct ASCII comparison (never toLowerCase/equalsIgnoreCase, proven locale-independent under Turkish default locale); BbjCommenter implements both Commenter and SelfManagingCommenter<CommenterDataHolder>, delegating every line decision to the seam with the insert hard-coded to column 0 — PARITY-03 (#540): a rem/Rem/REM line now round-trips through Ctrl+/ instead of stacking a second prefix.
+- [Phase 81]: [Phase 81]: Phase 81 Plan 04: CompilerInitOptions is a plain-Java seam (COMPILER_OUTPUT_DIRECTORY_KEY, normalizeOutputDirectory) with no IntelliJ import; the value reaches the server through the flat compilerOutputDirectory initializationOptions key in BbjLanguageServerFactory, not through BbjLanguageClient.createSettings(), which LSP4IJ 0.19.0 resolves to null for this plugin's flat settings object — BbjLanguageClient stays deliberately unchanged and a source guard pins that.
+- [Phase 81]: Phase 81 Plan 05: bbj/compile is declared directly on BbjComposerServer (not a new sibling interface) since getServerInterface() returns exactly one interface (RESEARCH.md Pitfall 5); CompileResultPresenter is a plain-Java seam dispatching on the machine-readable reason (never message prose, D-10); Task.Backgroundable asserts assertIsNonDispatchThread() as its first statement before any blocking LSP4IJ call, mirroring the Phase 79 convention; a 45s client-side wait bounds both requests, comfortably above the server's own 30s compile timeout.
+- [Phase 81]: Phase 81 Plan 06: END_OF_LINE_CHARACTER pinned to the LSP uinteger max (2147483647), not the real line length; both whole-line-range sites (bbj-cpl-parser.ts, bbj-document-validator.ts) import one shared lsp-position.ts constant — G-81-4: bbjcpl reports no column and no source text is in hand at either emitting site; Number.MAX_SAFE_INTEGER overflowed LSP4IJ's int-typed Position.character and crashed the compile-error balloon with MessageIssueException
+- [Phase 81]: Phase 81 Plan 06: JUnit boundary test's negative control asserts RuntimeException, not com.google.gson.JsonParseException — LSP4IJ's MessageJsonHandler wraps the Gson failure in its own MessageIssueException, confirmed empirically before asserting — The plan itself pre-authorized widening to RuntimeException if the thrown type turned out broader; confirmed via a throwaway debug run rather than guessed
+- [Phase 81]: Phase 81 Plan 07: LSP4IJ Gradle pin raised from 0.19.0 to 0.21.0 (kept, not reverted) -- resolved cleanly, whole IntelliJ module green at 326 tests, buildPlugin archive produced; CompileResultPresenter.messageTextOf reads a diagnostic's message reflectively (getMessage resolved by name, normalised across a plain string, either branch of a two-branch value, or a markup value's own text) since a plugin descriptor cannot pin the runtime version of a dependency plugin's vendored client library -- closes G-81-5's NoSuchMethodError.
+- [Phase 81 UAT]: All six live-IDE checks passed by hand 2026-09-05. Two gaps found and closed in-phase: G-81-4 (`Number.MAX_SAFE_INTEGER` overflowed LSP4IJ's int `Position`, fixed by 81-06) and G-81-5 (`Diagnostic.getMessage()` signature skew between the 0.19.0 build pin and the IDE's LSP4IJ 0.21.0, fixed by 81-07); the final re-check rendered `16:1 Syntax error: xdd`. G-81-3 withdrawn: a Marketplace auto-update replaced the local 0.1.0 build mid-session. PARITY-01..03 (#571, #568, #540) closed.
+- [Phase 82]: [Phase 82]: 82-01: ComposerFlow's terminal handle() unwraps CompletionException/ExecutionException before classifying, so a NotReadySignal thrown at any nesting depth is recognized regardless of wrapper layers; ComposerNotices is the shared reason-keyed notice vocabulary 82-02/82-03 build on.
+- [Phase 82]: Phase 82: 82-02: ComposerFlow.observe/once seam lets each dialog's refresh() check its own sequence before touching state, so a superseded success or failure is discarded identically; ComposerLauncherChainSourceGuardTest's whole-file 'exactly one handle()' assertion was rescoped to launch()'s own body since observe() legitimately owns a second, independent terminal handler for its own chain.
+- [Phase 82]: [Phase 82]: 82-03: StaleEditGuard.applyIfUnchanged re-decodes the captured line's current text and modification stamp, re-runs the same decodeCall the launch used, and writes only on a full-decode match with the stamp re-checked as the write command's first statement; DecodeEquality compares found/edit/initial/trailingArgs field-wise with Arrays.equals for int[] ranges; all three edit-in-place apply paths (MSGBOX, addWindow, addChildWindow) now route through the guard, closing COMP-02 (#567).
+- [Phase 82 UAT]: Round 1 (2026-09-05) passed 5/7 with one gap: every lightbulb preview threw `PluginException: Intention Description Dir URL is null` (G-82-6), closed by 82-04. Round 2 passed 8/8 by hand against the rebuilt plugin; test 3 (server-stopped balloon) is accepted from code because `BbjComposerService.server` auto-restarts a stopped server. COMP-01/COMP-02 (#538, #567) closed; VALIDATION nyquist-compliant (12 tasks), SECURITY threats_open 0 (27 threats).
+- [Phase 82]: [Phase 82]: Phase 82 Plan 04 (gap closure G-82-6): shipped intentionDescriptions/<SimpleClassName>/ resource trees for the three composer intentions and switched generatePreview to IntentionPreviewInfo.Html on all three, closing the PluginException "Intention Description Dir URL is null" thrown on every lightbulb preview computation. Both halves kept deliberately redundant per the plan's flagged assumption; IntentionDescriptionResourcesTest derives its subject list from plugin.xml (never a hard-coded class array) so a future intention is covered automatically.
+- [Phase 83]: Phase 83 Plan 01: NodeInstallPipeline seam with injected Target/Fetcher/Progress/CancelProbe drives the whole Node.js download pipeline under plain JUnit 5 against committed fixtures; fixture digests are literal pins transcribed from a provenance README (never test-computed, or the verify step is vacuous); the 79-REVIEW symlink-following delete bug is fixed via a no-follow-links Files.walkFileTree; DownloadCompletions.dispatch isolates one throwing UI-refresh completion from the rest.
+- [Phase 83]: Phase 83 Plan 02: Settings-lookup catch lives at the lookup layer (BbjSettingsLookups), not the debouncer, so a throwing lookup returns a failure-marked NodeLookup/HomeLookup instead of leaving the dialog stuck; NodeAvailability extracts the missing-Node banner decision into a plain-Java seam so both branches execute under plain JUnit; a configured-but-unusable Node path never falls back to the cached download, pinned as-is and filed as a todo
+- [Phase 83]: Phase 83 Plan 03: Lsp4ijClassFileMarkers reads a class file's constant pool directly to prove ApiStatus.Experimental is retained class-file-only, so a runtime isAnnotationPresent lookup is provably vacuous for it; Lsp4ijImportAllowlistTest turns the plugin's LSP4IJ coupling into a hand-written eleven-file, symbol-level allowlist that fails when a use drifts anywhere in src/main/java; ComposerModelsJsonBoundaryTest generalises the compile-result MessageJsonHandler harness across all seven composer DTOs. Two measured facts were corrected against the live 0.21.0 jar and actual code rather than forced to the plan's original wording: ServerStatus now has 9 constants (not 4), and the Java-interop icon heuristic does not change Interface's icon (only Class/Method/Function).
 
 ### Tech Debt
 
 - CPU stability mitigations documented but not yet implemented (#232)
-- 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize)
+- LSP4IJ experimental API usages remain (expected, requires LSP4IJ to stabilize); since Phase 83 they are fenced by signature canaries and an eleven-file import allowlist that fail on drift
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change
 - IntelliJ TextMate bundle cannot exclude config.bbx at filename level
 - FQN path static-only filtering deferred — requires JAR redeployment
@@ -194,57 +225,97 @@ Full decision log in PROJECT.md Key Decisions table. Key recent decisions:
 
 ### Blockers/Concerns
 
-- **8 draft advisories unfixed** (all high) — the entire v4.1 milestone scope, now mapped
-  1:1 to Phases 70-77. Private forks exist for all 8. GHSA-p5f3-9456-9pcx is fixed (PR #637)
-  but stays an unpublished draft until the release ships (out of scope for v4.1, tracked in
-  MILESTONES.md). GHSA-89r9-2pw4-mc7f is fixed, merged to `main`; publication awaits a release.
-  GHSA-5f22-gqrx-xr22 is fixed, merged to `main`, and its phase (71) is verified and
-  complete; publication awaits a release. GHSA-c4hw-5j83-cx5h is fixed, merged to `main`;
-  publication awaits a release. GHSA-5vrp-fj75-pm5q is fixed, merged to `main` via PR #641
-  (merge commit `7c10be13f684be8ff42701d84c3175507e4dfa53`); the merge-triggered publish and
-  hygiene runs both observed green; publication awaits a release (D-17). GHSA-9gv3-gr6g-c4rj is
-  fixed, merged to `main` via PR #642 (merge commit `421b40e086335b3d670ad1d907729b4384be05d9`);
-  the merge-triggered publish and hygiene runs both observed green; publication awaits a release
-  (D-21). GHSA-h43f-jcjr-2g4j is fixed, merged to `main`; publication awaits a
-  release.
+- **v4.2 code is on local `main` only.** 256 commits since `2072844` (2026-09-04) carry the
+  153-file source change; `origin/main` has none of it. Local `main` cannot be pushed as-is
+  (the v4.0 archive commit trips the `pre-push` hook), so the v4.2 commits must be
+  cherry-picked onto a branch from `origin/main`, register-checked, pushed over HTTPS and
+  landed by pull request, then released as a preview build. Human-gated; not done at close.
 
-- ~~Manual QA outstanding on the merged GHSA-p5f3-9456-9pcx fix.~~ **Cleared 2026-08-20** —
-  Run / Run BUI / Run DWC manually QA'd by the maintainer, closing the live-launch gap the
-  automated verification left open (only the `bbjcpl` compile path had been exercised live).
-  That advisory now waits only on the release before it can be published.
+- **8 draft advisories — every fix merged to `main`, none yet published.** v4.1 closed
+  2026-09-03 with all eight phases verified (70 and 77 with recorded overrides). Publication
+  for each waits on a tagged `manual-release.yml` release, then per-advisory severity/CVE
+  decisions and publication by the maintainer. GHSA-p5f3-9456-9pcx (fixed in v4.0, PR #637)
+  waits on the same release. The post-release checklist is in MILESTONES.md under v4.1.
+
+- **`WINDOWS.md` entry 1 open** (Phase 70 guardrail breadth, accepted as unmet 2026-08-21).
+  With `workflow.windows_enforce` on, this blocks `/gsd-ship` until fixed or explicitly waived.
 
 - **Test-harness false positive.** `shouldRunBBjTests()` (`test/test-helper.ts:37-43`) gates
   on a bare TCP connect to :5008. BBjServices squats on that port without speaking the
   interop protocol, so 11 `linking.test.ts` interop tests switch on and fail. Green with
-  `RUN_BBJ_TESTS=0`. Pre-existing; reproduced identically at `291cd23`. Tracked in
-  `.planning/DEBT.md`, not v4.1 scope.
-
-- **Phase 70 has no verification report.** Its 5 plans all have summaries and its fix is merged,
-  but `70-VERIFICATION.md` was never produced, so the phase is still open and no UAT ever ran on
-  it. `/gsd-execute-phase 70` resumes at the verification gate.
+  `RUN_BBJ_TESTS=0`. Tracked in `.planning/DEBT.md`. Since 2026-09-03 the live backend also
+  exposes `getAllClassNames`, which drifts a further set of interop tests (todo filed).
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
+
+- ⚠️ [Phase 79] Residual review follow-ups after Phase 83: 79-REVIEW IN-01 (text source guards are
+  refactor-defeatable) and IN-02 (duplicated plugin-bundle path resolution) remain advisory. The Settings-lookup
+  failure path (79-UI-REVIEW) was closed by 83-02 and the symlink-following delete (IN-03) by 83-01. The combo
+  placeholder still does not distinguish "no home set" from "home set but invalid" (quick-task candidate).
+- ⚠️ [Phase 80 UAT observations, not phase-80 gaps]: (1) an old IntelliJ 2015 install accepted the plugin
+  but it did not run — consider trimming `since-build` in the plugin descriptor; (2) automatic Node.js
+  installation did not work on the Windows test machine. Phase 83's fixture-driven Windows-branch tests all pass
+  on Linux, so the failure is not reproducible from the pipeline's branch logic; a live Windows check is filed as
+  todo `2026-09-06-live-windows-check-for-node-auto-install-failure.md` (human attestation).
+- ⚠️ [Phase 80] Review follow-ups in 80-REVIEW.md / 80-UI-REVIEW.md are advisory; none blocked verification.
+- ⚠️ [Phase 82] UI-review follow-ups (advisory, 82-UI-REVIEW.md, 17/24): the in-dialog "Preview unavailable — <reason>" label
+  uses the same plain gray as healthy status text (the dialogs already have a red `errorLabel()` convention); that red is a
+  hardcoded `Color(0xC0392B)` rather than a theme-aware `JBColor`; `ComposerNotices.detailOf()` puts raw exception text
+  into the balloon body with no user-oriented rewrite. Candidates for a quick task. 82-REVIEW.md findings were all fixed in-phase.
+- ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; Phase 83 fenced the Gradle-pinned surface (canaries, allowlist, version-pin test), but runtime version skew in the IDE is still only covered by the reflective message read and remains a known limit.
+- ⚠️ [Phase 83] Code review (83-REVIEW.md, advisory, 0 critical / 5 warnings / 3 info): cancellation during Unix `tar` extraction only fires on output lines a silent `tar xzf` never emits (WR-01); the outer temp-file cleanup in `NodeInstallPipeline.install()` is unguarded and can mask the real exception (WR-02); the `tar` process stdin pipe is never closed (WR-03); zip entry match uses `endsWith("node.exe")` rather than an exact name (WR-04); `flushPendingHomeLookup()` still runs the blocking lookup synchronously on the EDT from `apply()` — the accepted Phase 79 WR-03 tradeoff (WR-05). Info: `(D-12)` decision-id comments in `BbjSettingsComponent.java`/`BbjSettingsLookups.java` are pre-existing from Phase 79 (79-02), not added in Phase 83. Candidates for `/gsd-code-review 83 --fix` or a quick task.
+- ⚠️ [Phase 83] Todo filed: a configured-but-unusable Node path suppresses the cached-download fallback (`2026-09-06-configured-node-path-suppresses-cached-download-fallback.md`); pinned as-is by 83-02, decision deferred.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Status | Directory |
 |---|-------------|------|--------|--------|-----------|
-| 260329-oqw | PR #383: Return undefined instead of empty list from getFieldCompletion to allow other providers to continue | 2026-03-29 | ab42eef | | [260329-oqw-pr-383-return-undefined-instead-of-empty](./quick/260329-oqw-pr-383-return-undefined-instead-of-empty/) |
-| 260820-hxg | GHSA-p5f3-9456-9pcx (critical, CWE-78): replace shell-string `child_process.exec()` construction with `execFile` argument arrays across all 7 command constructions; adds metacharacter regression tests + reintroduction guard | 2026-08-20 | f289fc5 | Verified | [260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape](./quick/260820-hxg-fix-ghsa-p5f3-9456-9pcx-replace-unescape/) |
 
 ---
 
 ## Session Continuity
 
-Last session: 2026-08-21T16:50:00.000Z
-Stopped at: Phase 74 plan 03 complete — PR #642 merged to public main, publish/hygiene runs observed green
-GHSA-9gv3-gr6g-c4rj fix merged to public main via PR #642 (merge commit
-`421b40e086335b3d670ad1d907729b4384be05d9`); publication awaits a release.
-Next: Phase 74 plan 04 (publication readiness — release gate and CVE decision), and
-`/gsd-execute-phase 70` to close phase 70's open verify gate.
-Resume file: .planning/phases/74-remediate-ghsa-9gv3-gr6g-c4rj/74-04-PLAN.md
+Last session: 2026-09-06T09:30:00Z
+Stopped at: v4.2 IntelliJ Burn-down closed and archived (phases 78-83 → `milestones/v4.2-phases/`)
+Resume file: None
 
----
+Next: `/gsd-new-milestone`. Before or alongside that, the maintainer lands the v4.2 code on
+`origin/main` (see Blockers/Concerns) — the 22 IntelliJ issues stay open until it ships.
+
+## Deferred Items
+
+Items acknowledged and deferred at milestone close, most recent first:
+
+| Category | Item | Status | Deferred At | Milestone |
+|----------|------|--------|-------------|-----------|
+| debug_sessions | compile-diagnostic-getmessage-nosuchmethoderror | diagnosed (fixed by 81-07) | 2026-09-06 | v4.2 |
+| debug_sessions | compile-error-response-message-could-not-be-parsed | diagnosed (fixed by 81-06) | 2026-09-06 | v4.2 |
+| debug_sessions | compile-output-directory-row-not-visible | diagnosed (fixed by 81-04) | 2026-09-06 | v4.2 |
+| debug_sessions | composer-intention-description-missing | diagnosed (fixed by 82-04) | 2026-09-06 | v4.2 |
+| debug_sessions | windows-owner-only-tmp-error18 | diagnosed (fixed by 80-05) | 2026-09-06 | v4.2 |
+| todos | 2026-09-05-gradle-wrapper-hygiene-fixture-declares-stale-gradle-version.md | (presence-only) | 2026-09-06 | v4.2 |
+| todos | 2026-09-06-configured-node-path-suppresses-cached-download-fallback.md | (presence-only) | 2026-09-06 | v4.2 |
+| todos | 2026-09-06-live-windows-check-for-node-auto-install-failure.md | (presence-only) | 2026-09-06 | v4.2 |
+| debug_sessions | constructor-completion | diagnosed | 2026-09-03 | v4.1 |
+| debug_sessions | deprecated-strikethrough | diagnosed | 2026-09-03 | v4.1 |
+| debug_sessions | prefix-diagnostic-reconciliation | diagnosed | 2026-09-03 | v4.1 |
+| debug_sessions | prefix-reconciliation-final | diagnosed | 2026-09-03 | v4.1 |
+| debug_sessions | use-import-static-completion | diagnosed | 2026-09-03 | v4.1 |
+| todos | 2026-08-22-strip-em-config-sentinel-in-getconfigpatharg-and-commands-cj.md | (presence-only) | 2026-09-03 | v4.1 |
+| todos | 2026-09-03-update-live-interop-tests-for-getallclassnames-backend.md | (presence-only) | 2026-09-03 | v4.1 |
+| uat_gaps | 59/59-UAT.md (archived v3.9) | passed | 2026-09-03 | v4.1 |
+| uat_gaps | 34/34-UAT.md (archived v3.2) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 34/34-final-UAT.md (archived v3.2) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 34/34-re-UAT.md (archived v3.2) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 29/29-UAT.md (archived v3.1) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 30/30-UAT.md (archived v3.1) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 24/24-UAT.md (archived v3.0) | diagnosed | 2026-09-03 | v4.1 |
+| uat_gaps | 25/25-UAT.md (archived v3.0) | diagnosed | 2026-09-03 | v4.1 |
+| verification_gaps | 50/50-VERIFICATION.md (archived v3.7) | human_needed | 2026-09-03 | v4.1 |
+| verification_gaps | 46/46-VERIFICATION.md (archived v3.5) | gaps_found | 2026-09-03 | v4.1 |
+| verification_gaps | 17/17-VERIFICATION.md (archived v2.0) | gaps_found | 2026-09-03 | v4.1 |
+| verification_gaps | 11/11-VERIFICATION.md (archived v1.2) | human_needed | 2026-09-03 | v4.1 |
+| verification_gaps | 10/10-VERIFICATION.md (archived v1.1) | gaps_found | 2026-09-03 | v4.1 |
 
 ## Milestone History
 
@@ -267,9 +338,18 @@ Resume file: .planning/phases/74-remediate-ghsa-9gv3-gr6g-c4rj/74-04-PLAN.md
 | v3.8 Test & Debt Cleanup | 54-56 | 7 | 2026-02-20 |
 | v3.9 Quick Wins | 57-59 | 8 | 2026-02-21 |
 | v4.0 Stability and Quality | 60-69 | 62 | 2026-08-20 |
+| v4.1 Security Advisory Remediation | 70-77 | 37 | 2026-09-03 |
+| v4.2 IntelliJ Burn-down | 78-83 | 25 | 2026-09-06 |
 
 See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-08-21 after Phase 71 (GHSA-5f22-gqrx-xr22) verification and transition*
+*State updated: 2026-09-06 after v4.2 milestone close (phases 78-83 archived; 8 artifacts deferred)*
+
+## Operator Next Steps
+
+- Land v4.2: cut a branch from `origin/main`, cherry-pick the 256 commits since `2072844`, run the register-check grep over the diff, push over HTTPS, open a PR; then publish a preview build and close the 22 issues
+- Start the next milestone: `/gsd-new-milestone` (candidates in PROJECT.md › Next Milestone Goals)
+- Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
+- v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)

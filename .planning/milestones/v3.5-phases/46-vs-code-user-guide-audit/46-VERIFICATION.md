@@ -4,6 +4,7 @@ verified: 2026-02-09T00:00:00Z
 status: gaps_found
 score: 8/10 truths verified
 gaps:
+
   - truth: "Features page file types table includes .src and documents .bbl exclusion from source features"
     status: failed
     reason: ".bbl is documented as having syntax highlighting, but VS Code won't apply syntax highlighting because .bbl is not registered in package.json's contributes.languages.extensions"
@@ -22,6 +23,11 @@ gaps:
         issue: "Line 37 shows 'bbj.classpath': 'default' but package.json default is 'bbj_default'"
     missing:
       - "Update line 37 in configuration.md to use 'bbj_default' to match package.json and Complete Settings Example"
+
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: gaps_found
 ---
 
 # Phase 46: VS Code User Guide Audit Verification Report
@@ -68,6 +74,7 @@ gaps:
 | `documentation/docs/vscode/features.md` | `bbj-vscode/package.json` | documented features match registered commands | ⚠️ PARTIAL | Commands match ✓ (Compile, Denumber), but .bbl extension claim doesn't match package.json |
 
 **Pattern check:**
+
 - `grep "Compile|Denumber" features.md` → Both present ✓
 - `grep "bbj.decompile" package.json` → Not found ✓
 - `grep "\.bbl" features.md` → Found in table ✓
@@ -81,6 +88,7 @@ gaps:
 | `documentation/docs/vscode/commands.md` | `bbj-vscode/package.json` | documented commands match contributes.commands | ✓ WIRED | All commands verified: loginEM ✓, refreshJavaClasses ✓, configureCompileOptions ✓ |
 
 **Pattern verification:**
+
 - `grep "bbj.em.url" package.json` → Found at line 272 ✓
 - `grep "bbj.configPath" package.json` → Found at line 470 ✓
 - `grep "bbj.typeResolution.warnings" package.json` → Found at line 464 ✓
@@ -108,6 +116,7 @@ gaps:
 | documentation/docs/vscode/configuration.md | 37 | Inconsistent default value | ℹ️ INFO | Shows "default" instead of "bbj_default" for bbj.classpath example. Complete Settings Example (line 221) is correct. Minor inconsistency. |
 
 **Additional checks (all passed):**
+
 - No TODO/FIXME/placeholder comments in documentation ✓
 - No manual gradlew instructions ✓
 - No Decompile references anywhere ✓
@@ -128,6 +137,7 @@ The documentation (features.md line 145) claims:
 **Reality:** `.bbl` is NOT registered in `package.json`'s `contributes.languages[0].extensions` array. While the TextMate grammar file includes `.bbl` in its `fileTypes`, VS Code ignores this in favor of package.json's language registration. Result: .bbl files opened in VS Code get NO syntax highlighting and NO features.
 
 **Evidence:**
+
 - `package.json` line 29-34: extensions array has `.bbj`, `.bbjt`, `.src`, `.bbx` - no `.bbl`
 - `bbj-ws-manager.ts` line 157: `.bbl` explicitly excluded from workspace indexing (code intelligence)
 - `syntaxes/bbj.tmLanguage.json`: fileTypes includes `.bbl` but this is ignored by VS Code
@@ -137,6 +147,7 @@ The documentation (features.md line 145) claims:
 **Gap 2: bbj.classpath example shows incorrect default**
 
 The configuration.md Core Settings section (line 37) shows:
+
 ```json
 {
   "bbj.classpath": "default"

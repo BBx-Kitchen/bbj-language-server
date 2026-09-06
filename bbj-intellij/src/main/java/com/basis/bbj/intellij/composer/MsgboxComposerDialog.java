@@ -35,6 +35,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 /**
  * Swing composer for {@code MSGBOX()} (#426/#433): pick icon / button set / default button / flags
@@ -45,12 +46,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class MsgboxComposerDialog extends DialogWrapper {
     private static final int CUSTOM_BUTTON_SET = 7;
 
+    private final Project project;
     private final BbjComposerServer server;
     private final MsgboxCatalogs catalogs;
     private final boolean editMode;
     private final ComposerModels.MsgboxPreviewInput initial;
     private final List<String> trailingArgs;
     private final AtomicInteger seq = new AtomicInteger();
+    private final ComposerFlow flow;
+    private final Consumer<ComposerNotices.Notice> balloonOnce;
     private JPanel assignToRow;
 
     private final JBTextField message = new JBTextField("\"Message\"");
@@ -73,17 +77,27 @@ public final class MsgboxComposerDialog extends DialogWrapper {
 
     private volatile String statement = "";
 
-    public MsgboxComposerDialog(@Nullable Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
+    public MsgboxComposerDialog(@NotNull Project project, @NotNull BbjComposerServer server, @NotNull MsgboxCatalogs catalogs,
                                @Nullable ComposerModels.MsgboxPreviewInput initial, boolean editMode, @Nullable List<String> trailingArgs) {
         super(project);
+        this.project = project;
         this.server = server;
         this.catalogs = catalogs;
         this.initial = initial;
         this.editMode = editMode;
         this.trailingArgs = trailingArgs;
+        this.balloonOnce = ComposerFlow.once(notice -> ComposerNoticeRenderer.render(project, notice, null));
+        this.flow = new ComposerFlow(
+                runnable -> ApplicationManager.getApplication().invokeLater(runnable, ModalityState.any()),
+                balloonOnce,
+                ComposerFlow.REFRESH_TIMEOUT_MILLIS);
         setTitle(editMode ? "Configure MSGBOX" : "Compose MSGBOX");
         setOKButtonText(editMode ? "Apply" : "Insert");
         init();
+        // Disable OK until the first preview round-trip resolves (#538): otherwise a fast/keyboard
+        // accept landing before any preview arrives would keep OK enabled while apply() has never
+        // run. Re-enabled by apply() on a successful preview.
+        setOKActionEnabled(false);
         if (initial != null) {
             prefill(initial);
         }
@@ -206,12 +220,28 @@ public final class MsgboxComposerDialog extends DialogWrapper {
         input.useConstants = useConstants.isSelected();
 
         int mySeq = seq.incrementAndGet();
-        server.msgboxPreview(new MsgboxPreviewParams(input)).thenAccept(preview ->
-                ApplicationManager.getApplication().invokeLater(() -> {
-                    if (mySeq == seq.get() && preview != null) {
+        flow.observe(server.msgboxPreview(new MsgboxPreviewParams(input)), ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                preview -> {
+                    if (mySeq == seq.get()) {
                         apply(preview);
                     }
-                }, ModalityState.any()));
+                },
+                throwable -> {
+                    if (mySeq == seq.get()) {
+                        previewUnavailable(ComposerNotices.shortReason(throwable));
+                        balloonOnce.accept(ComposerNotices.requestFailed("MSGBOX", ComposerNotices.detailOf(throwable)));
+                    }
+                });
+    }
+
+    /**
+     * A refresh request failed (or completed with no preview) while this dialog's sequence is still
+     * current: label the statement stale and refuse OK so it can never be accepted (#538). Cleared
+     * the next time {@link #apply(MsgboxPreview)} runs after a successful preview.
+     */
+    private void previewUnavailable(String reason) {
+        summary.setText("Preview unavailable — " + reason);
+        setOKActionEnabled(false);
     }
 
     private void apply(MsgboxPreview p) {

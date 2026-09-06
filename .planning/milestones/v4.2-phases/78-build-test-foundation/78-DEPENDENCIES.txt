@@ -1,0 +1,289 @@
+Command: JAVA_HOME=/opt/java/default ./gradlew dependencies --console=plain
+Gradle version: 8.14.5
+Generated: 2026-09-04T06:06:55Z
+
+
+> Task :dependencies
+
+------------------------------------------------------------
+Root project 'bbj-intellij'
+------------------------------------------------------------
+
+annotationProcessor - Annotation processors and their dependencies for source set 'main'.
+No dependencies
+
+api - API dependencies for the 'main' feature. (n)
+No dependencies
+
+apiElements - API elements for the 'main' feature. (n)
+No dependencies
+
+compileClasspath - Compile classpath for source set 'main'.
++--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
++--- idea:ideaIC:2024.2
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+compileOnly - Compile-only dependencies for the 'main' feature. (n)
+No dependencies
+
+compileOnlyApi - Compile-only API dependencies for the 'main' feature. (n)
+No dependencies
+
+composeHotReloadAgent - Compose Hot Reload Agent
+\--- org.jetbrains.compose.hot-reload:hot-reload-agent:{prefer 1.1.0-alpha03} -> 1.1.0-alpha03
+
+default - Configuration for default artifacts. (n)
+No dependencies
+
+implementation - Implementation dependencies for the 'main' feature. (n)
+No dependencies
+
+intellijPlatformBundledModules - IntelliJ Platform bundled modules
+No dependencies
+
+intellijPlatformBundledPlugins - IntelliJ Platform bundled plugins
+\--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
+
+intellijPlatformClasspath - IntelliJ Platform Classpath resolvable configuration
+\--- idea:ideaIC:2024.2
+
+intellijPlatformComposedJar - IntelliJ Platform final composed Jar archive
+No dependencies
+
+intellijPlatformComposedJarApi - IntelliJ Platform final composed Jar archive Api (n)
+No dependencies
+
+intellijPlatformDependencies - IntelliJ Platform extra dependencies
++--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformDependency - IntelliJ Platform
+\--- idea:ideaIC:2024.2
+
+intellijPlatformDependencyArchive - IntelliJ Platform dependency archive
+\--- idea:ideaIC:2024.2
+
+intellijPlatformDistribution - IntelliJ Platform distribution Zip archive (n)
+No dependencies
+
+intellijPlatformJavaCompiler - Java Compiler used by Ant tasks
+\--- com.jetbrains.intellij.java:java-compiler-ant-tasks:{strictly [242, 242.20224.300]; prefer 242.20224.300} -> 242.20224.300
+     +--- com.jetbrains.intellij.java:java-gui-forms-compiler:242.20224.300
+     |    +--- com.jetbrains.intellij.platform:util-jdom:242.20224.300
+     |    |    +--- jaxen:jaxen:1.2.0
+     |    |    \--- org.jetbrains:annotations:24.0.0
+     |    +--- com.jetbrains.intellij.java:java-gui-forms-rt:242.20224.300
+     |    +--- org.jetbrains.intellij.deps:asm-all:9.6.1
+     |    +--- com.jgoodies:forms:1.1-preview
+     |    +--- com.jetbrains.intellij.java:java-compiler-instrumentation-util:242.20224.300
+     |    |    \--- org.jetbrains.intellij.deps:asm-all:9.6.1
+     |    \--- org.jetbrains:annotations:24.0.0
+     +--- com.jetbrains.intellij.java:java-gui-forms-rt:242.20224.300
+     +--- org.jetbrains.intellij.deps:asm-all:9.6.1
+     +--- com.jetbrains.intellij.java:java-compiler-instrumentation-util:242.20224.300 (*)
+     \--- com.jetbrains.intellij.java:java-compiler-instrumentation-util-java8:242.20224.300
+          \--- com.jetbrains.intellij.java:java-compiler-instrumentation-util:242.20224.300 (*)
+
+intellijPlatformLocal - IntelliJ Platform local
+No dependencies
+
+intellijPlatformPlugin - IntelliJ Platform plugins
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformPluginComposedModule - IntelliJ Platform plugin composed module
+No dependencies
+
+intellijPlatformPluginDependency - IntelliJ Platform plugin dependencies
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformPluginLocal - IntelliJ Platform plugin local
+No dependencies
+
+intellijPlatformPluginModule - IntelliJ Platform plugin module
+No dependencies
+
+intellijPlatformRuntimeClasspath - IntelliJ Platform Runtime Classpath resolvable configuration
+No dependencies
+
+intellijPlatformTestBundledModules - IntelliJ Platform test bundled modules
+No dependencies
+
+intellijPlatformTestBundledPlugins - IntelliJ Platform test bundled plugins
+\--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
+
+intellijPlatformTestClasspath - IntelliJ Platform Test Classpath resolvable configuration
++--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
++--- idea:ideaIC:2024.2
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformTestDependencies - IntelliJ Platform Test Dependencies
++--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformTestPlugin - IntelliJ Platform plugins
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformTestPluginDependency - IntelliJ Platform test plugin dependencies
+\--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
+
+intellijPlatformTestPluginLocal - IntelliJ Platform test plugin local
+No dependencies
+
+intellijPlatformTestRuntimeClasspath - IntelliJ Platform Test Runtime Classpath resolvable configuration
++--- org.junit:junit-bom:5.10.2
+|    +--- org.junit.jupiter:junit-jupiter:5.10.2 (c)
+|    +--- org.junit.platform:junit-platform-launcher:1.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-api:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-params:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-engine:5.10.2 (c)
+|    +--- org.junit.platform:junit-platform-engine:1.10.2 (c)
+|    \--- org.junit.platform:junit-platform-commons:1.10.2 (c)
++--- org.junit.jupiter:junit-jupiter -> 5.10.2
+|    +--- org.junit:junit-bom:5.10.2 (*)
+|    +--- org.junit.jupiter:junit-jupiter-api:5.10.2
+|    |    +--- org.junit:junit-bom:5.10.2 (*)
+|    |    +--- org.opentest4j:opentest4j:1.3.0
+|    |    \--- org.junit.platform:junit-platform-commons:1.10.2
+|    |         \--- org.junit:junit-bom:5.10.2 (*)
+|    +--- org.junit.jupiter:junit-jupiter-params:5.10.2
+|    |    +--- org.junit:junit-bom:5.10.2 (*)
+|    |    \--- org.junit.jupiter:junit-jupiter-api:5.10.2 (*)
+|    \--- org.junit.jupiter:junit-jupiter-engine:5.10.2
+|         +--- org.junit:junit-bom:5.10.2 (*)
+|         +--- org.junit.platform:junit-platform-engine:1.10.2
+|         |    +--- org.junit:junit-bom:5.10.2 (*)
+|         |    +--- org.opentest4j:opentest4j:1.3.0
+|         |    \--- org.junit.platform:junit-platform-commons:1.10.2 (*)
+|         \--- org.junit.jupiter:junit-jupiter-api:5.10.2 (*)
+\--- org.junit.platform:junit-platform-launcher -> 1.10.2
+     +--- org.junit:junit-bom:5.10.2 (*)
+     \--- org.junit.platform:junit-platform-engine:1.10.2 (*)
+
+intellijPlatformTestRuntimeFixClasspath - IntelliJ Platform Test Runtime Fix Classpath
+\--- bundledModule:intellij-platform-test-runtime:IC-242.20224.300
+
+intellijPluginVerifier - IntelliJ Plugin Verifier
+\--- org.jetbrains.intellij.plugins:verifier-cli:{prefer +} -> 1.410
+
+intellijPluginVerifierIdes - IntelliJ Plugin Verifier IDEs
++--- idea:idea:263.3889.65 -> 2026.2.2
++--- idea:idea:2026.2.2
++--- idea:idea:2026.1.5 -> 2026.2.2
++--- idea:idea:2025.3.6.1 -> 2026.2.2
++--- idea:ideaIC:2025.2.6.3
++--- idea:ideaIC:2025.1.7.2 -> 2025.2.6.3
++--- idea:ideaIC:2024.3.7.1 -> 2025.2.6.3
+\--- idea:ideaIC:2024.2.6 -> 2025.2.6.3
+
+intellijPluginVerifierIdesDependency - IntelliJ Plugin Verifier IDE dependencies
++--- idea:idea:263.3889.65 -> 2026.2.2
++--- idea:idea:2026.2.2
++--- idea:idea:2026.1.5 -> 2026.2.2
++--- idea:idea:2025.3.6.1 -> 2026.2.2
++--- idea:ideaIC:2025.2.6.3
++--- idea:ideaIC:2025.1.7.2 -> 2025.2.6.3
++--- idea:ideaIC:2024.3.7.1 -> 2025.2.6.3
+\--- idea:ideaIC:2024.2.6 -> 2025.2.6.3
+
+intellijPluginVerifierIdesLocalInstance - IntelliJ Plugin Verifier IDE local
+No dependencies
+
+jetbrainsRuntime - JetBrains Runtime
+No dependencies
+
+jetbrainsRuntimeDependency - JetBrains Runtime dependency archive
+No dependencies
+
+jetbrainsRuntimeLocalInstance - JetBrains Runtime local instance
+No dependencies
+
+mainSourceElements - List of source directories contained in the Main SourceSet. (n)
+No dependencies
+
+marketplaceZipSigner - Marketplace ZIP Signer
+\--- org.jetbrains:marketplace-zip-signer:{prefer +} -> 0.1.43
+
+runtimeClasspath - Runtime classpath of source set 'main'.
+No dependencies
+
+runtimeElements - Runtime elements for the 'main' feature. (n)
+No dependencies
+
+runtimeOnly - Runtime-only dependencies for the 'main' feature. (n)
+No dependencies
+
+testAnnotationProcessor - Annotation processors and their dependencies for source set 'test'.
+No dependencies
+
+testCompileClasspath - Compile classpath for source set 'test'.
++--- bundledPlugin:org.jetbrains.plugins.textmate:IC-242.20224.300
++--- idea:ideaIC:2024.2
++--- com.jetbrains.plugins:com.redhat.devtools.lsp4ij:0.19.0
++--- org.junit:junit-bom:5.10.2
+|    +--- org.junit.jupiter:junit-jupiter:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-api:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-params:5.10.2 (c)
+|    \--- org.junit.platform:junit-platform-commons:1.10.2 (c)
+\--- org.junit.jupiter:junit-jupiter -> 5.10.2
+     +--- org.junit:junit-bom:5.10.2 (*)
+     +--- org.junit.jupiter:junit-jupiter-api:5.10.2
+     |    +--- org.junit:junit-bom:5.10.2 (*)
+     |    +--- org.opentest4j:opentest4j:1.3.0
+     |    +--- org.junit.platform:junit-platform-commons:1.10.2
+     |    |    +--- org.junit:junit-bom:5.10.2 (*)
+     |    |    \--- org.apiguardian:apiguardian-api:1.1.2
+     |    \--- org.apiguardian:apiguardian-api:1.1.2
+     \--- org.junit.jupiter:junit-jupiter-params:5.10.2
+          +--- org.junit:junit-bom:5.10.2 (*)
+          +--- org.junit.jupiter:junit-jupiter-api:5.10.2 (*)
+          \--- org.apiguardian:apiguardian-api:1.1.2
+
+testCompileOnly - Compile only dependencies for source set 'test'. (n)
+No dependencies
+
+testImplementation - Implementation only dependencies for source set 'test'. (n)
++--- org.junit:junit-bom:5.10.2 (n)
+\--- org.junit.jupiter:junit-jupiter (n)
+
+testRuntimeClasspath - Runtime classpath of source set 'test'.
++--- org.junit:junit-bom:5.10.2
+|    +--- org.junit.jupiter:junit-jupiter:5.10.2 (c)
+|    +--- org.junit.platform:junit-platform-launcher:1.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-api:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-params:5.10.2 (c)
+|    +--- org.junit.jupiter:junit-jupiter-engine:5.10.2 (c)
+|    +--- org.junit.platform:junit-platform-engine:1.10.2 (c)
+|    \--- org.junit.platform:junit-platform-commons:1.10.2 (c)
++--- org.junit.jupiter:junit-jupiter -> 5.10.2
+|    +--- org.junit:junit-bom:5.10.2 (*)
+|    +--- org.junit.jupiter:junit-jupiter-api:5.10.2
+|    |    +--- org.junit:junit-bom:5.10.2 (*)
+|    |    +--- org.opentest4j:opentest4j:1.3.0
+|    |    \--- org.junit.platform:junit-platform-commons:1.10.2
+|    |         \--- org.junit:junit-bom:5.10.2 (*)
+|    +--- org.junit.jupiter:junit-jupiter-params:5.10.2
+|    |    +--- org.junit:junit-bom:5.10.2 (*)
+|    |    \--- org.junit.jupiter:junit-jupiter-api:5.10.2 (*)
+|    \--- org.junit.jupiter:junit-jupiter-engine:5.10.2
+|         +--- org.junit:junit-bom:5.10.2 (*)
+|         +--- org.junit.platform:junit-platform-engine:1.10.2
+|         |    +--- org.junit:junit-bom:5.10.2 (*)
+|         |    +--- org.opentest4j:opentest4j:1.3.0
+|         |    \--- org.junit.platform:junit-platform-commons:1.10.2 (*)
+|         \--- org.junit.jupiter:junit-jupiter-api:5.10.2 (*)
+\--- org.junit.platform:junit-platform-launcher -> 1.10.2
+     +--- org.junit:junit-bom:5.10.2 (*)
+     \--- org.junit.platform:junit-platform-engine:1.10.2 (*)
+
+testRuntimeOnly - Runtime only dependencies for source set 'test'. (n)
+\--- org.junit.platform:junit-platform-launcher (n)
+
+(c) - A dependency constraint, not a dependency. The dependency affected by the constraint occurs elsewhere in the tree.
+(*) - Indicates repeated occurrences of a transitive dependency subtree. Gradle expands transitive dependency subtrees only once per project; repeat occurrences only display the root of the subtree, followed by this annotation.
+
+(n) - A dependency or dependency configuration that cannot be resolved.
+
+A web-based, searchable dependency report is available by adding the --scan option.
+
+BUILD SUCCESSFUL in 30s
+1 actionable task: 1 executed

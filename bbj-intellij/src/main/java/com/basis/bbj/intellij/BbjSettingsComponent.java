@@ -1,6 +1,10 @@
 package com.basis.bbj.intellij;
 
+import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.KeystrokeDebouncer;
+import com.basis.bbj.intellij.concurrency.Scheduler;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.fileChooser.FileChooserDescriptorFactory;
 import com.intellij.openapi.ui.ComboBox;
@@ -18,18 +22,25 @@ import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Swing UI panel for the BBj settings page.
  * Contains three sections: BBj Environment, Node.js Runtime, and Classpath.
+ * <p>
+ * Every keystroke in the BBj home / Node.js path fields only schedules a debounced background
+ * lookup (D-12) — the fields' {@code DocumentAdapter}s and {@code ComponentValidator}s perform no
+ * filesystem or subprocess work of their own; that work lives entirely in
+ * {@link BbjSettingsLookups}, called only from {@link #nodeDebouncer}/{@link #homeDebouncer}.
  */
 public class BbjSettingsComponent {
 
+    private static final long DEBOUNCE_MS = 300L;
+
     private final JPanel mainPanel;
     private final TextFieldWithBrowseButton bbjHomeField;
+    private final TextFieldWithBrowseButton compilerOutputDirectoryField;
     private final TextFieldWithBrowseButton nodeJsField;
     private final JBLabel nodeVersionLabel;
     private final ComboBox<String> classpathCombo;
@@ -40,7 +51,18 @@ public class BbjSettingsComponent {
     private final JBTextField emUrlField;
     private final JCheckBox autoSaveCheckbox;
 
+    private final Scheduler lookupScheduler;
+    private final KeystrokeDebouncer<BbjSettingsLookups.NodeLookup> nodeDebouncer;
+    private final KeystrokeDebouncer<BbjSettingsLookups.HomeLookup> homeDebouncer;
+
+    private volatile BbjSettingsLookups.NodeLookup lastNodeLookup;
+    private volatile BbjSettingsLookups.HomeLookup lastHomeLookup;
+    private String pendingClasspathSelection = "";
+    private boolean classpathLookupPending;
+
     public BbjSettingsComponent(@NotNull Disposable parentDisposable) {
+        lookupScheduler = new AlarmScheduler(parentDisposable);
+
         // --- BBj Home field ---
         bbjHomeField = new TextFieldWithBrowseButton();
         var bbjFolderDescriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
@@ -51,10 +73,14 @@ public class BbjSettingsComponent {
         new ComponentValidator(parentDisposable)
             .withValidator(() -> {
                 String path = bbjHomeField.getText().trim();
-                if (path.isEmpty()) {
+                BbjSettingsLookups.HomeLookup lookup = lastHomeLookup;
+                if (path.isEmpty() || lookup == null || !lookup.path().equals(path)) {
                     return null;
                 }
-                if (!BbjHomeDetector.isValidBbjHome(path)) {
+                if (lookup.failed()) {
+                    return null;
+                }
+                if (!lookup.valid()) {
                     return new ValidationInfo(
                         "BBj.properties not found in " + path + "/cfg/",
                         bbjHomeField
@@ -63,6 +89,19 @@ public class BbjSettingsComponent {
                 return null;
             })
             .installOn(bbjHomeField.getTextField());
+
+        // --- Compile output directory field (#571) ---
+        // A plain string field: no listener, no debounced lookup, no validator. Path validation
+        // is deliberately left to bbjcpl's own failure surfaced through the language server
+        //; this component performs no filesystem work on it.
+        compilerOutputDirectoryField = new TextFieldWithBrowseButton();
+        var compilerOutputFolderDescriptor = FileChooserDescriptorFactory.createSingleFolderDescriptor()
+                .withTitle("Select Compile Output Directory")
+                .withDescription("Choose the directory bbjcpl writes tokenized output to");
+        compilerOutputDirectoryField.addBrowseFolderListener(
+                new TextBrowseFolderListener(compilerOutputFolderDescriptor, null));
+        ((JBTextField) compilerOutputDirectoryField.getTextField()).getEmptyText()
+                .setText("Required for \"Compile BBj File\" to run");
 
         // --- Node.js field ---
         nodeJsField = new TextFieldWithBrowseButton();
@@ -76,15 +115,17 @@ public class BbjSettingsComponent {
         new ComponentValidator(parentDisposable)
             .withValidator(() -> {
                 String path = nodeJsField.getText().trim();
-                if (path.isEmpty()) {
+                BbjSettingsLookups.NodeLookup lookup = lastNodeLookup;
+                if (path.isEmpty() || lookup == null || !lookup.path().equals(path)) {
                     return null;
                 }
-                File file = new File(path);
-                if (!file.exists()) {
+                if (lookup.failed()) {
+                    return null;
+                }
+                if (!lookup.exists()) {
                     return new ValidationInfo("File not found: " + path, nodeJsField);
                 }
-                String version = BbjNodeDetector.getNodeVersion(path);
-                if (version == null || !BbjNodeDetector.meetsMinimumVersion(version)) {
+                if (!lookup.meetsMinimum()) {
                     return new ValidationInfo(
                         "Node.js version 18 or higher is required",
                         nodeJsField
@@ -144,22 +185,49 @@ public class BbjSettingsComponent {
         autoSaveCheckbox = new JCheckBox("Auto-save before run");
         autoSaveCheckbox.setSelected(true);
 
-        // --- Wire document listeners ---
+        // --- Debounced background lookups (D-12) ---
+        nodeDebouncer = new KeystrokeDebouncer<>(
+            lookupScheduler,
+            () -> ApplicationManager.getApplication().isDispatchThread(),
+            DEBOUNCE_MS,
+            () -> nodeJsField.getText().trim(),
+            ApplicationManager.getApplication()::invokeLater,
+            BbjSettingsLookups::lookupNode,
+            this::applyNodeLookup
+        );
+        homeDebouncer = new KeystrokeDebouncer<>(
+            lookupScheduler,
+            () -> ApplicationManager.getApplication().isDispatchThread(),
+            DEBOUNCE_MS,
+            () -> bbjHomeField.getText().trim(),
+            ApplicationManager.getApplication()::invokeLater,
+            BbjSettingsLookups::lookupHome,
+            this::applyHomeLookup
+        );
+
+        // --- Wire document listeners: schedule only, no filesystem/subprocess work here ---
         bbjHomeField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(@NotNull DocumentEvent e) {
+                classpathLookupPending = true;
+                classpathCombo.setEnabled(false);
+                classpathCombo.setModel(new CollectionComboBoxModel<>(
+                    List.of("(set BBj home first)")
+                ));
+                homeDebouncer.onTextChanged(bbjHomeField.getText().trim());
                 ComponentValidator.getInstance(bbjHomeField.getTextField())
                     .ifPresent(ComponentValidator::revalidate);
-                updateClasspathDropdown(bbjHomeField.getText().trim());
             }
         });
 
         nodeJsField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(@NotNull DocumentEvent e) {
+                String path = nodeJsField.getText().trim();
+                nodeVersionLabel.setText(path.isEmpty() ? " " : "Checking Node.js version…");
+                nodeDebouncer.onTextChanged(path);
                 ComponentValidator.getInstance(nodeJsField.getTextField())
                     .ifPresent(ComponentValidator::revalidate);
-                updateNodeVersionLabel(nodeJsField.getText().trim());
             }
         });
 
@@ -168,6 +236,9 @@ public class BbjSettingsComponent {
             .addComponent(new TitledSeparator("BBj Environment"))
             .addLabeledComponent(new JBLabel("BBj home:"), bbjHomeField, 1, false)
             .addLabeledComponent(new JBLabel("config.bbx Path:"), configPathField, 1, false)
+
+            .addComponent(new TitledSeparator("BBj Compiler"))
+            .addLabeledComponent(new JBLabel("Compile output directory:"), compilerOutputDirectoryField, 1, false)
 
             .addComponent(new TitledSeparator("Node.js Runtime"))
             .addLabeledComponent(new JBLabel("Node.js path:"), nodeJsField, 1, false)
@@ -194,48 +265,55 @@ public class BbjSettingsComponent {
     }
 
     /**
-     * Updates the classpath dropdown based on the given BBj home path.
-     * Disables the combo and shows placeholder when path is empty or invalid.
+     * Applies a background classpath-dropdown lookup result (replaces the former
+     * synchronous {@code updateClasspathDropdown}). Called only via {@link #homeDebouncer}'s
+     * {@code UiThread} hook, after the staleness check already passed.
      */
-    private void updateClasspathDropdown(@NotNull String bbjHomePath) {
-        if (bbjHomePath.isEmpty() || !BbjHomeDetector.isValidBbjHome(bbjHomePath)) {
+    private void applyHomeLookup(BbjSettingsLookups.HomeLookup lookup) {
+        lastHomeLookup = lookup;
+        classpathLookupPending = false;
+        if (lookup.failed()) {
             classpathCombo.setEnabled(false);
             classpathCombo.setModel(new CollectionComboBoxModel<>(
                 List.of("(set BBj home first)")
             ));
-            return;
+        } else if (!lookup.valid()) {
+            classpathCombo.setEnabled(false);
+            classpathCombo.setModel(new CollectionComboBoxModel<>(
+                List.of("(set BBj home first)")
+            ));
+        } else {
+            List<String> items = new ArrayList<>();
+            items.add(""); // empty default/no-selection option
+            items.addAll(lookup.entries());
+            classpathCombo.setEnabled(true);
+            classpathCombo.setModel(new CollectionComboBoxModel<>(items));
+            classpathCombo.setSelectedItem(pendingClasspathSelection);
         }
-
-        List<String> entries = BbjSettings.getBBjClasspathEntries(bbjHomePath);
-        List<String> items = new ArrayList<>();
-        items.add(""); // empty default/no-selection option
-        items.addAll(entries);
-
-        classpathCombo.setEnabled(true);
-        classpathCombo.setModel(new CollectionComboBoxModel<>(items));
+        ComponentValidator.getInstance(bbjHomeField.getTextField())
+            .ifPresent(ComponentValidator::revalidate);
     }
 
     /**
-     * Updates the Node.js version label based on the given path.
+     * Applies a background Node-version lookup result (replaces the former
+     * synchronous {@code updateNodeVersionLabel}). Called only via {@link #nodeDebouncer}'s
+     * {@code UiThread} hook, after the staleness check already passed.
      */
-    private void updateNodeVersionLabel(@NotNull String nodePath) {
-        if (nodePath.isEmpty()) {
+    private void applyNodeLookup(BbjSettingsLookups.NodeLookup lookup) {
+        lastNodeLookup = lookup;
+        if (lookup.failed()) {
+            nodeVersionLabel.setText("Could not check Node.js version");
+        } else if (!lookup.exists()) {
             nodeVersionLabel.setText(" ");
-            return;
-        }
-        File file = new File(nodePath);
-        if (!file.exists()) {
-            nodeVersionLabel.setText(" ");
-            return;
-        }
-        String version = BbjNodeDetector.getNodeVersion(nodePath);
-        if (version == null) {
+        } else if (lookup.version() == null) {
             nodeVersionLabel.setText("Could not detect Node.js version");
-        } else if (!BbjNodeDetector.meetsMinimumVersion(version)) {
-            nodeVersionLabel.setText("Version too old (minimum: 18), detected: " + version);
+        } else if (!lookup.meetsMinimum()) {
+            nodeVersionLabel.setText("Version too old (minimum: 18), detected: " + lookup.version());
         } else {
-            nodeVersionLabel.setText("Detected: " + version);
+            nodeVersionLabel.setText("Detected: " + lookup.version());
         }
+        ComponentValidator.getInstance(nodeJsField.getTextField())
+            .ifPresent(ComponentValidator::revalidate);
     }
 
     public JPanel getPanel() {
@@ -263,6 +341,9 @@ public class BbjSettingsComponent {
     }
 
     public @NotNull String getClasspathEntry() {
+        if (classpathLookupPending) {
+            return pendingClasspathSelection;
+        }
         Object selected = classpathCombo.getSelectedItem();
         if (selected == null || "(set BBj home first)".equals(selected)) {
             return "";
@@ -270,7 +351,24 @@ public class BbjSettingsComponent {
         return selected.toString();
     }
 
+    /**
+     * Synchronously runs the BBj-home lookup and applies its result if one is still pending,
+     * so a caller reading {@link #getClasspathEntry()} right afterward sees a classpath value
+     * derived from the live home-field text rather than whatever was pending before the last
+     * keystroke's debounce window elapses. Intended to be called from the Configurable's
+     * {@code apply()}, immediately before it reads {@link #getClasspathEntry()}, so that
+     * pressing Apply/OK within the debounce window after typing a new BBj home path does not
+     * persist a classpath entry left over from the previous home path.
+     */
+    void flushPendingHomeLookup() {
+        if (!classpathLookupPending) {
+            return;
+        }
+        applyHomeLookup(BbjSettingsLookups.lookupHome(bbjHomeField.getText().trim()));
+    }
+
     public void setClasspathEntry(@NotNull String entry) {
+        pendingClasspathSelection = entry;
         classpathCombo.setSelectedItem(entry);
     }
 
@@ -313,6 +411,14 @@ public class BbjSettingsComponent {
 
     public void setConfigPath(@NotNull String path) {
         configPathField.setText(path);
+    }
+
+    public @NotNull String getCompilerOutputDirectory() {
+        return compilerOutputDirectoryField.getText().trim();
+    }
+
+    public void setCompilerOutputDirectory(@NotNull String path) {
+        compilerOutputDirectoryField.setText(path);
     }
 
     public @NotNull String getEmUrl() {

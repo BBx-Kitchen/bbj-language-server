@@ -1,12 +1,13 @@
 import { describe, test, expect } from 'vitest';
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { mergeDiagnostics } from '../src/language/bbj-document-validator.js';
+import { END_OF_LINE_CHARACTER } from '../src/language/lsp-position.js';
 
 // Helper to create a diagnostic at a given line
 function makeDiag(line: number, source: string, severity: DiagnosticSeverity, message: string): Diagnostic {
     const range: Range = {
         start: { line, character: 0 },
-        end: { line, character: Number.MAX_SAFE_INTEGER },
+        end: { line, character: END_OF_LINE_CHARACTER },
     };
     return { range, severity, source, message };
 }

@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "Static method completion doesn't work on USE-imported class references but works on FQN"
 created: 2026-02-21T00:00:00Z
 updated: 2026-02-21T02:00:00Z
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: diagnosed
 ---
 
 ## Current Focus
@@ -98,6 +102,7 @@ started: unknown
 root_cause: The FQN path (`java.lang.String.`) and the USE path (`String.`) take fundamentally different branches in bbj-scope.ts:
 
 **FACTOR 1 — Architectural Asymmetry (bbj-scope.ts:162-191):**
+
 - FQN: receiver is MemberCall -> isClassRef=false (line 163) -> line 185-191 shows ALL members (static + instance + fields + .class). This is why FQN "works" — it bypasses the isStatic filter entirely.
 - USE: receiver is SymbolRef -> isClassRef=true (line 166) -> line 178 filters by m.isStatic. Only methods with isStatic=true pass + .class from outer scope.
 

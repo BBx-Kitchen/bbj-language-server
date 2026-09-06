@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "Investigate why deprecated methods don't show strikethrough in the completion list"
 created: 2026-02-21T12:00:00Z
 updated: 2026-02-21T12:30:00Z
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: diagnosed
 ---
 
 ## Current Focus

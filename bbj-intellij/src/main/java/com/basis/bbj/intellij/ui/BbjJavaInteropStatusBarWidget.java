@@ -113,7 +113,7 @@ public final class BbjJavaInteropStatusBarWidget implements CustomStatusBarWidge
         // Reconnect action (restarts language server)
         JMenuItem reconnectItem = new JMenuItem("Reconnect");
         reconnectItem.addActionListener(event -> {
-            BbjServerService.getInstance(project).restart();
+            BbjServerService.getInstance(project).requestRestart(0);
         });
         popup.add(reconnectItem);
 

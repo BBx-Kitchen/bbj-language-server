@@ -27,7 +27,7 @@ public final class BbjRefreshJavaClassesAction extends AnAction {
 
         // Restart the language server to fully clear all Java class caches
         // and reload classpath from settings
-        BbjServerService.getInstance(project).restart();
+        BbjServerService.getInstance(project).requestRestart(0);
     }
 
     @Override

@@ -4,6 +4,7 @@ verified: 2026-02-02T08:09:50Z
 status: gaps_found
 score: 4/5 must-haves verified
 gaps:
+
   - truth: "Completion popup shows distinct icons for functions, variables, and keywords instead of generic icons"
     status: failed
     reason: "BbjCompletionFeature exists but is completely orphaned - not wired into LSP4IJ at all"
@@ -16,6 +17,11 @@ gaps:
       - "Import BbjCompletionFeature in BbjLanguageServerFactory"
       - "Call .setCompletionFeature(new BbjCompletionFeature()) in createClientFeatures() method"
       - "Verify LSP4IJ LSPCompletionFeature API exists, or implement alternative wiring"
+
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: gaps_found
 ---
 
 # Phase 10: Bug Fixes & Polish Verification Report
@@ -63,6 +69,7 @@ gaps:
 | `BbjNodeDownloader.java` | ARM64 detection on all platforms | ✓ VERIFIED | EXISTS, SUBSTANTIVE (getArchitecture() checks SystemInfo.isAarch64 first, returns "arm64" for all ARM64 platforms), WIRED (called by downloadNodeAsync) |
 
 **Deleted files verified:**
+
 - `bbj-intellij/src/main/resources/icons/bbj-function.svg` — DELETED ✓
 - `bbj-intellij/src/main/resources/icons/bbj-variable.svg` — DELETED ✓
 - `bbj-intellij/src/main/resources/icons/bbj-keyword.svg` — DELETED ✓
@@ -140,11 +147,13 @@ gaps:
 **Critical Gap Found:** Truth #5 (completion icons) is FAILED.
 
 BbjCompletionFeature.java exists with correct implementation:
+
 - Maps CompletionItemKind to AllIcons.Nodes platform icons
 - Distinguishes Java-interop completions with detail field heuristic
 - Has getIcon() method ready to be called
 
 BUT it is completely orphaned:
+
 - Never imported in any file in the codebase
 - Never called by LSP4IJ or any plugin code
 - Has TODO comment (line 15) admitting it's not wired: "Wire into LSP4IJ completion pipeline when LSPCompletionFeature API becomes available"
@@ -155,6 +164,7 @@ The summary for 10-02 claimed:
 This is technically accurate BUT misleading. The code is "correct" in isolation, but the truth "Completion popup shows distinct icons" is FALSE because the code is never executed. The artifact exists but provides no functionality.
 
 **What's missing:**
+
 1. Import BbjCompletionFeature in BbjLanguageServerFactory
 2. Wire it via .setCompletionFeature(new BbjCompletionFeature()) in createClientFeatures() — OR —
 3. Find alternative LSP4IJ API to hook completion icon mapping if setCompletionFeature() doesn't exist

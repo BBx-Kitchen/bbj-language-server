@@ -18,14 +18,34 @@ const REPO_ROOT = path.resolve(TEST_DIR, '..', '..');
 const CHECKER_PATH = process.env.GRADLE_WRAPPER_CHECKER_PATH
     ?? path.join(REPO_ROOT, 'bbj-vscode', 'tools', 'check-gradle-wrapper.mjs');
 
-const REAL_WRAPPER_JAR_PATH = path.join(REPO_ROOT, 'bbj-intellij', 'gradle', 'wrapper', 'gradle-wrapper.jar');
+const REAL_WRAPPER_DIR = path.join(REPO_ROOT, 'bbj-intellij', 'gradle', 'wrapper');
+const REAL_WRAPPER_JAR_PATH = path.join(REAL_WRAPPER_DIR, 'gradle-wrapper.jar');
 const GOOD_WRAPPER_JAR_BYTES = fs.readFileSync(REAL_WRAPPER_JAR_PATH);
+
+// The "good" fixture borrows the repository's committed wrapper JAR, so its
+// declared release and checksum must be the committed ones too; otherwise every
+// wrapper upgrade in bbj-intellij would red the fixture with a JAR/release mismatch.
+const REAL_PROPERTIES_LINES = fs
+    .readFileSync(path.join(REAL_WRAPPER_DIR, 'gradle-wrapper.properties'), 'utf8')
+    .split(/\r?\n/);
+function realPropertyLine(key: string): string {
+    const line = REAL_PROPERTIES_LINES.find((candidate) => candidate.startsWith(`${key}=`));
+    if (!line) {
+        throw new Error(`bbj-intellij/gradle/wrapper/gradle-wrapper.properties has no ${key}= line`);
+    }
+    return line;
+}
+const REAL_DISTRIBUTION_URL_LINE = realPropertyLine('distributionUrl');
+const REAL_GRADLE_VERSION = /gradle-([0-9.]+)-bin\.zip$/.exec(REAL_DISTRIBUTION_URL_LINE)?.[1];
+if (!REAL_GRADLE_VERSION) {
+    throw new Error(`unexpected distributionUrl shape: ${REAL_DISTRIBUTION_URL_LINE}`);
+}
 
 const GOOD_PROPERTIES_LINES = [
     'distributionBase=GRADLE_USER_HOME',
     'distributionPath=wrapper/dists',
-    'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip',
-    'distributionSha256Sum=20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78',
+    REAL_DISTRIBUTION_URL_LINE,
+    realPropertyLine('distributionSha256Sum'),
     'networkTimeout=10000',
     'validateDistributionUrl=true',
     'zipStoreBase=GRADLE_USER_HOME',
@@ -232,7 +252,7 @@ describe('gradle-wrapper-hygiene checker contract', () => {
         expect(verdict.status).toBe('matches');
     });
 
-    test('a distributionUrl naming 8.13 with a distributionSha256Sum published for 8.12.1 reds naming both releases', () => {
+    test('a distributionUrl naming the committed release with a distributionSha256Sum published for 8.12.1 reds naming both releases', () => {
         const mismatchedProperties = GOOD_PROPERTIES_LINES.map((line) =>
             line.startsWith('distributionSha256Sum=')
                 ? 'distributionSha256Sum=8d97a97984f6cbd2b85fe4c60a743440a347544bf18818048e611f5288d46c94'
@@ -247,7 +267,7 @@ describe('gradle-wrapper-hygiene checker contract', () => {
 
         const result = runChecker(['--repo-root', fixture.root]);
         expect(result.status).toBe(1);
-        expect(result.stdout).toContain('8.13');
+        expect(result.stdout).toContain(REAL_GRADLE_VERSION);
         expect(result.stdout).toContain('8.12.1');
     });
 
@@ -272,7 +292,7 @@ describe('gradle-wrapper-hygiene checker contract', () => {
     test('a distributionUrl ending -all.zip reds as an untabulated flavour', () => {
         const allFlavourProperties = GOOD_PROPERTIES_LINES.map((line) =>
             line.startsWith('distributionUrl=')
-                ? 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-all.zip'
+                ? `distributionUrl=https\\://services.gradle.org/distributions/gradle-${REAL_GRADLE_VERSION}-all.zip`
                 : line,
         );
         const fixture = buildFixtureRepo({

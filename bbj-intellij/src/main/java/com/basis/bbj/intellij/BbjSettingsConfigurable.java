@@ -53,6 +53,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getJavaInteropHost(), state.javaInteropHost)
             || state.javaInteropPort != myComponent.getJavaInteropPort()
             || !Objects.equals(myComponent.getConfigPath(), state.configPath)
+            || !Objects.equals(myComponent.getCompilerOutputDirectory(), state.compilerOutputDirectory)
             || !Objects.equals(myComponent.getEmUrl(), state.emUrl)
             || state.autoSaveBeforeRun != myComponent.isAutoSaveBeforeRun();
     }
@@ -62,6 +63,11 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         if (myComponent == null) {
             return;
         }
+        // Flush any BBj-home lookup still pending from the debounce window, so a classpath
+        // entry read right below reflects the live home-field text rather than a value left
+        // over from before the last keystroke.
+        myComponent.flushPendingHomeLookup();
+
         BbjSettings.State state = BbjSettings.getInstance().getState();
         state.bbjHomePath = myComponent.getBbjHomePath();
         state.nodeJsPath = myComponent.getNodeJsPath();
@@ -70,6 +76,7 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         state.javaInteropHost = myComponent.getJavaInteropHost();
         state.javaInteropPort = myComponent.getJavaInteropPort();
         state.configPath = myComponent.getConfigPath();
+        state.compilerOutputDirectory = myComponent.getCompilerOutputDirectory();
         state.emUrl = myComponent.getEmUrl();
         state.autoSaveBeforeRun = myComponent.isAutoSaveBeforeRun();
 
@@ -142,6 +149,10 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
 
         // Load config.bbx path
         myComponent.setConfigPath(state.configPath != null ? state.configPath : "");
+
+        // Load compile output directory (#571)
+        myComponent.setCompilerOutputDirectory(
+            state.compilerOutputDirectory != null ? state.compilerOutputDirectory : "");
 
         // Load EM URL and auto-save setting
         myComponent.setEmUrl(state.emUrl != null ? state.emUrl : "");

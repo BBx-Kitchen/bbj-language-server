@@ -1,0 +1,1 @@
+child! = window!.addChildWindow(101, 10, 10, 300, 200, "Details", $01000008$, 0)

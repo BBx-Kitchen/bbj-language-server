@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "PREFIX diagnostic reconciliation not clearing false 'could not be resolved' errors for USE statements referencing files in PREFIX directories"
 created: 2026-02-08T00:00:00Z
 updated: 2026-02-08T00:00:00Z
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: diagnosed
 ---
 
 ## Current Focus

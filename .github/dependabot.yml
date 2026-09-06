@@ -17,3 +17,12 @@ updates:
       # typescript-eslint adds support.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+  # No `ignore:` block here (D-08, discretion resolved): letting Gradle wrapper
+  # version bumps flow through is deliberate. workflow-hygiene.yml's
+  # check-gradle-wrapper.mjs fails any Dependabot wrapper PR whose checksums
+  # are not yet in GRADLE_CHECKSUMS — that red check is the intended control,
+  # forcing a human to record the new checksums before the bump can merge.
+  - package-ecosystem: "gradle"
+    directory: "/bbj-intellij"
+    schedule:
+      interval: "weekly"

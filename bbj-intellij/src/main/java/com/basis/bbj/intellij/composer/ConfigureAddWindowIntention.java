@@ -45,6 +45,9 @@ public final class ConfigureAddWindowIntention implements IntentionAction {
 
     @Override
     public @NotNull IntentionPreviewInfo generatePreview(@NotNull Project project, @NotNull Editor editor, @NotNull PsiFile file) {
-        return IntentionPreviewInfo.EMPTY;
+        // the popup renders this summary itself, so it never falls back to the description resource
+        return new IntentionPreviewInfo.Html(
+                "<p>Opens the BBj visual composer for the <code>addWindow(...)</code> call under the "
+                        + "caret, prefilled from its current flag and event-mask arguments.</p>");
     }
 }

@@ -3,6 +3,10 @@ status: diagnosed
 trigger: "PREFIX diagnostic reconciliation doesn't clear 'could not be resolved' error even though correct file path IS in searched paths list"
 created: 2026-02-08T12:00:00Z
 updated: 2026-02-08T12:00:00Z
+audit_acknowledged:
+  milestone: v4.1
+  at: 2026-09-03
+  status: diagnosed
 ---
 
 ## Current Focus

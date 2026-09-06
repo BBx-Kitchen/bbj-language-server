@@ -1,0 +1,17 @@
+#!/bin/sh
+# Test fixture standing in for the real bbjcpl binary (#571). A controlled substitute the
+# repo owns, used to pin BBjCPLService.compileWithOptions's argv-array behaviour. Logs every
+# argument it received to $BBJCPL_ARGV_LOG (one per line, truncating first) when that
+# variable is set, optionally sleeps first when $BBJCPL_SLEEP is set (a short delay lets a
+# concurrency test start an overlapping second call while this one is still in flight),
+# prints nothing on either stream, and always exits 0.
+if [ -n "$BBJCPL_SLEEP" ]; then
+    sleep "$BBJCPL_SLEEP"
+fi
+if [ -n "$BBJCPL_ARGV_LOG" ]; then
+    : > "$BBJCPL_ARGV_LOG"
+    for arg in "$@"; do
+        echo "$arg" >> "$BBJCPL_ARGV_LOG"
+    done
+fi
+exit 0

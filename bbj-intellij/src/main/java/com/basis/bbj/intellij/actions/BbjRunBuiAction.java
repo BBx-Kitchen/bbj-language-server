@@ -78,8 +78,9 @@ public final class BbjRunBuiAction extends BbjRunActionBase {
             token = null;
         }
 
-        // Server-side validation (catches revoked tokens too)
-        if (token != null && !validateTokenServerSide(project, token)) {
+        // Server-side validation now runs only outside the trust window (#542); a call inside
+        // the window is a hit and skips the subprocess entirely.
+        if (token != null && !validateTokenTrusted(project, token)) {
             BbjEMTokenStore.deleteToken();
             token = null;
         }

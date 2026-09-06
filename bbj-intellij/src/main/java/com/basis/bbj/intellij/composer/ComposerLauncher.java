@@ -14,13 +14,15 @@ import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.util.TextRange;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 
 /**
  * Shared entry point for both composer UIs (#430/#433). Captures the caret context, asks the
@@ -63,34 +65,38 @@ public final class ComposerLauncher {
         String lineText = doc.getText(new TextRange(lineStart, doc.getLineEndOffset(line)));
         int col = caret - lineStart;
 
-        BbjComposerService.server(project).thenAccept(server -> {
-            if (server == null) {
-                notifyNotReady(project, kind);
-                return;
-            }
-            server.composerCatalogs().thenAccept(catalogs -> {
-                if (catalogs == null) {
-                    notifyNotReady(project, kind);
-                    return;
-                }
-                if (kind == Kind.MSGBOX) {
-                    server.msgboxDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line)));
-                } else if (kind == Kind.ADDWINDOW) {
-                    server.addWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line)));
-                } else {
-                    server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)).thenAccept(decoded ->
-                            onEdt(() -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line)));
-                }
-            });
-        });
+        ComposerFlow flow = new ComposerFlow(
+                ComposerLauncher::onEdt,
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, kind)),
+                ComposerFlow.LAUNCH_TIMEOUT_MILLIS);
+        CompletableFuture<BbjComposerServer> serverFuture = BbjComposerService.server(project);
+
+        switch (kind) {
+            case MSGBOX -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.msgboxDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openMsgbox(project, editor, server, catalogs.msgbox, decoded, line, col));
+            case ADDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.addWindowDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openAddWindow(project, editor, server, catalogs.addwindow, decoded, line, col));
+            case ADDCHILDWINDOW -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)),
+                    (server, catalogs, decoded) -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line, col));
+        }
+    }
+
+    /** The label a balloon names the invoked composer by — replaces the switch that lived in {@code notifyNotReady}. */
+    private static String labelOf(Kind kind) {
+        return switch (kind) {
+            case MSGBOX -> "MSGBOX";
+            case ADDWINDOW -> "addWindow";
+            case ADDCHILDWINDOW -> "addChildWindow";
+        };
     }
 
     private static void openMsgbox(Project project, Editor editor, BbjComposerServer server,
-                                   MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line) {
+                                   MsgboxCatalogs catalogs, MsgboxDecodeResult decoded, int line, int col) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.MSGBOX);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.MSGBOX)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -106,19 +112,49 @@ public final class ComposerLauncher {
         }
         if (edit) {
             MsgboxEdit ed = decoded.edit;
-            WriteCommandAction.runWriteCommandAction(project, "Configure MSGBOX", null, () -> {
-                int ls = editor.getDocument().getLineStartOffset(line);
-                editor.getDocument().replaceString(ls + ed.callStart, ls + ed.callEnd, text);
-            });
+            StaleEditGuard guard = new StaleEditGuard(
+                    documentViewOf(editor),
+                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure MSGBOX", null, body),
+                    ComposerLauncher::onEdt,
+                    notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.MSGBOX)),
+                    StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+            guard.applyIfUnchanged(labelOf(Kind.MSGBOX), line, col, decoded,
+                    (currentLineText, currentCol) -> server.msgboxDecodeCall(new DecodeCallParams(currentLineText, currentCol)),
+                    DecodeEquality::sameMsgbox,
+                    () -> {
+                        int ls = editor.getDocument().getLineStartOffset(line);
+                        editor.getDocument().replaceString(ls + ed.callStart, ls + ed.callEnd, text);
+                    });
         } else {
             insertAtCaret(project, editor, text, "Compose MSGBOX");
         }
     }
 
+    /** The live document view every stale-edit guard reads from -- current line count/text/stamp, never captured values. */
+    private static StaleEditGuard.DocumentView documentViewOf(Editor editor) {
+        return new StaleEditGuard.DocumentView() {
+            @Override
+            public int lineCount() {
+                return editor.getDocument().getLineCount();
+            }
+
+            @Override
+            public String lineText(int line) {
+                Document doc = editor.getDocument();
+                return doc.getText(new TextRange(doc.getLineStartOffset(line), doc.getLineEndOffset(line)));
+            }
+
+            @Override
+            public long modificationStamp() {
+                return editor.getDocument().getModificationStamp();
+            }
+        };
+    }
+
     private static void openAddWindow(Project project, Editor editor, BbjComposerServer server,
-                                      AddWindowCatalogs catalogs, AddWindowDecodeResult decoded, int line) {
+                                      AddWindowCatalogs catalogs, AddWindowDecodeResult decoded, int line, int col) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.ADDWINDOW);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDWINDOW)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -130,16 +166,16 @@ public final class ComposerLauncher {
             return;
         }
         if (edit) {
-            applyAddWindowEdit(project, editor, line, decoded.edit, dialog);
+            applyAddWindowEdit(project, editor, server, line, col, decoded, dialog);
         } else {
             insertAtCaret(project, editor, dialog.getStatement(), "Compose addWindow");
         }
     }
 
     private static void openAddChildWindow(Project project, Editor editor, BbjComposerServer server,
-                                           AddWindowCatalogs catalogs, AddChildWindowDecodeResult decoded, int line) {
+                                           AddWindowCatalogs catalogs, AddChildWindowDecodeResult decoded, int line, int col) {
         if (catalogs == null) {
-            notifyNotReady(project, Kind.ADDCHILDWINDOW);
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.ADDCHILDWINDOW)), null);
             return;
         }
         boolean edit = decoded != null && decoded.found;
@@ -151,27 +187,52 @@ public final class ComposerLauncher {
             return;
         }
         if (edit) {
-            applyHexEdit(project, editor, line, decoded.edit, "Configure child window flags",
-                    dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null);
+            applyHexEdit(project, editor, line, col, decoded.edit, "Configure child window flags",
+                    dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null,
+                    labelOf(Kind.ADDCHILDWINDOW), decoded,
+                    (currentLineText, currentCol) -> server.addChildWindowDecodeCall(new DecodeCallParams(currentLineText, currentCol)),
+                    DecodeEquality::sameAddChildWindow, Kind.ADDCHILDWINDOW);
         } else {
             insertAtCaret(project, editor, dialog.getStatement(), "Compose addChildWindow");
         }
     }
 
     /** Rewrite the flags (and, if enabled, event_mask) hex tokens in place, right-to-left. */
-    private static void applyAddWindowEdit(Project project, Editor editor, int line, AddWindowEdit ed, AddWindowComposerDialog dialog) {
-        applyHexEdit(project, editor, line, ed, "Configure window flags",
-                dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null);
+    private static void applyAddWindowEdit(Project project, Editor editor, BbjComposerServer server, int line, int col,
+                                           AddWindowDecodeResult decoded, AddWindowComposerDialog dialog) {
+        applyHexEdit(project, editor, line, col, decoded.edit, "Configure window flags",
+                dialog.getFlagsHex(), dialog.isEventEnabled() ? dialog.getEventHex() : null,
+                labelOf(Kind.ADDWINDOW), decoded,
+                (currentLineText, currentCol) -> server.addWindowDecodeCall(new DecodeCallParams(currentLineText, currentCol)),
+                DecodeEquality::sameAddWindow, Kind.ADDWINDOW);
     }
 
     /**
-     * Rewrite the flags (and, when {@code eventHex} is non-null, event_mask) hex tokens in place.
-     * Shared by the addWindow and addChildWindow edit flows — the token-range/insert-offset payload
-     * has the same shape for both ({@link AddWindowEdit}).
+     * Rewrite the flags (and, when {@code eventHex} is non-null, event_mask) hex tokens in place,
+     * guarded by a fresh {@link StaleEditGuard} built exactly like the MSGBOX path's. Shared by the
+     * addWindow and addChildWindow edit flows — the token-range/insert-offset payload has the same
+     * shape for both ({@link AddWindowEdit}) — so {@code D} is the caller's decode-result type
+     * ({@link AddWindowDecodeResult} or {@link AddChildWindowDecodeResult}), threaded through as
+     * explicit parameters rather than a context object.
      */
-    private static void applyHexEdit(Project project, Editor editor, int line, AddWindowEdit ed,
-                                     String commandName, String flagsHex, String eventHex) {
-        WriteCommandAction.runWriteCommandAction(project, commandName, null, () -> {
+    private static <D> void applyHexEdit(Project project, Editor editor, int line, int col, AddWindowEdit ed,
+                                         String commandName, String flagsHex, String eventHex,
+                                         String kindLabel, D capturedDecode,
+                                         BiFunction<String, Integer, CompletableFuture<D>> reDecode,
+                                         BiPredicate<D, D> sameDecode, Kind kind) {
+        // Defense in depth for #538: OK is disabled until the dialog's first preview resolves, so
+        // flagsHex should never still be empty here -- but if it somehow were, writing it would
+        // corrupt the statement's flags literal. Mirrors openMsgbox's own empty-statement guard.
+        if (flagsHex == null || flagsHex.isEmpty()) {
+            return;
+        }
+        StaleEditGuard guard = new StaleEditGuard(
+                documentViewOf(editor),
+                body -> WriteCommandAction.runWriteCommandAction(project, commandName, null, body),
+                ComposerLauncher::onEdt,
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, kind)),
+                StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+        guard.applyIfUnchanged(kindLabel, line, col, capturedDecode, reDecode, sameDecode, () -> {
             Document doc = editor.getDocument();
             int ls = doc.getLineStartOffset(line);
             List<Op> ops = new ArrayList<>();
@@ -204,16 +265,6 @@ public final class ComposerLauncher {
             editor.getDocument().insertString(offset, text);
             editor.getCaretModel().moveToOffset(offset + text.length());
         });
-    }
-
-    private static void notifyNotReady(Project project, Kind kind) {
-        String title = switch (kind) {
-            case MSGBOX -> "Compose MSGBOX";
-            case ADDWINDOW -> "Compose addWindow";
-            case ADDCHILDWINDOW -> "Compose addChildWindow";
-        };
-        onEdt(() -> Messages.showInfoMessage(project,
-                "The BBj language server is not ready yet. Open a BBj file and try again.", title));
     }
 
     private static void onEdt(Runnable runnable) {

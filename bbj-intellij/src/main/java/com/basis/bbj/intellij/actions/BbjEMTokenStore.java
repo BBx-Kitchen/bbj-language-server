@@ -3,14 +3,19 @@ package com.basis.bbj.intellij.actions;
 import com.intellij.credentialStore.CredentialAttributes;
 import com.intellij.credentialStore.CredentialAttributesKt;
 import com.intellij.credentialStore.Credentials;
+import com.intellij.credentialStore.PasswordSafeSettings;
+import com.intellij.credentialStore.ProviderType;
 import com.intellij.ide.passwordSafe.PasswordSafe;
+import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.options.ShowSettingsUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Utility for storing and retrieving EM JWT tokens via IntelliJ PasswordSafe.
@@ -21,6 +26,19 @@ public final class BbjEMTokenStore {
 
     private static final String SERVICE_NAME = "BBj Enterprise Manager";
 
+    /**
+     * Persisted name of the last backend the user was warned about -- a value, not a boolean flag,
+     * so a later change to a different weak backend still warns (#552).
+     */
+    private static final String BACKEND_WARNED_KEY = "com.basis.bbj.intellij.emTokenBackendWarned";
+
+    /** Production policy: the persisted record above, warned about through a notification balloon. */
+    private static final BackendNoticePolicy BACKEND_NOTICE = new BackendNoticePolicy(
+        () -> PropertiesComponent.getInstance().getValue(BACKEND_WARNED_KEY, ""),
+        value -> PropertiesComponent.getInstance().setValue(BACKEND_WARNED_KEY, value),
+        BbjEMTokenStore::showBackendBalloon
+    );
+
     private BbjEMTokenStore() {} // Utility class
 
     private static CredentialAttributes createAttributes() {
@@ -30,13 +48,16 @@ public final class BbjEMTokenStore {
     }
 
     public static void storeToken(@NotNull String token) {
+        BACKEND_NOTICE.evaluate(resolveBackend());
         CredentialAttributes attrs = createAttributes();
         Credentials credentials = new Credentials("bbj-em", token);
         PasswordSafe.getInstance().set(attrs, credentials);
+        TokenValidationCache.SESSION.invalidate();
     }
 
     @Nullable
     public static String getToken() {
+        BACKEND_NOTICE.evaluate(resolveBackend());
         CredentialAttributes attrs = createAttributes();
         Credentials credentials = PasswordSafe.getInstance().get(attrs);
         return credentials != null ? credentials.getPasswordAsString() : null;
@@ -45,46 +66,106 @@ public final class BbjEMTokenStore {
     public static void deleteToken() {
         CredentialAttributes attrs = createAttributes();
         PasswordSafe.getInstance().set(attrs, null);
+        TokenValidationCache.SESSION.invalidate();
     }
 
     /**
      * Check if a JWT token is expired by decoding its payload and checking the exp claim.
-     * Returns true if token is expired, false otherwise or if unable to determine.
+     * Anything that is not positively decoded as an unexpired JWT is reported expired (#535):
+     * a non-3-part token, a payload with no {@code exp} claim, and any decode/parse failure all
+     * classify {@link JwtValidity.Result#MALFORMED} and are treated as expired here -- there is
+     * no result meaning "cannot tell, let the server decide".
      *
      * @param token the JWT token to check
-     * @return true if expired, false otherwise
+     * @return true if expired or unclassifiable, false only for a positively decoded, unexpired JWT
      */
     public static boolean isTokenExpired(@Nullable String token) {
-        if (token == null || token.isEmpty()) {
-            return false;
+        return JwtValidity.check(token, System.currentTimeMillis() / 1000) != JwtValidity.Result.VALID;
+    }
+
+    /**
+     * Production notifier behind {@link #BACKEND_NOTICE}: raises a non-modal WARNING balloon naming
+     * the store the token actually landed in. Non-modal deliberately -- the login path already shows
+     * a modal success dialog, and a second modal on top of it would be unwelcome (#552).
+     *
+     * <p>{@link TokenBackend#NATIVE_KEYCHAIN} never reaches this method (the policy filters it out
+     * before calling the notifier), so it is a no-op here rather than a fourth message.
+     */
+    private static void showBackendBalloon(TokenBackend backend) {
+        String body;
+        switch (backend) {
+            case KEEPASS_FILE:
+                body = "IntelliJ is keeping your Enterprise Manager token in a KeePass file, not the operating system keychain.";
+                break;
+            case MEMORY_ONLY:
+                body = "IntelliJ is keeping your Enterprise Manager token in memory only - it will be lost when the IDE restarts.";
+                break;
+            case UNKNOWN:
+                body = "IntelliJ is keeping your Enterprise Manager token in an unrecognised password store, not the operating system keychain.";
+                break;
+            default:
+                return;
         }
 
+        Notification notification = new Notification(
+            "BBj Language Server",
+            "Enterprise Manager token is not in the OS keychain",
+            body,
+            NotificationType.WARNING
+        );
+
+        notification.addAction(new NotificationAction("Open Password Settings") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                ShowSettingsUtil.getInstance().showSettingsDialog(e.getProject(), "Passwords");
+                notification.expire();
+            }
+        });
+        notification.addAction(new NotificationAction("Dismiss") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e, @NotNull Notification notification) {
+                notification.expire();
+            }
+        });
+
+        Notifications.Bus.notify(notification);
+    }
+
+    /**
+     * Classify the credential store PasswordSafe resolved to for this IDE.
+     *
+     * <p>This is the only method in the plugin that names the platform's password-settings API. That
+     * API is marked internal on the pinned platform, so a breaking change to it has to fail here and
+     * nowhere else -- a source guard keeps it that way. Everything this method cannot positively
+     * identify as the native keychain becomes {@link TokenBackend#UNKNOWN}, which is warn-worthy: a
+     * detection failure that quietly passed as "keychain" would defeat the point of the notice (#552).
+     *
+     * @return the resolved backend, or {@link TokenBackend#UNKNOWN} on any failure
+     */
+    static TokenBackend resolveBackend() {
         try {
-            // JWTs have 3 dot-separated parts: header.payload.signature
-            String[] parts = token.split("\\.");
-            if (parts.length != 3) {
-                return false; // Not a JWT, let server decide
+            PasswordSafeSettings settings =
+                ApplicationManager.getApplication().getService(PasswordSafeSettings.class);
+            if (settings == null) {
+                return TokenBackend.UNKNOWN;
             }
-
-            // Base64url-decode the payload (index 1)
-            byte[] decodedBytes = Base64.getUrlDecoder().decode(parts[1]);
-            String payload = new String(decodedBytes, StandardCharsets.UTF_8);
-
-            // Parse JSON manually to extract exp claim (no external dependency)
-            Pattern expPattern = Pattern.compile("\"exp\"\\s*:\\s*(\\d+)");
-            Matcher matcher = expPattern.matcher(payload);
-
-            if (!matcher.find()) {
-                return false; // No exp claim, can't determine
+            ProviderType provider = settings.getProviderType();
+            if (provider == null) {
+                return TokenBackend.UNKNOWN;
             }
-
-            long exp = Long.parseLong(matcher.group(1));
-            long now = System.currentTimeMillis() / 1000;
-
-            return exp <= now;
-        } catch (Exception e) {
-            // If any parsing fails, let server validate
-            return false;
+            switch (provider) {
+                case KEYCHAIN:
+                    return TokenBackend.NATIVE_KEYCHAIN;
+                case KEEPASS:
+                    return TokenBackend.KEEPASS_FILE;
+                case MEMORY_ONLY:
+                case DO_NOT_STORE:
+                    return TokenBackend.MEMORY_ONLY;
+                default:
+                    return TokenBackend.UNKNOWN;
+            }
+        } catch (Throwable t) {
+            return TokenBackend.UNKNOWN;
         }
     }
 }

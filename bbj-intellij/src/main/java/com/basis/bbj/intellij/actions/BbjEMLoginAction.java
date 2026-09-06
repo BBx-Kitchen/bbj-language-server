@@ -50,12 +50,15 @@ public final class BbjEMLoginAction extends AnAction {
      * actions' {@code buildCommandLine()} callers, both of which now dispatch to a pooled
      * thread) -- the blocking network call this method makes (up to 15s) would otherwise
      * freeze the IDE (CR-02). Each dialog this method shows is individually routed back to
-     * the EDT via {@code invokeAndWait}.
+     * the EDT via {@code invokeAndWait}. The off-EDT requirement is now asserted at runtime,
+     * not only documented: the first statement below fails loudly if any future caller ever
+     * reaches this method on the dispatch thread.
      *
      * @param project current project (can be null)
      * @return true if login succeeded and token was stored, false if cancelled or failed
      */
     public static boolean performLogin(@Nullable Project project) {
+        ApplicationManager.getApplication().assertIsNonDispatchThread();
         BbjSettings.State state = BbjSettings.getInstance().getState();
         String bbjHome = state.bbjHomePath;
         if (bbjHome == null || bbjHome.isEmpty()) {
@@ -140,6 +143,20 @@ public final class BbjEMLoginAction extends AnAction {
             if (stdout.isEmpty()) {
                 showErrorOnEdt(
                     "No token received from EM login",
+                    "EM Login Failed"
+                );
+                return false;
+            }
+
+            // #535: a token that is not positively decodable here would otherwise be stored
+            // and then reported expired on every subsequent Run -- surface the failure once
+            // at login instead of silently at each launch. The message is a fixed literal:
+            // it must not interpolate stdout, the classification, or any part of the
+            // payload, since a login failure dialog is user-visible and the token is a
+            // bearer credential.
+            if (JwtValidity.check(stdout, System.currentTimeMillis() / 1000) != JwtValidity.Result.VALID) {
+                showErrorOnEdt(
+                    "Enterprise Manager returned an unusable token",
                     "EM Login Failed"
                 );
                 return false;

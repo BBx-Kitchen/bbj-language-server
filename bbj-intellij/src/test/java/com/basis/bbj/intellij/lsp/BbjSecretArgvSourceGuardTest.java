@@ -34,6 +34,11 @@ class BbjSecretArgvSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "lsp", "BbjProcessSecretEnv.java")
             .toAbsolutePath();
 
+    /** The pure ACL builder the Windows branch supplies at creation, in the same lsp directory. */
+    private static final Path OWNER_ONLY_ACL = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "lsp", "OwnerOnlyAcl.java")
+            .toAbsolutePath();
+
     /** The four secret-bearing call sites, guarded identically. */
     private static final List<Path> ALL_GUARDED_ACTION_FILES =
             List.of(RUN_ACTION_BASE, EM_LOGIN_ACTION, RUN_BUI_ACTION, RUN_DWC_ACTION);
@@ -269,6 +274,159 @@ class BbjSecretArgvSourceGuardTest {
         assertTrue(countOccurrences(text, "PosixFilePermissions.asFileAttribute") >= 1,
                 "createOwnerOnlyFile must set its permissions explicitly at creation time via "
                         + "PosixFilePermissions.asFileAttribute, not rely on the JDK's implementation default");
+    }
+
+    // --- #536 Windows half: the ACL attribute is wired into the creation call ---
+    //
+    // No test on a Linux host can execute the ACL branch of createOwnerOnlyFile —
+    // this filesystem always reports the posix attribute view, so the strategy
+    // selector always returns "posix" here and CI is ubuntu-latest only. The
+    // behavioural tests (OwnerOnlyAclTest, and the strategy-selection cases in
+    // BbjProcessSecretEnvTest) prove the builder's values and the branch choice;
+    // these guards prove those values are actually wired into the creation call,
+    // and that the superseded default-permission fallback did not survive as dead
+    // code that a later refactor could quietly reactivate.
+
+    @Test
+    void theBareTwoArgumentTempFileCreationIsGoneEntirely() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        assertEquals(0, countOccurrences(text, "createTempFile(prefix, suffix)"),
+                "BbjProcessSecretEnv.java must not contain a bare two-argument "
+                        + "createTempFile(prefix, suffix) call — every creation path must supply an "
+                        + "explicit owner-only attribute, so the default-permission fallback has to be "
+                        + "deleted rather than left unreachable");
+    }
+
+    @Test
+    void theAclAttributeIsSuppliedAtCreationOnThePrimaryWindowsPath() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        assertTrue(countOccurrences(text, "OwnerOnlyAcl.asFileAttribute(") >= 1,
+                "createOwnerOnlyFile must pass OwnerOnlyAcl.asFileAttribute(owner) to the temp-file "
+                        + "creation call, so — exactly as on POSIX — the file never exists with a broader DACL");
+    }
+
+    @Test
+    void thePosixBranchesExplicitAttributeIsStillTheOnlyOneOfItsKind() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        assertEquals(1, countOccurrences(text, "PosixFilePermissions.asFileAttribute"),
+                "the POSIX branch is the already-shipped fix and must remain exactly one explicit "
+                        + "PosixFilePermissions.asFileAttribute creation — adding the Windows half must not "
+                        + "duplicate, re-gate or weaken it");
+    }
+
+    @Test
+    void theCapabilityIsDecidedBeforeAnyFileExists() {
+        String body = extractMethodBody(readGuardedSource(BBJ_PROCESS_SECRET_ENV),
+                "public static Path createOwnerOnlyFile(");
+        assertTrue(body != null, "createOwnerOnlyFile( was not found in " + BBJ_PROCESS_SECRET_ENV);
+        int strategyIndex = body.indexOf("selectOwnerOnlyStrategy(");
+        int creationIndex = body.indexOf("Files.createTempFile(");
+        assertTrue(strategyIndex >= 0, "createOwnerOnlyFile must call selectOwnerOnlyStrategy(");
+        assertTrue(creationIndex >= 0, "createOwnerOnlyFile must create a temporary file");
+        assertTrue(strategyIndex < creationIndex,
+                "selectOwnerOnlyStrategy must be consulted before the first Files.createTempFile( in "
+                        + "createOwnerOnlyFile — a filesystem with no owner-only capability has to raise "
+                        + "before any secret-bearing file exists, not after");
+    }
+
+    @Test
+    void theSecondBestPathDeletesAFileItCouldNotRestrict() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        int setAclCount = countOccurrences(text, "setAcl(");
+        assertTrue(setAclCount <= 1,
+                "there must be at most one post-creation setAcl( call — the window between creation "
+                        + "and restriction is the second-best path, reserved for a principal the lookup "
+                        + "service cannot name; found " + setAclCount);
+        if (setAclCount == 1) {
+            assertTrue(text.indexOf("deleteIfExists(") > text.indexOf("setAcl("),
+                    "the post-creation setAcl( must be followed by a deleteIfExists( cleanup — a file "
+                            + "that was created but could not be restricted must not survive on disk");
+        }
+    }
+
+    @Test
+    void theAclBuilderNamesTheAttributeAndSetsNoInheritFlags() {
+        String text = readGuardedSource(OWNER_ONLY_ACL);
+        assertAll("OwnerOnlyAcl attribute shape",
+                () -> assertTrue(countOccurrences(text, "acl:acl") >= 1,
+                        "OwnerOnlyAcl.java must name the acl:acl file attribute — that is the name the "
+                                + "Windows provider recognises on Files.createTempFile"),
+                () -> assertEquals(0, countOccurrences(text, "FILE_INHERIT"),
+                        "the owner-only entry must carry no FILE_INHERIT flag — the file has no children "
+                                + "and an inheriting grant would propagate"),
+                () -> assertEquals(0, countOccurrences(text, "DIRECTORY_INHERIT"),
+                        "the owner-only entry must carry no DIRECTORY_INHERIT flag — the file has no "
+                                + "children and an inheriting grant would propagate"));
+    }
+
+    /**
+     * A guard that searched the whole file would be satisfied by a Javadoc sentence
+     * mentioning the permissions while the set itself had been narrowed back --
+     * exactly the regression being guarded against. Scoping the assertion to the
+     * {@code Set.of(} initializer's own argument text closes that hole.
+     */
+    @Test
+    void theOwnerPermissionFloorGrantsTheExtendedAttributeBits() {
+        String text = readGuardedSource(OWNER_ONLY_ACL);
+        String permissionSet = extractBalancedCallArgument(text, "Set.of(");
+        assertTrue(permissionSet != null,
+                "OwnerOnlyAcl.java must declare its permission floor as a single Set.of( initializer -- "
+                        + "that is what this guard scopes to");
+        assertAll("owner permission floor grants the extended-attribute bits (#536)",
+                () -> assertTrue(countOccurrences(permissionSet, "READ_NAMED_ATTRS") >= 1,
+                        "Windows folds READ_NAMED_ATTRS into the GENERIC_READ right a file open requests, "
+                                + "and an access check denies the entire open when any requested bit is "
+                                + "ungranted -- removing it from the floor makes BBj unable to open the "
+                                + "owner-only temp file the plugin created for it (#536)"),
+                () -> assertTrue(countOccurrences(permissionSet, "WRITE_NAMED_ATTRS") >= 1,
+                        "Windows folds WRITE_NAMED_ATTRS into the GENERIC_WRITE right a file open requests, "
+                                + "and an access check denies the entire open when any requested bit is "
+                                + "ungranted -- removing it from the floor makes BBj unable to open the "
+                                + "owner-only temp file the plugin created for it (#536)"));
+    }
+
+    @Test
+    void theSupersededPerUserTempDirectoryRationaleIsGone() {
+        String text = readGuardedSource(BBJ_PROCESS_SECRET_ENV);
+        assertEquals(0, countOccurrences(text, "already ACL-restricted to the owning account"),
+                "the comment arguing the per-user temporary directory is restrictive enough must be "
+                        + "gone — it justified the default-permission fallback this fix deletes, and "
+                        + "leaving it would document a guarantee the code no longer makes");
+    }
+
+    /**
+     * Returns the body of the method whose declaration starts with {@code declarationPrefix},
+     * from its opening brace to the matching close brace, by a balanced-brace scan (the same
+     * idiom as {@link #extractBalancedCallArgument(String, String)}). Scanning from the
+     * declaration rather than the whole file keeps the preceding Javadoc — which mentions the
+     * same identifiers this guard orders — out of the compared indices.
+     */
+    private static String extractMethodBody(String text, String declarationPrefix) {
+        int declaration = text.indexOf(declarationPrefix);
+        if (declaration < 0) {
+            return null;
+        }
+        int open = text.indexOf('{', declaration);
+        if (open < 0) {
+            return null;
+        }
+        int depth = 1;
+        int i = open + 1;
+        while (i < text.length() && depth > 0) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+            }
+            if (depth > 0) {
+                i++;
+            }
+        }
+        if (depth != 0) {
+            return null;
+        }
+        return text.substring(open + 1, i);
     }
 
     private static int countOccurrences(String text, String literal) {

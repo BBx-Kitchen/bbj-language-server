@@ -35,6 +35,23 @@ interface CompileHandle {
 }
 
 /**
+ * Result of an explicit, options-aware bbjcpl invocation via {@link BBjCPLService.compileWithOptions}.
+ *
+ * Unlike {@link BBjCPLService.compile}'s `Diagnostic[]`-only return, this shape carries the raw
+ * `stderr` text alongside the parsed diagnostics, so a caller can distinguish "compiled cleanly"
+ * from "bbjcpl reported something `parseBbjcplOutput` could not parse" (#571)
+ * — the exit code carries no information (bbjcpl always exits 0), so success is classified as
+ * `stderr.trim() === ''`, never as an empty `diagnostics` array and never from the process's
+ * completion status.
+ */
+export interface CompileRun {
+    success: boolean;
+    stderr: string;
+    diagnostics: Diagnostic[];
+    failure?: 'bbj-home-not-configured' | 'bbjcpl-not-found' | 'compile-timeout' | 'spawn-failed';
+}
+
+/**
  * Spawns the bbjcpl binary to compile BBj source files and produce
  * LSP Diagnostic objects from the compiler's stderr output.
  *
@@ -198,6 +215,99 @@ export class BBjCPLService {
                 } else {
                     logger.warn(`bbjcpl error: ${err.message}`);
                     settle([]);
+                }
+            });
+        });
+    }
+
+    /**
+     * Compile a BBj source file with an explicit, caller-supplied argv (no `-N`, no
+     * abort-on-resave), for the `bbj/compile` request (#571).
+     *
+     * This is a sibling to {@link compile}, not a replacement: it never reads, writes or
+     * clears {@link inFlight}, so the background validate-only path's abort-on-resave map is
+     * untouched and an explicit compile is never cancelled by a save, nor does an
+     * explicit compile cancel a concurrent background compile of the same file. Two
+     * concurrent calls to this method for the same file both run to completion independently.
+     *
+     * Success is classified as `stderr.trim() === ''` — never from the process's exit status
+     * (bbjcpl always exits 0) and never from an empty `diagnostics` array, since a fatal
+     * bbjcpl error that `parseBbjcplOutput` cannot parse (an overwrite refusal, an invalid
+     * output directory) produces empty diagnostics too.
+     *
+     * @param filePath Absolute path to the .bbj file to compile.
+     * @param compilerArgs The bbjcpl argument array built from the effective `bbj.compiler.*`
+     *   options (never `-N` here — this is a real compile, not validate-only).
+     */
+    async compileWithOptions(filePath: string, compilerArgs: string[]): Promise<CompileRun> {
+        const bbjcplBin = this.getBbjcplPath();
+        if (!bbjcplBin) {
+            return { success: false, stderr: '', diagnostics: [], failure: 'bbj-home-not-configured' };
+        }
+
+        return new Promise<CompileRun>((resolve) => {
+            let stderr = '';
+            let stdout = '';
+            let proc: ReturnType<typeof spawn> | null = null;
+            let settled = false;
+
+            function settle(result: CompileRun) {
+                if (!settled) {
+                    settled = true;
+                    resolve(result);
+                }
+            }
+
+            // Set up timeout to kill the process after timeoutMs
+            const timeoutId = setTimeout(() => {
+                if (proc && proc.pid !== undefined) {
+                    proc.kill();
+                }
+                settle({ success: false, stderr: '', diagnostics: [], failure: 'compile-timeout' });
+            }, this.timeoutMs);
+
+            try {
+                // Argument array, never a shell string — each configured option string maps
+                // to exactly one array element (one option string, one argv element).
+                proc = spawn(bbjcplBin, [...compilerArgs, filePath]);
+            } catch (spawnErr: unknown) {
+                // Synchronous spawn error (rare — usually ENOENT comes as async 'error' event)
+                clearTimeout(timeoutId);
+                const err = spawnErr as NodeJS.ErrnoException;
+                if (err.code === 'ENOENT') {
+                    logger.info('bbjcpl not found — cannot run explicit compile');
+                    settle({ success: false, stderr: '', diagnostics: [], failure: 'bbjcpl-not-found' });
+                } else {
+                    logger.warn(`bbjcpl spawn error: ${err.message}`);
+                    settle({ success: false, stderr: '', diagnostics: [], failure: 'spawn-failed' });
+                }
+                return;
+            }
+
+            proc.stderr?.on('data', (chunk: Buffer) => {
+                stderr += chunk.toString();
+            });
+
+            proc.stdout?.on('data', (chunk: Buffer) => {
+                stdout += chunk.toString();
+            });
+
+            proc.on('close', () => {
+                clearTimeout(timeoutId);
+                if (stdout) {
+                    logger.debug(() => `bbjcpl stdout: ${stdout}`);
+                }
+                settle({ success: stderr.trim() === '', stderr, diagnostics: parseBbjcplOutput(stderr) });
+            });
+
+            proc.on('error', (err: NodeJS.ErrnoException) => {
+                clearTimeout(timeoutId);
+                if (err.code === 'ENOENT') {
+                    logger.info('bbjcpl not found — cannot run explicit compile');
+                    settle({ success: false, stderr: '', diagnostics: [], failure: 'bbjcpl-not-found' });
+                } else {
+                    logger.warn(`bbjcpl error: ${err.message}`);
+                    settle({ success: false, stderr: '', diagnostics: [], failure: 'spawn-failed' });
                 }
             });
         });
