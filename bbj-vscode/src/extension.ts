@@ -27,6 +27,8 @@ import {
 } from './Commands/CompilerOptions.js';
 import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
+import { setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
+import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 
 import Commands from './Commands/Commands.cjs';
 
@@ -830,6 +832,17 @@ export function activate(context: vscode.ExtensionContext): void {
             bbjcplStatusBar.hide();
         } else {
             bbjcplStatusBar.show();
+        }
+    });
+
+    // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
+    // throws and never blocks activation — a bad payload just means no cache update.
+    client.onNotification(RESOLVED_CONFIG_PATH_METHOD, (params: ResolvedConfigPathResult) => {
+        setResolvedConfigPath(params);
+        if (params.path && !params.exists && shouldWarnOnce(params.path)) {
+            vscode.window.showWarningMessage(
+                `BBj config file not found or unreadable: ${params.path}. No prefixes were loaded.`
+            );
         }
     });
 
