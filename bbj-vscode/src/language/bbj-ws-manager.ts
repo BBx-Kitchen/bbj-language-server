@@ -21,6 +21,7 @@ import { builtinEvents } from "./lib/events.js";
 import { setTypeResolutionWarnings } from "./bbj-validator.js";
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from "./bbj-document-validator.js";
 import { setParameterHintMode } from "./bbj-inlay-hint-provider.js";
+import { resolveConfigPath, type ResolvedConfigPath } from "./config-path-resolver.js";
 
 export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
@@ -280,6 +281,14 @@ export class BBjWorkspaceManager extends DefaultWorkspaceManager {
 
     public setConfigPath(path: string): void {
         this.configPath = path;
+    }
+
+    /**
+     * The one shared answer to "which file is the BBj config file", derived from this
+     * instance's current `configPath`/`bbjdir` fields through the single shared resolver.
+     */
+    public getResolvedConfigPath(): ResolvedConfigPath {
+        return resolveConfigPath({ configPathSetting: this.configPath, bbjHome: this.bbjdir });
     }
 
     /** The effective `bbj.compiler.*` configuration, nested one level under `compiler` (#571). */

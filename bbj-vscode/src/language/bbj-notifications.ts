@@ -11,12 +11,16 @@
  */
 
 import type { Connection } from 'vscode-languageserver';
+import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './resolved-config-path-request.js';
 
 /** The LSP connection — set by main.ts via initNotifications(). */
 let _connection: Connection | null = null;
 
 /** Deduplication guard: only send notification when the value changes. */
 let bbjcplAvailableState: boolean | undefined = undefined;
+
+/** Deduplication guard: only send the resolved-config-path notification when the value changes. */
+let resolvedConfigPathState: string | undefined = undefined;
 
 /**
  * Initialize the notification module with the LSP connection.
@@ -35,6 +39,21 @@ export function notifyBbjcplAvailability(available: boolean): void {
     if (bbjcplAvailableState !== available) {
         bbjcplAvailableState = available;
         _connection?.sendNotification('bbj/bbjcplAvailability', { available });
+    }
+}
+
+/**
+ * Send a `bbj/resolvedConfigPath` notification to the client — the same method name and
+ * payload shape as the `bbj/resolvedConfigPath` request's result, so a host can hook one
+ * message for both the initial answer and every later change. Deduplicates by comparing the
+ * serialized payload — only sends when the resolved value actually changes. No-op if the
+ * connection has not been initialized yet.
+ */
+export function notifyResolvedConfigPath(result: ResolvedConfigPathResult): void {
+    const serialized = JSON.stringify(result);
+    if (resolvedConfigPathState !== serialized) {
+        resolvedConfigPathState = serialized;
+        _connection?.sendNotification(RESOLVED_CONFIG_PATH_METHOD, result);
     }
 }
 

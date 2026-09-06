@@ -13,9 +13,10 @@ import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
 import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
-import { initNotifications } from './bbj-notifications.js';
+import { initNotifications, notifyResolvedConfigPath } from './bbj-notifications.js';
 import { registerComposerRequests } from './composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
+import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -45,6 +46,12 @@ connection.onRequest('bbj/refreshJavaClasses', async () => {
 // language server, with no bbjcpl invocation logic duplicated on the IntelliJ side (#571).
 registerCompileRequest(connection, {
     cplService: BBj.compiler.BBjCPLService,
+    wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+});
+
+// The one shared answer to "which file is the BBj config file" (#485), exposed on-demand
+// alongside the pushed notification registered below.
+registerResolvedConfigPathRequest(connection, {
     wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
 });
 
@@ -102,6 +109,8 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
     if (!workspaceInitialized) {
         workspaceInitialized = true;
         refreshInlayHints();
+        const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
     }
 });
 
