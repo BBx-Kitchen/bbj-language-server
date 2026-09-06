@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 85
 current_phase_name: Config Hot-Reload With Restart Coalescing
 status: executing
-stopped_at: Phase 85 context gathered
-last_updated: "2026-09-06T23:18:27.613Z"
+stopped_at: Completed 85-01-PLAN.md
+last_updated: "2026-09-06T23:39:03.898Z"
 last_activity: 2026-09-06
-last_activity_desc: Phase 84 complete, transitioned to Phase 85
-state_head: 8aa88b662f02750f4f37b1b29fe571fcf4221b82
+last_activity_desc: Phase 85 execution started
+state_head: ab2c9ab70975f0a2e6aeb1839687689cc5da3965
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 11
-  completed_plans: 6
+  completed_plans: 7
   percent: 11
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 ## Current Position
 
-Phase: 85 (Config Hot-Reload With Restart Coalescing) — READY TO EXECUTE
-Plan: Not started
+Phase: 85 (Config Hot-Reload With Restart Coalescing) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-09-06 — Phase 84 complete, transitioned to Phase 85
+Last activity: 2026-09-06 — Phase 85 execution started
 
 ## Performance Metrics
 
@@ -147,6 +147,7 @@ Last activity: 2026-09-06 — Phase 84 complete, transitioned to Phase 85
 | Phase 84 P03 | 25min | 3 tasks | 7 files |
 | Phase 84 P05 | 25min | 3 tasks | 12 files |
 | Phase 84 P06 | 20min | 3 tasks | 9 files |
+| Phase 85 P01 | 17min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84]: Phase 84 Plan 05: BbxConfigLanguage/BbjConfigFileType give IntelliJ its own config Language and file type (no parser, unmapped to the server); BbxConfigSyntaxHighlighterFactory resolves the bbx grammar by a constant default filename instead of the opened file's name; BbjConfigFileTypeOverrider delegates entirely to BbjConfigPathService.isConfigFile at runtime; update() re-parses the previously/newly active config files via reparseFiles inside invokeLater only when the active path actually changes, guarded for the no-live-Application plain-JUnit case.
 - [Phase 84]: Phase 84 Plan 06: getConfigPathArg()/getConfigPath() redirected to BbjConfigPathService.activeConfigPath(); ConfigPaths.configPathArg() refuses the EM Config sentinel as the single tested guard; BUI/DWC actions abort with a named notification on a blank resolved path instead of registering an empty value with EM; the Settings dialog's configPathField gets a non-blocking ComponentValidator sharing the component's single AlarmScheduler via a new debouncer, with a win32-drive-letter absolute-path rule tested through an injectable OS name.
 - [Phase 84 UAT]: All eight live-IDE checks passed by hand on 2026-09-06 (macOS, VS Code + IntelliJ builds from `main` @ 98a1f65c); `ps` showed both hosts spawning `bbjinit` with the resolved `-c/…/barista.cfg`. One false alarm (IntelliJ custom config "not detected") was resolved by checking the gear icon and the Language Servers tool window — the tester expected a SETOPTS editor link, which exists only in VS Code. Accepted as-is: the VS Code inactive-config hint fires only on the Command Palette entry point (CodeLens/Code Action pass an argument and skip it), matching QA row 11's wording. Post-UAT: 84-VALIDATION.md nyquist-compliant (18 tasks, 2 gaps filled with new tests: VS Code missing-file warning once-per-path, IntelliJ notification-handler source guard), 84-SECURITY.md threats_open 0 (25 threats). CFG-01/CFG-02 (#485) closed.
+- [Phase 85]: Phase 85 Plan 01: extractConsumedConfigContent/consumedConfigSnapshot in config-path-resolver.ts is the single shared PREFIX-reading function; initializeWorkspace and the hot-reload relevance gate both call it, with a source-scan test proving no second parser exists.
+- [Phase 85]: Phase 85 Plan 01: notifyConfigReloadRequired is deliberately undeduplicated (unlike notifyResolvedConfigPath); the config-watcher.ts relevance gate is the sole point deciding whether a reload notification fires, so a sender-side dedupe would be a redundant second suppression layer.
 
 ### Tech Debt
 
@@ -293,9 +296,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T22:43:34.857Z
-Stopped at: Phase 85 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/85-config-hot-reload-with-restart-coalescing/85-CONTEXT.md
+Last session: 2026-09-06T23:39:03.823Z
+Stopped at: Completed 85-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
 Config Hot-Reload With Restart Coalescing (CFG-03, #486); it depends on Phase 84's
