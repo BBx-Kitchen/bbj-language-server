@@ -77,6 +77,9 @@ public class BbjSettingsComponent {
                 if (path.isEmpty() || lookup == null || !lookup.path().equals(path)) {
                     return null;
                 }
+                if (lookup.failed()) {
+                    return null;
+                }
                 if (!lookup.valid()) {
                     return new ValidationInfo(
                         "BBj.properties not found in " + path + "/cfg/",
@@ -114,6 +117,9 @@ public class BbjSettingsComponent {
                 String path = nodeJsField.getText().trim();
                 BbjSettingsLookups.NodeLookup lookup = lastNodeLookup;
                 if (path.isEmpty() || lookup == null || !lookup.path().equals(path)) {
+                    return null;
+                }
+                if (lookup.failed()) {
                     return null;
                 }
                 if (!lookup.exists()) {
@@ -266,7 +272,12 @@ public class BbjSettingsComponent {
     private void applyHomeLookup(BbjSettingsLookups.HomeLookup lookup) {
         lastHomeLookup = lookup;
         classpathLookupPending = false;
-        if (!lookup.valid()) {
+        if (lookup.failed()) {
+            classpathCombo.setEnabled(false);
+            classpathCombo.setModel(new CollectionComboBoxModel<>(
+                List.of("(set BBj home first)")
+            ));
+        } else if (!lookup.valid()) {
             classpathCombo.setEnabled(false);
             classpathCombo.setModel(new CollectionComboBoxModel<>(
                 List.of("(set BBj home first)")
@@ -290,7 +301,9 @@ public class BbjSettingsComponent {
      */
     private void applyNodeLookup(BbjSettingsLookups.NodeLookup lookup) {
         lastNodeLookup = lookup;
-        if (!lookup.exists()) {
+        if (lookup.failed()) {
+            nodeVersionLabel.setText("Could not check Node.js version");
+        } else if (!lookup.exists()) {
             nodeVersionLabel.setText(" ");
         } else if (lookup.version() == null) {
             nodeVersionLabel.setText("Could not detect Node.js version");
