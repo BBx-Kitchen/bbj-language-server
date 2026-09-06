@@ -132,6 +132,15 @@
             language="BBj"
             extensions="bbj;bbjt;src;bbx"/>
 
+        <!-- Plugin-owned config file type; the runtime override (BbjConfigFileTypeOverrider)
+             authoritatively resolves the bbx overlap with the BBj entry above -->
+        <fileType
+            name="BBx Config"
+            implementationClass="com.basis.bbj.intellij.BbjConfigFileType"
+            fieldName="INSTANCE"
+            language="BBx Config"
+            fileNamesCaseInsensitive="config.bbx;Config.bbx;config.min;Config.min"/>
+
         <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
         <lang.parserDefinition
             language="BBj"
