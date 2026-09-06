@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 84
-current_phase_name: Config Path Resolution & Discoverability Foundation
-status: verifying
-stopped_at: Completed 84-06-PLAN.md
-last_updated: "2026-09-06T16:20:27.822Z"
+current_phase: 85
+current_phase_name: Config Hot-Reload With Restart Coalescing
+status: planning
+stopped_at: Phase 84 complete, ready to plan Phase 85
+last_updated: "2026-09-06T21:20:24.336Z"
 last_activity: 2026-09-06
-last_activity_desc: Phase 84 execution started
-state_head: b688ee5861f3e91ed03831f891cca2c9c863705d
+last_activity_desc: Phase 84 complete, transitioned to Phase 85
+state_head: 96f6d8f4d1ef8c0492d80bee0dc7e17ccc102d2a
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 6
   completed_plans: 6
-  percent: 0
+  percent: 11
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-06 (v4.3 roadmap created — Phases 84-92, 25/25 requirements mapped)
+**Last Updated:** 2026-09-06 (Phase 84 complete — UAT 8/8, Nyquist-compliant, 25/25 threats closed; Phase 85 ready to plan)
 
 ## Project Reference
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 84 — Config Path Resolution & Discoverability Foundation
+**Current Focus:** Phase 85 — Config Hot-Reload With Restart Coalescing
 
 ---
 
 ## Current Position
 
-Phase: 84 (Config Path Resolution & Discoverability Foundation) — EXECUTING
-Plan: 6 of 6
-Status: Phase complete — ready for verification
-Last activity: 2026-09-06 — Phase 84 execution started
+Phase: 85 — Config Hot-Reload With Restart Coalescing
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-06 — Phase 84 complete, transitioned to Phase 85
 
 ## Performance Metrics
 
@@ -45,8 +45,8 @@ Last activity: 2026-09-06 — Phase 84 execution started
 
 **Started:** 2026-02-01
 **Milestones shipped:** 19
-**Phases completed:** 83
-**Plans completed:** 267
+**Phases completed:** 84
+**Plans completed:** 273
 **Days elapsed:** 217
 **Velocity:** ~1.2 plans/day (lifetime); v4.2 ran at ~8 plans/day over 3 days
 
@@ -228,6 +228,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84]: readerWithResolvedConfigFile is a reader wrapper, not an edit to buildCompileOptionsFrom — Keeps the -c argument's argv position and the existing -c/-P conflict rule provably unchanged whether the value came from injection or an explicit setting.
 - [Phase 84]: Phase 84 Plan 05: BbxConfigLanguage/BbjConfigFileType give IntelliJ its own config Language and file type (no parser, unmapped to the server); BbxConfigSyntaxHighlighterFactory resolves the bbx grammar by a constant default filename instead of the opened file's name; BbjConfigFileTypeOverrider delegates entirely to BbjConfigPathService.isConfigFile at runtime; update() re-parses the previously/newly active config files via reparseFiles inside invokeLater only when the active path actually changes, guarded for the no-live-Application plain-JUnit case.
 - [Phase 84]: Phase 84 Plan 06: getConfigPathArg()/getConfigPath() redirected to BbjConfigPathService.activeConfigPath(); ConfigPaths.configPathArg() refuses the EM Config sentinel as the single tested guard; BUI/DWC actions abort with a named notification on a blank resolved path instead of registering an empty value with EM; the Settings dialog's configPathField gets a non-blocking ComponentValidator sharing the component's single AlarmScheduler via a new debouncer, with a win32-drive-letter absolute-path rule tested through an injectable OS name.
+- [Phase 84 UAT]: All eight live-IDE checks passed by hand on 2026-09-06 (macOS, VS Code + IntelliJ builds from `main` @ 98a1f65c); `ps` showed both hosts spawning `bbjinit` with the resolved `-c/…/barista.cfg`. One false alarm (IntelliJ custom config "not detected") was resolved by checking the gear icon and the Language Servers tool window — the tester expected a SETOPTS editor link, which exists only in VS Code. Accepted as-is: the VS Code inactive-config hint fires only on the Command Palette entry point (CodeLens/Code Action pass an argument and skip it), matching QA row 11's wording. Post-UAT: 84-VALIDATION.md nyquist-compliant (18 tasks, 2 gaps filled with new tests: VS Code missing-file warning once-per-path, IntelliJ notification-handler source guard), 84-SECURITY.md threats_open 0 (25 threats). CFG-01/CFG-02 (#485) closed.
 
 ### Tech Debt
 
@@ -280,6 +281,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; Phase 83 fenced the Gradle-pinned surface (canaries, allowlist, version-pin test), but runtime version skew in the IDE is still only covered by the reflective message read and remains a known limit.
 - ⚠️ [Phase 83] Code review (83-REVIEW.md, advisory, 0 critical / 5 warnings / 3 info): cancellation during Unix `tar` extraction only fires on output lines a silent `tar xzf` never emits (WR-01); the outer temp-file cleanup in `NodeInstallPipeline.install()` is unguarded and can mask the real exception (WR-02); the `tar` process stdin pipe is never closed (WR-03); zip entry match uses `endsWith("node.exe")` rather than an exact name (WR-04); `flushPendingHomeLookup()` still runs the blocking lookup synchronously on the EDT from `apply()` — the accepted Phase 79 WR-03 tradeoff (WR-05). Info: `(D-12)` decision-id comments in `BbjSettingsComponent.java`/`BbjSettingsLookups.java` are pre-existing from Phase 79 (79-02), not added in Phase 83. Candidates for `/gsd-code-review 83 --fix` or a quick task.
 - ⚠️ [Phase 83] Todo filed: a configured-but-unusable Node path suppresses the cached-download fallback (`2026-09-06-configured-node-path-suppresses-cached-download-fallback.md`); pinned as-is by 83-02, decision deferred.
+- ⚠️ [Phase 84] Follow-ups from UAT/validation (advisory, none blocked verification): (1) the VS Code SETOPTS inactive-config hint is shown only when the composer is launched from the Command Palette — the CodeLens and lightbulb paths pass a line argument and skip `argForActiveEditor`, so a user clicking the CodeLens on the home default edits the wrong file silently (quick-task candidate: move the hint into the shared command handler). (2) `QA/FULL-TEST-CHECKLIST.md` lacks rows for three behaviors UAT covered by hand — the IntelliJ missing-config balloon, the run-action `-c` argv check (`ps -ef | grep -- '-c/'`), and the IntelliJ Settings inline config-path validation — plus the VS Code missing-config warning, which no UAT test exercised. (3) BUI/DWC run actions were not exercised against the custom config in UAT (GUI only, both IDEs); the abort-on-blank-path notification is pinned by source guards only. (4) Review fix WR-01 (per-keystroke association listener removed) is unpinned: a re-added `onDidChangeTextDocument` trigger would fail no test. (5) The IntelliJ pre-push fallback compares the setting verbatim (no `~` expansion) while VS Code expands `~` in the same branch — harmless once the server has pushed, but a `~/…` IntelliJ setting is not recognized until then.
+- ⚠️ [Phase 84] UI-review follow-ups (advisory, 84-UI-REVIEW.md, 19/24 — copywriting 2/4 is the weak pillar): the IntelliJ Settings label still reads "config.bbx Path:" (`BbjSettingsComponent.java:281`) after the phase removed filename-specific wording everywhere else; `Commands.cjs` carries two divergent "no config path" strings (`NO_CONFIG_PATH_MESSAGE` vs. the inline string in `openConfigFile`); IntelliJ has no SETOPTS discoverability affordance (no CodeLens/hint equivalent), which is what confused the UAT tester. Candidates for a quick task; the first two are string-only.
 
 ### Quick Tasks Completed
 
@@ -290,13 +293,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T16:20:22.605Z
-Stopped at: Completed 84-06-PLAN.md
+Last session: 2026-09-06T21:20:00Z
+Stopped at: Phase 84 complete (UAT 8/8, VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review filed), ready to plan Phase 85
 Resume file: None
 
-Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
-`/gsd-plan-phase 84` to start planning the first phase (Config Path Resolution &
-Discoverability Foundation).
+Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
+Config Hot-Reload With Restart Coalescing (CFG-03, #486); it depends on Phase 84's
+resolved config path, which is now pushed as `bbj/resolvedConfigPath` to both hosts.
 
 ## Deferred Items
 

@@ -221,7 +221,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 #475 and #485, each split into two requirements). Full detail: see `## Phase Details` below and
 `.planning/REQUIREMENTS.md`.
 
-- [ ] **Phase 84: Config Path Resolution & Discoverability Foundation** - The resolved config file is honored by every consumer and gets config-file editor treatment in both IDEs, regardless of name or location
+- [x] **Phase 84: Config Path Resolution & Discoverability Foundation** - The resolved config file is honored by every consumer and gets config-file editor treatment in both IDEs, regardless of name or location (completed 2026-09-06)
 - [ ] **Phase 85: Config Hot-Reload With Restart Coalescing** - Config file edits reload the language server automatically, debounced and without racing composer writes
 - [ ] **Phase 86: IntelliJ Interop Settings & Targeted Refresh** - Java-interop port auto-detects everywhere it's read, and Refresh Java Classes no longer requires a full restart
 - [ ] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer
@@ -413,11 +413,11 @@ and push-blocked until each advisory is published. Both asymmetries are intended
 artifacts (78-83) carry no advisory detail and are tracked normally.
 
 **Current milestone:** v4.3 Polish & Quality (Phases 84-92) — in progress, started 2026-09-06.
-25/25 v1 requirements mapped, 1/9 phases planned (Phase 84: 6 plans across 3 waves). See
-`.planning/REQUIREMENTS.md` for the requirement list and `.planning/PROJECT.md` for scope.
-Next: `/gsd-execute-phase 84`.
+25/25 v1 requirements mapped, 1/9 phases complete (Phase 84: 6/6 plans, UAT 8/8, verified
+2026-09-06; CFG-01 and CFG-02 closed). See `.planning/REQUIREMENTS.md` for the requirement
+list and `.planning/PROJECT.md` for scope. Next: `/gsd-discuss-phase 85` or `/gsd-plan-phase 85`.
 
 ---
 
-*Roadmap last updated: 2026-09-06 — Phase 84 planned (6 plans, 3 waves; CFG-01 and CFG-02).
+*Roadmap last updated: 2026-09-06 — Phase 84 complete (6/6 plans; CFG-01 and CFG-02 closed).
 Next: `/gsd-execute-phase 84`.*

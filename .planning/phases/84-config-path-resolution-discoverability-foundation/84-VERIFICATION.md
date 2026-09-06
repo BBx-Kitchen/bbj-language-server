@@ -1,11 +1,12 @@
 ---
 phase: 84-config-path-resolution-discoverability-foundation
 verified: 2026-09-06T16:35:00Z
-status: human_needed
+status: passed
 score: 2/4 roadmap truths verified (2 present, behavior-unverified)
 behavior_unverified: 2
 overrides_applied: 0
 behavior_unverified_items:
+
   - truth: "Opening the configured config file in either IDE shows config-file highlighting, composer affordance, and tooling — not plain-text or BBj-source treatment (roadmap criterion 2)."
     test: "In a running VS Code and a running IntelliJ instance, point bbj.configPath / the IntelliJ config path setting at a custom-named, custom-located file and open it."
     expected: "VS Code: languageId bbx-config, bbx TextMate highlighting, SETOPTS CodeLens visible. IntelliJ: the BBx Config file type's icon, bbx TextMate highlighting via the constant-filename lookup, and no BBj diagnostics/Problems entries."
@@ -16,6 +17,7 @@ behavior_unverified_items:
     why_human: "The VS Code test suite simulates reopen by re-invoking the association handler against a mocked vscode module and asserting setTextDocumentLanguage fires again; IntelliJ's re-detection is proven by a source-guard test asserting exactly one reparseFiles call inside invokeLater. Neither exercises VS Code's or IntelliJ's real document-lifecycle machinery, which is the only place Pitfall 5 could actually resurface."
 coincidental_reliance_items: []
 human_verification:
+
   - test: "VS Code QA row 10 (FULL-TEST-CHECKLIST.md, VS Code - LSP Features): open a custom-named config file at a custom path, confirm highlighting + SETOPTS CodeLens, close/reopen, then Revert File."
     expected: "Config-file treatment survives all three transitions."
     why_human: "Visual rendering and document-lifecycle behavior; not exercisable outside a running VS Code instance."
@@ -76,6 +78,7 @@ Each plan declared 8-14 detailed `must_haves.truths` in its frontmatter (sentine
 | 84-06 | IntelliJ run consumers + settings validation | `./gradlew test --offline` (whole suite) | BUILD SUCCESSFUL; `BbjRunActionBase`/`BbjRunBuiAction`/`BbjRunDwcAction`/`BbjSettingsComponent`/`BbjSettingsLookups` source read and confirmed |
 
 Full-suite re-runs performed once each, as required:
+
 - `cd bbj-vscode && RUN_BBJ_TESTS=0 npx vitest run --maxWorkers=2` → **1219 passed, 28 skipped, 0 failed** (81 test files passed, 2 skipped).
 - `cd bbj-vscode && npx tsc -b tsconfig.json` → clean, no `error TS` lines.
 - `cd bbj-intellij && ./gradlew build --offline` → **BUILD SUCCESSFUL** (18 tasks, whole suite including `test`/`check`).
@@ -129,6 +132,7 @@ None introduced by this phase. A repo-wide + phase-file-scoped grep for `TBD|FIX
 ### Behavioral Spot-Checks / Probe Execution
 
 Full-suite runs (not filtered per-truth) executed once each:
+
 - VS Code: `npx vitest run --maxWorkers=2` (RUN_BBJ_TESTS=0) → 1219 passed, 28 skipped, 0 failed, 81 files passed / 2 skipped.
 - VS Code: `npx tsc -b tsconfig.json` → clean.
 - IntelliJ: `./gradlew build --offline` → BUILD SUCCESSFUL (includes `test` and `check`).
