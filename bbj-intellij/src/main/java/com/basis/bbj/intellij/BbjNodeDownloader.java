@@ -15,6 +15,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.HttpRequests;
 import com.intellij.util.system.CpuArch;
+import com.basis.bbj.intellij.lsp.DownloadCompletions;
 import com.basis.bbj.intellij.lsp.NodeArchiveVerifier;
 import com.basis.bbj.intellij.lsp.NodeExecutableResolver;
 import com.basis.bbj.intellij.lsp.NodeInstallIntegrity;
@@ -59,9 +60,9 @@ public final class BbjNodeDownloader {
      * Shows progress notification and calls onComplete callback when finished.
      *
      * <p>Concurrency is guarded by {@link DownloadGuard#SESSION}, acquired before the background
-     * task is even queued (D-14): only the first caller in a race starts a download, and every
+     * task is even queued: only the first caller in a race starts a download, and every
      * other caller's {@code onComplete} is attached to the running download instead and still
-     * runs on the EDT when it finishes (D-15), so the editor banner refresh never depends on
+     * runs on the EDT when it finishes, so the editor banner refresh never depends on
      * which click won.
      *
      * @param project     the current project
@@ -90,9 +91,8 @@ public final class BbjNodeDownloader {
                             "Failed to download Node.js: " + e.getMessage(),
                             NotificationType.ERROR);
                 } finally {
-                    for (Runnable completion : DownloadGuard.SESSION.release()) {
-                        ApplicationManager.getApplication().invokeLater(completion);
-                    }
+                    DownloadCompletions.dispatch(DownloadGuard.SESSION.release(),
+                            ApplicationManager.getApplication()::invokeLater);
                 }
             }
         }.queue();

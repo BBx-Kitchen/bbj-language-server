@@ -11,6 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+/**
+ * Structural guards over what remains of {@code BbjNodeDownloader} once the pipeline logic moved
+ * into {@link NodeInstallPipeline}: the download guard, the background task, the notifications,
+ * and the wiring of the production collaborators. Each method-scoped assertion first locates the
+ * body of the method it describes and asserts inside that window.
+ */
 class BbjNodeDownloaderSourceGuardTest {
 
     private static final Path GUARDED_SOURCE = Paths.get(
@@ -35,6 +41,41 @@ class BbjNodeDownloaderSourceGuardTest {
         }
     }
 
+    private static int countOccurrences(String text, String literal) {
+        int count = 0;
+        int index = 0;
+        while ((index = text.indexOf(literal, index)) != -1) {
+            count++;
+            index += literal.length();
+        }
+        return count;
+    }
+
+    /**
+     * Locates {@code declarationMarker} in {@code text}, then returns the substring from that
+     * declaration's opening brace to its matching closing brace, counted by simple depth.
+     */
+    private static String bodyOf(String text, String declarationMarker) {
+        int markerIndex = text.indexOf(declarationMarker);
+        assertTrue(markerIndex >= 0, declarationMarker + " is not present in the downloader file");
+        int openBrace = text.indexOf('{', markerIndex);
+        assertTrue(openBrace >= 0, "no opening brace found after " + declarationMarker);
+        int depth = 0;
+        for (int i = openBrace; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '{') {
+                depth++;
+            } else if (c == '}') {
+                depth--;
+                if (depth == 0) {
+                    return text.substring(openBrace, i + 1);
+                }
+            }
+        }
+        fail("no matching closing brace found for " + declarationMarker);
+        throw new IllegalStateException("unreachable");
+    }
+
     @Test
     void thePersistedInProgressFlagIsGone() {
         String text = readGuardedSource();
@@ -45,44 +86,49 @@ class BbjNodeDownloaderSourceGuardTest {
     }
 
     @Test
-    void theDownloadGuardIsAcquiredOnceAndReleasedOnce() {
-        String text = readGuardedSource();
-        assertEquals(1, countOccurrences(text, "DownloadGuard.SESSION.tryAcquire("),
+    void theDownloadGuardIsAcquiredOnceAndReleasedOnceInsideDownloadNodeAsync() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadGuard.SESSION.tryAcquire("),
                 "the guard must be acquired exactly once");
-        assertEquals(1, countOccurrences(text, "DownloadGuard.SESSION.release()"),
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadGuard.SESSION.release()"),
                 "the guard must be released exactly once");
     }
 
     @Test
     void theGuardIsAcquiredBeforeTheBackgroundTaskIsQueued() {
-        String text = readGuardedSource();
-        int tryAcquireIndex = text.indexOf("DownloadGuard.SESSION.tryAcquire(");
-        int backgroundableIndex = text.indexOf("new Task.Backgroundable(");
-        assertTrue(tryAcquireIndex >= 0, "DownloadGuard.SESSION.tryAcquire( is not present in the downloader file");
-        assertTrue(backgroundableIndex >= 0, "new Task.Backgroundable( is not present in the downloader file");
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        int tryAcquireIndex = downloadNodeAsync.indexOf("DownloadGuard.SESSION.tryAcquire(");
+        int backgroundableIndex = downloadNodeAsync.indexOf("new Task.Backgroundable(");
+        assertTrue(tryAcquireIndex >= 0, "DownloadGuard.SESSION.tryAcquire( is not present inside downloadNodeAsync(...)");
+        assertTrue(backgroundableIndex >= 0, "new Task.Backgroundable( is not present inside downloadNodeAsync(...)");
         assertTrue(tryAcquireIndex < backgroundableIndex,
                 "the guard must be acquired before the Task.Backgroundable is queued, not inside it");
     }
 
     @Test
     void theGuardIsReleasedInTheFinallyAfterTheFailurePath() {
-        String text = readGuardedSource();
-        int failureLiteralIndex = text.indexOf("Failed to download Node.js: ");
-        int releaseIndex = text.indexOf("DownloadGuard.SESSION.release()");
-        assertTrue(failureLiteralIndex >= 0, "the failure-path literal is not present in the downloader file");
-        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present in the downloader file");
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        int failureLiteralIndex = downloadNodeAsync.indexOf("Failed to download Node.js: ");
+        int releaseIndex = downloadNodeAsync.indexOf("DownloadGuard.SESSION.release()");
+        assertTrue(failureLiteralIndex >= 0, "the failure-path literal is not present inside downloadNodeAsync(...)");
+        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present inside downloadNodeAsync(...)");
         assertTrue(releaseIndex > failureLiteralIndex,
                 "the release must sit in the finally after the catch, so it also runs on the failure path");
     }
 
     @Test
-    void drainedCompletionsAreDispatchedToTheEdt() {
-        String text = readGuardedSource();
-        int releaseIndex = text.indexOf("DownloadGuard.SESSION.release()");
-        assertTrue(releaseIndex >= 0, "DownloadGuard.SESSION.release() is not present in the downloader file");
-        int invokeLaterIndex = text.indexOf("invokeLater(", releaseIndex);
+    void drainedCompletionsAreDispatchedThroughDownloadCompletionsExactlyOnce() {
+        String downloadNodeAsync = bodyOf(readGuardedSource(),
+                "void downloadNodeAsync(@NotNull Project project, @Nullable Runnable onComplete)");
+        assertEquals(1, countOccurrences(downloadNodeAsync, "DownloadCompletions.dispatch("),
+                "drained completions must be dispatched through DownloadCompletions.dispatch( exactly once");
+        int dispatchIndex = downloadNodeAsync.indexOf("DownloadCompletions.dispatch(");
+        int invokeLaterIndex = downloadNodeAsync.indexOf("invokeLater", dispatchIndex);
         assertTrue(invokeLaterIndex >= 0,
-                "invokeLater( must appear after the release, dispatching drained completions to the EDT");
+                "the dispatch call must name the platform's invokeLater as the executor");
     }
 
     @Test
@@ -92,13 +138,25 @@ class BbjNodeDownloaderSourceGuardTest {
                 "the download-success notification's restart redirect must survive this rewrite");
     }
 
-    private static int countOccurrences(String text, String literal) {
-        int count = 0;
-        int index = 0;
-        while ((index = text.indexOf(literal, index)) != -1) {
-            count++;
-            index += literal.length();
-        }
-        return count;
+    @Test
+    void productionPipelineWiresEachProductionCollaboratorExactlyOnce() {
+        String productionPipeline = bodyOf(readGuardedSource(),
+                "private static NodeInstallPipeline productionPipeline()");
+        assertEquals(1, countOccurrences(productionPipeline, "NodeArchiveVerifier.PINNED_DIGESTS"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeArchiveVerifier.REAL_FILES"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeInstallIntegrity.SESSION"));
+        assertEquals(1, countOccurrences(productionPipeline, "NodeExecutableResolver.REAL_FILESYSTEM"));
+        assertEquals(1, countOccurrences(productionPipeline, "new NodeInstallPipeline("),
+                "the seam must be constructed exactly once, in the production factory");
+    }
+
+    @Test
+    void theFetcherBuildsThePlatformHttpRequestWithTheProductUserAgentAndSavesToFile() {
+        String productionPipeline = bodyOf(readGuardedSource(),
+                "private static NodeInstallPipeline productionPipeline()");
+        assertEquals(1, countOccurrences(productionPipeline, "productNameAsUserAgent()"),
+                "the platform HTTP request must still be built with the product user agent");
+        assertEquals(1, countOccurrences(productionPipeline, "saveToFile("),
+                "the fetcher must still save the response body to the requested target file");
     }
 }

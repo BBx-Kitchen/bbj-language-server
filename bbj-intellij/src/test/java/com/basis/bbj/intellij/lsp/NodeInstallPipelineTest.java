@@ -288,6 +288,54 @@ class NodeInstallPipelineTest {
         assertEquals(1, fetcher.invocations(), "a cache hit must not spawn a second install");
     }
 
+    /**
+     * A {@link NodeArchiveVerifier.ByteSource} that, the first time it is opened, records how
+     * many entries the given temporary root already holds. Verification reads the archive
+     * through this source; if the temporary root already holds more than the archive file alone
+     * at that moment, extraction ran before verification did.
+     */
+    private static final class OrderRecordingByteSource implements NodeArchiveVerifier.ByteSource {
+        private final Path temporaryRoot;
+        private int entryCountAtFirstOpen = -1;
+
+        OrderRecordingByteSource(Path temporaryRoot) {
+            this.temporaryRoot = temporaryRoot;
+        }
+
+        @Override
+        public InputStream open(Path file) throws IOException {
+            if (entryCountAtFirstOpen < 0) {
+                try (var entries = Files.list(temporaryRoot)) {
+                    entryCountAtFirstOpen = (int) entries.count();
+                }
+            }
+            return Files.newInputStream(file);
+        }
+
+        int entryCountAtFirstOpen() {
+            return entryCountAtFirstOpen;
+        }
+    }
+
+    @Test
+    void verificationReadsTheArchiveBeforeAnyExtractionDirectoryExistsUnderTheTemporaryRoot(
+            @TempDir Path dataDirectory, @TempDir Path temporaryRoot) throws IOException {
+        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
+        OrderRecordingByteSource bytes = new OrderRecordingByteSource(temporaryRoot);
+        NodeInstallPipeline pipeline = new NodeInstallPipeline(
+                new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64),
+                dataDirectory, temporaryRoot, new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, bytes,
+                new NodeInstallIntegrity(), new FakePathProbe());
+
+        pipeline.install(NodeInstallPipeline.SILENT, NodeInstallPipeline.NEVER_CANCELLED);
+
+        assertEquals(1, bytes.entryCountAtFirstOpen(),
+                "verification must read the archive while the temporary root holds only the archive "
+                        + "file itself — a second entry means an extraction directory was already "
+                        + "created, so extraction ran before verification");
+    }
+
     /** The Unix branch and the whole six-name archive matrix. */
     @Nested
     class PlatformAxis {
