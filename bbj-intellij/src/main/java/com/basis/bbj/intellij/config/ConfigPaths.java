@@ -49,23 +49,23 @@ public final class ConfigPaths {
      * Same as {@link #samePath(String, String)} but with an injectable OS-name, so the
      * case-folding behavior for win32/darwin is testable on linux.
      *
-     * <p>Normalizes both operands to forward slashes before comparing: {@code a} and {@code b}
-     * are produced by two different subsystems on Windows (the language server's resolved path,
-     * canonicalized via Node's {@code path.normalize} which uses backslashes on win32, vs.
-     * IntelliJ's {@code VirtualFile.getPath()}, which the platform always returns with forward
-     * slashes) -- unlike the TypeScript side, where both operands flow through the same
-     * canonicalizer and never need separator normalization.
+     * <p>On win32/darwin, normalizes both operands to forward slashes before comparing: {@code a}
+     * and {@code b} are produced by two different subsystems on Windows (the language server's
+     * resolved path, canonicalized via Node's {@code path.normalize} which uses backslashes on
+     * win32, vs. IntelliJ's {@code VirtualFile.getPath()}, which the platform always returns with
+     * forward slashes) -- unlike the TypeScript side, where both operands flow through the same
+     * canonicalizer and never need separator normalization. On other platforms (e.g. Linux), a
+     * backslash is a valid, ordinary filename character, so the operands are compared exactly
+     * without separator normalization.
      */
     public static boolean samePath(String a, String b, String osName) {
         if (a == null || a.isEmpty() || b == null || b.isEmpty()) {
             return false;
         }
-        String normalizedA = a.replace('\\', '/');
-        String normalizedB = b.replace('\\', '/');
         if (isCaseInsensitivePlatform(osName)) {
-            return normalizedA.equalsIgnoreCase(normalizedB);
+            return a.replace('\\', '/').equalsIgnoreCase(b.replace('\\', '/'));
         }
-        return normalizedA.equals(normalizedB);
+        return a.equals(b);
     }
 
     private static boolean isCaseInsensitivePlatform(String osName) {

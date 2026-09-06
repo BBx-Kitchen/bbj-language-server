@@ -46,6 +46,15 @@ class ConfigPathsTest {
     }
 
     @Test
+    void samePathDoesNotNormalizeSeparatorsOnLinuxWhereBackslashIsAnOrdinaryFilenameCharacter() {
+        // On win32/darwin the two operands come from different subsystems with different
+        // separator conventions, so samePath normalizes them. On Linux a backslash is a valid,
+        // ordinary filename character, so two paths differing only by `\` vs `/` at the same
+        // position are genuinely different files and must not be treated as equal.
+        assertFalse(ConfigPaths.samePath("/home/user/my\\config.bbx", "/home/user/my/config.bbx", "Linux"));
+    }
+
+    @Test
     void samePathIsFalseWhenEitherSideIsNullOrEmpty() {
         assertFalse(ConfigPaths.samePath(null, "/home/user/config.bbx", "Linux"));
         assertFalse(ConfigPaths.samePath("/home/user/config.bbx", null, "Linux"));
