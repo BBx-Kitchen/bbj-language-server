@@ -81,7 +81,7 @@
       {
         "category": "BBj",
         "command": "bbj.config",
-        "title": "Show the config.bbx file"
+        "title": "Show the Active Config File"
       },
       {
         "category": "BBj",
@@ -593,7 +593,7 @@
             "null"
           ],
           "default": null,
-          "description": "Path to config.bbx file. When not set, defaults to {bbj.home}/cfg/config.bbx. Set this to use a custom config.bbx location for PREFIX resolution.",
+          "description": "Absolute path to the BBj config file (a leading ~ is expanded to your home directory; a relative path is rejected). When not set, defaults to {bbj.home}/cfg/config.bbx. Set this to use a custom config file location for PREFIX resolution.",
           "scope": "window"
         },
         "bbj.inlayHints.parameterNames.enabled": {
