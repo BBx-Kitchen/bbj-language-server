@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 84
 current_phase_name: Config Path Resolution & Discoverability Foundation
 status: executing
-stopped_at: Completed 84-04-PLAN.md
-last_updated: "2026-09-06T15:19:10.678Z"
+stopped_at: Completed 84-03-PLAN.md
+last_updated: "2026-09-06T15:38:46.632Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 84 execution started
-state_head: 0484bc8c95ce836596130626c186cd01f5aa0aa5
+state_head: fa89ffacdd463e1c0aa760a01c693b22a5988db9
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 6
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 ## Current Position
 
 Phase: 84 (Config Path Resolution & Discoverability Foundation) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-06 — Phase 84 execution started
 
@@ -144,6 +144,7 @@ Last activity: 2026-09-06 — Phase 84 execution started
 | Phase 84 P01 | 35min | 3 tasks | 6 files |
 | Phase 84 P02 | 20min | 3 tasks | 6 files |
 | Phase 84 P04 | 12min | 3 tasks | 11 files |
+| Phase 84 P03 | 25min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84]: Config-path resolution centralized in config-path-resolver.ts (84-01): single resolveConfigPath() owns the fallback, exposed via bbj/resolvedConfigPath request + notification; initializeWorkspace's PREFIX read now goes through it, and every bbj.configPath setting change re-resolves and re-pushes.
 - [Phase 84]: [Phase 84]: Phase 84 Plan 02: config-path-cache.ts is the VS Code host's warm cache (getActiveConfigPath prefers the last pushed path, falls back to the explicit setting canonicalized, never derives a home default); applyConfigAssociation/releaseConfigAssociation in extension.ts wire four triggers (activation sweep, open, change, config-path setting change) so bbx-config survives reopen/revert and the old path is released on a setting change; extension.ts tracks lastKnownActiveConfigPath itself rather than re-deriving the previous path from the cache, since the cache only moves once the server's next push arrives; setopts-composer-ui.ts's argForActiveEditor (now exported) shows a non-blocking hint naming the active config file when the open bbx-config document is a different one.
 - [Phase 84]: 84-04: static-helper-plus-thin-wrapper on BbjConfigPathService (resolveActivePath/isConfigFileName/isDefaultConfigFilename are package-private static) so the pure decisions are unit-testable without a live IntelliJ Application; a source-guard test covers the remaining platform-bound wiring.
+- [Phase 84]: Show-config's missing-file check reads the cached exists flag, not a live fs check — The resolved payload is the single source of truth for existence, and the test suite seeds cache state with synthetic paths that never exist on disk.
+- [Phase 84]: readerWithResolvedConfigFile is a reader wrapper, not an edit to buildCompileOptionsFrom — Keeps the -c argument's argv position and the existing -c/-P conflict rule provably unchanged whether the value came from injection or an explicit setting.
 
 ### Tech Debt
 
@@ -283,8 +286,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T15:19:10.650Z
-Stopped at: Completed 84-04-PLAN.md
+Last session: 2026-09-06T15:38:46.603Z
+Stopped at: Completed 84-03-PLAN.md
 Resume file: None
 
 Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or

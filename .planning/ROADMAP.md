@@ -245,7 +245,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. Closing/reopening or reverting that same file preserves the config-file association; it does not silently fall back to a different language on reopen (guards research Pitfall 5).
   4. Both hosts agree on the same resolved path even when only a BBj-home setting (no explicit custom path) is configured, because the fallback logic is exposed from one shared source rather than reimplemented per host.
 
-**Plans**: 3/6 plans executed (3 waves)
+**Plans**: 4/6 plans executed (3 waves)
 **Wave 1**
 
 - [x] 84-01-PLAN.md — Shared resolver + `bbj/resolvedConfigPath` request and pushed notification (wave 1)
@@ -257,7 +257,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 84-03-PLAN.md — VS Code consumers: Show-config, run paths, compile `-c` (wave 3)
+- [x] 84-03-PLAN.md — VS Code consumers: Show-config, run paths, compile `-c` (wave 3)
 - [ ] 84-05-PLAN.md — IntelliJ config file type, file-type override and bbx grammar (wave 3)
 - [ ] 84-06-PLAN.md — IntelliJ run consumers + inline config-path validation (wave 3)
 
