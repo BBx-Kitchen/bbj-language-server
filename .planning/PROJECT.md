@@ -17,11 +17,10 @@ settings or restart paths; EM JWT handling fails closed with owner-only temp fil
 and Windows; "Compile BBj File" runs bbjcpl through the shared language server's new
 `bbj/compile` request; composers surface failures and refuse stale edits; the build pins
 JDK 17 and a checksum-verified Gradle wrapper; and the IntelliJ JUnit suite grew from 96 to
-504 tests. **The v4.2 code (153 files) is on local `main` only** — it still has to be
-cherry-picked onto a branch from `origin/main`, register-checked and landed by pull request,
-then released as a preview build, before the 22 IntelliJ issues it closes can be closed on
-GitHub. Phase artifacts for 78-83 are archived under `.planning/milestones/v4.2-phases/`
-(tracked, no embargo).
+504 tests. The v4.2 code landed on `origin/main` through the filtered pull request #651 on
+2026-09-06; local `main` and `origin/main` are in sync, the preview version is 0.12.28, and
+all 22 IntelliJ issues it closes are closed on GitHub. Phase artifacts for 78-83 are archived
+under `.planning/milestones/v4.2-phases/` (tracked, no embargo).
 
 **v4.1 Security Advisory Remediation shipped 2026-09-03** (override closeout). All eight
 remaining high-severity advisories have their fixes merged to public `main` through
@@ -35,25 +34,41 @@ until publication).
      public main. Grouping ids by what they have in common discloses the flaw class of each
      one. See the disclosure notice in the archived v4.1 REQUIREMENTS. -->
 
-## Next Milestone Goals
+## Current Milestone: v4.3 Polish & Quality
 
-Not yet defined — `/gsd-new-milestone` decides. Candidates, in rough priority order:
+**Goal:** Weed out small inconveniences before the next release. Rule for inclusion: a BBj
+developer at the keyboard can notice the difference.
 
-- **Land and release v4.2** (maintainer-owned, precondition for everything below): pull
-  request from a filtered branch, preview build, close the 22 IntelliJ issues; then the
-  v4.1 tagged release and advisory publication (PROC-03).
-- **IntelliJ PRIO 3 parity** (carried from v4.2's v2 list): formatter, denumber,
-  tokenized-file detection and decompile actions (#634, #631); SETOPTS composer for
-  config.bbx (#633); Refresh Java Classes via a targeted LSP request instead of a full
-  restart (#632); full BBjCPL compiler-option UI (follow-on to `bbj/compile`).
-- **IntelliJ PRIO 3 cleanups**: duplication across run actions, composer dialogs,
-  intentions, widgets and notification providers (#615-#622, #630); java-interop health
-  probe via a protocol handshake rather than a bare TCP connect (#587, DEBT.md item 5,
-  also the root cause of the local vitest false positives); remaining findings
-  (#586, #588-#594, #607-#614).
-- **Carried follow-ups**: live Windows Node auto-install check (todo), configured-but-unusable
-  Node path vs. cached download (todo), 83-REVIEW warnings on the Node install pipeline,
-  82-UI-REVIEW dialog error styling, interim-build versioning above Marketplace releases.
+Scope is exactly the 23 issues assigned to GitHub milestone #5 ("v4.3 Polish & Quality").
+Its description names the themes and the exclusions; this section mirrors it.
+
+**Target features:**
+- **Composer discoverability & coverage** — a visible cue for every composer in both IDEs
+  (#650), MSGBOX composer offered for expression-valued options (#648), a CVS() composer
+  (#649), a SETOPTS composer for `config.bbx` on IntelliJ over a shared LS command layer
+  (#633) and SETOPTS assistance inside BBj code with decode hovers and a tri-state composer
+  (#475); composer robustness on the VS Code side to match what v4.2 gave IntelliJ:
+  validated addWindow/addChildWindow inserts (#623), re-validated coordinates after the
+  MSGBOX wizard (#532), per-panel listener disposal (#530); IntelliJ dialogs debounce
+  preview round trips (#611) and cache the server handle and static catalogs (#612).
+- **Config changes without restart** — watch the resolved config file and reload on change
+  (#486), honor a custom-named/located config file everywhere and treat it as a config file
+  in the editor (#485), Refresh Java Classes on IntelliJ via a targeted request instead of a
+  server restart (#632), java-interop port auto-detection for every settings reader (#608).
+- **Responsiveness & hangs** — workspace-size-independent scope resolution and symbol
+  collection (#505), a reachability circuit breaker for the interop peer (#504), the LRU
+  eviction race (#497) and shared cancel token (#498) in the language server, the decompile
+  freshness hang on coarse-mtime filesystems (#500), the stale format replacement (#499),
+  commands invoked with no editor focused (#512), undisposed VS Code registrations (#531),
+  and IntelliJ status-bar widgets that follow editor-tab switches (#610).
+
+**Deferred (the milestone's stretch tier, not committed):** diagnostics and completion
+accuracy (#522, #561/#578, #577, #556, #527, #526, #466); IntelliJ parity users notice
+(#634, #631, #621, #587, #589); onboarding and docs (#476, #385, #595, #601, #108 follow-up).
+
+**Excluded by the milestone's own rule:** pure refactors, CI/dependency hygiene,
+test-coverage gaps and input-validation hardening — those belong in a separate hygiene
+milestone.
 
 ## Requirements
 
@@ -241,8 +256,12 @@ Not yet defined — `/gsd-new-milestone` decides. Candidates, in rough priority 
 
 ### Active
 
+v4.3 Polish & Quality (see REQUIREMENTS.md for the REQ-ID list):
+- [ ] Composers are discoverable and cover MSGBOX-with-expressions, CVS() and SETOPTS in both IDEs; VS Code composer edits are validated, position-safe and leak-free; IntelliJ composer dialogs are debounced and cached
+- [ ] Config file changes (PREFIX, project-wide USE, custom config path) and Java class refreshes take effect without a manual language-server restart, and the configured file is treated as a config file in the editor
+- [ ] No language feature stalls on workspace size, an unreachable interop peer, a cache eviction race, a coarse-mtime filesystem or a missing editor focus; VS Code registrations and IntelliJ widgets clean up and follow the editor
+
 Carried over, maintainer-owned (not GSD phases):
-- [ ] v4.2 code landed on `origin/main` through a register-checked pull request and shipped as a preview build; the 22 IntelliJ issues closed on GitHub
 - [ ] Tagged release carrying all nine merged advisory fixes, followed by advisory publication (PROC-03)
 - [ ] Phase 70 guardrail-breadth hardening (`WINDOWS.md` entry 1)
 - [ ] Live Windows attestation of Node.js auto-install (todo filed by Phase 83)
@@ -259,7 +278,7 @@ Carried over, maintainer-owned (not GSD phases):
 
 ## Context
 
-**Current state:** v4.2 shipped 2026-09-06; 19 milestones, 83 phases and 267 plans done lifetime; no next milestone defined yet. Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green at 504 tests. All nine known advisory fixes merged; publication awaits a tagged release. The v4.2 source changes are not yet on `origin/main` (local `main` is push-blocked by the v4.0 archive commit; land via a filtered branch).
+**Current state:** v4.3 Polish & Quality started 2026-09-06, scoped to the 23 issues on GitHub milestone #5; 19 milestones, 83 phases and 267 plans done lifetime. v4.2 landed on `origin/main` via PR #651 (preview 0.12.28). Whole-suite vitest green at `numFailedTests: 0` (~1,127 tests); IntelliJ JUnit suite green at 504 tests. All nine known advisory fixes merged; publication awaits a tagged release.
 
 **Tech stack:** Java 17, Gradle (Kotlin DSL), IntelliJ Platform SDK 2024.2+, LSP4IJ 0.21.0 (Gradle pin; the runtime plugin is unpinned in `plugin.xml`), TextMate grammar, Node.js v20.18.1 LTS (auto-downloaded), Langium 4.1.3, Chevrotain 11.0.3, Vitest 1.6.1 with V8 coverage.
 
@@ -456,4 +475,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-06 after v4.2 milestone*
+*Last updated: 2026-09-06 after v4.3 milestone start*

@@ -1,24 +1,21 @@
 ---
 gsd_state_version: 1.0
-milestone: v4.2
-milestone_name: IntelliJ Burn-down
-status: Awaiting next milestone
-stopped_at: Phase 83 complete — all phases complete
-last_updated: "2026-09-06T09:23:01.405Z"
+milestone: v4.3
+milestone_name: Polish & Quality
+status: planning
+last_updated: "2026-09-06T12:10:26.869Z"
 last_activity: 2026-09-06
-last_activity_desc: Milestone v4.2 completed and archived
-state_head: 9983514bed4fd204bd50c5bc4be8dffd81ce8318
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 25
-  completed_plans: 25
-current_phase: 83
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-06 (v4.2 IntelliJ Burn-down shipped and archived; awaiting next milestone)
+**Last Updated:** 2026-09-06 (v4.3 Polish & Quality started; defining requirements)
 
 ## Project Reference
 
@@ -26,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Planning next milestone (`/gsd-new-milestone`); maintainer to land the v4.2 code on `origin/main` via a filtered pull request
+**Current Focus:** v4.3 Polish & Quality — requirements and roadmap for the 23 issues on GitHub milestone #5
 
 ---
 
 ## Current Position
 
-Phase: Milestone v4.2 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-09-06 — Milestone v4.2 completed and archived
+Status: Defining requirements
+Last activity: 2026-09-06 — Milestone v4.3 started
 
 ## Performance Metrics
 
@@ -225,11 +222,11 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ### Blockers/Concerns
 
-- **v4.2 code is on local `main` only.** 256 commits since `2072844` (2026-09-04) carry the
-  153-file source change; `origin/main` has none of it. Local `main` cannot be pushed as-is
-  (the v4.0 archive commit trips the `pre-push` hook), so the v4.2 commits must be
-  cherry-picked onto a branch from `origin/main`, register-checked, pushed over HTTPS and
-  landed by pull request, then released as a preview build. Human-gated; not done at close.
+- **v4.2 landed.** PR #651 merged the v4.2 code to `origin/main` on 2026-09-06; local `main`
+  and `origin/main` are in sync, the preview version is 0.12.28, and all 22 IntelliJ issues
+  are closed. The old local `main` (with the push-blocked v4.0 archive commit) is kept on
+  `backup/local-main-2026-09-06`. New work lands via branches from `origin/main` plus a pull
+  request, with a per-commit register check.
 
 - **8 draft advisories — every fix merged to `main`, none yet published.** v4.1 closed
   2026-09-03 with all eight phases verified (70 and 77 with recorded overrides). Publication
@@ -275,12 +272,12 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T09:30:00Z
-Stopped at: v4.2 IntelliJ Burn-down closed and archived (phases 78-83 → `milestones/v4.2-phases/`)
+Last session: 2026-09-06T12:10:00Z
+Stopped at: v4.3 Polish & Quality started; PROJECT.md and STATE.md reset, requirements next
 Resume file: None
 
-Next: `/gsd-new-milestone`. Before or alongside that, the maintainer lands the v4.2 code on
-`origin/main` (see Blockers/Concerns) — the 22 IntelliJ issues stay open until it ships.
+Next: define REQUIREMENTS.md from the 23 issues on GitHub milestone #5, then the roadmap
+(phases continue from 84).
 
 ## Deferred Items
 
@@ -349,7 +346,6 @@ See: `.planning/MILESTONES.md`
 
 ## Operator Next Steps
 
-- Land v4.2: cut a branch from `origin/main`, cherry-pick the 256 commits since `2072844`, run the register-check grep over the diff, push over HTTPS, open a PR; then publish a preview build and close the 22 issues
-- Start the next milestone: `/gsd-new-milestone` (candidates in PROJECT.md › Next Milestone Goals)
+- v4.3 in progress: `/gsd-discuss-phase 84` or `/gsd-plan-phase 84` once the roadmap is committed
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
 - v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)
