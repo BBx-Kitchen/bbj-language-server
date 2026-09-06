@@ -9,6 +9,7 @@
  *     NEW one at the cursor when the file has none.
  */
 import * as vscode from 'vscode';
+import { getActiveConfigPath, isActiveConfigPath } from './config-path-cache.js';
 import { describeVector, parseSetOptsLine, SetOptsLineInfo } from './setopts-catalog.js';
 import { openSetOptsComposerPanel, SetOptsPanelArg } from './setopts-composer-webview.js';
 
@@ -53,12 +54,23 @@ function lineLabel(info: SetOptsLineInfo): string {
  * Command entry point without an arg: prefer the file's existing SETOPTS line (config.bbx is
  * evaluated once — a second line would silently override, not add), else compose a NEW line
  * to insert at the cursor.
+ *
+ * When the open document IS a config file but not the one the tooling actually reads (the
+ * home default opened by habit while a custom path is configured — the direction issue #485
+ * was filed over), a non-blocking hint names the active file before still proceeding to open
+ * the composer on the file the user has open.
  */
-function argForActiveEditor(): SetOptsPanelArg | undefined {
+export function argForActiveEditor(): SetOptsPanelArg | undefined {
     const editor = vscode.window.activeTextEditor;
     if (!editor || editor.document.languageId !== 'bbx-config') {
         vscode.window.showInformationMessage('Open a config.bbx file first, then run the SETOPTS composer.');
         return undefined;
+    }
+    const activeConfigPath = getActiveConfigPath();
+    if (activeConfigPath && !isActiveConfigPath(editor.document.uri.fsPath)) {
+        vscode.window.showInformationMessage(
+            `This isn't the active config file — BBj tooling reads: ${activeConfigPath}`
+        );
     }
     for (let line = 0; line < editor.document.lineCount; line++) {
         const info = parseSetOptsLine(editor.document.lineAt(line).text);

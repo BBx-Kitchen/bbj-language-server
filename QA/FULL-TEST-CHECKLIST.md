@@ -27,6 +27,8 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 | 7 | Go-to-Definition | 1. Open file with method call<br>2. Right-click on method name<br>3. Select "Go to Definition"<br>4. Verify navigation | Editor navigates to method definition location | [ ] |
 | 8 | Document Symbols | 1. Open file with classes/methods<br>2. Open Outline view (`Ctrl+Shift+O` / `Cmd+Shift+O`)<br>3. Verify hierarchy | Outline shows class/method/field hierarchy with correct icons | [ ] |
 | 9 | Semantic Tokens | 1. Open file with variables and keywords<br>2. Compare coloring of variables vs. keywords | Variables colored differently from keywords; parameters vs. local variables distinguishable | [ ] |
+| 10 | Custom-named config file survives reopen and revert | 1. Configure `bbj.configPath` to a file with a non-default name at a non-default location (e.g. `myproject-config.bbx`)<br>2. Open that file<br>3. Confirm it shows config-file syntax highlighting and the SETOPTS CodeLens<br>4. Close the tab, then reopen the file<br>5. Confirm the treatment survives<br>6. Edit the file, then run File > Revert File<br>7. Confirm the treatment still survives | The configured file shows config-file highlighting and the SETOPTS lens on first open, after close/reopen, and after Revert File | [ ] |
+| 11 | Inactive-config hint in the SETOPTS composer | 1. With a custom config file configured (as above), open the home default `config.bbx` instead<br>2. Run the SETOPTS composer command on that file | A non-blocking message names the active config file's full path before the composer opens on the file that is actually open | [ ] |
 
 ---
 

@@ -105,6 +105,7 @@ import {
     setResolvedConfigPath,
     shouldWarnOnce,
 } from '../src/config-path-cache.js';
+import { argForActiveEditor } from '../src/setopts-composer-ui.js';
 import type { ResolvedConfigPath } from '../src/language/config-path-resolver.js';
 
 /** Point the mocked `bbj.configPath` workspace setting at `value` (or unset when `null`). */
@@ -282,5 +283,84 @@ describe('bbx-config editor association', () => {
         onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.home' });
 
         expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
+    });
+});
+
+/** A minimal stand-in for the active `vscode.TextEditor`, with no SETOPTS line in the document. */
+function fakeEditor(fsPath: string, languageId: string): {
+    document: { languageId: string; uri: { fsPath: string }; lineCount: number; lineAt: (line: number) => { text: string } };
+} {
+    return {
+        document: {
+            languageId,
+            uri: { fsPath },
+            lineCount: 0,
+            lineAt: () => ({ text: '' }),
+        },
+    };
+}
+
+describe('inactive-config hint in the SETOPTS composer', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        resetConfigPathCacheForTests();
+        (vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValue({
+            get: vi.fn((_key: string, def?: unknown) => def),
+        });
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
+    });
+
+    test('the hint fires when the open bbx-config document is not the active config file', () => {
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor =
+            fakeEditor('/home/user/cfg/config.bbx', 'bbx-config');
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        argForActiveEditor();
+
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+            expect.stringContaining('/srv/custom/myconfig.bbx')
+        );
+    });
+
+    test('the hint does not fire when the open bbx-config document IS the active config file', () => {
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor =
+            fakeEditor('/srv/custom/myconfig.bbx', 'bbx-config');
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        argForActiveEditor();
+
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('the hint does not fire when there is no active config path at all', () => {
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor =
+            fakeEditor('/home/user/cfg/config.bbx', 'bbx-config');
+        // No push and no explicit setting — getActiveConfigPath() is undefined.
+
+        argForActiveEditor();
+
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+    });
+
+    test('the composer still proceeds to open on the file the user has open despite the hint', () => {
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor =
+            fakeEditor('/home/user/cfg/config.bbx', 'bbx-config');
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        const result = argForActiveEditor();
+
+        expect(result).toEqual({});
+    });
+
+    test('the existing "open a config file first" message is unchanged for a non-bbx-config editor', () => {
+        (vscode.window as unknown as { activeTextEditor: unknown }).activeTextEditor =
+            fakeEditor('/home/user/notes.txt', 'plaintext');
+
+        const result = argForActiveEditor();
+
+        expect(result).toBeUndefined();
+        expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+            'Open a config.bbx file first, then run the SETOPTS composer.'
+        );
     });
 });
