@@ -5,11 +5,11 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 85
 current_phase_name: Config Hot-Reload With Restart Coalescing
 status: planning
-stopped_at: Phase 84 complete, ready to plan Phase 85
-last_updated: "2026-09-06T21:20:24.336Z"
+stopped_at: Phase 85 context gathered
+last_updated: "2026-09-06T22:43:34.930Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 84 complete, transitioned to Phase 85
-state_head: 96f6d8f4d1ef8c0492d80bee0dc7e17ccc102d2a
+state_head: ffd2948a9bd945bb37771a5fe7eeee2dd5649486
 progress:
   total_phases: 9
   completed_phases: 1
@@ -293,9 +293,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T21:20:00Z
-Stopped at: Phase 84 complete (UAT 8/8, VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review filed), ready to plan Phase 85
-Resume file: None
+Last session: 2026-09-06T22:43:34.857Z
+Stopped at: Phase 85 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/85-config-hot-reload-with-restart-coalescing/85-CONTEXT.md
 
 Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
 Config Hot-Reload With Restart Coalescing (CFG-03, #486); it depends on Phase 84's
