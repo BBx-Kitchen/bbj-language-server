@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 84
 current_phase_name: Config Path Resolution & Discoverability Foundation
-status: planning
-stopped_at: Phase 84 context gathered
-last_updated: "2026-09-06T14:18:43.054Z"
+status: executing
+stopped_at: Completed 84-01-PLAN.md
+last_updated: "2026-09-06T14:43:44.202Z"
 last_activity: 2026-09-06
-last_activity_desc: v4.3 roadmap created (Phases 84-92; 25/25 requirements mapped, 9 phases)
-state_head: 23c086dcdc4d2ec7658cc6ccbe2123a6494f4c53
+last_activity_desc: Phase 84 execution started
+state_head: 1ab3319ff91622439869a65905ab2ba5bba6913d
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 6
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.3 Polish & Quality — roadmap created (Phases 84-92, 25/25 requirements mapped); next up is Phase 84
+**Current Focus:** Phase 84 — Config Path Resolution & Discoverability Foundation
 
 ---
 
 ## Current Position
 
-Phase: 84 (Config Path Resolution & Discoverability Foundation) — READY TO EXECUTE
-Plan: —
-Status: Roadmap created; ready to plan Phase 84
-Last activity: 2026-09-06 — v4.3 roadmap created (Phases 84-92; 25/25 requirements mapped, 9 phases)
+Phase: 84 (Config Path Resolution & Discoverability Foundation) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-09-06 — Phase 84 execution started
 
 ## Performance Metrics
 
@@ -141,6 +141,7 @@ Last activity: 2026-09-06 — v4.3 roadmap created (Phases 84-92; 25/25 requirem
 | Phase 83 P01 | 63min | 3 tasks | 12 files |
 | Phase 83 P02 | 27min | 3 tasks | 10 files |
 | Phase 83 P03 | 23min | 3 tasks | 7 files |
+| Phase 84 P01 | 35min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -215,6 +216,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 83]: Phase 83 Plan 01: NodeInstallPipeline seam with injected Target/Fetcher/Progress/CancelProbe drives the whole Node.js download pipeline under plain JUnit 5 against committed fixtures; fixture digests are literal pins transcribed from a provenance README (never test-computed, or the verify step is vacuous); the 79-REVIEW symlink-following delete bug is fixed via a no-follow-links Files.walkFileTree; DownloadCompletions.dispatch isolates one throwing UI-refresh completion from the rest.
 - [Phase 83]: Phase 83 Plan 02: Settings-lookup catch lives at the lookup layer (BbjSettingsLookups), not the debouncer, so a throwing lookup returns a failure-marked NodeLookup/HomeLookup instead of leaving the dialog stuck; NodeAvailability extracts the missing-Node banner decision into a plain-Java seam so both branches execute under plain JUnit; a configured-but-unusable Node path never falls back to the cached download, pinned as-is and filed as a todo
 - [Phase 83]: Phase 83 Plan 03: Lsp4ijClassFileMarkers reads a class file's constant pool directly to prove ApiStatus.Experimental is retained class-file-only, so a runtime isAnnotationPresent lookup is provably vacuous for it; Lsp4ijImportAllowlistTest turns the plugin's LSP4IJ coupling into a hand-written eleven-file, symbol-level allowlist that fails when a use drifts anywhere in src/main/java; ComposerModelsJsonBoundaryTest generalises the compile-result MessageJsonHandler harness across all seven composer DTOs. Two measured facts were corrected against the live 0.21.0 jar and actual code rather than forced to the plan's original wording: ServerStatus now has 9 constants (not 4), and the Java-interop icon heuristic does not change Interface's icon (only Class/Method/Function).
+- [Phase 84]: Config-path resolution centralized in config-path-resolver.ts (84-01): single resolveConfigPath() owns the fallback, exposed via bbj/resolvedConfigPath request + notification; initializeWorkspace's PREFIX read now goes through it, and every bbj.configPath setting change re-resolves and re-pushes.
 
 ### Tech Debt
 
@@ -277,9 +279,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T13:41:15.224Z
-Stopped at: Phase 84 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/84-config-path-resolution-discoverability-foundation/84-CONTEXT.md
+Last session: 2026-09-06T14:43:44.169Z
+Stopped at: Completed 84-01-PLAN.md
+Resume file: None
 
 Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
 `/gsd-plan-phase 84` to start planning the first phase (Config Path Resolution &
