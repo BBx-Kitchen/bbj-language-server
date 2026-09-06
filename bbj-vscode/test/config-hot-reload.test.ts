@@ -214,6 +214,151 @@ describe('createConfigWatcher: debounce + relevance gate (end-to-end tracer)', (
         expect(source).toContain("from './config-path-resolver.js'");
         expect(source).toMatch(/samePath/);
     });
+
+    test('a missing-file evaluation when the snapshot was non-empty emits exactly one notification with reason config-missing', () => {
+        const { records, notify, setContents, configPath } = setup('PREFIX /a/\n');
+        setContents(null);
+
+        records[0].onEvent('rename', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: configPath, reason: 'config-missing' } satisfies ConfigReloadNotification);
+    });
+
+    test('a missing-file evaluation when the snapshot was already empty emits zero notifications', () => {
+        const { records, notify, setContents } = setup('');
+        setContents(null);
+
+        records[0].onEvent('rename', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+
+        expect(notify).not.toHaveBeenCalled();
+    });
+
+    test('an atomic save modelled as delete-then-create inside one debounce window emits exactly one prefix-changed notification', () => {
+        const { records, notify, readFile, setContents, configPath } = setup('PREFIX /a/b/\n');
+
+        // The delete half of the atomic save: the file briefly reads as absent.
+        setContents(null);
+        records[0].onEvent('rename', 'config.bbx');
+        // The create half, recreating the file with new content, inside the same window.
+        setContents('PREFIX /c/d/\n');
+        records[0].onEvent('rename', 'config.bbx');
+
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+
+        // The transient absence is never observed: only the post-rename contents are read.
+        expect(readFile).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: configPath, reason: 'prefix-changed' } satisfies ConfigReloadNotification);
+    });
+});
+
+describe('updateResolvedPath: settings-change re-arm and immediate relevance check', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    test('a different canonical path with different consumed content re-arms and emits exactly one config-path-changed notification', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const contentsByPath = new Map<string, string>([
+            ['/cfg-a/config.bbx', 'PREFIX /a/\n'],
+            ['/cfg-b/config.bbx', 'PREFIX /b/\n'],
+        ]);
+        const readFile = vi.fn((p: string): string | null => contentsByPath.get(p) ?? null);
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+        expect(records).toHaveLength(1);
+
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+
+        expect(records).toHaveLength(2);
+        expect(records[1].dir).toBe('/cfg-b');
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg-b/config.bbx', reason: 'config-path-changed' } satisfies ConfigReloadNotification);
+    });
+
+    test('a different canonical path pointing at an identical copy re-arms but emits zero notifications', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const contentsByPath = new Map<string, string>([
+            ['/cfg-a/config.bbx', 'PREFIX /same/\n'],
+            ['/cfg-b/config.bbx', 'PREFIX /same/\n'],
+        ]);
+        const readFile = vi.fn((p: string): string | null => contentsByPath.get(p) ?? null);
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /same/\n'));
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+
+        expect(records).toHaveLength(2);
+        expect(notify).not.toHaveBeenCalled();
+    });
+
+    test('updateResolvedPath called before start is a no-op: no watch armed, no notification', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile: vi.fn((): string | null => null), logWarn: vi.fn() });
+
+        watcher.updateResolvedPath(resolvedAt('/cfg-a/config.bbx'));
+
+        expect(records).toHaveLength(0);
+        expect(notify).not.toHaveBeenCalled();
+    });
+});
+
+describe('arm failure handling and dispose', () => {
+    test('a throwing watch factory produces no thrown error, one warning per distinct path, and retries on a different path', () => {
+        const calls: string[] = [];
+        const watchDirectory: NonNullable<ConfigWatcherDeps['watchDirectory']> = (dir) => {
+            calls.push(dir);
+            throw new Error(`ENOENT: ${dir}`);
+        };
+        const logWarn = vi.fn();
+        const watcher = createConfigWatcher({
+            watchDirectory,
+            logWarn,
+            notify: vi.fn(),
+            readFile: vi.fn((): string | null => null),
+        });
+
+        expect(() => watcher.start(resolvedAt('/broken/config.bbx'), '')).not.toThrow();
+        expect(logWarn).toHaveBeenCalledTimes(1);
+
+        // A repeated re-arm on the SAME broken path retries arming but does not warn again.
+        expect(() => watcher.updateResolvedPath(resolvedAt('/broken/config.bbx'))).not.toThrow();
+        expect(logWarn).toHaveBeenCalledTimes(1);
+
+        // A re-arm on a DIFFERENT path always retries and is eligible to warn again.
+        expect(() => watcher.updateResolvedPath(resolvedAt('/other/config.bbx'))).not.toThrow();
+        expect(logWarn).toHaveBeenCalledTimes(2);
+
+        expect(calls).toEqual(['/broken', '/broken', '/other']);
+    });
+
+    test('dispose() closes the open handle and clears a pending debounce timer', () => {
+        vi.useFakeTimers();
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const readFile = vi.fn((): string | null => 'PREFIX /changed/\n');
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg/config.bbx'), consumedConfigSnapshot('PREFIX /original/\n'));
+        records[0].onEvent('rename', 'config.bbx');
+
+        watcher.dispose();
+        expect(records[0].closed).toBe(true);
+
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+        expect(notify).not.toHaveBeenCalled();
+        vi.useRealTimers();
+    });
 });
 
 /**
