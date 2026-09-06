@@ -17,10 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,22 +56,17 @@ class NodeInstallPipelineTest {
     private static final String UNIX_ARCHIVE_NAME = "node-v20.18.1-linux-x64.tar.gz";
     private static final String UNIX_MARKER_BYTES_TEXT = "fake-node-binary-unix\n";
 
-    private static String realSha256(Path file) throws IOException {
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-256");
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
-        try (InputStream in = Files.newInputStream(file)) {
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                digest.update(buffer, 0, read);
-            }
-        }
-        return HexFormat.of().formatHex(digest.digest());
-    }
+    // Pinned literals, transcribed from the fixtures README rather than computed from the same
+    // bytes the verifier reads — computing a pin from the archive it verifies would make the
+    // verify step vacuous, since a corrupted fixture and its "pin" would always agree.
+    private static final String WINDOWS_FIXTURE_DIGEST =
+            "3debcb508f3ec25a01dba16ab0dde84217a48c74c621f8a69d6d1e3debc76df7";
+    private static final String UNIX_FIXTURE_DIGEST =
+            "4917712360d519aeca16db0811b9ed99b076992d91b1d978d3beac8dd2d0951d";
+    private static final String WINDOWS_NO_BINARY_FIXTURE_DIGEST =
+            "b550d1ac01b4d700749cd110df57578ea9176d80d1e4c36a62e29b313c7f398c";
+    private static final String UNIX_NO_BINARY_FIXTURE_DIGEST =
+            "b9c180afeb6ca2746f6ddb17681649b21e3b35680733c739dddc9705e3a1c75b";
 
     /** Copies a fixture archive into the requested target path, recording every call it saw. */
     private static final class FixtureCopyingFetcher implements NodeInstallPipeline.Fetcher {
@@ -195,7 +187,7 @@ class NodeInstallPipelineTest {
     @Test
     void theWindowsBranchRunsTheWholeNodeDownloadExtractAndCachePipelineEndToEnd(@TempDir Path dataDirectory,
             @TempDir Path temporaryRoot) throws IOException {
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         FakePathProbe probe = new FakePathProbe();
@@ -217,7 +209,7 @@ class NodeInstallPipelineTest {
     @Test
     void theWindowsBranchLeavesNoTemporaryArchiveOrExtractionDirectoryBehind(@TempDir Path dataDirectory,
             @TempDir Path temporaryRoot) throws IOException {
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         FakePathProbe probe = new FakePathProbe();
@@ -240,7 +232,7 @@ class NodeInstallPipelineTest {
         Assumptions.assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
                 "this host's default filesystem has no POSIX view");
 
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         FakePathProbe probe = new FakePathProbe();
@@ -257,7 +249,7 @@ class NodeInstallPipelineTest {
     @Test
     void theFakeFetcherProvesNoSocketIsOpened(@TempDir Path dataDirectory, @TempDir Path temporaryRoot)
             throws IOException {
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         FakePathProbe probe = new FakePathProbe();
@@ -274,7 +266,7 @@ class NodeInstallPipelineTest {
     @Test
     void aCacheHitAfterAnInstallReturnsTheInstalledPathAndSpawnsNoSecondInstall(@TempDir Path dataDirectory,
             @TempDir Path temporaryRoot) throws IOException {
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixtureCopyingFetcher fetcher = new FixtureCopyingFetcher(WINDOWS_FIXTURE);
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         FakePathProbe probe = new FakePathProbe();
@@ -320,7 +312,7 @@ class NodeInstallPipelineTest {
     @Test
     void verificationReadsTheArchiveBeforeAnyExtractionDirectoryExistsUnderTheTemporaryRoot(
             @TempDir Path dataDirectory, @TempDir Path temporaryRoot) throws IOException {
-        String expectedDigest = realSha256(WINDOWS_FIXTURE);
+        String expectedDigest = WINDOWS_FIXTURE_DIGEST;
         FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
         OrderRecordingByteSource bytes = new OrderRecordingByteSource(temporaryRoot);
         NodeInstallPipeline pipeline = new NodeInstallPipeline(
@@ -346,7 +338,7 @@ class NodeInstallPipelineTest {
                 @TempDir Path temporaryRoot) throws IOException {
             Assumptions.assumeTrue(tarIsOnPath(), "tar is not on PATH");
 
-            String expectedDigest = realSha256(UNIX_FIXTURE);
+            String expectedDigest = UNIX_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(UNIX_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline pipeline = pipeline(
                     new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.X64),
@@ -400,7 +392,7 @@ class NodeInstallPipelineTest {
         void aDigestMismatchStopsThePipelineBeforeExtraction(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
             String wrongDigest = "0".repeat(64);
-            String actualDigest = realSha256(WINDOWS_FIXTURE);
+            String actualDigest = WINDOWS_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, wrongDigest));
             NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
                     new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
@@ -424,7 +416,7 @@ class NodeInstallPipelineTest {
         @Test
         void anArchiveWithNoNodeBinaryFailsInstallAndCleansUpOnWindows(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
-            String expectedDigest = realSha256(WINDOWS_NO_BINARY_FIXTURE);
+            String expectedDigest = WINDOWS_NO_BINARY_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
                     new FixtureCopyingFetcher(WINDOWS_NO_BINARY_FIXTURE), digests, new FakePathProbe(),
@@ -447,7 +439,7 @@ class NodeInstallPipelineTest {
         void anArchiveWithNoNodeBinaryFailsInstallAndCleansUpOnUnix(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
             Assumptions.assumeTrue(tarIsOnPath(), "tar is not on PATH");
-            String expectedDigest = realSha256(UNIX_NO_BINARY_FIXTURE);
+            String expectedDigest = UNIX_NO_BINARY_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(UNIX_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline pipeline = pipeline(
                     new NodeInstallPipeline.Target(NodeInstallPipeline.Os.LINUX, NodeInstallPipeline.Arch.X64),
@@ -470,7 +462,7 @@ class NodeInstallPipelineTest {
         @Test
         void aCancelSignalledBeforeExtractionStopsThePipelineAndCleansUp(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
-            String expectedDigest = realSha256(WINDOWS_FIXTURE);
+            String expectedDigest = WINDOWS_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
                     new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
@@ -491,7 +483,7 @@ class NodeInstallPipelineTest {
         @Test
         void aCancelSignalledBeforeInstallationStopsThePipelineAndCleansUp(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
-            String expectedDigest = realSha256(WINDOWS_FIXTURE);
+            String expectedDigest = WINDOWS_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline pipeline = windowsPipeline(dataDirectory, temporaryRoot,
                     new FixtureCopyingFetcher(WINDOWS_FIXTURE), digests, new FakePathProbe(),
@@ -514,7 +506,7 @@ class NodeInstallPipelineTest {
         void aReinstallOverAnExistingBinaryReplacesItAndRerecordsTheDigest(@TempDir Path dataDirectory,
                 @TempDir Path temporaryRoot) throws IOException {
             Assumptions.assumeTrue(tarIsOnPath(), "tar is not on PATH");
-            String expectedDigest = realSha256(UNIX_FIXTURE);
+            String expectedDigest = UNIX_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(UNIX_ARCHIVE_NAME, expectedDigest));
             NodeInstallIntegrity integrity = new NodeInstallIntegrity();
             NodeInstallPipeline.Target target =
@@ -547,7 +539,7 @@ class NodeInstallPipelineTest {
         @Test
         void theCacheHitDecisionNeedsAllThreeConditions(@TempDir Path dataDirectory, @TempDir Path temporaryRoot)
                 throws IOException {
-            String expectedDigest = realSha256(WINDOWS_FIXTURE);
+            String expectedDigest = WINDOWS_FIXTURE_DIGEST;
             FixedDigestSource digests = new FixedDigestSource(Map.of(WINDOWS_ARCHIVE_NAME, expectedDigest));
             NodeInstallPipeline.Target target =
                     new NodeInstallPipeline.Target(NodeInstallPipeline.Os.WINDOWS, NodeInstallPipeline.Arch.X64);
