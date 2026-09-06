@@ -27,7 +27,8 @@ import {
 } from './Commands/CompilerOptions.js';
 import { buildEmValidateArgv, buildEmLoginArgv, createOwnerOnlyFile } from './Commands/process-args.js';
 import { runProcess, formatArgvForLog, type ProcessError } from './Commands/process-runner.js';
-import { setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
+import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
+import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
 
 import Commands from './Commands/Commands.cjs';
@@ -580,6 +581,48 @@ async function maybePromptLineNumbered(editor: vscode.TextEditor | undefined): P
     }
 }
 
+const CONFIG_LANGUAGE_ID = 'bbx-config';
+
+// Tracks the config path most recently associated as bbx-config. A setting change
+// releases exactly this document rather than re-deriving "the previous path" from the
+// cache, which only moves once the server's next resolvedConfigPath push arrives.
+let lastKnownActiveConfigPath: string | undefined;
+
+/**
+ * Switch `doc` to the config-file language when it is the active config path. Idempotent —
+ * a document already carrying the language is left alone, and the setting outranks
+ * extension-based association, so a configured `myconfig.bbj` is switched exactly like a
+ * configured `myproject.cfg` (#485).
+ */
+function applyConfigAssociation(doc: vscode.TextDocument): void {
+    if (doc.uri.scheme !== 'file') return;
+    if (doc.languageId === CONFIG_LANGUAGE_ID) return;
+    if (isActiveConfigPath(doc.uri.fsPath)) {
+        vscode.languages.setTextDocumentLanguage(doc, CONFIG_LANGUAGE_ID);
+    }
+}
+
+/** Release any open document at `fsPath` that still carries the config-file language. */
+function releaseConfigAssociation(fsPath: string): void {
+    for (const doc of vscode.workspace.textDocuments) {
+        if (doc.uri.scheme === 'file' && doc.languageId === CONFIG_LANGUAGE_ID
+            && samePath(canonicalizeConfigPath(doc.uri.fsPath), fsPath)) {
+            // VS Code re-applies its own default classification when no explicit language id
+            // is supplied. The public API types this parameter as `string` only, so this is a
+            // deliberate cast, not a type gap.
+            vscode.languages.setTextDocumentLanguage(doc, undefined as unknown as string);
+        }
+    }
+}
+
+/** Apply the config association to every currently open document, then remember what's active. */
+function sweepOpenDocumentsForConfigAssociation(): void {
+    for (const doc of vscode.workspace.textDocuments) {
+        applyConfigAssociation(doc);
+    }
+    lastKnownActiveConfigPath = getActiveConfigPath();
+}
+
 // This function is called when the extension is activated.
 export function activate(context: vscode.ExtensionContext): void {
     BBjLibraryFileSystemProvider.register(context);
@@ -844,7 +887,29 @@ export function activate(context: vscode.ExtensionContext): void {
                 `BBj config file not found or unreadable: ${params.path}. No prefixes were loaded.`
             );
         }
+        // The first server answer may associate files that were already open before it arrived.
+        sweepOpenDocumentsForConfigAssociation();
     });
+
+    // Apply bbx-config to the configured file on every classification trigger. A single
+    // trigger (e.g. only at activation) silently regresses to the reopen/revert failure
+    // this covers — the association must survive close/reopen and a config-path change (#485).
+    sweepOpenDocumentsForConfigAssociation();
+    context.subscriptions.push(
+        vscode.workspace.onDidOpenTextDocument((doc) => applyConfigAssociation(doc))
+    );
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument((event) => applyConfigAssociation(event.document))
+    );
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (!event.affectsConfiguration('bbj.configPath')) return;
+            if (lastKnownActiveConfigPath) {
+                releaseConfigAssociation(lastKnownActiveConfigPath);
+            }
+            sweepOpenDocumentsForConfigAssociation();
+        })
+    );
 
 }
 

@@ -39,8 +39,10 @@ vi.mock('vscode', () => {
         languages: {
             registerDocumentFormattingEditProvider: vi.fn(),
             registerCodeActionsProvider: vi.fn(),
+            registerCodeLensProvider: vi.fn(),
             onDidChangeDiagnostics: vi.fn(() => disposable()),
             getDiagnostics: vi.fn(() => []),
+            setTextDocumentLanguage: vi.fn(),
         },
         workspace: {
             createFileSystemWatcher: vi.fn(() => disposable()),
@@ -48,8 +50,11 @@ vi.mock('vscode', () => {
                 get: vi.fn((_key: string, def?: unknown) => def),
                 formatter: {},
             })),
+            textDocuments: [],
+            onDidOpenTextDocument: vi.fn(() => disposable()),
             onDidChangeTextDocument: vi.fn(() => disposable()),
             onDidCloseTextDocument: vi.fn(() => disposable()),
+            onDidChangeConfiguration: vi.fn(() => disposable()),
             workspaceFolders: undefined,
         },
         StatusBarAlignment: { Left: 1, Right: 2 },

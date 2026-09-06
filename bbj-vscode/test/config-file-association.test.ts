@@ -2,22 +2,101 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 /**
  * Regression coverage for the VS Code host's config-file discoverability behavior (#485):
- * the warm cache the host keeps for the server-pushed resolved config path, and the dynamic
+ * the warm cache the host keeps for the server-pushed resolved config path, the dynamic
  * `bbx-config` language association that makes an arbitrarily-named/located config file get
- * config-file highlighting, the SETOPTS lens, and the SETOPTS composer.
+ * config-file highlighting, the SETOPTS lens, and the SETOPTS composer, and the composer's hint
+ * when the open config file is not the one the tooling actually reads.
  */
 
+const clientStartMock = vi.fn(() => Promise.resolve());
+const clientOnNotificationMock = vi.fn();
+
 vi.mock('vscode', () => {
+    const disposable = () => ({ dispose: vi.fn() });
     return {
+        window: {
+            showErrorMessage: vi.fn(),
+            showWarningMessage: vi.fn(),
+            showInformationMessage: vi.fn(),
+            showInputBox: vi.fn(),
+            showQuickPick: vi.fn(),
+            showTextDocument: vi.fn(),
+            createQuickPick: vi.fn(),
+            createStatusBarItem: vi.fn(() => ({ text: '', tooltip: '', show: vi.fn(), hide: vi.fn(), dispose: vi.fn() })),
+            createOutputChannel: vi.fn(() => ({ appendLine: vi.fn() })),
+            tabGroups: { all: [], onDidChangeTabs: vi.fn(() => disposable()) },
+            onDidChangeActiveTextEditor: vi.fn(() => disposable()),
+            activeTextEditor: undefined,
+        },
+        commands: {
+            registerCommand: vi.fn(),
+            executeCommand: vi.fn(),
+        },
+        languages: {
+            registerDocumentFormattingEditProvider: vi.fn(),
+            registerCodeActionsProvider: vi.fn(),
+            registerCodeLensProvider: vi.fn(),
+            onDidChangeDiagnostics: vi.fn(() => disposable()),
+            getDiagnostics: vi.fn(() => []),
+            setTextDocumentLanguage: vi.fn(),
+        },
         workspace: {
+            createFileSystemWatcher: vi.fn(() => disposable()),
             getConfiguration: vi.fn(() => ({
                 get: vi.fn((_key: string, def?: unknown) => def),
             })),
+            textDocuments: [] as unknown[],
+            onDidOpenTextDocument: vi.fn(() => disposable()),
+            onDidChangeTextDocument: vi.fn(() => disposable()),
+            onDidCloseTextDocument: vi.fn(() => disposable()),
+            onDidChangeConfiguration: vi.fn(() => disposable()),
+            workspaceFolders: undefined,
         },
+        StatusBarAlignment: { Left: 1, Right: 2 },
+        DiagnosticSeverity: { Error: 0, Warning: 1, Information: 2, Hint: 3 },
+        ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+        QuickPickItemKind: { Separator: -1 },
+        CodeActionKind: { RefactorRewrite: { value: 'refactor.rewrite' } },
+        Uri: class { },
     };
 });
 
+vi.mock('vscode-languageclient/node', () => {
+    class LanguageClient {
+        outputChannel = { appendLine: vi.fn() };
+        start = clientStartMock;
+        stop = vi.fn();
+        onNotification = clientOnNotificationMock;
+        constructor() { }
+    }
+    return { LanguageClient, TransportKind: { ipc: 1 } };
+});
+
+vi.mock('../src/language/lib/fs-provider.js', () => ({
+    BBjLibraryFileSystemProvider: { register: vi.fn() },
+}));
+vi.mock('../src/msgbox-composer-ui.js', () => ({ registerMsgboxComposer: vi.fn() }));
+vi.mock('../src/addwindow-composer-ui.js', () => ({ registerAddWindowComposer: vi.fn() }));
+vi.mock('../src/addchildwindow-composer-ui.js', () => ({ registerAddChildWindowComposer: vi.fn() }));
+// setopts-composer-ui.js is deliberately NOT mocked — its inactive-config hint is under test.
+vi.mock('../src/Commands/Commands.cjs', () => ({
+    default: {
+        openConfigFile: vi.fn(),
+        openPropertiesFile: vi.fn(),
+        openEnterpriseManager: vi.fn(),
+        run: vi.fn(),
+        runBUI: vi.fn(),
+        runDWC: vi.fn(),
+        compile: vi.fn(),
+        denumber: vi.fn(),
+        decompileReplace: vi.fn(),
+        decompileReadonly: vi.fn(),
+        setOutputChannel: vi.fn(),
+    },
+}));
+
 import * as vscode from 'vscode';
+import { activate } from '../src/extension.js';
 import {
     getActiveConfigPath,
     getResolvedConfigPath,
@@ -85,5 +164,123 @@ describe('config-path-cache', () => {
         const payload = pushedPath();
         setResolvedConfigPath(payload);
         expect(getResolvedConfigPath()).toEqual(payload);
+    });
+});
+
+/** A minimal stand-in for `vscode.TextDocument` — only the fields the association code reads. */
+function fakeDoc(fsPath: string, languageId: string): { uri: { scheme: string; fsPath: string }; languageId: string } {
+    return { uri: { scheme: 'file', fsPath }, languageId };
+}
+
+/** A minimal stand-in for `vscode.ExtensionContext`, matching `extension-activation.test.ts`. */
+function fakeContext(): Parameters<typeof activate>[0] {
+    return {
+        subscriptions: [],
+        secrets: {},
+        asAbsolutePath: (p: string) => p,
+        extension: { packageJSON: { version: '0.0.0-test' } },
+    } as unknown as Parameters<typeof activate>[0];
+}
+
+describe('bbx-config editor association', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        resetConfigPathCacheForTests();
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [];
+        (vscode.workspace.getConfiguration as ReturnType<typeof vi.fn>).mockReturnValue({
+            get: vi.fn((_key: string, def?: unknown) => def),
+        });
+    });
+
+    test('a document already open at activation is switched to bbx-config when it is the active config path', () => {
+        const docA = fakeDoc('/srv/custom/myconfig.bbx', 'plaintext');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        activate(fakeContext());
+
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, 'bbx-config');
+    });
+
+    test('the same document is switched again on a simulated close/reopen — not a one-shot', () => {
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+        activate(fakeContext());
+        expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
+
+        const onOpen = (vscode.workspace.onDidOpenTextDocument as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        const docA = fakeDoc('/srv/custom/myconfig.bbx', 'plaintext');
+
+        onOpen(docA); // first open
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, 'bbx-config');
+
+        (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockClear();
+        const docAReopened = fakeDoc('/srv/custom/myconfig.bbx', 'plaintext'); // VS Code re-derives its default language on reopen
+        onOpen(docAReopened); // simulated close + reopen
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docAReopened, 'bbx-config');
+    });
+
+    test('a document already carrying bbx-config is left alone', () => {
+        const docA = fakeDoc('/srv/custom/myconfig.bbx', 'bbx-config');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        activate(fakeContext());
+
+        expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
+    });
+
+    test('a configured path ending in a BBj source extension is still switched to bbx-config', () => {
+        const docA = fakeDoc('/srv/custom/myconfig.bbj', 'bbj');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbj' }));
+
+        activate(fakeContext());
+
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, 'bbx-config');
+    });
+
+    test('a document that is not the active config path is never switched', () => {
+        const docA = fakeDoc('/srv/other/file.bbj', 'bbj');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        activate(fakeContext());
+
+        expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
+    });
+
+    test('a configuration change releases the old path and associates the new one', () => {
+        const docA = fakeDoc('/srv/custom/old-config.bbx', 'plaintext');
+        const docB = fakeDoc('/srv/custom/new-config.bbx', 'plaintext');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA, docB];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/old-config.bbx' }));
+
+        activate(fakeContext());
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, 'bbx-config');
+
+        // Simulate VS Code having actually applied the earlier association, then the setting change.
+        docA.languageId = 'bbx-config';
+        (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockClear();
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/new-config.bbx' }));
+
+        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.configPath' });
+
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docA, undefined);
+        expect(vscode.languages.setTextDocumentLanguage).toHaveBeenCalledWith(docB, 'bbx-config');
+    });
+
+    test('a configuration change unrelated to bbj.configPath is ignored', () => {
+        const docA = fakeDoc('/srv/custom/myconfig.bbx', 'bbx-config');
+        (vscode.workspace as unknown as { textDocuments: unknown[] }).textDocuments = [docA];
+        setResolvedConfigPath(pushedPath({ path: '/srv/custom/myconfig.bbx' }));
+
+        activate(fakeContext());
+        (vscode.languages.setTextDocumentLanguage as ReturnType<typeof vi.fn>).mockClear();
+
+        const onConfigChange = (vscode.workspace.onDidChangeConfiguration as ReturnType<typeof vi.fn>).mock.calls[0][0];
+        onConfigChange({ affectsConfiguration: (key: string) => key === 'bbj.home' });
+
+        expect(vscode.languages.setTextDocumentLanguage).not.toHaveBeenCalled();
     });
 });
