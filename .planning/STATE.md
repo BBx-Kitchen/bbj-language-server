@@ -1,10 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v4.3
-milestone_name: Polish & Quality
+milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
+current_phase: 84
+current_phase_name: Config Path Resolution & Discoverability Foundation
 status: planning
-last_updated: "2026-09-06T13:00:00.000Z"
+stopped_at: Phase 84 context gathered
+last_updated: "2026-09-06T13:41:15.244Z"
 last_activity: 2026-09-06
+last_activity_desc: v4.3 roadmap created (Phases 84-92; 25/25 requirements mapped, 9 phases)
+state_head: ac35a77d62a61add9c87bd4ba62ae3c6a98d7ec0
 progress:
   total_phases: 9
   completed_phases: 0
@@ -272,9 +277,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T13:00:00Z
-Stopped at: v4.3 roadmap created (Phases 84-92); 25/25 requirements mapped, 0/9 phases planned
-Resume file: None
+Last session: 2026-09-06T13:41:15.224Z
+Stopped at: Phase 84 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/84-config-path-resolution-discoverability-foundation/84-CONTEXT.md
 
 Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
 `/gsd-plan-phase 84` to start planning the first phase (Config Path Resolution &
