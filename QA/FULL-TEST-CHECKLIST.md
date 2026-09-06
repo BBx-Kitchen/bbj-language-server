@@ -45,6 +45,9 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 | 7 | Go-to-Definition | 1. Open file with method call<br>2. Right-click on method name<br>3. Select "Go to Declaration" or use `Ctrl+B`<br>4. Verify navigation | Editor navigates to method definition location | [ ] |
 | 8 | Document Symbols | 1. Open file with classes/methods<br>2. Open Structure view (usually left sidebar or `Alt+7`)<br>3. Verify hierarchy | Structure view shows class/method/field hierarchy | [ ] |
 | 9 | Semantic Tokens | 1. Open file with variables and keywords<br>2. Compare coloring of variables vs. keywords | Variables colored differently from keywords; semantic highlighting active | [ ] |
+| 10 | Custom-named config file highlighting | 1. In BBj settings, point the config path setting at a file with a custom name (not `config.bbx`)<br>2. Open that file<br>3. Check the file icon, syntax highlighting and the Problems view | The file gets the config file icon and bbx highlighting like `config.bbx` would, and no BBj diagnostics appear on it | [ ] |
+| 11 | config.bbx no longer treated as BBj source | 1. Leave the config path setting unchanged (default)<br>2. Open `config.bbx` from the BBj home `cfg` directory<br>3. Check the file icon and whether it is sent to the language server as BBj source | The file opens as a config file (config icon, bbx highlighting), not as BBj source | [ ] |
+| 12 | Live config-path change flips file type on both files | 1. Open both the old and the new config file with the setting pointed at the old one<br>2. Change the config path setting to the new file<br>3. Without restarting the IDE, check both open files' icons and highlighting | Both files' file types flip immediately: the old file reverts to its extension-based type and the new file becomes the config file type | [ ] |
 
 ---
 

@@ -141,6 +141,10 @@
             language="BBx Config"
             fileNamesCaseInsensitive="config.bbx;Config.bbx;config.min;Config.min"/>
 
+        <!-- Runtime file-type override: applies the config file type to the active config file
+             (or a default-named one) whatever its extension, at indexing time -->
+        <fileTypeOverrider implementation="com.basis.bbj.intellij.config.BbjConfigFileTypeOverrider"/>
+
         <!-- Minimal parser for word-level PsiElements (fixes Cmd+hover range) -->
         <lang.parserDefinition
             language="BBj"

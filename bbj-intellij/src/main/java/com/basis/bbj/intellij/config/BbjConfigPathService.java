@@ -2,11 +2,15 @@ package com.basis.bbj.intellij.config;
 
 import com.basis.bbj.intellij.BbjSettings;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.util.FileContentUtilCore;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -31,9 +35,51 @@ public final class BbjConfigPathService {
         return ApplicationManager.getApplication().getService(BbjConfigPathService.class);
     }
 
-    /** Stores the latest pushed payload. The last push wins by construction (a plain volatile write). */
+    /**
+     * Stores the latest pushed payload. The last push wins by construction (a plain volatile
+     * write), and that write stays synchronous and outside the re-detection scheduled below --
+     * the overrider must see the new value immediately even while the re-parse is still queued.
+     * When the active path actually changes as a result, the previously and newly active files
+     * are re-parsed so their file type flips without an IDE restart; an unchanged repeat push
+     * costs nothing beyond the two {@code activeConfigPath()} reads. Re-detection needs a live
+     * Application (it reads {@code BbjSettings} and schedules on the event dispatch thread), so
+     * it is skipped when none is running -- this instance is constructed directly, without a live
+     * Application, by plain-JUnit coverage of the cache write itself.
+     */
     public void update(ConfigModels.ResolvedConfigPathResult result) {
+        if (ApplicationManager.getApplication() == null) {
+            this.resolvedConfigPath = result;
+            return;
+        }
+        String previousActivePath = activeConfigPath();
         this.resolvedConfigPath = result;
+        String newActivePath = activeConfigPath();
+        if (previousActivePath.equals(newActivePath)) {
+            return;
+        }
+        scheduleReparse(previousActivePath, newActivePath);
+    }
+
+    private static void scheduleReparse(String previousActivePath, String newActivePath) {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            List<VirtualFile> toReparse = new ArrayList<>();
+            addIfCached(toReparse, previousActivePath);
+            addIfCached(toReparse, newActivePath);
+            if (!toReparse.isEmpty()) {
+                FileContentUtilCore.reparseFiles(toReparse);
+            }
+        });
+    }
+
+    /** Resolves a path to a {@link VirtualFile} only when it is already in the VFS -- no I/O. */
+    private static void addIfCached(List<VirtualFile> target, String path) {
+        if (path.isEmpty()) {
+            return;
+        }
+        VirtualFile file = LocalFileSystem.getInstance().findFileByPathIfCached(path);
+        if (file != null) {
+            target.add(file);
+        }
     }
 
     /** The last pushed payload, or {@code null} if none has arrived yet. */
