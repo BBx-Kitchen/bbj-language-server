@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 85
 current_phase_name: Config Hot-Reload With Restart Coalescing
 status: executing
-stopped_at: Completed 85-01-PLAN.md
-last_updated: "2026-09-06T23:39:03.898Z"
+stopped_at: Completed 85-05-PLAN.md
+last_updated: "2026-09-06T23:50:32.062Z"
 last_activity: 2026-09-06
 last_activity_desc: Phase 85 execution started
-state_head: ab2c9ab70975f0a2e6aeb1839687689cc5da3965
+state_head: a57ab9cea535a840e252d00b2ace6ccfb0e02ed6
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
   percent: 11
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 ## Current Position
 
 Phase: 85 (Config Hot-Reload With Restart Coalescing) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-09-06 — Phase 85 execution started
 
@@ -148,6 +148,7 @@ Last activity: 2026-09-06 — Phase 85 execution started
 | Phase 84 P05 | 25min | 3 tasks | 12 files |
 | Phase 84 P06 | 20min | 3 tasks | 9 files |
 | Phase 85 P01 | 17min | 3 tasks | 6 files |
+| Phase 85 P05 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84 UAT]: All eight live-IDE checks passed by hand on 2026-09-06 (macOS, VS Code + IntelliJ builds from `main` @ 98a1f65c); `ps` showed both hosts spawning `bbjinit` with the resolved `-c/…/barista.cfg`. One false alarm (IntelliJ custom config "not detected") was resolved by checking the gear icon and the Language Servers tool window — the tester expected a SETOPTS editor link, which exists only in VS Code. Accepted as-is: the VS Code inactive-config hint fires only on the Command Palette entry point (CodeLens/Code Action pass an argument and skip it), matching QA row 11's wording. Post-UAT: 84-VALIDATION.md nyquist-compliant (18 tasks, 2 gaps filled with new tests: VS Code missing-file warning once-per-path, IntelliJ notification-handler source guard), 84-SECURITY.md threats_open 0 (25 threats). CFG-01/CFG-02 (#485) closed.
 - [Phase 85]: Phase 85 Plan 01: extractConsumedConfigContent/consumedConfigSnapshot in config-path-resolver.ts is the single shared PREFIX-reading function; initializeWorkspace and the hot-reload relevance gate both call it, with a source-scan test proving no second parser exists.
 - [Phase 85]: Phase 85 Plan 01: notifyConfigReloadRequired is deliberately undeduplicated (unlike notifyResolvedConfigPath); the config-watcher.ts relevance gate is the sole point deciding whether a reload notification fires, so a sender-side dedupe would be a redundant second suppression layer.
+- [Phase 85]: Phase 85 Plan 05: placed the four hand-only QA rows two-per-IDE-section (VS Code: atomic-save, SETOPTS-no-restart; IntelliJ: out-of-workspace config, save burst) since only the headline PREFIX-reload behavior was flagged '(both IDEs)' in 85-CONTEXT's Integration Points, and IntelliJ's SETOPTS composer does not exist until Phase 87 — Fixed the SETOPTS row's placement unambiguously (VS Code is the only IDE with a working composer today) and avoided duplicating rows the phase context did not ask to be duplicated
 
 ### Tech Debt
 
@@ -296,8 +298,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T23:39:03.823Z
-Stopped at: Completed 85-01-PLAN.md
+Last session: 2026-09-06T23:50:27.026Z
+Stopped at: Completed 85-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
