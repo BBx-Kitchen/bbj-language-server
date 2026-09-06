@@ -172,6 +172,9 @@ connection.onDidChangeConfiguration(async (change) => {
         // Still apply non-reload settings
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         wsManager.setConfigPath(config.configPath || '');
+        // A host may query bbj/resolvedConfigPath even before the workspace build gate opens,
+        // so the re-resolved value must be pushed here too, not only after initialization.
+        notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
         return;
     }
 
@@ -182,8 +185,11 @@ connection.onDidChangeConfiguration(async (change) => {
         const newInteropHost = config.interop?.host || 'localhost';
         const newInteropPort = config.interop?.port || 5008;
 
-        // Update configPath in wsManager for PREFIX resolution
+        // Update configPath in wsManager for PREFIX resolution, then re-push the resolved
+        // value so hosts' warm caches self-correct without a second request (no PREFIX/USE
+        // reload here — that belongs to a later reload path).
         wsManager.setConfigPath(config.configPath || '');
+        notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
 
         logger.info('BBj settings changed, refreshing Java classes...');
         javaInterop.setConnectionConfig(newInteropHost, newInteropPort);

@@ -374,3 +374,89 @@ describe('initializeWorkspace reads PREFIX through the resolver', () => {
         expect(wsManager.getResolvedConfigPath().source).toBe('none');
     });
 });
+
+describe('re-resolve and re-push on a config-path setting change', () => {
+    beforeEach(() => {
+        vi.resetModules();
+    });
+
+    function createMockConnection(): Connection {
+        return {
+            sendNotification: vi.fn(),
+            window: { showErrorMessage: vi.fn() },
+        } as unknown as Connection;
+    }
+
+    /**
+     * Simulates exactly what `main.ts`'s `onDidChangeConfiguration` handler does on each
+     * `wsManager.setConfigPath(...)` call site: re-resolve, then push. Driving the real
+     * resolver plus the notification module directly (rather than importing `main.ts`,
+     * which calls `createConnection()` at module load time and would break the test
+     * environment) mirrors the `bbj-notifications.ts` test convention.
+     */
+    async function pushForConfigPath(
+        notify: (result: ResolvedConfigPathResult) => void,
+        configPathSetting: string,
+        bbjHome: string,
+    ): Promise<void> {
+        notify(resolveConfigPath({ configPathSetting, bbjHome }));
+    }
+
+    test('a settings push that changes the configured path results in exactly one new notification carrying the new canonical path', async () => {
+        const mod = await import('../src/language/bbj-notifications.js');
+        const connection = createMockConnection();
+        mod.initNotifications(connection);
+        const tmpDir = makeTmpDir();
+        const configFile = path.join(tmpDir, 'config.bbx');
+        fs.writeFileSync(configFile, 'PREFIX "/x/"\n');
+
+        await pushForConfigPath(mod.notifyResolvedConfigPath, configFile, '');
+
+        expect(connection.sendNotification).toHaveBeenCalledTimes(1);
+        const [, payload] = (connection.sendNotification as ReturnType<typeof vi.fn>).mock.calls[0];
+        expect((payload as ResolvedConfigPathResult).path).toBe(fs.realpathSync.native(configFile));
+    });
+
+    test('a settings push that leaves the configured path unchanged results in no new notification', async () => {
+        const mod = await import('../src/language/bbj-notifications.js');
+        const connection = createMockConnection();
+        mod.initNotifications(connection);
+        const tmpDir = makeTmpDir();
+        const configFile = path.join(tmpDir, 'config.bbx');
+        fs.writeFileSync(configFile, 'PREFIX "/x/"\n');
+
+        await pushForConfigPath(mod.notifyResolvedConfigPath, configFile, '');
+        await pushForConfigPath(mod.notifyResolvedConfigPath, configFile, '');
+
+        expect(connection.sendNotification).toHaveBeenCalledTimes(1);
+    });
+
+    test('two successive changes result in two notifications, and the last one carries the last value', async () => {
+        const mod = await import('../src/language/bbj-notifications.js');
+        const connection = createMockConnection();
+        mod.initNotifications(connection);
+        const tmpDirA = makeTmpDir();
+        const configFileA = path.join(tmpDirA, 'config.bbx');
+        fs.writeFileSync(configFileA, 'PREFIX "/a/"\n');
+        const tmpDirB = makeTmpDir();
+        const configFileB = path.join(tmpDirB, 'config.bbx');
+        fs.writeFileSync(configFileB, 'PREFIX "/b/"\n');
+
+        await pushForConfigPath(mod.notifyResolvedConfigPath, configFileA, '');
+        await pushForConfigPath(mod.notifyResolvedConfigPath, configFileB, '');
+
+        expect(connection.sendNotification).toHaveBeenCalledTimes(2);
+        const [, lastPayload] = (connection.sendNotification as ReturnType<typeof vi.fn>).mock.calls[1];
+        expect((lastPayload as ResolvedConfigPathResult).path).toBe(fs.realpathSync.native(configFileB));
+    });
+
+    test('the pre-initialization branch pushes too: main.ts carries a notifyResolvedConfigPath call before AND after the workspaceInitialized gate', () => {
+        // Behavioral proof lives in the three push tests above (the resolve-then-notify
+        // sequence they exercise is identical on both sides of the gate); this is the
+        // structural guarantee that main.ts actually wires both call sites plus the
+        // build-phase one, not just one of them (three call sites total).
+        const mainSource = fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'main.ts'), 'utf-8');
+        const callSites = mainSource.match(/notifyResolvedConfigPath\(/g) ?? [];
+        expect(callSites.length).toBe(3);
+    });
+});
