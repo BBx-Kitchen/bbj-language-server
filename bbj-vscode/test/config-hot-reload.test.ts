@@ -6,6 +6,9 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { FileSystemNode, FileSystemProvider } from 'langium';
+import { URI } from 'langium';
+import type { WorkspaceFolder } from 'vscode-languageserver';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import {
     extractConsumedConfigContent,
@@ -23,6 +26,8 @@ import {
     type ConfigWatcherDeps,
     type WatchHandle,
 } from '../src/language/config-watcher.js';
+import { createBBjTestServices } from './bbj-test-module.js';
+import type { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 
 /**
  * Hermetic coverage for the detection half of config hot-reload (#486): the shared
@@ -208,5 +213,123 @@ describe('createConfigWatcher: debounce + relevance gate (end-to-end tracer)', (
         );
         expect(source).toContain("from './config-path-resolver.js'");
         expect(source).toMatch(/samePath/);
+    });
+});
+
+/**
+ * Minimal in-memory FileSystemProvider driving a single config file path, following the
+ * stub-FileSystemProvider convention from `test/ws-manager.test.ts`. `readDirectory` always
+ * returns empty (no `project.properties` in any folder), isolating the read on the resolved
+ * config path from everything else `initializeWorkspace` touches.
+ */
+class ConfigOnlyFileSystemProvider implements FileSystemProvider {
+    constructor(
+        private readonly configPath: string,
+        private readonly readConfig: () => string,
+    ) { }
+
+    private node(uri: URI, isFile: boolean): FileSystemNode {
+        return { isFile, isDirectory: !isFile, uri };
+    }
+    async stat(uri: URI): Promise<FileSystemNode> { return this.statSync(uri); }
+    statSync(uri: URI): FileSystemNode { return this.node(uri, uri.fsPath === this.configPath); }
+    async exists(uri: URI): Promise<boolean> { return uri.fsPath === this.configPath; }
+    existsSync(uri: URI): boolean { return uri.fsPath === this.configPath; }
+    async readBinary(): Promise<Uint8Array> { throw new Error('not implemented'); }
+    readBinarySync(): Uint8Array { throw new Error('not implemented'); }
+    async readFile(uri: URI): Promise<string> { return this.readFileSync(uri); }
+    readFileSync(uri: URI): string {
+        if (uri.fsPath !== this.configPath) {
+            throw new Error(`ENOENT: ${uri.fsPath}`);
+        }
+        return this.readConfig();
+    }
+    async readDirectory(): Promise<FileSystemNode[]> { return []; }
+    readDirectorySync(): FileSystemNode[] { return []; }
+}
+
+describe('initializeWorkspace and the relevance gate share one extraction function', () => {
+    function singleFolder(root: string): WorkspaceFolder[] {
+        return [{ uri: URI.file(root).toString(), name: 'root' }];
+    }
+
+    test('a successful config read leaves getConsumedConfigSnapshot() equal to consumedConfigSnapshot of the same bytes', async () => {
+        const configPath = path.join(path.sep, 'opt', 'bbj-test-config-hot-reload', 'cfg', 'config.bbx');
+        const contents = 'PREFIX /a/ /b/\n';
+        const services = createBBjTestServices({
+            fileSystemProvider: () => new ConfigOnlyFileSystemProvider(configPath, () => contents),
+        });
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        wsManager.setConfigPath(configPath);
+
+        await wsManager.initializeWorkspace(singleFolder(path.join(path.sep, 'root')));
+
+        expect(wsManager.getConsumedConfigSnapshot()).toBe(consumedConfigSnapshot(contents));
+    });
+
+    test('a read that throws leaves getConsumedConfigSnapshot() equal to the empty string', async () => {
+        const configPath = path.join(path.sep, 'opt', 'bbj-test-config-hot-reload', 'cfg', 'config.bbx');
+        const services = createBBjTestServices({
+            fileSystemProvider: () => new ConfigOnlyFileSystemProvider(configPath, () => {
+                throw new Error('simulated read failure');
+            }),
+        });
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        wsManager.setConfigPath(configPath);
+
+        await wsManager.initializeWorkspace(singleFolder(path.join(path.sep, 'root')));
+
+        expect(wsManager.getConsumedConfigSnapshot()).toBe('');
+    });
+
+    test('no resolved path at all leaves getConsumedConfigSnapshot() equal to the empty string', async () => {
+        const services = createBBjTestServices({
+            fileSystemProvider: () => new ConfigOnlyFileSystemProvider('/never-read', () => ''),
+        });
+        const wsManager = services.shared.workspace.WorkspaceManager as BBjWorkspaceManager;
+        // No setConfigPath call, no BBj home set: resolveConfigPath yields source 'none'.
+
+        await wsManager.initializeWorkspace(singleFolder(path.join(path.sep, 'root')));
+
+        expect(wsManager.getConsumedConfigSnapshot()).toBe('');
+    });
+});
+
+describe('the config-directive line-scan expression lives in exactly one module', () => {
+    function stripLineComments(text: string): string {
+        return text
+            .split('\n')
+            .map(line => {
+                const idx = line.indexOf('//');
+                return idx >= 0 ? line.slice(0, idx) : line;
+            })
+            .join('\n');
+    }
+
+    function countLineScanOccurrences(dir: string): number {
+        const pattern = /\.startsWith\(\s*['"]PREFIX['"]\s*\)/g;
+        let count = 0;
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'generated') continue;
+                count += countLineScanOccurrences(full);
+            } else if (entry.name.endsWith('.ts')) {
+                const text = stripLineComments(fs.readFileSync(full, 'utf-8'));
+                const matches = text.match(pattern);
+                count += matches ? matches.length : 0;
+            }
+        }
+        return count;
+    }
+
+    test('appears exactly once, in config-path-resolver.ts', () => {
+        const languageDir = path.join(__dirname, '..', 'src', 'language');
+        expect(countLineScanOccurrences(languageDir)).toBe(1);
+
+        const resolverSource = stripLineComments(
+            fs.readFileSync(path.join(languageDir, 'config-path-resolver.ts'), 'utf-8')
+        );
+        expect(resolverSource.match(/\.startsWith\(\s*['"]PREFIX['"]\s*\)/g)).toHaveLength(1);
     });
 });
