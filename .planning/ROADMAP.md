@@ -21,6 +21,7 @@
 - ✅ **v4.0 Stability and Quality** — Phases 60-69 (shipped 2026-08-20; artifacts held off `main` by decision — see MILESTONES.md)
 - ✅ **v4.1 Security Advisory Remediation** — Phases 70-77 (shipped 2026-09-03; artifacts archived off `main` under an embargo — see MILESTONES.md)
 - ✅ **v4.2 IntelliJ Burn-down** — Phases 78-83 (shipped 2026-09-06; code on local `main` only, pull request pending — see MILESTONES.md)
+- **v4.3 Polish & Quality** — Phases 84-92 (in progress, started 2026-09-06)
 
 ## Phases
 
@@ -214,6 +215,128 @@ milestone-level audit, 8 artifacts acknowledged as deferred, code not yet on `or
 
 </details>
 
+### 🔷 v4.3 Polish & Quality (Phases 84-92) — IN PROGRESS
+
+Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #5 (two issues,
+#475 and #485, each split into two requirements). Full detail: see `## Phase Details` below and
+`.planning/REQUIREMENTS.md`.
+
+- [ ] **Phase 84: Config Path Resolution & Discoverability Foundation** - The resolved config file is honored by every consumer and gets config-file editor treatment in both IDEs, regardless of name or location
+- [ ] **Phase 85: Config Hot-Reload With Restart Coalescing** - Config file edits reload the language server automatically, debounced and without racing composer writes
+- [ ] **Phase 86: IntelliJ Interop Settings & Targeted Refresh** - Java-interop port auto-detects everywhere it's read, and Refresh Java Classes no longer requires a full restart
+- [ ] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer
+- [ ] **Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer** - SETOPTS/IOR/AND lines in BBj code get decode hovers everywhere and a tri-state composer for the two safe shapes
+- [ ] **Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability** - Every composer gets a persistent visible cue in both IDEs; MSGBOX handles expression-valued options; CVS() gets a new visual composer
+- [ ] **Phase 90: Composer Robustness & IntelliJ Composer Performance** - VS Code composers validate before applying and stop leaking listeners; IntelliJ composer dialogs debounce input and cache server/catalog handles
+- [ ] **Phase 91: Language Server Responsiveness** - Scope resolution, Java class resolution, and completion cancellation stop scaling with workspace size or racing each other
+- [ ] **Phase 92: Host-Side Hygiene & Focus Guards** - Decompile, format, run commands, extension activation, and IntelliJ's status bar behave correctly under repeated use and edge conditions
+
+## Phase Details
+
+### Phase 84: Config Path Resolution & Discoverability Foundation
+**Goal**: The BBj config file — wherever it lives and whatever it's named — is honored consistently by every consumer of the config path and by the editor's own file-type association, in both IDEs.
+**Depends on**: Nothing (first phase of v4.3)
+**Requirements**: CFG-01 (#485), CFG-02 (#485)
+**Success Criteria** (what must be TRUE):
+  1. A user's configured config file — any name, any location — is honored by PREFIX and project-wide USE resolution, run and compile commands, and the SETOPTS composer, in both VS Code and IntelliJ.
+  2. Opening that configured file in either IDE shows config-file highlighting, composer affordance, and tooling — not plain-text or BBj-source treatment.
+  3. Closing/reopening or reverting that same file preserves the config-file association; it does not silently fall back to a different language on reopen (guards research Pitfall 5).
+  4. Both hosts agree on the same resolved path even when only a BBj-home setting (no explicit custom path) is configured, because the fallback logic is exposed from one shared source rather than reimplemented per host.
+**Plans**: TBD
+
+### Phase 85: Config Hot-Reload With Restart Coalescing
+**Goal**: A change to the resolved config file (PREFIX, project-wide USE) takes effect without a manual language-server restart, signaled non-intrusively, and without the composer's own writes triggering a restart loop.
+**Depends on**: Phase 84 (needs the resolved config path before it can be watched correctly)
+**Requirements**: CFG-03 (#486)
+**Success Criteria** (what must be TRUE):
+  1. Saving a change to the resolved config file — from any editor, not only this plugin's own composer — triggers a debounced reload with a non-blocking status-bar signal, not a blocking prompt, in both IDEs.
+  2. The reload fires for a config file located outside the workspace/project root, and survives an atomic write-temp-then-rename save (research Pitfalls 1-2).
+  3. A SETOPTS composer write to the same config file does not itself cascade into a restart loop — the self-write suppression window absorbs it (research Pitfall 3).
+  4. Saving a `.bbj` file and the config file in the same edit burst never lands a restart mid-validation (research Pitfall 4).
+**Plans**: TBD
+
+### Phase 86: IntelliJ Interop Settings & Targeted Refresh
+**Goal**: IntelliJ's java-interop connection settings are correct everywhere they're read, and refreshing Java classes no longer takes the whole IDE's language features offline.
+**Depends on**: Nothing (independent of the config-path work; pure settings/interop-request layer)
+**Requirements**: CFG-04 (#632), CFG-05 (#608)
+**Success Criteria** (what must be TRUE):
+  1. [Go/no-go] LSP4IJ's client API is confirmed to support issuing a targeted custom request without a full server restart, and Refresh Java Classes is routed through that request on the existing composer-server interface — or, if the capability genuinely does not exist, the phase records a documented rationale and closes CFG-04 against `workspace/executeCommand` or an equivalent fallback instead of silently keeping the full-restart behavior.
+  2. Running Refresh Java Classes on IntelliJ does not interrupt diagnostics, completion, hover, or Structure View for files the user isn't actively refreshing.
+  3. Every reader of the java-interop port setting — not only the Settings dialog — auto-detects the live port, and a port the user has explicitly confirmed as 5008 is never silently overwritten by auto-detection.
+**Plans**: TBD
+
+### Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog
+**Goal**: IntelliJ users get a visual SETOPTS composer for config.bbx, equivalent to VS Code's existing one, built on one shared `bbj/composer/setopts/*` command layer both IDEs consume.
+**Depends on**: Phase 85 (the self-write suppression window must exist before this composer starts writing config.bbx — research Pitfall 3), Phase 86 (the LSP4IJ custom-request capability resolved there shapes how this composer's dialog talks to the server — research Pitfall 14)
+**Requirements**: DISC-04 (#633)
+**Success Criteria** (what must be TRUE):
+  1. A user editing config.bbx in IntelliJ can open a SETOPTS composer dialog that previews, composes, and applies edits through new `bbj/composer/setopts/*` requests — the same catalog and flag arithmetic VS Code's existing composer already uses.
+  2. Applying a SETOPTS composer edit in IntelliJ writes the change to config.bbx without triggering an extra, unwanted language-server restart.
+  3. The new composer DTOs crossing the LSP4IJ boundary are covered by the existing composer JSON-boundary test family, with numeric sentinels kept in the same in-range convention as the rest of the composer surface (research Pitfall 13).
+  4. The dialog's launch/refresh chain composes through the existing `ComposerFlow`/`StaleEditGuard`/`ComposerNotices` seams — a hung or failed request surfaces exactly one reason-keyed balloon.
+**Plans**: TBD
+
+### Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer
+**Goal**: Users working with SETOPTS/IOR/AND expressions directly in BBj code get accurate decode hovers everywhere, and can safely compose or edit the two statically-safe shapes.
+**Depends on**: Phase 87 (extends the shared SETOPTS catalog and `bbj/composer/setopts/*` request shape it establishes)
+**Requirements**: DISC-05 (#475), DISC-06 (#475)
+**Success Criteria** (what must be TRUE):
+  1. Hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable, shows which options that line sets or clears, with AND masks shown as the logical cleared bits.
+  2. A user can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form.
+  3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
+  4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
+**Plans**: TBD
+
+### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
+**Goal**: Every composer opportunity is visibly discoverable in both IDEs without opening a menu, MSGBOX offers its composer for expression-valued options (shipped before the cue so the cue doesn't silently fail to appear on the lines #648 fixes), and users can compose CVS() calls visually.
+**Depends on**: Nothing (independent of Phases 84-88; a separate composer track per the architecture's build order)
+**Requirements**: DISC-01 (#650), DISC-02 (#648), DISC-03 (#649)
+**Success Criteria** (what must be TRUE):
+  1. [Go/no-go] IntelliJ's visual-cue mechanism (Code Vision vs. a `LineMarkerProvider` fallback) is confirmed to compile and render visibly against the plugin's actual `sinceBuild` range via a same-phase spike, before the phase's other cue-dependent work is considered done.
+  2. A user sees a persistent, clickable cue on every line where MSGBOX, addWindow, addChildWindow, CVS, or SETOPTS composers apply, in both VS Code and IntelliJ, without placing the caret or opening a context menu.
+  3. A user with an MSGBOX options argument that sums constant Java static fields or integer literals sees the composer pre-fill from that expression; any other expression opens the composer in compose-and-replace mode.
+  4. A user can compose a CVS() call visually in both IDEs using the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128, applied in ascending order) including the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place.
+  5. The new cue mechanism computes positions without a full-document reparse per keystroke — no added typing lag on a large file (research Pitfall 11).
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 90: Composer Robustness & IntelliJ Composer Performance
+**Goal**: The four existing VS Code composers reject invalid input before applying it and never leak resources across repeated use; the three IntelliJ composer dialogs debounce input and reuse cached handles instead of re-resolving them on every open.
+**Depends on**: Nothing (independent; touches existing composer files from both hosts, no ordering constraint with other phases)
+**Requirements**: DISC-07 (#623), DISC-08 (#532), DISC-09 (#530), DISC-10 (#611), DISC-11 (#612)
+**Success Criteria** (what must be TRUE):
+  1. Malformed free-text in the addWindow or addChildWindow composer fields is rejected before the insert is applied, gated on the same shared `valid` field the MSGBOX composer's preview already returns.
+  2. Editing the document during the MSGBOX QuickPick wizard never corrupts unrelated text — the target call is re-resolved immediately before the edit, and the edit aborts on a mismatch.
+  3. Opening and closing any of the four VS Code composers repeatedly leaves no leaked message-handler listeners behind.
+  4. Typing quickly in an IntelliJ composer dialog produces one preview round trip per settle point, not one per keystroke, via the existing `Scheduler`/`Alarm` debounce seam rather than a new ad hoc `Alarm` per dialog (research Pitfall 12).
+  5. Reopening a composer in the same IntelliJ session pays no repeated server-resolution or catalog round trip; the cache is invalidated on language-server restart.
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 91: Language Server Responsiveness
+**Goal**: Scope resolution, Java class resolution, and completion cancellation in the language server no longer scale with workspace size, hang on an unreachable interop peer, or race each other.
+**Depends on**: Nothing (independent; pure language-server internals in java-interop.ts, bbj-scope*.ts, and bbj-completion-provider.ts)
+**Requirements**: RESP-01 (#505), RESP-02 (#504), RESP-03 (#497), RESP-04 (#498)
+**Success Criteria** (what must be TRUE):
+  1. A synthetic multi-document workspace shows scope resolution and symbol collection cost that does not grow with total workspace size, proven by a timing regression test.
+  2. With java-interop unreachable, validating a document with many unresolved Java references waits about one connect timeout in total, not one per class; resolution resumes once the peer becomes reachable again without requiring `clearCache()` (research Pitfall 6).
+  3. A class that genuinely resolves never stalls for the full 30-second timeout or falls back to a stub because of LRU eviction racing its own cyclic resolution; the protected/pinned set returns to empty after a cancelled or timed-out resolution (research Pitfall 7).
+  4. Two concurrent completion requests on two different open documents each honor their own cancellation token — cancelling one never affects the other (research Pitfall 8).
+**Plans**: TBD
+
+### Phase 92: Host-Side Hygiene & Focus Guards
+**Goal**: Decompile, format, run/compile commands, extension activation, and IntelliJ's status bar all behave correctly under repeated use, no active editor, or a coarse-mtime filesystem.
+**Depends on**: Nothing (independent; single-file host-side fixes with no cross-dependency)
+**Requirements**: RESP-05 (#500), RESP-06 (#499), RESP-07 (#512), RESP-08 (#531), RESP-09 (#610)
+**Success Criteria** (what must be TRUE):
+  1. Decompiling immediately after a previous decompile of the same file always reflects the new output, even on a coarse-mtime filesystem, while a genuinely stale pre-existing `.lst` file is still rejected (research Pitfall 9).
+  2. A format request never applies content computed from an earlier in-flight request over the user's interim edits.
+  3. Invoking Run, Compile, Decompile, or Denumber with no active BBj editor focused shows a graceful "no active BBj file" message instead of an error.
+  4. Reactivating the VS Code extension in the same host (e.g., a window reload) does not double-register commands, providers, or notifications — every registration from the prior activation is disposed.
+  5. IntelliJ's status-bar widgets show or hide immediately on a bare editor-tab switch, not only when the language-server status itself changes.
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Milestone | Phases | Plans | Status | Shipped |
@@ -237,6 +360,7 @@ milestone-level audit, 8 artifacts acknowledged as deferred, code not yet on `or
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | Complete | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
+| v4.3 Polish & Quality | 84-92 | 0 | In Progress | - |
 
 **Total:** 19 milestones shipped, 83 phases complete, 267 plans shipped.
 
@@ -247,11 +371,12 @@ artifacts (70-77) are archived under `.planning/milestones/v4.1-phases/`, exclud
 and push-blocked until each advisory is published. Both asymmetries are intended. v4.2's
 artifacts (78-83) carry no advisory detail and are tracked normally.
 
-**Next milestone:** not yet defined — run `/gsd-new-milestone`. Candidates recorded in
-`.planning/milestones/v4.2-REQUIREMENTS.md` under v2 Requirements (PRIO 3 IntelliJ parity
-and cleanups: #631-#634, #615-#622, #630, #586-#594, #607-#614, #587) and in PROJECT.md
-under Next Milestone Goals.
+**Current milestone:** v4.3 Polish & Quality (Phases 84-92) — in progress, started 2026-09-06.
+25/25 v1 requirements mapped, 0/9 phases planned. See `.planning/REQUIREMENTS.md` for the
+requirement list and `.planning/PROJECT.md` for scope. Next: `/gsd-plan-phase 84` (or
+`/gsd-discuss-phase 84` first).
 
 ---
 
-*Roadmap last updated: 2026-09-06 — v4.2 IntelliJ Burn-down shipped and archived (Phases 78-83, 25 plans). Next: `/gsd-new-milestone`.*
+*Roadmap last updated: 2026-09-06 — v4.3 Polish & Quality roadmap created (Phases 84-92,
+25/25 requirements mapped). Next: `/gsd-plan-phase 84`.*

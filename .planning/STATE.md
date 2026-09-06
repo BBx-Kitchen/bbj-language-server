@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality
 status: planning
-last_updated: "2026-09-06T12:10:26.869Z"
+last_updated: "2026-09-06T13:00:00.000Z"
 last_activity: 2026-09-06
 progress:
-  total_phases: 0
+  total_phases: 9
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -15,7 +15,7 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-06 (v4.3 Polish & Quality started; defining requirements)
+**Last Updated:** 2026-09-06 (v4.3 roadmap created — Phases 84-92, 25/25 requirements mapped)
 
 ## Project Reference
 
@@ -23,16 +23,16 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** v4.3 Polish & Quality — requirements and roadmap for the 23 issues on GitHub milestone #5
+**Current Focus:** v4.3 Polish & Quality — roadmap created (Phases 84-92, 25/25 requirements mapped); next up is Phase 84
 
 ---
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 84 of 92 (Config Path Resolution & Discoverability Foundation) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-06 — Milestone v4.3 started
+Status: Roadmap created; ready to plan Phase 84
+Last activity: 2026-09-06 — v4.3 roadmap created (Phases 84-92; 25/25 requirements mapped, 9 phases)
 
 ## Performance Metrics
 
@@ -52,7 +52,7 @@ Last activity: 2026-09-06 — Milestone v4.3 started
 - Duration: 3 days
 - Phases: 6 (78-83)
 - Plans: 25 (74 tasks)
-- Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; override closeout (no milestone audit, 8 artifacts deferred); code not yet on `origin/main`
+- Key: Every open PRIO 1/2 IntelliJ issue (22) closed in code — EDT responsiveness, fail-closed EM token handling with owner-only temp files on Windows, `bbj/compile` on the shared language server, composer stale-edit guard, JDK 17 toolchain and pinned wrapper, IntelliJ JUnit suite 96 → 504; override closeout (no milestone audit, 8 artifacts deferred); landed on `origin/main` via PR #651 (preview 0.12.28)
 
 **v4.1 (Shipped: 2026-09-03):**
 
@@ -272,12 +272,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T12:10:00Z
-Stopped at: v4.3 Polish & Quality started; PROJECT.md and STATE.md reset, requirements next
+Last session: 2026-09-06T13:00:00Z
+Stopped at: v4.3 roadmap created (Phases 84-92); 25/25 requirements mapped, 0/9 phases planned
 Resume file: None
 
-Next: define REQUIREMENTS.md from the 23 issues on GitHub milestone #5, then the roadmap
-(phases continue from 84).
+Next: once the roadmap is reviewed and approved, run `/gsd-discuss-phase 84` or
+`/gsd-plan-phase 84` to start planning the first phase (Config Path Resolution &
+Discoverability Foundation).
 
 ## Deferred Items
 
@@ -342,10 +343,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-06 after v4.2 milestone close (phases 78-83 archived; 8 artifacts deferred)*
+*State updated: 2026-09-06 after v4.3 roadmap creation (Phases 84-92; 25/25 requirements mapped, 0/9 phases planned)*
 
 ## Operator Next Steps
 
-- v4.3 in progress: `/gsd-discuss-phase 84` or `/gsd-plan-phase 84` once the roadmap is committed
+- v4.3 roadmap created (Phases 84-92, 25/25 requirements mapped): once reviewed and
+  committed, run `/gsd-discuss-phase 84` or `/gsd-plan-phase 84`
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
 - v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)

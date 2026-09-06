@@ -94,37 +94,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DISC-01 | — | Pending |
-| DISC-02 | — | Pending |
-| DISC-03 | — | Pending |
-| DISC-04 | — | Pending |
-| DISC-05 | — | Pending |
-| DISC-06 | — | Pending |
-| DISC-07 | — | Pending |
-| DISC-08 | — | Pending |
-| DISC-09 | — | Pending |
-| DISC-10 | — | Pending |
-| DISC-11 | — | Pending |
-| CFG-01 | — | Pending |
-| CFG-02 | — | Pending |
-| CFG-03 | — | Pending |
-| CFG-04 | — | Pending |
-| CFG-05 | — | Pending |
-| RESP-01 | — | Pending |
-| RESP-02 | — | Pending |
-| RESP-03 | — | Pending |
-| RESP-04 | — | Pending |
-| RESP-05 | — | Pending |
-| RESP-06 | — | Pending |
-| RESP-07 | — | Pending |
-| RESP-08 | — | Pending |
-| RESP-09 | — | Pending |
+| DISC-01 | Phase 89 | Pending |
+| DISC-02 | Phase 89 | Pending |
+| DISC-03 | Phase 89 | Pending |
+| DISC-04 | Phase 87 | Pending |
+| DISC-05 | Phase 88 | Pending |
+| DISC-06 | Phase 88 | Pending |
+| DISC-07 | Phase 90 | Pending |
+| DISC-08 | Phase 90 | Pending |
+| DISC-09 | Phase 90 | Pending |
+| DISC-10 | Phase 90 | Pending |
+| DISC-11 | Phase 90 | Pending |
+| CFG-01 | Phase 84 | Pending |
+| CFG-02 | Phase 84 | Pending |
+| CFG-03 | Phase 85 | Pending |
+| CFG-04 | Phase 86 | Pending |
+| CFG-05 | Phase 86 | Pending |
+| RESP-01 | Phase 91 | Pending |
+| RESP-02 | Phase 91 | Pending |
+| RESP-03 | Phase 91 | Pending |
+| RESP-04 | Phase 91 | Pending |
+| RESP-05 | Phase 92 | Pending |
+| RESP-06 | Phase 92 | Pending |
+| RESP-07 | Phase 92 | Pending |
+| RESP-08 | Phase 92 | Pending |
+| RESP-09 | Phase 92 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-06*
-*Last updated: 2026-09-06 after initial definition*
+*Last updated: 2026-09-06 after roadmap creation — 25/25 requirements mapped to Phases 84-92*
