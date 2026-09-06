@@ -18,15 +18,15 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-05 (Phase 82 verified and complete; Phase 83 ready to plan)
+**Last Updated:** 2026-09-06 (Phase 83 verified and complete; all v4.2 phases done, milestone close pending)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-05)
+See: .planning/PROJECT.md (updated 2026-09-06)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 83 — Regression Test Hardening
+**Current Focus:** v4.2 milestone close — all six phases (78-83) verified; next is `/gsd-complete-milestone`
 
 ---
 
@@ -210,7 +210,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 ### Tech Debt
 
 - CPU stability mitigations documented but not yet implemented (#232)
-- 19 LSP4IJ experimental API usages (expected, requires LSP4IJ to stabilize)
+- LSP4IJ experimental API usages remain (expected, requires LSP4IJ to stabilize); since Phase 83 they are fenced by signature canaries and an eleven-file import allowlist that fail on drift
 - BbjCompletionFeature depends on LSPCompletionFeature API that may change
 - IntelliJ TextMate bundle cannot exclude config.bbx at filename level
 - FQN path static-only filtering deferred — requires JAR redeployment
@@ -235,24 +235,23 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 - Full inventory of items needing a human decision: `tmp_human_review/` (untracked).
 
-- ⚠️ [Phase 79] UI-review follow-ups (advisory, 79-UI-REVIEW.md, 16/24): the debounced Settings
-  lookup has no failure path — neither `KeystrokeDebouncer` nor `BbjSettingsLookups` catches, so
-  an unchecked exception from a lookup would leave "Checking Node.js version…" and the disabled
-  classpath combo stuck until the next keystroke; the combo placeholder does not distinguish
-  "no home set" from "home set but invalid". Candidates for Phase 83 (BUILD-05 residual EDT coverage)
-  or a quick task. Also open from 79-REVIEW.md: IN-01 (text source guards are refactor-defeatable),
-  IN-02 (duplicated plugin-bundle path resolution), IN-03 (`deleteDirectory` follows symlinks).
-
+- ⚠️ [Phase 79] Residual review follow-ups after Phase 83: 79-REVIEW IN-01 (text source guards are
+  refactor-defeatable) and IN-02 (duplicated plugin-bundle path resolution) remain advisory. The Settings-lookup
+  failure path (79-UI-REVIEW) was closed by 83-02 and the symlink-following delete (IN-03) by 83-01. The combo
+  placeholder still does not distinguish "no home set" from "home set but invalid" (quick-task candidate).
 - ⚠️ [Phase 80 UAT observations, not phase-80 gaps]: (1) an old IntelliJ 2015 install accepted the plugin
   but it did not run — consider trimming `since-build` in the plugin descriptor; (2) automatic Node.js
-  installation did not work on the Windows test machine (user installed Node by hand and set the node.exe
-  home); this worked before, possible regression — candidate for Phase 83 (#569 Node download/cache coverage).
+  installation did not work on the Windows test machine. Phase 83's fixture-driven Windows-branch tests all pass
+  on Linux, so the failure is not reproducible from the pipeline's branch logic; a live Windows check is filed as
+  todo `2026-09-06-live-windows-check-for-node-auto-install-failure.md` (human attestation).
 - ⚠️ [Phase 80] Review follow-ups in 80-REVIEW.md / 80-UI-REVIEW.md are advisory; none blocked verification.
 - ⚠️ [Phase 82] UI-review follow-ups (advisory, 82-UI-REVIEW.md, 17/24): the in-dialog "Preview unavailable — <reason>" label
   uses the same plain gray as healthy status text (the dialogs already have a red `errorLabel()` convention); that red is a
   hardcoded `Color(0xC0392B)` rather than a theme-aware `JBColor`; `ComposerNotices.detailOf()` puts raw exception text
   into the balloon body with no user-oriented rewrite. Candidates for a quick task. 82-REVIEW.md findings were all fixed in-phase.
-- ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; the reflective message read covers the compile balloon, but a canary for the rest of the LSP4IJ surface belongs to Phase 83 (BUILD-05).
+- ⚠️ [Phase 81 UAT observations]: (1) local dev builds are versioned 0.1.0 and IntelliJ silently replaced one with a Marketplace auto-update mid-test; deferred idea (81-UAT.md) — give interim builds a high version such as 999 so they outrank published ones. (2) `plugin.xml`'s unpinned LSP4IJ dependency lets the runtime lsp4j diverge from the Gradle pin; Phase 83 fenced the Gradle-pinned surface (canaries, allowlist, version-pin test), but runtime version skew in the IDE is still only covered by the reflective message read and remains a known limit.
+- ⚠️ [Phase 83] Code review (83-REVIEW.md, advisory, 0 critical / 5 warnings / 3 info): cancellation during Unix `tar` extraction only fires on output lines a silent `tar xzf` never emits (WR-01); the outer temp-file cleanup in `NodeInstallPipeline.install()` is unguarded and can mask the real exception (WR-02); the `tar` process stdin pipe is never closed (WR-03); zip entry match uses `endsWith("node.exe")` rather than an exact name (WR-04); `flushPendingHomeLookup()` still runs the blocking lookup synchronously on the EDT from `apply()` — the accepted Phase 79 WR-03 tradeoff (WR-05). Info: `(D-12)` decision-id comments in `BbjSettingsComponent.java`/`BbjSettingsLookups.java` are pre-existing from Phase 79 (79-02), not added in Phase 83. Candidates for `/gsd-code-review 83 --fix` or a quick task.
+- ⚠️ [Phase 83] Todo filed: a configured-but-unusable Node path suppresses the cached-download fallback (`2026-09-06-configured-node-path-suppresses-cached-download-fallback.md`); pinned as-is by 83-02, decision deferred.
 
 ### Quick Tasks Completed
 
@@ -263,13 +262,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-06T09:02:50.790Z
-Stopped at: Phase 83 complete — all phases complete
+Last session: 2026-09-06T09:20:00Z
+Stopped at: Phase 83 complete — v4.2 phases 78-83 all verified; milestone close pending
 Resume file: None
 
-Next: `/gsd-discuss-phase 83` or `/gsd-plan-phase 83` (Regression Test Hardening, BUILD-04/BUILD-05;
-depends on Phases 79 and 81, both complete). Phase 82 closed with UAT 8/8 (one gap closed by 82-04 and
-re-verified in round 2), VALIDATION nyquist-compliant, SECURITY threats_open 0, UI review advisory only.
+Next: `/gsd-complete-milestone` (v4.2 IntelliJ Burn-down). Phase 83 closed with VERIFICATION passed 2/2,
+504-test IntelliJ suite green, code review advisory only (5 warnings), two todos filed (live Windows Node
+auto-install check; configured Node path suppresses cached-download fallback).
 
 ## Deferred Items
 
@@ -325,8 +324,10 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-05 after Phase 82 verified and complete (UAT 8/8, COMP-01..02 closed)*
+*State updated: 2026-09-06 after Phase 83 verified and complete (BUILD-04/05 closed; v4.2 phases all done)*
 
 ## Operator Next Steps
 
-- Plan Phase 83 (Regression Test Hardening, last phase of v4.2): `/gsd-discuss-phase 83` (no CONTEXT.md yet) or `/gsd-plan-phase 83`
+- Close the milestone: `/gsd-complete-milestone` (v4.2 IntelliJ Burn-down, phases 78-83, 25 plans)
+- Optional before close: `/gsd-code-review 83 --fix` for the five advisory warnings in 83-REVIEW.md
+- Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
