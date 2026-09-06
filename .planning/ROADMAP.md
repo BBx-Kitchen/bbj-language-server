@@ -242,7 +242,13 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   2. Opening that configured file in either IDE shows config-file highlighting, composer affordance, and tooling — not plain-text or BBj-source treatment.
   3. Closing/reopening or reverting that same file preserves the config-file association; it does not silently fall back to a different language on reopen (guards research Pitfall 5).
   4. Both hosts agree on the same resolved path even when only a BBj-home setting (no explicit custom path) is configured, because the fallback logic is exposed from one shared source rather than reimplemented per host.
-**Plans**: TBD
+**Plans**: 6 plans (3 waves)
+- [ ] 84-01-PLAN.md — Shared resolver + `bbj/resolvedConfigPath` request and pushed notification (wave 1)
+- [ ] 84-02-PLAN.md — VS Code host cache + dynamic `bbx-config` association on every trigger (wave 2)
+- [ ] 84-03-PLAN.md — VS Code consumers: Show-config, run paths, compile `-c` (wave 3)
+- [ ] 84-04-PLAN.md — IntelliJ resolved-path channel + config-file predicates (wave 2)
+- [ ] 84-05-PLAN.md — IntelliJ config file type, file-type override and bbx grammar (wave 3)
+- [ ] 84-06-PLAN.md — IntelliJ run consumers + inline config-path validation (wave 3)
 
 ### Phase 85: Config Hot-Reload With Restart Coalescing
 **Goal**: A change to the resolved config file (PREFIX, project-wide USE) takes effect without a manual language-server restart, signaled non-intrusively, and without the composer's own writes triggering a restart loop.
@@ -360,7 +366,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | Complete | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
-| v4.3 Polish & Quality | 84-92 | 0 | In Progress | - |
+| v4.3 Polish & Quality | 84-92 | 6 | In Progress | - |
 
 **Total:** 19 milestones shipped, 83 phases complete, 267 plans shipped.
 
@@ -372,11 +378,11 @@ and push-blocked until each advisory is published. Both asymmetries are intended
 artifacts (78-83) carry no advisory detail and are tracked normally.
 
 **Current milestone:** v4.3 Polish & Quality (Phases 84-92) — in progress, started 2026-09-06.
-25/25 v1 requirements mapped, 0/9 phases planned. See `.planning/REQUIREMENTS.md` for the
-requirement list and `.planning/PROJECT.md` for scope. Next: `/gsd-plan-phase 84` (or
-`/gsd-discuss-phase 84` first).
+25/25 v1 requirements mapped, 1/9 phases planned (Phase 84: 6 plans across 3 waves). See
+`.planning/REQUIREMENTS.md` for the requirement list and `.planning/PROJECT.md` for scope.
+Next: `/gsd-execute-phase 84`.
 
 ---
 
-*Roadmap last updated: 2026-09-06 — v4.3 Polish & Quality roadmap created (Phases 84-92,
-25/25 requirements mapped). Next: `/gsd-plan-phase 84`.*
+*Roadmap last updated: 2026-09-06 — Phase 84 planned (6 plans, 3 waves; CFG-01 and CFG-02).
+Next: `/gsd-execute-phase 84`.*
