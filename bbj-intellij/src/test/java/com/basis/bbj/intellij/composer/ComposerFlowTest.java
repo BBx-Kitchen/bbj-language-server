@@ -129,6 +129,11 @@ class ComposerFlowTest {
         }
 
         @Override
+        public CompletableFuture<com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult> resolvedConfigPath() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
             throw new UnsupportedOperationException();
         }

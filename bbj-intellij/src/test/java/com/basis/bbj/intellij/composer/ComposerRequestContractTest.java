@@ -17,11 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Cross-language contract for the custom {@code bbj/composer/*} and {@code bbj/compile} requests
- * (#544): every request name {@link BbjComposerServer} declares must appear as a quoted literal in
- * the language server's own TypeScript sources, so renaming one side alone fails here instead of
- * silently breaking the request at run time. The sources are read only as plain text -- never
- * parsed as TypeScript.
+ * Cross-language contract for the custom {@code bbj/composer/*}, {@code bbj/compile} and
+ * {@code bbj/resolvedConfigPath} requests (#544): every request name {@link BbjComposerServer}
+ * declares must appear as a quoted literal in the language server's own TypeScript sources, so
+ * renaming one side alone fails here instead of silently breaking the request at run time. The
+ * sources are read only as plain text -- never parsed as TypeScript.
  */
 class ComposerRequestContractTest {
 
@@ -31,7 +31,10 @@ class ComposerRequestContractTest {
     private static final Path COMPILE_COMMAND_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "compile-command.ts").toAbsolutePath().normalize();
 
-    /** The eight names this test expects; also independently derived reflectively below. */
+    private static final Path RESOLVED_CONFIG_PATH_REQUEST_TS = Paths.get(
+        "..", "bbj-vscode", "src", "language", "resolved-config-path-request.ts").toAbsolutePath().normalize();
+
+    /** The nine names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -40,7 +43,8 @@ class ComposerRequestContractTest {
         "bbj/composer/addwindow/decodeCall",
         "bbj/composer/addchildwindow/preview",
         "bbj/composer/addchildwindow/decodeCall",
-        "bbj/compile"
+        "bbj/compile",
+        "bbj/resolvedConfigPath"
     );
 
     private static String readLanguageServerSource(Path path) {
@@ -75,13 +79,14 @@ class ComposerRequestContractTest {
     void everyDeclaredRequestNameExistsAsAQuotedLiteralInTheLanguageServerSources() {
         String composerSource = readLanguageServerSource(COMPOSER_COMMANDS_TS);
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
-        String combined = composerSource + compileSource;
+        String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
+        String combined = composerSource + compileSource + resolvedConfigPathSource;
 
         for (String requestName : DECLARED_REQUESTS) {
             boolean present = combined.contains("'" + requestName + "'")
                 || combined.contains("\"" + requestName + "\"");
             assertTrue(present, "request name '" + requestName + "' not found as a quoted literal "
-                + "in " + COMPOSER_COMMANDS_TS + " or " + COMPILE_COMMAND_TS);
+                + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + " or " + RESOLVED_CONFIG_PATH_REQUEST_TS);
         }
     }
 
@@ -105,11 +110,11 @@ class ComposerRequestContractTest {
         }
 
         // Camel-case is allowed only where the interface's own method name introduces it
-        // (decodeCall); every other segment of every name must be all lower-case. The allowed
-        // exception is a literal set membership check, not a regex, so a typo such as a doubled
-        // slash (which would still satisfy a lax "starts with bbj/, rest is [a-zA-Z/]" pattern)
-        // is caught by the exact per-segment set comparison instead.
-        Set<String> allowedCamelCaseSegments = Set.of("decodeCall");
+        // (decodeCall, resolvedConfigPath); every other segment of every name must be all
+        // lower-case. The allowed exception is a literal set membership check, not a regex, so a
+        // typo such as a doubled slash (which would still satisfy a lax "starts with bbj/, rest is
+        // [a-zA-Z/]" pattern) is caught by the exact per-segment set comparison instead.
+        Set<String> allowedCamelCaseSegments = Set.of("decodeCall", "resolvedConfigPath");
         for (String requestName : requestNames) {
             for (String segment : requestName.split("/")) {
                 boolean isAllLowerCase = segment.equals(segment.toLowerCase(Locale.ROOT));
@@ -129,7 +134,9 @@ class ComposerRequestContractTest {
         // runtime check without contradicting itself.
         String composerSource = readLanguageServerSource(COMPOSER_COMMANDS_TS);
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
+        String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
         assertTrue(composerSource.length() > 0, "composer-commands.ts must be non-empty");
         assertTrue(compileSource.length() > 0, "compile-command.ts must be non-empty");
+        assertTrue(resolvedConfigPathSource.length() > 0, "resolved-config-path-request.ts must be non-empty");
     }
 }

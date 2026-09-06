@@ -2,6 +2,7 @@ package com.basis.bbj.intellij.composer;
 
 import com.basis.bbj.intellij.compile.CompileModels.CompileParams;
 import com.basis.bbj.intellij.compile.CompileModels.CompileResult;
+import com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.AddChildWindowPreviewParams;
@@ -64,4 +65,13 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/compile")
     CompletableFuture<CompileResult> compile(CompileParams params);
+
+    /**
+     * Reads the one shared answer to "which file is the BBj config file" on demand (see
+     * {@code bbj-vscode/src/language/resolved-config-path-request.ts}). Declared here for the
+     * same reason {@code bbj/compile} is -- {@code getServerInterface()} returns exactly one
+     * interface, so every custom request family has to live on it.
+     */
+    @JsonRequest("bbj/resolvedConfigPath")
+    CompletableFuture<ResolvedConfigPathResult> resolvedConfigPath();
 }
