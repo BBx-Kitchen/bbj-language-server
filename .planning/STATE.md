@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 87
-current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
-status: verifying
-stopped_at: Completed 87-03-PLAN.md
-last_updated: "2026-09-07T18:41:19.324Z"
+current_phase: 88
+current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
+status: planning
+stopped_at: Phase 87 complete, ready to plan Phase 88
+last_updated: "2026-09-07T19:24:49.429Z"
 last_activity: 2026-09-07
-last_activity_desc: Phase 87 execution started
-state_head: 0691a2f1a01f997d555a117b25deddefa0142fa8
+last_activity_desc: Phase 87 complete, transitioned to Phase 88
+state_head: 59d7f5f75400d54ab2e874315e326acdf774df38
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
   completed_plans: 19
-  percent: 33
+  percent: 44
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-07 (Phase 86 complete — UAT 4/4 hand checkpoints after a gap closure (G-86-1), Nyquist-compliant, threats_open 0; Phase 87 ready to plan)
+**Last Updated:** 2026-09-07 (Phase 87 complete — UAT 2/2 hand checkpoints, DISC-04 closed; Phase 88 ready to plan)
 
 ## Project Reference
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 87 — Shared SETOPTS Composer Layer & IntelliJ Dialog
+**Current Focus:** Phase 88 — SETOPTS-in-Code Hovers & Tri-State Composer
 
 ---
 
 ## Current Position
 
-Phase: 87 (Shared SETOPTS Composer Layer & IntelliJ Dialog) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-07 — Phase 87 execution started
+Phase: 88 — SETOPTS-in-Code Hovers & Tri-State Composer
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-07 — Phase 87 complete, transitioned to Phase 88
 
 ## Performance Metrics
 
@@ -329,14 +329,13 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T18:41:19.189Z
-Stopped at: Completed 87-03-PLAN.md
+Last session: 2026-09-07T19:35:00.000Z
+Stopped at: Phase 87 complete, ready to plan Phase 88
 Resume file: None
 
-Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer
-& IntelliJ Dialog. Phase 85's decision (85-01, decision log above) already established that
-a SETOPTS-only write yields zero hot-reload notifications, so Phase 87's composer needs no
-dialog-aware restart deferral.
+Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
+Tri-State Composer. Phase 87's shared `bbj/composer/setopts/*` layer, `DecodeEquality`
+comparator and SETOPTS DTO family are the foundation Phase 88's hover/tri-state work builds on.
 
 ## Deferred Items
 
@@ -401,11 +400,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-07 after Phase 86 verify-work close-out (Phases 84-86 complete, 3/9; CFG-01..05 closed)*
+*State updated: 2026-09-07 after Phase 87 verify-work close-out (Phases 84-87 complete, 4/9; DISC-04 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-86 complete and verified; next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87`
+- Phases 84-87 complete and verified; next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88`
 - Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
