@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
 current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
 status: executing
-stopped_at: Completed 88-03-PLAN.md
-last_updated: "2026-09-07T21:39:24.356Z"
+stopped_at: Completed 88-04-PLAN.md
+last_updated: "2026-09-07T21:50:07.357Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 88 execution started
-state_head: 3d0aebf361b50b0f57678c6394cce409f99891c3
+state_head: 9f704746f1baee0e31ad1489e133eb3cc25a27d1
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 25
-  completed_plans: 22
+  completed_plans: 23
   percent: 44
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-07 — Phase 88 execution started
 
@@ -163,6 +163,7 @@ Last activity: 2026-09-07 — Phase 88 execution started
 | Phase 88 P01 | 55min | 3 tasks | 5 files |
 | Phase 88 P02 | 40min | 3 tasks | 5 files |
 | Phase 88 P03 | 15min | 3 tasks | 6 files |
+| Phase 88 P04 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -272,6 +273,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: [Phase 88] 88-03: Widened traceOptsChain with an optional originNode (the OPTS-sourced Assignment) so setopts-in-code-request.ts locates the edit-in-place line range without a second AST walk
 - [Phase 88]: [Phase 88] 88-03: decodeInCode maps a bare IOR/AND mask-call target to the same not-found result as no-shape-nearby -- D-04 names only the two SetOptsStatement-rooted shapes as edit-in-place targets, and mode has no fourth value for it
 - [Phase 88]: [Phase 88] 88-03: DISC-06 intentionally NOT marked complete -- its tri-state composer/edit-in-place deliverables also need plans 88-05 (IntelliJ dialog) and 88-06 (VS Code UI); only the wire layer landed here
+- [Phase 88]: 88-04: ComposerModels' eight new SETOPTS-in-code DTOs mirror setopts-in-code-request.ts/setopts-catalog.ts field-for-field (byteNo remapped to wire key byte via @SerializedName); BbjComposerServer.setoptsDecodeInCode/setoptsComposeTriState declared on the single server interface, pinned by ComposerRequestContractTest (14 names).
+- [Phase 88]: 88-04: DecodeEquality.sameSetoptsInCode compares found/editable/mode/reason/summary/absolute/chain/initial field-wise, order-sensitive on tri-state entries (fails closed on reorder); DISC-06 still NOT marked complete pending 88-05/88-06.
 
 ### Tech Debt
 
@@ -338,8 +341,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T21:39:24.200Z
-Stopped at: Completed 88-03-PLAN.md
+Last session: 2026-09-07T21:50:07.194Z
+Stopped at: Completed 88-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
