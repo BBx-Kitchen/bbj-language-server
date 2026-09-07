@@ -229,6 +229,12 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         ['WhileEndStatement', 'WEND'],
         ['ForStatement', 'FOR I=1 TO 10'],
         ['GotoStatement', 'GOTO LBL'],
+        ['OnGotoStatement', 'ON X GOTO LBL'],
+        ['SwitchStatement (SWITCH)', 'SWITCH X'],
+        ['SwitchStatement (SWEND)', 'SWEND'],
+        ['SwitchCase', 'CASE 1'],
+        ['UntilStatement', 'UNTIL X=1'],
+        ['KeywordStatement (REPEAT)', 'REPEAT'],
     ];
 
     test.each(controlFlowMarkers)('a %s between origin and target stops the walk with unsafeReason "control-flow"', async (_name, marker) => {

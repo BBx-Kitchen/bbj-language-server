@@ -22,14 +22,19 @@ import {
     isGotoStatement,
     isIfEndStatement,
     isIfStatement,
+    isKeywordStatement,
     isLetStatement,
     isLibVariable,
     isMethodCall,
     isMethodDecl,
+    isOnGotoStatement,
     isProgram,
     isSetOptsStatement,
     isStringLiteral,
+    isSwitchCase,
+    isSwitchStatement,
     isSymbolRef,
+    isUntilStatement,
     isWhileEndStatement,
     isWhileStatement,
     MethodCall,
@@ -244,7 +249,9 @@ type StatementVerdict =
 function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
     if (isIfStatement(stmt) || isElseStatement(stmt) || isIfEndStatement(stmt)
         || isWhileStatement(stmt) || isWhileEndStatement(stmt) || isForStatement(stmt)
-        || isGotoStatement(stmt)) {
+        || isGotoStatement(stmt) || isOnGotoStatement(stmt)
+        || isSwitchStatement(stmt) || isSwitchCase(stmt)
+        || isUntilStatement(stmt) || (isKeywordStatement(stmt) && stmt.kind === 'REPEAT')) {
         return { kind: 'control-flow' };
     }
     if (!isLetStatement(stmt)) {
