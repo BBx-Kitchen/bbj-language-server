@@ -26,6 +26,10 @@ import type { ConfigReloadNotification } from '../src/language/config-reload-not
  * predicate on `BBjDocumentBuilder` and the bounded quiescence wait in `config-watcher.ts` that
  * consumes it (#486). No real fs.watch, no real timers, no real disk reads, no real workspace
  * documents — every effect is injected or driven through hermetic `createBBjServices`.
+ *
+ * The guarantee proven throughout this file: at most one reload notification per distinct
+ * consumed-content transition, never emitted while the builder reports pending work, and never
+ * delayed past the 5 s bound.
  */
 
 interface WatchRecord {
@@ -242,5 +246,166 @@ describe('main.ts wires the config watcher: armed once, re-armed at exactly two 
         const source = mainSource();
         expect(source).toMatch(/hasPendingWork:\s*\(\)\s*=>\s*\(shared\.workspace\.DocumentBuilder as BBjDocumentBuilder\)\.hasPendingWork\(\)/);
         expect(source).toMatch(/notify:\s*notifyConfigReloadRequired/);
+    });
+});
+
+describe('settings-change relevance and the interleaved-burst guarantee (#486)', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    test('a settings change to a different-PREFIX config emits zero notifications while pending work is held, then exactly one with reason config-path-changed once the predicate flips', () => {
+        let pending = true;
+        const { watchDirectory } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const contentsByPath = new Map<string, string>([
+            ['/cfg-a/config.bbx', 'PREFIX /a/\n'],
+            ['/cfg-b/config.bbx', 'PREFIX /b/\n'],
+        ]);
+        const readFile = vi.fn((p: string): string | null => contentsByPath.get(p) ?? null);
+        const watcher = createConfigWatcher({
+            watchDirectory, notify, readFile, hasPendingWork: () => pending, logWarn: vi.fn(), logInfo: vi.fn(),
+        });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+
+        expect(notify).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(QUIESCENCE_POLL_MS * 3);
+        expect(notify).not.toHaveBeenCalled();
+
+        pending = false;
+        vi.advanceTimersByTime(QUIESCENCE_POLL_MS);
+
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg-b/config.bbx', reason: 'config-path-changed' } satisfies ConfigReloadNotification);
+    });
+
+    test('a settings change to an identical-content config emits zero notifications, and the fake watch factory records a watch on the new directory', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const contentsByPath = new Map<string, string>([
+            ['/cfg-a/config.bbx', 'PREFIX /same/\n'],
+            ['/cfg-b/config.bbx', 'PREFIX /same/\n'],
+        ]);
+        const readFile = vi.fn((p: string): string | null => contentsByPath.get(p) ?? null);
+        const watcher = createConfigWatcher({
+            watchDirectory, notify, readFile, hasPendingWork: () => false, logWarn: vi.fn(),
+        });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /same/\n'));
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+
+        expect(records).toHaveLength(2);
+        expect(records[1].dir).toBe('/cfg-b');
+        expect(notify).not.toHaveBeenCalled();
+    });
+
+    test('three config events plus one settings change inside one held-busy window emit exactly one notification in total, and the surviving reason is the last verdict', () => {
+        let pending = true;
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        let currentAContents = 'PREFIX /a/\n';
+        const contentsByPath = new Map<string, string>([['/cfg-b/config.bbx', 'PREFIX /b/\n']]);
+        const readFile = vi.fn((p: string): string | null => {
+            if (p === '/cfg-a/config.bbx') return currentAContents;
+            return contentsByPath.get(p) ?? null;
+        });
+        const watcher = createConfigWatcher({
+            watchDirectory, notify, readFile, hasPendingWork: () => pending, logWarn: vi.fn(), logInfo: vi.fn(),
+        });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+        expect(records).toHaveLength(1);
+
+        // Three raw config-file events inside one debounce window: the outer debounce
+        // collapses them into a single evaluate() call once it closes.
+        currentAContents = 'PREFIX /changed/\n';
+        records[0].onEvent('rename', 'config.bbx');
+        records[0].onEvent('change', 'config.bbx');
+        records[0].onEvent('rename', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+        // The debounced file-event verdict (prefix-changed, held because pending work is true)
+        // is now the pending quiescence wait's payload.
+        expect(notify).not.toHaveBeenCalled();
+
+        // A settings change arrives inside the same window, while that wait is still pending —
+        // its own immediate evaluation supersedes the pending payload.
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+        expect(notify).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(QUIESCENCE_POLL_MS * 5);
+        expect(notify).not.toHaveBeenCalled();
+
+        pending = false;
+        vi.advanceTimersByTime(QUIESCENCE_POLL_MS);
+
+        expect(notify).toHaveBeenCalledTimes(1);
+        // The last verdict to reach the pending wait survives — the settings-change verdict
+        // (config-path-changed), not the earlier debounced file-event verdict (prefix-changed).
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg-b/config.bbx', reason: 'config-path-changed' } satisfies ConfigReloadNotification);
+    });
+
+    test('the same burst with the predicate never flipping emits exactly one notification at the 5000ms bound, not one per event', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        let currentAContents = 'PREFIX /a/\n';
+        const contentsByPath = new Map<string, string>([['/cfg-b/config.bbx', 'PREFIX /b/\n']]);
+        const readFile = vi.fn((p: string): string | null => {
+            if (p === '/cfg-a/config.bbx') return currentAContents;
+            return contentsByPath.get(p) ?? null;
+        });
+        const watcher = createConfigWatcher({
+            watchDirectory, notify, readFile, hasPendingWork: () => true, logWarn: vi.fn(), logInfo: vi.fn(),
+        });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+
+        currentAContents = 'PREFIX /changed/\n';
+        records[0].onEvent('rename', 'config.bbx');
+        records[0].onEvent('change', 'config.bbx');
+        records[0].onEvent('rename', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+        expect(notify).not.toHaveBeenCalled();
+
+        watcher.updateResolvedPath(resolvedAt('/cfg-b/config.bbx'));
+        expect(notify).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(QUIESCENCE_TIMEOUT_MS);
+
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg-b/config.bbx', reason: 'config-path-changed' } satisfies ConfigReloadNotification);
+
+        vi.advanceTimersByTime(10_000);
+        expect(notify).toHaveBeenCalledTimes(1);
+    });
+
+    test('a settings change resolving to a null path closes the watch, emits at most one notification, and leaves nothing armed', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const readFile = vi.fn((p: string): string | null => (p === '/cfg-a/config.bbx' ? 'PREFIX /a/\n' : null));
+        const watcher = createConfigWatcher({
+            watchDirectory, notify, readFile, hasPendingWork: () => false, logWarn: vi.fn(),
+        });
+
+        watcher.start(resolvedAt('/cfg-a/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+        expect(records).toHaveLength(1);
+        expect(records[0].closed).toBe(false);
+
+        watcher.updateResolvedPath(resolvedAt(null));
+
+        expect(records[0].closed).toBe(true);
+        expect(records).toHaveLength(1); // no new watch armed on a null path
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: null, reason: 'config-path-changed' } satisfies ConfigReloadNotification);
+
+        // Nothing is armed to receive a further event: canonicalPath/watchedDir are both null,
+        // so onDirectoryEvent's own guard returns early even if the stale closed handle's
+        // captured listener were invoked directly.
+        records[0].onEvent('rename', 'config.bbx');
+        expect(notify).toHaveBeenCalledTimes(1);
     });
 });
