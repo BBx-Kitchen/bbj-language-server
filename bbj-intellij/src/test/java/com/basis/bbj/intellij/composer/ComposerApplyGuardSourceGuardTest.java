@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Pins the #567 stale-edit guard wiring: every composer write reaches {@link StaleEditGuard} first,
- * each of the three edit flows carries its own {@link DecodeEquality} comparator, the re-decode
+ * each of the four edit flows (MSGBOX, addWindow, addChildWindow, SETOPTS -- #633) carries its own
+ * {@link DecodeEquality} comparator, the re-decode
  * reuses the exact {@code <kind>DecodeCall} request the launch already issued, the create path stays
  * outside the guard, the window operation order is unchanged, and the modification-stamp re-check
  * still lives inside the write command. A failure here means one of those regressed -- a write
@@ -103,11 +104,11 @@ class ComposerApplyGuardSourceGuardTest {
         List<Integer> applyIfUnchanged = allIndicesOf(text, "applyIfUnchanged(");
         List<Integer> replaceString = allIndicesOf(text, "replaceString(");
 
-        assertEquals(2, applyIfUnchanged.size(),
-                "exactly two applyIfUnchanged( call sites: the MSGBOX replacement and the shared "
-                        + "hex-edit path used by both window composers");
-        assertEquals(2, replaceString.size(),
-                "exactly two replaceString( writes: one per guarded apply body");
+        assertEquals(3, applyIfUnchanged.size(),
+                "exactly three applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
+                        + "hex-edit path used by both window composers, and the SETOPTS replacement");
+        assertEquals(3, replaceString.size(),
+                "exactly three replaceString( writes: one per guarded apply body");
 
         for (int applyIndex : applyIfUnchanged) {
             boolean hasFollowingReplace = replaceString.stream().anyMatch(r -> r > applyIndex);
@@ -117,7 +118,7 @@ class ComposerApplyGuardSourceGuardTest {
     }
 
     @Test
-    void allThreeEditFlowsReachTheGuardWithTheirOwnComparator() {
+    void allFourEditFlowsReachTheGuardWithTheirOwnComparator() {
         String text = readSource(LAUNCHER_SOURCE);
 
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameMsgbox"),
@@ -126,6 +127,8 @@ class ComposerApplyGuardSourceGuardTest {
                 "the addWindow edit flow must reach the guard with sameAddWindow exactly once");
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameAddChildWindow"),
                 "the addChildWindow edit flow must reach the guard with sameAddChildWindow exactly once");
+        assertEquals(1, countOccurrences(text, "DecodeEquality::sameSetopts"),
+                "the SETOPTS edit flow must reach the guard with sameSetopts exactly once");
     }
 
     @Test
@@ -139,6 +142,8 @@ class ComposerApplyGuardSourceGuardTest {
                 "addWindowDecodeCall( must appear exactly twice for the same reason");
         assertEquals(2, countOccurrences(text, "addChildWindowDecodeCall("),
                 "addChildWindowDecodeCall( must appear exactly twice for the same reason");
+        assertEquals(2, countOccurrences(text, "setoptsDecodeCall("),
+                "setoptsDecodeCall( must appear exactly twice for the same reason");
     }
 
     @Test

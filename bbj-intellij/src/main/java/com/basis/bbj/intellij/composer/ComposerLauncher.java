@@ -8,6 +8,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsCatalogs;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.WriteCommandAction;
@@ -33,7 +37,7 @@ import java.util.function.BiPredicate;
  */
 public final class ComposerLauncher {
 
-    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW }
+    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW, SETOPTS }
 
     private ComposerLauncher() {}
 
@@ -81,6 +85,9 @@ public final class ComposerLauncher {
             case ADDCHILDWINDOW -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.addChildWindowDecodeCall(new DecodeCallParams(lineText, col)),
                     (server, catalogs, decoded) -> openAddChildWindow(project, editor, server, catalogs.addchildwindow, decoded, line, col));
+            case SETOPTS -> flow.launch(labelOf(kind), serverFuture,
+                    (server, catalogs) -> server.setoptsDecodeCall(new SetoptsDecodeCallParams(lineText)),
+                    (server, catalogs, decoded) -> openSetopts(project, editor, server, catalogs.setopts, decoded, line, col));
         }
     }
 
@@ -90,6 +97,7 @@ public final class ComposerLauncher {
             case MSGBOX -> "MSGBOX";
             case ADDWINDOW -> "addWindow";
             case ADDCHILDWINDOW -> "addChildWindow";
+            case SETOPTS -> "SETOPTS";
         };
     }
 
@@ -256,15 +264,87 @@ public final class ComposerLauncher {
         });
     }
 
-    private static void insertAtCaret(Project project, Editor editor, String text, String command) {
+    /**
+     * Opens the SETOPTS dialog (#633), either prefilled for edit-in-place on the decoded line or
+     * blank for compose-new. The edit path replaces only the decoded hex token (or fills the empty
+     * insert point after a bare {@code SETOPTS} keyword) through {@link StaleEditGuard}; the
+     * compose-new path inserts a whole line at the caret's line start via {@link #insertAt}.
+     */
+    private static void openSetopts(Project project, Editor editor, BbjComposerServer server,
+                                    SetoptsCatalogs catalogs, SetoptsDecodeResult decoded, int line, int col) {
+        if (catalogs == null) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.SETOPTS)), null);
+            return;
+        }
+        boolean edit = decoded != null && decoded.found;
+        SetoptsComposerDialog dialog = edit
+                ? new SetoptsComposerDialog(project, server, catalogs, decoded.initial, decoded.edit.hexDigits, true)
+                : new SetoptsComposerDialog(project, server, catalogs, null, null, false);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        if (edit) {
+            // Defense in depth for #538, mirroring applyHexEdit's own empty-value guard: OK is
+            // disabled until the first preview resolves, so hex should never still be empty here.
+            String hex = dialog.getHexDigits();
+            if (hex == null || hex.isEmpty()) {
+                return;
+            }
+            SetoptsEdit ed = decoded.edit;
+            StaleEditGuard guard = new StaleEditGuard(
+                    documentViewOf(editor),
+                    body -> WriteCommandAction.runWriteCommandAction(project, "Configure SETOPTS", null, body),
+                    ComposerLauncher::onEdt,
+                    notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.SETOPTS)),
+                    StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+            guard.applyIfUnchanged(labelOf(Kind.SETOPTS), line, col, decoded,
+                    (currentLineText, currentCol) -> server.setoptsDecodeCall(new SetoptsDecodeCallParams(currentLineText)),
+                    DecodeEquality::sameSetopts,
+                    () -> {
+                        int start;
+                        int end;
+                        String replacement;
+                        if (ed.hexRange != null) {
+                            start = ed.hexRange[0];
+                            end = ed.hexRange[1];
+                            replacement = hex;
+                        } else if (ed.insertOffset != null) {
+                            start = ed.insertOffset;
+                            end = ed.insertOffset;
+                            replacement = " " + hex;
+                        } else {
+                            return;
+                        }
+                        int ls = editor.getDocument().getLineStartOffset(line);
+                        editor.getDocument().replaceString(ls + start, ls + end, replacement);
+                    });
+        } else {
+            insertAt(project, editor, dialog.getLine() + "\n", "Compose SETOPTS", true);
+        }
+    }
+
+    /**
+     * Inserts {@code text} either at the caret ({@code atLineStart == false}, the create-path
+     * behaviour every other composer already uses) or at the start of the caret's line ({@code
+     * atLineStart == true}, SETOPTS's compose-new path) -- a mid-line insertion of a composed
+     * whole line would split whatever line the user right-clicked, which is exactly the corruption
+     * this method must never cause for SETOPTS.
+     */
+    private static void insertAt(Project project, Editor editor, String text, String command, boolean atLineStart) {
         if (text == null || text.isEmpty()) {
             return;
         }
         WriteCommandAction.runWriteCommandAction(project, command, null, () -> {
-            int offset = editor.getCaretModel().getOffset();
-            editor.getDocument().insertString(offset, text);
+            Document doc = editor.getDocument();
+            int caret = editor.getCaretModel().getOffset();
+            int offset = atLineStart ? doc.getLineStartOffset(doc.getLineNumber(caret)) : caret;
+            doc.insertString(offset, text);
             editor.getCaretModel().moveToOffset(offset + text.length());
         });
+    }
+
+    private static void insertAtCaret(Project project, Editor editor, String text, String command) {
+        insertAt(project, editor, text, command, false);
     }
 
     private static void onEdt(Runnable runnable) {
