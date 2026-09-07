@@ -39,12 +39,49 @@ let client: LanguageClient;
 let secretStorage: vscode.SecretStorage;
 let outputChannel: vscode.OutputChannel;
 let restartGate: RestartGate | undefined;
+let configReloadStatusBar: vscode.StatusBarItem;
+let configReloadAutoHideTimer: ReturnType<typeof setTimeout> | undefined;
 
-// Stub for Task 1 — the status-bar transitions for each restart phase are wired in by a
-// later task in this plan.
+/** How long the "config reloaded" confirmation stays visible before auto-hiding (D-14). */
+const CONFIG_RELOAD_CONFIRMATION_HIDE_MS = 5000;
+
+/**
+ * The reload's only user-facing signal (D-13/D-14): a status-bar item that spins while the
+ * restart runs, briefly confirms, then auto-hides — never a prompt, modal or toast. A
+ * failed restart (D-15) clears the signal and reuses the existing start-failure error
+ * message rather than sticking in the reloading state.
+ */
 function onConfigRestartPhase(phase: RestartPhase, error?: unknown): void {
-    void phase;
-    void error;
+    if (configReloadAutoHideTimer) {
+        clearTimeout(configReloadAutoHideTimer);
+        configReloadAutoHideTimer = undefined;
+    }
+    switch (phase) {
+        case 'restarting': {
+            const activePath = getActiveConfigPath();
+            configReloadStatusBar.text = '$(sync~spin) Reloading BBj config...';
+            configReloadStatusBar.tooltip = activePath
+                ? `Reloading the BBj language server — config file: ${activePath}`
+                : 'Reloading the BBj language server for the updated config file';
+            configReloadStatusBar.show();
+            break;
+        }
+        case 'restarted': {
+            configReloadStatusBar.text = '$(check) BBj config reloaded';
+            configReloadAutoHideTimer = setTimeout(() => {
+                configReloadAutoHideTimer = undefined;
+                configReloadStatusBar.hide();
+            }, CONFIG_RELOAD_CONFIRMATION_HIDE_MS);
+            break;
+        }
+        case 'failed': {
+            configReloadStatusBar.hide();
+            const detail = error instanceof Error ? error.message : String(error);
+            console.error('BBj language server failed to restart:', error);
+            vscode.window.showErrorMessage(`BBj language server did not start: ${detail}`);
+            break;
+        }
+    }
 }
 
 // Function to read BBj.properties and extract classpath entry names
@@ -893,6 +930,13 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     });
 
+    // Config-reload status bar indicator (#486, D-13/D-14) — hidden by default, driven
+    // entirely by onConfigRestartPhase via the restart gate above.
+    configReloadStatusBar = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left, 98
+    );
+    context.subscriptions.push(configReloadStatusBar);
+
     // The server already decided a restart is required (#486) — this handler never judges
     // relevance itself, it only logs and hands the request to the choke point above.
     client.onNotification(CONFIG_RELOAD_METHOD, (params: ConfigReloadNotification) => {
@@ -951,6 +995,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
 // This function is called when the extension is deactivated.
 export function deactivate(): Thenable<void> | undefined {
+    // Cancel any pending restart before disposing the client — a scheduled restart must
+    // never fire against a client that is being (or has been) shut down (#486).
+    restartGate?.cancel();
     if (client) {
         return client.stop();
     }
