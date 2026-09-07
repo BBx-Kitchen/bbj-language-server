@@ -19,13 +19,19 @@ public final class RefreshInFlightGuard {
     RefreshInFlightGuard() {
     }
 
-    /** Stub for the RED phase of TDD -- intentionally wrong pending the GREEN implementation. */
+    /**
+     * Attempts to acquire the guard for {@code key}. One atomic set-add, so two threads racing
+     * the same key cannot both win.
+     *
+     * @return true exactly when this call added the key
+     */
     public boolean tryAcquire(Object key) {
-        return false;
+        return held.putIfAbsent(key, Boolean.TRUE) == null;
     }
 
-    /** Stub for the RED phase of TDD -- intentionally wrong pending the GREEN implementation. */
+    /** Releases {@code key}, safe to call for a key that is not held. */
     public void release(Object key) {
+        held.remove(key);
     }
 
     /** Package-private for tests: whether the key is currently held. */

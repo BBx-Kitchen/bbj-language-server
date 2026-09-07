@@ -5,6 +5,7 @@ import com.basis.bbj.intellij.composer.BbjComposerService;
 import com.basis.bbj.intellij.refresh.JavaClassesRefreshFlow;
 import com.basis.bbj.intellij.refresh.JavaClassesRefreshPresenter;
 import com.basis.bbj.intellij.refresh.JavaClassesRefreshPresenter.Presentation;
+import com.basis.bbj.intellij.refresh.RefreshInFlightGuard;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.notification.Notification;
@@ -42,20 +43,30 @@ public final class BbjRefreshJavaClassesAction extends AnAction {
             return;
         }
 
+        if (!RefreshInFlightGuard.SESSION.tryAcquire(project)) {
+            BbjServerService.getInstance(project).logToConsole(
+                JavaClassesRefreshPresenter.alreadyRunningConsoleLine(), ConsoleViewContentType.SYSTEM_OUTPUT);
+            return;
+        }
+
         new Task.Backgroundable(project, "Refreshing Java classes…", false) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                ApplicationManager.getApplication().assertIsNonDispatchThread();
+                try {
+                    ApplicationManager.getApplication().assertIsNonDispatchThread();
 
-                JavaClassesRefreshFlow.Result result = JavaClassesRefreshFlow.run(seconds -> {
-                    BbjComposerServer server = BbjComposerService.server(project).get(seconds, TimeUnit.SECONDS);
-                    if (server == null) {
-                        return null;
-                    }
-                    return server.refreshJavaClasses().get(seconds, TimeUnit.SECONDS);
-                }, JavaClassesRefreshFlow.REFRESH_TIMEOUT_SECONDS);
+                    JavaClassesRefreshFlow.Result result = JavaClassesRefreshFlow.run(seconds -> {
+                        BbjComposerServer server = BbjComposerService.server(project).get(seconds, TimeUnit.SECONDS);
+                        if (server == null) {
+                            return null;
+                        }
+                        return server.refreshJavaClasses().get(seconds, TimeUnit.SECONDS);
+                    }, JavaClassesRefreshFlow.REFRESH_TIMEOUT_SECONDS);
 
-                render(project, result);
+                    render(project, result);
+                } finally {
+                    RefreshInFlightGuard.SESSION.release(project);
+                }
             }
         }.queue();
     }
