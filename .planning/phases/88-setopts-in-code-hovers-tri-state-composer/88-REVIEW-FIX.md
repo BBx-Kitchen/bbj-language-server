@@ -1,105 +1,118 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-fixed_at: 2026-09-07T22:56:00Z
+fixed_at: 2026-09-07T23:18:45Z
 review_path: .planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-REVIEW.md
-iteration: 1
-findings_in_scope: 3
-fixed: 3
+iteration: 2
+findings_in_scope: 4
+fixed: 4
 skipped: 0
 status: all_fixed
 ---
 
-# Phase 88: Code Review Fix Report
+# Phase 88: Code Review Fix Report (iteration 2)
 
-**Fixed at:** 2026-09-07T22:56:00Z
+**Fixed at:** 2026-09-07T23:18:45Z
 **Source review:** .planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-REVIEW.md
-**Iteration:** 1
+**Iteration:** 2
 
 **Summary:**
-- Findings in scope: 3 (1 critical, 2 warning)
-- Fixed: 3
+- Findings in scope: 4 (WR-A, WR-B, WR-C, IN-01 — this iteration's re-review findings; CR-01/WR-01/WR-02 from iteration 1 were already fixed and committed)
+- Fixed: 4
 - Skipped: 0
 
-## Verification environment
-
-All edits, `npx tsc --noEmit`, `npx vitest run`, and `./gradlew test --offline` invocations ran
-inside an isolated git worktree (`.claude/worktrees/rf-88-*`, branch `gsd-reviewfix/88-*`), not the
-main checkout, per this agent's isolation protocol. `bbj-vscode/node_modules` and
-`bbj-vscode/src/language/generated` were symlinked into the worktree from the main checkout to
-avoid a redundant `npm install` / `npm run langium:generate`, then removed before handoff. The
-fast-forward in the cleanup tail brings these same commits onto `main` in the main checkout, so the
-verification results below are reproducible there once the branch is at these commits.
+All fixes were applied and verified inside an isolated git worktree
+(`gsd-reviewfix/88-2933479`, based on `main`), then fast-forwarded onto `main` on
+cleanup. Verification (tsc --noEmit, vitest, `./gradlew test`) all ran inside that
+same worktree — a symlinked `node_modules` and `src/language/generated` (both
+gitignored, unaffected by this) were used to reuse the main checkout's installed
+dependencies and generated AST for the VS Code side; these symlinks were removed
+before the worktree was fast-forwarded and torn down, so they leave no trace on
+`main`.
 
 ## Fixed Issues
 
-### CR-01: SETOPTS chain-safety walk misses `ON...GOTO/GOSUB` and `SWITCH/CASE/SWEND`, producing a false "safe" verdict
+### WR-A: WR-02's word-boundary fix has no trailing boundary for the bare `SETOPTS` keyword
+
+**Files modified:** `bbj-vscode/src/setopts-in-code-ui.ts`, `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java`
+**Commit:** `17505b74`
+**Applied fix:**
+- TS: changed the candidate-line regex from `/\b(?:SETOPTS|IOR\(|AND\()/gi` to
+  `/\bSETOPTS\b|\bIOR\(|\bAND\(/gi` — the bare `SETOPTS` alternative now requires a
+  trailing word boundary, so `SETOPTSFOO`/`SETOPTSHELPER(` no longer match. `IOR(`/`AND(`
+  keep their existing (already-anchored-by-`(`) behavior.
+- Java: added a `hasIdentifierCharAfter` check (same char set as the pre-existing
+  `hasIdentifierCharBefore` at the time of this fix — sigils included) and gated it to
+  the `"setopts"` keyword specifically in `isCaretOnCall`'s loop condition, matching the
+  review's suggested code exactly. `ior(`/`and(` are unaffected (their literal `(`
+  already anchors the trailing edge).
+- Updated both functions' doc comments to describe the new trailing-boundary behavior.
+
+### WR-C: Divergent identifier-boundary definitions between the TS and Java word-boundary checks
+
+**Files modified:** `bbj-vscode/src/setopts-in-code-ui.ts`, `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java`
+**Commit:** `bc238b2d`
+**Applied fix:** Applied as a follow-up commit on top of WR-A (same two files, same
+region of code) to keep each finding's diff reviewable in isolation. Reconciled the two
+IDEs' identifier-boundary definition onto the canonical `\w`-based (`[A-Za-z0-9_]`) one
+that the TS regex already used — per the review's own assessment that "the TS behavior
+more closely matches how the lexer would actually split those tokens." Concretely:
+- Java: extracted a new `isIdentifierChar(char)` helper (letter/digit/underscore only,
+  no `$!%@` sigils) and rewrote `hasIdentifierCharBefore`/`hasIdentifierCharAfter` to
+  delegate to it, removing the sigil characters that previously made the Java heuristic
+  diverge from the TS `\b`.
+- TS: added a doc-comment paragraph on `setoptsInCodeCandidateLine` making the `\w`-based
+  definition and the sigil exclusion explicit, cross-referencing
+  `ComposerLauncher.isIdentifierChar` as the mirrored canonical definition on the Java
+  side (no behavior change on the TS side — it already used `\b`).
+
+### WR-B: `findAnchor` mis-scopes the backward walk when the target `SetOptsStatement` is itself inside a semicolon-joined `CompoundStatement`
 
 **Files modified:** `bbj-vscode/src/language/setopts-code-scanner.ts`, `bbj-vscode/test/setopts-code-scanner.test.ts`
-**Commit:** `b354a4a1`
-**Applied fix:** Added `isOnGotoStatement`, `isSwitchStatement`, `isSwitchCase`, `isUntilStatement`,
-and `isKeywordStatement(stmt) && stmt.kind === 'REPEAT'` guards to `matchStatement`'s control-flow
-branch (verified each type guard exists in `generated/ast.ts` and that each statement type is a
-flat sibling in the same `Program.statements`/`MethodDecl.body`/etc. array `walkChain` iterates,
-matching the review's analysis). Added six new `test.each` rows to the `controlFlowMarkers` table
-covering `OnGotoStatement`, `SwitchStatement` (both the `SWITCH` and `SWEND` forms), `SwitchCase`,
-`UntilStatement`, and the `REPEAT` `KeywordStatement`. Also included `UntilStatement`/`REPEAT` per
-the review's own note that they belong to the same "statement type list is incomplete" defect.
+**Commit:** `3aea0872`
+**Applied fix:** Applied exactly as the review's suggested fix:
+- `findAnchor` no longer treats a `CompoundStatement` as a terminal container — the loop
+  condition became `if (statements && !isCompoundStatement(node))`, so climbing continues
+  through a `CompoundStatement` to the real top-level statement-list owner
+  (`Program`/`MethodDecl`/`DefFunction`).
+- `traceOptsChain` now passes `target` itself (not
+  `anchor.statements[anchor.anchorIndex]`) as the anchor statement to `walkChain`, since
+  `flattenStatements` already inlines a `CompoundStatement`'s children and `target` is
+  guaranteed to be present in the flattened array once `findAnchor` correctly climbs past
+  any enclosing `CompoundStatement`.
+- Updated `findAnchor`'s doc comment to explain why `CompoundStatement` must not be
+  terminal.
+- Added a regression test (`WR-B regression: the traced SetOptsStatement itself sitting
+  inside a semicolon-joined CompoundStatement still finds an OPTS origin on a preceding
+  line`) reproducing the review's exact repro case
+  (`'A$=OPTS\nA$=IOR(A$,"$08$") ; SETOPTS A$'`) and asserting `safe: true` with one `IOR`
+  link — this is a logic-bearing fix (a backward chain-walk scoping bug), so beyond the
+  standard tsc/re-read verification, its correctness is additionally pinned by this new
+  test, which was confirmed to fail against the pre-fix code before the fix landed (via
+  local `git stash`) and pass after. All 54 tests in
+  `test/setopts-code-scanner.test.ts` pass (up from 53 pre-fix).
 
-Verification: `npx tsc --noEmit` clean; `npx vitest run test/setopts-code-scanner.test.ts
-test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-request.test.ts
-test/setopts-in-code-ui.test.ts` — 161/161 tests passed (5 test files).
+### IN-01: `setopts-in-code-ui.test.ts`'s substring-negative cases don't exercise the trailing-boundary gap (WR-A)
 
-### WR-01: `traceOptsChain`'s `MethodCall` overload is dead, untested code
+**Files modified:** `bbj-vscode/test/setopts-in-code-ui.test.ts`
+**Commit:** `35301592`
+**Applied fix:** Added two cases to the negative `test.each` table:
+`['SETOPTSFOO', 'x = SETOPTSFOO(1)']` and `['SETOPTSHELPER(', 'x = SETOPTSHELPER(1)']`
+(the second matching the exact example from WR-A's reproduction). Both pass against the
+WR-A fix (committed first, in `17505b74`) and would have failed against the pre-fix
+regex, confirming the gap is now closed and regression-guarded.
 
-**Files modified:** `bbj-vscode/src/language/setopts-code-scanner.ts`
-**Commit:** `0b3ee88d`
-**Applied fix:** Confirmed (by grepping every call site) that `traceOptsChain`/`trackedVariableName`
-are never invoked with a `MethodCall` — `detectSetOptsShape` only calls `traceOptsChain(node)`
-inside its `isSetOptsStatement(node)` branch, and the `MethodCall` shape (c) is decoded directly
-without routing through `traceOptsChain`. Chose the "narrow the signature" option from the review's
-either/or fix: `trackedVariableName` and `traceOptsChain` are now typed to accept only
-`SetOptsStatement`, the unreachable `MethodCall`-args branch was removed from
-`trackedVariableName`, and the doc comment's "chain link itself needs re-tracing" claim was
-removed. The `MethodCall` type import remains in use elsewhere in the file (`iorOrAndName`,
-`setoptsHoverTarget`), so no import changes were needed.
+## Verification
 
-Verification: `npx tsc --noEmit` clean (confirms `detectSetOptsShape`'s narrowed call site at
-`traceOptsChain(node)` still type-checks under the narrower signature); same 161/161 test run as
-above passed unchanged.
-
-### WR-02: Cheap "is this line a SETOPTS-in-code candidate" gates match substrings, not tokens, causing false-positive intention/action offers
-
-**Files modified:** `bbj-vscode/src/setopts-in-code-ui.ts`, `bbj-vscode/test/setopts-in-code-ui.test.ts`, `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java`
-**Commit:** `9f32ce93` (amended to `b30f28dc` for commit-trailer attribution)
-**Applied fix:**
-- VS Code (`setopts-in-code-ui.ts`): replaced the substring `indexOf` scan over
-  `SETOPTS_IN_CODE_KEYWORDS` with a `/\b(?:SETOPTS|IOR\(|AND\()/gi` regex scan, requiring a JS word
-  boundary immediately before the keyword. Added 8 new `test.each` negative regression rows
-  (`expand(`, `command(`, `demand(`, `brand(`, `island(`, `prior(`, `senior(`, `junior(`) to
-  `setopts-in-code-ui.test.ts` confirming none of these trip the gate.
-- IntelliJ (`ComposerLauncher.java`): widened the shared `isCaretOnCall` heuristic (used by all
-  four composer intentions, not just SETOPTS-in-code) to loop over every occurrence of `keyword` on
-  the line and reject any occurrence preceded by a BBj identifier character — letter, digit,
-  underscore, or one of the `$!%@` suffix sigils (cross-checked against the `ID_WITH_SUFFIX`/`ID`
-  terminals in `bbj.langium`) — via a new private `hasIdentifierCharBefore` helper, rather than
-  JS's narrower `\b` semantics (which would not treat `$`/`!`/`%`/`@` as non-word characters). This
-  fix is shared by `isCaretOnSetoptsInCode` and the `msgbox`/`addwindow`/`addchildwindow`
-  intentions' own `isCaretOnCall` calls, since all route through the same method.
-
-Verification: `npx tsc --noEmit` clean; `npx vitest run test/setopts-in-code-ui.test.ts` — 36/36
-tests passed (28 pre-existing + 8 new negative regression rows); full referenced VS Code suite
-(`setopts-code-scanner`, `hover`, `setopts-catalog`, `setopts-in-code-request`,
-`setopts-in-code-ui`) — 169/169 tests passed. `cd bbj-intellij && ./gradlew test --offline --tests
-'com.basis.bbj.intellij.composer.*'` — BUILD SUCCESSFUL, 119/119 tests passed across 12 test files
-(0 failures, 0 errors, 0 skipped), confirming the shared `isCaretOnCall` widening did not regress
-the `msgbox`/`addwindow`/`addchildwindow` intentions' existing source-guard and flow tests.
+- `cd bbj-vscode && npx vitest run test/setopts-code-scanner.test.ts test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-request.test.ts test/setopts-in-code-ui.test.ts` — **5 files passed, 172 tests passed, 0 failed** (ran inside the isolated worktree).
+- `cd bbj-intellij && ./gradlew test --offline --tests 'com.basis.bbj.intellij.composer.*'` — **BUILD SUCCESSFUL**, all 12 composer test suites (119 tests) passed with 0 failures/errors (ran inside the isolated worktree).
+- `npx tsc --noEmit -p tsconfig.json` — no errors attributable to any of the 4 modified/added TS files, checked individually after each edit.
 
 ## Skipped Issues
 
-None — all findings in scope were fixed.
+None — all findings were fixed.
 
 ---
 
-_Fixed: 2026-09-07T22:56:00Z_
+_Fixed: 2026-09-07T23:18:45Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
