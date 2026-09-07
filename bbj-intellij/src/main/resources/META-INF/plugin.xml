@@ -58,7 +58,7 @@
             <keyboard-shortcut keymap="$default" first-keystroke="alt D"/>
         </action>
 
-        <!-- BBj Visual Composers (#426 / #430) -->
+        <!-- BBj Visual Composers (#426 / #430 / #633) -->
         <action id="bbj.composeMsgbox"
                 class="com.basis.bbj.intellij.actions.BbjComposeMsgboxAction"
                 text="Compose MSGBOX…"
@@ -77,6 +77,13 @@
                 class="com.basis.bbj.intellij.actions.BbjComposeAddChildWindowAction"
                 text="Compose addChildWindow…"
                 description="Visually compose a BBjWindow addChildWindow(...) statement">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
+        <action id="bbj.composeSetopts"
+                class="com.basis.bbj.intellij.actions.BbjComposeSetoptsAction"
+                text="Compose SETOPTS…"
+                description="Visually compose or edit the SETOPTS line of the BBj config file">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
