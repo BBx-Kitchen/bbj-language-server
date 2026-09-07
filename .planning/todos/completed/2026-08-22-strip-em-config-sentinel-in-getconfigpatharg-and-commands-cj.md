@@ -12,6 +12,8 @@ files:
 audit_acknowledged:
   milestone: v4.1
   at: 2026-09-03
+
+completed: 2026-09-07
 ---
 
 ## Problem
@@ -66,3 +68,22 @@ the existing `stripSentinel` helper already used for `classpath` in the same fil
 Deliberately not fixed during Phase 75's gap-closure pass (2026-08-22): the human scoped that
 pass to the vacuous guard assertion (CR-01) and the EDT-blocking threading issue (CR-02) plus
 the WR-02 temp-file leak found in the same edit. WR-01 was explicitly excluded from that pass.
+
+## Resolution
+
+Reviewed while gathering context for Phase 86 (IntelliJ Interop Settings & Targeted Refresh)
+and folded in to be closed rather than built: Phase 84 (Config Path Resolution &
+Discoverability Foundation) already delivered both guards this todo's Solution section asked
+for, under decision D-12.
+
+- IntelliJ side: `ConfigPaths.configPathArg()` refuses the EM Config sentinel value `"--"`,
+  returning `null` instead of the literal `-c--`. The helper was added in plan 84-04 and wired
+  into `BbjRunActionBase.getConfigPathArg()`/`getConfigPath()` in plan 84-06, so every IntelliJ
+  run action reads the guarded path.
+- VS Code side: `Commands.cjs`'s `run` and `runWeb` paths now read the active config path
+  through `stripSentinel(getActiveConfigPath())`, mirroring the existing classpath sentinel
+  guard. This landed in plan 84-03.
+
+Phase 86 therefore wrote no code for this todo — its only action here is this closure note.
+
+Closed: 2026-09-07.

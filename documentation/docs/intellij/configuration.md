@@ -103,16 +103,26 @@ Hostname for the Java interop service.
 
 **Default:** `localhost`
 
+**Note:** The host is never auto-detected — it is always a manually edited field.
+
 ### Port
 
 Port number for the Java interop service.
 
 **Default:** `5008`
 
-**Features:**
-- Auto-detected from `BBj.properties` when BBj Home is set
+**Auto-detect:**
+- An **Auto-detect** checkbox sits under the Port field, checked by default.
+- While checked, the Port field is disabled (greyed out) and shows the port read from the `com.basis.languageServer.addr` line in the BBj Home's `cfg/BBj.properties` file. That line has the form `host:port:enabled`.
+- A hint line under the field names where the shown value came from — or, if no port could be found in `BBj.properties`, that 5008 is being used as the default.
+- If the `enabled` segment of that line reports the Java interop service as disabled in BBjServices, the detected port is still used, and the hint says the service is disabled.
+- Unchecking Auto-detect pre-fills the field with whatever value was in effect and makes it editable. Whatever port is then applied — including 5008 — is kept exactly as entered and is never silently replaced by auto-detection. Re-checking Auto-detect discards any edit and returns the field to the detected value.
 - Validates range: 1-65535
 - Must match the port BBjServices is using for the Java interop service
+
+**Effective value:** The language server's startup options, the Java interop connection-health indicator, and the Settings dialog itself all use the same effective port — whichever value Auto-detect or an explicit choice currently resolves to.
+
+**When changes take effect:** A port change takes effect the next time the language server starts. Applying settings restarts the language server, so the new value is picked up immediately after Apply.
 
 ## Enterprise Manager
 
