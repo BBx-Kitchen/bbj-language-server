@@ -36,6 +36,30 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
         this.fileSystemProvider = services.workspace.FileSystemProvider
     }
 
+    /**
+     * Whether a BBjCPL debounce timer is currently pending for any document — the second half
+     * of the {@link hasPendingWork} quiescence predicate a config reload consults before it is
+     * safe to push a restart request (#486).
+     */
+    public hasPendingCompile(): boolean {
+        return this.cplDebounceTimers.size > 0;
+    }
+
+    /**
+     * The quiescence predicate a config-reload watcher polls before pushing a restart
+     * notification, so the restart is never emitted mid-validation (#486). True while either
+     * half of "the workspace is busy" holds:
+     *
+     *  - a Langium build is in flight or has never completed. `DefaultDocumentBuilder` resets
+     *    `currentState` to `DocumentState.Changed` at the top of every `build`/`update` call and
+     *    only advances it to `DocumentState.Validated` once the validation phase finishes, so
+     *    `currentState < DocumentState.Validated` is exactly that condition; or
+     *  - a BBjCPL debounce timer is pending ({@link hasPendingCompile}).
+     */
+    public hasPendingWork(): boolean {
+        return this.currentState < DocumentState.Validated || this.hasPendingCompile();
+    }
+
     protected override shouldValidate(_document: LangiumDocument<AstNode>): boolean {
         if (_document.uri.toString() === JavaSyntheticDocUri) {
             // never validate programmatically created classpath document

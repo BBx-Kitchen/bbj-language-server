@@ -32,6 +32,21 @@ import { logger } from './logger.js';
  */
 export const CONFIG_WATCH_DEBOUNCE_MS = 1000;
 
+/**
+ * Poll interval for the bounded quiescence wait (ms). After the debounce closes and the gate
+ * says "changed", the watcher does not push the reload notification until the injected
+ * `hasPendingWork` predicate reads false (no in-flight Langium build, no pending BBjCPL
+ * debounce timer) — it re-checks the predicate at this interval rather than sleeping.
+ */
+export const QUIESCENCE_POLL_MS = 100;
+
+/**
+ * Upper bound on the quiescence wait (ms). A busy workspace cannot starve the reload forever:
+ * once the accumulated wait reaches this bound, the notification is pushed anyway (research
+ * Pitfall 4's mid-validation guard is best-effort, not absolute).
+ */
+export const QUIESCENCE_TIMEOUT_MS = 5000;
+
 /** A handle to an open directory watch. */
 export interface WatchHandle {
     close(): void;
@@ -51,6 +66,12 @@ export interface ConfigWatcherDeps {
     clearTimer?(handle: unknown): void;
     /** Sends the reload notification. Defaults to `notifyConfigReloadRequired`. */
     notify?(params: ConfigReloadNotification): void;
+    /**
+     * The quiescence predicate: true while the workspace is busy (an in-flight/never-completed
+     * Langium build, or a pending BBjCPL debounce timer). Defaults to `() => false` — a caller
+     * that never injects this gets the pre-quiescence behavior of notifying immediately.
+     */
+    hasPendingWork?(): boolean;
     logInfo?(msg: string): void;
     logWarn?(msg: string): void;
 }
@@ -100,6 +121,8 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
     const setTimer = deps.setTimer ?? ((fn: () => void, ms: number) => setTimeout(fn, ms));
     const clearTimer = deps.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     const notify = deps.notify ?? notifyConfigReloadRequired;
+    const hasPendingWork = deps.hasPendingWork ?? (() => false);
+    const logInfo = deps.logInfo ?? ((msg: string) => logger.info(msg));
     const logWarn = deps.logWarn ?? ((msg: string) => logger.warn(msg));
 
     let started = false;
@@ -108,6 +131,15 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
     let handle: WatchHandle | null = null;
     let snapshot = '';
     let pendingTimer: unknown = null;
+    /** The one outstanding quiescence wait's timer handle, or `null` if none is pending. */
+    let pendingQuiescenceTimer: unknown = null;
+    /**
+     * The payload of the one outstanding quiescence wait. A new "changed" verdict arriving
+     * while a wait is pending replaces this rather than starting a second wait, so a burst can
+     * never produce two notifications for one consumed-content transition.
+     */
+    let pendingQuiescencePayload: ConfigReloadNotification | null = null;
+    let quiescenceElapsedMs = 0;
     /** Canonical paths that already produced an arm-failure or watch-error warning, so a
      * repeated failure on the SAME path stays silent while a failure on a DIFFERENT path is
      * always eligible to warn again. */
@@ -129,6 +161,54 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
         if (pendingTimer !== null) {
             clearTimer(pendingTimer);
             pendingTimer = null;
+        }
+    }
+
+    function clearPendingQuiescenceTimer(): void {
+        if (pendingQuiescenceTimer !== null) {
+            clearTimer(pendingQuiescenceTimer);
+            pendingQuiescenceTimer = null;
+        }
+    }
+
+    /**
+     * Push `params` once the builder reports quiescent, or once the bound elapses — whichever
+     * comes first. Exactly one wait may be outstanding: calling this while a previous wait is
+     * still pending cancels it and replaces its payload (cancel-then-schedule on the single
+     * `pendingQuiescenceTimer` handle) rather than starting a second, independent wait.
+     */
+    function waitForQuiescenceThenNotify(params: ConfigReloadNotification): void {
+        clearPendingQuiescenceTimer();
+        pendingQuiescencePayload = params;
+        quiescenceElapsedMs = 0;
+        pollQuiescence();
+    }
+
+    function pollQuiescence(): void {
+        try {
+            const payload = pendingQuiescencePayload;
+            if (!payload) {
+                return;
+            }
+            if (!hasPendingWork()) {
+                pendingQuiescencePayload = null;
+                pendingQuiescenceTimer = null;
+                notify(payload);
+                return;
+            }
+            quiescenceElapsedMs += QUIESCENCE_POLL_MS;
+            if (quiescenceElapsedMs >= QUIESCENCE_TIMEOUT_MS) {
+                pendingQuiescencePayload = null;
+                pendingQuiescenceTimer = null;
+                logInfo(`Config reload quiescence wait exceeded the ${QUIESCENCE_TIMEOUT_MS}ms bound; pushing the reload notification anyway`);
+                notify(payload);
+                return;
+            }
+            pendingQuiescenceTimer = setTimer(pollQuiescence, QUIESCENCE_POLL_MS);
+        } catch (err) {
+            pendingQuiescencePayload = null;
+            pendingQuiescenceTimer = null;
+            logWarn(`Config watcher quiescence wait failed: ${err}`);
         }
     }
 
@@ -183,7 +263,7 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
             const wasEmpty = snapshot === '';
             snapshot = next;
             const reason: ConfigReloadReason = (next === '' && !wasEmpty) ? 'config-missing' : 'prefix-changed';
-            notify({ path: canonicalPath, reason });
+            waitForQuiescenceThenNotify({ path: canonicalPath, reason });
         } catch (err) {
             logWarn(`Config watcher relevance evaluation failed: ${err}`);
         }
@@ -234,7 +314,7 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
                     const next = consumedConfigSnapshot(contents);
                     if (next !== snapshot) {
                         snapshot = next;
-                        notify({ path: resolved.path, reason: 'config-path-changed' });
+                        waitForQuiescenceThenNotify({ path: resolved.path, reason: 'config-path-changed' });
                     }
                 } catch (err) {
                     logWarn(`Config watcher relevance evaluation failed for ${resolved.path}: ${err}`);
@@ -244,12 +324,14 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
                 const next = consumedConfigSnapshot(null);
                 if (next !== snapshot) {
                     snapshot = next;
-                    notify({ path: null, reason: 'config-path-changed' });
+                    waitForQuiescenceThenNotify({ path: null, reason: 'config-path-changed' });
                 }
             }
         },
         dispose(): void {
             clearPendingTimer();
+            clearPendingQuiescenceTimer();
+            pendingQuiescencePayload = null;
             closeHandle();
         },
     };
