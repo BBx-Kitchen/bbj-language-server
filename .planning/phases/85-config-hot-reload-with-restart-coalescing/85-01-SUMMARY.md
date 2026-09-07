@@ -68,6 +68,7 @@ coverage:
     verification:
       - kind: unit
         ref: "test/config-hot-reload.test.ts#initializeWorkspace and the relevance gate share one extraction function"
+        status: pass
       - kind: unit
         ref: "test/lazy-prefix-loading.test.ts"
         status: pass
@@ -81,6 +82,7 @@ coverage:
     verification:
       - kind: unit
         ref: "test/config-hot-reload.test.ts#updateResolvedPath: settings-change re-arm and immediate relevance check"
+        status: pass
       - kind: unit
         ref: "test/config-hot-reload.test.ts#arm failure handling and dispose"
         status: pass
