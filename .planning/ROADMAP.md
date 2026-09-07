@@ -351,12 +351,26 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 88-01-PLAN.md — Tracer: end-to-end decode hover for an absolute `SETOPTS <hex>` statement, plus the new pure scanner module and the exported `resolveLibFunction`
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 88-02-PLAN.md — Backward `OPTS`→`IOR`/`AND` chain walk with its conservative safe/unsafe boundary, and the remaining two DISC-05 hover shapes with AND masks as cleared bits
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 88-03-PLAN.md — Tri-state model, full-width mask generators, canonical block codegen, and the `decodeInCode`/`composeTriState` document-aware requests
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 88-04-PLAN.md — IntelliJ wire layer: SETOPTS-in-code DTOs, the two server-interface methods, `sameSetoptsInCode`, and the contract/JSON-boundary test extensions
-- [ ] 88-05-PLAN.md — IntelliJ tri-state composer dialog, `Kind.SETOPTS_IN_CODE` launch branch, lightbulb intention with resources, and the QA hand-check rows
 - [ ] 88-06-PLAN.md — VS Code tri-state webview, Code Action and command entry points for `.bbj` files, and the activation/manifest wiring
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 88-05-PLAN.md — IntelliJ tri-state composer dialog, `Kind.SETOPTS_IN_CODE` launch branch, lightbulb intention with resources, and the QA hand-check rows
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
