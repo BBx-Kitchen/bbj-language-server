@@ -169,3 +169,38 @@ describe('D-07 guard: bbj-hover.ts registers no document-change or build-phase l
         }
     });
 });
+
+/**
+ * Single-source-of-truth guard (88-01 Task 3): `resolveLibFunction` must be defined exactly
+ * once in the codebase — exported from `check-function-calls.ts` and imported (never
+ * re-implemented) by `setopts-code-scanner.ts`. Counts `function resolveLibFunction`
+ * definitions (with or without a leading `export`) across both files, stripping `//`-prefixed
+ * line comments first so a comment mentioning the name can't satisfy or break the count.
+ */
+describe('resolveLibFunction single-source-of-truth guard', () => {
+    function countFunctionDefinitions(source: string, name: string): number {
+        const codeOnly = source
+            .split('\n')
+            .map(line => {
+                const commentIndex = line.indexOf('//');
+                return commentIndex >= 0 ? line.slice(0, commentIndex) : line;
+            })
+            .join('\n');
+        const pattern = new RegExp(`\\bfunction\\s+${name}\\b`, 'g');
+        return (codeOnly.match(pattern) ?? []).length;
+    }
+
+    test('resolveLibFunction is defined exactly once across check-function-calls.ts and setopts-code-scanner.ts', () => {
+        const checkFunctionCallsSource = fs.readFileSync(
+            path.join(__dirname, '..', 'src', 'language', 'validations', 'check-function-calls.ts'),
+            'utf-8'
+        );
+        const scannerSource = fs.readFileSync(
+            path.join(__dirname, '..', 'src', 'language', 'setopts-code-scanner.ts'),
+            'utf-8'
+        );
+        const total = countFunctionDefinitions(checkFunctionCallsSource, 'resolveLibFunction')
+            + countFunctionDefinitions(scannerSource, 'resolveLibFunction');
+        expect(total).toBe(1);
+    });
+});

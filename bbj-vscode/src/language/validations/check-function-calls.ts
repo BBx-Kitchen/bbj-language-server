@@ -109,8 +109,15 @@ export function checkFunctionReturnAssignment(assignment: Assignment, accept: Va
     }
 }
 
-/** Resolve a call expression to the builtin {@link LibFunction} it invokes, if any. */
-function resolveLibFunction(call: MethodCall): LibFunction | undefined {
+/**
+ * Resolve a call expression to the builtin {@link LibFunction} it invokes, if any.
+ *
+ * This is the one shared resolver for builtin call sites — a second copy must not be
+ * written. `setopts-code-scanner.ts` (#475, plan 88-02) is the second consumer landing on
+ * this exact function; a source guard in `test/setopts-code-scanner.test.ts` fails the build
+ * if a second `resolveLibFunction` definition ever appears.
+ */
+export function resolveLibFunction(call: MethodCall): LibFunction | undefined {
     if (!isSymbolRef(call.method)) {
         return undefined;
     }
