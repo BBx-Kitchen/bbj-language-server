@@ -167,14 +167,8 @@ function iorOrAndName(call: MethodCall): 'IOR' | 'AND' | undefined {
 
 /** The tracked variable name for a chain-trace entry point, or `undefined` when none can be
  * determined (not a chain to report, per {@link traceOptsChain}'s own contract). */
-function trackedVariableName(target: SetOptsStatement | MethodCall): string | undefined {
-    if (isSetOptsStatement(target)) {
-        return symbolRefName(target.opts);
-    }
-    if (!iorOrAndName(target)) {
-        return undefined;
-    }
-    return symbolRefName(target.args[0]?.expression);
+function trackedVariableName(target: SetOptsStatement): string | undefined {
+    return symbolRefName(target.opts);
 }
 
 /** The flat statement array a node's `$container` type owns, or `undefined` for any other
@@ -443,8 +437,7 @@ export function setoptsHoverMarkdown(shape: SetOptsCodeShape): string {
 
 /**
  * Trace an `OPTS`-derived `IOR`/`AND` reassignment chain backward from `target` — a
- * `SetOptsStatement` (shape b) or an `IOR`/`AND` `MethodCall` (used internally when a chain
- * link itself needs re-tracing). Implements 88-RESEARCH.md's Traceability Algorithm: the walk
+ * `SetOptsStatement` (shape b). Implements 88-RESEARCH.md's Traceability Algorithm: the walk
  * never crosses into an enclosing or nested scope, and any statement it cannot fully account
  * for stops the walk with a named {@link SetOptsUnsafeReason} rather than a guessed "safe".
  *
@@ -452,7 +445,7 @@ export function setoptsHoverMarkdown(shape: SetOptsCodeShape): string {
  * all (not an unsafe chain — there is no chain to report). Otherwise always returns the `chain`
  * variant of {@link SetOptsCodeShape}, with `links`/`effect` in source order.
  */
-export function traceOptsChain(target: SetOptsStatement | MethodCall): Extract<SetOptsCodeShape, { kind: 'chain' }> | undefined {
+export function traceOptsChain(target: SetOptsStatement): Extract<SetOptsCodeShape, { kind: 'chain' }> | undefined {
     const variableName = trackedVariableName(target);
     if (!variableName) {
         return undefined;
