@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 4/6 plans executed
+**Plans**: 5/6 plans executed
 
 Plans:
 **Wave 1**
@@ -366,7 +366,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 88-04-PLAN.md — IntelliJ wire layer: SETOPTS-in-code DTOs, the two server-interface methods, `sameSetoptsInCode`, and the contract/JSON-boundary test extensions
-- [ ] 88-06-PLAN.md — VS Code tri-state webview, Code Action and command entry points for `.bbj` files, and the activation/manifest wiring
+- [x] 88-06-PLAN.md — VS Code tri-state webview, Code Action and command entry points for `.bbj` files, and the activation/manifest wiring
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
