@@ -238,7 +238,11 @@ public final class BbjServerService implements Disposable {
      * requests coalesce into exactly one restart via {@link RestartGate}.
      */
     public void requestRestart(long delayMs) {
-        restartGate.request(delayMs);
+        boolean scheduled = restartGate.request(delayMs);
+        if (!scheduled) {
+            logToConsole("A language server restart is already in progress; ignoring the additional request",
+                ConsoleViewContentType.SYSTEM_OUTPUT);
+        }
     }
 
     /**
