@@ -4,9 +4,10 @@
 import { describe, expect, test } from 'vitest';
 import {
     BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, SETOPTS_BITS,
-    composeSetOptsLine, describeVector, encodeVector, emptyVector, getBit, knownByteMask,
-    maskChar, parseSetOptsLine, parseVector, rawTail, setBit, setMaskChar, setRawTail,
-    setoptsPreview, unknownBitsInByte, type SetOptsSelection, type SetOptsVector,
+    composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector, encodeVector,
+    emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector, rawTail, setBit,
+    setMaskChar, setRawTail, setoptsPreview, unknownBitsInByte,
+    type SetOptsSelection, type SetOptsVector,
 } from '../src/setopts-catalog.js';
 
 /** The SETOPTS line the stock BBj config.bbx ships with (7 bytes). */
@@ -177,6 +178,76 @@ describe('describeVector', () => {
         expect(describeVector(parseVector('0000')!)).toBe('(default settings)');
         expect(describeVector(parseVector('0000000000000000C8')!)).toContain('unknown bit(s) $08$');
         expect(describeVector(parseVector('000000000000000000FF')!)).toContain('Bytes 10+: FF');
+    });
+});
+
+/**
+ * `describeIorAndMask` / `describeMaskVector` — the SETOPTS-in-code decode hover's exact
+ * DISC-05 framing for `IOR`/`AND` masks (#475, plan 88-02). `'clear'` must report the catalog
+ * bits ABSENT from the mask (a 0 bit in an AND mask means the option is cleared) — never the
+ * bits present, which would invert the meaning DISC-05 mandates.
+ */
+describe('describeIorAndMask / describeMaskVector (AND masks as the options they clear)', () => {
+    const byte1Bit = SETOPTS_BITS.find(b => b.byte === 1 && b.mask === 0x08)!;
+
+    test('"set" selects exactly the catalog bits present in the mask', () => {
+        const setLabels = SETOPTS_BITS.filter(b => b.byte === 1 && (0x08 & b.mask) !== 0).map(b => b.label);
+        expect(describeIorAndMask(1, 0x08, 'set')).toEqual(setLabels);
+        expect(describeIorAndMask(1, 0x08, 'set')).toEqual([byte1Bit.label]);
+    });
+
+    test('"clear" selects exactly the catalog bits ABSENT from the mask — the inversion DISC-05 requires', () => {
+        // 0xF7 = every byte-1 catalog bit set except $08$ — the single ABSENT bit is the one
+        // reported as cleared. If the 'set'/'clear' branches were swapped, this would fail:
+        // describeIorAndMask(1, 0xF7, 'set') covers every OTHER byte-1 label instead.
+        expect(describeIorAndMask(1, 0xF7, 'clear')).toEqual(['Console mode in public programs']);
+        const clearLabels = SETOPTS_BITS.filter(b => b.byte === 1 && (0xF7 & b.mask) === 0).map(b => b.label);
+        expect(describeIorAndMask(1, 0xF7, 'clear')).toEqual(clearLabels);
+    });
+
+    test('an all-ones AND mask clears nothing in that byte', () => {
+        expect(describeIorAndMask(1, 0xFF, 'clear')).toEqual([]);
+    });
+
+    test('a zero IOR mask sets nothing in that byte', () => {
+        expect(describeIorAndMask(1, 0x00, 'set')).toEqual([]);
+    });
+
+    test('only bytes listed in BYTE_GROUPS are ever described — mask replacement (5-6) and reserved (10-16) bytes are never treated as options', () => {
+        // SETOPTS_BITS has no entries at all for bytes 5, 6, or 10+, so describeIorAndMask
+        // filters to nothing regardless of the mask value.
+        expect(describeIorAndMask(5, 0xFF, 'set')).toEqual([]);
+        expect(describeIorAndMask(6, 0x00, 'clear')).toEqual([]);
+        expect(describeIorAndMask(10, 0xFF, 'set')).toEqual([]);
+    });
+
+    test('describeMaskVector concatenates every covered byte\'s labels in catalog order, "Byte N: label · label" joined by "; "', () => {
+        // byte 1 = $08$ (one set bit), byte 2 = $30$ (two set bits: 0x20, 0x10)
+        const v = parseVector('0830')!;
+        const byte2Labels = SETOPTS_BITS.filter(b => b.byte === 2 && (0x30 & b.mask) !== 0).map(b => b.label);
+        expect(describeMaskVector(v, 'set')).toBe(
+            `Byte 1: ${byte1Bit.label}; Byte 2: ${byte2Labels.join(' · ')}`
+        );
+    });
+
+    test('describeMaskVector "clear" reports, per byte present in the vector, the catalog bits absent from that byte\'s mask', () => {
+        const v = parseVector('F7')!; // one byte only — byte 1, every catalog bit set except $08$
+        expect(describeMaskVector(v, 'clear')).toBe('Byte 1: Console mode in public programs');
+    });
+
+    test('a mask vector shorter than the full catalog says nothing about bytes beyond its length', () => {
+        const v = parseVector('FF')!; // byte 1 only, all bits set — bytes 2+ don't exist in this vector
+        // 'clear' on byte 1 reports nothing (every catalog bit is present), and no "Byte 2"
+        // segment appears at all — a short AND mask says nothing about the bytes it doesn't cover.
+        expect(describeMaskVector(v, 'clear')).toBe('(clears no modelled options)');
+        expect(describeMaskVector(v, 'set')).not.toContain('Byte 2');
+    });
+
+    test('an empty result renders an explicit placeholder for both kinds, never an empty string', () => {
+        const zero = parseVector('00000000')!;
+        expect(describeMaskVector(zero, 'set')).toBe('(no modelled options)');
+        const allOnes = parseVector('FFFFFFFF')!;
+        expect(describeMaskVector(allOnes, 'clear')).toBe('(clears no modelled options)');
     });
 });
 

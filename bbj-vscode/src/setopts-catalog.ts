@@ -220,6 +220,40 @@ export function setRawTail(v: SetOptsVector, hexDigits: string): void {
     v.digitCount = parsed.digitCount;
 }
 
+/**
+ * Options an `IOR`/`AND` mask affects in one option byte — the SETOPTS-in-code decode hover's
+ * exact framing (#475, DISC-05). For `'set'`, the catalog bits present in the mask (what an
+ * `IOR(var$, mask)` turns ON). For `'clear'`, the catalog bits ABSENT from the mask: a `0` bit
+ * in an `AND` mask means that option is cleared, so `'clear'` must never be computed as "the
+ * bits present in the mask" — that would report the exact opposite of what the code does.
+ */
+export function describeIorAndMask(byteNo: number, mask: number, kind: 'set' | 'clear'): string[] {
+    return SETOPTS_BITS
+        .filter(b => b.byte === byteNo)
+        .filter(b => kind === 'set' ? (mask & b.mask) !== 0 : (mask & b.mask) === 0)
+        .map(b => b.label);
+}
+
+/**
+ * Per-byte {@link describeIorAndMask} across a full `IOR`/`AND` mask vector, in `SETOPTS_BITS`
+ * catalog order (byte ascending, matching `BYTE_GROUPS`' own key order; each byte's bits are
+ * already byte-then-descending-bit ordered in `SETOPTS_BITS`). A byte beyond `v.bytes.length`
+ * is skipped entirely — an `IOR`/`AND` mask shorter than the full catalog says nothing about
+ * bytes it does not cover, it does not implicitly set or clear them. Segment shape matches
+ * {@link describeVector}'s own `Byte N: label · label` joined by `'; '`, so the two read the
+ * same way in hover markdown.
+ */
+export function describeMaskVector(v: SetOptsVector, kind: 'set' | 'clear'): string {
+    const parts: string[] = [];
+    for (const byteNo of Object.keys(BYTE_GROUPS).map(Number)) {
+        if (byteNo > v.bytes.length) continue;
+        const labels = describeIorAndMask(byteNo, v.bytes[byteNo - 1], kind);
+        if (labels.length) parts.push(`Byte ${byteNo}: ${labels.join(' · ')}`);
+    }
+    if (parts.length) return parts.join('; ');
+    return kind === 'set' ? '(no modelled options)' : '(clears no modelled options)';
+}
+
 /** Human-readable summary of everything the vector sets (or '(default settings)'). */
 export function describeVector(v: SetOptsVector): string {
     const parts: string[] = [];
