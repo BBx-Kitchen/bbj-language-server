@@ -51,6 +51,10 @@ public final class ComposerLauncher {
      * Cheap, synchronous heuristic for whether the caret sits on a line with the given call keyword
      * (e.g. {@code "msgbox"}), at or after its start — used by the lightbulb intentions' isAvailable
      * without an LSP round-trip. The precise decode happens on invoke.
+     *
+     * <p>Requires a non-identifier boundary immediately before the keyword so an ordinary
+     * identifier that merely contains the keyword as a substring — e.g. {@code expand(},
+     * {@code command(}, {@code prior(} — is never mistaken for a call to {@code keyword}.</p>
      */
     public static boolean isCaretOnCall(@NotNull Editor editor, @NotNull String keyword) {
         Document doc = editor.getDocument();
@@ -62,8 +66,24 @@ public final class ComposerLauncher {
         int lineStart = doc.getLineStartOffset(line);
         String text = doc.getText(new TextRange(lineStart, doc.getLineEndOffset(line)))
                 .toLowerCase(java.util.Locale.ROOT);
-        int idx = text.indexOf(keyword);
-        return idx >= 0 && (caret - lineStart) >= idx;
+        int caretCol = caret - lineStart;
+        for (int idx = text.indexOf(keyword); idx >= 0; idx = text.indexOf(keyword, idx + 1)) {
+            if (!hasIdentifierCharBefore(text, idx) && caretCol >= idx) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether {@code text.charAt(idx - 1)} is a BBj identifier character (letter, digit,
+     * underscore, or one of the {@code $!%@} suffix sigils) — i.e. whether {@code idx} sits in
+     * the middle of an identifier rather than at a genuine token boundary. */
+    private static boolean hasIdentifierCharBefore(@NotNull String text, int idx) {
+        if (idx == 0) {
+            return false;
+        }
+        char prev = text.charAt(idx - 1);
+        return Character.isLetterOrDigit(prev) || prev == '_' || prev == '$' || prev == '!' || prev == '%' || prev == '@';
     }
 
     /**

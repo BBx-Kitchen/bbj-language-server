@@ -29,21 +29,26 @@ import {
 
 const BBJ = { language: 'bbj' } as const;
 
-/** The three keyword substrings that make a line a candidate for the SETOPTS-in-code composer. */
-const SETOPTS_IN_CODE_KEYWORDS = ['SETOPTS', 'IOR(', 'AND('];
-
 /**
  * Cheap, position-independent-of-AST gate: does `lineText` contain `SETOPTS`, `IOR(` or `AND(`
  * (case-insensitively) at or before `character`? Pure — reads no `vscode` value — so it is
  * directly unit-testable. This is only the client-side Code Action gate; the *authoritative*
  * safe/unsafe/editable decision is always `decodeInCode`'s server-side response.
+ *
+ * Matches on a word boundary immediately before the keyword so ordinary identifiers that merely
+ * contain one of these keywords as a substring — `expand(`, `command(`, `demand(`, `brand(`,
+ * `island(`, `prior(`, `senior(`, `junior(`, etc. — are never mistaken for a SETOPTS-in-code
+ * candidate.
  */
 export function setoptsInCodeCandidateLine(lineText: string, character: number): boolean {
-    const upper = lineText.toUpperCase();
-    return SETOPTS_IN_CODE_KEYWORDS.some(keyword => {
-        const idx = upper.indexOf(keyword);
-        return idx >= 0 && idx <= character;
-    });
+    const pattern = /\b(?:SETOPTS|IOR\(|AND\()/gi;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(lineText))) {
+        if (match.index <= character) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /** The argument the Code Action passes to the command — a document position to decode at. */

@@ -289,6 +289,19 @@ describe('setoptsInCodeCandidateLine (Task 2, pure helper)', () => {
     test('negative: an unrelated line with none of the three keywords', () => {
         expect(setoptsInCodeCandidateLine('x$ = "hello world"', 5)).toBe(false);
     });
+
+    test.each([
+        ['expand(', 'x$ = EXPAND("foo")'],
+        ['command(', 'y = COMMAND(1)'],
+        ['demand(', 'y = demand(1)'],
+        ['brand(', 'y = Brand(1)'],
+        ['island(', 'y = ISLAND(1)'],
+        ['prior(', 'y = PRIOR(1)'],
+        ['senior(', 'y = SENIOR(1)'],
+        ['junior(', 'y = JUNIOR(1)'],
+    ])('negative: %s is a substring of an ordinary identifier, not a word-boundary keyword match', (_label, line) => {
+        expect(setoptsInCodeCandidateLine(line, line.length - 1)).toBe(false);
+    });
 });
 
 describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
