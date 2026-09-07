@@ -22,7 +22,7 @@ import { consumedConfigSnapshot, type ResolvedConfigPath } from '../src/language
 import type { ConfigReloadNotification } from '../src/language/config-reload-notification.js';
 
 /**
- * Coverage for wiring the detection layer from 85-01 into the running server: the quiescence
+ * Coverage for wiring the config-change detection layer into the running server: the quiescence
  * predicate on `BBjDocumentBuilder` and the bounded quiescence wait in `config-watcher.ts` that
  * consumes it (#486). No real fs.watch, no real timers, no real disk reads, no real workspace
  * documents — every effect is injected or driven through hermetic `createBBjServices`.
