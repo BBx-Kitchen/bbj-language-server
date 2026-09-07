@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 86
 current_phase_name: IntelliJ Interop Settings & Targeted Refresh
 status: executing
-stopped_at: Completed 86-02-PLAN.md
-last_updated: "2026-09-07T14:47:46.171Z"
+stopped_at: Completed 86-04-PLAN.md
+last_updated: "2026-09-07T14:53:26.466Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 86 execution started
-state_head: 295aad9c01b8799cec2a03094108d7f9d7919e75
+state_head: 64cd69fdced9aa8a37d76d950729b78ce442b1d6
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
   percent: 22
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 86 (IntelliJ Interop Settings & Targeted Refresh) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-07 — Phase 86 execution started
 
@@ -154,6 +154,7 @@ Last activity: 2026-09-07 — Phase 86 execution started
 | Phase 85 P04 | 25min | 3 tasks | 9 files |
 | Phase 86 P01 | 14min | 3 tasks | 11 files |
 | Phase 86 P02 | 20min | 3 tasks | 8 files |
+| Phase 86 P04 | 3min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -250,6 +251,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 85]: Phase 85 Plan 04: the cross-language contract test checks DTO field names as unquoted TypeScript interface members (word-boundary match) rather than quoted literals, since config-reload-notification.ts declares path/reason as plain interface fields, not JSON string literals -- code wins over the plan's literal wording.
 - [Phase 86]: D-11..D-16 closed for 86-01: bbj/refreshJavaClasses joins the composer server proxy; success is console-only, failures render a reason-keyed balloon with a user-clicked restart fallback; a per-project single-flight guard bounds concurrency
 - [Phase 86]: [Phase 86]: 86-02: PortLookup collapses a read failure and a genuinely absent key into one detected boolean (no separate failed flag like BbjSettingsLookups' records) since both cases mean 'nothing detected, use 5008 and say so'; BbjInteropPortCache keys on the resolved properties file's absolute path, mirroring BbjNodeVersionCache's compute() race-safety idiom.
+- [Phase 86]: Folded todo closed as delivered by Phase 84 D-12 (plans 84-03, 84-04, 84-06) rather than built; COVERAGE.md names the phase's actual JSON-RPC/properties-read surface instead of a generic no-API statement
 
 ### Tech Debt
 
@@ -315,8 +317,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T14:47:46.073Z
-Stopped at: Completed 86-02-PLAN.md
+Last session: 2026-09-07T14:53:26.376Z
+Stopped at: Completed 86-04-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start

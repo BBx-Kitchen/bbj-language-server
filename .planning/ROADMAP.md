@@ -296,12 +296,12 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   2. Running Refresh Java Classes on IntelliJ does not interrupt diagnostics, completion, hover, or Structure View for files the user isn't actively refreshing.
   3. Every reader of the java-interop port setting — not only the Settings dialog — auto-detects the live port, and a port the user has explicitly confirmed as 5008 is never silently overwritten by auto-detection.
 
-**Plans**: 2/4 plans executed (2 waves)
+**Plans**: 3/4 plans executed (2 waves)
 **Wave 1**
 
 - [x] 86-01-PLAN.md — Targeted `bbj/refreshJavaClasses` request, reason-keyed failure surface and single-flight guard (wave 1)
 - [x] 86-02-PLAN.md — Interop port detection: `com.basis.languageServer.addr` parser, stat-keyed cache and the effective-port/migration rules (wave 1)
-- [ ] 86-04-PLAN.md — QA hand-check rows, coverage declaration, Port documentation and the folded todo closure (wave 1)
+- [x] 86-04-PLAN.md — QA hand-check rows, coverage declaration, Port documentation and the folded todo closure (wave 1)
 
 **Wave 2** *(blocked on 86-02)*
 
