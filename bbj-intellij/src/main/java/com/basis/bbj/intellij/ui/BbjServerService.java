@@ -16,6 +16,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.messages.Topic;
 import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.BoundedWait;
 import com.basis.bbj.intellij.concurrency.ExpectedStopGuard;
 import com.basis.bbj.intellij.concurrency.RestartGate;
 import com.basis.bbj.intellij.concurrency.Scheduler;
@@ -45,6 +46,9 @@ public final class BbjServerService implements Disposable {
     public static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_RESTART_DELAY_MS = 1000;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
+    private static final String SERVER_ID = "bbjLanguageServer";
+    private static final long STOP_WAIT_TIMEOUT_MS = 5000;
+    private static final long STOP_WAIT_POLL_MS = 50;
     private long lastCrashTime = 0;
     private int crashCount = 0;
     private boolean serverCrashed = false;
@@ -247,19 +251,45 @@ public final class BbjServerService implements Disposable {
 
     /**
      * Restart the language server immediately. Clears crash state first so a restart always
-     * works. Only reachable through {@link #requestRestart(long)} — never call directly.
+     * works. Only reachable through {@link #requestRestart(long)} — never call directly, and
+     * this method only ever runs on the gate's pooled Alarm thread ({@link AlarmScheduler}), so
+     * the bounded wait below never blocks the EDT.
+     *
+     * <p>{@code LanguageServerManager.stop(String)} returns {@code void}, so the manager's
+     * reported status is the only completion signal available: after requesting the stop, this
+     * method waits (bounded) for that status to report the server down before requesting the
+     * start, so the two phases of one restart cannot overlap.
      */
     private void doRestart() {
         clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
-        ServerStatus statusBeforeStop = manager.getServerStatus("bbjLanguageServer");
+        ServerStatus statusBeforeStop = manager.getServerStatus(SERVER_ID);
         if (statusBeforeStop == ServerStatus.started
                 || statusBeforeStop == ServerStatus.starting
                 || statusBeforeStop == ServerStatus.stopping) {
             expectedStop.arm(System.currentTimeMillis());
         }
-        manager.stop("bbjLanguageServer");
-        manager.start("bbjLanguageServer");
+        manager.stop(SERVER_ID);
+        boolean stoppedInTime = BoundedWait.until(
+            () -> isServerObservedDown(manager.getServerStatus(SERVER_ID)),
+            STOP_WAIT_TIMEOUT_MS,
+            STOP_WAIT_POLL_MS,
+            System::currentTimeMillis,
+            BoundedWait.SLEEPING);
+        if (!stoppedInTime) {
+            logToConsole("Timed out waiting for the language server to stop; starting anyway",
+                ConsoleViewContentType.SYSTEM_OUTPUT);
+        }
+        manager.start(SERVER_ID);
+    }
+
+    /**
+     * Whether {@code status} indicates the server is down: {@code null} (server definition
+     * unknown), {@link ServerStatus#stopped} or {@link ServerStatus#none} (no started server
+     * matches) are all treated alike.
+     */
+    private static boolean isServerObservedDown(@Nullable ServerStatus status) {
+        return status == null || status == ServerStatus.stopped || status == ServerStatus.none;
     }
 
     /**

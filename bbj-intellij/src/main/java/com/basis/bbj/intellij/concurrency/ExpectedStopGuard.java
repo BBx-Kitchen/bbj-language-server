@@ -2,10 +2,10 @@ package com.basis.bbj.intellij.concurrency;
 
 /**
  * Classifies a language-server status transition as a deliberate restart's stop, a genuine
- * crash, or not a stop at all. Plain Java, no {@code com.intellij} and no
- * {@code com.redhat.devtools.lsp4ij} import, so plain JUnit drives every branch and the eleven-file
- * LSP4IJ import allowlist stays untouched. Status transitions are supplied as status-name {@code
- * String}s, the same convention {@code ConfigReloadPresentation} uses for the same reason.
+ * crash, or not a stop at all. Plain Java, no {@code com.intellij} import and no vendor LSP4IJ
+ * import, so plain JUnit drives every branch and the eleven-file LSP4IJ import allowlist stays
+ * untouched. Status transitions are supplied as status-name {@code String}s, the same convention
+ * {@code ConfigReloadPresentation} uses for the same reason.
  *
  * <p>The token armed by {@link #arm(long)} is deliberately one-shot and time-boxed: one-shot so a
  * second, unrelated live-to-stopped transition after the expected one is still classified as a

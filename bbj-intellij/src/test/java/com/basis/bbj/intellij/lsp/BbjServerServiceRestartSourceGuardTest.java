@@ -156,4 +156,55 @@ class BbjServerServiceRestartSourceGuardTest {
         assertTrue(firstCrashBranchIndex < scheduledRestartIndex,
                 "the scheduled crash restart must be inside the first-crash branch");
     }
+
+    @Test
+    void doRestartArmsTheGuardBeforeRequestingTheStop() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int armIndex = text.indexOf("expectedStop.arm(");
+        int stopIndex = text.indexOf("manager.stop(SERVER_ID)");
+        assertTrue(armIndex >= 0, "expectedStop.arm( is not present in BbjServerService.java");
+        assertTrue(stopIndex >= 0, "manager.stop(SERVER_ID) is not present in BbjServerService.java");
+        assertTrue(armIndex < stopIndex, "the guard must be armed before the stop is requested");
+    }
+
+    @Test
+    void doRestartRequestsTheStopBeforeTheBoundedWait() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int stopIndex = text.indexOf("manager.stop(SERVER_ID)");
+        int waitIndex = text.indexOf("BoundedWait.until(");
+        assertTrue(stopIndex >= 0, "manager.stop(SERVER_ID) is not present in BbjServerService.java");
+        assertTrue(waitIndex >= 0, "BoundedWait.until( is not present in BbjServerService.java");
+        assertTrue(stopIndex < waitIndex, "the stop must be requested before the bounded wait");
+    }
+
+    @Test
+    void doRestartWaitsBeforeStartingAgain() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int waitIndex = text.indexOf("BoundedWait.until(");
+        int startIndex = text.indexOf("manager.start(SERVER_ID)");
+        assertTrue(waitIndex >= 0, "BoundedWait.until( is not present in BbjServerService.java");
+        assertTrue(startIndex >= 0, "manager.start(SERVER_ID) is not present in BbjServerService.java");
+        assertTrue(waitIndex < startIndex, "the bounded wait must happen before the start");
+    }
+
+    @Test
+    void theClassificationCallPrecedesTheFirstCrashBranchAndTheCrashVerdictIsPinnedOnce() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        int classifyIndex = text.indexOf("expectedStop.classify(");
+        int firstCrashBranchIndex = text.indexOf("crashCount == 1");
+        assertTrue(classifyIndex >= 0, "expectedStop.classify( is not present in BbjServerService.java");
+        assertTrue(firstCrashBranchIndex >= 0, "crashCount == 1 is not present in BbjServerService.java");
+        assertTrue(classifyIndex < firstCrashBranchIndex,
+                "the classification call must appear before the first-crash branch");
+        assertEquals(1, countOccurrences(text, "StopKind.CRASH"),
+                "the classifier's CRASH verdict constant must appear exactly once so the crash branch "
+                        + "cannot be silently deleted");
+    }
+
+    @Test
+    void boundedWaitUntilIsCalledExactlyOnce() {
+        String text = readGuardedSource(SERVER_SERVICE);
+        assertEquals(1, countOccurrences(text, "BoundedWait.until("),
+                "BoundedWait.until( must appear exactly once so a future edit cannot add a second unbounded wait");
+    }
 }
