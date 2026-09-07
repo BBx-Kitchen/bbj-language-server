@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Unit coverage for the SETOPTS-in-code VS Code UI (#475, DISC-06, plan 88-06):
@@ -421,5 +423,50 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
 
         expect(createWebviewPanelMock).not.toHaveBeenCalled();
         expect(showInformationMessageMock).toHaveBeenCalledWith(expect.stringContaining('language server unreachable'));
+    });
+});
+
+describe('activation wiring guards (Task 3)', () => {
+    const REPO_ROOT = path.resolve(__dirname, '..');
+    const EXTENSION_TS = path.join(REPO_ROOT, 'src/extension.ts');
+    const PACKAGE_JSON = path.join(REPO_ROOT, 'package.json');
+    const COMMAND_ID = 'bbj.composeSetoptsInCode';
+
+    /** Drop every line whose trimmed text starts with `//` so a comment cannot satisfy the assertion below. */
+    function withoutCommentLines(text: string): string {
+        return text
+            .split('\n')
+            .filter(line => !line.trim().startsWith('//'))
+            .join('\n');
+    }
+
+    test('registerSetOptsInCodeComposer is both imported and called in extension.ts, outside of comments', () => {
+        const code = withoutCommentLines(fs.readFileSync(EXTENSION_TS, 'utf-8'));
+        const occurrences = code.split('registerSetOptsInCodeComposer').length - 1;
+        expect(occurrences).toBeGreaterThanOrEqual(2); // one import, one call
+        expect(code).toMatch(/import\s*\{\s*registerSetOptsInCodeComposer\s*\}\s*from/);
+        expect(code).toMatch(/registerSetOptsInCodeComposer\(context,/);
+    });
+
+    test('package.json declares the command, its context-menu entry (scoped to bbj, not bbx-config) and its activation event', () => {
+        const pkg = JSON.parse(fs.readFileSync(PACKAGE_JSON, 'utf-8'));
+
+        const commandEntry = (pkg.contributes.commands as Array<{ command: string; title: string; category: string }>)
+            .find(c => c.command === COMMAND_ID);
+        expect(commandEntry).toBeDefined();
+        expect(commandEntry?.category).toBe('BBj');
+
+        const menuEntry = (pkg.contributes.menus['editor/context'] as Array<{ command: string; when: string; group: string }>)
+            .find(m => m.command === COMMAND_ID);
+        expect(menuEntry).toBeDefined();
+        expect(menuEntry?.when).toBe('editorLangId == bbj');
+        expect(menuEntry?.when).not.toMatch(/bbx-config/);
+        expect(menuEntry?.group).toBe('1_modification');
+
+        expect(pkg.activationEvents as string[]).toContain(`onCommand:${COMMAND_ID}`);
+    });
+
+    test('package.json remains valid JSON', () => {
+        expect(() => JSON.parse(fs.readFileSync(PACKAGE_JSON, 'utf-8'))).not.toThrow();
     });
 });

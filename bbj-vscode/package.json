@@ -196,6 +196,11 @@
         "category": "BBj",
         "command": "bbj.composeConfigSetopts",
         "title": "Compose config.bbx SETOPTS (visual)…"
+      },
+      {
+        "category": "BBj",
+        "command": "bbj.composeSetoptsInCode",
+        "title": "Compose SETOPTS in code (visual)…"
       }
     ],
     "keybindings": [
@@ -270,6 +275,11 @@
         {
           "command": "bbj.composeConfigSetopts",
           "when": "editorLangId == bbx-config",
+          "group": "1_modification"
+        },
+        {
+          "command": "bbj.composeSetoptsInCode",
+          "when": "editorLangId == bbj",
           "group": "1_modification"
         }
       ],
@@ -647,6 +657,7 @@
     "onCommand:bbj.composeAddWindow",
     "onCommand:bbj.composeAddChildWindow",
     "onCommand:bbj.composeConfigSetopts",
+    "onCommand:bbj.composeSetoptsInCode",
     "onLanguage:bbx-config"
   ],
   "main": "./out/extension.cjs",
