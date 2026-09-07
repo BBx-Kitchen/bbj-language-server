@@ -70,6 +70,15 @@ export function createRestartGate(
     const clearTimer = deps.clearTimer ?? ((handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>));
 
     let pendingHandle: unknown;
+    /**
+     * Set by `cancel()` so an already-fired `runRestart()` that is mid-`await` on
+     * `target.stop()` notices, once that await resolves, that it must not go on to call
+     * `target.start()` against a client that is being (or has been) shut down. `cancel()` only
+     * clearing `pendingHandle` covers a *scheduled* restart (the timer has not fired yet); this
+     * flag covers the narrower window where the timer already fired and `runRestart()` is
+     * actively executing.
+     */
+    let cancelled = false;
 
     function clearPending(): void {
         if (pendingHandle !== undefined) {
@@ -84,6 +93,11 @@ export function createRestartGate(
             if (target.needsStop()) {
                 await target.stop();
             }
+            if (cancelled) {
+                // cancel() ran while stop() was in flight -- the caller is shutting the
+                // client down, so starting it back up here would race that shutdown.
+                return;
+            }
             await target.start();
             onPhase('restarted');
         } catch (error) {
@@ -93,6 +107,7 @@ export function createRestartGate(
 
     function request(delayMs: number): void {
         clearPending();
+        cancelled = false;
         pendingHandle = setTimer(() => {
             pendingHandle = undefined;
             void runRestart();
@@ -101,6 +116,7 @@ export function createRestartGate(
 
     function cancel(): void {
         clearPending();
+        cancelled = true;
     }
 
     return { request, cancel };

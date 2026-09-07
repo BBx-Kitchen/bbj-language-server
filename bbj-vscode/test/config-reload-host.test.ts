@@ -96,6 +96,30 @@ describe('createRestartGate: cancel-then-schedule coalescing', () => {
         expect(target.start).not.toHaveBeenCalled();
     });
 
+    test('cancel() while an already-fired restart is mid-await on stop() prevents start() from ever being called', async () => {
+        let resolveStop: (() => void) | undefined;
+        const target = createFakeTarget({
+            stop: vi.fn(() => new Promise<void>(resolve => { resolveStop = resolve; })),
+        });
+        const gate = createRestartGate(target, vi.fn());
+
+        gate.request(500);
+        // The window elapses: runRestart() has fired and is now awaiting target.stop(),
+        // which never resolves until we tell it to below.
+        await vi.advanceTimersByTimeAsync(500);
+        expect(target.stop).toHaveBeenCalledTimes(1);
+        expect(target.start).not.toHaveBeenCalled();
+
+        // Nothing is "pending" (the timer already fired) -- this exercises the in-flight
+        // half of cancel(), not the scheduled-timer half covered by the test above.
+        gate.cancel();
+
+        resolveStop?.();
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(target.start).not.toHaveBeenCalled();
+    });
+
     test('a rejected stop() is caught: reports the failed phase exactly once, throws nothing out of the timer callback', async () => {
         const error = new Error('stop failed');
         const target = createFakeTarget({ stop: vi.fn(() => Promise.reject(error)) });
