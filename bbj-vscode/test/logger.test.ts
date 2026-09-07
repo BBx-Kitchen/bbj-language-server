@@ -29,7 +29,7 @@ describe('Logger', () => {
       expect(logSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith('error message');
+      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
     });
 
     test('at WARN level, warn() and error() produce output', () => {
@@ -47,9 +47,9 @@ describe('Logger', () => {
 
       expect(logSpy).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledOnce();
-      expect(warnSpy).toHaveBeenCalledWith('warn message');
+      expect(warnSpy).toHaveBeenCalledWith('[warn] warn message');
       expect(errorSpy).toHaveBeenCalledOnce();
-      expect(errorSpy).toHaveBeenCalledWith('error message');
+      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
     });
 
     test('at INFO level, info/warn/error produce output, debug silent', () => {
@@ -66,7 +66,7 @@ describe('Logger', () => {
       logger.error('error message');
 
       expect(logSpy).toHaveBeenCalledOnce();
-      expect(logSpy).toHaveBeenCalledWith('info message');
+      expect(logSpy).toHaveBeenCalledWith('[info] info message');
       expect(warnSpy).toHaveBeenCalledOnce();
       expect(errorSpy).toHaveBeenCalledOnce();
     });
@@ -198,7 +198,15 @@ describe('Logger', () => {
 
       logger.setLevel(LogLevel.DEBUG);
 
-      expect(logSpy).toHaveBeenCalledWith('Log level changed to DEBUG');
+      expect(logSpy).toHaveBeenCalledWith('[info] Log level changed to DEBUG');
+    });
+
+    test('setLevel routes its announcement through info()', () => {
+      const infoSpy = vi.spyOn(logger, 'info');
+
+      logger.setLevel(LogLevel.INFO);
+
+      expect(infoSpy).toHaveBeenCalledWith('Log level changed to INFO');
     });
   });
 
@@ -221,21 +229,7 @@ describe('Logger', () => {
   });
 
   describe('output format', () => {
-    test('debug messages include ISO timestamp', () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-      logger.setLevel(LogLevel.DEBUG);
-      vi.clearAllMocks();
-
-      logger.debug('test message');
-
-      expect(logSpy).toHaveBeenCalledOnce();
-      const output = logSpy.mock.calls[0][0];
-      // Check for ISO 8601 timestamp format: [YYYY-MM-DDTHH:MM:SS.sssZ]
-      expect(output).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] test message$/);
-    });
-
-    test('info/warn/error messages are plain text (no timestamp, no prefix)', () => {
+    test('all log levels use a level prefix without a server-side timestamp', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -243,16 +237,18 @@ describe('Logger', () => {
       logger.setLevel(LogLevel.DEBUG);
       vi.clearAllMocks();
 
+      logger.debug('test message');
       logger.info('info message');
       logger.warn('warn message');
       logger.error('error message');
 
-      expect(logSpy).toHaveBeenCalledWith('info message');
-      expect(warnSpy).toHaveBeenCalledWith('warn message');
-      expect(errorSpy).toHaveBeenCalledWith('error message');
+      expect(logSpy).toHaveBeenNthCalledWith(1, '[debug] test message');
+      expect(logSpy).toHaveBeenNthCalledWith(2, '[info] info message');
+      expect(warnSpy).toHaveBeenCalledWith('[warn] warn message');
+      expect(errorSpy).toHaveBeenCalledWith('[error] error message');
     });
 
-    test('scoped debug includes both timestamp and component tag', () => {
+    test('scoped debug keeps the component tag without a server-side timestamp', () => {
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       const scopedLogger = logger.scoped('test-component');
 
@@ -263,8 +259,7 @@ describe('Logger', () => {
 
       expect(logSpy).toHaveBeenCalledOnce();
       const output = logSpy.mock.calls[0][0];
-      // Check for format: [timestamp] [component] message
-      expect(output).toMatch(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[test-component\] test message$/);
+      expect(output).toBe('[debug] [test-component] test message');
     });
   });
 
@@ -348,7 +343,7 @@ describe('Logger', () => {
       logger.setLevel(LogLevel.ERROR);
       const errorSpy = vi.spyOn(console, 'error');
       logger.error('critical failure');
-      expect(errorSpy).toHaveBeenCalledWith('critical failure');
+      expect(errorSpy).toHaveBeenCalledWith('[error] critical failure');
       errorSpy.mockRestore();
     });
 

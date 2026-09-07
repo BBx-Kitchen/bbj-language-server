@@ -18,11 +18,16 @@ function evaluateMessage(message: LogMessage): string {
   return typeof message === 'function' ? message() : message;
 }
 
+function formatMessage(level: string, message: LogMessage, component?: string): string {
+  const scope = component ? ` [${component}]` : '';
+  return `[${level}]${scope} ${evaluateMessage(message)}`;
+}
+
 const logger = {
   setLevel(level: LogLevel): void {
     if (level === currentLevel) return;
     currentLevel = level;
-    console.log(`Log level changed to ${LogLevel[level]}`);
+    logger.info(`Log level changed to ${LogLevel[level]}`);
   },
 
   isDebug(): boolean {
@@ -31,34 +36,32 @@ const logger = {
 
   debug(message: LogMessage): void {
     if (currentLevel >= LogLevel.DEBUG) {
-      const msg = evaluateMessage(message);
-      console.log(`[${new Date().toISOString()}] ${msg}`);
+      console.log(formatMessage('debug', message));
     }
   },
 
   info(message: LogMessage): void {
     if (currentLevel >= LogLevel.INFO) {
-      console.log(evaluateMessage(message));
+      console.log(formatMessage('info', message));
     }
   },
 
   warn(message: LogMessage): void {
     if (currentLevel >= LogLevel.WARN) {
-      console.warn(evaluateMessage(message));
+      console.warn(formatMessage('warn', message));
     }
   },
 
   error(message: LogMessage): void {
     // Always emit, regardless of level
-    console.error(evaluateMessage(message));
+    console.error(formatMessage('error', message));
   },
 
   scoped(component: string) {
     return {
       debug(message: LogMessage): void {
         if (currentLevel >= LogLevel.DEBUG) {
-          const msg = evaluateMessage(message);
-          console.log(`[${new Date().toISOString()}] [${component}] ${msg}`);
+          console.log(formatMessage('debug', message, component));
         }
       }
     };
