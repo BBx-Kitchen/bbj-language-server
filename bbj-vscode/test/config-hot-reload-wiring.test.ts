@@ -5,6 +5,7 @@
  ******************************************************************************/
 
 import { EmptyFileSystem } from 'langium';
+import * as fs from 'fs';
 import * as path from 'path';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { createBBjServices } from '../src/language/bbj-module.js';
@@ -190,5 +191,56 @@ describe('config-watcher quiescence wait: a reload is never pushed while the bui
         vi.advanceTimersByTime(QUIESCENCE_POLL_MS);
 
         expect(notify).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('main.ts wires the config watcher: armed once, re-armed at exactly two sites', () => {
+    function stripLineComments(text: string): string {
+        return text
+            .split('\n')
+            .map(line => {
+                const idx = line.indexOf('//');
+                return idx >= 0 ? line.slice(0, idx) : line;
+            })
+            .join('\n');
+    }
+
+    function mainSource(): string {
+        return stripLineComments(
+            fs.readFileSync(path.join(__dirname, '..', 'src', 'language', 'main.ts'), 'utf-8')
+        );
+    }
+
+    test('exactly one createConfigWatcher( call', () => {
+        const source = mainSource();
+        expect(source.match(/createConfigWatcher\(/g) ?? []).toHaveLength(1);
+    });
+
+    test('exactly one configWatcher.start( call', () => {
+        const source = mainSource();
+        expect(source.match(/configWatcher\.start\(/g) ?? []).toHaveLength(1);
+    });
+
+    test('exactly two configWatcher.updateResolvedPath( calls, one per setConfigPath site', () => {
+        const source = mainSource();
+        expect(source.match(/configWatcher\.updateResolvedPath\(/g) ?? []).toHaveLength(2);
+    });
+
+    test('configWatcher.start( appears after the workspaceInitialized = true; assignment and the notifyResolvedConfigPath( call that precedes it', () => {
+        const source = mainSource();
+        const trueIdx = source.indexOf('workspaceInitialized = true;');
+        const notifyIdx = source.indexOf('notifyResolvedConfigPath(wsManager.getResolvedConfigPath());');
+        const startIdx = source.indexOf('configWatcher.start(');
+        expect(trueIdx).toBeGreaterThan(-1);
+        expect(notifyIdx).toBeGreaterThan(-1);
+        expect(startIdx).toBeGreaterThan(-1);
+        expect(trueIdx).toBeLessThan(notifyIdx);
+        expect(notifyIdx).toBeLessThan(startIdx);
+    });
+
+    test('main.ts injects hasPendingWork from the shared DocumentBuilder cast to BBjDocumentBuilder, and notify from notifyConfigReloadRequired', () => {
+        const source = mainSource();
+        expect(source).toMatch(/hasPendingWork:\s*\(\)\s*=>\s*\(shared\.workspace\.DocumentBuilder as BBjDocumentBuilder\)\.hasPendingWork\(\)/);
+        expect(source).toMatch(/notify:\s*notifyConfigReloadRequired/);
     });
 });

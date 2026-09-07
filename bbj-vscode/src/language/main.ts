@@ -13,10 +13,12 @@ import { BBjWorkspaceManager } from './bbj-ws-manager.js';
 import { logger, LogLevel } from './logger.js';
 import { setSuppressCascading, setMaxErrors, setCompilerTrigger } from './bbj-document-validator.js';
 import { setParameterHintMode } from './bbj-inlay-hint-provider.js';
-import { initNotifications, notifyResolvedConfigPath } from './bbj-notifications.js';
+import { initNotifications, notifyResolvedConfigPath, notifyConfigReloadRequired } from './bbj-notifications.js';
 import { registerComposerRequests } from './composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
 import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
+import { createConfigWatcher } from './config-watcher.js';
+import { BBjDocumentBuilder } from './bbj-document-builder.js';
 
 // Create a connection to the client
 const connection = createConnection(ProposedFeatures.all);
@@ -53,6 +55,14 @@ registerCompileRequest(connection, {
 // alongside the pushed notification registered below.
 registerResolvedConfigPathRequest(connection, {
     wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+});
+
+// The bbj/configReloadRequired watcher (#486). Creating the instance arms nothing by itself —
+// arming happens only at the workspaceInitialized call site below, and re-arming happens only
+// at the two setConfigPath call sites; no third call site is permitted.
+const configWatcher = createConfigWatcher({
+    hasPendingWork: () => (shared.workspace.DocumentBuilder as BBjDocumentBuilder).hasPendingWork(),
+    notify: notifyConfigReloadRequired,
 });
 
 // Start the language server with the shared services
@@ -111,6 +121,8 @@ shared.workspace.DocumentBuilder.onBuildPhase(DocumentState.Validated, () => {
         refreshInlayHints();
         const wsManager = shared.workspace.WorkspaceManager as BBjWorkspaceManager;
         notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
+        // Armed exactly once, here, after the first Validated build phase.
+        configWatcher.start(wsManager.getResolvedConfigPath(), wsManager.getConsumedConfigSnapshot());
     }
 });
 
@@ -175,6 +187,9 @@ connection.onDidChangeConfiguration(async (change) => {
         // A host may query bbj/resolvedConfigPath even before the workspace build gate opens,
         // so the re-resolved value must be pushed here too, not only after initialization.
         notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
+        // Re-arm the watcher on the newly-resolved path. Symmetrical with the post-init site
+        // below, even though the watcher has not started yet and this call is a no-op.
+        configWatcher.updateResolvedPath(wsManager.getResolvedConfigPath());
         return;
     }
 
@@ -190,6 +205,8 @@ connection.onDidChangeConfiguration(async (change) => {
         // reload here — that belongs to a later reload path).
         wsManager.setConfigPath(config.configPath || '');
         notifyResolvedConfigPath(wsManager.getResolvedConfigPath());
+        // Re-arm the watcher on the newly-resolved path.
+        configWatcher.updateResolvedPath(wsManager.getResolvedConfigPath());
 
         logger.info('BBj settings changed, refreshing Java classes...');
         javaInterop.setConnectionConfig(newInteropHost, newInteropPort);
