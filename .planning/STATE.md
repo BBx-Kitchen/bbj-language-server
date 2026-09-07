@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 86
 current_phase_name: IntelliJ Interop Settings & Targeted Refresh
 status: verifying
-stopped_at: Completed 86-03-PLAN.md
-last_updated: "2026-09-07T15:02:54.177Z"
+stopped_at: Completed 86-05-PLAN.md (gap closure G-86-1)
+last_updated: "2026-09-07T16:32:28.946Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 86 execution started
-state_head: 2bdbd3322d6578441697780345d75c06da16ea45
+state_head: 9c01b27d2e9c253ef405e57ece4b0460c1c5bc58
 progress:
   total_phases: 9
   completed_phases: 2
-  total_plans: 15
-  completed_plans: 15
+  total_plans: 16
+  completed_plans: 16
   percent: 22
 ---
 
@@ -156,6 +156,7 @@ Last activity: 2026-09-07 — Phase 86 execution started
 | Phase 86 P02 | 20min | 3 tasks | 8 files |
 | Phase 86 P04 | 3min | 2 tasks | 4 files |
 | Phase 86 P03 | 15min | 3 tasks | 7 files |
+| Phase 86 P05 | 40min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -254,6 +255,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86]: [Phase 86]: 86-02: PortLookup collapses a read failure and a genuinely absent key into one detected boolean (no separate failed flag like BbjSettingsLookups' records) since both cases mean 'nothing detected, use 5008 and say so'; BbjInteropPortCache keys on the resolved properties file's absolute path, mirroring BbjNodeVersionCache's compute() race-safety idiom.
 - [Phase 86]: Folded todo closed as delivered by Phase 84 D-12 (plans 84-03, 84-04, 84-06) rather than built; COVERAGE.md names the phase's actual JSON-RPC/properties-read surface instead of a generic no-API statement
 - [Phase 86]: [Phase 86]: 86-03: one BbjSettings.getEffectiveJavaInteropPort() accessor answers the java-interop port for the language-server initialization options, the health probe and the Settings dialog's reset; the persisted javaInteropPortAutoDetect flag migrates once in loadState before any reader observes it, and BbjSettingsConfigurable.apply() captures the stored port before writing so InteropPortSettings.portToPersist never sees its own output.
+- [Phase 86]: [Phase 86] Phase 86 Plan 05: LanguageServerManager.stop(String) returns void in LSP4IJ 0.21.0, so doRestart() waits for manager.getServerStatus(SERVER_ID) to report the server down (BoundedWait, 5s budget) instead of awaiting stop's future; a restart request landing mid-restart is dropped (RestartGate in-flight rejection) rather than queued, to avoid an unbounded restart loop on a future stop-classification regression; the ExpectedStopGuard token is one-shot, 30s-windowed and armed only when the server was observed live -- closes G-86-1's automated-evidence portion.
 
 ### Tech Debt
 
@@ -319,8 +321,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T15:02:54.079Z
-Stopped at: Completed 86-03-PLAN.md
+Last session: 2026-09-07T16:32:28.816Z
+Stopped at: Completed 86-05-PLAN.md (gap closure G-86-1)
 Resume file: None
 
 Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start

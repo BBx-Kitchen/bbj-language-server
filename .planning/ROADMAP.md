@@ -296,7 +296,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   2. Running Refresh Java Classes on IntelliJ does not interrupt diagnostics, completion, hover, or Structure View for files the user isn't actively refreshing.
   3. Every reader of the java-interop port setting — not only the Settings dialog — auto-detects the live port, and a port the user has explicitly confirmed as 5008 is never silently overwritten by auto-detection.
 
-**Plans**: 5 plans (4/4 original plans executed across 2 waves; 1 gap-closure plan pending)
+**Plans**: 5/5 plans executed (4/4 original plans executed across 2 waves; 1 gap-closure plan pending)
 **Wave 1**
 
 - [x] 86-01-PLAN.md — Targeted `bbj/refreshJavaClasses` request, reason-keyed failure surface and single-flight guard (wave 1)
@@ -309,7 +309,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 
 **Gap closure** *(UAT G-86-1, blocker)*
 
-- [ ] 86-05-PLAN.md — Expected-stop classification, restart-gate in-flight rejection and a bounded stop barrier, so a deliberate restart no longer produces two overlapping stop/start cycles (wave 1)
+- [x] 86-05-PLAN.md — Expected-stop classification, restart-gate in-flight rejection and a bounded stop barrier, so a deliberate restart no longer produces two overlapping stop/start cycles (wave 1)
 
 ### Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog
 
