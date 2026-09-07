@@ -69,6 +69,7 @@ vi.mock('vscode', () => ({
 import {
     openSetOptsTriStateComposerPanel, SetOptsInCodeRequestSender, SetOptsTriStatePanelArg, SetOptsTriStateTarget,
 } from '../src/setopts-tristate-webview.js';
+import { registerSetOptsInCodeComposer, setoptsInCodeCandidateLine } from '../src/setopts-in-code-ui.js';
 
 interface FakePanel {
     webview: {
@@ -262,5 +263,163 @@ describe('setopts-tristate-webview.ts (Task 1)', () => {
             }),
         );
         expect(panel.webview.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'preview', ...composed }));
+    });
+});
+
+describe('setoptsInCodeCandidateLine (Task 2, pure helper)', () => {
+    test.each([
+        ['SETOPTS', 'SETOPTS opts$', 0],
+        ['setopts (lowercase)', 'setopts opts$', 3],
+        ['SeTopTs (mixed case)', '  SeTopTs opts$', 4],
+        ['IOR(', 'opts$=IOR(opts$,"$80$")', 10],
+        ['ior( (lowercase)', 'opts$=ior(opts$,"$80$")', 20],
+        ['AND(', 'opts$=AND(opts$,"$7F$")', 6],
+        ['and( (mixed case)', 'opts$=AnD(opts$,"$7F$")', 23],
+    ])('positive: %s at or after the keyword start', (_label, line, character) => {
+        expect(setoptsInCodeCandidateLine(line, character)).toBe(true);
+    });
+
+    test('negative: caret strictly before every keyword occurrence on the line', () => {
+        const line = 'x = 1 : SETOPTS opts$';
+        expect(setoptsInCodeCandidateLine(line, 2)).toBe(false);
+    });
+
+    test('negative: an unrelated line with none of the three keywords', () => {
+        expect(setoptsInCodeCandidateLine('x$ = "hello world"', 5)).toBe(false);
+    });
+});
+
+describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    function getRegisteredCommandHandler(): (arg?: unknown) => Promise<void> {
+        const call = registerCommandMock.mock.calls.find((c: unknown[]) => c[0] === 'bbj.composeSetoptsInCode');
+        if (!call) throw new Error('bbj.composeSetoptsInCode was not registered');
+        return call[1] as (arg?: unknown) => Promise<void>;
+    }
+
+    test('registers exactly one command and one Code Action provider scoped to the bbj language, no CodeLens', () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn();
+        registerSetOptsInCodeComposer(fakeContext, sender);
+
+        expect(registerCommandMock).toHaveBeenCalledWith('bbj.composeSetoptsInCode', expect.any(Function));
+        expect(registerCodeActionsProviderMock).toHaveBeenCalledTimes(1);
+        const [languageArg] = registerCodeActionsProviderMock.mock.calls[0];
+        expect(languageArg).toEqual({ language: 'bbj' });
+    });
+
+    test('mode: absolute, editable: true opens the existing absolute SETOPTS panel', async () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
+            found: true, editable: true, mode: 'absolute',
+            absolute: { line: 2, hexRange: [10, 18], hexDigits: '08004020' },
+        });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler({ uri: 'file:///x.bbj', line: 2, character: 5 });
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        const [viewType] = createWebviewPanelMock.mock.calls[0];
+        expect(viewType).toBe('bbjSetOptsComposer');
+        expect(showInformationMessageMock).not.toHaveBeenCalled();
+    });
+
+    test('mode: chain, editable: true opens the tri-state panel with the chain edit-in-place target', async () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
+            found: true, editable: true, mode: 'chain',
+            chain: { variableName: 'opts$', startLine: 3, endLine: 5, indent: '  ' },
+            initial: { entries: [] },
+        });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler({ uri: 'file:///x.bbj', line: 4, character: 2 });
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        const [viewType] = createWebviewPanelMock.mock.calls[0];
+        expect(viewType).toBe('bbjSetOptsTriStateComposer');
+        expect(showInformationMessageMock).not.toHaveBeenCalled();
+    });
+
+    test('found: false opens the tri-state panel with no target (compose-new)', async () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({ found: false, editable: false, mode: 'none' });
+        createWebviewPanelMock.mockReturnValue({ webview: { html: '', postMessage: vi.fn(), onDidReceiveMessage: vi.fn(() => ({ dispose: vi.fn() })) }, dispose: vi.fn() });
+        const vscodeModule = await import('vscode');
+        const uri = { toString: () => 'file:///x.bbj' };
+        (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = {
+            document: { uri, languageId: 'bbj' },
+            selection: { active: { line: 4, character: 2 } },
+        };
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler({ uri: 'file:///x.bbj', line: 4, character: 2 });
+
+        expect(createWebviewPanelMock).toHaveBeenCalledTimes(1);
+        const [viewType] = createWebviewPanelMock.mock.calls[0];
+        expect(viewType).toBe('bbjSetOptsTriStateComposer');
+
+        (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
+    });
+
+    test('editable: false with found: true opens no panel and shows a message containing the server reason', async () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
+            found: true, editable: false, mode: 'chain', reason: 'a branch was encountered while tracing the chain',
+        });
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler({ uri: 'file:///x.bbj', line: 4, character: 2 });
+
+        expect(createWebviewPanelMock).not.toHaveBeenCalled();
+        expect(showInformationMessageMock).toHaveBeenCalledWith(expect.stringContaining('a branch was encountered while tracing the chain'));
+    });
+
+    test('no active editor (command palette, no arg) shows a non-blocking hint and opens nothing', async () => {
+        const vscodeModule = await import('vscode');
+        (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
+        const sender: SetOptsInCodeRequestSender = vi.fn();
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler(undefined);
+
+        expect(sender).not.toHaveBeenCalled();
+        expect(createWebviewPanelMock).not.toHaveBeenCalled();
+        expect(showInformationMessageMock).toHaveBeenCalledTimes(1);
+    });
+
+    test('active editor with a non-bbj languageId (no arg) shows a non-blocking hint and opens nothing', async () => {
+        const vscodeModule = await import('vscode');
+        (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = {
+            document: { uri: { toString: () => 'file:///x.bbx-config' }, languageId: 'bbx-config' },
+            selection: { active: { line: 0, character: 0 } },
+        };
+        const sender: SetOptsInCodeRequestSender = vi.fn();
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await handler(undefined);
+
+        expect(sender).not.toHaveBeenCalled();
+        expect(createWebviewPanelMock).not.toHaveBeenCalled();
+        expect(showInformationMessageMock).toHaveBeenCalledTimes(1);
+
+        (vscodeModule.window as unknown as { activeTextEditor: unknown }).activeTextEditor = undefined;
+    });
+
+    test('a rejected decodeInCode request shows a non-blocking message and never throws into the extension host', async () => {
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockRejectedValue(new Error('language server unreachable'));
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const handler = getRegisteredCommandHandler();
+
+        await expect(handler({ uri: 'file:///x.bbj', line: 1, character: 1 })).resolves.toBeUndefined();
+
+        expect(createWebviewPanelMock).not.toHaveBeenCalled();
+        expect(showInformationMessageMock).toHaveBeenCalledWith(expect.stringContaining('language server unreachable'));
     });
 });
