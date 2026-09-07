@@ -190,10 +190,17 @@ function containerStatements(node: AstNode): ReadonlyArray<AstNode> | undefined 
 }
 
 /**
- * Walk `target.$container` upward until reaching a `Program`, `MethodDecl`, `DefFunction` or
- * `CompoundStatement` — the first one found, never further — and return that container's
- * statement array together with the index of the direct element enclosing `target`. Bounded by
- * {@link MAX_CONTAINER_HOPS}, matching {@link setoptsHoverTarget}'s own defensive ceiling.
+ * Walk `target.$container` upward until reaching the true top-level statement-list owner —
+ * `Program`, `MethodDecl`, or `DefFunction` — and return that container's statement array
+ * together with the index of the direct element enclosing `target`. A `CompoundStatement` is
+ * deliberately *not* treated as a terminal container here: unlike `Program`/`MethodDecl`/
+ * `DefFunction`, a `CompoundStatement` is transparent to its parent's scope (the same rule
+ * {@link flattenStatements} applies), so if `target` is itself one of a `CompoundStatement`'s
+ * semicolon-joined elements, climbing must continue past that compound wrapper to the real
+ * enclosing scope rather than stopping at the compound's own (possibly tiny) `.statements` array
+ * — otherwise every sibling statement outside the compound (including the chain's actual origin)
+ * would be invisible to the backward walk. Bounded by {@link MAX_CONTAINER_HOPS}, matching
+ * {@link setoptsHoverTarget}'s own defensive ceiling.
  */
 function findAnchor(target: AstNode): { statements: ReadonlyArray<AstNode>; anchorIndex: number } | undefined {
     let prev: AstNode = target;
@@ -201,7 +208,7 @@ function findAnchor(target: AstNode): { statements: ReadonlyArray<AstNode>; anch
     let hops = 0;
     while (node && hops < MAX_CONTAINER_HOPS) {
         const statements = containerStatements(node);
-        if (statements) {
+        if (statements && !isCompoundStatement(node)) {
             const idx = statements.indexOf(prev);
             return idx === -1 ? undefined : { statements, anchorIndex: idx };
         }
@@ -454,8 +461,12 @@ export function traceOptsChain(target: SetOptsStatement): Extract<SetOptsCodeSha
     if (!anchor) {
         return { kind: 'chain', variableName, safe: false, unsafeReason: 'no-origin', links: [], effect: { set: [], clear: [] } };
     }
-    const anchorStatement = anchor.statements[anchor.anchorIndex];
-    const walk = walkChain(anchor.statements, anchorStatement, variableName);
+    // Pass `target` itself, not `anchor.statements[anchor.anchorIndex]`: `flattenStatements`
+    // already inlines a `CompoundStatement`'s children, and `findAnchor` now climbs past any
+    // enclosing `CompoundStatement` to the real top-level statement-list owner, so `target` is
+    // guaranteed to be present in `walkChain`'s flattened array even when it is itself one of a
+    // `CompoundStatement`'s semicolon-joined elements (see `findAnchor`'s doc comment).
+    const walk = walkChain(anchor.statements, target, variableName);
     const links = [...walk.linksNewestFirst].reverse();
     const effect = foldChainEffect(links);
     return walk.safe

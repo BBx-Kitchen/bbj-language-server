@@ -301,6 +301,17 @@ classend`;
         expect(shape.links[0]).toMatchObject({ fnName: 'IOR', maskHex: '08' });
     });
 
+    test('WR-B regression: the traced SetOptsStatement itself sitting inside a semicolon-joined CompoundStatement still finds an OPTS origin on a preceding line', async () => {
+        // Here `SETOPTS A$` is the *second* element of a CompoundStatement on its own physical
+        // line, so `target.$container` is the CompoundStatement itself, not the Program --
+        // `findAnchor` must climb past it rather than treating it as the search's top scope.
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$") ; SETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(true);
+        expect(shape.links).toHaveLength(1);
+        expect(shape.links[0]).toMatchObject({ fnName: 'IOR', maskHex: '08' });
+    });
+
     test('variable names and the IOR/AND/OPTS names compare case-insensitively', async () => {
         const target = await parseAndFindSetOptsTarget('a$=OPTS\na$=Ior(A$,"$08$")\nsetopts A$');
         const shape = traceOptsChain(target)!;
