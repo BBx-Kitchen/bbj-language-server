@@ -39,7 +39,7 @@ public final class BbjServerService implements Disposable {
     private ServerStatus previousStatus = ServerStatus.stopped;
     private final Scheduler restartScheduler;
     private final RestartGate restartGate;
-    private static final int RESTART_DEBOUNCE_MS = 500;
+    public static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_RESTART_DELAY_MS = 1000;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
     private long lastCrashTime = 0;

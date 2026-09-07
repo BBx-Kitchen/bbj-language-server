@@ -2,6 +2,7 @@ package com.basis.bbj.intellij.lsp;
 
 import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.config.BbjConfigPathService;
+import com.basis.bbj.intellij.config.ConfigModels.ConfigReloadNotification;
 import com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
@@ -90,5 +91,30 @@ public final class BbjLanguageClient extends LanguageClientImpl {
                     NotificationType.WARNING)
                 .notify(project);
         });
+    }
+
+    /**
+     * Receives the pushed config-reload notification (see
+     * {@code bbj-vscode/src/language/config-reload-notification.ts}). LSP4IJ hands this client
+     * instance to LSP4J's launcher as the local service, and LSP4J reflects over the concrete
+     * class to find supported methods, so declaring the method directly on this class is what
+     * makes the notification reachable -- no extra registration exists or is needed. Passing
+     * {@link BbjServerService#RESTART_DEBOUNCE_MS} here is what makes a settings-apply restart
+     * and a config reload collapse into a single restart through the same coalescing gate.
+     */
+    @JsonNotification("bbj/configReloadRequired")
+    public void configReloadRequired(ConfigReloadNotification result) {
+        if (result == null) {
+            return;
+        }
+        Project project = getProject();
+        if (project.isDisposed()) {
+            return;
+        }
+        BbjServerService service = BbjServerService.getInstance(project);
+        service.logToConsole(
+            "Config changed (" + result.reason + "), restarting: " + result.path,
+            com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
+        service.requestRestart(BbjServerService.RESTART_DEBOUNCE_MS);
     }
 }
