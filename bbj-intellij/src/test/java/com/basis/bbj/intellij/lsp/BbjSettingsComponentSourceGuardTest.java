@@ -51,6 +51,16 @@ class BbjSettingsComponentSourceGuardTest {
         return count;
     }
 
+    /**
+     * Strips line comments and block comments (including javadoc) from {@code text} before any
+     * assertion counts occurrences, so a prose comment mentioning a guarded token can neither
+     * satisfy nor break an assertion.
+     */
+    private static String stripComments(String text) {
+        String noBlockComments = text.replaceAll("(?s)/\\*.*?\\*/", "");
+        return noBlockComments.replaceAll("//[^\n]*", "");
+    }
+
     @Test
     void noFilesystemOrSubprocessHelperIsCalledDirectly() {
         String text = readGuardedSource();
@@ -102,6 +112,34 @@ class BbjSettingsComponentSourceGuardTest {
         String text = readGuardedSource();
         assertTrue(text.contains("isDispatchThread()"),
                 "a ThreadProbe backed by the platform's isDispatchThread() must be wired in");
+    }
+
+    @Test
+    void theComponentResolvesNoInteropPortDetectionItself() {
+        String text = stripComments(readGuardedSource());
+        assertEquals(0, countOccurrences(text, "BbjSettings."),
+                "the component receives detection as a value and resolves nothing itself -- "
+                        + "keeping dispatch-thread filesystem work out of the settings paths");
+        assertEquals(0, countOccurrences(text, "BbjInteropPortCache"),
+                "the component must never consult the stat-keyed cache directly");
+        assertEquals(0, countOccurrences(text, "InteropPortSettings"),
+                "the component must never resolve the effective-port decision itself");
+    }
+
+    @Test
+    void theComponentComputesTheHintThroughThePresentationSeamExactlyOnce() {
+        String text = stripComments(readGuardedSource());
+        assertEquals(1, countOccurrences(text, "InteropPortPresentation.hint("),
+                "the hint text must be computed through InteropPortPresentation.hint( exactly "
+                        + "once");
+    }
+
+    @Test
+    void theComponentDeclaresTheDetectionHandoffMethodExactlyOnce() {
+        String text = stripComments(readGuardedSource());
+        assertEquals(1, countOccurrences(text, "setJavaInteropPortDetection"),
+                "setJavaInteropPortDetection must be declared exactly once -- the only channel "
+                        + "through which detection reaches this component");
     }
 
     @Test
