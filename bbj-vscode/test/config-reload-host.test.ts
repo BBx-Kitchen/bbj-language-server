@@ -452,3 +452,113 @@ describe('config-reload status bar: the non-blocking signal and failure path', (
         resolveStop?.();
     });
 });
+
+// ---------------------------------------------------------------------------------------
+// Source guard: the choke point is the only restart path (#486). Porting
+// BbjConfigPathServiceSourceGuardTest's whole-file text-assertion idiom to vitest — the
+// choke point becomes the contract every future VS Code restart trigger is written against,
+// and a text count is the only fence that fails when a new trigger bypasses it. Deliberately
+// introducing a second stop/start pair in extension.ts, or a direct client.stop()/start()
+// call from anywhere other than startLanguageClient()/deactivate(), would fail this block.
+// ---------------------------------------------------------------------------------------
+
+import * as fs from 'fs';
+import * as path from 'path';
+
+describe('source guard: the choke point is the only restart path', () => {
+    /** Strip `/* *\/` block comments (may span lines), then `//` line comments. */
+    function stripComments(text: string): string {
+        const noBlockComments = text.replace(/\/\*[\s\S]*?\*\//g, '');
+        return noBlockComments
+            .split('\n')
+            .map(line => {
+                const idx = line.indexOf('//');
+                return idx >= 0 ? line.slice(0, idx) : line;
+            })
+            .join('\n');
+    }
+
+    /** Import declarations are usage-neutral — this fence pins call sites, not imports. */
+    function stripImportLines(text: string): string {
+        return text
+            .split('\n')
+            .filter(line => !/^\s*import\b/.test(line))
+            .join('\n');
+    }
+
+    function readGuardedSource(fileName: string): string {
+        const raw = fs.readFileSync(path.join(__dirname, '..', 'src', fileName), 'utf-8');
+        return stripImportLines(stripComments(raw));
+    }
+
+    function countOccurrences(text: string, substring: string): number {
+        return text.split(substring).length - 1;
+    }
+
+    /** Extract the balanced `(...)` call whose opening paren is at `parenStart`. */
+    function extractBalancedCall(text: string, parenStart: number): string {
+        let depth = 0;
+        let i = parenStart;
+        for (; i < text.length; i++) {
+            if (text[i] === '(') depth++;
+            else if (text[i] === ')') {
+                depth--;
+                if (depth === 0) {
+                    i++;
+                    break;
+                }
+            }
+        }
+        return text.slice(parenStart, i);
+    }
+
+    test('extension.ts contains exactly one client.start() and exactly one client.stop( occurrence', () => {
+        const source = readGuardedSource('extension.ts');
+        expect(countOccurrences(source, 'client.start()')).toBe(1);
+        expect(countOccurrences(source, 'client.stop(')).toBe(1);
+    });
+
+    test("extension.ts's client.stop( appears after its gate-cancel call, inside deactivate()", () => {
+        const source = readGuardedSource('extension.ts');
+        const fnStart = source.indexOf('export function deactivate(');
+        expect(fnStart).toBeGreaterThan(-1);
+        const fnEnd = source.indexOf('\n}', fnStart);
+        expect(fnEnd).toBeGreaterThan(fnStart);
+        const body = source.slice(fnStart, fnEnd);
+
+        const cancelIdx = body.indexOf('restartGate?.cancel(');
+        const stopIdx = body.indexOf('client.stop(');
+        expect(cancelIdx).toBeGreaterThan(-1);
+        expect(stopIdx).toBeGreaterThan(-1);
+        expect(cancelIdx).toBeLessThan(stopIdx);
+    });
+
+    test('extension.ts contains exactly one createRestartGate( call, so a second, uncoalesced gate cannot appear', () => {
+        const source = readGuardedSource('extension.ts');
+        expect(countOccurrences(source, 'createRestartGate(')).toBe(1);
+    });
+
+    test("the reload handler's body reaches the restart only through the gate's request( call", () => {
+        const source = readGuardedSource('extension.ts');
+        const marker = 'client.onNotification(CONFIG_RELOAD_METHOD';
+        expect(countOccurrences(source, marker)).toBe(1);
+
+        const markerIdx = source.indexOf(marker);
+        const parenStart = markerIdx + 'client.onNotification'.length;
+        const handlerBody = extractBalancedCall(source, parenStart);
+        expect(handlerBody).toMatch(/restartGate\??\.request\(/);
+        // The handler must never stop/start the client directly — only the gate may.
+        expect(handlerBody).not.toMatch(/client\.stop\(|client\.start\(/);
+    });
+
+    test('restart-gate.ts contains exactly one .stop( and exactly one .start( call on the target', () => {
+        const source = readGuardedSource('restart-gate.ts');
+        expect(countOccurrences(source, 'target.stop(')).toBe(1);
+        expect(countOccurrences(source, 'target.start(')).toBe(1);
+    });
+
+    test('restart-gate.ts has zero \'vscode\' imports, keeping the choke point unit-testable', () => {
+        const raw = fs.readFileSync(path.join(__dirname, '..', 'src', 'restart-gate.ts'), 'utf-8');
+        expect(raw).not.toMatch(/from ['"]vscode['"]/);
+    });
+});
