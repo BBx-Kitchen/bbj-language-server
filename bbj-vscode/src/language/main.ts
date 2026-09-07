@@ -17,6 +17,7 @@ import { initNotifications, notifyResolvedConfigPath, notifyConfigReloadRequired
 import { registerComposerRequests } from './composer-commands.js';
 import { registerCompileRequest } from './compile-command.js';
 import { registerResolvedConfigPathRequest } from './resolved-config-path-request.js';
+import { registerSetOptsInCodeRequests } from './setopts-in-code-request.js';
 import { createConfigWatcher } from './config-watcher.js';
 import { BBjDocumentBuilder } from './bbj-document-builder.js';
 
@@ -55,6 +56,14 @@ registerCompileRequest(connection, {
 // alongside the pushed notification registered below.
 registerResolvedConfigPathRequest(connection, {
     wsManager: shared.workspace.WorkspaceManager as BBjWorkspaceManager,
+});
+
+// SETOPTS-in-code decode/compose (#475, DISC-06): unlike registerComposerRequests above, this
+// family needs document-aware context (LangiumDocuments) and so cannot join composerHandlers —
+// that registration runs BEFORE createBBjServices exists and its handlers receive only plain
+// JSON with no document access. Registered here, after the services exist.
+registerSetOptsInCodeRequests(connection, {
+    documents: shared.workspace.LangiumDocuments,
 });
 
 // The bbj/configReloadRequired watcher (#486). Creating the instance arms nothing by itself —

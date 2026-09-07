@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { EmptyFileSystem, LangiumDocument } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
@@ -210,12 +212,62 @@ describe('bbj/composer/setopts/composeTriState', async () => {
 });
 
 /**
- * Method-name naming convention — cheap always-run check independent of Task 3's wiring guard
- * (which is appended below once `main.ts` is wired).
+ * Method-name naming convention — cheap always-run check independent of the wiring guards below.
  */
 describe('setopts-in-code-request.ts method names', () => {
     test('SETOPTS_DECODE_IN_CODE_METHOD and SETOPTS_COMPOSE_TRISTATE_METHOD follow the existing bbj/composer/setopts/* naming convention', () => {
         expect(SETOPTS_DECODE_IN_CODE_METHOD).toBe('bbj/composer/setopts/decodeInCode');
         expect(SETOPTS_COMPOSE_TRISTATE_METHOD).toBe('bbj/composer/setopts/composeTriState');
+    });
+});
+
+/**
+ * `main.ts` wiring guards (Task 3, plan 88-03): `registerSetOptsInCodeRequests` must be called
+ * strictly AFTER `createBBjServices(` — this family needs document-aware context that does not
+ * exist until the services are created, unlike `registerComposerRequests`, which runs before
+ * them and must never move. A future edit that reorders these calls, or that moves one of these
+ * handlers into the pre-services `composerHandlers` registry, fails these guards.
+ */
+describe('setopts-in-code-request.ts wiring in main.ts', () => {
+    const MAIN_TS_SOURCE_PATH = path.join(__dirname, '..', 'src', 'language', 'main.ts');
+
+    /** Strip `//`-prefixed line comments so a comment mentioning the call can't satisfy the guard. */
+    function codeOnly(source: string): string {
+        return source
+            .split('\n')
+            .map(line => {
+                const commentIndex = line.indexOf('//');
+                return commentIndex >= 0 ? line.slice(0, commentIndex) : line;
+            })
+            .join('\n');
+    }
+
+    test('registerSetOptsInCodeRequests(connection is called strictly AFTER createBBjServices(', () => {
+        const source = codeOnly(fs.readFileSync(MAIN_TS_SOURCE_PATH, 'utf-8'));
+        const registerCallIndex = source.indexOf('registerSetOptsInCodeRequests(connection');
+        const createServicesIndex = source.indexOf('createBBjServices(');
+
+        expect(registerCallIndex, 'expected a registerSetOptsInCodeRequests(connection call in main.ts').toBeGreaterThanOrEqual(0);
+        expect(createServicesIndex, 'expected a createBBjServices( call in main.ts').toBeGreaterThanOrEqual(0);
+        expect(registerCallIndex).toBeGreaterThan(createServicesIndex);
+    });
+
+    test('registerComposerRequests(connection) is untouched: still called BEFORE createBBjServices(', () => {
+        const source = codeOnly(fs.readFileSync(MAIN_TS_SOURCE_PATH, 'utf-8'));
+        const registerComposerIndex = source.indexOf('registerComposerRequests(connection)');
+        const createServicesIndex = source.indexOf('createBBjServices(');
+
+        expect(registerComposerIndex).toBeGreaterThanOrEqual(0);
+        expect(createServicesIndex).toBeGreaterThanOrEqual(0);
+        expect(registerComposerIndex).toBeLessThan(createServicesIndex);
+    });
+
+    test('neither new method-name literal appears inside composer-commands.ts (the pre-services registry)', () => {
+        const composerCommandsSource = fs.readFileSync(
+            path.join(__dirname, '..', 'src', 'language', 'composer-commands.ts'),
+            'utf-8'
+        );
+        expect(composerCommandsSource).not.toContain(SETOPTS_DECODE_IN_CODE_METHOD);
+        expect(composerCommandsSource).not.toContain(SETOPTS_COMPOSE_TRISTATE_METHOD);
     });
 });
