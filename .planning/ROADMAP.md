@@ -222,7 +222,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 `.planning/REQUIREMENTS.md`.
 
 - [x] **Phase 84: Config Path Resolution & Discoverability Foundation** - The resolved config file is honored by every consumer and gets config-file editor treatment in both IDEs, regardless of name or location (completed 2026-09-06)
-- [ ] **Phase 85: Config Hot-Reload With Restart Coalescing** - Config file edits reload the language server automatically, debounced and without racing composer writes
+- [x] **Phase 85: Config Hot-Reload With Restart Coalescing** - Config file edits reload the language server automatically, debounced and without racing composer writes (completed 2026-09-07)
 - [ ] **Phase 86: IntelliJ Interop Settings & Targeted Refresh** - Java-interop port auto-detects everywhere it's read, and Refresh Java Classes no longer requires a full restart
 - [ ] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer
 - [ ] **Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer** - SETOPTS/IOR/AND lines in BBj code get decode hovers everywhere and a tri-state composer for the two safe shapes

@@ -2,20 +2,20 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 85
-current_phase_name: Config Hot-Reload With Restart Coalescing
-status: verifying
-stopped_at: Completed 85-04-PLAN.md
-last_updated: "2026-09-07T02:47:32.622Z"
-last_activity: 2026-09-06
-last_activity_desc: Phase 85 execution started
-state_head: a6e4f087ad5ae249dee48a9ea26c9fc6c871f48c
+current_phase: 86
+current_phase_name: IntelliJ Interop Settings & Targeted Refresh
+status: planning
+stopped_at: Phase 85 complete, ready to plan Phase 86
+last_updated: "2026-09-07T02:52:49.365Z"
+last_activity: 2026-09-07
+last_activity_desc: Phase 85 complete, transitioned to Phase 86
+state_head: 3d2acffcf864f3159019d146e53eb797e0b36df2
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
   completed_plans: 11
-  percent: 11
+  percent: 22
 ---
 
 # Project State: BBj Language Server
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-06)
 
 ## Current Position
 
-Phase: 85 (Config Hot-Reload With Restart Coalescing) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-09-06 — Phase 85 execution started
+Phase: 86 — IntelliJ Interop Settings & Targeted Refresh
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-07 — Phase 85 complete, transitioned to Phase 86
 
 ## Performance Metrics
 
@@ -306,8 +306,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T02:47:32.547Z
-Stopped at: Completed 85-04-PLAN.md
+Last session: 2026-09-07T02:49:42.310Z
+Stopped at: Phase 85 complete, ready to plan Phase 86
 Resume file: None
 
 Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
