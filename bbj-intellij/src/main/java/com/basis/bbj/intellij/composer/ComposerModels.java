@@ -1,5 +1,7 @@
 package com.basis.bbj.intellij.composer;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 /**
@@ -246,5 +248,69 @@ public final class ComposerModels {
         public boolean found;
         public AddWindowEdit edit;
         public AddWindowInitial initial;
+    }
+
+    // ---- SETOPTS (#633) ----------------------------------------------------------------------------
+
+    /**
+     * One catalog bit currently checked in the selection. {@code byte} is a Java reserved word, so
+     * {@code @SerializedName("byte")} is what keeps the wire key identical to the TypeScript shape
+     * ({@code bbj-vscode/src/setopts-catalog.ts}'s {@code SetOptsSelection.bits}).
+     */
+    public static final class SetoptsSelectionBit {
+        @SerializedName("byte") public int byteNo;
+        public long mask;
+
+        public SetoptsSelectionBit() {}
+
+        public SetoptsSelectionBit(int byteNo, long mask) {
+            this.byteNo = byteNo;
+            this.mask = mask;
+        }
+    }
+
+    /**
+     * Flat UI selection: checked catalog bits plus the data-byte fields. Reused both as the preview
+     * request's {@code selection} and as the decode result's {@code initial} payload — the same JSON
+     * shape on both sides, mirroring how {@link AddChildWindowDecodeResult} reuses
+     * {@link AddWindowEdit}/{@link AddWindowInitial}.
+     */
+    public static final class SetoptsSelection {
+        public List<SetoptsSelectionBit> bits;
+        public String maskComma = "";
+        public String maskDot = "";
+        public String rawTail = "";
+    }
+
+    /**
+     * The edit target for an existing SETOPTS line: the hex token range to replace, or the insert
+     * offset for a bare {@code SETOPTS} keyword. Offsets stay plain {@code int} — they are bounded
+     * positions inside one config.bbx line, never LSP {@code Position.character} values, so no
+     * {@code END_OF_LINE_CHARACTER} sentinel applies here.
+     */
+    public static final class SetoptsEdit {
+        public int[] hexRange;
+        public Integer insertOffset;
+        public String hexDigits;
+    }
+
+    /** Result of {@code bbj/composer/setopts/decodeCall}; {@code found=false} when the line cannot be round-tripped. */
+    public static final class SetoptsDecodeResult {
+        public boolean found;
+        public SetoptsEdit edit;
+        public SetoptsSelection initial;
+    }
+
+    /**
+     * Params for {@code bbj/composer/setopts/decodeCall}: a single config.bbx line, no caret column
+     * — the trigger is line-scoped (D-03, D-06 Option B), so a caret column would be unused surface
+     * the boundary test would then have to carry for no behavioural reason.
+     */
+    public static final class SetoptsDecodeCallParams {
+        public String line;
+
+        public SetoptsDecodeCallParams(String line) {
+            this.line = line;
+        }
     }
 }

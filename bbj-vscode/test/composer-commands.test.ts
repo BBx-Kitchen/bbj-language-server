@@ -167,6 +167,38 @@ describe('composer LS command layer (#433)', () => {
         expect((call('bbj/composer/addchildwindow/decodeCall', { line, character: 0 }) as any).found).toBe(false);
     });
 
+    test('setopts/decodeCall decodes an existing line, a bare keyword, and refuses what it cannot round-trip', () => {
+        const r = call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS 08004020000000' }) as any;
+        expect(r.found).toBe(true);
+        expect(r.edit.hexRange).toEqual([8, 22]);
+        expect(r.edit.hexDigits).toBe('08004020000000');
+        expect(r.edit.insertOffset).toBeUndefined();
+        expect(r.initial.bits).toEqual([
+            { byte: 1, mask: 0x08 },
+            { byte: 3, mask: 0x40 },
+            { byte: 4, mask: 0x20 },
+        ]);
+        expect(r.initial.maskComma).toBe('');
+        expect(r.initial.maskDot).toBe('');
+        expect(r.initial.rawTail).toBe('');
+
+        // bare keyword, no digits yet -> found (lets the UI compose from scratch), zeroed selection
+        const bare = call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS' }) as any;
+        expect(bare.found).toBe(true);
+        expect(bare.edit.insertOffset).toBe(7);
+        expect(bare.edit.hexRange).toBeUndefined();
+        expect(bare.edit.hexDigits).toBeUndefined();
+        expect(bare.initial).toEqual({ bits: [], maskComma: '', maskDot: '', rawTail: '' });
+
+        // leading whitespace + lower case -> still recognised (parseSetOptsLine is case-insensitive)
+        expect((call('bbj/composer/setopts/decodeCall', { line: '  setopts 0800' }) as any).found).toBe(true);
+
+        // the composer must not touch what it cannot round-trip
+        expect(call('bbj/composer/setopts/decodeCall', { line: 'PREFIX /usr/lib/' })).toEqual({ found: false });
+        expect(call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS 0800 extra' })).toEqual({ found: false });
+        expect(call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS ZZZZ' })).toEqual({ found: false });
+    });
+
     test('registerComposerRequests wires every handler onto the connection', () => {
         const onRequest = vi.fn();
         registerComposerRequests({ onRequest } as any);

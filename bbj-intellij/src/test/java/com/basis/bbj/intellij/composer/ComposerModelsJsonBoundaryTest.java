@@ -11,6 +11,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import org.eclipse.lsp4j.jsonrpc.MessageIssueException;
 import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
 import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
@@ -206,6 +208,27 @@ class ComposerModelsJsonBoundaryTest {
         assertNull(result.edit.eventMaskRange);
         assertEquals(20, result.edit.eventMaskInsertOffset);
         assertEquals("\"Child\"", result.initial.title);
+    }
+
+    @Test
+    void aSetoptsDecodeCallResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,
+              "edit":{"hexRange":[8,22],"insertOffset":null,"hexDigits":"08004020000000"},
+              "initial":{"bits":[{"byte":3,"mask":2}],"maskComma":",","maskDot":".","rawTail":""}
+            }}""";
+
+        SetoptsDecodeResult result = parse(
+            "bbj/composer/setopts/decodeCall", SetoptsDecodeResult.class, envelope, SetoptsDecodeCallParams.class);
+
+        assertTrue(result.found);
+        assertEquals(2, result.edit.hexRange.length);
+        assertEquals(8, result.edit.hexRange[0]);
+        assertEquals("08004020000000", result.edit.hexDigits);
+        // The point of this test: proves the @SerializedName("byte") mapping survives LSP4IJ's own
+        // deserializer, not just a hand-rolled Gson instance.
+        assertEquals(3, result.initial.bits.get(0).byteNo);
     }
 
     /**

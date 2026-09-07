@@ -14,6 +14,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
 
@@ -85,4 +87,12 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/refreshJavaClasses")
     CompletableFuture<Boolean> refreshJavaClasses();
+
+    /**
+     * Decodes one config.bbx line into the edit target (the hex token range to replace, or the
+     * insert offset for a bare {@code SETOPTS} keyword) plus the prefill selection, returning
+     * {@code found=false} for a line the composer cannot round-trip (#633).
+     */
+    @JsonRequest("bbj/composer/setopts/decodeCall")
+    CompletableFuture<SetoptsDecodeResult> setoptsDecodeCall(SetoptsDecodeCallParams params);
 }

@@ -13,6 +13,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.DecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
@@ -135,6 +137,11 @@ class ComposerFlowTest {
 
         @Override
         public CompletableFuture<Boolean> refreshJavaClasses() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CompletableFuture<SetoptsDecodeResult> setoptsDecodeCall(SetoptsDecodeCallParams params) {
             throw new UnsupportedOperationException();
         }
 

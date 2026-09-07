@@ -32,6 +32,12 @@ import {
     findAddChildWindowCallAt, parseAddChildWindowCallOnLine,
     type AddChildWindowInput, type AddChildWindowPreviewInput,
 } from '../addchildwindow-composer.js';
+import {
+    SETOPTS_BITS, BYTE_GROUPS,
+    parseVector, parseSetOptsLine, setoptsPreview, getBit, maskChar, rawTail,
+    MASK_COMMA_BYTE, MASK_DOT_BYTE,
+    type SetOptsSelection, type SetOptsVector,
+} from '../setopts-catalog.js';
 
 /** A line + optional cursor column; when `character` is set, only the call at the cursor is returned. */
 interface LineQuery { line: string; character?: number }
@@ -43,6 +49,25 @@ function titleArg(args: string[], fallback: string): string {
 }
 const addWindowTitleArg = (args: string[]) => titleArg(args, '"Window"');
 const addChildWindowTitleArg = (args: string[]) => titleArg(args, '"Child"');
+
+/**
+ * Compose the flat UI selection a SETOPTS dialog prefills from an existing vector (or the empty
+ * selection when there is none yet). Pure composition of already-exported catalog primitives — no
+ * new arithmetic. Deliberately not exported: `setopts-composer-webview.ts` has its own private
+ * `initialSelection` doing the same thing in-process for VS Code (see 87-01 SUMMARY for the
+ * follow-up note on collapsing the two onto one export).
+ */
+function setoptsInitialSelection(v: SetOptsVector | undefined): SetOptsSelection {
+    if (!v) {
+        return { bits: [], maskComma: '', maskDot: '', rawTail: '' };
+    }
+    return {
+        bits: SETOPTS_BITS.filter(b => getBit(v, b.byte, b.mask)).map(b => ({ byte: b.byte, mask: b.mask })),
+        maskComma: maskChar(v, MASK_COMMA_BYTE),
+        maskDot: maskChar(v, MASK_DOT_BYTE),
+        rawTail: rawTail(v),
+    };
+}
 
 /**
  * The composer request handlers, keyed by LSP method. Exported (not just wired) so they can be
@@ -196,6 +221,25 @@ export const composerHandlers = {
                 eventMask: hasEvent ? bitsSet(eventMask, CHILD_EVENT_MASK_BITS) : [],
                 title: addChildWindowTitleArg(info.args),
             },
+        };
+    },
+
+    // ---- SETOPTS (#633) --------------------------------------------------------------------------
+    /**
+     * Decode an existing config.bbx SETOPTS line into the edit target (the hex token range to
+     * replace, or the insert offset for a bare `SETOPTS` keyword) plus the prefill selection.
+     * `found: false` when the line cannot be round-tripped (D-05, D-06) — the composer must not
+     * touch what it cannot round-trip.
+     */
+    'bbj/composer/setopts/decodeCall': (p: { line: string }) => {
+        const info = parseSetOptsLine(p.line);
+        if (!info) {
+            return { found: false };
+        }
+        return {
+            found: true,
+            edit: { hexRange: info.hexRange, insertOffset: info.insertOffset, hexDigits: info.hexDigits },
+            initial: setoptsInitialSelection(info.vector),
         };
     },
 } as const;
