@@ -321,7 +321,7 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
 });
 
 // ---------------------------------------------------------------------------------------
-// The non-blocking status signal (D-13/D-14) and the failure path (D-15).
+// The non-blocking status signal and the failure path (#486).
 // ---------------------------------------------------------------------------------------
 
 describe('config-reload status bar: the non-blocking signal and failure path', () => {

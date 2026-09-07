@@ -42,14 +42,14 @@ let restartGate: RestartGate | undefined;
 let configReloadStatusBar: vscode.StatusBarItem;
 let configReloadAutoHideTimer: ReturnType<typeof setTimeout> | undefined;
 
-/** How long the "config reloaded" confirmation stays visible before auto-hiding (D-14). */
+/** How long the "config reloaded" confirmation stays visible before auto-hiding (#486). */
 const CONFIG_RELOAD_CONFIRMATION_HIDE_MS = 5000;
 
 /**
- * The reload's only user-facing signal (D-13/D-14): a status-bar item that spins while the
+ * The reload's only user-facing signal (#486): a status-bar item that spins while the
  * restart runs, briefly confirms, then auto-hides — never a prompt, modal or toast. A
- * failed restart (D-15) clears the signal and reuses the existing start-failure error
- * message rather than sticking in the reloading state.
+ * failed restart clears the signal and reuses the existing start-failure error message
+ * rather than sticking in the reloading state.
  */
 function onConfigRestartPhase(phase: RestartPhase, error?: unknown): void {
     if (configReloadAutoHideTimer) {
@@ -681,7 +681,7 @@ export function activate(context: vscode.ExtensionContext): void {
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;
 
-    // The choke point every VS Code restart must go through (#486, D-10): reuses this exact
+    // The choke point every VS Code restart must go through (#486): reuses this exact
     // client instance (stop then start) so its already-registered notification handlers
     // survive. No second LanguageClient is ever constructed for a restart.
     restartGate = createRestartGate(client, onConfigRestartPhase);
@@ -930,7 +930,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
     });
 
-    // Config-reload status bar indicator (#486, D-13/D-14) — hidden by default, driven
+    // Config-reload status bar indicator (#486) — hidden by default, driven
     // entirely by onConfigRestartPhase via the restart gate above.
     configReloadStatusBar = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left, 98
