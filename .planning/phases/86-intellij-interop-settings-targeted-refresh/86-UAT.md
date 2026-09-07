@@ -1,20 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 86-intellij-interop-settings-targeted-refresh
 source: [86-VERIFICATION.md]
 started: 2026-09-07T16:40:00Z
-updated: 2026-09-07T19:00:00Z
+updated: 2026-09-07T19:20:00Z
 ---
 
 ## Current Test
 
-number: 3
-name: QA/FULL-TEST-CHECKLIST.md row 16 + row 17, rerun together — G-86-1 live recheck
-expected: |
-  Completion/hover/Structure View all answer during the refresh; status widget stays `started`;
-  deliberate restarts log "Language server stopped for a restart" (not "stopped unexpectedly"/
-  "Auto-restarting"); no `JsonRpcException`/`Stream closed` trace appears anywhere in the log.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -37,7 +31,7 @@ expected: |
   stays `started`; deliberate restarts log "Language server stopped for a restart" (not "stopped
   unexpectedly"/"Auto-restarting"); no `JsonRpcException`/`Stream closed` trace appears anywhere in
   the log.
-result: [pending]
+result: pass
 
 ### 4. Triage decision on WR-01/WR-02 (86-05-REVIEW.md)
 expected: |
@@ -49,14 +43,15 @@ expected: |
     a duplicate/echoed `stopped` broadcast would not self-correct).
   - WR-02: `doRestart()` has no exception handling around the new bounded wait; a thrown exception
     would leave the server stopped with no console explanation.
-result: [pending]
+result: pass
+reported: "Accepted as-is (no follow-up fix requested)."
 
 ## Summary
 
 total: 4
-passed: 1
+passed: 3
 issues: 1
-pending: 2
+pending: 0
 skipped: 0
 blocked: 0
 
@@ -64,7 +59,9 @@ blocked: 0
 
 - gap_id: G-86-1
   truth: "Refresh Java Classes runs without breaking the LSP connection — no 'connection to the server got closed' condition, and the log stays clean of stream-closed/JsonRpcException noise."
-  status: failed
+  status: resolved
+  resolved_by: 86-05-PLAN.md
+  resolved_at: 2026-09-07
   reason: "User reported: pass (visible completion/hover/Structure View behavior all worked) but noticed a JsonRpcException/IOException 'Stream closed' stack trace in the log, probably triggered by Test 1 (Refresh Java Classes)."
   severity: blocker
   test: 1
