@@ -14,7 +14,7 @@ without a manual language-server restart, signaled non-intrusively, and without 
 own writes triggering a restart loop.
 **Verified:** 2026-09-07
 **Status:** passed
-**Re-verification:** No — initial verification
+**Re-verification:** Yes — 2026-09-07 close-out re-run after a metadata-only summary edit (see bottom)
 
 ## Goal Achievement
 
@@ -112,3 +112,9 @@ plans with no orphaned requirement IDs.
 
 *Verified: 2026-09-07*
 *Verifier: Claude (gsd-verifier)*
+
+## Re-verification 2026-09-07 (verify-work close-out)
+
+**Trigger:** `85-01-SUMMARY.md` was edited after this report (commit `fdbddd1e`): two `coverage:` verification refs lacked a `status:` field and were tagged `status: pass`. No production or test code changed, so the evidence above is unchanged.
+
+**Re-run during `/gsd-verify-work 85`:** `config-hot-reload.test.ts` + `config-hot-reload-wiring.test.ts` + `config-reload-host.test.ts` 73/73 (includes the three 85-REVIEW-FIX pinning tests, WR-01..WR-03); IntelliJ `config.*` + `lsp.*` + `ComposerRequestContractTest` 303 tests, 0 failures. UAT: 7/7 hand checkpoints passed in live VS Code and IntelliJ (85-UAT.md). Status remains **passed**.
