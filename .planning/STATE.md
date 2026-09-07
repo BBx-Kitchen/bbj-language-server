@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 86
 current_phase_name: IntelliJ Interop Settings & Targeted Refresh
-status: executing
-stopped_at: Completed 86-04-PLAN.md
-last_updated: "2026-09-07T14:53:26.466Z"
+status: verifying
+stopped_at: Completed 86-03-PLAN.md
+last_updated: "2026-09-07T15:02:54.177Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 86 execution started
-state_head: 64cd69fdced9aa8a37d76d950729b78ce442b1d6
+state_head: 2bdbd3322d6578441697780345d75c06da16ea45
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
   percent: 22
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 Phase: 86 (IntelliJ Interop Settings & Targeted Refresh) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-07 — Phase 86 execution started
 
 ## Performance Metrics
@@ -155,6 +155,7 @@ Last activity: 2026-09-07 — Phase 86 execution started
 | Phase 86 P01 | 14min | 3 tasks | 11 files |
 | Phase 86 P02 | 20min | 3 tasks | 8 files |
 | Phase 86 P04 | 3min | 2 tasks | 4 files |
+| Phase 86 P03 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86]: D-11..D-16 closed for 86-01: bbj/refreshJavaClasses joins the composer server proxy; success is console-only, failures render a reason-keyed balloon with a user-clicked restart fallback; a per-project single-flight guard bounds concurrency
 - [Phase 86]: [Phase 86]: 86-02: PortLookup collapses a read failure and a genuinely absent key into one detected boolean (no separate failed flag like BbjSettingsLookups' records) since both cases mean 'nothing detected, use 5008 and say so'; BbjInteropPortCache keys on the resolved properties file's absolute path, mirroring BbjNodeVersionCache's compute() race-safety idiom.
 - [Phase 86]: Folded todo closed as delivered by Phase 84 D-12 (plans 84-03, 84-04, 84-06) rather than built; COVERAGE.md names the phase's actual JSON-RPC/properties-read surface instead of a generic no-API statement
+- [Phase 86]: [Phase 86]: 86-03: one BbjSettings.getEffectiveJavaInteropPort() accessor answers the java-interop port for the language-server initialization options, the health probe and the Settings dialog's reset; the persisted javaInteropPortAutoDetect flag migrates once in loadState before any reader observes it, and BbjSettingsConfigurable.apply() captures the stored port before writing so InteropPortSettings.portToPersist never sees its own output.
 
 ### Tech Debt
 
@@ -317,8 +319,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T14:53:26.376Z
-Stopped at: Completed 86-04-PLAN.md
+Last session: 2026-09-07T15:02:54.079Z
+Stopped at: Completed 86-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start
