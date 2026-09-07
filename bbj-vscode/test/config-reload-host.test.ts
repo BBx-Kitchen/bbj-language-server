@@ -144,6 +144,7 @@ const clientStartMock = vi.fn(() => Promise.resolve());
 const clientStopMock = vi.fn(() => Promise.resolve());
 const clientNeedsStopMock = vi.fn(() => true);
 const clientOnNotificationMock = vi.fn();
+const clientAppendLineMock = vi.fn();
 
 vi.mock('vscode', () => {
     const disposable = () => ({ dispose: vi.fn() });
@@ -197,7 +198,7 @@ vi.mock('vscode', () => {
 
 vi.mock('vscode-languageclient/node', () => {
     class LanguageClient {
-        outputChannel = { appendLine: vi.fn() };
+        outputChannel = { appendLine: clientAppendLineMock };
         start = clientStartMock;
         stop = clientStopMock;
         needsStop = clientNeedsStopMock;
@@ -230,8 +231,26 @@ vi.mock('../src/Commands/Commands.cjs', () => ({
     },
 }));
 
-import { activate } from '../src/extension.js';
+import * as vscode from 'vscode';
+import { activate, deactivate } from '../src/extension.js';
 import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from '../src/language/config-reload-notification.js';
+import { resetConfigPathCacheForTests, setResolvedConfigPath } from '../src/config-path-cache.js';
+
+/** The status-bar item `activate()` created with `createStatusBarItem(Left, priority)`. */
+function capturedStatusBarItem(priority: number): {
+    text: string;
+    tooltip: string;
+    show: ReturnType<typeof vi.fn>;
+    hide: ReturnType<typeof vi.fn>;
+    dispose: ReturnType<typeof vi.fn>;
+} {
+    const mock = vscode.window.createStatusBarItem as ReturnType<typeof vi.fn>;
+    const idx = mock.mock.calls.findIndex((c: unknown[]) => c[1] === priority);
+    if (idx === -1) {
+        throw new Error(`No createStatusBarItem call with priority ${priority}`);
+    }
+    return mock.mock.results[idx].value;
+}
 
 function activateForTest(): void {
     const context = {
@@ -298,5 +317,138 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
 
         expect(clientStopMock).toHaveBeenCalledTimes(1);
         expect(clientStartMock).toHaveBeenCalledTimes(initialStartCalls + 1);
+    });
+});
+
+// ---------------------------------------------------------------------------------------
+// The non-blocking status signal (D-13/D-14) and the failure path (D-15).
+// ---------------------------------------------------------------------------------------
+
+describe('config-reload status bar: the non-blocking signal and failure path', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        resetConfigPathCacheForTests();
+        clientStartMock.mockClear();
+        clientStartMock.mockImplementation(() => Promise.resolve());
+        clientStopMock.mockClear();
+        clientStopMock.mockImplementation(() => Promise.resolve());
+        clientNeedsStopMock.mockClear();
+        clientNeedsStopMock.mockImplementation(() => true);
+        clientOnNotificationMock.mockClear();
+        clientAppendLineMock.mockClear();
+        (vscode.window.createStatusBarItem as ReturnType<typeof vi.fn>).mockClear();
+        (vscode.window.showErrorMessage as ReturnType<typeof vi.fn>).mockClear();
+        (vscode.window.showInformationMessage as ReturnType<typeof vi.fn>).mockClear();
+        (vscode.window.showWarningMessage as ReturnType<typeof vi.fn>).mockClear();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    test('the restarting phase leaves the captured status item shown with a spinning-sync text and a tooltip containing the active config path', async () => {
+        let resolveStop: (() => void) | undefined;
+        clientStopMock.mockImplementation(() => new Promise<void>(resolve => { resolveStop = resolve; }));
+        setResolvedConfigPath({ path: '/srv/config.bbx', source: 'default', exists: true, problem: null });
+
+        activateForTest();
+        const item = capturedStatusBarItem(98);
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
+
+        // stop() is now pending, so the gate is holding at the 'restarting' phase.
+        expect(item.show).toHaveBeenCalled();
+        expect(item.text).toMatch(/sync~spin/);
+        expect(item.tooltip).toContain('/srv/config.bbx');
+
+        resolveStop?.();
+        await vi.advanceTimersByTimeAsync(0);
+    });
+
+    test('the restarted phase followed by 5000ms of fake time leaves the item hidden exactly once', async () => {
+        activateForTest();
+        const item = capturedStatusBarItem(98);
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
+
+        expect(item.text).toMatch(/check/);
+        expect(item.hide).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(5000);
+
+        expect(item.hide).toHaveBeenCalledTimes(1);
+    });
+
+    test('the failed phase hides the item and calls showErrorMessage exactly once; no showInformationMessage or showWarningMessage call is made on any phase', async () => {
+        const error = new Error('spawn ENOENT');
+        clientStartMock.mockImplementationOnce(() => Promise.resolve()); // the initial startLanguageClient() start
+        clientStartMock.mockImplementation(() => Promise.reject(error));
+
+        activateForTest();
+        const item = capturedStatusBarItem(98);
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
+
+        expect(item.hide).toHaveBeenCalledTimes(1);
+        expect(vscode.window.showErrorMessage).toHaveBeenCalledTimes(1);
+        expect(vscode.window.showInformationMessage).not.toHaveBeenCalled();
+        expect(vscode.window.showWarningMessage).not.toHaveBeenCalled();
+    });
+
+    test('a second reload arriving before the auto-hide fires leaves the item shown', async () => {
+        activateForTest();
+        const item = capturedStatusBarItem(98);
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
+        expect(item.hide).not.toHaveBeenCalled();
+
+        // Well inside the 5000ms auto-hide window, a second reload arrives.
+        await vi.advanceTimersByTimeAsync(2000);
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
+
+        // The confirmation's original 5000ms auto-hide timer must have been cancelled —
+        // advancing past when it would have fired must not hide the item.
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(item.hide).not.toHaveBeenCalled();
+    });
+
+    test('the reload handler appends exactly one output-channel line containing both the path and the payload reason', () => {
+        activateForTest();
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+        clientAppendLineMock.mockClear();
+
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+
+        expect(clientAppendLineMock).toHaveBeenCalledTimes(1);
+        const line = clientAppendLineMock.mock.calls[0][0] as string;
+        expect(line).toContain('/srv/config.bbx');
+        expect(line).toContain('prefix-changed');
+    });
+
+    test('deactivate() cancels the gate before calling client.stop()', async () => {
+        let resolveStop: (() => void) | undefined;
+        clientStopMock.mockImplementation(() => new Promise<void>(resolve => { resolveStop = resolve; }));
+        activateForTest();
+        const handler = capturedHandler(CONFIG_RELOAD_METHOD);
+
+        // Schedule a restart, then deactivate before its window elapses — the pending
+        // restart must never fire against a client that is about to be disposed.
+        handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
+        deactivate();
+
+        await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS + 1000);
+
+        // Only deactivate()'s own client.stop() ran — the gate's scheduled restart was
+        // cancelled, so it never called stop()/start() a second time.
+        expect(clientStopMock).toHaveBeenCalledTimes(1);
+        resolveStop?.();
     });
 });
