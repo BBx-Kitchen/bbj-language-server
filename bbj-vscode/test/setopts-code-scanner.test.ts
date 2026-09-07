@@ -1,6 +1,8 @@
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 import { beforeAll, describe, expect, test } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 import { findLeafNodeAtOffset } from '../src/language/bbj-validator.js';
 import { Model, isSetOptsStatement } from '../src/language/generated/ast.js';
 import { createBBjServices } from '../src/language/bbj-module.js';
@@ -81,5 +83,89 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
         const markdown = setoptsHoverMarkdown({ kind: 'absolute', hexDigits: '08004020', vector });
         expect(markdown).toContain('__SETOPTS $08004020$__');
         expect(markdown).toContain(describeVector(vector));
+    });
+
+    /**
+     * Fail-closed edge cases (88-01 Task 2): every unparseable, empty and out-of-range
+     * value yields no hover rather than a partial decode. The rule is one-directional — any
+     * ambiguity resolves to "no hover", never to a best-effort summary.
+     */
+    test('setoptsHoverTarget returns undefined for a bare SETOPTS with no opts expression', async () => {
+        // `SetOptsStatement` requires `opts=Expression`; with nothing following, the parser
+        // falls back to matching `SETOPTS` as a bare identifier expression (the same ID/keyword
+        // dual-category mechanism that lets `AND`/`IOR` be both operators and function names) —
+        // there is no SetOptsStatement node here at all, so no target is found and no hover
+        // fires. Confirmed empirically: zero lexer/parser errors, an ExpressionStatement whose
+        // SymbolRef targets the unresolvable name "SETOPTS".
+        const { leaf } = await parseAndFindLeaf('SETOPTS', 'SETOPTS');
+        expect(setoptsHoverTarget(leaf)).toBeUndefined();
+    });
+
+    test('detectSetOptsShape returns undefined for non-hex characters (quoted-string form, valid parse)', async () => {
+        // The bare HEX_STRING terminal (`\$[0-9a-fA-F]*\$`) cannot even lex "ZZ" between the
+        // delimiters; a quoted STRING_LITERAL accepts any content and reaches the scanner as
+        // a well-formed StringLiteral, exercising parseVector's own hex-format rejection.
+        const { leaf } = await parseAndFindLeaf('SETOPTS "$ZZ$"', '$ZZ$');
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
+    test('detectSetOptsShape returns undefined for a hex literal longer than MAX_BYTES * 2 digits', async () => {
+        const overlong = '0800402000000000000000000000000000';
+        const { leaf } = await parseAndFindLeaf(`SETOPTS $${overlong}$`, `$${overlong}$`);
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
+    test('detectSetOptsShape returns undefined for a numeric literal (not a hex string)', async () => {
+        const { leaf } = await parseAndFindLeaf('SETOPTS 42', '42');
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
+    test('setoptsHoverTarget returns undefined for a leaf inside a PRINT statement', async () => {
+        const { leaf } = await parseAndFindLeaf('PRINT "hello"\nSETOPTS $08004020$', 'hello');
+        expect(setoptsHoverTarget(leaf)).toBeUndefined();
+    });
+
+    test('setoptsHoverTarget returns undefined for a leaf inside an unrelated assignment', async () => {
+        const { leaf } = await parseAndFindLeaf('A$="x"\nSETOPTS $08004020$', 'A$');
+        expect(setoptsHoverTarget(leaf)).toBeUndefined();
+    });
+
+    test('two consecutive detectSetOptsShape/setoptsHoverMarkdown calls at the same position are byte-identical', async () => {
+        const { leaf } = await parseAndFindLeaf('SETOPTS $08004020$', '$08004020$');
+        const target = setoptsHoverTarget(leaf)!;
+        const first = setoptsHoverMarkdown(detectSetOptsShape(target)!);
+        const second = setoptsHoverMarkdown(detectSetOptsShape(target)!);
+        expect(second).toBe(first);
+    });
+});
+
+/**
+ * D-07 source guard: hover decode must never grow a document-change listener or a
+ * build-phase subscription — the SETOPTS branch runs only inside the existing per-request
+ * `getHoverContent` path. Forbidden identifiers are named here (not inlined into the
+ * assertion) so a reviewer can see the exact regression this guards against at a glance.
+ */
+describe('D-07 guard: bbj-hover.ts registers no document-change or build-phase listener', () => {
+    const HOVER_PROVIDER_SOURCE_PATH = path.join(__dirname, '..', 'src', 'language', 'bbj-hover.ts');
+
+    const FORBIDDEN_HOVER_LISTENER_IDENTIFIERS = [
+        'onBuildPhase',
+        'onDidChangeTextDocument',
+        'onDidChangeContent',
+        'onDocumentChange',
+        'DocumentBuilder.onUpdate',
+    ];
+
+    test('no forbidden listener identifier appears in bbj-hover.ts', () => {
+        const source = fs.readFileSync(HOVER_PROVIDER_SOURCE_PATH, 'utf-8');
+        for (const identifier of FORBIDDEN_HOVER_LISTENER_IDENTIFIERS) {
+            expect(
+                source,
+                `bbj-hover.ts must not reference "${identifier}" — hover decode stays a per-request computation (D-07)`
+            ).not.toContain(identifier);
+        }
     });
 });

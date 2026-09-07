@@ -222,4 +222,39 @@ describe('SETOPTS-in-code hover: absolute shape decode (88-01, DISC-05)', async 
         expect((keywordHover!.contents as { value: string }).value)
             .toBe((literalHover!.contents as { value: string }).value);
     });
+
+    test('hovering an unrelated PRINT statement returns no SETOPTS markdown (falls through to existing behavior)', async () => {
+        const document = await parse('PRINT "hello"\nSETOPTS $08004020$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, 'hello');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 1 }
+        });
+
+        if (hover) {
+            const value = (hover.contents as { value: string }).value;
+            expect(value).not.toContain('SETOPTS $08004020$');
+        }
+    });
+
+    test('two consecutive hover requests at the same position return byte-identical markdown', async () => {
+        const document = await parse('SETOPTS $08004020$', { validation: true });
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, '$08004020$');
+        const params = {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 1 }
+        };
+
+        const first = await hoverProvider.getHoverContent(document, params);
+        const second = await hoverProvider.getHoverContent(document, params);
+
+        expect(first).toBeDefined();
+        expect(second).toBeDefined();
+        expect((second!.contents as { value: string }).value).toBe((first!.contents as { value: string }).value);
+    });
 });
