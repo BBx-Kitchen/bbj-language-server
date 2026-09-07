@@ -2,25 +2,25 @@
 gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
-current_phase: 86
-current_phase_name: IntelliJ Interop Settings & Targeted Refresh
-status: verifying
-stopped_at: Completed 86-05-PLAN.md (gap closure G-86-1)
-last_updated: "2026-09-07T16:32:28.946Z"
+current_phase: 87
+current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
+status: planning
+stopped_at: Phase 86 complete, ready to plan Phase 87
+last_updated: "2026-09-07T17:02:26.054Z"
 last_activity: 2026-09-07
-last_activity_desc: Phase 86 execution started
-state_head: 9c01b27d2e9c253ef405e57ece4b0460c1c5bc58
+last_activity_desc: Phase 86 complete, transitioned to Phase 87
+state_head: 3ce2bc109d51341890daadc2471a644edfa83ca5
 progress:
   total_phases: 9
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
   completed_plans: 16
-  percent: 22
+  percent: 33
 ---
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-07 (Phase 85 complete — UAT 7/7 hand checkpoints, Nyquist-compliant, threats_open 0; Phase 86 ready to plan)
+**Last Updated:** 2026-09-07 (Phase 86 complete — UAT 4/4 hand checkpoints after a gap closure (G-86-1), Nyquist-compliant, threats_open 0; Phase 87 ready to plan)
 
 ## Project Reference
 
@@ -28,16 +28,16 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 86 — IntelliJ Interop Settings & Targeted Refresh
+**Current Focus:** Phase 87 — Shared SETOPTS Composer Layer & IntelliJ Dialog
 
 ---
 
 ## Current Position
 
-Phase: 86 (IntelliJ Interop Settings & Targeted Refresh) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-09-07 — Phase 86 execution started
+Phase: 87 — Shared SETOPTS Composer Layer & IntelliJ Dialog
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-09-07 — Phase 86 complete, transitioned to Phase 87
 
 ## Performance Metrics
 
@@ -256,6 +256,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86]: Folded todo closed as delivered by Phase 84 D-12 (plans 84-03, 84-04, 84-06) rather than built; COVERAGE.md names the phase's actual JSON-RPC/properties-read surface instead of a generic no-API statement
 - [Phase 86]: [Phase 86]: 86-03: one BbjSettings.getEffectiveJavaInteropPort() accessor answers the java-interop port for the language-server initialization options, the health probe and the Settings dialog's reset; the persisted javaInteropPortAutoDetect flag migrates once in loadState before any reader observes it, and BbjSettingsConfigurable.apply() captures the stored port before writing so InteropPortSettings.portToPersist never sees its own output.
 - [Phase 86]: [Phase 86] Phase 86 Plan 05: LanguageServerManager.stop(String) returns void in LSP4IJ 0.21.0, so doRestart() waits for manager.getServerStatus(SERVER_ID) to report the server down (BoundedWait, 5s budget) instead of awaiting stop's future; a restart request landing mid-restart is dropped (RestartGate in-flight rejection) rather than queued, to avoid an unbounded restart loop on a future stop-classification regression; the ExpectedStopGuard token is one-shot, 30s-windowed and armed only when the server was observed live -- closes G-86-1's automated-evidence portion.
+- [Phase 86 UAT]: All four checkpoints passed by hand 2026-09-07. Test 1 (QA row 16) initially surfaced G-86-1 (`JsonRpcException`/`IOException: Stream closed` in the log despite visibly-working completion/hover/Structure View); diagnosed, fixed by 86-05 (gap closure), and independently re-verified clean via Test 3 (rows 16+17 rerun together — the exact sequence that originally surfaced the gap). Test 2 (QA row 17, port settings) passed on first try. Test 4: WR-01 (stale-by-one-generation `previousStatus`) and WR-02 (unguarded bounded-wait exception, both from 86-05-REVIEW.md) accepted as residual risk rather than fixed. CFG-04/CFG-05 (#632, #608) closed. Post-UAT: 86-VALIDATION.md nyquist-compliant (14 tasks across 5 plans, 0 gaps — every task carries an `<automated>` verify and every SUMMARY coverage entry is `status: pass`), 86-SECURITY.md threats_open 0 (27 threats across 5 plans, short-circuit path — register authored at plan time, ASVS level 1).
 
 ### Tech Debt
 
@@ -311,6 +312,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 84] Follow-ups from UAT/validation (advisory, none blocked verification): (1) the VS Code SETOPTS inactive-config hint is shown only when the composer is launched from the Command Palette — the CodeLens and lightbulb paths pass a line argument and skip `argForActiveEditor`, so a user clicking the CodeLens on the home default edits the wrong file silently (quick-task candidate: move the hint into the shared command handler). (2) `QA/FULL-TEST-CHECKLIST.md` lacks rows for three behaviors UAT covered by hand — the IntelliJ missing-config balloon, the run-action `-c` argv check (`ps -ef | grep -- '-c/'`), and the IntelliJ Settings inline config-path validation — plus the VS Code missing-config warning, which no UAT test exercised. (3) BUI/DWC run actions were not exercised against the custom config in UAT (GUI only, both IDEs); the abort-on-blank-path notification is pinned by source guards only. (4) Review fix WR-01 (per-keystroke association listener removed) is unpinned: a re-added `onDidChangeTextDocument` trigger would fail no test. (5) The IntelliJ pre-push fallback compares the setting verbatim (no `~` expansion) while VS Code expands `~` in the same branch — harmless once the server has pushed, but a `~/…` IntelliJ setting is not recognized until then.
 - ⚠️ [Phase 84] UI-review follow-ups (advisory, 84-UI-REVIEW.md, 19/24 — copywriting 2/4 is the weak pillar): the IntelliJ Settings label still reads "config.bbx Path:" (`BbjSettingsComponent.java:281`) after the phase removed filename-specific wording everywhere else; `Commands.cjs` carries two divergent "no config path" strings (`NO_CONFIG_PATH_MESSAGE` vs. the inline string in `openConfigFile`); IntelliJ has no SETOPTS discoverability affordance (no CodeLens/hint equivalent), which is what confused the UAT tester. Candidates for a quick task; the first two are string-only.
 - ⚠️ [Phase 85] Follow-ups (advisory, none blocked verification): (1) 85-REVIEW.md info findings left out of fix scope — IN-01 `pollQuiescence()`'s catch-all drops the pending notification with no retry; IN-02 the crash-triggered `requestRestart(CRASH_RESTART_DELAY_MS)` in `BbjServerService.updateStatus()` does not clear `pendingRestartReason`. (2) Four pre-existing defects found in the UAT cold-start log and filed as GitHub issues #659-#662 (java-interop nested-class double resolution, primitive/array lookups, `config.bbx` log wording — a one-line fix in `bbj-ws-manager.ts` — and logger format). (3) `85-VERIFICATION.md` `verified:` frontmatter still carries the original 03:00Z stamp; the close-out re-run is recorded in its trailing section.
+- ⚠️ [Phase 86] Two residual review risks from 86-05-REVIEW.md accepted as-is at the UAT checkpoint (Test 4), not fixed: WR-01 — `updateStatus()` passes `ExpectedStopGuard.classify()` a `previousStatus` that lags the true immediate predecessor by one broadcast (self-corrects for the single-hop sequence G-86-1's fix targets; a duplicate/echoed `stopped` broadcast would not self-correct). WR-02 — `doRestart()` has no exception handling around the new bounded wait; a thrown exception would leave the server stopped with no console explanation. Candidates for a quick task if either surfaces in practice.
 
 ### Quick Tasks Completed
 
@@ -321,14 +323,14 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T16:32:28.816Z
-Stopped at: Completed 86-05-PLAN.md (gap closure G-86-1)
+Last session: 2026-09-07T19:20:00Z
+Stopped at: Phase 86 complete (UAT 4/4, Nyquist-compliant, threats_open 0), ready to plan Phase 87
 Resume file: None
 
-Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start
-IntelliJ Interop Settings & Targeted Refresh (CFG-04 #632, CFG-05 #608); it is independent
-of the config-path work. Its first success criterion is a go/no-go on LSP4IJ issuing a
-targeted custom request without a full server restart.
+Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer
+& IntelliJ Dialog. Phase 85's decision (85-01, decision log above) already established that
+a SETOPTS-only write yields zero hot-reload notifications, so Phase 87's composer needs no
+dialog-aware restart deferral.
 
 ## Deferred Items
 
@@ -393,11 +395,12 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-07 after Phase 85 verify-work close-out (Phases 84-85 complete, 2/9; CFG-01..03 closed)*
+*State updated: 2026-09-07 after Phase 86 verify-work close-out (Phases 84-86 complete, 3/9; CFG-01..05 closed)*
 
 ## Operator Next Steps
 
-- Phases 84-85 complete and verified; next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`
+- Phases 84-86 complete and verified; next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87`
+- Two residual review risks (WR-01, WR-02 from 86-05-REVIEW.md) accepted as-is at Phase 86's UAT checkpoint; revisit only if either surfaces in practice
 - Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
 - v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)
