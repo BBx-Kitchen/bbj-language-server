@@ -143,6 +143,16 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         // Load java-interop port through the single effective-port accessor. The dialog resolves
         // detection once through the stat-keyed cache and hands the component the lookup plus a
         // precomputed auto-detect port -- the component performs no lookup of its own.
+        //
+        // This lookup does run on the EDT, since reset() itself is an EDT callback the platform
+        // invokes when the Settings dialog opens. Deliberately left inline rather than pushed to
+        // a background thread: BbjInteropPortCache.lookup() is a stat-keyed cache -- one
+        // File.isFile()/lastModified()/length() stat per dialog open, with the (already cheap)
+        // Properties#load skipped entirely unless that stat changed since the last lookup -- not
+        // a directory scan or a network call. Moving it off-thread would mean populating this one
+        // field asynchronously after the rest of the dialog is already showing, which trades a
+        // sub-millisecond stat for a visible flicker and a new race between this callback and a
+        // user who edits the field, or clicks Cancel, before it resolves.
         BbjInteropPortDetector.PortLookup javaInteropPortLookup =
                 BbjInteropPortCache.SESSION.lookup(state.bbjHomePath);
         myComponent.setJavaInteropPortDetection(
