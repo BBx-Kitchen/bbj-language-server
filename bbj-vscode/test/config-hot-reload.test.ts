@@ -26,6 +26,7 @@ import {
     type ConfigWatcherDeps,
     type WatchHandle,
 } from '../src/language/config-watcher.js';
+import { composeSetOptsLine, parseVector, setoptsPreview } from '../src/setopts-catalog.js';
 import { createBBjTestServices } from './bbj-test-module.js';
 import type { BBjWorkspaceManager } from '../src/language/bbj-ws-manager.js';
 
@@ -254,6 +255,44 @@ describe('createConfigWatcher: debounce + relevance gate (end-to-end tracer)', (
 
         // The transient absence is never observed: only the post-rename contents are read.
         expect(readFile).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: configPath, reason: 'prefix-changed' } satisfies ConfigReloadNotification);
+    });
+
+    test('a line written by the SETOPTS composer produces zero notifications, while a PREFIX edit in the same file still produces exactly one', () => {
+        // Build both lines through the composer's own functions -- never hand-typed -- so this test
+        // proves what the real composer write looks like, not an approximation of it (D-06,
+        // reconfirming rather than re-deriving Phase 85's D-06 relevance-gate guarantee).
+        const originalVector = parseVector('08004020000000');
+        if (!originalVector) {
+            throw new Error('fixture vector must parse');
+        }
+        const beforeLine = composeSetOptsLine(originalVector);
+        const afterPreview = setoptsPreview(originalVector, {
+            bits: [
+                { byte: 1, mask: 0x80 },
+                { byte: 1, mask: 0x40 },
+            ],
+            maskComma: '',
+            maskDot: '',
+            rawTail: '',
+        });
+        const afterLine = afterPreview.line;
+        expect(afterLine).not.toBe(beforeLine);
+
+        const { records, notify, setContents, configPath } = setup('PREFIX /a/b/\n' + beforeLine + '\n');
+
+        // Composer-write half: only the SETOPTS line changes.
+        setContents('PREFIX /a/b/\n' + afterLine + '\n');
+        records[0].onEvent('change', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
+        expect(notify).not.toHaveBeenCalled();
+
+        // Control half, in the same test: a PREFIX edit to the same file still fires -- the gate is
+        // live, not merely silent for every input.
+        setContents('PREFIX /c/d/\n' + afterLine + '\n');
+        records[0].onEvent('change', 'config.bbx');
+        vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
         expect(notify).toHaveBeenCalledTimes(1);
         expect(notify).toHaveBeenCalledWith({ path: configPath, reason: 'prefix-changed' } satisfies ConfigReloadNotification);
     });
