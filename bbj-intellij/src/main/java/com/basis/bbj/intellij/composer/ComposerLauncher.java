@@ -83,27 +83,36 @@ public final class ComposerLauncher {
         return false;
     }
 
-    /** Whether {@code text.charAt(idx - 1)} is a BBj identifier character (letter, digit,
-     * underscore, or one of the {@code $!%@} suffix sigils) — i.e. whether {@code idx} sits in
-     * the middle of an identifier rather than at a genuine token boundary. */
+    /** Whether {@code c} is an identifier character for the purposes of this word-boundary
+     * heuristic — a letter, digit, or underscore. Mirrors the VS Code TypeScript scanner's
+     * {@code \w}-based {@code \b} boundary definition (see
+     * {@code bbj-vscode/src/setopts-in-code-ui.ts}'s {@code setoptsInCodeCandidateLine}) so both
+     * IDEs agree on what counts as a SETOPTS-in-code candidate line. BBj's sigil suffixes
+     * ({@code $ ! % @}) are intentionally excluded even though they can appear inside a BBj
+     * variable name: a sigil terminates an identifier in BBj's own tokenization, so it must never
+     * count as "still inside the identifier" on either side of a boundary check. */
+    private static boolean isIdentifierChar(char c) {
+        return Character.isLetterOrDigit(c) || c == '_';
+    }
+
+    /** Whether {@code text.charAt(idx - 1)} is an identifier character (per
+     * {@link #isIdentifierChar}) — i.e. whether {@code idx} sits in the middle of an identifier
+     * rather than at a genuine token boundary. */
     private static boolean hasIdentifierCharBefore(@NotNull String text, int idx) {
         if (idx == 0) {
             return false;
         }
-        char prev = text.charAt(idx - 1);
-        return Character.isLetterOrDigit(prev) || prev == '_' || prev == '$' || prev == '!' || prev == '%' || prev == '@';
+        return isIdentifierChar(text.charAt(idx - 1));
     }
 
-    /** Whether {@code text.charAt(idxAfterKeyword)} is a BBj identifier character (letter, digit,
-     * underscore, or one of the {@code $!%@} suffix sigils) — i.e. whether the keyword ending at
-     * {@code idxAfterKeyword} is actually just a prefix of a longer identifier rather than a
-     * genuine token boundary. */
+    /** Whether {@code text.charAt(idxAfterKeyword)} is an identifier character (per
+     * {@link #isIdentifierChar}) — i.e. whether the keyword ending at {@code idxAfterKeyword} is
+     * actually just a prefix of a longer identifier rather than a genuine token boundary. */
     private static boolean hasIdentifierCharAfter(@NotNull String text, int idxAfterKeyword) {
         if (idxAfterKeyword >= text.length()) {
             return false;
         }
-        char next = text.charAt(idxAfterKeyword);
-        return Character.isLetterOrDigit(next) || next == '_' || next == '$' || next == '!' || next == '%' || next == '@';
+        return isIdentifierChar(text.charAt(idxAfterKeyword));
     }
 
     /**

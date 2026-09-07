@@ -42,6 +42,13 @@ const BBJ = { language: 'bbj' } as const;
  * so identifiers where `SETOPTS` is merely a *prefix* — `SETOPTSFOO`, `SETOPTSHELPER(` — are not
  * mistaken for the keyword either; `IOR(`/`AND(` get an equivalent trailing boundary "for free"
  * from the literal `(` that immediately follows them.
+ *
+ * `\b` uses JS's `\w`-based (`[A-Za-z0-9_]`) definition of a word/identifier character. BBj's
+ * `$!%@` sigil suffixes are intentionally excluded from that definition even though they can
+ * appear inside a BBj variable name, because a sigil terminates an identifier in BBj's own
+ * tokenization — the same canonical definition is mirrored by the IntelliJ plugin's
+ * `ComposerLauncher.isIdentifierChar`, so both IDEs agree on what counts as a SETOPTS-in-code
+ * candidate line.
  */
 export function setoptsInCodeCandidateLine(lineText: string, character: number): boolean {
     const pattern = /\bSETOPTS\b|\bIOR\(|\bAND\(/gi;
