@@ -5,11 +5,11 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 87
 current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
 status: planning
-stopped_at: Phase 86 complete, ready to plan Phase 87
-last_updated: "2026-09-07T17:02:26.054Z"
+stopped_at: Phase 87 context gathered
+last_updated: "2026-09-07T17:33:17.197Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 86 complete, transitioned to Phase 87
-state_head: 3ce2bc109d51341890daadc2471a644edfa83ca5
+state_head: 88be1089277734915a33d4eb4b6e09a20408abb3
 progress:
   total_phases: 9
   completed_phases: 3
@@ -323,9 +323,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T19:20:00Z
-Stopped at: Phase 86 complete (UAT 4/4, Nyquist-compliant, threats_open 0), ready to plan Phase 87
-Resume file: None
+Last session: 2026-09-07T17:33:17.070Z
+Stopped at: Phase 87 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/87-shared-setopts-composer-layer-intellij-dialog/87-CONTEXT.md
 
 Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer
 & IntelliJ Dialog. Phase 85's decision (85-01, decision log above) already established that
