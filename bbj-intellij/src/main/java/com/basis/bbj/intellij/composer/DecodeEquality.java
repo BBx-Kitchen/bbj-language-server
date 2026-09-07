@@ -11,6 +11,11 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeAbsoluteEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeChainEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateEntry;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateSelection;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,8 +33,8 @@ import java.util.Objects;
  *
  * <p>A field added to a decode result, its edit payload, or its initial payload must be added to
  * the matching comparator here too -- this class is the equality contract, not the DTO. This
- * applies to {@link SetoptsDecodeResult} (#633) as well as the MSGBOX/addWindow/addChildWindow
- * results above.
+ * applies to {@link SetoptsDecodeResult} (#633) and {@link SetoptsInCodeDecodeResult} (#475,
+ * DISC-06) as well as the MSGBOX/addWindow/addChildWindow results above.
  */
 public final class DecodeEquality {
 
@@ -179,6 +184,83 @@ public final class DecodeEquality {
             SetoptsSelectionBit x = a.get(i);
             SetoptsSelectionBit y = b.get(i);
             if (x.byteNo != y.byteNo || x.mask != y.mask) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * True when both are null, false when exactly one is null, and otherwise a field-wise
+     * comparison of {@code found}, {@code editable}, {@code mode}, {@code reason}, {@code summary},
+     * the whole {@code absolute} payload, the whole {@code chain} payload and the whole tri-state
+     * {@code initial} selection (#475, DISC-06). The stale-edit guard's verdict is what allows or
+     * refuses a write into the user's file, so this comparator must never approve a write when any
+     * one of these fields moved underneath the captured decode.
+     */
+    public static boolean sameSetoptsInCode(SetoptsInCodeDecodeResult a, SetoptsInCodeDecodeResult b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.found == b.found
+                && a.editable == b.editable
+                && Objects.equals(a.mode, b.mode)
+                && Objects.equals(a.reason, b.reason)
+                && Objects.equals(a.summary, b.summary)
+                && sameSetoptsInCodeAbsolute(a.absolute, b.absolute)
+                && sameSetoptsInCodeChain(a.chain, b.chain)
+                && sameSetoptsTriStateSelection(a.initial, b.initial);
+    }
+
+    private static boolean sameSetoptsInCodeAbsolute(SetoptsInCodeAbsoluteEdit a, SetoptsInCodeAbsoluteEdit b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        // hexRange is an int[]: compared element-wise with Arrays.equals -- a fresh re-decode
+        // never returns the same array instance as the captured one, so reference equality would
+        // report every re-decode as a mismatch.
+        return a.line == b.line
+                && Arrays.equals(a.hexRange, b.hexRange)
+                && Objects.equals(a.hexDigits, b.hexDigits);
+    }
+
+    private static boolean sameSetoptsInCodeChain(SetoptsInCodeChainEdit a, SetoptsInCodeChainEdit b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return Objects.equals(a.variableName, b.variableName)
+                && a.startLine == b.startLine
+                && a.endLine == b.endLine
+                && Objects.equals(a.indent, b.indent);
+    }
+
+    /**
+     * The DTO's {@code entries} field has no {@code equals} override, so comparing the lists
+     * directly would compare by reference and always report a mismatch -- an explicit
+     * element-wise loop over {@code byteNo}/{@code mask}/{@code state} is required instead. The
+     * comparison is order-sensitive on purpose: two selections holding the same options in a
+     * different order must NOT be reported equal, since a reordered selection is evidence the
+     * underlying document changed shape, and the guard must fail closed rather than assume a
+     * reorder is harmless.
+     */
+    private static boolean sameSetoptsTriStateSelection(SetoptsTriStateSelection a, SetoptsTriStateSelection b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return sameSetoptsTriStateEntries(a.entries, b.entries);
+    }
+
+    private static boolean sameSetoptsTriStateEntries(List<SetoptsTriStateEntry> a, List<SetoptsTriStateEntry> b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (int i = 0; i < a.size(); i++) {
+            SetoptsTriStateEntry x = a.get(i);
+            SetoptsTriStateEntry y = b.get(i);
+            if (x.byteNo != y.byteNo || x.mask != y.mask || !Objects.equals(x.state, y.state)) {
                 return false;
             }
         }

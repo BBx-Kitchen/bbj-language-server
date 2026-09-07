@@ -17,6 +17,12 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateEntry;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateSelection;
 import org.eclipse.lsp4j.jsonrpc.MessageIssueException;
 import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
 import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
@@ -272,6 +278,90 @@ class ComposerModelsJsonBoundaryTest {
         SetoptsSelection selection = new SetoptsSelection();
         selection.bits = List.of(new SetoptsSelectionBit(3, 2));
         SetoptsPreviewParams params = new SetoptsPreviewParams("08004020000000", selection);
+
+        String json = new com.google.gson.Gson().toJson(params);
+
+        assertTrue(json.contains("\"byte\":3"), "expected the wire key 'byte', got: " + json);
+        assertFalse(json.contains("byteNo"), "the Java field name byteNo must never leak onto the wire: " + json);
+    }
+
+    // ---- SETOPTS-in-code (#475, DISC-06, plan 88-04) --------------------------------------------
+
+    @Test
+    void aPopulatedDecodeInCodeResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":true,"editable":true,"mode":"chain","reason":null,
+              "summary":"Byte 1: Console mode in public programs",
+              "absolute":null,
+              "chain":{"variableName":"opts$","startLine":5,"endLine":8,"indent":"    "},
+              "initial":{"entries":[{"byte":1,"mask":8,"state":"set"},{"byte":3,"mask":64,"state":"clear"}]}
+            }}""";
+
+        SetoptsInCodeDecodeResult result = parse(
+            "bbj/composer/setopts/decodeInCode", SetoptsInCodeDecodeResult.class, envelope,
+            SetoptsInCodeDecodeParams.class);
+
+        assertTrue(result.found);
+        assertTrue(result.editable);
+        assertEquals("chain", result.mode);
+        assertEquals("opts$", result.chain.variableName);
+        // The point of this test: proves the @SerializedName("byte") mapping survives LSP4IJ's own
+        // deserializer, not just a hand-rolled Gson instance.
+        assertEquals(1, result.initial.entries.get(0).byteNo);
+        assertEquals("set", result.initial.entries.get(0).state);
+        assertEquals(3, result.initial.entries.get(1).byteNo);
+        assertEquals("clear", result.initial.entries.get(1).state);
+    }
+
+    /** An editable:false / not-found envelope with every optional field omitted must not throw (D-04). */
+    @Test
+    void aNotFoundDecodeInCodeResponseWithEveryOptionalFieldOmittedParsesWithoutFailing() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "found":false,"editable":false,"mode":"none"
+            }}""";
+
+        SetoptsInCodeDecodeResult result = parse(
+            "bbj/composer/setopts/decodeInCode", SetoptsInCodeDecodeResult.class, envelope,
+            SetoptsInCodeDecodeParams.class);
+
+        assertFalse(result.found);
+        assertFalse(result.editable);
+        assertEquals("none", result.mode);
+        assertNull(result.reason);
+        assertNull(result.summary);
+        assertNull(result.absolute);
+        assertNull(result.chain, "editable:false must carry no chain payload (D-04)");
+        assertNull(result.initial, "editable:false must carry no initial payload (D-04)");
+    }
+
+    @Test
+    void aComposeTriStateResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "text":"opts$=OPTS\\nopts$=opts$ IOR $00000008$\\nSETOPTS opts$",
+              "lines":["opts$=OPTS","opts$=opts$ IOR $00000008$","SETOPTS opts$"]
+            }}""";
+
+        SetoptsComposeTriStateResult result = parse(
+            "bbj/composer/setopts/composeTriState", SetoptsComposeTriStateResult.class, envelope,
+            SetoptsComposeTriStateParams.class);
+
+        assertEquals(3, result.lines.size());
+        assertEquals("SETOPTS opts$", result.lines.get(2));
+        assertTrue(result.text.contains("SETOPTS opts$"));
+    }
+
+    /**
+     * The request direction: a dropped {@code @SerializedName("byte")} on {@link SetoptsTriStateEntry}
+     * would still pass every response-direction test while silently sending a key the server ignores.
+     */
+    @Test
+    void theSetoptsComposeTriStateParamsSerializeWithTheWireKeyByte() {
+        SetoptsTriStateSelection selection = new SetoptsTriStateSelection();
+        selection.entries = List.of(new SetoptsTriStateEntry(3, 64, "set"));
+        SetoptsComposeTriStateParams params = new SetoptsComposeTriStateParams(selection, "opts$", "", "block");
 
         String json = new com.google.gson.Gson().toJson(params);
 

@@ -11,6 +11,11 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeAbsoluteEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeChainEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateEntry;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsTriStateSelection;
 
 import org.junit.jupiter.api.Test;
 
@@ -380,5 +385,168 @@ class DecodeEqualityTest {
 
         b.edit.hexRange[1] = b.edit.hexRange[1] + 1;
         assertFalse(DecodeEquality.sameSetopts(a, b), "changing one array element must break the match");
+    }
+
+    // ---- SETOPTS-in-code fixtures (#475, DISC-06) -----------------------------------------------
+
+    private static SetoptsInCodeDecodeResult baseSetoptsInCode() {
+        SetoptsInCodeDecodeResult decoded = new SetoptsInCodeDecodeResult();
+        decoded.found = true;
+        decoded.editable = true;
+        decoded.mode = "chain";
+        decoded.reason = "unsafe reassignment";
+        decoded.summary = "Byte 1: Console mode";
+        SetoptsInCodeAbsoluteEdit absolute = new SetoptsInCodeAbsoluteEdit();
+        absolute.line = 4;
+        absolute.hexRange = new int[] {8, 22};
+        absolute.hexDigits = "08004020000000";
+        decoded.absolute = absolute;
+        SetoptsInCodeChainEdit chain = new SetoptsInCodeChainEdit();
+        chain.variableName = "opts$";
+        chain.startLine = 5;
+        chain.endLine = 8;
+        chain.indent = "    ";
+        decoded.chain = chain;
+        SetoptsTriStateSelection initial = new SetoptsTriStateSelection();
+        initial.entries = new ArrayList<>(List.of(
+                new SetoptsTriStateEntry(1, 0x08, "set"),
+                new SetoptsTriStateEntry(3, 0x40, "clear")));
+        decoded.initial = initial;
+        return decoded;
+    }
+
+    private static SetoptsInCodeDecodeResult copyOfSetoptsInCode(SetoptsInCodeDecodeResult src) {
+        SetoptsInCodeDecodeResult decoded = new SetoptsInCodeDecodeResult();
+        decoded.found = src.found;
+        decoded.editable = src.editable;
+        decoded.mode = src.mode;
+        decoded.reason = src.reason;
+        decoded.summary = src.summary;
+        if (src.absolute != null) {
+            SetoptsInCodeAbsoluteEdit absolute = new SetoptsInCodeAbsoluteEdit();
+            absolute.line = src.absolute.line;
+            absolute.hexRange = src.absolute.hexRange == null ? null : src.absolute.hexRange.clone();
+            absolute.hexDigits = src.absolute.hexDigits;
+            decoded.absolute = absolute;
+        }
+        if (src.chain != null) {
+            SetoptsInCodeChainEdit chain = new SetoptsInCodeChainEdit();
+            chain.variableName = src.chain.variableName;
+            chain.startLine = src.chain.startLine;
+            chain.endLine = src.chain.endLine;
+            chain.indent = src.chain.indent;
+            decoded.chain = chain;
+        }
+        if (src.initial != null) {
+            SetoptsTriStateSelection initial = new SetoptsTriStateSelection();
+            initial.entries = new ArrayList<>();
+            for (SetoptsTriStateEntry e : src.initial.entries) {
+                initial.entries.add(new SetoptsTriStateEntry(e.byteNo, e.mask, e.state));
+            }
+            decoded.initial = initial;
+        }
+        return decoded;
+    }
+
+    @Test
+    void setoptsInCodeNullsOnEitherSideAreHandledWithoutThrowing() {
+        assertTrue(DecodeEquality.sameSetoptsInCode(null, null), "both null must match");
+        assertFalse(DecodeEquality.sameSetoptsInCode(baseSetoptsInCode(), null), "one null must not match");
+        assertFalse(DecodeEquality.sameSetoptsInCode(null, baseSetoptsInCode()), "one null must not match, either order");
+    }
+
+    @Test
+    void twoIdenticalSetoptsInCodeDecodesMatch() {
+        SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+        SetoptsInCodeDecodeResult b = copyOfSetoptsInCode(a);
+        assertNotSame(a.absolute.hexRange, b.absolute.hexRange, "the two range arrays must be distinct instances");
+        assertTrue(DecodeEquality.sameSetoptsInCode(a, b),
+                "two independently built results with identical field values must compare equal by value");
+    }
+
+    @Test
+    void changingAnySingleComparedSetoptsInCodeFieldBreaksTheMatch() {
+        List<Consumer<SetoptsInCodeDecodeResult>> mutators = List.of(
+                d -> d.found = !d.found,
+                d -> d.editable = !d.editable,
+                d -> d.mode = "absolute",
+                d -> d.reason = "different reason",
+                d -> d.summary = "different summary",
+                d -> d.absolute.line = d.absolute.line + 1,
+                d -> d.absolute.hexRange = new int[] {8, 23},
+                d -> d.absolute.hexDigits = "FFFFFFFFFFFFFF",
+                d -> d.chain.variableName = "other$",
+                d -> d.chain.startLine = d.chain.startLine + 1,
+                d -> d.chain.endLine = d.chain.endLine + 1,
+                d -> d.chain.indent = "\t",
+                d -> d.initial.entries.get(0).byteNo = 9,
+                d -> d.initial.entries.get(0).mask = 0x01,
+                d -> d.initial.entries.get(0).state = "leave");
+
+        for (Consumer<SetoptsInCodeDecodeResult> mutator : mutators) {
+            SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+            SetoptsInCodeDecodeResult b = copyOfSetoptsInCode(a);
+            mutator.accept(b);
+            assertFalse(DecodeEquality.sameSetoptsInCode(a, b),
+                    "mutating exactly one compared setopts-in-code field must break the match");
+        }
+    }
+
+    @Test
+    void reorderedTriStateEntriesAreNotEqualEvenThoughTheSetOfOptionsIsTheSame() {
+        SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+        SetoptsInCodeDecodeResult b = copyOfSetoptsInCode(a);
+        List<SetoptsTriStateEntry> reversed = new ArrayList<>(b.initial.entries);
+        java.util.Collections.reverse(reversed);
+        b.initial.entries = reversed;
+
+        assertFalse(DecodeEquality.sameSetoptsInCode(a, b),
+                "the same entries in a different order must NOT compare equal -- the guard fails closed");
+    }
+
+    @Test
+    void setoptsInCodeAbsoluteHexRangeIsComparedElementWiseRatherThanByIdentity() {
+        SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+        SetoptsInCodeDecodeResult b = copyOfSetoptsInCode(a);
+        assertTrue(DecodeEquality.sameSetoptsInCode(a, b),
+                "two distinct int[] instances holding the same two values must match");
+
+        b.absolute.hexRange[1] = b.absolute.hexRange[1] + 1;
+        assertFalse(DecodeEquality.sameSetoptsInCode(a, b), "changing one array element must break the match");
+    }
+
+    @Test
+    void setoptsInCodeNullInitialOnBothSidesAndEmptyEntriesOnBothSidesCompareEqual() {
+        SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+        a.initial = null;
+        SetoptsInCodeDecodeResult b = copyOfSetoptsInCode(a);
+        b.initial = null;
+        assertTrue(DecodeEquality.sameSetoptsInCode(a, b), "both null initial must compare equal");
+
+        SetoptsInCodeDecodeResult c = baseSetoptsInCode();
+        c.initial = new SetoptsTriStateSelection();
+        c.initial.entries = new ArrayList<>();
+        SetoptsInCodeDecodeResult d = copyOfSetoptsInCode(c);
+        assertTrue(DecodeEquality.sameSetoptsInCode(c, d), "both empty entries lists must compare equal");
+    }
+
+    @Test
+    void setoptsInCodeNullEditPayloadsOnOneSideOnlyDoNotMatch() {
+        SetoptsInCodeDecodeResult a = baseSetoptsInCode();
+
+        SetoptsInCodeDecodeResult nullAbsolute = copyOfSetoptsInCode(a);
+        nullAbsolute.absolute = null;
+        assertFalse(DecodeEquality.sameSetoptsInCode(a, nullAbsolute),
+                "a null absolute on one side only must not match");
+
+        SetoptsInCodeDecodeResult nullChain = copyOfSetoptsInCode(a);
+        nullChain.chain = null;
+        assertFalse(DecodeEquality.sameSetoptsInCode(a, nullChain),
+                "a null chain on one side only must not match");
+
+        SetoptsInCodeDecodeResult nullInitial = copyOfSetoptsInCode(a);
+        nullInitial.initial = null;
+        assertFalse(DecodeEquality.sameSetoptsInCode(a, nullInitial),
+                "a null initial on one side only must not match");
     }
 }
