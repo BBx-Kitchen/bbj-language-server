@@ -16,7 +16,7 @@ Committed scope. Each maps to exactly one roadmap phase.
 - [ ] **DISC-01**: User sees a persistent, clickable cue on every line where a composer applies (MSGBOX, addWindow, addChildWindow, CVS, SETOPTS) in both VS Code and IntelliJ, without placing the caret or opening a context menu (#650)
 - [ ] **DISC-02**: User is offered the MSGBOX composer when the options argument is an expression; a sum of constant Java static fields or integer literals pre-fills the composer, any other expression opens it in compose-and-replace mode (#648)
 - [ ] **DISC-03**: User can compose a CVS() call visually in both IDEs from the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128; applied in ascending order) with the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place (#649)
-- [ ] **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633)
+- [x] **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633)
 - [ ] **DISC-05**: User hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable in BBj code, sees which options that line sets or clears, with AND masks shown as the logical cleared bits (#475, decode tier)
 - [ ] **DISC-06**: User can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form, and can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape gets hover decode only, no edit action (#475, composer tiers)
 - [ ] **DISC-07**: User's malformed free-text in addWindow or addChildWindow composer fields is rejected before the insert is applied, with validity carried in the shared preview payload so both IDEs gate the same way (#623)
@@ -97,7 +97,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISC-01 | Phase 89 | Pending |
 | DISC-02 | Phase 89 | Pending |
 | DISC-03 | Phase 89 | Pending |
-| DISC-04 | Phase 87 | Pending |
+| DISC-04 | Phase 87 | Complete |
 | DISC-05 | Phase 88 | Pending |
 | DISC-06 | Phase 88 | Pending |
 | DISC-07 | Phase 90 | Pending |

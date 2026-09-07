@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 87
 current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
-status: executing
-stopped_at: Completed 87-02-PLAN.md
-last_updated: "2026-09-07T18:31:31.169Z"
+status: verifying
+stopped_at: Completed 87-03-PLAN.md
+last_updated: "2026-09-07T18:41:19.324Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 87 execution started
-state_head: c78fc2af6aaa0b03595121af384eeed499353cb6
+state_head: 0691a2f1a01f997d555a117b25deddefa0142fa8
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 19
-  completed_plans: 18
+  completed_plans: 19
   percent: 33
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 Phase: 87 (Shared SETOPTS Composer Layer & IntelliJ Dialog) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-07 — Phase 87 execution started
 
 ## Performance Metrics
@@ -159,6 +159,7 @@ Last activity: 2026-09-07 — Phase 87 execution started
 | Phase 86 P05 | 40min | 3 tasks | 8 files |
 | Phase 87 P01 | 12min | 3 tasks | 9 files |
 | Phase 87 P02 | 15min | 3 tasks | 4 files |
+| Phase 87 P03 | 8min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -261,6 +262,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86 UAT]: All four checkpoints passed by hand 2026-09-07. Test 1 (QA row 16) initially surfaced G-86-1 (`JsonRpcException`/`IOException: Stream closed` in the log despite visibly-working completion/hover/Structure View); diagnosed, fixed by 86-05 (gap closure), and independently re-verified clean via Test 3 (rows 16+17 rerun together — the exact sequence that originally surfaced the gap). Test 2 (QA row 17, port settings) passed on first try. Test 4: WR-01 (stale-by-one-generation `previousStatus`) and WR-02 (unguarded bounded-wait exception, both from 86-05-REVIEW.md) accepted as residual risk rather than fixed. CFG-04/CFG-05 (#632, #608) closed. Post-UAT: 86-VALIDATION.md nyquist-compliant (14 tasks across 5 plans, 0 gaps — every task carries an `<automated>` verify and every SUMMARY coverage entry is `status: pass`), 86-SECURITY.md threats_open 0 (27 threats across 5 plans, short-circuit path — register authored at plan time, ASVS level 1).
 - [Phase 87]: [Phase 87] 87-01: bbj/composer/setopts/decodeCall and preview are thin pass-throughs added to the existing composer-commands.ts/ComposerModels.java/BbjComposerServer.java; the SETOPTS vector crosses the LSP4IJ boundary as a hex String end-to-end, never a numeric bitmask; DecodeEquality.sameSetopts compares hexRange/bits element-wise, never by reference identity
 - [Phase 87]: [Phase 87] 87-02: PreviewDebouncer mirrors KeystrokeDebouncer's cancel-only-own-pending idiom but debounces a UI-thread action with no staleness check of its own (the caller's ComposerFlow mySeq==seq.get() handles staleness); SetoptsComposerDialog's own client-side input validation (raw-hex-tail regex, printable-ASCII mask chars) is the entire OK gate since SetoptsPreview carries no server-side valid flag unlike MsgboxPreview
+- [Phase 87]: [Phase 87]: 87-03: ComposerLauncher.Kind.SETOPTS wired end-to-end (guarded edit-in-place via StaleEditGuard/DecodeEquality.sameSetopts, line-start compose-new via refactored insertAt) and BbjComposeSetoptsAction added as a PSI-free config-file-scoped Editor Popup entry; a composer-built regression pair reconfirms Phase 85 D-06's zero-restart guarantee. DISC-04 (#633) closed.
 
 ### Tech Debt
 
@@ -327,8 +329,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T18:31:31.032Z
-Stopped at: Completed 87-02-PLAN.md
+Last session: 2026-09-07T18:41:19.189Z
+Stopped at: Completed 87-03-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer

@@ -323,7 +323,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. The new composer DTOs crossing the LSP4IJ boundary are covered by the existing composer JSON-boundary test family, with numeric sentinels kept in the same in-range convention as the rest of the composer surface (research Pitfall 13).
   4. The dialog's launch/refresh chain composes through the existing `ComposerFlow`/`StaleEditGuard`/`ComposerNotices` seams — a hung or failed request surfaces exactly one reason-keyed balloon.
 
-**Plans**: 2/3 plans executed (3 waves)
+**Plans**: 3/3 plans executed (3 waves)
 **Wave 1**
 
 - [x] 87-01-PLAN.md — Shared `bbj/composer/setopts/*` command layer, LSP4IJ DTOs and the `sameSetopts` comparator (wave 1)
@@ -334,7 +334,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 
 **Wave 3** *(blocked on 87-02)*
 
-- [ ] 87-03-PLAN.md — `Kind.SETOPTS` launcher wiring, config-scoped Editor Popup action, no-restart regression pair and QA row (wave 3)
+- [x] 87-03-PLAN.md — `Kind.SETOPTS` launcher wiring, config-scoped Editor Popup action, no-restart regression pair and QA row (wave 3)
 
 ### Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer
 
