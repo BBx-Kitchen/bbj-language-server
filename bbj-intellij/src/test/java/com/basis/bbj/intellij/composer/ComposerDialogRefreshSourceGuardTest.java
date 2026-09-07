@@ -42,15 +42,29 @@ class ComposerDialogRefreshSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "SetoptsComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path TRISTATE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "SetoptsTriStateComposerDialog.java")
+            .toAbsolutePath();
+
     private static final Path FLOW_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "ComposerFlow.java")
             .toAbsolutePath();
 
     private static final Path BUILD_GRADLE_KTS = Paths.get("build.gradle.kts").toAbsolutePath();
 
-    /** One entry per composer dialog so a fourth composer added later is a one-line addition. */
+    /** One entry per composer dialog so a sixth composer added later is a one-line addition. */
     private static final List<Path> DIALOG_SOURCES =
-            List.of(MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE);
+            List.of(MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE, TRISTATE_SOURCE);
+
+    /**
+     * Dialogs whose live preview is coalesced through the {@code PreviewDebouncer}'s fixed 300ms
+     * trailing-edge delay (CR-01) disable OK a third time -- synchronously, the instant a new
+     * preview is scheduled -- rather than only on the constructor's initial disable and a later
+     * failed preview. {@code SetoptsTriStateComposerDialog} reuses the exact same debounce seam
+     * and CR-01 rule {@code SetoptsComposerDialog} established, so both carry the third disable.
+     */
+    private static final List<Path> DEBOUNCED_DIALOG_SOURCES = List.of(SETOPTS_SOURCE, TRISTATE_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
@@ -137,20 +151,22 @@ class ComposerDialogRefreshSourceGuardTest {
      * {@code refresh();} call site in the file (the constructor's own initial refresh -- later
      * {@code refresh();} call sites belong to input listeners).
      * <p>
-     * SETOPTS carries a third occurrence (CR-01): unlike the other three dialogs, its live-preview
-     * refresh is coalesced through {@code PreviewDebouncer}'s fixed 300ms trailing-edge delay, so a
-     * click landing inside that window would otherwise still see the previous, now-superseded
-     * preview's OK-enabled state. SETOPTS disables OK synchronously the instant a new preview is
-     * scheduled (not only on eventual success/failure), so every dialog's minimum expected count of 2
-     * still holds and SETOPTS alone is allowed a third.
+     * SETOPTS and the tri-state SETOPTS-in-code dialog carry a third occurrence (CR-01): unlike
+     * the other dialogs, their live-preview refresh is coalesced through {@code PreviewDebouncer}'s
+     * fixed 300ms trailing-edge delay, so a click landing inside that window would otherwise still
+     * see the previous, now-superseded preview's OK-enabled state. Both disable OK synchronously
+     * the instant a new preview is scheduled (not only on eventual success/failure), so every
+     * dialog's minimum expected count of 2 still holds and {@link #DEBOUNCED_DIALOG_SOURCES} alone
+     * are allowed a third.
      */
     @Test
     void eachDialogDisablesOkBeforeItsFirstPreviewRoundTripAndOnAnyLaterFailure() {
         for (Path source : DIALOG_SOURCES) {
             String text = readSource(source);
-            int expected = source.equals(SETOPTS_SOURCE) ? 3 : 2;
+            boolean debounced = DEBOUNCED_DIALOG_SOURCES.contains(source);
+            int expected = debounced ? 3 : 2;
             assertEquals(expected, countOccurrences(text, "setOKActionEnabled(false)"),
-                    source.equals(SETOPTS_SOURCE)
+                    debounced
                             ? source.getFileName() + " must disable OK three times: once up front before "
                                     + "the constructor's first preview round-trip, once the instant a new "
                                     + "preview is scheduled (CR-01), once on a later failed preview"
