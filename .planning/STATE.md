@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 87
 current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
 status: executing
-stopped_at: Completed 87-01-PLAN.md
-last_updated: "2026-09-07T18:21:59.624Z"
+stopped_at: Completed 87-02-PLAN.md
+last_updated: "2026-09-07T18:31:31.169Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 87 execution started
-state_head: 070c0a16b2ab7a50cbb3a99296cbf6e539b3e5fd
+state_head: c78fc2af6aaa0b03595121af384eeed499353cb6
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 33
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 87 (Shared SETOPTS Composer Layer & IntelliJ Dialog) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-07 — Phase 87 execution started
 
@@ -158,6 +158,7 @@ Last activity: 2026-09-07 — Phase 87 execution started
 | Phase 86 P03 | 15min | 3 tasks | 7 files |
 | Phase 86 P05 | 40min | 3 tasks | 8 files |
 | Phase 87 P01 | 12min | 3 tasks | 9 files |
+| Phase 87 P02 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86]: [Phase 86] Phase 86 Plan 05: LanguageServerManager.stop(String) returns void in LSP4IJ 0.21.0, so doRestart() waits for manager.getServerStatus(SERVER_ID) to report the server down (BoundedWait, 5s budget) instead of awaiting stop's future; a restart request landing mid-restart is dropped (RestartGate in-flight rejection) rather than queued, to avoid an unbounded restart loop on a future stop-classification regression; the ExpectedStopGuard token is one-shot, 30s-windowed and armed only when the server was observed live -- closes G-86-1's automated-evidence portion.
 - [Phase 86 UAT]: All four checkpoints passed by hand 2026-09-07. Test 1 (QA row 16) initially surfaced G-86-1 (`JsonRpcException`/`IOException: Stream closed` in the log despite visibly-working completion/hover/Structure View); diagnosed, fixed by 86-05 (gap closure), and independently re-verified clean via Test 3 (rows 16+17 rerun together — the exact sequence that originally surfaced the gap). Test 2 (QA row 17, port settings) passed on first try. Test 4: WR-01 (stale-by-one-generation `previousStatus`) and WR-02 (unguarded bounded-wait exception, both from 86-05-REVIEW.md) accepted as residual risk rather than fixed. CFG-04/CFG-05 (#632, #608) closed. Post-UAT: 86-VALIDATION.md nyquist-compliant (14 tasks across 5 plans, 0 gaps — every task carries an `<automated>` verify and every SUMMARY coverage entry is `status: pass`), 86-SECURITY.md threats_open 0 (27 threats across 5 plans, short-circuit path — register authored at plan time, ASVS level 1).
 - [Phase 87]: [Phase 87] 87-01: bbj/composer/setopts/decodeCall and preview are thin pass-throughs added to the existing composer-commands.ts/ComposerModels.java/BbjComposerServer.java; the SETOPTS vector crosses the LSP4IJ boundary as a hex String end-to-end, never a numeric bitmask; DecodeEquality.sameSetopts compares hexRange/bits element-wise, never by reference identity
+- [Phase 87]: [Phase 87] 87-02: PreviewDebouncer mirrors KeystrokeDebouncer's cancel-only-own-pending idiom but debounces a UI-thread action with no staleness check of its own (the caller's ComposerFlow mySeq==seq.get() handles staleness); SetoptsComposerDialog's own client-side input validation (raw-hex-tail regex, printable-ASCII mask chars) is the entire OK gate since SetoptsPreview carries no server-side valid flag unlike MsgboxPreview
 
 ### Tech Debt
 
@@ -325,8 +327,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T18:21:59.489Z
-Stopped at: Completed 87-01-PLAN.md
+Last session: 2026-09-07T18:31:31.032Z
+Stopped at: Completed 87-02-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer
