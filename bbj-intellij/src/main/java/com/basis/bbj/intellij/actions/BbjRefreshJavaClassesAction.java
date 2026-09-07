@@ -56,11 +56,13 @@ public final class BbjRefreshJavaClassesAction extends AnAction {
                     ApplicationManager.getApplication().assertIsNonDispatchThread();
 
                     JavaClassesRefreshFlow.Result result = JavaClassesRefreshFlow.run(seconds -> {
-                        BbjComposerServer server = BbjComposerService.server(project).get(seconds, TimeUnit.SECONDS);
+                        long deadlineNanos = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
+                        BbjComposerServer server = BbjComposerService.server(project)
+                            .get(remainingSeconds(deadlineNanos), TimeUnit.SECONDS);
                         if (server == null) {
                             return null;
                         }
-                        return server.refreshJavaClasses().get(seconds, TimeUnit.SECONDS);
+                        return server.refreshJavaClasses().get(remainingSeconds(deadlineNanos), TimeUnit.SECONDS);
                     }, JavaClassesRefreshFlow.REFRESH_TIMEOUT_SECONDS);
 
                     render(project, result);
@@ -69,6 +71,19 @@ public final class BbjRefreshJavaClassesAction extends AnAction {
                 }
             }
         }.queue();
+    }
+
+    /**
+     * The seconds remaining until {@code deadlineNanos}, floored at zero. Sharing one deadline
+     * across the proxy lookup and the request means a slow first stage shrinks the budget left
+     * for the second one, instead of each stage independently getting the full timeout and the
+     * combined wait silently stacking up to roughly twice the documented bound. A stage that
+     * starts after the budget is already spent gets a zero-length wait and fails fast as
+     * {@code TIMED_OUT} rather than blocking for another full window.
+     */
+    private static long remainingSeconds(long deadlineNanos) {
+        long remainingNanos = deadlineNanos - System.nanoTime();
+        return Math.max(0, TimeUnit.NANOSECONDS.toSeconds(remainingNanos));
     }
 
     private static void render(@NotNull Project project, JavaClassesRefreshFlow.Result result) {

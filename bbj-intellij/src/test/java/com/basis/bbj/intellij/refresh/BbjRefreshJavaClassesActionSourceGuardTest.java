@@ -147,6 +147,18 @@ class BbjRefreshJavaClassesActionSourceGuardTest {
     }
 
     @Test
+    void theTwoBoundedWaitsShareOneDeadlineRatherThanEachGettingTheFullBudget() {
+        String text = stripComments(readGuardedSource());
+
+        assertEquals(1, countOccurrences(text, "long deadlineNanos ="),
+            "exactly one deadline must be computed for the combined bounded wait -- the proxy "
+                + "lookup and the request must not each independently get the full timeout");
+        assertEquals(2, countOccurrences(text, "remainingSeconds(deadlineNanos)"),
+            "both bounded .get( calls must consume the remaining budget from the shared "
+                + "deadline");
+    }
+
+    @Test
     void sanityAnchorTheClassDeclarationPrecedesTheNotificationActionConstruction() {
         String text = stripComments(readGuardedSource());
 
