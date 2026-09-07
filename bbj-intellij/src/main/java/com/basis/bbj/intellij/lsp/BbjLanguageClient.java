@@ -4,6 +4,7 @@ import com.basis.bbj.intellij.BbjSettings;
 import com.basis.bbj.intellij.config.BbjConfigPathService;
 import com.basis.bbj.intellij.config.ConfigModels.ConfigReloadNotification;
 import com.basis.bbj.intellij.config.ConfigModels.ResolvedConfigPathResult;
+import com.basis.bbj.intellij.config.ConfigReloadPresentation;
 import com.basis.bbj.intellij.ui.BbjServerService;
 import com.google.gson.JsonObject;
 import com.intellij.notification.NotificationGroupManager;
@@ -112,8 +113,9 @@ public final class BbjLanguageClient extends LanguageClientImpl {
             return;
         }
         BbjServerService service = BbjServerService.getInstance(project);
+        service.setRestartReason(result.reason);
         service.logToConsole(
-            "Config changed (" + result.reason + "), restarting: " + result.path,
+            ConfigReloadPresentation.consoleLine(result.path, result.reason),
             com.intellij.execution.ui.ConsoleViewContentType.SYSTEM_OUTPUT);
         service.requestRestart(BbjServerService.RESTART_DEBOUNCE_MS);
     }

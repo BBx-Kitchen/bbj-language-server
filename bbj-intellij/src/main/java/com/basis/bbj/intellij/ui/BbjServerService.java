@@ -18,6 +18,7 @@ import com.intellij.util.messages.Topic;
 import com.basis.bbj.intellij.concurrency.AlarmScheduler;
 import com.basis.bbj.intellij.concurrency.RestartGate;
 import com.basis.bbj.intellij.concurrency.Scheduler;
+import com.basis.bbj.intellij.config.ConfigReloadPresentation;
 import com.redhat.devtools.lsp4ij.LanguageServerManager;
 import com.redhat.devtools.lsp4ij.ServerStatus;
 import org.jetbrains.annotations.NotNull;
@@ -46,6 +47,14 @@ public final class BbjServerService implements Disposable {
     private int crashCount = 0;
     private boolean serverCrashed = false;
     private ConsoleView consoleView;
+
+    /**
+     * The reason for the most recently requested config-driven restart, or {@code null} when no
+     * such restart is pending/in progress. Written from the LSP dispatch thread (see
+     * {@code BbjLanguageClient#configReloadRequired}) and read from the EDT (see
+     * {@code BbjStatusBarWidget#updateStatus}), hence volatile.
+     */
+    private volatile String pendingRestartReason;
 
     public BbjServerService(@NotNull Project project) {
         this.project = project;
@@ -95,6 +104,20 @@ public final class BbjServerService implements Disposable {
     }
 
     /**
+     * Records why the next (or current) restart is happening, for {@link
+     * ConfigReloadPresentation#widgetTooltip} and the status-bar widget's tooltip. Pass {@code
+     * null} to clear it directly.
+     */
+    public void setRestartReason(@Nullable String reason) {
+        this.pendingRestartReason = reason;
+    }
+
+    /** The reason recorded by {@link #setRestartReason(String)}, or {@code null} if none. */
+    public @Nullable String getRestartReason() {
+        return pendingRestartReason;
+    }
+
+    /**
      * Update server status and notify all listeners (status bar widget).
      * Implements crash detection and auto-restart logic.
      */
@@ -102,6 +125,8 @@ public final class BbjServerService implements Disposable {
         if (project.isDisposed()) {
             return;
         }
+
+        boolean autoRestartAbandoned = false;
 
         // Detect unexpected stop (crash)
         if (status == ServerStatus.stopped &&
@@ -127,6 +152,7 @@ public final class BbjServerService implements Disposable {
                 requestRestart(CRASH_RESTART_DELAY_MS);
             } else if (crashCount >= 2) {
                 // Stop auto-restart after second crash
+                autoRestartAbandoned = true;
                 logToConsole("Language server crashed twice. Stopping auto-restart.", ConsoleViewContentType.ERROR_OUTPUT);
                 notifyCrash();
                 ApplicationManager.getApplication().invokeLater(() -> {
@@ -151,6 +177,10 @@ public final class BbjServerService implements Disposable {
                 }
                 EditorNotifications.getInstance(project).updateAllNotifications();
             });
+        }
+
+        if (ConfigReloadPresentation.clearsReason(status.name(), autoRestartAbandoned)) {
+            pendingRestartReason = null;
         }
 
         previousStatus = currentStatus;

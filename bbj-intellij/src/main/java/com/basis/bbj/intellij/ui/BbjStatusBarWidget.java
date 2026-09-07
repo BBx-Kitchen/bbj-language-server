@@ -1,6 +1,7 @@
 package com.basis.bbj.intellij.ui;
 
 import com.basis.bbj.intellij.BbjIcons;
+import com.basis.bbj.intellij.config.ConfigReloadPresentation;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.options.ShowSettingsUtil;
@@ -94,6 +95,9 @@ public final class BbjStatusBarWidget implements CustomStatusBarWidget {
 
             iconLabel.setIcon(icon);
             textLabel.setText(text);
+            panel.setToolTipText(ConfigReloadPresentation.widgetTooltip(
+                text, ConfigReloadPresentation.reasonLabel(
+                    BbjServerService.getInstance(project).getRestartReason())));
 
             // Update visibility based on whether BBj file is open
             updateVisibility();
