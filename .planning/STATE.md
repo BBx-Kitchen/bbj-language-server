@@ -5,11 +5,11 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 86
 current_phase_name: IntelliJ Interop Settings & Targeted Refresh
 status: planning
-stopped_at: Phase 85 complete, ready to plan Phase 86
-last_updated: "2026-09-07T02:52:49.365Z"
+stopped_at: Phase 86 context gathered
+last_updated: "2026-09-07T13:17:24.771Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 85 complete, transitioned to Phase 86
-state_head: 3d2acffcf864f3159019d146e53eb797e0b36df2
+state_head: 20cfdc951df614d78435cef6d9aeb8ee51add191
 progress:
   total_phases: 9
   completed_phases: 2
@@ -311,9 +311,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T13:50:00Z
-Stopped at: Phase 85 complete (UAT 7/7, validated, verified), ready to plan Phase 86
-Resume file: None
+Last session: 2026-09-07T13:17:24.668Z
+Stopped at: Phase 86 context gathered
+Resume file: /home/coder/repos/bbj-language-server/.planning/phases/86-intellij-interop-settings-targeted-refresh/86-CONTEXT.md
 
 Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start
 IntelliJ Interop Settings & Targeted Refresh (CFG-04 #632, CFG-05 #608); it is independent
