@@ -29,6 +29,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String javaInteropHost = "localhost";  // Default: localhost (resolves to 127.0.0.1)
         public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
         public boolean javaInteropPortAutoDetect = true;  // Default: true; this flag, not the numeric value, records whether the port was chosen by the user
+        public boolean javaInteropSettingsMigrated = false;  // Default: false; set true once the one-time upgrade inference below has run, so it never re-derives the flag from a later, unrelated port value
         public String configPath = "";  // Default: empty (uses {bbjHome}/cfg/config.bbx)
         public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
         public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
@@ -64,9 +65,16 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
     public void loadState(@NotNull State state) {
         // The one-time upgrade migration: applied here, before the incoming state is stored, so
         // every persisted install passes through this exactly once before any reader can ever
-        // observe javaInteropPortAutoDetect.
-        state.javaInteropPortAutoDetect =
-                InteropPortSettings.migratedAutoDetect(state.javaInteropPortAutoDetect, state.javaInteropPort);
+        // observe javaInteropPortAutoDetect. Gated on javaInteropSettingsMigrated so it runs
+        // only for an install that has never seen it -- otherwise a later, unrelated stored port
+        // (left behind by portToPersist while auto-detect is on) would be misread as evidence the
+        // flag was a deliberate choice on every subsequent restart, silently undoing a legitimate
+        // re-enable of auto-detect.
+        if (!state.javaInteropSettingsMigrated) {
+            state.javaInteropPortAutoDetect =
+                    InteropPortSettings.migratedAutoDetect(state.javaInteropPortAutoDetect, state.javaInteropPort);
+            state.javaInteropSettingsMigrated = true;
+        }
         myState = state;
     }
 
