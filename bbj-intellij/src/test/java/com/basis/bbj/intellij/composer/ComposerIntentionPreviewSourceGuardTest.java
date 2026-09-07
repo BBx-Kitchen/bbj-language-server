@@ -35,11 +35,15 @@ class ComposerIntentionPreviewSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
             "ConfigureAddChildWindowIntention.java").toAbsolutePath();
 
+    private static final Path SETOPTS_IN_CODE_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer",
+            "ConfigureSetoptsInCodeIntention.java").toAbsolutePath();
+
     private static final Path PLUGIN_XML = Paths.get(
             "src", "main", "resources", "META-INF", "plugin.xml").toAbsolutePath();
 
     private static final Path[] INTENTION_SOURCES = {
-            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE
+            MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_IN_CODE_SOURCE
     };
 
     private static String readSource(Path path) {
@@ -118,29 +122,44 @@ class ComposerIntentionPreviewSourceGuardTest {
         }
     }
 
+    /**
+     * SETOPTS-in-code gates on three keywords ({@code SETOPTS}, {@code IOR(}, {@code AND(})
+     * rather than one, so it calls the dedicated {@code isCaretOnSetoptsInCode(Editor)} helper
+     * instead of the single-keyword {@code isCaretOnCall(editor, keyword)} every other composer
+     * intention uses -- this one assertion is genuinely inapplicable to it (a wider gate needs a
+     * wider check), so it is scoped out here rather than deleted, per the "run and fix the
+     * intention, not the assertion, unless genuinely inapplicable" instruction.
+     */
     @Test
     void invokeAndIsAvailableAreUndisturbedOnEveryIntention() {
         for (Path source : INTENTION_SOURCES) {
             String text = readSource(source);
             assertEquals(1, countOccurrences(text, "ComposerLauncher.launch(project, editor, ComposerLauncher.Kind."),
                     source + " must delegate to ComposerLauncher.launch exactly once from invoke()");
-            assertEquals(1, countOccurrences(text, "ComposerLauncher.isCaretOnCall(editor,"),
-                    source + " must call ComposerLauncher.isCaretOnCall exactly once from isAvailable()");
+            if (source.equals(SETOPTS_IN_CODE_SOURCE)) {
+                assertEquals(1, countOccurrences(text, "ComposerLauncher.isCaretOnSetoptsInCode(editor)"),
+                        source + " must call ComposerLauncher.isCaretOnSetoptsInCode exactly once from isAvailable()");
+            } else {
+                assertEquals(1, countOccurrences(text, "ComposerLauncher.isCaretOnCall(editor,"),
+                        source + " must call ComposerLauncher.isCaretOnCall exactly once from isAvailable()");
+            }
         }
     }
 
     @Test
-    void pluginXmlStillRegistersAllThreeIntentionsUntouched() {
+    void pluginXmlStillRegistersAllFourIntentionsUntouched() {
         String text = readSource(PLUGIN_XML);
 
-        assertEquals(3, countOccurrences(text, "<intentionAction>"),
-                "plugin.xml must still register exactly three <intentionAction> extensions -- the "
-                        + "descriptor is not touched by this fix");
+        assertEquals(4, countOccurrences(text, "<intentionAction>"),
+                "plugin.xml must register exactly four <intentionAction> extensions -- the three "
+                        + "this fix covers, plus the new SETOPTS-in-code intention (#475)");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureMsgboxIntention"),
                 "the MSGBOX registration's fully-qualified class name must appear exactly once");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureAddWindowIntention"),
                 "the addWindow registration's fully-qualified class name must appear exactly once");
         assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureAddChildWindowIntention"),
                 "the addChildWindow registration's fully-qualified class name must appear exactly once");
+        assertEquals(1, countOccurrences(text, "com.basis.bbj.intellij.composer.ConfigureSetoptsInCodeIntention"),
+                "the SETOPTS-in-code registration's fully-qualified class name must appear exactly once");
     }
 }

@@ -131,6 +131,11 @@
             <className>com.basis.bbj.intellij.composer.ConfigureAddChildWindowIntention</className>
             <category>BBj</category>
         </intentionAction>
+        <intentionAction>
+            <language>BBj</language>
+            <className>com.basis.bbj.intellij.composer.ConfigureSetoptsInCodeIntention</className>
+            <category>BBj</category>
+        </intentionAction>
 
         <fileType
             name="BBj"

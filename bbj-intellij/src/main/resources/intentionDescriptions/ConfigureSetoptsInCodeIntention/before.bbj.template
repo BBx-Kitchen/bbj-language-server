@@ -1,0 +1,3 @@
+opts$=OPTS
+opts$=IOR(opts$,"$01$")
+SETOPTS opts$

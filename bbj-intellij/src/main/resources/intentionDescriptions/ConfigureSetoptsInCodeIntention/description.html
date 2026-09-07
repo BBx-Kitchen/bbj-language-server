@@ -1,0 +1,18 @@
+<html>
+<body>
+<p>Opens the BBj tri-state SETOPTS composer for the SETOPTS block at or near the caret.</p>
+<!-- tooltip end -->
+<p>
+Available on an absolute <code>SETOPTS &lt;literal&gt;</code> statement, on a canonical
+<code>var$=OPTS</code> … <code>SETOPTS var$</code> block built only from <code>IOR</code>/
+<code>AND</code> reassignments, or on a line with no existing SETOPTS shape nearby (a new block is
+composed and inserted). Each option is a three-state Set/Clear/Leave choice; Leave never touches
+that option. Pressing OK/Insert writes the composed lines in place; Cancel changes nothing.
+</p>
+<p>
+Any other shape (an intervening non-IOR/AND statement, a branch, an alias) shows why it cannot be
+safely edited instead of opening the composer. The BBj language server must be running, because
+the composer decodes and composes the block through it (#475).
+</p>
+</body>
+</html>

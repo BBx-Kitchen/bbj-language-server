@@ -1,0 +1,4 @@
+opts$=OPTS
+opts$=IOR(opts$,"$01$")
+opts$=AND(opts$,"$FE$")
+SETOPTS opts$
