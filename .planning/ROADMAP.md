@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -361,7 +361,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 88-03-PLAN.md — Tri-state model, full-width mask generators, canonical block codegen, and the `decodeInCode`/`composeTriState` document-aware requests
+- [x] 88-03-PLAN.md — Tri-state model, full-width mask generators, canonical block codegen, and the `decodeInCode`/`composeTriState` document-aware requests
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
