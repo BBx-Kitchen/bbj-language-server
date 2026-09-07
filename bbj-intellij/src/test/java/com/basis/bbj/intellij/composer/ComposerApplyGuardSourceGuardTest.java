@@ -104,11 +104,12 @@ class ComposerApplyGuardSourceGuardTest {
         List<Integer> applyIfUnchanged = allIndicesOf(text, "applyIfUnchanged(");
         List<Integer> replaceString = allIndicesOf(text, "replaceString(");
 
-        assertEquals(3, applyIfUnchanged.size(),
-                "exactly three applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
-                        + "hex-edit path used by both window composers, and the SETOPTS replacement");
-        assertEquals(3, replaceString.size(),
-                "exactly three replaceString( writes: one per guarded apply body");
+        assertEquals(5, applyIfUnchanged.size(),
+                "exactly five applyIfUnchanged( call sites: the MSGBOX replacement, the shared "
+                        + "hex-edit path used by both window composers, the SETOPTS replacement, and "
+                        + "the two SETOPTS-in-code replacements (absolute literal, safe chain -- #475)");
+        assertEquals(5, replaceString.size(),
+                "exactly five replaceString( writes: one per guarded apply body");
 
         for (int applyIndex : applyIfUnchanged) {
             boolean hasFollowingReplace = replaceString.stream().anyMatch(r -> r > applyIndex);
@@ -127,8 +128,17 @@ class ComposerApplyGuardSourceGuardTest {
                 "the addWindow edit flow must reach the guard with sameAddWindow exactly once");
         assertEquals(1, countOccurrences(text, "DecodeEquality::sameAddChildWindow"),
                 "the addChildWindow edit flow must reach the guard with sameAddChildWindow exactly once");
-        assertEquals(1, countOccurrences(text, "DecodeEquality::sameSetopts"),
+
+        // "DecodeEquality::sameSetopts" is a literal PREFIX of "DecodeEquality::sameSetoptsInCode"
+        // (a method-reference, so there is no trailing "(" to disambiguate on) -- subtract the
+        // longer literal's own count so the two SETOPTS-in-code comparator references below are
+        // never double-counted as config.bbx SETOPTS comparator references.
+        int sameSetoptsInCodeCount = countOccurrences(text, "DecodeEquality::sameSetoptsInCode");
+        assertEquals(1, countOccurrences(text, "DecodeEquality::sameSetopts") - sameSetoptsInCodeCount,
                 "the SETOPTS edit flow must reach the guard with sameSetopts exactly once");
+        assertEquals(2, sameSetoptsInCodeCount,
+                "both SETOPTS-in-code edit flows (absolute literal, safe chain -- #475) must each "
+                        + "reach the guard with sameSetoptsInCode exactly once");
     }
 
     @Test

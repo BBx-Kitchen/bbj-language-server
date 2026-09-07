@@ -12,13 +12,19 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeAbsoluteEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeChainEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.ModalityState;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -37,7 +43,7 @@ import java.util.function.BiPredicate;
  */
 public final class ComposerLauncher {
 
-    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW, SETOPTS }
+    public enum Kind { MSGBOX, ADDWINDOW, ADDCHILDWINDOW, SETOPTS, SETOPTS_IN_CODE }
 
     private ComposerLauncher() {}
 
@@ -58,6 +64,18 @@ public final class ComposerLauncher {
                 .toLowerCase(java.util.Locale.ROOT);
         int idx = text.indexOf(keyword);
         return idx >= 0 && (caret - lineStart) >= idx;
+    }
+
+    /**
+     * Cheap, synchronous three-keyword gate for the SETOPTS-in-code intention's isAvailable
+     * (#475, DISC-06): the caret's line names {@code SETOPTS}, {@code IOR(} or {@code AND(}
+     * case-insensitively, at or before the caret. Widens {@link #isCaretOnCall}'s single-keyword
+     * mechanics to a set of three rather than introducing a second document-reading
+     * implementation. The authoritative safe/unsafe/editable decision always comes from the
+     * server's {@code decodeInCode} response, never from this heuristic.
+     */
+    static boolean isCaretOnSetoptsInCode(@NotNull Editor editor) {
+        return isCaretOnCall(editor, "setopts") || isCaretOnCall(editor, "ior(") || isCaretOnCall(editor, "and(");
     }
 
     public static void launch(@NotNull Project project, @NotNull Editor editor, @NotNull Kind kind) {
@@ -88,6 +106,35 @@ public final class ComposerLauncher {
             case SETOPTS -> flow.launch(labelOf(kind), serverFuture,
                     (server, catalogs) -> server.setoptsDecodeCall(new SetoptsDecodeCallParams(lineText)),
                     (server, catalogs, decoded) -> openSetopts(project, editor, server, catalogs.setopts, decoded, line, col));
+            case SETOPTS_IN_CODE -> {
+                // The in-code decode needs document-wide context (a document URI, not just a line
+                // of text), so the caret's virtual file is captured here on the EDT rather than
+                // sending a blank URI -- when no virtual file is available (an unsaved scratch
+                // buffer or a closed editor), the not-ready notice fires instead of guessing.
+                VirtualFile file = FileDocumentManager.getInstance().getFile(doc);
+                if (file == null) {
+                    ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(kind)), null);
+                    return;
+                }
+                String uri = uriOf(file);
+                flow.launch(labelOf(kind), serverFuture,
+                        (server, catalogs) -> server.setoptsDecodeInCode(new SetoptsInCodeDecodeParams(uri, line, col)),
+                        (server, catalogs, decoded) -> openSetoptsInCode(project, editor, server, catalogs.setopts, decoded, line, col, uri));
+            }
+        }
+    }
+
+    /**
+     * The document URI format the language server's document store keys open documents by --
+     * mirroring {@code BbjCompileAction}'s own conversion for {@code bbj/compile}, since both
+     * requests need a URI the server can resolve against its own already-open document, never a
+     * filesystem read of an arbitrary path.
+     */
+    private static String uriOf(VirtualFile file) {
+        try {
+            return file.toNioPath().toUri().toString();
+        } catch (UnsupportedOperationException ex) {
+            return file.getUrl();
         }
     }
 
@@ -98,6 +145,7 @@ public final class ComposerLauncher {
             case ADDWINDOW -> "addWindow";
             case ADDCHILDWINDOW -> "addChildWindow";
             case SETOPTS -> "SETOPTS";
+            case SETOPTS_IN_CODE -> "SETOPTS in code";
         };
     }
 
@@ -321,6 +369,134 @@ public final class ComposerLauncher {
         } else {
             insertAt(project, editor, dialog.getLine() + "\n", "Compose SETOPTS", true);
         }
+    }
+
+    /**
+     * Opens the SETOPTS-in-code composer (#475, DISC-06): routes a decoded shape to the right
+     * dialog and the right guarded write, based on the server's own {@code mode}/{@code editable}
+     * verdict -- an absolute literal to the existing two-state {@link SetoptsComposerDialog}, a
+     * safe chain or compose-new to the new {@link SetoptsTriStateComposerDialog}, and a
+     * {@code found && !editable} result to no dialog at all, just the server's own reason. Never
+     * constructs an edit from a decode result the server marked not editable.
+     */
+    private static void openSetoptsInCode(Project project, Editor editor, BbjComposerServer server,
+                                          SetoptsCatalogs catalogs, SetoptsInCodeDecodeResult decoded,
+                                          int line, int col, String uri) {
+        if (catalogs == null) {
+            ComposerNoticeRenderer.render(project, ComposerNotices.notReady(labelOf(Kind.SETOPTS_IN_CODE)), null);
+            return;
+        }
+        if (decoded == null || !decoded.found) {
+            openSetoptsInCodeComposeNew(project, editor, server, catalogs);
+            return;
+        }
+        if (!decoded.editable) {
+            String reason = decoded.reason != null
+                    ? decoded.reason
+                    : "This SETOPTS shape cannot be safely edited in place.";
+            ComposerNoticeRenderer.render(project, ComposerNotices.requestFailed(labelOf(Kind.SETOPTS_IN_CODE), reason), null);
+            return;
+        }
+        if ("absolute".equals(decoded.mode)) {
+            openSetoptsInCodeAbsolute(project, editor, server, catalogs, decoded, line, col, uri);
+        } else {
+            openSetoptsInCodeChain(project, editor, server, catalogs, decoded, line, col, uri);
+        }
+    }
+
+    /** Compose-new: a blank tri-state dialog whose composed block is inserted at the caret's line start. */
+    private static void openSetoptsInCodeComposeNew(Project project, Editor editor, BbjComposerServer server,
+                                                     SetoptsCatalogs catalogs) {
+        SetoptsTriStateComposerDialog dialog =
+                new SetoptsTriStateComposerDialog(project, server, catalogs, null, null, null, "block", false);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        String text = dialog.getBlockText();
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        insertAt(project, editor, ensureTrailingNewline(text), "Compose SETOPTS block", true);
+    }
+
+    /** Edit-in-place on an absolute {@code SETOPTS <literal>} statement, via the existing two-state dialog. */
+    private static void openSetoptsInCodeAbsolute(Project project, Editor editor, BbjComposerServer server,
+                                                   SetoptsCatalogs catalogs, SetoptsInCodeDecodeResult decoded,
+                                                   int line, int col, String uri) {
+        SetoptsInCodeAbsoluteEdit ed = decoded.absolute;
+        if (ed == null) {
+            return;
+        }
+        SetoptsComposerDialog dialog = new SetoptsComposerDialog(project, server, catalogs, null, ed.hexDigits, true);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        // Defense in depth for #538, mirroring openSetopts's own empty-value guard: OK is disabled
+        // until the first preview resolves, so hex should never still be empty here.
+        String hex = dialog.getHexDigits();
+        if (hex == null || hex.isEmpty()) {
+            return;
+        }
+        StaleEditGuard guard = new StaleEditGuard(
+                documentViewOf(editor),
+                body -> WriteCommandAction.runWriteCommandAction(project, "Configure SETOPTS", null, body),
+                ComposerLauncher::onEdt,
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.SETOPTS_IN_CODE)),
+                StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+        guard.applyIfUnchanged(labelOf(Kind.SETOPTS_IN_CODE), line, col, decoded,
+                (currentLineText, currentCol) -> server.setoptsDecodeInCode(new SetoptsInCodeDecodeParams(uri, line, currentCol)),
+                DecodeEquality::sameSetoptsInCode,
+                () -> {
+                    Document doc = editor.getDocument();
+                    int ls = doc.getLineStartOffset(ed.line);
+                    doc.replaceString(ls + ed.hexRange[0], ls + ed.hexRange[1], hex);
+                });
+    }
+
+    /**
+     * Edit-in-place on a safe {@code var$=OPTS … SETOPTS var$} chain, via the new tri-state
+     * dialog: replaces only the reassignment region {@code [startLine, endLine)}, never the
+     * user's {@code OPTS} origin or {@code SETOPTS} lines. An equal-line region ({@code
+     * startLine == endLine}) is naturally an insertion, since {@code replaceString(x, x, text)}
+     * behaves identically to an insert at {@code x}.
+     */
+    private static void openSetoptsInCodeChain(Project project, Editor editor, BbjComposerServer server,
+                                               SetoptsCatalogs catalogs, SetoptsInCodeDecodeResult decoded,
+                                               int line, int col, String uri) {
+        SetoptsInCodeChainEdit chain = decoded.chain;
+        if (chain == null) {
+            return;
+        }
+        SetoptsTriStateComposerDialog dialog = new SetoptsTriStateComposerDialog(
+                project, server, catalogs, decoded.initial, chain.variableName, chain.indent, "reassignments", true);
+        if (!dialog.showAndGet()) {
+            return;
+        }
+        String text = dialog.getBlockText();
+        if (text == null) {
+            return;
+        }
+        StaleEditGuard guard = new StaleEditGuard(
+                documentViewOf(editor),
+                body -> WriteCommandAction.runWriteCommandAction(project, "Configure SETOPTS block", null, body),
+                ComposerLauncher::onEdt,
+                notice -> ComposerNoticeRenderer.render(project, notice, () -> launch(project, editor, Kind.SETOPTS_IN_CODE)),
+                StaleEditGuard.REDECODE_TIMEOUT_MILLIS);
+        guard.applyIfUnchanged(labelOf(Kind.SETOPTS_IN_CODE), line, col, decoded,
+                (currentLineText, currentCol) -> server.setoptsDecodeInCode(new SetoptsInCodeDecodeParams(uri, line, currentCol)),
+                DecodeEquality::sameSetoptsInCode,
+                () -> {
+                    Document doc = editor.getDocument();
+                    int startOffset = doc.getLineStartOffset(chain.startLine);
+                    int endOffset = doc.getLineStartOffset(chain.endLine);
+                    String replacement = text.isEmpty() ? "" : ensureTrailingNewline(text);
+                    doc.replaceString(startOffset, endOffset, replacement);
+                });
+    }
+
+    /** Appends a trailing newline when absent, so a following line is never joined onto the inserted/replaced text. */
+    private static String ensureTrailingNewline(String text) {
+        return text.endsWith("\n") ? text : text + "\n";
     }
 
     /**

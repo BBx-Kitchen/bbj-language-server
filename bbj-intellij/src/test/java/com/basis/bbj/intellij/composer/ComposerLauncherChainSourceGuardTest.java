@@ -103,8 +103,9 @@ class ComposerLauncherChainSourceGuardTest {
     void theLauncherComposesEachComposerKindThroughTheFlowSeamExactlyOnce() {
         String text = readSource(LAUNCHER_SOURCE);
 
-        assertEquals(4, countOccurrences(text, "flow.launch("),
-                "one flow.launch( call per composer kind (MSGBOX, addWindow, addChildWindow, SETOPTS)");
+        assertEquals(5, countOccurrences(text, "flow.launch("),
+                "one flow.launch( call per composer kind (MSGBOX, addWindow, addChildWindow, "
+                        + "SETOPTS, SETOPTS-in-code -- #475)");
     }
 
     @Test
