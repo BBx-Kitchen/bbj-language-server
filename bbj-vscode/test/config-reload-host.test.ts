@@ -267,6 +267,10 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
 
     test('receiving bbj/configReloadRequired results in exactly one request on the gate, and no direct stop/start call from the handler itself', async () => {
         activateForTest();
+        // startLanguageClient() itself performs the one initial client.start() as part of
+        // activation, before any reload is requested — the baseline this test's deltas are
+        // measured against.
+        const initialStartCalls = clientStartMock.mock.calls.length;
         const handler = capturedHandler(CONFIG_RELOAD_METHOD);
 
         handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
@@ -274,16 +278,17 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
         // The handler itself must not call stop/start synchronously — only the gate's
         // delayed timer callback may do that.
         expect(clientStopMock).not.toHaveBeenCalled();
-        expect(clientStartMock).not.toHaveBeenCalled();
+        expect(clientStartMock).toHaveBeenCalledTimes(initialStartCalls);
 
         await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
 
         expect(clientStopMock).toHaveBeenCalledTimes(1);
-        expect(clientStartMock).toHaveBeenCalledTimes(1);
+        expect(clientStartMock).toHaveBeenCalledTimes(initialStartCalls + 1);
     });
 
     test('two reload notifications inside one coalescing window produce exactly one restart', async () => {
         activateForTest();
+        const initialStartCalls = clientStartMock.mock.calls.length;
         const handler = capturedHandler(CONFIG_RELOAD_METHOD);
 
         handler({ path: '/srv/config.bbx', reason: 'prefix-changed' });
@@ -292,6 +297,6 @@ describe('bbj/configReloadRequired: the handler dispatches to the gate, never di
         await vi.advanceTimersByTimeAsync(CONFIG_RELOAD_RESTART_DELAY_MS);
 
         expect(clientStopMock).toHaveBeenCalledTimes(1);
-        expect(clientStartMock).toHaveBeenCalledTimes(1);
+        expect(clientStartMock).toHaveBeenCalledTimes(initialStartCalls + 1);
     });
 });

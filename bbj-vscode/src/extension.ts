@@ -30,12 +30,22 @@ import { runProcess, formatArgvForLog, type ProcessError } from './Commands/proc
 import { getActiveConfigPath, isActiveConfigPath, setResolvedConfigPath, shouldWarnOnce } from './config-path-cache.js';
 import { canonicalizeConfigPath, samePath } from './language/config-path-resolver.js';
 import { RESOLVED_CONFIG_PATH_METHOD, type ResolvedConfigPathResult } from './language/resolved-config-path-request.js';
+import { CONFIG_RELOAD_METHOD, type ConfigReloadNotification } from './language/config-reload-notification.js';
+import { createRestartGate, CONFIG_RELOAD_RESTART_DELAY_MS, type RestartGate, type RestartPhase } from './restart-gate.js';
 
 import Commands from './Commands/Commands.cjs';
 
 let client: LanguageClient;
 let secretStorage: vscode.SecretStorage;
 let outputChannel: vscode.OutputChannel;
+let restartGate: RestartGate | undefined;
+
+// Stub for Task 1 — the status-bar transitions for each restart phase are wired in by a
+// later task in this plan.
+function onConfigRestartPhase(phase: RestartPhase, error?: unknown): void {
+    void phase;
+    void error;
+}
 
 // Function to read BBj.properties and extract classpath entry names
 function getBBjClasspathEntries(bbjHome: string | undefined): string[] {
@@ -633,6 +643,11 @@ export function activate(context: vscode.ExtensionContext): void {
     secretStorage = context.secrets;
     client = startLanguageClient(context);
     outputChannel = client.outputChannel;
+
+    // The choke point every VS Code restart must go through (#486, D-10): reuses this exact
+    // client instance (stop then start) so its already-registered notification handlers
+    // survive. No second LanguageClient is ever constructed for a restart.
+    restartGate = createRestartGate(client, onConfigRestartPhase);
     (Commands as any).setOutputChannel(outputChannel);
     vscode.commands.registerCommand("bbj.config", Commands.openConfigFile);
     vscode.commands.registerCommand("bbj.properties", Commands.openPropertiesFile);
@@ -876,6 +891,15 @@ export function activate(context: vscode.ExtensionContext): void {
         } else {
             bbjcplStatusBar.show();
         }
+    });
+
+    // The server already decided a restart is required (#486) — this handler never judges
+    // relevance itself, it only logs and hands the request to the choke point above.
+    client.onNotification(CONFIG_RELOAD_METHOD, (params: ConfigReloadNotification) => {
+        outputChannel.appendLine(
+            `BBj config changed (${params.reason}): ${params.path ?? '(no path)'} — reloading language server.`
+        );
+        restartGate?.request(CONFIG_RELOAD_RESTART_DELAY_MS);
     });
 
     // Hold the server-pushed resolved config path as the host's warm cache (#485). Never
