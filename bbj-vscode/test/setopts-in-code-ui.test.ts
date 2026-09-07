@@ -299,6 +299,8 @@ describe('setoptsInCodeCandidateLine (Task 2, pure helper)', () => {
         ['prior(', 'y = PRIOR(1)'],
         ['senior(', 'y = SENIOR(1)'],
         ['junior(', 'y = JUNIOR(1)'],
+        ['SETOPTSFOO', 'x = SETOPTSFOO(1)'],
+        ['SETOPTSHELPER(', 'x = SETOPTSHELPER(1)'],
     ])('negative: %s is a substring of an ordinary identifier, not a word-boundary keyword match', (_label, line) => {
         expect(setoptsInCodeCandidateLine(line, line.length - 1)).toBe(false);
     });
