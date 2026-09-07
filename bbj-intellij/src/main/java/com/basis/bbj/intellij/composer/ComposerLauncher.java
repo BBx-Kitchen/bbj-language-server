@@ -55,6 +55,12 @@ public final class ComposerLauncher {
      * <p>Requires a non-identifier boundary immediately before the keyword so an ordinary
      * identifier that merely contains the keyword as a substring — e.g. {@code expand(},
      * {@code command(}, {@code prior(} — is never mistaken for a call to {@code keyword}.</p>
+     *
+     * <p>For the bare {@code "setopts"} keyword specifically, also requires a non-identifier
+     * boundary immediately *after* the keyword, so an identifier where {@code setopts} is merely a
+     * *prefix* — e.g. {@code setoptsfoo}, {@code setoptshelper(} — is not mistaken for the keyword
+     * either. The other keywords (e.g. {@code "ior("}, {@code "and("}, {@code "msgbox("}) already
+     * end in a literal {@code (} and so get an equivalent trailing boundary for free.</p>
      */
     public static boolean isCaretOnCall(@NotNull Editor editor, @NotNull String keyword) {
         Document doc = editor.getDocument();
@@ -68,7 +74,9 @@ public final class ComposerLauncher {
                 .toLowerCase(java.util.Locale.ROOT);
         int caretCol = caret - lineStart;
         for (int idx = text.indexOf(keyword); idx >= 0; idx = text.indexOf(keyword, idx + 1)) {
-            if (!hasIdentifierCharBefore(text, idx) && caretCol >= idx) {
+            if (!hasIdentifierCharBefore(text, idx)
+                    && !(keyword.equals("setopts") && hasIdentifierCharAfter(text, idx + keyword.length()))
+                    && caretCol >= idx) {
                 return true;
             }
         }
@@ -84,6 +92,18 @@ public final class ComposerLauncher {
         }
         char prev = text.charAt(idx - 1);
         return Character.isLetterOrDigit(prev) || prev == '_' || prev == '$' || prev == '!' || prev == '%' || prev == '@';
+    }
+
+    /** Whether {@code text.charAt(idxAfterKeyword)} is a BBj identifier character (letter, digit,
+     * underscore, or one of the {@code $!%@} suffix sigils) — i.e. whether the keyword ending at
+     * {@code idxAfterKeyword} is actually just a prefix of a longer identifier rather than a
+     * genuine token boundary. */
+    private static boolean hasIdentifierCharAfter(@NotNull String text, int idxAfterKeyword) {
+        if (idxAfterKeyword >= text.length()) {
+            return false;
+        }
+        char next = text.charAt(idxAfterKeyword);
+        return Character.isLetterOrDigit(next) || next == '_' || next == '$' || next == '!' || next == '%' || next == '@';
     }
 
     /**

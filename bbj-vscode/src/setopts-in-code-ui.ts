@@ -38,10 +38,13 @@ const BBJ = { language: 'bbj' } as const;
  * Matches on a word boundary immediately before the keyword so ordinary identifiers that merely
  * contain one of these keywords as a substring — `expand(`, `command(`, `demand(`, `brand(`,
  * `island(`, `prior(`, `senior(`, `junior(`, etc. — are never mistaken for a SETOPTS-in-code
- * candidate.
+ * candidate. The bare `SETOPTS` alternative also requires a trailing word boundary (`\bSETOPTS\b`)
+ * so identifiers where `SETOPTS` is merely a *prefix* — `SETOPTSFOO`, `SETOPTSHELPER(` — are not
+ * mistaken for the keyword either; `IOR(`/`AND(` get an equivalent trailing boundary "for free"
+ * from the literal `(` that immediately follows them.
  */
 export function setoptsInCodeCandidateLine(lineText: string, character: number): boolean {
-    const pattern = /\b(?:SETOPTS|IOR\(|AND\()/gi;
+    const pattern = /\bSETOPTS\b|\bIOR\(|\bAND\(/gi;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(lineText))) {
         if (match.index <= character) {
