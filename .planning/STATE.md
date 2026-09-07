@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 86
 current_phase_name: IntelliJ Interop Settings & Targeted Refresh
 status: executing
-stopped_at: Phase 86 context gathered
-last_updated: "2026-09-07T14:16:33.195Z"
+stopped_at: Completed 86-01-PLAN.md
+last_updated: "2026-09-07T14:39:14.036Z"
 last_activity: 2026-09-07
-last_activity_desc: Phase 85 complete, transitioned to Phase 86
-state_head: e831756885d6b8812b5a307370579e8dae2161cb
+last_activity_desc: Phase 86 execution started
+state_head: c6f54641e1451839ea54e0861b474546da23a015
 progress:
   total_phases: 9
   completed_phases: 2
   total_plans: 15
-  completed_plans: 11
+  completed_plans: 12
   percent: 22
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 86 (IntelliJ Interop Settings & Targeted Refresh) — READY TO EXECUTE
-Plan: Not started
+Phase: 86 (IntelliJ Interop Settings & Targeted Refresh) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-07 — Phase 85 complete, transitioned to Phase 86
+Last activity: 2026-09-07 — Phase 86 execution started
 
 ## Performance Metrics
 
@@ -152,6 +152,7 @@ Last activity: 2026-09-07 — Phase 85 complete, transitioned to Phase 86
 | Phase 85 P02 | 25min | 3 tasks | 4 files |
 | Phase 85 P03 | 22min | 3 tasks | 3 files |
 | Phase 85 P04 | 25min | 3 tasks | 9 files |
+| Phase 86 P01 | 14min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -246,6 +247,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 85]: Phase 85 Plan 04: RESTART_DEBOUNCE_MS widened from private to public rather than duplicating the literal 500 at the new configReloadRequired call site -- one named constant is the only source of the coalescing delay on either restart trigger.
 - [Phase 85]: Phase 85 Plan 04: ConfigReloadPresentation.clearsReason clears only on the started state or an abandoned auto-restart (crashCount >= 2, hoisted into a local in BbjServerService.updateStatus) -- a plain stopped is deliberately excluded since a restart legitimately passes through it and clearing there would blank the tooltip mid-reload.
 - [Phase 85]: Phase 85 Plan 04: the cross-language contract test checks DTO field names as unquoted TypeScript interface members (word-boundary match) rather than quoted literals, since config-reload-notification.ts declares path/reason as plain interface fields, not JSON string literals -- code wins over the plan's literal wording.
+- [Phase 86]: D-11..D-16 closed for 86-01: bbj/refreshJavaClasses joins the composer server proxy; success is console-only, failures render a reason-keyed balloon with a user-clicked restart fallback; a per-project single-flight guard bounds concurrency
 
 ### Tech Debt
 
@@ -311,9 +313,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T13:17:24.668Z
-Stopped at: Phase 86 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/86-intellij-interop-settings-targeted-refresh/86-CONTEXT.md
+Last session: 2026-09-07T14:39:13.933Z
+Stopped at: Completed 86-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start
 IntelliJ Interop Settings & Targeted Refresh (CFG-04 #632, CFG-05 #608); it is independent
