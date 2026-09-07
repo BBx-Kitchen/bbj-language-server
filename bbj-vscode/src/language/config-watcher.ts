@@ -297,10 +297,10 @@ export function createConfigWatcher(deps: ConfigWatcherDeps = {}): ConfigWatcher
                 // The baseline snapshot was captured synchronously at workspace-open time,
                 // before the watch above was armed -- fs.watch only reports events that occur
                 // AFTER arming, so a config edit landing in that window would otherwise stay
-                // invisible for the rest of the session (WR-03). Run the same immediate
-                // relevance check `updateResolvedPath()` already performs on a settings
-                // change, reusing evaluate()'s exact read-compare-classify logic (canonicalPath
-                // and snapshot above are already primed for it).
+                // invisible for the rest of the session. Run the same immediate relevance
+                // check `updateResolvedPath()` already performs on a settings change, reusing
+                // evaluate()'s exact read-compare-classify logic (canonicalPath and snapshot
+                // above are already primed for it).
                 evaluate();
             } else {
                 watchedDir = null;

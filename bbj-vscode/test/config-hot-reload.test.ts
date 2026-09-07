@@ -142,8 +142,8 @@ describe('createConfigWatcher: debounce + relevance gate (end-to-end tracer)', (
         });
         const configPath = path.join('/cfg', 'config.bbx');
         watcher.start(resolvedAt(configPath), consumedConfigSnapshot(initialContents));
-        // start()'s own arm-time relevance check (WR-03) already read the file once and found
-        // it matching the baseline (no divergence, no notify) -- clear that call so the counts
+        // start()'s own arm-time relevance check already read the file once and found it
+        // matching the baseline (no divergence, no notify) -- clear that call so the counts
         // asserted below reflect only each test's own subsequent events.
         readFile.mockClear();
         return {
@@ -351,8 +351,8 @@ describe('arm failure handling and dispose', () => {
         const { watchDirectory, records } = createFakeWatchFactory();
         const notify = vi.fn();
         // Matches the baseline passed to start() below, so the arm-time relevance check
-        // (WR-03) sees no divergence and start() itself notifies nothing -- this test is
-        // about dispose() cancelling a LATER pending debounce timer, not the arm-time check.
+        // sees no divergence and start() itself notifies nothing -- this test is about
+        // dispose() cancelling a LATER pending debounce timer, not the arm-time check.
         let currentContents = 'PREFIX /original/\n';
         const readFile = vi.fn((): string | null => currentContents);
         const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
@@ -370,7 +370,7 @@ describe('arm failure handling and dispose', () => {
     });
 });
 
-describe('start(): arm-time relevance check (WR-03)', () => {
+describe('start(): arm-time relevance check', () => {
     test('a config file that diverged between the baseline snapshot capture and start() is detected immediately, with reason prefix-changed', () => {
         const { watchDirectory, records } = createFakeWatchFactory();
         const notify = vi.fn();

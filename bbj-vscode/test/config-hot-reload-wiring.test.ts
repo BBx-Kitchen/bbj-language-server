@@ -148,8 +148,8 @@ describe('config-watcher quiescence wait: a reload is never pushed while the bui
         });
         const configPath = path.join('/cfg', 'config.bbx');
         watcher.start(resolvedAt(configPath), consumedConfigSnapshot(initialContents));
-        // start()'s own arm-time relevance check (WR-03) already read the file once and found
-        // it matching the baseline (no divergence, no notify) -- clear that call so the counts
+        // start()'s own arm-time relevance check already read the file once and found it
+        // matching the baseline (no divergence, no notify) -- clear that call so the counts
         // asserted below reflect only each test's own subsequent events.
         readFile.mockClear();
         return {
