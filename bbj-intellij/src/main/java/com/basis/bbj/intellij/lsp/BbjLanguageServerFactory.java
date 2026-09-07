@@ -49,7 +49,7 @@ public final class BbjLanguageServerFactory implements LanguageServerFactory {
                 options.addProperty("javaInteropHost",
                     state.javaInteropHost != null && !state.javaInteropHost.isEmpty()
                         ? state.javaInteropHost : "localhost");
-                options.addProperty("javaInteropPort", state.javaInteropPort);
+                options.addProperty("javaInteropPort", BbjSettings.getInstance().getEffectiveJavaInteropPort());
                 options.addProperty("configPath",
                     state.configPath != null ? state.configPath : "");
                 // Flat key, not nested under BbjLanguageClient.createSettings(): LSP4IJ's

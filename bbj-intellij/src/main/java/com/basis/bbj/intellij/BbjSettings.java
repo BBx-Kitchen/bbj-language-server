@@ -28,6 +28,7 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
         public String logLevel = "Info";  // Default: Info. Options: Error, Warn, Info, Debug
         public String javaInteropHost = "localhost";  // Default: localhost (resolves to 127.0.0.1)
         public int javaInteropPort = 5008;  // Default: 5008 (matches language server DEFAULT_PORT)
+        public boolean javaInteropPortAutoDetect = true;  // Default: true; this flag, not the numeric value, records whether the port was chosen by the user
         public String configPath = "";  // Default: empty (uses {bbjHome}/cfg/config.bbx)
         public boolean autoSaveBeforeRun = true;  // Default: true (auto-save before run execution)
         public String emUrl = "";  // EM URL for web.bbj runner, defaults to empty (uses http://localhost:8888)
@@ -61,7 +62,30 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
 
     @Override
     public void loadState(@NotNull State state) {
+        // The one-time upgrade migration: applied here, before the incoming state is stored, so
+        // every persisted install passes through this exactly once before any reader can ever
+        // observe javaInteropPortAutoDetect.
+        state.javaInteropPortAutoDetect =
+                InteropPortSettings.migratedAutoDetect(state.javaInteropPortAutoDetect, state.javaInteropPort);
         myState = state;
+    }
+
+    /**
+     * The single answer every reader of the java-interop port shares: {@code
+     * BbjLanguageServerFactory}'s initialization options, {@code BbjJavaInteropService}'s health
+     * probe, and {@code BbjSettingsConfigurable#reset()} all call this method. Nothing outside
+     * this class may read the raw {@link State#javaInteropPort} field for the effective value.
+     *
+     * <p>Resolves a {@link BbjInteropPortDetector.PortLookup} through the stat-keyed {@link
+     * BbjInteropPortCache} only when auto-detect is on, so an explicit port performs not even a
+     * stat.
+     */
+    public int getEffectiveJavaInteropPort() {
+        State state = getState();
+        BbjInteropPortDetector.PortLookup lookup = state.javaInteropPortAutoDetect
+                ? BbjInteropPortCache.SESSION.lookup(state.bbjHomePath)
+                : BbjInteropPortDetector.NOT_DETECTED;
+        return InteropPortSettings.effectivePort(state.javaInteropPortAutoDetect, state.javaInteropPort, lookup);
     }
 
     /**
@@ -98,56 +122,5 @@ public final class BbjSettings implements PersistentStateComponent<BbjSettings.S
 
         Collections.sort(entries);
         return entries;
-    }
-
-    /**
-     * Attempts to auto-detect the java-interop port from BBjServices configuration.
-     * Searches BBj.properties for port configuration properties related to java-interop or bridge.
-     *
-     * @param bbjHomePath absolute path to the BBj installation directory
-     * @return detected port number (1-65535), or 5008 if not found or any error occurs
-     */
-    public static int detectJavaInteropPort(@NotNull String bbjHomePath) {
-        if (bbjHomePath == null || bbjHomePath.isEmpty()) {
-            return 5008;
-        }
-
-        Path propertiesPath = Paths.get(bbjHomePath, "cfg", "BBj.properties");
-        if (!Files.exists(propertiesPath)) {
-            return 5008;
-        }
-
-        try {
-            List<String> lines = Files.readAllLines(propertiesPath, StandardCharsets.UTF_8);
-            for (String line : lines) {
-                String trimmed = line.trim();
-                // Skip comments and empty lines
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-
-                // Search for java-interop or bridge port configuration
-                // Patterns: basis.java.interop.port=, java.interop.port=, basis.bridge.port=
-                if (trimmed.contains("java.interop.port=") || trimmed.contains("bridge.port=")) {
-                    int eqIndex = trimmed.indexOf('=');
-                    if (eqIndex > 0 && eqIndex < trimmed.length() - 1) {
-                        String value = trimmed.substring(eqIndex + 1).trim();
-                        try {
-                            int port = Integer.parseInt(value);
-                            // Validate port range
-                            if (port >= 1 && port <= 65535) {
-                                return port;
-                            }
-                        } catch (NumberFormatException e) {
-                            // Invalid port value, continue searching
-                        }
-                    }
-                }
-            }
-        } catch (IOException e) {
-            // Return default on error - best-effort auto-detection
-        }
-
-        return 5008;
     }
 }

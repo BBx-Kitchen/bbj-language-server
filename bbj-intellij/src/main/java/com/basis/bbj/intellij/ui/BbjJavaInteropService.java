@@ -115,9 +115,11 @@ public final class BbjJavaInteropService implements Disposable {
      * Implements grace period to avoid flashing UI on transient disconnects.
      */
     private void checkConnection() {
-        // Read host and port from settings at check time (not cached - user may change them)
+        // Read host and port from settings at check time (not cached - user may change them);
+        // reading the effective-port accessor on each tick is what lets a BBj.properties change
+        // show up on the next tick without a file watcher.
         BbjSettings.State state = BbjSettings.getInstance().getState();
-        int port = state.javaInteropPort;
+        int port = BbjSettings.getInstance().getEffectiveJavaInteropPort();
         String host = state.javaInteropHost;
         if (host == null || host.isEmpty()) {
             host = "localhost";

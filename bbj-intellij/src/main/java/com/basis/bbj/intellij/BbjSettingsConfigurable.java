@@ -133,19 +133,8 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         }
         myComponent.setJavaInteropHost(javaInteropHost);
 
-        // Load java-interop port with auto-detection
-        int javaInteropPort = state.javaInteropPort;
-        if (javaInteropPort == 5008) {
-            // Default value -- try auto-detection from BBjServices config
-            // Reuse bbjHome from earlier (already includes auto-detection)
-            if (!bbjHome.isEmpty()) {
-                int detected = BbjSettings.detectJavaInteropPort(bbjHome);
-                if (detected != 5008) {
-                    javaInteropPort = detected;
-                }
-            }
-        }
-        myComponent.setJavaInteropPort(javaInteropPort);
+        // Load java-interop port through the single effective-port accessor
+        myComponent.setJavaInteropPort(BbjSettings.getInstance().getEffectiveJavaInteropPort());
 
         // Load config.bbx path
         myComponent.setConfigPath(state.configPath != null ? state.configPath : "");
