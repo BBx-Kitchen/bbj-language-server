@@ -3,11 +3,13 @@
  */
 import { describe, expect, test } from 'vitest';
 import {
-    BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, SETOPTS_BITS,
-    composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector, encodeVector,
-    emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector, rawTail, setBit,
-    setMaskChar, setRawTail, setoptsPreview, unknownBitsInByte,
-    type SetOptsSelection, type SetOptsVector,
+    BYTE_GROUPS, FIRST_RAW_BYTE, MASK_COMMA_BYTE, MASK_DOT_BYTE, MAX_BYTES, SETOPTS_BITS,
+    SETOPTS_IN_CODE_DEFAULT_VAR,
+    composeSetOptsBlock, composeSetOptsLine, describeIorAndMask, describeMaskVector, describeVector,
+    encodeVector, emptyVector, getBit, knownByteMask, maskChar, parseSetOptsLine, parseVector,
+    rawTail, setBit, setMaskChar, setRawTail, setoptsPreview, singleBitAndMask, singleBitIorMask,
+    triStateFromChainEffect, unknownBitsInByte,
+    type SetOptsSelection, type SetOptsTriStateEntry, type SetOptsTriStateSelection, type SetOptsVector,
 } from '../src/setopts-catalog.js';
 
 /** The SETOPTS line the stock BBj config.bbx ships with (7 bytes). */
@@ -298,5 +300,141 @@ describe('setoptsPreview (the round-trip contract)', () => {
         expect(fresh.hexDigits).toBe('00000000');
         const grown = setoptsPreview(undefined, { ...noSelection, bits: [{ byte: 9, mask: 0x20 }] });
         expect(grown.hexDigits).toBe('000000000000000020');
+    });
+});
+
+/**
+ * Tri-state model, full-width mask generators and canonical block codegen — the BBj-code
+ * SETOPTS composer's compose-new/edit-in-place codegen (#475, DISC-06, plan 88-03).
+ */
+describe('singleBitIorMask / singleBitAndMask (full-width masks)', () => {
+    test('singleBitIorMask(1, 0x08) is all-zero except byte 1', () => {
+        expect(singleBitIorMask(1, 0x08)).toBe('08' + '00'.repeat(15));
+    });
+
+    test('singleBitAndMask(1, 0x08) is all-F except byte 1, which is F7', () => {
+        expect(singleBitAndMask(1, 0x08)).toBe('F7' + 'FF'.repeat(15));
+    });
+
+    test('every generated mask is exactly MAX_BYTES * 2 digits long, for every catalog bit', () => {
+        for (const bit of SETOPTS_BITS) {
+            expect(singleBitIorMask(bit.byte, bit.mask)).toHaveLength(MAX_BYTES * 2);
+            expect(singleBitAndMask(bit.byte, bit.mask)).toHaveLength(MAX_BYTES * 2);
+        }
+    });
+});
+
+describe('composeSetOptsBlock', () => {
+    function selectionOf(entries: SetOptsTriStateEntry[]): SetOptsTriStateSelection {
+        return { entries };
+    }
+
+    const byte1Bit08 = SETOPTS_BITS.find(b => b.byte === 1 && b.mask === 0x08)!;
+    const byte2Bit20 = SETOPTS_BITS.find(b => b.byte === 2 && b.mask === 0x20)!;
+
+    test('a mixed Set/Clear/Leave selection emits opts$=OPTS, IOR lines, AND lines, then SETOPTS opts$', () => {
+        const selection = selectionOf([
+            { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
+            { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
+        ]);
+        const result = composeSetOptsBlock({ selection });
+        expect(result.lines).toEqual([
+            `${SETOPTS_IN_CODE_DEFAULT_VAR}=OPTS`,
+            `${SETOPTS_IN_CODE_DEFAULT_VAR}=IOR(${SETOPTS_IN_CODE_DEFAULT_VAR},"$${singleBitIorMask(byte1Bit08.byte, byte1Bit08.mask)}$")`,
+            `${SETOPTS_IN_CODE_DEFAULT_VAR}=AND(${SETOPTS_IN_CODE_DEFAULT_VAR},"$${singleBitAndMask(byte2Bit20.byte, byte2Bit20.mask)}$")`,
+            `SETOPTS ${SETOPTS_IN_CODE_DEFAULT_VAR}`,
+        ]);
+        expect(result.text).toBe(result.lines.join('\n'));
+    });
+
+    test('all Set lines come before all Clear lines, in SETOPTS_BITS catalog order, regardless of selection order', () => {
+        // Selection lists the Clear entry first — output must still be Set-then-Clear.
+        const selection = selectionOf([
+            { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
+            { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
+        ]);
+        const result = composeSetOptsBlock({ selection, scope: 'reassignments' });
+        expect(result.lines[0]).toContain('IOR');
+        expect(result.lines[1]).toContain('AND');
+    });
+
+    test('scope: "reassignments" returns only the IOR/AND lines — no origin line, no SETOPTS line', () => {
+        const selection = selectionOf([{ byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' }]);
+        const result = composeSetOptsBlock({ selection, scope: 'reassignments' });
+        expect(result.lines).toHaveLength(1);
+        expect(result.lines[0]).not.toContain('OPTS');
+        expect(result.lines[0]).not.toContain('SETOPTS');
+    });
+
+    test('an all-Leave selection with scope: "block" returns exactly two lines (origin + SETOPTS)', () => {
+        const result = composeSetOptsBlock({ selection: selectionOf([]) });
+        expect(result.lines).toEqual([`${SETOPTS_IN_CODE_DEFAULT_VAR}=OPTS`, `SETOPTS ${SETOPTS_IN_CODE_DEFAULT_VAR}`]);
+    });
+
+    test('an all-Leave selection with scope: "reassignments" returns zero lines and an empty text', () => {
+        const result = composeSetOptsBlock({ selection: selectionOf([]), scope: 'reassignments' });
+        expect(result.lines).toEqual([]);
+        expect(result.text).toBe('');
+    });
+
+    test('an entry explicitly left "leave" produces no line, same as an entry missing from the selection', () => {
+        const explicitLeave = composeSetOptsBlock({
+            selection: selectionOf([{ byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'leave' }]),
+            scope: 'reassignments',
+        });
+        const missingEntirely = composeSetOptsBlock({ selection: selectionOf([]), scope: 'reassignments' });
+        expect(explicitLeave.lines).toEqual(missingEntirely.lines);
+    });
+
+    test('every returned line is prefixed with the supplied indent string', () => {
+        const selection = selectionOf([{ byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' }]);
+        const result = composeSetOptsBlock({ selection, indent: '        ' });
+        for (const line of result.lines) {
+            expect(line.startsWith('        ')).toBe(true);
+        }
+    });
+
+    test('a custom variable name is used consistently across every line', () => {
+        const selection = selectionOf([{ byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' }]);
+        const result = composeSetOptsBlock({ selection, variable: 'A$' });
+        expect(result.lines[0]).toBe('A$=OPTS');
+        expect(result.lines[1]).toContain('A$=IOR(A$,');
+        expect(result.lines[2]).toBe('SETOPTS A$');
+    });
+
+    test('two calls with the same input return byte-identical text', () => {
+        const selection = selectionOf([
+            { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },
+            { byte: byte2Bit20.byte, mask: byte2Bit20.mask, state: 'clear' },
+        ]);
+        const first = composeSetOptsBlock({ selection });
+        const second = composeSetOptsBlock({ selection });
+        expect(second.text).toBe(first.text);
+    });
+});
+
+describe('triStateFromChainEffect', () => {
+    test('maps every catalog bit to set/clear/leave, one entry per SETOPTS_BITS member, in catalog order', () => {
+        const selection = triStateFromChainEffect({
+            set: [{ byte: 1, mask: 0x08 }],
+            clear: [{ byte: 2, mask: 0x20 }],
+        });
+        expect(selection.entries).toHaveLength(SETOPTS_BITS.length);
+        expect(selection.entries.map(e => ({ byte: e.byte, mask: e.mask }))).toEqual(
+            SETOPTS_BITS.map(b => ({ byte: b.byte, mask: b.mask }))
+        );
+        const byte1 = selection.entries.find(e => e.byte === 1 && e.mask === 0x08)!;
+        const byte2 = selection.entries.find(e => e.byte === 2 && e.mask === 0x20)!;
+        expect(byte1.state).toBe('set');
+        expect(byte2.state).toBe('clear');
+        for (const entry of selection.entries) {
+            if (entry === byte1 || entry === byte2) continue;
+            expect(entry.state).toBe('leave');
+        }
+    });
+
+    test('an empty effect maps every entry to leave', () => {
+        const selection = triStateFromChainEffect({ set: [], clear: [] });
+        expect(selection.entries.every(e => e.state === 'leave')).toBe(true);
     });
 });

@@ -367,3 +367,127 @@ export function setoptsPreview(original: SetOptsVector | undefined, sel: SetOpts
             .filter(u => u.mask !== 0),
     };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Tri-state model & compose-new codegen — the BBj-code SETOPTS composer (#475, DISC-06)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Set/Clear/Leave state for one catalog bit in the BBj-code tri-state composer. Unlike
+ * `config.bbx`'s two-state checkbox model, a BBj-code composer selection must be able to say
+ * "don't touch this option at all" — `'leave'` — since the composed block is a set of
+ * `IOR`/`AND` reassignments layered on top of a runtime-relative `OPTS` value, not an absolute
+ * vector the composer can freely overwrite bit-by-bit.
+ */
+export type SetOptsTriState = 'set' | 'clear' | 'leave';
+
+export interface SetOptsTriStateEntry {
+    byte: number;
+    mask: number;
+    state: SetOptsTriState;
+}
+
+export interface SetOptsTriStateSelection {
+    entries: SetOptsTriStateEntry[];
+}
+
+/** Default variable name used by the compose-new/edit-in-place canonical block. */
+export const SETOPTS_IN_CODE_DEFAULT_VAR = 'opts$';
+
+/**
+ * Full-width single-bit `IOR` mask: built from an explicit all-zero `MAX_BYTES`-wide base
+ * (never grown from a short vector) with exactly one bit set, so IOR-ing this mask into an
+ * OPTS-derived variable can never disturb an unmodelled or reserved bit.
+ */
+export function singleBitIorMask(byte: number, mask: number): string {
+    const v = emptyVector();
+    growTo(v, MAX_BYTES);
+    setBit(v, byte, mask, true);
+    return encodeVector(v);
+}
+
+/**
+ * Full-width single-bit `AND` mask: built from an explicit all-`0xFF` `MAX_BYTES`-wide base
+ * (never grown from a short vector) with exactly one bit cleared, so AND-ing this mask into an
+ * OPTS-derived variable can never disturb an unmodelled or reserved bit.
+ */
+export function singleBitAndMask(byte: number, mask: number): string {
+    const v: SetOptsVector = { bytes: new Array(MAX_BYTES).fill(0xff), digitCount: MAX_BYTES * 2 };
+    setBit(v, byte, mask, false);
+    return encodeVector(v);
+}
+
+export interface ComposeSetOptsBlockInput {
+    selection: SetOptsTriStateSelection;
+    variable?: string;
+    indent?: string;
+    scope?: 'block' | 'reassignments';
+}
+
+export interface ComposeSetOptsBlockResult {
+    lines: string[];
+    text: string;
+}
+
+/**
+ * Compose the canonical `var$=OPTS` / `var$=IOR(var$,mask)` / `var$=AND(var$,mask)` /
+ * `SETOPTS var$` block from a tri-state selection (#475, DISC-06). Iterates `SETOPTS_BITS`
+ * (not the selection array) so ordering is deterministic catalog order regardless of the
+ * selection's own order, and a duplicate or out-of-catalog entry cannot influence output.
+ * Every Set (`IOR`) line is emitted before every Clear (`AND`) line; an option left `'leave'`
+ * (or missing from the selection entirely) produces no line at all. `scope: 'reassignments'`
+ * omits the origin and `SETOPTS` lines, returning only the `IOR`/`AND` lines — the region an
+ * edit-in-place replaces without touching the existing origin/`SETOPTS` lines around it.
+ */
+export function composeSetOptsBlock(input: ComposeSetOptsBlockInput): ComposeSetOptsBlockResult {
+    const variable = input.variable ?? SETOPTS_IN_CODE_DEFAULT_VAR;
+    const indent = input.indent ?? '';
+    const scope = input.scope ?? 'block';
+    const stateFor = (bit: SetOptsBit): SetOptsTriState => {
+        const entry = input.selection.entries.find(e => e.byte === bit.byte && e.mask === bit.mask);
+        return entry?.state ?? 'leave';
+    };
+    const setLines: string[] = [];
+    const clearLines: string[] = [];
+    for (const bit of SETOPTS_BITS) {
+        const state = stateFor(bit);
+        if (state === 'set') {
+            setLines.push(`${variable}=IOR(${variable},"$${singleBitIorMask(bit.byte, bit.mask)}$")`);
+        } else if (state === 'clear') {
+            clearLines.push(`${variable}=AND(${variable},"$${singleBitAndMask(bit.byte, bit.mask)}$")`);
+        }
+    }
+    const reassignments = [...setLines, ...clearLines];
+    const lines = scope === 'reassignments'
+        ? reassignments
+        : [`${variable}=OPTS`, ...reassignments, `SETOPTS ${variable}`];
+    const indented = lines.map(l => `${indent}${l}`);
+    return { lines: indented, text: indented.join('\n') };
+}
+
+/**
+ * Structural mirror of `setopts-code-scanner.ts`'s `SetOptsChainEffect` — declared here (rather
+ * than imported) because that module transitively depends on `./generated/ast.js`, and this
+ * catalog must keep its "no host, no Langium dependency" property so it stays reusable and
+ * unit-testable in isolation.
+ */
+export interface SetOptsChainEffectLike {
+    set: Array<{ byte: number; mask: number }>;
+    clear: Array<{ byte: number; mask: number }>;
+}
+
+/**
+ * Map a traced OPTS-chain's folded set/clear effect onto a full tri-state selection — one
+ * entry per `SETOPTS_BITS` member, in catalog order, defaulting to `'leave'` for anything the
+ * chain neither set nor cleared. Used to prefill the tri-state composer when editing an
+ * existing safe chain in place.
+ */
+export function triStateFromChainEffect(effect: SetOptsChainEffectLike): SetOptsTriStateSelection {
+    const entries: SetOptsTriStateEntry[] = SETOPTS_BITS.map(bit => {
+        const isSet = effect.set.some(e => e.byte === bit.byte && e.mask === bit.mask);
+        const isClear = effect.clear.some(e => e.byte === bit.byte && e.mask === bit.mask);
+        const state: SetOptsTriState = isSet ? 'set' : isClear ? 'clear' : 'leave';
+        return { byte: bit.byte, mask: bit.mask, state };
+    });
+    return { entries };
+}
