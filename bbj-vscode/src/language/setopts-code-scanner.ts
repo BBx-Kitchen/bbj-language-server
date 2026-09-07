@@ -35,7 +35,7 @@ import {
     MethodCall,
     SetOptsStatement,
 } from './generated/ast.js';
-import { describeVector, parseVector, SETOPTS_BITS, SetOptsVector } from '../setopts-catalog.js';
+import { describeIorAndMask, describeMaskVector, describeVector, parseVector, SETOPTS_BITS, SetOptsVector } from '../setopts-catalog.js';
 import { resolveLibFunction } from './validations/check-function-calls.js';
 
 /** The builtin function name that ORs bits into an OPTS-derived vector. */
@@ -80,12 +80,15 @@ export type SetOptsCodeShape =
 const MAX_CONTAINER_HOPS = 12;
 
 /**
- * Resolve the `SetOptsStatement` a hovered leaf belongs to, or `undefined` when the leaf is
- * anywhere else. Matches both the `SETOPTS` keyword token (whose CST leaf's `astNode` is the
- * statement itself) and any token inside the statement's `opts` expression (whose `astNode`
- * chain reaches the statement via `$container`).
+ * Resolve the `SetOptsStatement` or `IOR`/`AND` `MethodCall` a hovered leaf belongs to, or
+ * `undefined` when the leaf is anywhere else. Matches: the `SETOPTS` keyword token or any token
+ * inside a `SetOptsStatement.opts` expression (whose `astNode` chain reaches the statement via
+ * `$container`); and, for shape (c), a `SymbolRef` that is a `MethodCall`'s own `method`
+ * expression — i.e. the function-name token itself, never a token inside one of that call's
+ * `args` (each argument's `SymbolRef.$container` is a `ParameterCall`, not the `MethodCall`
+ * directly, so hovering the first argument of `IOR(opts$,"$08$")` never matches here).
  *
- * Stops as soon as it reaches a `SetOptsStatement` (found) or a statement-list container
+ * Stops as soon as it reaches one of those two shapes (found) or a statement-list container
  * (`Program`, `MethodDecl`, `DefFunction`, `CompoundStatement`) without finding one (not found)
  * — walking past a statement-list container would cross into unrelated sibling statements.
  */
@@ -95,6 +98,9 @@ export function setoptsHoverTarget(leaf: CstNode): AstNode | undefined {
     while (node && hops < MAX_CONTAINER_HOPS) {
         if (isSetOptsStatement(node)) {
             return node;
+        }
+        if (isSymbolRef(node) && isMethodCall(node.$container) && node.$container.method === node) {
+            return node.$container;
         }
         if (isProgram(node) || isMethodDecl(node) || isDefFunction(node) || isCompoundStatement(node)) {
             return undefined;
@@ -350,17 +356,69 @@ export function detectSetOptsShape(node: AstNode): SetOptsCodeShape | undefined 
 }
 
 /**
- * Render a {@link SetOptsCodeShape} as hover markdown. For `absolute`, reuses
- * `describeVector` verbatim — this module adds no new summary formatting logic.
+ * User-facing sentence for each {@link SetOptsUnsafeReason}, keyed once so plan 88-03's edit
+ * gating can reuse the exact same wording in its own `reason` field rather than a second,
+ * potentially-diverging inline string switch.
+ */
+export const UNSAFE_REASON_TEXT: Record<SetOptsUnsafeReason, string> = {
+    'control-flow': 'a conditional, loop, or GOTO/GOSUB sits between this statement and its origin',
+    reassigned: 'the variable is reassigned to something other than an IOR/AND of itself before this statement',
+    alias: 'one of the IOR/AND reassignments operates on a different variable',
+    'unparseable-mask': 'one of the IOR/AND masks in this chain is not a literal this decoder can read',
+    'no-origin': 'no `var$=OPTS` assignment was found in the enclosing block',
+};
+
+/** Catalog labels for a resolved set/clear bit list (each entry already names one specific
+ * catalog bit — {@link describeIorAndMask}'s `'set'` kind is the correct presence check for
+ * both `effect.set` and `effect.clear`, since the inversion only applies when interpreting a
+ * raw multi-bit `AND` mask argument, not an already-resolved single-bit result). */
+function chainEffectLabels(entries: Array<{ byte: number; mask: number }>): string[] {
+    return entries.flatMap(e => describeIorAndMask(e.byte, e.mask, 'set'));
+}
+
+/** Render the `chain` shape (b): the accumulated safe-chain effect, or the unsafe-chain
+ * undecidability statement — the two must never share their introducing phrase (a future
+ * refactor collapsing them into one render path would be a DISC-06 safety regression). */
+function chainHoverMarkdown(shape: Extract<SetOptsCodeShape, { kind: 'chain' }>): string {
+    const header = `__SETOPTS ${shape.variableName}__`;
+    if (!shape.safe) {
+        const reason = shape.unsafeReason ? UNSAFE_REASON_TEXT[shape.unsafeReason] : undefined;
+        return `${header}\n\nThe effective value of this SETOPTS cannot be determined statically`
+            + (reason ? ` — ${reason}.` : '.');
+    }
+    const setLabels = chainEffectLabels(shape.effect.set);
+    const clearLabels = chainEffectLabels(shape.effect.clear);
+    return [
+        header,
+        '',
+        'Evaluated against the current runtime options vector returned by OPTS.',
+        '',
+        `Sets: ${setLabels.length ? setLabels.join(' · ') : '(none)'}`,
+        `Clears: ${clearLabels.length ? clearLabels.join(' · ') : '(none)'}`,
+    ].join('\n');
+}
+
+/** Render the `mask-call` shape (c): a single `IOR`/`AND` call, with `AND` masks framed as the
+ * options they clear (DISC-05's cleared-bits requirement) — never as a raw bitmask. */
+function maskCallHoverMarkdown(shape: Extract<SetOptsCodeShape, { kind: 'mask-call' }>): string {
+    const header = `__${shape.fnName}($${shape.maskHex}$)__`;
+    return shape.fnName === 'IOR'
+        ? `${header}\n\nSets these options: ${describeMaskVector(shape.vector, 'set')}`
+        : `${header}\n\nClears these options: ${describeMaskVector(shape.vector, 'clear')}`;
+}
+
+/**
+ * Render a {@link SetOptsCodeShape} as hover markdown. For `absolute`, reuses `describeVector`
+ * verbatim. For `chain`/`mask-call`, see {@link chainHoverMarkdown}/{@link maskCallHoverMarkdown}.
  */
 export function setoptsHoverMarkdown(shape: SetOptsCodeShape): string {
     switch (shape.kind) {
         case 'absolute':
             return `__SETOPTS $${shape.hexDigits}$__\n\n${describeVector(shape.vector)}`;
         case 'chain':
+            return chainHoverMarkdown(shape);
         case 'mask-call':
-            // Populated by plan 88-02; detectSetOptsShape never produces these shapes yet.
-            throw new Error(`setoptsHoverMarkdown: shape kind '${shape.kind}' is not yet implemented (plan 88-02)`);
+            return maskCallHoverMarkdown(shape);
     }
 }
 

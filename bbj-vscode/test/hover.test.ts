@@ -258,3 +258,128 @@ describe('SETOPTS-in-code hover: absolute shape decode (88-01, DISC-05)', async 
         expect((second!.contents as { value: string }).value).toBe((first!.contents as { value: string }).value);
     });
 });
+
+/**
+ * SETOPTS-in-code decode hover, shapes (b) and (c): the OPTS-derived `IOR`/`AND` chain and a
+ * single `IOR`/`AND` call (#475, DISC-05, plan 88-02). End-to-end through a real
+ * `getHoverContent` call, proving the chain/mask-call shapes reach the user through the same
+ * hook the tracer (88-01) proved for the absolute shape.
+ */
+describe('SETOPTS-in-code hover: chain and mask-call shape decode (88-02, DISC-05)', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    const parse = parseHelper<Model>(services.BBj);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    function positionOf(document: LangiumDocument, snippet: string) {
+        const offset = document.textDocument.getText().indexOf(snippet);
+        expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+        return document.textDocument.positionAt(offset);
+    }
+
+    function lastPositionOf(document: LangiumDocument, snippet: string) {
+        const offset = document.textDocument.getText().lastIndexOf(snippet);
+        expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+        return document.textDocument.positionAt(offset);
+    }
+
+    async function hoverAt(document: LangiumDocument, position: { line: number; character: number }, offset = 1) {
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        return hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + offset }
+        });
+    }
+
+    test('hovering SETOPTS on a safe OPTS->IOR chain lists the set options and states the cleared side explicitly', async () => {
+        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = lastPositionOf(document, 'SETOPTS A$');
+        const hover = await hoverAt(document, position, 'SETOPTS '.length);
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('Evaluated against the current runtime options vector returned by OPTS.');
+        expect(value).toContain('Sets: Console mode in public programs');
+        expect(value).toContain('Clears: (none)');
+    });
+
+    test('hovering SETOPTS on an unsafe chain says the value cannot be determined statically, names the reason, and never fabricates a vector or claims editability', async () => {
+        const document = await parse('A$=OPTS\nA$="hello"\nSETOPTS A$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = lastPositionOf(document, 'SETOPTS A$');
+        const hover = await hoverAt(document, position, 'SETOPTS '.length);
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('cannot be determined statically');
+        expect(value).toContain('reassigned to something other than an IOR/AND of itself');
+        expect(value).not.toContain('Sets: ');
+        expect(value).not.toMatch(/\$[0-9A-Fa-f]+\$/); // never a fabricated absolute hex vector
+        expect(value.toLowerCase()).not.toContain('editable');
+    });
+
+    test('hovering the IOR token of a chain-link call names the option it sets', async () => {
+        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = positionOf(document, 'IOR(A$,"$08$")');
+        const hover = await hoverAt(document, position);
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('__IOR($08$)__');
+        expect(value).toContain('Sets these options: Byte 1: Console mode in public programs');
+    });
+
+    test('hovering the AND token of a chain-link call names the option it CLEARS, with wording that says it is cleared', async () => {
+        const document = await parse('A$=OPTS\nA$=AND(A$,"$F7$")\nSETOPTS A$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = positionOf(document, 'AND(A$,"$F7$")');
+        const hover = await hoverAt(document, position);
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('__AND($F7$)__');
+        expect(value).toContain('Clears these options: Byte 1: Console mode in public programs');
+        expect(value).not.toContain('Sets these options');
+    });
+
+    test('hovering the first argument inside IOR(opts$,"$08$") returns no SETOPTS markdown', async () => {
+        const document = await parse('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = positionOf(document, 'IOR(A$,"$08$")');
+        // "IOR(" is 4 characters; land inside the "A$" argument, not the "IOR" token.
+        const hover = await hoverAt(document, position, 'IOR('.length + 1);
+
+        if (hover) {
+            const value = (hover.contents as { value: string }).value;
+            expect(value).not.toContain('__IOR(');
+        }
+    });
+
+    test('hovering the AND of a logical "IF x=1 AND y=2" line returns no SETOPTS markdown', async () => {
+        const document = await parse('X=1\nY=2\nIF X=1 AND Y=2', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const position = positionOf(document, ' AND ');
+        const hover = await hoverAt(document, position);
+
+        if (hover) {
+            const value = (hover.contents as { value: string }).value;
+            expect(value).not.toContain('__AND(');
+        }
+    });
+});

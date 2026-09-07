@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { findLeafNodeAtOffset } from '../src/language/bbj-validator.js';
-import { Model, SetOptsStatement, isSetOptsStatement } from '../src/language/generated/ast.js';
+import { Model, MethodCall, SetOptsStatement, isMethodCall, isSetOptsStatement } from '../src/language/generated/ast.js';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import {
     detectSetOptsShape, foldChainEffect, setoptsHoverMarkdown, setoptsHoverTarget, traceOptsChain,
@@ -362,6 +362,159 @@ classend`;
             expect(shape.safe).toBe(false);
             expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('no-origin');
         });
+    });
+});
+
+/**
+ * `setoptsHoverTarget` shape (c) boundary: a single `IOR`/`AND` call resolves only when the
+ * hovered leaf IS the call's own method-name token — never a token inside one of its
+ * arguments, and never the unrelated logical `AND`/`OR` `BinaryExpression` operator (#475,
+ * DISC-05, plan 88-02).
+ */
+describe('setoptsHoverTarget: shape (c) - single IOR/AND call resolution (88-02)', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    const parse = parseHelper<Model>(services.BBj);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    async function parseAndFindLeafAt(source: string, offset: number) {
+        const document = await parse(source, { validation: true });
+        expect(document.parseResult.lexerErrors, source).toHaveLength(0);
+        expect(document.parseResult.parserErrors, source).toHaveLength(0);
+        const rootNode = document.parseResult.value.$cstNode!;
+        const leaf = findLeafNodeAtOffset(rootNode, offset);
+        expect(leaf, `expected a leaf CST node at offset ${offset}`).toBeDefined();
+        return leaf!;
+    }
+
+    test('hovering the IOR token of a chain-link call resolves to that MethodCall', async () => {
+        const source = 'A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$';
+        const leaf = await parseAndFindLeafAt(source, source.indexOf('IOR') + 1);
+        const target = setoptsHoverTarget(leaf);
+        expect(target).toBeDefined();
+        expect(isMethodCall(target)).toBe(true);
+    });
+
+    test('hovering the first argument inside IOR(...) does not resolve to the call (ParameterCall exclusion)', async () => {
+        const source = 'A$=IOR(A$,"$08$")';
+        const argOffset = source.indexOf('(A$') + 1; // lands on the "A$" argument, not the "IOR" token
+        const leaf = await parseAndFindLeafAt(source, argOffset);
+        expect(setoptsHoverTarget(leaf)).toBeUndefined();
+    });
+
+    test('hovering the logical AND operator in "IF x=1 AND y=2" resolves to nothing', async () => {
+        const source = 'X=1\nY=2\nIF X=1 AND Y=2';
+        const leaf = await parseAndFindLeafAt(source, source.indexOf(' AND ') + 1);
+        expect(setoptsHoverTarget(leaf)).toBeUndefined();
+    });
+});
+
+/**
+ * `setoptsHoverMarkdown` — the chain (b) and mask-call (c) rendering, including the AND-mask
+ * cleared-bits framing and the safe/unsafe divergence DISC-06's edit gating depends on (#475,
+ * plan 88-02).
+ */
+describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    const parse = parseHelper<Model>(services.BBj);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    async function parseAndFindSetOptsTarget(source: string): Promise<SetOptsStatement> {
+        const document = await parse(source, { validation: true });
+        expect(document.parseResult.lexerErrors, source).toHaveLength(0);
+        expect(document.parseResult.parserErrors, source).toHaveLength(0);
+        const rootNode = document.parseResult.value.$cstNode!;
+        const text = document.textDocument.getText();
+        const re = /SETOPTS\s+/gi;
+        let match: RegExpExecArray | null;
+        let variableOffset = -1;
+        while ((match = re.exec(text))) {
+            variableOffset = match.index + match[0].length;
+        }
+        expect(variableOffset).toBeGreaterThanOrEqual(0);
+        const leaf = findLeafNodeAtOffset(rootNode, variableOffset);
+        const target = setoptsHoverTarget(leaf!);
+        expect(isSetOptsStatement(target)).toBe(true);
+        return target as SetOptsStatement;
+    }
+
+    async function parseAndFindCallTarget(source: string, snippet: string): Promise<MethodCall> {
+        const document = await parse(source, { validation: true });
+        expect(document.parseResult.lexerErrors, source).toHaveLength(0);
+        expect(document.parseResult.parserErrors, source).toHaveLength(0);
+        const rootNode = document.parseResult.value.$cstNode!;
+        const offset = document.textDocument.getText().indexOf(snippet);
+        expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+        const leaf = findLeafNodeAtOffset(rootNode, offset + Math.floor(snippet.length / 2));
+        const target = setoptsHoverTarget(leaf!);
+        expect(isMethodCall(target)).toBe(true);
+        return target as MethodCall;
+    }
+
+    test('safe chain markdown states the runtime-vector framing and lists Sets/Clears in catalog order, with an explicit (none) for the empty side', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        const markdown = setoptsHoverMarkdown(shape);
+        expect(markdown).toContain('__SETOPTS a$__');
+        expect(markdown).toContain('Evaluated against the current runtime options vector returned by OPTS.');
+        expect(markdown).toContain('Sets: Console mode in public programs');
+        expect(markdown).toContain('Clears: (none)');
+    });
+
+    test('unsafe chain markdown states the value cannot be determined statically, names the reason, and never uses the safe-chain\'s "Sets: " introduction', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$="hello"\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        const markdown = setoptsHoverMarkdown(shape);
+        expect(markdown).toContain('cannot be determined statically');
+        expect(markdown).toContain('reassigned to something other than an IOR/AND of itself');
+        expect(markdown).not.toContain('Sets: ');
+        expect(markdown).not.toContain('editable');
+    });
+
+    test('every SetOptsUnsafeReason has a distinct, non-empty user-facing sentence', async () => {
+        const cases: Array<[string, SetOptsUnsafeReason]> = [
+            ['A$=OPTS\nIF X=1\nSETOPTS A$', 'control-flow'],
+            ['A$=OPTS\nA$="hello"\nSETOPTS A$', 'reassigned'],
+            ['A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$', 'alias'],
+            ['A$=OPTS\nX$="$08$"\nA$=IOR(A$,X$)\nSETOPTS A$', 'unparseable-mask'],
+            ['PRINT "hi"\nSETOPTS A$', 'no-origin'],
+        ];
+        const seen = new Set<string>();
+        for (const [source, expectedReason] of cases) {
+            const target = await parseAndFindSetOptsTarget(source);
+            const shape = traceOptsChain(target)!;
+            expect(shape.unsafeReason).toBe(expectedReason);
+            const markdown = setoptsHoverMarkdown(shape);
+            expect(markdown.length).toBeGreaterThan(0);
+            seen.add(markdown);
+        }
+        expect(seen.size).toBe(cases.length);
+    });
+
+    test('IOR single-call markdown names the option it sets, headed by the uppercase mask hex', async () => {
+        const target = await parseAndFindCallTarget('A$=IOR(A$,"$08$")', 'IOR');
+        const shape = detectSetOptsShape(target)!;
+        expect(shape.kind).toBe('mask-call');
+        const markdown = setoptsHoverMarkdown(shape);
+        expect(markdown).toContain('__IOR($08$)__');
+        expect(markdown).toContain('Sets these options: Byte 1: Console mode in public programs');
+    });
+
+    test('AND single-call markdown names the option it CLEARS, never as set', async () => {
+        // $F7$ = every byte-1 catalog bit set except $08$ -- the absent bit is the one cleared.
+        const target = await parseAndFindCallTarget('A$=AND(A$,"$F7$")', 'AND');
+        const shape = detectSetOptsShape(target)!;
+        expect(shape.kind).toBe('mask-call');
+        const markdown = setoptsHoverMarkdown(shape);
+        expect(markdown).toContain('__AND($F7$)__');
+        expect(markdown).toContain('Clears these options: Byte 1: Console mode in public programs');
+        expect(markdown).not.toContain('Sets these options');
     });
 });
 
