@@ -4,7 +4,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsBit;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsByteGroup;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsCatalogs;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsUnknownBits;
 import com.basis.bbj.intellij.concurrency.AlarmScheduler;
 import com.basis.bbj.intellij.concurrency.PreviewDebouncer;
 import com.intellij.openapi.application.ApplicationManager;
@@ -184,16 +187,104 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         rawTailField.setText(in.rawTail == null ? "" : in.rawTail);
     }
 
+    /**
+     * Read the live field state, validate it, and — only when valid — ask the language server for
+     * a fresh preview. Called by the constructor directly and by {@link #previewDebouncer}
+     * afterwards; never call this method from a listener body directly (D-09).
+     */
     private void refresh() {
-        // Completed in plan 87-02 Task 3: debounced preview round trip and the validation gate.
+        String rawTail = rawTailField.getText();
+        if (!rawTail.matches("[0-9A-Fa-f]{0," + MAX_RAW_TAIL_DIGITS + "}")) {
+            previewUnavailable("raw hex must be 0-9 or A-F, up to " + MAX_RAW_TAIL_DIGITS + " digits");
+            return;
+        }
+        String maskComma = maskCommaField.getText();
+        String maskDot = maskDotField.getText();
+        if (!isValidMaskChar(maskComma) || !isValidMaskChar(maskDot)) {
+            previewUnavailable("mask replacement must be one printable character");
+            return;
+        }
+
+        List<SetoptsSelectionBit> bits = new ArrayList<>();
+        for (CheckboxRow row : checkboxRows) {
+            if (row.checkBox().isSelected()) {
+                bits.add(new SetoptsSelectionBit(row.bit().byteNo, row.bit().mask));
+            }
+        }
+        SetoptsSelection selection = new SetoptsSelection();
+        selection.bits = bits;
+        selection.maskComma = maskComma;
+        selection.maskDot = maskDot;
+        selection.rawTail = rawTail;
+
+        // Always pass the constructor-captured original hex through — building the request without
+        // it would silently drop bytes 10-16 and every unknown bit in the user's existing line.
+        SetoptsPreviewParams params = new SetoptsPreviewParams(originalHex, selection);
+
+        int mySeq = seq.incrementAndGet();
+        flow.observe(server.setoptsPreview(params), ComposerFlow.REFRESH_TIMEOUT_MILLIS,
+                preview -> {
+                    if (mySeq == seq.get()) {
+                        apply(preview);
+                    }
+                },
+                throwable -> {
+                    if (mySeq == seq.get()) {
+                        previewUnavailable(ComposerNotices.shortReason(throwable));
+                        balloonOnce.accept(ComposerNotices.requestFailed("SETOPTS", ComposerNotices.detailOf(throwable)));
+                    }
+                });
     }
 
+    private static boolean isValidMaskChar(String text) {
+        if (text.length() > 1) {
+            return false;
+        }
+        if (text.isEmpty()) {
+            return true;
+        }
+        char c = text.charAt(0);
+        return c >= 0x20 && c <= 0x7E;
+    }
+
+    /**
+     * A refresh request failed (or completed with no preview), or the form's own input is invalid,
+     * while this dialog's sequence is still current: label the summary stale and refuse OK so it can
+     * never be accepted (#538). Cleared the next time {@link #apply(SetoptsPreview)} runs after a
+     * successful preview.
+     */
     private void previewUnavailable(String reason) {
-        // Completed in plan 87-02 Task 3.
+        summary.setText("Preview unavailable — " + reason);
+        setOKActionEnabled(false);
     }
 
     private void apply(SetoptsPreview p) {
-        // Completed in plan 87-02 Task 3.
+        hexDigits = p.hexDigits;
+        line = p.line;
+        resultingLine.setText(p.line);
+        summary.setText(p.hexDigits.length() / 2 + " byte(s)  ·  " + p.summary);
+        preservedLabel.setText(unknownBitsText(p.unknownByBytes));
+        maskCommaField.setEnabled(p.maskInputsEnabled);
+        maskDotField.setEnabled(p.maskInputsEnabled);
+        rawTailError.setText(" ");
+        setOKActionEnabled(true);
+    }
+
+    private static String unknownBitsText(List<SetoptsUnknownBits> unknownByBytes) {
+        if (unknownByBytes == null || unknownByBytes.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("Preserved: ");
+        boolean first = true;
+        for (SetoptsUnknownBits u : unknownByBytes) {
+            if (!first) {
+                sb.append(", ");
+            }
+            first = false;
+            sb.append("byte ").append(u.byteNo).append(" $")
+                    .append(String.format("%02X", u.mask)).append('$');
+        }
+        return sb.toString();
     }
 
     private static JBLabel errorLabel() {

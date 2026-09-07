@@ -13,16 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Pins the #538 dialog-refresh wiring across all three composer dialogs -- MSGBOX, addWindow and
- * addChildWindow: each one observes both the success and the failure side of its preview request
- * through {@link ComposerFlow#observe}, checks its sequence number on both paths before touching
- * anything, disables OK and labels the dialog on a failure, and rate-limits its balloon to one per
- * dialog session via {@link ComposerFlow#once}. A failure here means one of four things happened --
- * a dialog went back to observing only the success side of its preview request, lost the sequence
- * check on one of the two paths, lost the OK gating that stops a stale statement from being
- * accepted, or started raising a balloon per keystroke instead of one per dialog session -- and this
- * guard fails the build for it instead of letting a user discover it as a silently-accepted stale
- * statement.
+ * Pins the #538 dialog-refresh wiring across all four composer dialogs -- MSGBOX, addWindow,
+ * addChildWindow and SETOPTS: each one observes both the success and the failure side of its
+ * preview request through {@link ComposerFlow#observe}, checks its sequence number on both paths
+ * before touching anything, disables OK and labels the dialog on a failure, and rate-limits its
+ * balloon to one per dialog session via {@link ComposerFlow#once}. A failure here means one of four
+ * things happened -- a dialog went back to observing only the success side of its preview request,
+ * lost the sequence check on one of the two paths, lost the OK gating that stops a stale statement
+ * from being accepted, or started raising a balloon per keystroke instead of one per dialog session
+ * -- and this guard fails the build for it instead of letting a user discover it as a
+ * silently-accepted stale statement.
  */
 class ComposerDialogRefreshSourceGuardTest {
 
@@ -38,6 +38,10 @@ class ComposerDialogRefreshSourceGuardTest {
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "AddChildWindowComposerDialog.java")
             .toAbsolutePath();
 
+    private static final Path SETOPTS_SOURCE = Paths.get(
+            "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "SetoptsComposerDialog.java")
+            .toAbsolutePath();
+
     private static final Path FLOW_SOURCE = Paths.get(
             "src", "main", "java", "com", "basis", "bbj", "intellij", "composer", "ComposerFlow.java")
             .toAbsolutePath();
@@ -45,7 +49,8 @@ class ComposerDialogRefreshSourceGuardTest {
     private static final Path BUILD_GRADLE_KTS = Paths.get("build.gradle.kts").toAbsolutePath();
 
     /** One entry per composer dialog so a fourth composer added later is a one-line addition. */
-    private static final List<Path> DIALOG_SOURCES = List.of(MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE);
+    private static final List<Path> DIALOG_SOURCES =
+            List.of(MSGBOX_SOURCE, ADD_WINDOW_SOURCE, ADD_CHILD_WINDOW_SOURCE, SETOPTS_SOURCE);
 
     private static String readSource(Path path) {
         if (!Files.exists(path)) {
