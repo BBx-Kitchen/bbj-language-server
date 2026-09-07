@@ -348,12 +348,12 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 88-01-PLAN.md — Tracer: end-to-end decode hover for an absolute `SETOPTS <hex>` statement, plus the new pure scanner module and the exported `resolveLibFunction`
+- [x] 88-01-PLAN.md — Tracer: end-to-end decode hover for an absolute `SETOPTS <hex>` statement, plus the new pure scanner module and the exported `resolveLibFunction`
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
