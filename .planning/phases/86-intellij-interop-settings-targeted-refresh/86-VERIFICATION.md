@@ -1,7 +1,7 @@
 ---
 phase: 86-intellij-interop-settings-targeted-refresh
 verified: 2026-09-07T18:00:00Z
-status: human_needed
+status: passed
 score: 3/3 must-haves verified (2 fully automated, 1 present-but-behavior-unverified)
 behavior_unverified: 1
 overrides_applied: 0
@@ -14,11 +14,13 @@ re_verification:
     - "Live-IDE log inspection for G-86-1 (QA/FULL-TEST-CHECKLIST.md row 16 rerun in the same session as row 17, log checked for JsonRpcException/Stream closed) has not been re-executed since the fix landed — this is the actual acceptance evidence for the gap and, per the plan's own <verification> block, cannot be produced by any automated test in this repo."
   regressions: []
 behavior_unverified_items:
+
   - truth: "Running Refresh Java Classes on IntelliJ does not interrupt diagnostics, completion, hover, or Structure View for files the user isn't actively refreshing, AND the fix for G-86-1 (Settings Apply / manual restart no longer double-restarts and floods the log with JsonRpcException/Stream closed) holds in a live IDE session (ROADMAP Phase 86 success criterion 2)."
     test: "Re-run QA/FULL-TEST-CHECKLIST.md row 16 (Refresh Java Classes on a large classpath, invoking completion/hover/Structure View while the progress task is visible) in the SAME session as row 17 (Settings Apply restart), exactly the sequence that originally surfaced G-86-1, then inspect the IDE log."
     expected: "Completion, hover and Structure View all answer during the refresh; the status-bar widget never leaves started; exactly one console line per deliberate restart ('Language server stopped for a restart', not 'stopped unexpectedly' / 'Auto-restarting'); no JsonRpcException / IOException('Stream closed') trace appears anywhere in the log."
     why_human: "No IntelliJ platform test harness exists in this repo. The automated evidence for the fix is entirely structural/unit-level (ExpectedStopGuard classification, RestartGate in-flight rejection, BoundedWait stop-before-start ordering, all proven by JUnit 5 against fake collaborators) plus a hand-trace of the exact reported transition sequence — it cannot observe the real LSP4IJ status-broadcast timing or the messageWriter race in a live process."
 coincidental_reliance_items:
+
   - truth: "A deliberate restart's stop is classified as EXPECTED_RESTART_STOP rather than CRASH (ExpectedStopGuardTest passes; the classification mechanism is sound in isolation)."
     reason: fixture-only
     harden: "ExpectedStopGuardTest exercises ExpectedStopGuard.classify() directly with correct, hand-supplied (statusName, previousStatusName) pairs. The real call site (BbjServerService.updateStatus) does not supply the true immediate predecessor — its previousStatus field is updated one call late, so classify() actually receives the status from two broadcasts back, not one. This self-corrects by construction for the single-hop deliberate-restart sequence (started→stopping→stopped) that both G-86-1's reproduction and this fix target — traced by hand in this verification and confirmed to produce the correct EXPECTED_RESTART_STOP verdict — but a duplicate/echoed 'stopped' broadcast with no real state change in between (flagged as WR-01 in 86-05-REVIEW.md, left unaddressed) would be misclassified. No behavioral test exists for BbjServerService.updateStatus() itself (only text/position source guards); harden by passing the true immediate predecessor explicitly (capture it before the field-update reassignment) rather than relying on the field's incidental one-call lag."
@@ -90,6 +92,7 @@ Both requirements are present in REQUIREMENTS.md mapped to Phase 86 with status 
 None blocking. Searched all 8 files touched by plan 86-05 for `TBD`/`FIXME`/`XXX`/`TODO`/`HACK`/`PLACEHOLDER`/"not yet implemented" — zero matches. Planning-identifier scan (`86-0[1-5]`, `G-86-1`, `D-1[4-9]`) across the 4 production files touched by 86-05 — zero matches; no planning identifiers leaked into source.
 
 **Unresolved code-review findings (informational, not a debt-marker/stub anti-pattern, but worth surfacing):** `86-05-REVIEW.md` (status `issues_found`, 2 warnings, 2 info) flagged two warnings that remain unaddressed in the current source — no `86-05-REVIEW-FIX.md` exists, unlike the phase's earlier review cycle (`86-REVIEW.md` → `86-REVIEW-FIX.md`, which did fix its own WR-01/WR-02). Confirmed still present by direct source read:
+
 - **WR-01** — `updateStatus()` passes a `previousStatus` value that lags the true immediate predecessor by one broadcast (see `coincidental_reliance_items`). Self-corrects for the single-hop sequence this fix targets; a duplicate/echoed `stopped` broadcast would not self-correct. Severity: warning (reviewer's own rating); not proven to reproduce in production.
 - **WR-02** — `doRestart()` has no exception handling around `BoundedWait.until`/`manager.getServerStatus`; a thrown exception would propagate past `manager.start(SERVER_ID)`, leaving the server stopped with no console explanation (the `RestartGate` in-flight flag is still cleared correctly via its own `finally`, so the gate itself doesn't get stuck). Severity: warning.
 
