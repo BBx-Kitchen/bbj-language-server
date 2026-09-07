@@ -1042,10 +1042,15 @@ or replaced.
 
 **If this table is empty:** N/A — see above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What is `OPTS`'s actual runtime byte-length, and does BASIS's `IOR`/`AND` "same length"
-   constraint mean *exact* match or *at-least* match?**
+   constraint mean *exact* match or *at-least* match?** — **RESOLVED** (recommendation adopted
+   as an explicit, flagged assumption; falsification deferred to a live-BBjServices UAT check,
+   not left unresolved in code): the phase's compose-new mask generators lock the recommended
+   full-width padding behind one named constant, and Plan 88-05 Task 3 adds a dedicated QA
+   hand-check row (IntelliJ row 21) to falsify the assumption against real BBjServices rather
+   than treating it as settled.
    - What we know: `OPTS` is documented as returning "a string containing the current PRO/5
      options vector" with no stated fixed length; `SETOPTS_BITS`/`MAX_BYTES` model up to 16
      bytes; `IOR`/`AND`'s own doc says "Both string arguments must be the same length."
@@ -1056,7 +1061,9 @@ or replaced.
      BBjServices before finalizing the mask-width policy in code.
 
 2. **Does the new in-code decode/compose request need document-URI-scoped server-side AST
-   access, or can it stay line-string-based like every existing `bbj/composer/*` request?**
+   access, or can it stay line-string-based like every existing `bbj/composer/*` request?** —
+   **RESOLVED**: Plan 88-03 Task 2 implements `bbj/composer/setopts/decodeInCode` and
+   `bbj/composer/setopts/composeTriState` on the recommended URI+position shape.
    - What we know: every existing `bbj/composer/*/decodeCall` handler takes a single-line
      string (`LineQuery`); this phase's backward walk needs multi-statement, potentially
      multi-line context.
@@ -1068,7 +1075,8 @@ or replaced.
      params)` itself receives its context.
 
 3. **Should `ComposerLauncher.Kind` gain a fifth enum value, or should `SETOPTS` be
-   overloaded with a mode flag?**
+   overloaded with a mode flag?** — **RESOLVED**: Plan 88-05 Task 2 adds the distinct
+   `Kind.SETOPTS_IN_CODE` enum value per the recommendation below.
    - What we know: today's single `SETOPTS` kind is entirely config.bbx-shaped end-to-end
      (`openSetopts`, `SetoptsDecodeCallParams(lineText)`).
    - What's unclear: whether reusing the enum value with an internal branch, or adding
