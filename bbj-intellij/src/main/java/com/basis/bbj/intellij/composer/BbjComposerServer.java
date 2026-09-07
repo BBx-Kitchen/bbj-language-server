@@ -18,6 +18,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
 
@@ -103,4 +107,26 @@ public interface BbjComposerServer extends LanguageServer {
      * else (D-09). */
     @JsonRequest("bbj/composer/setopts/preview")
     CompletableFuture<SetoptsPreview> setoptsPreview(SetoptsPreviewParams params);
+
+    /**
+     * Decodes the SETOPTS-in-code shape at a document position (absolute literal or safe
+     * `var$=OPTS … SETOPTS var$` chain), gating {@code editable} directly off the scanner's own
+     * safety verdict, per {@code bbj-vscode/src/language/setopts-in-code-request.ts} (#475,
+     * DISC-06). Declared here for the same reason {@code bbj/compile} is --
+     * {@code getServerInterface()} returns exactly one interface, so every custom request family
+     * has to live on it.
+     */
+    @JsonRequest("bbj/composer/setopts/decodeInCode")
+    CompletableFuture<SetoptsInCodeDecodeResult> setoptsDecodeInCode(SetoptsInCodeDecodeParams params);
+
+    /**
+     * Composes a canonical `var$=OPTS / IOR / AND / SETOPTS var$` block from a tri-state
+     * Set/Clear/Leave selection, a thin pass-through to {@code composeSetOptsBlock} in
+     * {@code setopts-catalog.ts} and nothing else, per
+     * {@code bbj-vscode/src/language/setopts-in-code-request.ts} (#475, DISC-06). Declared here
+     * for the same reason {@code bbj/compile} is -- {@code getServerInterface()} returns exactly
+     * one interface, so every custom request family has to live on it.
+     */
+    @JsonRequest("bbj/composer/setopts/composeTriState")
+    CompletableFuture<SetoptsComposeTriStateResult> setoptsComposeTriState(SetoptsComposeTriStateParams params);
 }

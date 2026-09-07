@@ -38,7 +38,10 @@ class ComposerRequestContractTest {
     private static final Path MAIN_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "main.ts").toAbsolutePath().normalize();
 
-    /** The twelve names this test expects; also independently derived reflectively below. */
+    private static final Path SETOPTS_IN_CODE_REQUEST_TS = Paths.get(
+        "..", "bbj-vscode", "src", "language", "setopts-in-code-request.ts").toAbsolutePath().normalize();
+
+    /** The fourteen names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -51,7 +54,9 @@ class ComposerRequestContractTest {
         "bbj/resolvedConfigPath",
         "bbj/refreshJavaClasses",
         "bbj/composer/setopts/decodeCall",
-        "bbj/composer/setopts/preview"
+        "bbj/composer/setopts/preview",
+        "bbj/composer/setopts/decodeInCode",
+        "bbj/composer/setopts/composeTriState"
     );
 
     private static String readLanguageServerSource(Path path) {
@@ -88,14 +93,15 @@ class ComposerRequestContractTest {
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
         String mainSource = readLanguageServerSource(MAIN_TS);
-        String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource;
+        String setoptsInCodeSource = readLanguageServerSource(SETOPTS_IN_CODE_REQUEST_TS);
+        String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource + setoptsInCodeSource;
 
         for (String requestName : DECLARED_REQUESTS) {
             boolean present = combined.contains("'" + requestName + "'")
                 || combined.contains("\"" + requestName + "\"");
             assertTrue(present, "request name '" + requestName + "' not found as a quoted literal "
                 + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + ", " + RESOLVED_CONFIG_PATH_REQUEST_TS
-                + " or " + MAIN_TS);
+                + ", " + MAIN_TS + " or " + SETOPTS_IN_CODE_REQUEST_TS);
         }
     }
 
@@ -124,7 +130,8 @@ class ComposerRequestContractTest {
         // not a regex, so a typo such as a doubled slash (which would still satisfy a lax
         // "starts with bbj/, rest is [a-zA-Z/]" pattern) is caught by the exact per-segment set
         // comparison instead.
-        Set<String> allowedCamelCaseSegments = Set.of("decodeCall", "resolvedConfigPath", "refreshJavaClasses");
+        Set<String> allowedCamelCaseSegments = Set.of(
+            "decodeCall", "resolvedConfigPath", "refreshJavaClasses", "decodeInCode", "composeTriState");
         for (String requestName : requestNames) {
             for (String segment : requestName.split("/")) {
                 boolean isAllLowerCase = segment.equals(segment.toLowerCase(Locale.ROOT));
@@ -146,9 +153,11 @@ class ComposerRequestContractTest {
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
         String mainSource = readLanguageServerSource(MAIN_TS);
+        String setoptsInCodeSource = readLanguageServerSource(SETOPTS_IN_CODE_REQUEST_TS);
         assertTrue(composerSource.length() > 0, "composer-commands.ts must be non-empty");
         assertTrue(compileSource.length() > 0, "compile-command.ts must be non-empty");
         assertTrue(resolvedConfigPathSource.length() > 0, "resolved-config-path-request.ts must be non-empty");
         assertTrue(mainSource.length() > 0, "main.ts must be non-empty");
+        assertTrue(setoptsInCodeSource.length() > 0, "setopts-in-code-request.ts must be non-empty");
     }
 }

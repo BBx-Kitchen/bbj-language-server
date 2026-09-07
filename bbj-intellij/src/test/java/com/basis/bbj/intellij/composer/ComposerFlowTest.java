@@ -153,6 +153,18 @@ class ComposerFlowTest {
         }
 
         @Override
+        public CompletableFuture<com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeResult> setoptsDecodeInCode(
+                com.basis.bbj.intellij.composer.ComposerModels.SetoptsInCodeDecodeParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CompletableFuture<com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateResult> setoptsComposeTriState(
+                com.basis.bbj.intellij.composer.ComposerModels.SetoptsComposeTriStateParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
             throw new UnsupportedOperationException();
         }
