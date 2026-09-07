@@ -7,8 +7,13 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -22,7 +27,9 @@ import java.util.Objects;
  * field, rather than by reference identity.
  *
  * <p>A field added to a decode result, its edit payload, or its initial payload must be added to
- * the matching comparator here too -- this class is the equality contract, not the DTO.
+ * the matching comparator here too -- this class is the equality contract, not the DTO. This
+ * applies to {@link SetoptsDecodeResult} (#633) as well as the MSGBOX/addWindow/addChildWindow
+ * results above.
  */
 public final class DecodeEquality {
 
@@ -117,5 +124,64 @@ public final class DecodeEquality {
                 && a.eventMaskEnabled == b.eventMaskEnabled
                 && Objects.equals(a.eventMask, b.eventMask)
                 && Objects.equals(a.title, b.title);
+    }
+
+    /**
+     * True when both are null, false when exactly one is null, and otherwise a field-wise
+     * comparison of {@code found}, the {@code edit} payload ({@code hexRange}/{@code insertOffset}/
+     * {@code hexDigits}) and the {@code initial} selection ({@code bits}/{@code maskComma}/
+     * {@code maskDot}/{@code rawTail}) (#633).
+     */
+    public static boolean sameSetopts(SetoptsDecodeResult a, SetoptsDecodeResult b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return a.found == b.found
+                && sameSetoptsEdit(a.edit, b.edit)
+                && sameSetoptsSelection(a.initial, b.initial);
+    }
+
+    private static boolean sameSetoptsEdit(SetoptsEdit a, SetoptsEdit b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        // hexRange is an int[]: compared element-wise with Arrays.equals -- a fresh re-decode never
+        // returns the same array instance as the captured one, so reference equality would report
+        // every re-decode as a mismatch and turn the stale-edit guard into a permanent refusal.
+        return Arrays.equals(a.hexRange, b.hexRange)
+                && Objects.equals(a.insertOffset, b.insertOffset)
+                && Objects.equals(a.hexDigits, b.hexDigits);
+    }
+
+    private static boolean sameSetoptsSelection(SetoptsSelection a, SetoptsSelection b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        return Objects.equals(a.maskComma, b.maskComma)
+                && Objects.equals(a.maskDot, b.maskDot)
+                && Objects.equals(a.rawTail, b.rawTail)
+                && sameSetoptsBits(a.bits, b.bits);
+    }
+
+    /**
+     * The DTO's {@code bits} field has no {@code equals} override, so comparing the lists directly
+     * would compare by reference and always report a mismatch -- an explicit element-wise loop over
+     * {@code byteNo}/{@code mask} is required instead.
+     */
+    private static boolean sameSetoptsBits(List<SetoptsSelectionBit> a, List<SetoptsSelectionBit> b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        if (a.size() != b.size()) {
+            return false;
+        }
+        for (int i = 0; i < a.size(); i++) {
+            SetoptsSelectionBit x = a.get(i);
+            SetoptsSelectionBit y = b.get(i);
+            if (x.byteNo != y.byteNo || x.mask != y.mask) {
+                return false;
+            }
+        }
+        return true;
     }
 }

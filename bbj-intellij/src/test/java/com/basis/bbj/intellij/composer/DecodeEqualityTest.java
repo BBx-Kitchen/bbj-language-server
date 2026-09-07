@@ -7,6 +7,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.AddWindowInitial;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxDecodeResult;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxEdit;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewInput;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsEdit;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
 
 import org.junit.jupiter.api.Test;
 
@@ -138,6 +142,45 @@ class DecodeEqualityTest {
         decoded.found = copied.found;
         decoded.edit = copied.edit;
         decoded.initial = copied.initial;
+        return decoded;
+    }
+
+    // ---- SETOPTS fixtures (#633) ---------------------------------------------------------------
+
+    private static SetoptsDecodeResult baseSetopts() {
+        SetoptsDecodeResult decoded = new SetoptsDecodeResult();
+        decoded.found = true;
+        SetoptsEdit edit = new SetoptsEdit();
+        edit.hexRange = new int[] {8, 22};
+        edit.insertOffset = null;
+        edit.hexDigits = "08004020000000";
+        decoded.edit = edit;
+        SetoptsSelection initial = new SetoptsSelection();
+        initial.bits = new ArrayList<>(List.of(new SetoptsSelectionBit(1, 0x08), new SetoptsSelectionBit(3, 0x40)));
+        initial.maskComma = ",";
+        initial.maskDot = ".";
+        initial.rawTail = "1122";
+        decoded.initial = initial;
+        return decoded;
+    }
+
+    private static SetoptsDecodeResult copyOfSetopts(SetoptsDecodeResult src) {
+        SetoptsDecodeResult decoded = new SetoptsDecodeResult();
+        decoded.found = src.found;
+        SetoptsEdit edit = new SetoptsEdit();
+        edit.hexRange = src.edit.hexRange == null ? null : src.edit.hexRange.clone();
+        edit.insertOffset = src.edit.insertOffset;
+        edit.hexDigits = src.edit.hexDigits;
+        decoded.edit = edit;
+        SetoptsSelection initial = new SetoptsSelection();
+        initial.bits = new ArrayList<>();
+        for (SetoptsSelectionBit b : src.initial.bits) {
+            initial.bits.add(new SetoptsSelectionBit(b.byteNo, b.mask));
+        }
+        initial.maskComma = src.initial.maskComma;
+        initial.maskDot = src.initial.maskDot;
+        initial.rawTail = src.initial.rawTail;
+        decoded.initial = initial;
         return decoded;
     }
 
@@ -277,5 +320,65 @@ class DecodeEqualityTest {
             assertFalse(DecodeEquality.sameAddChildWindow(a2, b2),
                     "mutating exactly one compared addChildWindow field must break the match");
         }
+    }
+
+    // ---- SETOPTS tests (#633) ------------------------------------------------------------------
+
+    @Test
+    void twoIdenticalSetoptsDecodesMatch() {
+        SetoptsDecodeResult a = baseSetopts();
+        SetoptsDecodeResult b = copyOfSetopts(a);
+        assertTrue(DecodeEquality.sameSetopts(a, b),
+                "two independently built results with identical field values must compare equal by value");
+    }
+
+    @Test
+    void changingAnySingleComparedSetoptsFieldBreaksTheMatch() {
+        List<Consumer<SetoptsDecodeResult>> mutators = List.of(
+                d -> d.found = !d.found,
+                d -> d.edit.hexRange = new int[] {8, 23},
+                d -> d.edit.insertOffset = 99,
+                d -> d.edit.hexDigits = "FFFFFFFFFFFFFF",
+                d -> d.initial.bits = List.of(new SetoptsSelectionBit(9, 0x01)),
+                d -> d.initial.maskComma = "!",
+                d -> d.initial.maskDot = "!",
+                d -> d.initial.rawTail = "FFFF");
+
+        for (Consumer<SetoptsDecodeResult> mutator : mutators) {
+            SetoptsDecodeResult a = baseSetopts();
+            SetoptsDecodeResult b = copyOfSetopts(a);
+            mutator.accept(b);
+            assertFalse(DecodeEquality.sameSetopts(a, b),
+                    "mutating exactly one compared setopts field must break the match");
+        }
+    }
+
+    @Test
+    void setoptsNullsOnEitherSideAreHandledWithoutThrowing() {
+        assertTrue(DecodeEquality.sameSetopts(null, null), "both null must match");
+        assertFalse(DecodeEquality.sameSetopts(baseSetopts(), null), "one null must not match");
+        assertFalse(DecodeEquality.sameSetopts(null, baseSetopts()), "one null must not match, either order");
+
+        SetoptsDecodeResult a = baseSetopts();
+
+        SetoptsDecodeResult nullEdit = copyOfSetopts(a);
+        nullEdit.edit = null;
+        assertFalse(DecodeEquality.sameSetopts(a, nullEdit), "a null edit on one side only must not match");
+
+        SetoptsDecodeResult nullInitial = copyOfSetopts(a);
+        nullInitial.initial = null;
+        assertFalse(DecodeEquality.sameSetopts(a, nullInitial), "a null initial on one side only must not match");
+    }
+
+    @Test
+    void setoptsHexRangeIsComparedElementWiseRatherThanByIdentity() {
+        SetoptsDecodeResult a = baseSetopts();
+        SetoptsDecodeResult b = copyOfSetopts(a);
+        assertNotSame(a.edit.hexRange, b.edit.hexRange, "the two range arrays must be distinct instances");
+        assertTrue(DecodeEquality.sameSetopts(a, b),
+                "two distinct int[] instances holding the same two values must match");
+
+        b.edit.hexRange[1] = b.edit.hexRange[1] + 1;
+        assertFalse(DecodeEquality.sameSetopts(a, b), "changing one array element must break the match");
     }
 }
