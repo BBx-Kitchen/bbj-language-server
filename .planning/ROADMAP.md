@@ -348,7 +348,15 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 88-01-PLAN.md — Tracer: end-to-end decode hover for an absolute `SETOPTS <hex>` statement, plus the new pure scanner module and the exported `resolveLibFunction`
+- [ ] 88-02-PLAN.md — Backward `OPTS`→`IOR`/`AND` chain walk with its conservative safe/unsafe boundary, and the remaining two DISC-05 hover shapes with AND masks as cleared bits
+- [ ] 88-03-PLAN.md — Tri-state model, full-width mask generators, canonical block codegen, and the `decodeInCode`/`composeTriState` document-aware requests
+- [ ] 88-04-PLAN.md — IntelliJ wire layer: SETOPTS-in-code DTOs, the two server-interface methods, `sameSetoptsInCode`, and the contract/JSON-boundary test extensions
+- [ ] 88-05-PLAN.md — IntelliJ tri-state composer dialog, `Kind.SETOPTS_IN_CODE` launch branch, lightbulb intention with resources, and the QA hand-check rows
+- [ ] 88-06-PLAN.md — VS Code tri-state webview, Code Action and command entry points for `.bbj` files, and the activation/manifest wiring
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
