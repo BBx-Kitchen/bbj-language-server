@@ -38,7 +38,7 @@ class ComposerRequestContractTest {
     private static final Path MAIN_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "main.ts").toAbsolutePath().normalize();
 
-    /** The eleven names this test expects; also independently derived reflectively below. */
+    /** The twelve names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -50,7 +50,8 @@ class ComposerRequestContractTest {
         "bbj/compile",
         "bbj/resolvedConfigPath",
         "bbj/refreshJavaClasses",
-        "bbj/composer/setopts/decodeCall"
+        "bbj/composer/setopts/decodeCall",
+        "bbj/composer/setopts/preview"
     );
 
     private static String readLanguageServerSource(Path path) {

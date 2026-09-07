@@ -15,6 +15,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
 
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
@@ -142,6 +144,11 @@ class ComposerFlowTest {
 
         @Override
         public CompletableFuture<SetoptsDecodeResult> setoptsDecodeCall(SetoptsDecodeCallParams params) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CompletableFuture<SetoptsPreview> setoptsPreview(SetoptsPreviewParams params) {
             throw new UnsupportedOperationException();
         }
 

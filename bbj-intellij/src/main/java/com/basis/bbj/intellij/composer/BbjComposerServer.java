@@ -16,6 +16,8 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
 import org.eclipse.lsp4j.jsonrpc.services.JsonRequest;
 import org.eclipse.lsp4j.services.LanguageServer;
 
@@ -95,4 +97,10 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/composer/setopts/decodeCall")
     CompletableFuture<SetoptsDecodeResult> setoptsDecodeCall(SetoptsDecodeCallParams params);
+
+    /** Full SETOPTS preview (hex digits + composed line + summary + mask-inputs flag + unknown bits)
+     * for one selection, computed by {@code setoptsPreview} in {@code setopts-catalog.ts} and nothing
+     * else (D-09). */
+    @JsonRequest("bbj/composer/setopts/preview")
+    CompletableFuture<SetoptsPreview> setoptsPreview(SetoptsPreviewParams params);
 }

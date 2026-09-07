@@ -15,6 +15,8 @@ describe('composer LS command layer (#433)', () => {
         expect(c.addwindow.eventBits).toHaveLength(19);
         expect(c.addchildwindow.flags).toHaveLength(17);
         expect(c.addchildwindow.eventBits).toHaveLength(19);
+        expect(c.setopts.bits).toHaveLength(50);
+        expect(c.setopts.byteGroups.map((g: any) => g.byte)).toEqual([1, 2, 3, 4, 7, 8, 9]);
     });
 
     test('msgbox encode/decode round-trips a selection through expr', () => {
@@ -197,6 +199,52 @@ describe('composer LS command layer (#433)', () => {
         expect(call('bbj/composer/setopts/decodeCall', { line: 'PREFIX /usr/lib/' })).toEqual({ found: false });
         expect(call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS 0800 extra' })).toEqual({ found: false });
         expect(call('bbj/composer/setopts/decodeCall', { line: 'SETOPTS ZZZZ' })).toEqual({ found: false });
+    });
+
+    test('setopts/preview starts from the original vector and never from zero', () => {
+        // no original, empty selection -> the emptyVector() baseline
+        const empty = call('bbj/composer/setopts/preview', {
+            selection: { bits: [], maskComma: '', maskDot: '', rawTail: '' },
+        }) as any;
+        expect(empty.hexDigits).toBe('00000000');
+        expect(empty.line).toBe('SETOPTS 00000000');
+        expect(empty.summary).toBe('(default settings)');
+        expect(empty.maskInputsEnabled).toBe(false);
+        expect(empty.unknownByBytes).toEqual([]);
+
+        // lossless round-trip: adding one bit on top of an original vector changes exactly that
+        // byte and keeps every other digit (and the original digit count) untouched — the
+        // structural mitigation for this plan's data-loss threat (T-87-01)
+        const original = '08004020000000';
+        const decoded = call('bbj/composer/setopts/decodeCall', { line: `SETOPTS ${original}` }) as any;
+        const selection = {
+            bits: [...decoded.initial.bits, { byte: 1, mask: 0x40 }],
+            maskComma: decoded.initial.maskComma,
+            maskDot: decoded.initial.maskDot,
+            rawTail: decoded.initial.rawTail,
+        };
+        const preview = call('bbj/composer/setopts/preview', { original, selection }) as any;
+        expect(preview.hexDigits).toHaveLength(14);
+        expect(preview.hexDigits).not.toBe(original);
+        expect(preview.hexDigits.slice(2)).toBe(original.slice(2)); // bytes 2-7 untouched
+        expect(preview.hexDigits.slice(0, 2)).not.toBe(original.slice(0, 2)); // only byte 1 changed
+
+        // an unmodeled bit (byte 7 mask 0x40 has no catalog entry) survives untouched and is named
+        const originalWithUnknown = '00000000000040';
+        const unknownPreview = call('bbj/composer/setopts/preview', {
+            original: originalWithUnknown,
+            selection: { bits: [], maskComma: '', maskDot: '', rawTail: '' },
+        }) as any;
+        expect(unknownPreview.hexDigits).toBe(originalWithUnknown);
+        expect(unknownPreview.unknownByBytes).toContainEqual({ byte: 7, mask: 0x40 });
+
+        // an invalid (non-hex) raw-tail entry is silently ignored, leaving hexDigits unchanged
+        const originalWithTail = `${'0'.repeat(18)}11223344556677`;
+        const invalidTailPreview = call('bbj/composer/setopts/preview', {
+            original: originalWithTail,
+            selection: { bits: [], maskComma: '', maskDot: '', rawTail: 'ZZ' },
+        }) as any;
+        expect(invalidTailPreview.hexDigits).toBe(originalWithTail);
     });
 
     test('registerComposerRequests wires every handler onto the connection', () => {

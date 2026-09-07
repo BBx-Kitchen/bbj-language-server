@@ -79,6 +79,10 @@ export const composerHandlers = {
         msgbox: { buttonSets: BUTTON_SETS, icons: ICONS, defaultButtons: DEFAULT_BUTTONS, flags: FLAGS },
         addwindow: { flags: WINDOW_FLAGS, eventBits: EVENT_MASK_BITS },
         addchildwindow: { flags: CHILD_WINDOW_FLAGS, eventBits: CHILD_EVENT_MASK_BITS },
+        setopts: {
+            bits: SETOPTS_BITS,
+            byteGroups: Object.keys(BYTE_GROUPS).map(Number).map(byte => ({ byte, label: BYTE_GROUPS[byte] })),
+        },
     }),
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -242,6 +246,13 @@ export const composerHandlers = {
             initial: setoptsInitialSelection(info.vector),
         };
     },
+    /**
+     * Full SETOPTS preview (resulting hex + composed line + summary + mask-inputs flag + unknown
+     * bits) for one selection, starting from `original` (not from zero) so the round-trip stays
+     * lossless — `original` is `undefined` in compose-new mode.
+     */
+    'bbj/composer/setopts/preview': (p: { original?: string; selection: SetOptsSelection }) =>
+        setoptsPreview(p.original ? parseVector(p.original) : undefined, p.selection),
 } as const;
 
 /** Register every composer request on the LSP connection. Call once during server startup. */

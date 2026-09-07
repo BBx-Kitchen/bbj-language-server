@@ -47,6 +47,8 @@ public final class ComposerModels {
         public AddWindowCatalogs addwindow;
         /** Child-window flag catalog (#473) — same {flags, eventBits} shape as addwindow. */
         public AddWindowCatalogs addchildwindow;
+        /** SETOPTS byte/bit catalog (#633). */
+        public SetoptsCatalogs setopts;
     }
 
     // ---- MSGBOX ----------------------------------------------------------------------------------
@@ -253,6 +255,34 @@ public final class ComposerModels {
     // ---- SETOPTS (#633) ----------------------------------------------------------------------------
 
     /**
+     * One documented option bit (`SETOPTS_BITS` entry). {@code byte} is a Java reserved word, so
+     * {@code @SerializedName("byte")} keeps the wire key identical to the TypeScript shape.
+     * {@code bbj} carries {@code "ignored"}, {@code "bbj-specific"} or null; the dialog reads it to
+     * de-emphasize PRO/5-only or BBj-specific bits (D-08).
+     */
+    public static final class SetoptsBit {
+        @SerializedName("byte") public int byteNo;
+        public long mask;
+        public String label;
+        public String detail;
+        public String bbj;
+        public String bbjDetail;
+        public String since;
+    }
+
+    /** One byte-group section heading, in catalog order (D-07). */
+    public static final class SetoptsByteGroup {
+        @SerializedName("byte") public int byteNo;
+        public String label;
+    }
+
+    /** SETOPTS field of {@code bbj/composer/catalogs} — the full bit catalog plus the section headings. */
+    public static final class SetoptsCatalogs {
+        public List<SetoptsBit> bits;
+        public List<SetoptsByteGroup> byteGroups;
+    }
+
+    /**
      * One catalog bit currently checked in the selection. {@code byte} is a Java reserved word, so
      * {@code @SerializedName("byte")} is what keeps the wire key identical to the TypeScript shape
      * ({@code bbj-vscode/src/setopts-catalog.ts}'s {@code SetOptsSelection.bits}).
@@ -311,6 +341,36 @@ public final class ComposerModels {
 
         public SetoptsDecodeCallParams(String line) {
             this.line = line;
+        }
+    }
+
+    /** A non-catalog bit present in the vector, so the UI can flag what it preserves untouched. */
+    public static final class SetoptsUnknownBits {
+        @SerializedName("byte") public int byteNo;
+        public long mask;
+    }
+
+    /** Result of {@code bbj/composer/setopts/preview} — the full recomputed line for one selection. */
+    public static final class SetoptsPreview {
+        public String hexDigits;
+        public String line;
+        public String summary;
+        public boolean maskInputsEnabled;
+        public List<SetoptsUnknownBits> unknownByBytes;
+    }
+
+    /**
+     * Params for {@code bbj/composer/setopts/preview}. {@code original} is null in compose-new mode.
+     * The vector crosses as a hex {@code String}, never a number, which is what keeps the whole
+     * 32-bit-sign-bit overflow class (G-81-4) out of this DTO family.
+     */
+    public static final class SetoptsPreviewParams {
+        public String original;
+        public SetoptsSelection selection;
+
+        public SetoptsPreviewParams(String original, SetoptsSelection selection) {
+            this.original = original;
+            this.selection = selection;
         }
     }
 }

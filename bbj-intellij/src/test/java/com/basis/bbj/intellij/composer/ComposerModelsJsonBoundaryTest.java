@@ -13,6 +13,10 @@ import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreview;
 import com.basis.bbj.intellij.composer.ComposerModels.MsgboxPreviewParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeCallParams;
 import com.basis.bbj.intellij.composer.ComposerModels.SetoptsDecodeResult;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreview;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsPreviewParams;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelection;
+import com.basis.bbj.intellij.composer.ComposerModels.SetoptsSelectionBit;
 import org.eclipse.lsp4j.jsonrpc.MessageIssueException;
 import org.eclipse.lsp4j.jsonrpc.json.JsonRpcMethod;
 import org.eclipse.lsp4j.jsonrpc.json.MessageJsonHandler;
@@ -21,9 +25,11 @@ import org.eclipse.lsp4j.jsonrpc.messages.MessageIssue;
 import org.eclipse.lsp4j.jsonrpc.messages.ResponseMessage;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -64,6 +70,11 @@ class ComposerModelsJsonBoundaryTest {
               "addchildwindow":{
                 "flags":[{"value":1,"label":"Border","group":null,"detail":null}],
                 "eventBits":[{"value":2,"label":"Resize","group":null,"detail":null}]
+              },
+              "setopts":{
+                "bits":[{"byte":8,"mask":64,"label":"MKEYED verb creates XKEYED files","detail":null,
+                  "bbj":"bbj-specific","bbjDetail":null,"since":null}],
+                "byteGroups":[{"byte":1,"label":"Errors, console & listing"}]
               }
             }}""";
 
@@ -77,6 +88,9 @@ class ComposerModelsJsonBoundaryTest {
         // in ComposerModels is declared long rather than int.
         assertEquals(2147483648L, result.addwindow.eventBits.get(0).value);
         assertEquals(1, result.addchildwindow.eventBits.size());
+        assertEquals(8, result.setopts.bits.get(0).byteNo);
+        assertEquals("bbj-specific", result.setopts.bits.get(0).bbj);
+        assertEquals("Errors, console & listing", result.setopts.byteGroups.get(0).label);
     }
 
     @Test
@@ -229,6 +243,40 @@ class ComposerModelsJsonBoundaryTest {
         // The point of this test: proves the @SerializedName("byte") mapping survives LSP4IJ's own
         // deserializer, not just a hand-rolled Gson instance.
         assertEquals(3, result.initial.bits.get(0).byteNo);
+    }
+
+    @Test
+    void aSetoptsPreviewResponseParsesThroughTheLsp4jGson() {
+        String envelope = """
+            {"jsonrpc":"2.0","id":"1","result":{
+              "hexDigits":"08004020000000","line":"SETOPTS 08004020000000",
+              "summary":"Byte 1: Console mode in public programs","maskInputsEnabled":true,
+              "unknownByBytes":[{"byte":7,"mask":16}]
+            }}""";
+
+        SetoptsPreview result = parse(
+            "bbj/composer/setopts/preview", SetoptsPreview.class, envelope, SetoptsPreviewParams.class);
+
+        assertEquals("08004020000000", result.hexDigits);
+        assertTrue(result.maskInputsEnabled);
+        assertEquals(7, result.unknownByBytes.get(0).byteNo);
+    }
+
+    /**
+     * The request direction, which the response-parsing family above does not cover: a dropped
+     * {@code @SerializedName("byte")} would still pass every response-direction test while silently
+     * sending a key the server ignores.
+     */
+    @Test
+    void theSetoptsPreviewParamsSerializeWithTheWireKeyByte() {
+        SetoptsSelection selection = new SetoptsSelection();
+        selection.bits = List.of(new SetoptsSelectionBit(3, 2));
+        SetoptsPreviewParams params = new SetoptsPreviewParams("08004020000000", selection);
+
+        String json = new com.google.gson.Gson().toJson(params);
+
+        assertTrue(json.contains("\"byte\":3"), "expected the wire key 'byte', got: " + json);
+        assertFalse(json.contains("byteNo"), "the Java field name byteNo must never leak onto the wire: " + json);
     }
 
     /**
