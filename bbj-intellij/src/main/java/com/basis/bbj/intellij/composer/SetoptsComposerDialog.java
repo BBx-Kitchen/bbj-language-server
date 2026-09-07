@@ -144,7 +144,7 @@ public final class SetoptsComposerDialog extends DialogWrapper {
                 } else if (bit.detail != null) {
                     cb.setToolTipText(bit.detail);
                 }
-                cb.addActionListener(e -> previewDebouncer.trigger());
+                cb.addActionListener(e -> scheduleRefresh());
                 checkboxRows.add(new CheckboxRow(bit, cb));
                 groupPanel.add(cb);
             }
@@ -164,9 +164,9 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         rawTailPanel.add(rawTailError);
         form.add(rawTailPanel);
 
-        maskCommaField.getDocument().addDocumentListener(new SimpleDocumentListener(previewDebouncer::trigger));
-        maskDotField.getDocument().addDocumentListener(new SimpleDocumentListener(previewDebouncer::trigger));
-        rawTailField.getDocument().addDocumentListener(new SimpleDocumentListener(previewDebouncer::trigger));
+        maskCommaField.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
+        maskDotField.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
+        rawTailField.getDocument().addDocumentListener(new SimpleDocumentListener(this::scheduleRefresh));
 
         JBScrollPane scroll = new JBScrollPane(form);
         scroll.setBorder(null);
@@ -185,6 +185,19 @@ public final class SetoptsComposerDialog extends DialogWrapper {
         maskCommaField.setText(in.maskComma == null ? "" : in.maskComma);
         maskDotField.setText(in.maskDot == null ? "" : in.maskDot);
         rawTailField.setText(in.rawTail == null ? "" : in.rawTail);
+    }
+
+    /**
+     * Every checkbox/field listener calls this instead of {@link #previewDebouncer} directly
+     * (CR-01): it disables OK/Apply synchronously, the instant a new preview is scheduled, so the
+     * button can never be clicked while {@link #hexDigits}/{@link #line} still reflect a
+     * now-superseded selection during {@link #previewDebouncer}'s fixed 300ms trailing-edge delay.
+     * Re-enabled by {@link #apply(SetoptsPreview)} once the debounced {@link #refresh()} resolves
+     * (or left disabled by {@link #previewUnavailable(String)} if it fails).
+     */
+    private void scheduleRefresh() {
+        setOKActionEnabled(false);
+        previewDebouncer.trigger();
     }
 
     /**

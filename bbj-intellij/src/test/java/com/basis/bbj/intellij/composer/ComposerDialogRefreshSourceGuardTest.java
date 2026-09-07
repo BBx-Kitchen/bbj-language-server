@@ -136,14 +136,26 @@ class ComposerDialogRefreshSourceGuardTest {
      * both occurrences exist and that the first one is positioned ahead of the first literal
      * {@code refresh();} call site in the file (the constructor's own initial refresh -- later
      * {@code refresh();} call sites belong to input listeners).
+     * <p>
+     * SETOPTS carries a third occurrence (CR-01): unlike the other three dialogs, its live-preview
+     * refresh is coalesced through {@code PreviewDebouncer}'s fixed 300ms trailing-edge delay, so a
+     * click landing inside that window would otherwise still see the previous, now-superseded
+     * preview's OK-enabled state. SETOPTS disables OK synchronously the instant a new preview is
+     * scheduled (not only on eventual success/failure), so every dialog's minimum expected count of 2
+     * still holds and SETOPTS alone is allowed a third.
      */
     @Test
     void eachDialogDisablesOkBeforeItsFirstPreviewRoundTripAndOnAnyLaterFailure() {
         for (Path source : DIALOG_SOURCES) {
             String text = readSource(source);
-            assertEquals(2, countOccurrences(text, "setOKActionEnabled(false)"),
-                    source.getFileName() + " must disable OK twice: once up front before the "
-                            + "constructor's first preview round-trip, once on a later failed preview");
+            int expected = source.equals(SETOPTS_SOURCE) ? 3 : 2;
+            assertEquals(expected, countOccurrences(text, "setOKActionEnabled(false)"),
+                    source.equals(SETOPTS_SOURCE)
+                            ? source.getFileName() + " must disable OK three times: once up front before "
+                                    + "the constructor's first preview round-trip, once the instant a new "
+                                    + "preview is scheduled (CR-01), once on a later failed preview"
+                            : source.getFileName() + " must disable OK twice: once up front before the "
+                                    + "constructor's first preview round-trip, once on a later failed preview");
 
             int firstDisable = text.indexOf("setOKActionEnabled(false)");
             int firstRefreshCall = text.indexOf("refresh();");
@@ -152,6 +164,27 @@ class ComposerDialogRefreshSourceGuardTest {
                             + "refresh() call -- otherwise OK is clickable during the async window "
                             + "before any preview has ever resolved");
         }
+    }
+
+    /**
+     * CR-01: every checkbox/field listener in SETOPTS must route through a single helper
+     * ({@code scheduleRefresh()}) that disables OK before scheduling the debounced preview, rather
+     * than calling {@code previewDebouncer.trigger()} directly from a listener body -- a listener
+     * that bypassed the helper would reopen the exact stale-apply window this guard exists to close.
+     * {@code previewDebouncer.trigger()} itself must still appear exactly once (inside the helper).
+     */
+    @Test
+    void setoptsRoutesEveryListenerThroughTheOkDisablingScheduleHelperRatherThanTriggeringTheDebouncerDirectly() {
+        String text = withoutCommentLines(readSource(SETOPTS_SOURCE));
+        assertTrue(text.contains("private void scheduleRefresh()"),
+                "SetoptsComposerDialog must declare a scheduleRefresh() helper that disables OK and "
+                        + "triggers the debouncer");
+        assertEquals(1, countOccurrences(text, "previewDebouncer.trigger()"),
+                "previewDebouncer.trigger() must be called from exactly one place -- inside "
+                        + "scheduleRefresh() -- never inline from a listener body");
+        assertEquals(0, countOccurrences(text, "previewDebouncer::trigger"),
+                "no listener may pass previewDebouncer::trigger as a method reference -- every trigger "
+                        + "must go through scheduleRefresh() so OK is disabled first");
     }
 
     @Test
