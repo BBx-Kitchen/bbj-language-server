@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 87
-current_phase_name: shared-setopts-composer-layer-intellij-dialog
+current_phase_name: Shared SETOPTS Composer Layer & IntelliJ Dialog
 status: executing
-stopped_at: Phase 87 context gathered
-last_updated: "2026-09-07T18:08:42.841Z"
+stopped_at: Completed 87-01-PLAN.md
+last_updated: "2026-09-07T18:21:59.624Z"
 last_activity: 2026-09-07
-last_activity_desc: Phase 86 complete, transitioned to Phase 87
-state_head: 5b98d6be462d67ebc86f355f274d4def41eeb3e8
+last_activity_desc: Phase 87 execution started
+state_head: 070c0a16b2ab7a50cbb3a99296cbf6e539b3e5fd
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 19
-  completed_plans: 16
+  completed_plans: 17
   percent: 33
 ---
 
@@ -34,10 +34,10 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 87 (shared-setopts-composer-layer-intellij-dialog) — READY TO EXECUTE
-Plan: Not started
+Phase: 87 (Shared SETOPTS Composer Layer & IntelliJ Dialog) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-07 — Phase 86 complete, transitioned to Phase 87
+Last activity: 2026-09-07 — Phase 87 execution started
 
 ## Performance Metrics
 
@@ -157,6 +157,7 @@ Last activity: 2026-09-07 — Phase 86 complete, transitioned to Phase 87
 | Phase 86 P04 | 3min | 2 tasks | 4 files |
 | Phase 86 P03 | 15min | 3 tasks | 7 files |
 | Phase 86 P05 | 40min | 3 tasks | 8 files |
+| Phase 87 P01 | 12min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -257,6 +258,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 86]: [Phase 86]: 86-03: one BbjSettings.getEffectiveJavaInteropPort() accessor answers the java-interop port for the language-server initialization options, the health probe and the Settings dialog's reset; the persisted javaInteropPortAutoDetect flag migrates once in loadState before any reader observes it, and BbjSettingsConfigurable.apply() captures the stored port before writing so InteropPortSettings.portToPersist never sees its own output.
 - [Phase 86]: [Phase 86] Phase 86 Plan 05: LanguageServerManager.stop(String) returns void in LSP4IJ 0.21.0, so doRestart() waits for manager.getServerStatus(SERVER_ID) to report the server down (BoundedWait, 5s budget) instead of awaiting stop's future; a restart request landing mid-restart is dropped (RestartGate in-flight rejection) rather than queued, to avoid an unbounded restart loop on a future stop-classification regression; the ExpectedStopGuard token is one-shot, 30s-windowed and armed only when the server was observed live -- closes G-86-1's automated-evidence portion.
 - [Phase 86 UAT]: All four checkpoints passed by hand 2026-09-07. Test 1 (QA row 16) initially surfaced G-86-1 (`JsonRpcException`/`IOException: Stream closed` in the log despite visibly-working completion/hover/Structure View); diagnosed, fixed by 86-05 (gap closure), and independently re-verified clean via Test 3 (rows 16+17 rerun together — the exact sequence that originally surfaced the gap). Test 2 (QA row 17, port settings) passed on first try. Test 4: WR-01 (stale-by-one-generation `previousStatus`) and WR-02 (unguarded bounded-wait exception, both from 86-05-REVIEW.md) accepted as residual risk rather than fixed. CFG-04/CFG-05 (#632, #608) closed. Post-UAT: 86-VALIDATION.md nyquist-compliant (14 tasks across 5 plans, 0 gaps — every task carries an `<automated>` verify and every SUMMARY coverage entry is `status: pass`), 86-SECURITY.md threats_open 0 (27 threats across 5 plans, short-circuit path — register authored at plan time, ASVS level 1).
+- [Phase 87]: [Phase 87] 87-01: bbj/composer/setopts/decodeCall and preview are thin pass-throughs added to the existing composer-commands.ts/ComposerModels.java/BbjComposerServer.java; the SETOPTS vector crosses the LSP4IJ boundary as a hex String end-to-end, never a numeric bitmask; DecodeEquality.sameSetopts compares hexRange/bits element-wise, never by reference identity
 
 ### Tech Debt
 
@@ -323,9 +325,9 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T17:33:17.070Z
-Stopped at: Phase 87 context gathered
-Resume file: /home/coder/repos/bbj-language-server/.planning/phases/87-shared-setopts-composer-layer-intellij-dialog/87-CONTEXT.md
+Last session: 2026-09-07T18:21:59.489Z
+Stopped at: Completed 87-01-PLAN.md
+Resume file: None
 
 Next: `/gsd-discuss-phase 87` or `/gsd-plan-phase 87` to start Shared SETOPTS Composer Layer
 & IntelliJ Dialog. Phase 85's decision (85-01, decision log above) already established that
