@@ -201,6 +201,18 @@ describe('Logger', () => {
       expect(logSpy).toHaveBeenCalledWith('[info] Log level changed to DEBUG');
     });
 
+    test('setLevel announces a DEBUG to WARN downgrade', () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      logger.setLevel(LogLevel.DEBUG);
+      vi.clearAllMocks();
+
+      logger.setLevel(LogLevel.WARN);
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      expect(logSpy).toHaveBeenCalledWith('[info] Log level changed to WARN');
+    });
+
     test('setLevel routes its announcement through info()', () => {
       const infoSpy = vi.spyOn(logger, 'info');
 

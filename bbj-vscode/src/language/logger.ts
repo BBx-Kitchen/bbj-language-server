@@ -26,8 +26,12 @@ function formatMessage(level: string, message: LogMessage, component?: string): 
 const logger = {
   setLevel(level: LogLevel): void {
     if (level === currentLevel) return;
+    const announcement = `Log level changed to ${LogLevel[level]}`;
+    const announceBeforeChange = level < currentLevel && currentLevel >= LogLevel.INFO;
+
+    if (announceBeforeChange) logger.info(announcement);
     currentLevel = level;
-    logger.info(`Log level changed to ${LogLevel[level]}`);
+    if (!announceBeforeChange) logger.info(announcement);
   },
 
   isDebug(): boolean {
