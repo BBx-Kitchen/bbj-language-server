@@ -411,9 +411,9 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 | v4.0 Stability and Quality | 60-69 | 62 | Complete | 2026-08-20 |
 | v4.1 Security Advisory Remediation | 70-77 | 37 | Complete | 2026-09-03 |
 | v4.2 IntelliJ Burn-down | 78-83 | 25 | Complete | 2026-09-06 |
-| v4.3 Polish & Quality | 84-92 | 6 | In Progress | - |
+| v4.3 Polish & Quality | 84-92 | 11 | In Progress | - |
 
-**Total:** 19 milestones shipped, 83 phases complete, 267 plans shipped.
+**Total:** 19 milestones shipped, 85 phases complete, 278 plans shipped.
 
 v4.0's phase and plan artifacts are deliberately not on `main` (they detail advisories
 that were unfixed at the time — see MILESTONES.md), so its 10 phases / 62 plans are counted
@@ -423,11 +423,12 @@ and push-blocked until each advisory is published. Both asymmetries are intended
 artifacts (78-83) carry no advisory detail and are tracked normally.
 
 **Current milestone:** v4.3 Polish & Quality (Phases 84-92) — in progress, started 2026-09-06.
-25/25 v1 requirements mapped, 1/9 phases complete (Phase 84: 6/6 plans, UAT 8/8, verified
-2026-09-06; CFG-01 and CFG-02 closed). See `.planning/REQUIREMENTS.md` for the requirement
-list and `.planning/PROJECT.md` for scope. Next: `/gsd-discuss-phase 85` or `/gsd-plan-phase 85`.
+25/25 v1 requirements mapped, 2/9 phases complete (Phase 84: 6/6 plans, UAT 8/8, verified
+2026-09-06; CFG-01 and CFG-02 closed. Phase 85: 5/5 plans, UAT 7/7 hand checkpoints, verified
+2026-09-07; CFG-03 closed). See `.planning/REQUIREMENTS.md` for the requirement list and
+`.planning/PROJECT.md` for scope. Next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`.
 
 ---
 
-*Roadmap last updated: 2026-09-06 — Phase 84 complete (6/6 plans; CFG-01 and CFG-02 closed).
-Next: `/gsd-execute-phase 84`.*
+*Roadmap last updated: 2026-09-07 — Phase 85 complete (5/5 plans; CFG-03 closed).
+Next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`.*

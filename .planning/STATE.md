@@ -20,15 +20,15 @@ progress:
 
 # Project State: BBj Language Server
 
-**Last Updated:** 2026-09-06 (Phase 84 complete — UAT 8/8, Nyquist-compliant, 25/25 threats closed; Phase 85 ready to plan)
+**Last Updated:** 2026-09-07 (Phase 85 complete — UAT 7/7 hand checkpoints, Nyquist-compliant, threats_open 0; Phase 86 ready to plan)
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-09-06)
+See: .planning/PROJECT.md (updated 2026-09-07)
 
 **Core Value:** BBj developers get consistent, high-quality language intelligence — syntax highlighting, error diagnostics, code completion, run commands, and Java class/method completions — in both VS Code and IntelliJ through a single shared language server.
 
-**Current Focus:** Phase 85 — Config Hot-Reload With Restart Coalescing
+**Current Focus:** Phase 86 — IntelliJ Interop Settings & Targeted Refresh
 
 ---
 
@@ -45,8 +45,8 @@ Last activity: 2026-09-07 — Phase 85 complete, transitioned to Phase 86
 
 **Started:** 2026-02-01
 **Milestones shipped:** 19
-**Phases completed:** 84
-**Plans completed:** 273
+**Phases completed:** 85
+**Plans completed:** 278
 **Days elapsed:** 217
 **Velocity:** ~1.2 plans/day (lifetime); v4.2 ran at ~8 plans/day over 3 days
 
@@ -234,6 +234,10 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 84]: Phase 84 Plan 05: BbxConfigLanguage/BbjConfigFileType give IntelliJ its own config Language and file type (no parser, unmapped to the server); BbxConfigSyntaxHighlighterFactory resolves the bbx grammar by a constant default filename instead of the opened file's name; BbjConfigFileTypeOverrider delegates entirely to BbjConfigPathService.isConfigFile at runtime; update() re-parses the previously/newly active config files via reparseFiles inside invokeLater only when the active path actually changes, guarded for the no-live-Application plain-JUnit case.
 - [Phase 84]: Phase 84 Plan 06: getConfigPathArg()/getConfigPath() redirected to BbjConfigPathService.activeConfigPath(); ConfigPaths.configPathArg() refuses the EM Config sentinel as the single tested guard; BUI/DWC actions abort with a named notification on a blank resolved path instead of registering an empty value with EM; the Settings dialog's configPathField gets a non-blocking ComponentValidator sharing the component's single AlarmScheduler via a new debouncer, with a win32-drive-letter absolute-path rule tested through an injectable OS name.
 - [Phase 84 UAT]: All eight live-IDE checks passed by hand on 2026-09-06 (macOS, VS Code + IntelliJ builds from `main` @ 98a1f65c); `ps` showed both hosts spawning `bbjinit` with the resolved `-c/…/barista.cfg`. One false alarm (IntelliJ custom config "not detected") was resolved by checking the gear icon and the Language Servers tool window — the tester expected a SETOPTS editor link, which exists only in VS Code. Accepted as-is: the VS Code inactive-config hint fires only on the Command Palette entry point (CodeLens/Code Action pass an argument and skip it), matching QA row 11's wording. Post-UAT: 84-VALIDATION.md nyquist-compliant (18 tasks, 2 gaps filled with new tests: VS Code missing-file warning once-per-path, IntelliJ notification-handler source guard), 84-SECURITY.md threats_open 0 (25 threats). CFG-01/CFG-02 (#485) closed.
+- [Phase 85]: Detection is server-side and relevance-gated: `createConfigWatcher` (directory-scoped `fs.watch`, `samePath` basename filter, 1000 ms trailing debounce) notifies `bbj/configReloadRequired` only when the consumed PREFIX snapshot changed, read through the same `extractConsumedConfigContent` that `initializeWorkspace` uses — a SETOPTS-only write yields zero notifications, so Phase 87's composer needs no dialog-aware restart deferral.
+- [Phase 85]: The push waits for build quiescence: `BBjDocumentBuilder.hasPendingWork()` (Langium `currentState`, pending BBjCPL debounce, post-`super.buildDocuments()` tail per review fix WR-01) polled at 100 ms, bounded at 5000 ms, one outstanding wait replaced by a newer verdict; `main.ts` arms the watcher once after the first Validated build and re-arms at exactly the two `setConfigPath` sites (source-guarded).
+- [Phase 85]: Hosts restart through their existing coalescing choke point and signal without a prompt — VS Code `restart-gate.ts` (`createRestartGate`, port of IntelliJ's `RestartGate`, cancellable in flight per WR-02) plus a dedicated auto-hiding status-bar item; IntelliJ `BbjLanguageClient.configReloadRequired` → `BbjServerService.requestRestart(RESTART_DEBOUNCE_MS)` with the reason in the widget tooltip and one console line, no balloon. Cross-language contract test pins the notification name, reason tokens and DTO fields.
+- [Phase 85 UAT]: All seven live-IDE checks (VS Code QA rows 12-14, IntelliJ rows 13-15, cold start) passed by hand on 2026-09-07 (macOS, builds from `main` @ 4d60d84f). Post-UAT: 85-VALIDATION.md nyquist-compliant (14 tasks, 0 gaps), 85-SECURITY.md threats_open 0, 85-VERIFICATION.md re-verified after a metadata-only summary edit. CFG-03 (#486) closed. The startup log reviewed at Test 1 surfaced four pre-existing defects filed as #659 (nested classes resolved twice as `Outer.Inner`/`Outer$Inner`), #660 (primitives/arrays round-trip to java-interop), #661 (`config.bbx` wording in the workspace-manager log line), #662 (logger format inconsistency).
 - [Phase 85]: Phase 85 Plan 01: extractConsumedConfigContent/consumedConfigSnapshot in config-path-resolver.ts is the single shared PREFIX-reading function; initializeWorkspace and the hot-reload relevance gate both call it, with a source-scan test proving no second parser exists.
 - [Phase 85]: Phase 85 Plan 01: notifyConfigReloadRequired is deliberately undeduplicated (unlike notifyResolvedConfigPath); the config-watcher.ts relevance gate is the sole point deciding whether a reload notification fires, so a sender-side dedupe would be a redundant second suppression layer.
 - [Phase 85]: Phase 85 Plan 05: placed the four hand-only QA rows two-per-IDE-section (VS Code: atomic-save, SETOPTS-no-restart; IntelliJ: out-of-workspace config, save burst) since only the headline PREFIX-reload behavior was flagged '(both IDEs)' in 85-CONTEXT's Integration Points, and IntelliJ's SETOPTS composer does not exist until Phase 87 — Fixed the SETOPTS row's placement unambiguously (VS Code is the only IDE with a working composer today) and avoided duplicating rows the phase context did not ask to be duplicated
@@ -296,6 +300,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - ⚠️ [Phase 83] Todo filed: a configured-but-unusable Node path suppresses the cached-download fallback (`2026-09-06-configured-node-path-suppresses-cached-download-fallback.md`); pinned as-is by 83-02, decision deferred.
 - ⚠️ [Phase 84] Follow-ups from UAT/validation (advisory, none blocked verification): (1) the VS Code SETOPTS inactive-config hint is shown only when the composer is launched from the Command Palette — the CodeLens and lightbulb paths pass a line argument and skip `argForActiveEditor`, so a user clicking the CodeLens on the home default edits the wrong file silently (quick-task candidate: move the hint into the shared command handler). (2) `QA/FULL-TEST-CHECKLIST.md` lacks rows for three behaviors UAT covered by hand — the IntelliJ missing-config balloon, the run-action `-c` argv check (`ps -ef | grep -- '-c/'`), and the IntelliJ Settings inline config-path validation — plus the VS Code missing-config warning, which no UAT test exercised. (3) BUI/DWC run actions were not exercised against the custom config in UAT (GUI only, both IDEs); the abort-on-blank-path notification is pinned by source guards only. (4) Review fix WR-01 (per-keystroke association listener removed) is unpinned: a re-added `onDidChangeTextDocument` trigger would fail no test. (5) The IntelliJ pre-push fallback compares the setting verbatim (no `~` expansion) while VS Code expands `~` in the same branch — harmless once the server has pushed, but a `~/…` IntelliJ setting is not recognized until then.
 - ⚠️ [Phase 84] UI-review follow-ups (advisory, 84-UI-REVIEW.md, 19/24 — copywriting 2/4 is the weak pillar): the IntelliJ Settings label still reads "config.bbx Path:" (`BbjSettingsComponent.java:281`) after the phase removed filename-specific wording everywhere else; `Commands.cjs` carries two divergent "no config path" strings (`NO_CONFIG_PATH_MESSAGE` vs. the inline string in `openConfigFile`); IntelliJ has no SETOPTS discoverability affordance (no CodeLens/hint equivalent), which is what confused the UAT tester. Candidates for a quick task; the first two are string-only.
+- ⚠️ [Phase 85] Follow-ups (advisory, none blocked verification): (1) 85-REVIEW.md info findings left out of fix scope — IN-01 `pollQuiescence()`'s catch-all drops the pending notification with no retry; IN-02 the crash-triggered `requestRestart(CRASH_RESTART_DELAY_MS)` in `BbjServerService.updateStatus()` does not clear `pendingRestartReason`. (2) Four pre-existing defects found in the UAT cold-start log and filed as GitHub issues #659-#662 (java-interop nested-class double resolution, primitive/array lookups, `config.bbx` log wording — a one-line fix in `bbj-ws-manager.ts` — and logger format). (3) `85-VERIFICATION.md` `verified:` frontmatter still carries the original 03:00Z stamp; the close-out re-run is recorded in its trailing section.
 
 ### Quick Tasks Completed
 
@@ -306,13 +311,14 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T02:49:42.310Z
-Stopped at: Phase 85 complete, ready to plan Phase 86
+Last session: 2026-09-07T13:50:00Z
+Stopped at: Phase 85 complete (UAT 7/7, validated, verified), ready to plan Phase 86
 Resume file: None
 
-Next: `/gsd-discuss-phase 85` (no CONTEXT.md yet) or `/gsd-plan-phase 85` to start
-Config Hot-Reload With Restart Coalescing (CFG-03, #486); it depends on Phase 84's
-resolved config path, which is now pushed as `bbj/resolvedConfigPath` to both hosts.
+Next: `/gsd-discuss-phase 86` (no CONTEXT.md yet) or `/gsd-plan-phase 86` to start
+IntelliJ Interop Settings & Targeted Refresh (CFG-04 #632, CFG-05 #608); it is independent
+of the config-path work. Its first success criterion is a go/no-go on LSP4IJ issuing a
+targeted custom request without a full server restart.
 
 ## Deferred Items
 
@@ -377,11 +383,11 @@ See: `.planning/MILESTONES.md`
 
 ---
 
-*State updated: 2026-09-06 after v4.3 roadmap creation (Phases 84-92; 25/25 requirements mapped, 0/9 phases planned)*
+*State updated: 2026-09-07 after Phase 85 verify-work close-out (Phases 84-85 complete, 2/9; CFG-01..03 closed)*
 
 ## Operator Next Steps
 
-- v4.3 roadmap created (Phases 84-92, 25/25 requirements mapped): once reviewed and
-  committed, run `/gsd-discuss-phase 84` or `/gsd-plan-phase 84`
+- Phases 84-85 complete and verified; next: `/gsd-discuss-phase 86` or `/gsd-plan-phase 86`
+- Triage the four UAT-log issues #659-#662 (all pre-existing; #661 is a one-line string fix) into v4.3 or the hygiene milestone
 - Human attestation still open: live Windows check of Node.js auto-install (todo filed by 83-01)
 - v4.1 post-release checklist unchanged (tagged release, advisory publication, `WINDOWS.md` entry 1)
