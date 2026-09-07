@@ -47,6 +47,10 @@ public class BbjSettingsComponent {
     private final ComboBox<String> logLevelCombo;
     private final JBTextField javaInteropHostField;
     private final JTextField javaInteropPortField;
+    private final JCheckBox javaInteropAutoDetectCheckbox;
+    private final JBLabel javaInteropPortHintLabel;
+    private int javaInteropAutoDetectPort = BbjInteropPortDetector.DEFAULT_PORT;
+    private BbjInteropPortDetector.PortLookup javaInteropPortLookup = BbjInteropPortDetector.NOT_DETECTED;
     private final JBTextField configPathField;
     private final JBTextField emUrlField;
     private final JCheckBox autoSaveCheckbox;
@@ -202,6 +206,12 @@ public class BbjSettingsComponent {
             })
             .installOn(javaInteropPortField);
 
+        // --- Java Interop Auto-detect checkbox and inline hint ---
+        javaInteropAutoDetectCheckbox = new JCheckBox("Auto-detect");
+        javaInteropAutoDetectCheckbox.setSelected(true);
+        javaInteropPortHintLabel = new JBLabel(" ");
+        javaInteropAutoDetectCheckbox.addItemListener(e -> refreshJavaInteropPortRow());
+
         // --- EM URL field ---
         emUrlField = new JBTextField();
         emUrlField.getEmptyText().setText("http://localhost:8888");
@@ -296,6 +306,8 @@ public class BbjSettingsComponent {
             .addComponent(new TitledSeparator("Java Interop"))
             .addLabeledComponent(new JBLabel("Host:"), javaInteropHostField, 1, false)
             .addLabeledComponent(new JBLabel("Port:"), javaInteropPortField, 1, false)
+            .addComponent(javaInteropAutoDetectCheckbox)
+            .addComponent(javaInteropPortHintLabel)
 
             .addComponent(new TitledSeparator("Enterprise Manager"))
             .addLabeledComponent(new JBLabel("EM URL:"), emUrlField, 1, false)
@@ -457,6 +469,42 @@ public class BbjSettingsComponent {
 
     public void setJavaInteropPort(int port) {
         javaInteropPortField.setText(String.valueOf(port));
+    }
+
+    /**
+     * Reads the checkbox's selected state and applies the row's disabled/prefill/hint behavior:
+     * the port field is disabled and shows the handed-in auto-detect port only while auto-detect
+     * is on, so unchecking leaves the field's current text in place and editable, and re-checking
+     * discards any edit by restoring the handed-in port. Called from the checkbox's {@code
+     * ItemListener} and from both detection setters below.
+     */
+    private void refreshJavaInteropPortRow() {
+        boolean autoDetect = javaInteropAutoDetectCheckbox.isSelected();
+        javaInteropPortField.setEnabled(!autoDetect);
+        if (autoDetect) {
+            javaInteropPortField.setText(String.valueOf(javaInteropAutoDetectPort));
+        }
+        javaInteropPortHintLabel.setText(InteropPortPresentation.hint(autoDetect, javaInteropPortLookup));
+    }
+
+    public boolean isJavaInteropPortAutoDetect() {
+        return javaInteropAutoDetectCheckbox.isSelected();
+    }
+
+    public void setJavaInteropPortAutoDetect(boolean autoDetect) {
+        javaInteropAutoDetectCheckbox.setSelected(autoDetect);
+        refreshJavaInteropPortRow();
+    }
+
+    /**
+     * The only channel through which detection reaches this component — it performs no lookup,
+     * no stat and no service access of its own, which is what keeps every settings path free of
+     * dispatch-thread filesystem work.
+     */
+    public void setJavaInteropPortDetection(int autoDetectPort, BbjInteropPortDetector.PortLookup lookup) {
+        this.javaInteropAutoDetectPort = autoDetectPort;
+        this.javaInteropPortLookup = lookup;
+        refreshJavaInteropPortRow();
     }
 
     public @NotNull String getConfigPath() {

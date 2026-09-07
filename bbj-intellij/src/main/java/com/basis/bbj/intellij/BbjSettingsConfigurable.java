@@ -51,7 +51,8 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
             || !Objects.equals(myComponent.getClasspathEntry(), state.classpathEntry)
             || !Objects.equals(myComponent.getLogLevel(), state.logLevel)
             || !Objects.equals(myComponent.getJavaInteropHost(), state.javaInteropHost)
-            || state.javaInteropPort != myComponent.getJavaInteropPort()
+            || InteropPortSettings.portSettingModified(state.javaInteropPortAutoDetect, state.javaInteropPort,
+                myComponent.isJavaInteropPortAutoDetect(), myComponent.getJavaInteropPort())
             || !Objects.equals(myComponent.getConfigPath(), state.configPath)
             || !Objects.equals(myComponent.getCompilerOutputDirectory(), state.compilerOutputDirectory)
             || !Objects.equals(myComponent.getEmUrl(), state.emUrl)
@@ -69,12 +70,18 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         myComponent.flushPendingHomeLookup();
 
         BbjSettings.State state = BbjSettings.getInstance().getState();
+        // Captured before any assignment: portToPersist takes the currently persisted value as
+        // an argument, so writing either port field first would feed it the value it is about
+        // to produce.
+        int storedJavaInteropPort = state.javaInteropPort;
         state.bbjHomePath = myComponent.getBbjHomePath();
         state.nodeJsPath = myComponent.getNodeJsPath();
         state.classpathEntry = myComponent.getClasspathEntry();
         state.logLevel = myComponent.getLogLevel();
         state.javaInteropHost = myComponent.getJavaInteropHost();
-        state.javaInteropPort = myComponent.getJavaInteropPort();
+        state.javaInteropPort = InteropPortSettings.portToPersist(
+                myComponent.isJavaInteropPortAutoDetect(), myComponent.getJavaInteropPort(), storedJavaInteropPort);
+        state.javaInteropPortAutoDetect = myComponent.isJavaInteropPortAutoDetect();
         state.configPath = myComponent.getConfigPath();
         state.compilerOutputDirectory = myComponent.getCompilerOutputDirectory();
         state.emUrl = myComponent.getEmUrl();
@@ -133,8 +140,16 @@ public final class BbjSettingsConfigurable implements Configurable, Disposable {
         }
         myComponent.setJavaInteropHost(javaInteropHost);
 
-        // Load java-interop port through the single effective-port accessor
+        // Load java-interop port through the single effective-port accessor. The dialog resolves
+        // detection once through the stat-keyed cache and hands the component the lookup plus a
+        // precomputed auto-detect port -- the component performs no lookup of its own.
+        BbjInteropPortDetector.PortLookup javaInteropPortLookup =
+                BbjInteropPortCache.SESSION.lookup(state.bbjHomePath);
+        myComponent.setJavaInteropPortDetection(
+                InteropPortSettings.effectivePort(true, state.javaInteropPort, javaInteropPortLookup),
+                javaInteropPortLookup);
         myComponent.setJavaInteropPort(BbjSettings.getInstance().getEffectiveJavaInteropPort());
+        myComponent.setJavaInteropPortAutoDetect(state.javaInteropPortAutoDetect);
 
         // Load config.bbx path
         myComponent.setConfigPath(state.configPath != null ? state.configPath : "");
