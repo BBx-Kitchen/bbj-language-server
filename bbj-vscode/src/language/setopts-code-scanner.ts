@@ -69,7 +69,16 @@ export type SetOptsUnsafeReason = 'control-flow' | 'reassigned' | 'alias' | 'unp
 /** The three DISC-05 hover shapes. */
 export type SetOptsCodeShape =
     | { kind: 'absolute'; hexDigits: string; vector: SetOptsVector }
-    | { kind: 'chain'; variableName: string; safe: boolean; unsafeReason?: SetOptsUnsafeReason; links: SetOptsChainLink[]; effect: SetOptsChainEffect }
+    | {
+        kind: 'chain'; variableName: string; safe: boolean; unsafeReason?: SetOptsUnsafeReason;
+        links: SetOptsChainLink[]; effect: SetOptsChainEffect;
+        /**
+         * The `Assignment` node whose value resolved to the `OPTS`-sourced origin, present only
+         * when `safe` is `true`. Widened in plan 88-03 so `setopts-in-code-request.ts` can locate
+         * the origin's document line for its edit-in-place range without a second AST walk.
+         */
+        originNode?: AstNode;
+    }
     | { kind: 'mask-call'; fnName: 'IOR' | 'AND'; maskHex: string; vector: SetOptsVector };
 
 /**
@@ -223,7 +232,8 @@ function flattenStatements(statements: ReadonlyArray<AstNode>): AstNode[] {
 }
 
 type StatementVerdict =
-    | { kind: 'control-flow' | 'origin' | 'reassigned' | 'alias' | 'unparseable-mask' | 'irrelevant' }
+    | { kind: 'control-flow' | 'reassigned' | 'alias' | 'unparseable-mask' | 'irrelevant' }
+    | { kind: 'origin'; originNode: AstNode }
     | { kind: 'link'; link: SetOptsChainLink };
 
 /**
@@ -253,7 +263,7 @@ function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
                 target = undefined; // cyclic / unresolved reference — not a recognizable OPTS origin
             }
             if (target && isLibVariable(target) && target.name.toUpperCase() === OPTS_VAR_NAME) {
-                return { kind: 'origin' };
+                return { kind: 'origin', originNode: assignment };
             }
             return { kind: 'reassigned' };
         }
@@ -281,6 +291,8 @@ interface ChainWalkResult {
     unsafeReason?: SetOptsUnsafeReason;
     /** Links in backward-encounter order (newest/closest-to-target first); callers reverse. */
     linksNewestFirst: SetOptsChainLink[];
+    /** The origin `Assignment` node, present only when `safe` is `true` (plan 88-03 widening). */
+    originNode?: AstNode;
 }
 
 /**
@@ -303,7 +315,7 @@ function walkChain(statements: ReadonlyArray<AstNode>, anchorStatement: AstNode,
             case 'control-flow':
                 return { safe: false, unsafeReason: 'control-flow', linksNewestFirst };
             case 'origin':
-                return { safe: true, linksNewestFirst };
+                return { safe: true, linksNewestFirst, originNode: verdict.originNode };
             case 'link':
                 linksNewestFirst.push(verdict.link);
                 break;
@@ -447,7 +459,7 @@ export function traceOptsChain(target: SetOptsStatement | MethodCall): Extract<S
     const links = [...walk.linksNewestFirst].reverse();
     const effect = foldChainEffect(links);
     return walk.safe
-        ? { kind: 'chain', variableName, safe: true, links, effect }
+        ? { kind: 'chain', variableName, safe: true, links, effect, originNode: walk.originNode }
         : { kind: 'chain', variableName, safe: false, unsafeReason: walk.unsafeReason, links, effect };
 }
 
