@@ -16,6 +16,7 @@ import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.EditorNotifications;
 import com.intellij.util.messages.Topic;
 import com.basis.bbj.intellij.concurrency.AlarmScheduler;
+import com.basis.bbj.intellij.concurrency.ExpectedStopGuard;
 import com.basis.bbj.intellij.concurrency.RestartGate;
 import com.basis.bbj.intellij.concurrency.Scheduler;
 import com.basis.bbj.intellij.config.ConfigReloadPresentation;
@@ -40,6 +41,7 @@ public final class BbjServerService implements Disposable {
     private ServerStatus previousStatus = ServerStatus.stopped;
     private final Scheduler restartScheduler;
     private final RestartGate restartGate;
+    private final ExpectedStopGuard expectedStop;
     public static final int RESTART_DEBOUNCE_MS = 500;
     private static final long CRASH_RESTART_DELAY_MS = 1000;
     private static final long CRASH_WINDOW_MS = 30_000; // 30 seconds
@@ -60,6 +62,7 @@ public final class BbjServerService implements Disposable {
         this.project = project;
         this.restartScheduler = new AlarmScheduler(this);
         this.restartGate = new RestartGate(restartScheduler, this::doRestart);
+        this.expectedStop = new ExpectedStopGuard(ExpectedStopGuard.DEFAULT_WINDOW_MS);
 
         // Register disposal
         Disposer.register(project, this);
@@ -128,10 +131,10 @@ public final class BbjServerService implements Disposable {
 
         boolean autoRestartAbandoned = false;
 
-        // Detect unexpected stop (crash)
-        if (status == ServerStatus.stopped &&
-            (previousStatus == ServerStatus.started || previousStatus == ServerStatus.starting)) {
+        ExpectedStopGuard.StopKind stopKind =
+            expectedStop.classify(status.name(), previousStatus.name(), System.currentTimeMillis());
 
+        if (stopKind == ExpectedStopGuard.StopKind.CRASH) {
             // This is a crash
             serverCrashed = true;
             logToConsole("Language server stopped unexpectedly", ConsoleViewContentType.ERROR_OUTPUT);
@@ -162,6 +165,8 @@ public final class BbjServerService implements Disposable {
                     EditorNotifications.getInstance(project).updateAllNotifications();
                 });
             }
+        } else if (stopKind == ExpectedStopGuard.StopKind.EXPECTED_RESTART_STOP) {
+            logToConsole("Language server stopped for a restart", ConsoleViewContentType.SYSTEM_OUTPUT);
         }
 
         // Clear crash state when server successfully starts
@@ -243,6 +248,12 @@ public final class BbjServerService implements Disposable {
     private void doRestart() {
         clearCrashState();
         LanguageServerManager manager = LanguageServerManager.getInstance(project);
+        ServerStatus statusBeforeStop = manager.getServerStatus("bbjLanguageServer");
+        if (statusBeforeStop == ServerStatus.started
+                || statusBeforeStop == ServerStatus.starting
+                || statusBeforeStop == ServerStatus.stopping) {
+            expectedStop.arm(System.currentTimeMillis());
+        }
         manager.stop("bbjLanguageServer");
         manager.start("bbjLanguageServer");
     }
