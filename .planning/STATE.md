@@ -4,17 +4,17 @@ milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
 current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
-status: executing
-stopped_at: Completed 88-06-PLAN.md
-last_updated: "2026-09-07T22:08:05.488Z"
+status: verifying
+stopped_at: Completed 88-05-PLAN.md
+last_updated: "2026-09-07T22:31:41.183Z"
 last_activity: 2026-09-07
 last_activity_desc: Phase 88 execution started
-state_head: adcfad1ca5f39f496b000b2b115c016cdb4c21da
+state_head: 3a8531c5fd72d62a5d94f94e61638526d2add74f
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 25
-  completed_plans: 24
+  completed_plans: 25
   percent: 44
 ---
 
@@ -36,7 +36,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-07 — Phase 88 execution started
 
 ## Performance Metrics
@@ -165,6 +165,7 @@ Last activity: 2026-09-07 — Phase 88 execution started
 | Phase 88 P03 | 15min | 3 tasks | 6 files |
 | Phase 88 P04 | 15min | 3 tasks | 7 files |
 | Phase 88 P06 | 20min | 3 tasks | 5 files |
+| Phase 88 P05 | 25min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: 88-04: ComposerModels' eight new SETOPTS-in-code DTOs mirror setopts-in-code-request.ts/setopts-catalog.ts field-for-field (byteNo remapped to wire key byte via @SerializedName); BbjComposerServer.setoptsDecodeInCode/setoptsComposeTriState declared on the single server interface, pinned by ComposerRequestContractTest (14 names).
 - [Phase 88]: 88-04: DecodeEquality.sameSetoptsInCode compares found/editable/mode/reason/summary/absolute/chain/initial field-wise, order-sensitive on tri-state entries (fails closed on reorder); DISC-06 still NOT marked complete pending 88-05/88-06.
 - [Phase 88]: 88-06: SetOptsInCodeRequestSender declared in setopts-tristate-webview.ts and imported into setopts-in-code-ui.ts; scope ('reassignments' vs 'block') decided client-side from whether a chain target is present, but the composed bytes always come from the server's composeSetOptsBlock; DISC-06 still NOT marked complete pending 88-05 (IntelliJ dialog)
+- [Phase 88]: [Phase 88]: 88-05: SetoptsTriStateComposerDialog reuses SetoptsComposerDialog's exact skeleton (ComposerFlow+PreviewDebouncer+CR-01 gating) with a ButtonGroup-backed Set/Clear/Leave radio row replacing the checkbox, and a read-only block preview replacing the mask-character/raw-tail region; ComposerLauncher.Kind.SETOPTS_IN_CODE routes absolute/chain/compose-new/not-editable to the right dialog and guarded write; DISC-06 (#475) closed -- both IDE halves (88-06 VS Code, 88-05 IntelliJ) now exist
 
 ### Tech Debt
 
@@ -343,8 +345,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-07T22:08:05.342Z
-Stopped at: Completed 88-06-PLAN.md
+Last session: 2026-09-07T22:31:41.030Z
+Stopped at: Completed 88-05-PLAN.md
 Resume file: None
 
 Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
