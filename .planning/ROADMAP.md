@@ -224,7 +224,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
 - [x] **Phase 84: Config Path Resolution & Discoverability Foundation** - The resolved config file is honored by every consumer and gets config-file editor treatment in both IDEs, regardless of name or location (completed 2026-09-06)
 - [x] **Phase 85: Config Hot-Reload With Restart Coalescing** - Config file edits reload the language server automatically, debounced and without racing composer writes (completed 2026-09-07)
 - [x] **Phase 86: IntelliJ Interop Settings & Targeted Refresh** - Java-interop port auto-detects everywhere it's read, and Refresh Java Classes no longer requires a full restart (completed 2026-09-07)
-- [ ] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer
+- [x] **Phase 87: Shared SETOPTS Composer Layer & IntelliJ Dialog** - IntelliJ gets a visual SETOPTS composer for config.bbx over a new shared bbj/composer/setopts/* layer (completed 2026-09-07)
 - [ ] **Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer** - SETOPTS/IOR/AND lines in BBj code get decode hovers everywhere and a tri-state composer for the two safe shapes
 - [ ] **Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability** - Every composer gets a persistent visible cue in both IDEs; MSGBOX handles expression-valued options; CVS() gets a new visual composer
 - [ ] **Phase 90: Composer Robustness & IntelliJ Composer Performance** - VS Code composers validate before applying and stop leaking listeners; IntelliJ composer dialogs debounce input and cache server/catalog handles

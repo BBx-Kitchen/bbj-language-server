@@ -1,11 +1,12 @@
 ---
 phase: 87-shared-setopts-composer-layer-intellij-dialog
 verified: 2026-09-07T19:10:00Z
-status: human_needed
+status: passed
 score: 8/8 must-have truths verified
 behavior_unverified: 1
 overrides_applied: 0
 human_verification:
+
   - test: "Live IDE hand check: SETOPTS composer edits config.bbx without restarting the server (QA/FULL-TEST-CHECKLIST.md IntelliJ row 18)."
     expected: "The composer opens from both an existing-SETOPTS line and a non-SETOPTS line; toggling an option updates the resulting line/summary live and greys BBj-ignored options with a tooltip; applying changes only the hex token of the target line; the entry is absent (not disabled) in a `.bbj` file; the server never restarts or reconnects (status bar / LS tool window stay quiet) at any point."
     why_human: "Context-menu visibility, live Swing rendering of the debounced preview, and server-restart absence over a real LSP4IJ connection cannot be proven by a JUnit/Vitest test; the phase's own plan (87-03 D13) and SUMMARY record this as the one remaining verification step, and no dedicated `*ComposerDialogTest.java` exists for any composer dialog in this Gradle build by established project convention."
@@ -16,6 +17,7 @@ overrides: []
 gaps: []
 deferred: []
 behavior_unverified_items:
+
   - truth: "OK/Apply is disabled the instant a new preview is scheduled (CR-01 fix), so a fast click inside the 300ms debounce window can never commit hexDigits/line values that predate the user's most recent edit."
     test: "Toggle a SETOPTS checkbox and click Apply/Insert immediately (within ~300ms), repeated with a keyboard Space-then-Enter sequence."
     expected: "OK is disabled the instant the toggle fires (before the debounced preview resolves) and only re-enables once the new preview has been applied, so the committed hex always reflects the toggled state."
