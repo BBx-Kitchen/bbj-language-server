@@ -134,6 +134,11 @@ class ComposerFlowTest {
         }
 
         @Override
+        public CompletableFuture<Boolean> refreshJavaClasses() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public CompletableFuture<InitializeResult> initialize(InitializeParams params) {
             throw new UnsupportedOperationException();
         }

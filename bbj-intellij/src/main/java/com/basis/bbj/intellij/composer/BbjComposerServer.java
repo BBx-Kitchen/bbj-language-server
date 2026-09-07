@@ -74,4 +74,15 @@ public interface BbjComposerServer extends LanguageServer {
      */
     @JsonRequest("bbj/resolvedConfigPath")
     CompletableFuture<ResolvedConfigPathResult> resolvedConfigPath();
+
+    /**
+     * Clears the server's Java class cache and re-validates every open document (#632), the same
+     * reload sequence {@code reloadJavaClassesAndRevalidate} in {@code bbj-vscode/src/language/main.ts}
+     * runs for VS Code's own {@code bbj.refreshJavaClasses} command. Declared here for the same
+     * reason {@code bbj/compile} and {@code bbj/resolvedConfigPath} are -- {@code getServerInterface()}
+     * returns exactly one interface, so every custom request family has to live on it. The boolean
+     * result is the server's existing contract and is deliberately not widened.
+     */
+    @JsonRequest("bbj/refreshJavaClasses")
+    CompletableFuture<Boolean> refreshJavaClasses();
 }

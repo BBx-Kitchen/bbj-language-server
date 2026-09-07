@@ -17,11 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Cross-language contract for the custom {@code bbj/composer/*}, {@code bbj/compile} and
- * {@code bbj/resolvedConfigPath} requests (#544): every request name {@link BbjComposerServer}
- * declares must appear as a quoted literal in the language server's own TypeScript sources, so
- * renaming one side alone fails here instead of silently breaking the request at run time. The
- * sources are read only as plain text -- never parsed as TypeScript.
+ * Cross-language contract for the custom {@code bbj/composer/*}, {@code bbj/compile},
+ * {@code bbj/resolvedConfigPath} and {@code bbj/refreshJavaClasses} requests (#544, #632): every
+ * request name {@link BbjComposerServer} declares must appear as a quoted literal in the language
+ * server's own TypeScript sources, so renaming one side alone fails here instead of silently
+ * breaking the request at run time. The sources are read only as plain text -- never parsed as
+ * TypeScript.
  */
 class ComposerRequestContractTest {
 
@@ -34,7 +35,10 @@ class ComposerRequestContractTest {
     private static final Path RESOLVED_CONFIG_PATH_REQUEST_TS = Paths.get(
         "..", "bbj-vscode", "src", "language", "resolved-config-path-request.ts").toAbsolutePath().normalize();
 
-    /** The nine names this test expects; also independently derived reflectively below. */
+    private static final Path MAIN_TS = Paths.get(
+        "..", "bbj-vscode", "src", "language", "main.ts").toAbsolutePath().normalize();
+
+    /** The ten names this test expects; also independently derived reflectively below. */
     private static final Set<String> DECLARED_REQUESTS = Set.of(
         "bbj/composer/catalogs",
         "bbj/composer/msgbox/preview",
@@ -44,7 +48,8 @@ class ComposerRequestContractTest {
         "bbj/composer/addchildwindow/preview",
         "bbj/composer/addchildwindow/decodeCall",
         "bbj/compile",
-        "bbj/resolvedConfigPath"
+        "bbj/resolvedConfigPath",
+        "bbj/refreshJavaClasses"
     );
 
     private static String readLanguageServerSource(Path path) {
@@ -80,13 +85,15 @@ class ComposerRequestContractTest {
         String composerSource = readLanguageServerSource(COMPOSER_COMMANDS_TS);
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
-        String combined = composerSource + compileSource + resolvedConfigPathSource;
+        String mainSource = readLanguageServerSource(MAIN_TS);
+        String combined = composerSource + compileSource + resolvedConfigPathSource + mainSource;
 
         for (String requestName : DECLARED_REQUESTS) {
             boolean present = combined.contains("'" + requestName + "'")
                 || combined.contains("\"" + requestName + "\"");
             assertTrue(present, "request name '" + requestName + "' not found as a quoted literal "
-                + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + " or " + RESOLVED_CONFIG_PATH_REQUEST_TS);
+                + "in " + COMPOSER_COMMANDS_TS + ", " + COMPILE_COMMAND_TS + ", " + RESOLVED_CONFIG_PATH_REQUEST_TS
+                + " or " + MAIN_TS);
         }
     }
 
@@ -110,11 +117,12 @@ class ComposerRequestContractTest {
         }
 
         // Camel-case is allowed only where the interface's own method name introduces it
-        // (decodeCall, resolvedConfigPath); every other segment of every name must be all
-        // lower-case. The allowed exception is a literal set membership check, not a regex, so a
-        // typo such as a doubled slash (which would still satisfy a lax "starts with bbj/, rest is
-        // [a-zA-Z/]" pattern) is caught by the exact per-segment set comparison instead.
-        Set<String> allowedCamelCaseSegments = Set.of("decodeCall", "resolvedConfigPath");
+        // (decodeCall, resolvedConfigPath, refreshJavaClasses); every other segment of every
+        // name must be all lower-case. The allowed exception is a literal set membership check,
+        // not a regex, so a typo such as a doubled slash (which would still satisfy a lax
+        // "starts with bbj/, rest is [a-zA-Z/]" pattern) is caught by the exact per-segment set
+        // comparison instead.
+        Set<String> allowedCamelCaseSegments = Set.of("decodeCall", "resolvedConfigPath", "refreshJavaClasses");
         for (String requestName : requestNames) {
             for (String segment : requestName.split("/")) {
                 boolean isAllLowerCase = segment.equals(segment.toLowerCase(Locale.ROOT));
@@ -135,8 +143,10 @@ class ComposerRequestContractTest {
         String composerSource = readLanguageServerSource(COMPOSER_COMMANDS_TS);
         String compileSource = readLanguageServerSource(COMPILE_COMMAND_TS);
         String resolvedConfigPathSource = readLanguageServerSource(RESOLVED_CONFIG_PATH_REQUEST_TS);
+        String mainSource = readLanguageServerSource(MAIN_TS);
         assertTrue(composerSource.length() > 0, "composer-commands.ts must be non-empty");
         assertTrue(compileSource.length() > 0, "compile-command.ts must be non-empty");
         assertTrue(resolvedConfigPathSource.length() > 0, "resolved-config-path-request.ts must be non-empty");
+        assertTrue(mainSource.length() > 0, "main.ts must be non-empty");
     }
 }
