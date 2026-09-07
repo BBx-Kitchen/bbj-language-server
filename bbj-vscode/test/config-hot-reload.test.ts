@@ -142,6 +142,10 @@ describe('createConfigWatcher: debounce + relevance gate (end-to-end tracer)', (
         });
         const configPath = path.join('/cfg', 'config.bbx');
         watcher.start(resolvedAt(configPath), consumedConfigSnapshot(initialContents));
+        // start()'s own arm-time relevance check (WR-03) already read the file once and found
+        // it matching the baseline (no divergence, no notify) -- clear that call so the counts
+        // asserted below reflect only each test's own subsequent events.
+        readFile.mockClear();
         return {
             watcher,
             records,
@@ -346,10 +350,15 @@ describe('arm failure handling and dispose', () => {
         vi.useFakeTimers();
         const { watchDirectory, records } = createFakeWatchFactory();
         const notify = vi.fn();
-        const readFile = vi.fn((): string | null => 'PREFIX /changed/\n');
+        // Matches the baseline passed to start() below, so the arm-time relevance check
+        // (WR-03) sees no divergence and start() itself notifies nothing -- this test is
+        // about dispose() cancelling a LATER pending debounce timer, not the arm-time check.
+        let currentContents = 'PREFIX /original/\n';
+        const readFile = vi.fn((): string | null => currentContents);
         const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
 
         watcher.start(resolvedAt('/cfg/config.bbx'), consumedConfigSnapshot('PREFIX /original/\n'));
+        currentContents = 'PREFIX /changed/\n';
         records[0].onEvent('rename', 'config.bbx');
 
         watcher.dispose();
@@ -358,6 +367,63 @@ describe('arm failure handling and dispose', () => {
         vi.advanceTimersByTime(CONFIG_WATCH_DEBOUNCE_MS);
         expect(notify).not.toHaveBeenCalled();
         vi.useRealTimers();
+    });
+});
+
+describe('start(): arm-time relevance check (WR-03)', () => {
+    test('a config file that diverged between the baseline snapshot capture and start() is detected immediately, with reason prefix-changed', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        // The baseline was captured earlier (e.g. at initializeWorkspace() time) as the
+        // snapshot of 'PREFIX /a/\n' -- but by the time start() arms the watch, the file on
+        // disk already reads as 'PREFIX /b/\n' (an edit landed in the window between the two).
+        const readFile = vi.fn((): string | null => 'PREFIX /b/\n');
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+
+        expect(records).toHaveLength(1);
+        expect(readFile).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg/config.bbx', reason: 'prefix-changed' } satisfies ConfigReloadNotification);
+    });
+
+    test('a config file that reads as missing at arm time, diverging from a non-empty baseline, is detected with reason config-missing', () => {
+        const { watchDirectory } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const readFile = vi.fn((): string | null => null);
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+
+        expect(notify).toHaveBeenCalledTimes(1);
+        expect(notify).toHaveBeenCalledWith({ path: '/cfg/config.bbx', reason: 'config-missing' } satisfies ConfigReloadNotification);
+    });
+
+    test('a config file whose content still matches the baseline at start() emits zero notifications', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const readFile = vi.fn((): string | null => 'PREFIX /a/\n');
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt('/cfg/config.bbx'), consumedConfigSnapshot('PREFIX /a/\n'));
+
+        expect(records).toHaveLength(1);
+        expect(readFile).toHaveBeenCalledTimes(1);
+        expect(notify).not.toHaveBeenCalled();
+    });
+
+    test('start() with no resolved path performs no read and emits no notification', () => {
+        const { watchDirectory, records } = createFakeWatchFactory();
+        const notify = vi.fn();
+        const readFile = vi.fn((): string | null => 'PREFIX /a/\n');
+        const watcher = createConfigWatcher({ watchDirectory, notify, readFile, logWarn: vi.fn() });
+
+        watcher.start(resolvedAt(null), '');
+
+        expect(records).toHaveLength(0);
+        expect(readFile).not.toHaveBeenCalled();
+        expect(notify).not.toHaveBeenCalled();
     });
 });
 
