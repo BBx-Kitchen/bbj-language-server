@@ -9,6 +9,7 @@ import { CommentProvider } from "langium";
 import { TypeInferer } from "./bbj-type-inferer.js";
 import { BBjServices } from "./bbj-module.js";
 import { logger } from './logger.js';
+import { detectSetOptsShape, setoptsHoverMarkdown, setoptsHoverTarget } from "./setopts-code-scanner.js";
 
 export class BBjHoverProvider extends AstNodeHoverProvider {
     protected readonly documentationProvider: DocumentationProvider;
@@ -35,6 +36,17 @@ export class BBjHoverProvider extends AstNodeHoverProvider {
         const cstNode = findLeafNodeAtOffset(rootNode, offset);
 
         if (cstNode && cstNode.offset + cstNode.length > offset) {
+            // SETOPTS-in-code decode (#475, DISC-05): a hex `StringLiteral` (or the `SETOPTS`
+            // keyword itself) resolves to no declaration, so `References.findDeclarations`
+            // never reaches `getAstNodeHoverContent` for it — this branch must live here,
+            // before the declaration-resolution path, not inside that hook.
+            const setOptsTarget = setoptsHoverTarget(cstNode);
+            if (setOptsTarget) {
+                const shape = detectSetOptsShape(setOptsTarget);
+                if (shape) {
+                    return { contents: { kind: 'markdown', value: setoptsHoverMarkdown(shape) } };
+                }
+            }
             // Store reference context for inherited field detection
             this.referenceCstNode = cstNode;
             try {

@@ -158,3 +158,68 @@ PRINT d!.x.y
         typeInfererSpy.mockRestore();
     });
 });
+
+/**
+ * SETOPTS-in-code decode hover, shape (a): an absolute `SETOPTS <hex>` statement (#475,
+ * DISC-05, plan 88-01). Proves the hover branch is reachable through a real
+ * `getHoverContent` call — the architectural risk this plan's tracer task settles: a hex
+ * `StringLiteral` resolves to no declaration, so `getAstNodeHoverContent` (reached only via
+ * `References.findDeclarations`) would never fire for it.
+ */
+describe('SETOPTS-in-code hover: absolute shape decode (88-01, DISC-05)', async () => {
+    const services = createBBjServices(EmptyFileSystem);
+    const parse = parseHelper<Model>(services.BBj);
+
+    beforeAll(async () => {
+        await initializeWorkspace(services.shared);
+    });
+
+    function positionOf(document: LangiumDocument, snippet: string) {
+        const offset = document.textDocument.getText().indexOf(snippet);
+        expect(offset, `expected to find "${snippet}" in the test source`).toBeGreaterThanOrEqual(0);
+        return document.textDocument.positionAt(offset);
+    }
+
+    test('hovering the hex literal of an absolute SETOPTS statement returns a decoded markdown hover', async () => {
+        const document = await parse('SETOPTS $08004020$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+        const position = positionOf(document, '$08004020$');
+        const hover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: position.line, character: position.character + 1 }
+        });
+
+        expect(hover).toBeDefined();
+        const value = (hover!.contents as { value: string }).value;
+        expect(value).toContain('SETOPTS $08004020$');
+        expect(value).toContain('Console mode in public programs');
+    });
+
+    test('hovering the SETOPTS keyword returns byte-identical markdown to hovering the literal', async () => {
+        const document = await parse('SETOPTS $08004020$', { validation: true });
+        expect(document.parseResult.lexerErrors).toHaveLength(0);
+        expect(document.parseResult.parserErrors).toHaveLength(0);
+
+        const hoverProvider = services.BBj.lsp.HoverProvider!;
+
+        const literalPos = positionOf(document, '$08004020$');
+        const literalHover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: literalPos.line, character: literalPos.character + 1 }
+        });
+
+        const keywordPos = positionOf(document, 'SETOPTS');
+        const keywordHover = await hoverProvider.getHoverContent(document, {
+            textDocument: { uri: document.uri.toString() },
+            position: { line: keywordPos.line, character: keywordPos.character + 1 }
+        });
+
+        expect(literalHover).toBeDefined();
+        expect(keywordHover).toBeDefined();
+        expect((keywordHover!.contents as { value: string }).value)
+            .toBe((literalHover!.contents as { value: string }).value);
+    });
+});
