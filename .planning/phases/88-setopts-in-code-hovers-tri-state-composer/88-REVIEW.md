@@ -1,280 +1,218 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-reviewed: 2026-09-07T00:00:00Z
+reviewed: 2026-09-07T23:06:00Z
 depth: standard
-files_reviewed: 31
+files_reviewed: 5
 files_reviewed_list:
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/BbjComposerServer.java
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerModels.java
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureSetoptsInCodeIntention.java
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/DecodeEquality.java
-  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/SetoptsTriStateComposerDialog.java
-  - bbj-intellij/src/main/resources/intentionDescriptions/ConfigureSetoptsInCodeIntention/after.bbj.template
-  - bbj-intellij/src/main/resources/intentionDescriptions/ConfigureSetoptsInCodeIntention/before.bbj.template
-  - bbj-intellij/src/main/resources/intentionDescriptions/ConfigureSetoptsInCodeIntention/description.html
-  - bbj-intellij/src/main/resources/META-INF/plugin.xml
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerApplyGuardSourceGuardTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerDialogRefreshSourceGuardTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerFlowTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerIntentionPreviewSourceGuardTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerLauncherChainSourceGuardTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerModelsJsonBoundaryTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/ComposerRequestContractTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/DecodeEqualityTest.java
-  - bbj-intellij/src/test/java/com/basis/bbj/intellij/composer/SetoptsInCodeSourceGuardTest.java
-  - bbj-vscode/package.json
-  - bbj-vscode/src/extension.ts
-  - bbj-vscode/src/language/bbj-hover.ts
-  - bbj-vscode/src/language/main.ts
   - bbj-vscode/src/language/setopts-code-scanner.ts
-  - bbj-vscode/src/language/setopts-in-code-request.ts
-  - bbj-vscode/src/language/validations/check-function-calls.ts
-  - bbj-vscode/src/setopts-catalog.ts
-  - bbj-vscode/src/setopts-in-code-ui.ts
-  - bbj-vscode/src/setopts-tristate-webview.ts
-  - bbj-vscode/test/hover.test.ts
-  - bbj-vscode/test/setopts-catalog.test.ts
   - bbj-vscode/test/setopts-code-scanner.test.ts
-  - bbj-vscode/test/setopts-in-code-request.test.ts
+  - bbj-vscode/src/setopts-in-code-ui.ts
   - bbj-vscode/test/setopts-in-code-ui.test.ts
-  - QA/FULL-TEST-CHECKLIST.md
+  - bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java
 findings:
-  critical: 1
-  warning: 2
-  info: 0
-  total: 3
+  critical: 0
+  warning: 3
+  info: 1
+  total: 4
 status: issues_found
 ---
 
-# Phase 88: Code Review Report
+# Phase 88: Code Review Report (re-review)
 
-**Reviewed:** 2026-09-07T00:00:00Z
+**Reviewed:** 2026-09-07T23:06:00Z
 **Depth:** standard
-**Files Reviewed:** 31 (listed above; `StaleEditGuard.java`, `ComposerFlow.java` and other pre-existing collaborators referenced by `ComposerLauncher.java` were not in scope and were treated as unmodified)
+**Files Reviewed:** 5
 **Status:** issues_found
 
 ## Summary
 
-This phase adds SETOPTS-in-code hovers plus a tri-state (Set/Clear/Leave) composer for the
-`var$=OPTS … IOR/AND … SETOPTS var$` chain pattern, spanning a new AST-based scanner
-(`setopts-code-scanner.ts`), a document-aware LSP request pair (`setopts-in-code-request.ts`),
-VS Code and IntelliJ UI wiring, and a large, well-organized test suite (source guards, DTO
-boundary tests, field-wise equality tests).
+This is a re-review after the gsd-code-fixer applied CR-01 (missing control-flow guards),
+WR-01 (unreachable `MethodCall` branch removal), and WR-02 (word-boundary matching for the
+SETOPTS/IOR(/AND( candidate-line gates). All three targeted fixes were verified directly
+against `git show` diffs and cross-checked against `generated/ast.ts` and `bbj.langium`:
 
-The implementation is generally careful — DISC-06's "fail closed, never fabricate a false safe"
-principle is explicitly documented and mostly honored (control flow, reassignment, aliasing, and
-unparseable masks are all handled), and the round-trip/codegen arithmetic in `setopts-catalog.ts`
-is internally consistent and well covered by tests.
+- **CR-01** is correct and complete for its stated scope. `isOnGotoStatement`, `isSwitchStatement`,
+  `isSwitchCase`, `isUntilStatement`, and the `isKeywordStatement(stmt) && stmt.kind === 'REPEAT'`
+  check are all real, exported type guards from `generated/ast.ts` (confirmed by grep), and the
+  grammar confirms `GotoStatement.kind` covers both `GOTO`/`GOSUB`, and `SwitchStatement` covers
+  both `SWITCH` and `SWEND` as one node type — so a single `isSwitchStatement` guard is sufficient
+  for both keywords. All 13 control-flow-marker cases in the `test.each` table pass against the
+  real guard list.
+- **WR-01** is a clean, correct type-narrowing; no leftover dead code, and no other caller still
+  passes a `MethodCall` into `traceOptsChain`/`trackedVariableName`.
+- **WR-02** is a genuine improvement (previously `expand(`, `command(`, `brand(`, etc. false-positived
+  the candidate-line gate) but is **incomplete**: it only guards the *leading* edge of the bare
+  `SETOPTS` keyword. See WR-A below for the reproducible edge case this leaves open, present
+  identically in both the VS Code regex and the IntelliJ Java heuristic.
 
-However, the backward chain walk that decides whether a chain is safe to hover/edit
-(`setopts-code-scanner.ts`'s `matchStatement`) does not recognize every BBj control-flow
-statement type. Two of the statically-relevant branching constructs — `ON expr GOTO/GOSUB
-label,...` (`OnGotoStatement`) and `SWITCH/CASE/SWEND` (`SwitchStatement`/`SwitchCase`) — are flat
-siblings in the same statement array as everything else (confirmed against the grammar and
-generated AST), yet `matchStatement` silently classifies them as `'irrelevant'` and keeps walking
-through them. This produces a false "safe: true" verdict — and a real, in-place code edit — for a
-chain that a runtime branch can actually skip, which is exactly the defect class DISC-06 was
-designed to prevent. See CR-01 below.
-
-Two lower-severity issues are also flagged: an unreachable `MethodCall` code path in the chain
-tracer that carries no test coverage, and a substring-only (no word-boundary) keyword match used
-by both IDEs' cheap "is this intention/action available" gates, which produces false-positive
-intention offers on ordinary identifiers.
-
-## Critical Issues
-
-### CR-01: SETOPTS chain-safety walk misses `ON...GOTO/GOSUB` and `SWITCH/CASE/SWEND`, producing a false "safe" verdict
-
-**File:** `bbj-vscode/src/language/setopts-code-scanner.ts:244-249`
-
-**Issue:**
-
-`matchStatement` is the function that decides, for each statement walked backward from a
-`SETOPTS var$` statement toward its `var$=OPTS` origin, whether that statement is safe to skip
-over. Its control-flow gate is:
-
-```ts
-function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
-    if (isIfStatement(stmt) || isElseStatement(stmt) || isIfEndStatement(stmt)
-        || isWhileStatement(stmt) || isWhileEndStatement(stmt) || isForStatement(stmt)
-        || isGotoStatement(stmt)) {
-        return { kind: 'control-flow' };
-    }
-    if (!isLetStatement(stmt)) {
-        return { kind: 'irrelevant' };
-    }
-    ...
-```
-
-This list is missing two statement types that the BBj grammar defines as their own flat
-`SingleStatement` alternatives (verified in `bbj-vscode/src/language/bbj.langium` lines 26-112 and
-in the generated `ast.ts`, e.g. `OnGotoStatement` at `ast.ts:1909-1915`, which — like
-`IfStatement`/`GotoStatement` — has no nested statement array and appears as a flat sibling in the
-same `Program.statements`/`MethodDecl.body`/etc. array that `walkChain` iterates):
-
-- `OnGotoStatement` — `ON expr GOTO label1,label2,...` / `ON expr GOSUB label1,label2,...`, a
-  computed multi-way branch.
-- `SwitchStatement` / `SwitchCase` — `SWITCH expr` / `CASE value` / `SWEND`, BBj's flat
-  (non-nested) multi-way branch construct.
-
-Because neither type matches any branch in `matchStatement`, both statements fall through to
-`if (!isLetStatement(stmt)) return { kind: 'irrelevant' };` and the backward walk simply steps
-past them as if they were inert, exactly like a `PRINT` statement.
-
-Concretely, for:
-
-```bbj
-A$=OPTS
-SWITCH X
-CASE 1
-A$=IOR(A$,"$08$")
-CASE 2
-SWEND
-SETOPTS A$
-```
-
-or
-
-```bbj
-A$=OPTS
-ON X GOTO L1,L2
-A$=IOR(A$,"$08$")
-L1:
-L2:
-SETOPTS A$
-```
-
-`traceOptsChain` reports `safe: true` with the `IOR` link folded into `effect.set`, and the hover
-(`setoptsHoverMarkdown`) states "Sets: …" as if this were unconditionally true. Worse,
-`decodeInCode` (`setopts-in-code-request.ts`) treats this as `editable: true`, `mode: 'chain'`,
-handing both IDEs' composers a `chain` edit target — so opening the tri-state composer and
-pressing Apply/Insert will rewrite the reassignment region as if the `IOR` always executes, even
-though at runtime the `SWITCH`/`ON...GOTO` may skip it entirely for some values of `X`. This is
-precisely the "ambiguity silently resolves to a false safe" failure mode that
-`UNSAFE_REASON_TEXT`'s design comment ("Any ambiguity resolves toward an unsafe verdict, never
-toward a false 'link' or 'origin'" — line 241-243) explicitly says must never happen, and it is a
-real, common BBj construct, not an exotic corner case.
-
-The existing test matrix (`test/setopts-code-scanner.test.ts`'s `controlFlowMarkers` table, lines
-224-239) only exercises `IfStatement`/`ElseStatement`/`IfEndStatement`/`WhileStatement`/
-`WhileEndStatement`/`ForStatement`/`GotoStatement` — it never includes `ON...GOTO` or
-`SWITCH`/`CASE`/`SWEND`, so this gap has no regression coverage.
-
-(Note: `UntilStatement`/the `REPEAT` `KeywordStatement` are also absent from the same gate. They
-are lower-risk since a `REPEAT` body always executes at least once, but they belong to the same
-"statement type list is incomplete" defect and should be reviewed alongside the fix.)
-
-**Fix:**
-
-Add the missing statement-type guards (importing the corresponding type guards from
-`./generated/ast.js`):
-
-```ts
-import {
-    // ...existing imports...
-    isOnGotoStatement,
-    isSwitchStatement,
-    isSwitchCase,
-    isUntilStatement,
-    isKeywordStatement, // to catch REPEAT specifically, or gate on isKeywordStatement(stmt) && stmt.kind === 'REPEAT'
-} from './generated/ast.js';
-
-function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
-    if (isIfStatement(stmt) || isElseStatement(stmt) || isIfEndStatement(stmt)
-        || isWhileStatement(stmt) || isWhileEndStatement(stmt) || isForStatement(stmt)
-        || isGotoStatement(stmt) || isOnGotoStatement(stmt)
-        || isSwitchStatement(stmt) || isSwitchCase(stmt)
-        || isUntilStatement(stmt) || (isKeywordStatement(stmt) && stmt.kind === 'REPEAT')) {
-        return { kind: 'control-flow' };
-    }
-    ...
-```
-
-and add matching `test.each` rows to the `controlFlowMarkers` table in
-`test/setopts-code-scanner.test.ts` for `ON X GOTO L1` / `ON X GOSUB L1` / `SWITCH X` / `CASE 1` /
-`SWEND`, mirroring the existing entries.
+Beyond the three targeted fixes, a standard-depth pass over `setopts-code-scanner.ts` surfaced one
+pre-existing (not introduced by this round's fixes) but reproducible correctness bug in the
+backward chain walk's scope resolution when the traced `SetOptsStatement` itself sits inside a
+semicolon-joined `CompoundStatement` — confirmed empirically by a scratch reproduction test (not
+committed) before being removed. No hardcoded secrets, dangerous functions, or debug artifacts
+were found in any of the five files.
 
 ## Warnings
 
-### WR-01: `traceOptsChain`'s `MethodCall` overload is dead, untested code
+### WR-A: WR-02's word-boundary fix has no trailing boundary for the bare `SETOPTS` keyword
 
-**File:** `bbj-vscode/src/language/setopts-code-scanner.ts:448` (and `trackedVariableName` at
-line 165)
+**File:** `bbj-vscode/src/setopts-in-code-ui.ts:44`
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:70-76`
 
-**Issue:** `traceOptsChain(target: SetOptsStatement | MethodCall)` and its helper
-`trackedVariableName` are typed to accept a `MethodCall`, and the doc comment on `traceOptsChain`
-says it is "used internally when a chain link itself needs re-tracing" — but nothing in the
-codebase ever calls `traceOptsChain` (or reaches `trackedVariableName`) with a `MethodCall`.
-`detectSetOptsShape` only routes to `traceOptsChain` when `isSetOptsStatement(node)` and
-`isSymbolRef(opts)` (line 354-356); every one of the ~20 call sites in
-`test/setopts-code-scanner.test.ts` passes a `SetOptsStatement`. `walkChain` builds chain links
-directly via `matchStatement`, it never recurses into `traceOptsChain` for a link. This makes the
-`MethodCall` branch of `trackedVariableName` (and the corresponding half of `traceOptsChain`'s
-union type) unreachable in practice and therefore unverified by any test — if it is ever wired up
-later, its correctness (e.g., what `findAnchor`/`walkChain` should do when the "target" is itself
-an `IOR`/`AND` call rather than the final `SETOPTS`) has never been exercised.
+**Issue:** The WR-02 fix added a *leading* word-boundary check (`\b` in the TS regex;
+`hasIdentifierCharBefore` in the Java heuristic) so substrings like `expand(`, `command(`,
+`brand(` no longer false-positive. But neither implementation checks the boundary *after* the
+bare `SETOPTS` keyword (the `IOR(` / `AND(` alternatives get an implicit trailing boundary for
+free, because the pattern requires the literal `(` immediately after them — `SETOPTS` has no such
+anchor). Confirmed by direct execution:
 
-**Fix:** Either narrow the public signature to `SetOptsStatement` only (removing the unused
-`MethodCall` branch from `trackedVariableName` and updating the doc comment to remove the
-"chain link itself needs re-tracing" claim), or add an explicit test exercising the `MethodCall`
-path if it is intended to be reachable from somewhere. Leaving typed-but-unreachable branches in a
-safety-critical scanner makes it harder to reason about what is actually covered by the "never a
-false safe" test matrix.
+```
+$ node -e "
+const pattern = /\b(?:SETOPTS|IOR\(|AND\()/gi;
+function test(line, character) {
+  let match; pattern.lastIndex=0;
+  while ((match = pattern.exec(line))) { if (match.index <= character) return true; }
+  return false;
+}
+console.log(test('SETOPTSFOO opts\$', 10));        // true  (false positive)
+console.log(test('x = SETOPTSHELPER(1)', 18));      // true  (false positive)
+"
+true
+true
+```
 
-### WR-02: Cheap "is this line a SETOPTS-in-code candidate" gates match substrings, not tokens, causing false-positive intention/action offers
+A line containing an unrelated identifier like `SETOPTSFOO` or `SETOPTSHELPER(1)` (a plausible
+user-defined function/variable name) still satisfies `setoptsInCodeCandidateLine`, so the
+"Compose SETOPTS block…" Code Action is offered on a line that has nothing to do with SETOPTS.
+Since the server-side `decodeInCode` will legitimately report `found: false` for such a line, the
+extension currently routes this straight into `openSetOptsTriStateComposerPanel(context, {}, send)`
+— i.e. the **compose-new** flow — which is prepared to *insert a brand-new SETOPTS block at the
+user's cursor* if they don't notice the mismatch between "I clicked near `SETOPTSFOO`" and "a
+blank SETOPTS composer opened." The dialog requires an explicit OK, so this is not a silent data
+change, but it is a real, reproducible triggering-condition regression in exactly the code path
+WR-02 was meant to close. The identical structural gap exists in
+`ComposerLauncher.isCaretOnCall`/`hasIdentifierCharBefore` for the `"setopts"` keyword (no check of
+`text.charAt(idx + keyword.length())`), so the IntelliJ lightbulb intention's `isAvailable` has the
+same false positive for `SETOPTSFOO`/`SETOPTSHELPER(`.
 
-**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:77-79`
-(`isCaretOnSetoptsInCode` / `isCaretOnCall`) and
-`bbj-vscode/src/setopts-in-code-ui.ts:41-47` (`setoptsInCodeCandidateLine`)
+**Fix:** Require a trailing boundary for the bare `SETOPTS` alternative only (IOR(/AND( already have
+one via the literal `(`):
 
-**Issue:** Both the IntelliJ lightbulb's `isAvailable` gate and the VS Code Code Action provider's
-gate look for the keywords `SETOPTS`, `IOR(`, `AND(` via plain case-insensitive `indexOf`/substring
-search, with no word-boundary check:
+```ts
+// bbj-vscode/src/setopts-in-code-ui.ts
+const pattern = /\bSETOPTS\b|\bIOR\(|\bAND\(/gi;
+```
 
 ```java
-static boolean isCaretOnSetoptsInCode(@NotNull Editor editor) {
-    return isCaretOnCall(editor, "setopts") || isCaretOnCall(editor, "ior(") || isCaretOnCall(editor, "and(");
+// ComposerLauncher.java — for the "setopts" keyword specifically, also require
+// !hasIdentifierCharAfter(text, idx + keyword.length())
+private static boolean hasIdentifierCharAfter(String text, int idxAfterKeyword) {
+    if (idxAfterKeyword >= text.length()) return false;
+    char next = text.charAt(idxAfterKeyword);
+    return Character.isLetterOrDigit(next) || next == '_' || next == '$' || next == '!' || next == '%' || next == '@';
+}
+// then in the loop: if (!hasIdentifierCharBefore(text, idx)
+//     && !(keyword.equals("setopts") && hasIdentifierCharAfter(text, idx + keyword.length()))
+//     && caretCol >= idx) { return true; }
+```
+
+### WR-B: `findAnchor` mis-scopes the backward walk when the target `SetOptsStatement` is itself inside a semicolon-joined `CompoundStatement`
+
+**File:** `bbj-vscode/src/language/setopts-code-scanner.ts:198-213` (`findAnchor`), interacting with
+`traceOptsChain` at `:453-458`
+
+**Issue:** `containerStatements()` (line 176) treats `CompoundStatement` as a valid "statement list
+owner," exactly like `Program`/`MethodDecl`/`DefFunction`. `findAnchor` stops climbing at the
+*first* node for which `containerStatements()` returns a value. When the traced `SetOptsStatement`
+is itself one of the semicolon-joined elements of a `CompoundStatement` (e.g. `A$=IOR(A$,"$08$")
+; SETOPTS A$` on one physical line), `target.$container` **is** that `CompoundStatement`, so
+`findAnchor` returns the compound's own (tiny) `.statements` array as the whole search space —
+losing every sibling statement in the actual enclosing scope, including an `A$=OPTS` origin on a
+preceding line. Reproduced directly (scratch test, removed after confirming, not committed):
+
+```
+source: 'A$=OPTS\nA$=IOR(A$,"$08$") ; SETOPTS A$'
+traceOptsChain(target) => { safe: false, unsafeReason: 'no-origin',
+                             links: [{fnName:'IOR', maskHex:'08', ...}], ... }
+```
+
+i.e. a chain that is obviously safe (one `IOR` link between an `OPTS` origin and the `SETOPTS`
+target) is reported as `no-origin`, and the hover text tells the user **"no `var$=OPTS` assignment
+was found in the enclosing block"** — which is factually wrong; the assignment exists, it's just
+outside the mistakenly-narrowed search window. This fails closed (no incorrect edit is ever
+offered), so it's not a safety violation of DISC-06's "never a false safe" contract, but it is a
+functional defect that silently disables edit-in-place for a documented, already-tested BBj idiom
+(the existing "CompoundStatement sibling is transparent" test only covers a compound statement that
+is a *sibling before* the target — not one that *contains* the target itself). This is pre-existing
+(introduced in the original 88-02 chain-walk implementation, not by this round's CR-01/WR-01/WR-02
+fixes), but was not previously flagged.
+
+**Fix:** Don't let `findAnchor` treat `CompoundStatement` as a terminal container — keep climbing
+through it to the real top-level statement-list owner, and locate the actual `target` node (not
+`anchor.statements[anchor.anchorIndex]`) in the already-flattened array so the compound wrapper
+itself never needs to appear in the flattened list:
+
+```ts
+function findAnchor(target: AstNode): { statements: ReadonlyArray<AstNode>; anchorIndex: number } | undefined {
+    let prev: AstNode = target;
+    let node: AstNode | undefined = target.$container;
+    let hops = 0;
+    while (node && hops < MAX_CONTAINER_HOPS) {
+        const statements = containerStatements(node);
+        if (statements && !isCompoundStatement(node)) {
+            const idx = statements.indexOf(prev);
+            return idx === -1 ? undefined : { statements, anchorIndex: idx };
+        }
+        prev = node;
+        node = node.$container;
+        hops++;
+    }
+    return undefined;
 }
 ```
 
-```ts
-export function setoptsInCodeCandidateLine(lineText: string, character: number): boolean {
-    const upper = lineText.toUpperCase();
-    return SETOPTS_IN_CODE_KEYWORDS.some(keyword => {
-        const idx = upper.indexOf(keyword);
-        return idx >= 0 && idx <= character;
-    });
-}
-```
+and in `traceOptsChain`, pass `target` itself (not `anchor.statements[anchor.anchorIndex]`) as the
+anchor statement to `walkChain`, since `flattenStatements` already inlines compound children and
+`target` is guaranteed to be present in the flattened array once `findAnchor` correctly climbs past
+any enclosing `CompoundStatement`.
 
-`"AND("` is a substring of many ordinary identifiers followed by a call — e.g. `expand(`,
-`command(`, `demand(`, `brand(`, `island(` — and `"IOR("` is a substring of e.g. `prior(`,
-`senior(`, `junior(`. A line like `x$ = EXPAND("foo")` or `y = PRIOR(1)` trips both gates and
-offers the "Configure SETOPTS options in code…" lightbulb (IntelliJ) or the "Compose SETOPTS
-block…" Code Action (VS Code) on code that has nothing to do with SETOPTS. Because the actual
-edit is gated behind the authoritative server-side `decodeInCode` response, this cannot corrupt
-code on its own — but if the user invokes the offered action without realizing it is a false
-positive, `decodeInCode` will report `found: false` and both clients fall through to
-"compose a new block" (`openSetoptsInCodeComposeNew` / `openSetOptsTriStateComposerPanel(..., {})`),
-which inserts a brand-new `opts$=OPTS` / `SETOPTS opts$` block at the cursor line if the user then
-clicks OK/Insert without noticing the mismatch. Neither `test/setopts-in-code-ui.test.ts`'s
-`setoptsInCodeCandidateLine` table nor any IntelliJ test exercises this substring false-positive
-case.
+### WR-C: Divergent identifier-boundary definitions between the TS and Java word-boundary checks
 
-**Fix:** Require a non-identifier boundary before the keyword (e.g. start-of-line, whitespace, or
-a non-word character), for example in TypeScript:
+**File:** `bbj-vscode/src/setopts-in-code-ui.ts:44` vs.
+`bbj-intellij/.../ComposerLauncher.java:81-87` (`hasIdentifierCharBefore`)
 
-```ts
-const KEYWORD_PATTERN = /\b(SETOPTS|IOR\(|AND\()/i;
-```
-and search with a regex that anchors on `\b` before the keyword, rather than a bare `indexOf`; mirror
-the same word-boundary check in `ComposerLauncher.isCaretOnCall`/`isCaretOnSetoptsInCode` (e.g. via
-a small regex or by checking that the character immediately preceding the match index, if any, is
-not a letter/digit/`$`/`!`).
+**Issue:** The two "same" heuristics disagree on what counts as an identifier character
+immediately before the keyword. The TS regex's `\b` uses JS's `\w` definition (`[A-Za-z0-9_]`
+only), while the Java `hasIdentifierCharBefore` additionally treats BBj's sigil characters
+(`$ ! % @`) as identifier characters. Concretely, for a hypothetical line where a `$`/`!`/`%`/`@`
+-terminated identifier sits directly adjacent to `AND(`/`IOR(`/`SETOPTS` with no operator between
+them, the VS Code gate would treat it as a boundary (candidate) while the IntelliJ gate would not
+(no candidate). Because a BBj sigil terminates an identifier, arguably the *Java* behavior is the
+one out of step with real BBj tokenization (the TS behavior more closely matches how the lexer
+would actually split those tokens) — but regardless of which is "more correct," two composer UIs
+sharing one supposedly-identical heuristic should not diverge. Low real-world impact (this
+requires an unusual missing-operator text pattern to manifest), but worth reconciling so the two
+IDEs offer the composer action consistently for the same source text.
+
+**Fix:** Either drop the sigil characters from `hasIdentifierCharBefore` to match the TS `\w`-based
+definition, or extend the TS regex to a custom boundary class (`(?<![\w$!%@])`) that matches the
+Java definition — pick one canonical definition and use it in both places, ideally sourced from a
+single shared doc comment describing BBj identifier characters.
+
+## Info
+
+### IN-01: `setopts-in-code-ui.test.ts`'s substring-negative cases don't exercise the trailing-boundary gap (WR-A)
+
+**File:** `bbj-vscode/test/setopts-in-code-ui.test.ts:293-304`
+**Issue:** The `test.each` table for `setoptsInCodeCandidateLine` covers keywords that contain
+`IOR(`/`AND(` as a substring preceded by a letter (`expand(`, `command(`, `brand(`, etc.), which is
+exactly the case WR-02 fixed — but there is no case for an identifier where `SETOPTS` is a
+*prefix* (e.g. `SETOPTSFOO`), so the gap described in WR-A has no regression test guarding it.
+**Fix:** Add a case such as `['SETOPTSFOO', 'x = SETOPTSFOO(1)']` to the negative
+`test.each` table (it will currently fail, confirming WR-A) once the trailing-boundary fix lands.
 
 ---
 
-_Reviewed: 2026-09-07T00:00:00Z_
+_Reviewed: 2026-09-07T23:06:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
