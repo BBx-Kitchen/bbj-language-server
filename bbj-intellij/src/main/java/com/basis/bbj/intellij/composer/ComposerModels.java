@@ -373,4 +373,102 @@ public final class ComposerModels {
             this.selection = selection;
         }
     }
+
+    // ---- SETOPTS-in-code (#475, DISC-06, plan 88-04) -----------------------------------------------
+
+    /**
+     * Params for {@code bbj/composer/setopts/decodeInCode}: a document URI plus a zero-based LSP
+     * position, mirroring {@code SetOptsInCodeDecodeParams} in
+     * {@code bbj-vscode/src/language/setopts-in-code-request.ts} exactly.
+     */
+    public static final class SetoptsInCodeDecodeParams {
+        public String uri;
+        public int line;
+        public int character;
+
+        public SetoptsInCodeDecodeParams() {}
+
+        public SetoptsInCodeDecodeParams(String uri, int line, int character) {
+            this.uri = uri;
+            this.line = line;
+            this.character = character;
+        }
+    }
+
+    /** The edit target for an absolute {@code SETOPTS <literal>} statement. */
+    public static final class SetoptsInCodeAbsoluteEdit {
+        public int line;
+        public int[] hexRange;
+        public String hexDigits;
+    }
+
+    /** The edit target for a safe {@code var$=OPTS … SETOPTS var$} chain. */
+    public static final class SetoptsInCodeChainEdit {
+        public String variableName;
+        public int startLine;
+        public int endLine;
+        public String indent;
+    }
+
+    /**
+     * One catalog bit's Set/Clear/Leave state in the BBj-code tri-state composer (D-01). {@code byte}
+     * is a Java reserved word, so the annotation below keeps the wire key identical to the
+     * TypeScript shape ({@code SetOptsTriStateEntry} in {@code setopts-catalog.ts}). {@code state} is
+     * kept as a plain wire string ({@code "set"}/{@code "clear"}/{@code "leave"}), never a Java enum,
+     * so a value the server adds later parses rather than throws at the boundary.
+     */
+    public static final class SetoptsTriStateEntry {
+        @SerializedName("byte") public int byteNo;
+        public long mask;
+        public String state;
+
+        public SetoptsTriStateEntry() {}
+
+        public SetoptsTriStateEntry(int byteNo, long mask, String state) {
+            this.byteNo = byteNo;
+            this.mask = mask;
+            this.state = state;
+        }
+    }
+
+    /** A full tri-state selection: one {@link SetoptsTriStateEntry} per catalog bit the client cares about. */
+    public static final class SetoptsTriStateSelection {
+        public List<SetoptsTriStateEntry> entries;
+    }
+
+    /** Result of {@code bbj/composer/setopts/decodeInCode}; {@code found=false} when no shape is at the caret. */
+    public static final class SetoptsInCodeDecodeResult {
+        public boolean found;
+        public boolean editable;
+        public String mode;
+        public String reason;
+        public String summary;
+        public SetoptsInCodeAbsoluteEdit absolute;
+        public SetoptsInCodeChainEdit chain;
+        public SetoptsTriStateSelection initial;
+    }
+
+    /**
+     * Params for {@code bbj/composer/setopts/composeTriState} — mirrors {@code composeSetOptsBlock}'s
+     * own input shape exactly ({@code ComposeSetOptsBlockInput} in {@code setopts-catalog.ts}).
+     */
+    public static final class SetoptsComposeTriStateParams {
+        public SetoptsTriStateSelection selection;
+        public String variable;
+        public String indent;
+        public String scope;
+
+        public SetoptsComposeTriStateParams(SetoptsTriStateSelection selection, String variable, String indent, String scope) {
+            this.selection = selection;
+            this.variable = variable;
+            this.indent = indent;
+            this.scope = scope;
+        }
+    }
+
+    /** Result of {@code bbj/composer/setopts/composeTriState} — the composed block's text and lines. */
+    public static final class SetoptsComposeTriStateResult {
+        public String text;
+        public List<String> lines;
+    }
 }
