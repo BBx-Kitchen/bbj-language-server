@@ -93,6 +93,34 @@ describe('BBjDocumentBuilder.hasPendingWork / hasPendingCompile — the quiescen
             internals.cplDebounceTimers.delete('fake-key');
         }
     });
+
+    test("hasPendingWork() reports true while buildDocuments()'s post-super tail (addImportedBBjDocuments) is still awaiting", async () => {
+        const services = createBBjServices(EmptyFileSystem);
+        const builder = services.shared.workspace.DocumentBuilder as BBjDocumentBuilder;
+        const internals = builder as unknown as {
+            addImportedBBjDocuments: (...args: unknown[]) => Promise<void>;
+        };
+        const originalAddImported = internals.addImportedBBjDocuments;
+        let resolveTail: (() => void) | undefined;
+        internals.addImportedBBjDocuments = () => new Promise<void>(resolve => { resolveTail = resolve; });
+
+        try {
+            const buildPromise = builder.build([], {});
+            // Yield to the macrotask queue so the pipeline reaches buildDocuments()'s
+            // stubbed addImportedBBjDocuments call and is now suspended awaiting it.
+            // currentState has already reached Validated by this point (super.buildDocuments()
+            // resolved) -- without postProcessingDepth, hasPendingWork() would incorrectly
+            // report "not busy" while this tail is still in flight.
+            await new Promise<void>(resolve => setTimeout(resolve, 0));
+            expect(builder.hasPendingWork()).toBe(true);
+
+            resolveTail?.();
+            await buildPromise;
+            expect(builder.hasPendingWork()).toBe(false);
+        } finally {
+            internals.addImportedBBjDocuments = originalAddImported;
+        }
+    });
 });
 
 describe('config-watcher quiescence wait: a reload is never pushed while the builder is busy', () => {

@@ -21,6 +21,15 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     private static readonly MAX_IMPORT_DEPTH = 10;
     private isImportingBBjDocuments = false;
 
+    /**
+     * Counts overridden `buildDocuments()` calls that are still running their
+     * post-`super.buildDocuments()` tail (BBjCPL scheduling, transitive USE-import loading,
+     * USE-diagnostic revalidation). Incremented at the top of `buildDocuments()` and
+     * decremented in a `finally`, so re-entrant/nested calls are tracked correctly. Consulted
+     * by {@link hasPendingWork} — see that method's doc comment for why this exists.
+     */
+    private postProcessingDepth = 0;
+
     /** Per-file debounce timers for BBjCPL compilation. */
     private readonly cplDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -47,17 +56,24 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
 
     /**
      * The quiescence predicate a config-reload watcher polls before pushing a restart
-     * notification, so the restart is never emitted mid-validation (#486). True while either
-     * half of "the workspace is busy" holds:
+     * notification, so the restart is never emitted mid-validation (#486). True while any of
+     * "the workspace is busy" holds:
      *
      *  - a Langium build is in flight or has never completed. `DefaultDocumentBuilder` resets
      *    `currentState` to `DocumentState.Changed` at the top of every `build`/`update` call and
      *    only advances it to `DocumentState.Validated` once the validation phase finishes, so
      *    `currentState < DocumentState.Validated` is exactly that condition; or
+     *  - the overridden `buildDocuments()` below is still running its post-validation tail
+     *    (BBjCPL scheduling, transitive USE-import loading via `addImportedBBjDocuments`, or
+     *    USE-diagnostic revalidation) — `currentState` already reached `Validated` at that
+     *    point, so without this half the predicate would report "not busy" while that tail is
+     *    still actively loading/relinking/re-validating documents ({@link postProcessingDepth}); or
      *  - a BBjCPL debounce timer is pending ({@link hasPendingCompile}).
      */
     public hasPendingWork(): boolean {
-        return this.currentState < DocumentState.Validated || this.hasPendingCompile();
+        return this.currentState < DocumentState.Validated
+            || this.postProcessingDepth > 0
+            || this.hasPendingCompile();
     }
 
     protected override shouldValidate(_document: LangiumDocument<AstNode>): boolean {
@@ -84,23 +100,28 @@ export class BBjDocumentBuilder extends DefaultDocumentBuilder {
     }
 
     protected override async buildDocuments(documents: LangiumDocument<AstNode>[], options: BuildOptions, cancelToken: CancellationToken): Promise<void> {
-        await super.buildDocuments(documents, options, cancelToken);
-        // Collect and add referenced BBj documents after the initial build.
-        // Skip if we're already inside an import cycle to prevent infinite loops:
-        // buildDocuments -> addImportedBBjDocuments -> update -> shouldRelink (marks
-        // docs with ref errors) -> buildDocuments -> addImportedBBjDocuments -> ...
-        if (!this.isImportingBBjDocuments) {
-            // BBjCPL integration: compile validated documents based on trigger mode.
-            // IMPORTANT: Called here inside buildDocuments(), NOT from onBuildPhase —
-            // onBuildPhase triggers a CPU rebuild loop (see STATE.md).
-            await this.runBbjcplForDocuments(documents, cancelToken);
+        this.postProcessingDepth++;
+        try {
+            await super.buildDocuments(documents, options, cancelToken);
+            // Collect and add referenced BBj documents after the initial build.
+            // Skip if we're already inside an import cycle to prevent infinite loops:
+            // buildDocuments -> addImportedBBjDocuments -> update -> shouldRelink (marks
+            // docs with ref errors) -> buildDocuments -> addImportedBBjDocuments -> ...
+            if (!this.isImportingBBjDocuments) {
+                // BBjCPL integration: compile validated documents based on trigger mode.
+                // IMPORTANT: Called here inside buildDocuments(), NOT from onBuildPhase —
+                // onBuildPhase triggers a CPU rebuild loop (see STATE.md).
+                await this.runBbjcplForDocuments(documents, cancelToken);
 
-            await this.addImportedBBjDocuments(documents, options, cancelToken);
-            // After external PREFIX-resolved documents are loaded and indexed,
-            // remove false-positive "could not be resolved" diagnostics for paths
-            // that are now in the index. This fixes the timing issue where validation
-            // runs before addImportedBBjDocuments loads external files.
-            await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
+                await this.addImportedBBjDocuments(documents, options, cancelToken);
+                // After external PREFIX-resolved documents are loaded and indexed,
+                // remove false-positive "could not be resolved" diagnostics for paths
+                // that are now in the index. This fixes the timing issue where validation
+                // runs before addImportedBBjDocuments loads external files.
+                await this.revalidateUseFilePathDiagnostics(documents, cancelToken);
+            }
+        } finally {
+            this.postProcessingDepth--;
         }
     }
 
