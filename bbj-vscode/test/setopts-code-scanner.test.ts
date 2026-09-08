@@ -212,6 +212,24 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         expect(shape.links).toHaveLength(1);
     });
 
+    test('a comma-chained origin followed by a same-statement byte-range mutation is never reported safe', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS,A$(1,1)="Z"\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+        expect(shape.effect).toEqual({ set: [], clear: [] });
+    });
+
+    test('two IOR links to the tracked variable in one comma-chained statement do not silently drop the second link', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$"),A$=IOR(A$,"$10$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        // Both same-statement links can't be represented by the current one-verdict-per-statement
+        // model without inventing a new shape, so this must fail closed -- never report `safe: true`
+        // with only the first link's effect (which would silently drop the second IOR).
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('reassigned');
+    });
+
     test('last write wins per bit: an IOR then an AND on the same bit leaves it in effect.clear, not effect.set', async () => {
         const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$,"$08$")\nA$=AND(A$,"$F7$")\nSETOPTS A$');
         const shape = traceOptsChain(target)!;

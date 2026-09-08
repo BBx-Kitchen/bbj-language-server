@@ -15,6 +15,7 @@
 
 import { AstNode, CstNode } from 'langium';
 import {
+    Assignment,
     isArrayElement,
     isCompoundStatement,
     isDefFunction,
@@ -285,9 +286,74 @@ type StatementVerdict =
     | { kind: 'link'; link: SetOptsChainLink };
 
 /**
+ * Classify a single `Assignment` (one element of a comma-chained `LET`'s `assignments` array)
+ * against the tracked variable name. Extracted out of {@link matchStatement} so that function can
+ * inspect every assignment in a statement instead of stopping at the first match — see that
+ * function's own doc comment for why.
+ */
+function matchAssignment(assignment: Assignment, trackedName: string): StatementVerdict {
+    if (symbolRefName(assignment.variable) !== trackedName) {
+        // A byte-range or element accessor on the tracked variable itself (e.g. `A$(1,1)=`)
+        // is not "a different variable" and must not be skipped as transparent — it touches
+        // only part of the variable, which this model cannot represent, so it fires
+        // regardless of what the assignment's own value is.
+        if (indexedAccessRootName(assignment.variable) === trackedName) {
+            return { kind: 'indexed-target' };
+        }
+        return { kind: 'irrelevant' };
+    }
+    const value = assignment.value;
+    if (isSymbolRef(value)) {
+        let target: AstNode | undefined;
+        try {
+            target = value.symbol.ref;
+        } catch {
+            target = undefined; // cyclic / unresolved reference — not a recognizable OPTS origin
+        }
+        if (target && isLibVariable(target) && target.name.toUpperCase() === OPTS_VAR_NAME) {
+            return { kind: 'origin', originNode: assignment };
+        }
+        return { kind: 'reassigned' };
+    }
+    if (isMethodCall(value)) {
+        const fnName = iorOrAndName(value);
+        if (!fnName) {
+            return { kind: 'reassigned' };
+        }
+        if (symbolRefName(value.args[0]?.expression) !== trackedName) {
+            // A byte-range or element accessor on the tracked variable, passed as the
+            // IOR/AND call's own first argument (e.g. `IOR(A$(1,1),...)`), is not "a
+            // different variable" — `alias` keeps its meaning for a genuinely different one.
+            if (indexedAccessRootName(value.args[0]?.expression) === trackedName) {
+                return { kind: 'indexed-target' };
+            }
+            return { kind: 'alias' };
+        }
+        const parsed = parseHexLiteral(value.args[1]?.expression);
+        if (!parsed) {
+            return { kind: 'unparseable-mask' };
+        }
+        return { kind: 'link', link: { fnName, maskHex: parsed.hexDigits, vector: parsed.vector } };
+    }
+    return { kind: 'reassigned' };
+}
+
+/**
  * Classify one statement against the tracked variable name, per 88-RESEARCH.md's Traceability
  * Algorithm step 3. Any ambiguity resolves toward an unsafe verdict, never toward a false
  * "link" or "origin" — the walk must never touch a mask it cannot fully account for.
+ *
+ * `stmt.assignments` holds every comma-joined assignment of a `LET a=1,b=2` statement, and every
+ * one of them that touches the tracked variable must be accounted for — not just the first. A
+ * disqualifying verdict (`control-flow`/`reassigned`/`alias`/`unparseable-mask`/`indexed-target`)
+ * from any assignment fails the whole statement closed immediately. Otherwise every `origin` and
+ * `link` verdict found in the statement is accumulated; if the statement resolves to exactly one
+ * `origin` (and no `link`) or exactly one `link` (and no `origin`), that single verdict is
+ * reported as before. Any other combination — a second `origin`, a second `link`, or an `origin`
+ * together with a `link` in the same statement — cannot be represented by the current
+ * one-verdict-per-statement chain model without inventing new shapes, so it fails closed to
+ * `reassigned` rather than folding or guessing which one "wins": this never drops a real mutation
+ * silently, it just refuses to call the statement safe.
  */
 function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
     if (isIfStatement(stmt) || isElseStatement(stmt) || isIfEndStatement(stmt)
@@ -300,53 +366,46 @@ function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
     if (!isLetStatement(stmt)) {
         return { kind: 'irrelevant' };
     }
+    let originVerdict: Extract<StatementVerdict, { kind: 'origin' }> | undefined;
+    let linkVerdict: Extract<StatementVerdict, { kind: 'link' }> | undefined;
+    let linkCount = 0;
+    let touchedAny = false;
     for (const assignment of stmt.assignments) {
-        if (symbolRefName(assignment.variable) !== trackedName) {
-            // A byte-range or element accessor on the tracked variable itself (e.g. `A$(1,1)=`)
-            // is not "a different variable" and must not be skipped as transparent — it touches
-            // only part of the variable, which this model cannot represent, so it fires
-            // regardless of what the assignment's own value is.
-            if (indexedAccessRootName(assignment.variable) === trackedName) {
-                return { kind: 'indexed-target' };
-            }
+        const verdict = matchAssignment(assignment, trackedName);
+        if (verdict.kind === 'irrelevant') {
             continue;
         }
-        const value = assignment.value;
-        if (isSymbolRef(value)) {
-            let target: AstNode | undefined;
-            try {
-                target = value.symbol.ref;
-            } catch {
-                target = undefined; // cyclic / unresolved reference — not a recognizable OPTS origin
+        touchedAny = true;
+        if (verdict.kind === 'origin') {
+            if (originVerdict) {
+                return { kind: 'reassigned' }; // a second same-statement origin: fail closed, never guess
             }
-            if (target && isLibVariable(target) && target.name.toUpperCase() === OPTS_VAR_NAME) {
-                return { kind: 'origin', originNode: assignment };
-            }
-            return { kind: 'reassigned' };
+            originVerdict = verdict;
+            continue; // keep scanning — a later same-statement write must still be accounted for
         }
-        if (isMethodCall(value)) {
-            const fnName = iorOrAndName(value);
-            if (!fnName) {
-                return { kind: 'reassigned' };
-            }
-            if (symbolRefName(value.args[0]?.expression) !== trackedName) {
-                // A byte-range or element accessor on the tracked variable, passed as the
-                // IOR/AND call's own first argument (e.g. `IOR(A$(1,1),...)`), is not "a
-                // different variable" — `alias` keeps its meaning for a genuinely different one.
-                if (indexedAccessRootName(value.args[0]?.expression) === trackedName) {
-                    return { kind: 'indexed-target' };
-                }
-                return { kind: 'alias' };
-            }
-            const parsed = parseHexLiteral(value.args[1]?.expression);
-            if (!parsed) {
-                return { kind: 'unparseable-mask' };
-            }
-            return { kind: 'link', link: { fnName, maskHex: parsed.hexDigits, vector: parsed.vector } };
+        if (verdict.kind === 'link') {
+            linkCount++;
+            linkVerdict = verdict;
+            continue; // keep scanning — a later assignment in the same statement could still disqualify this one
         }
-        return { kind: 'reassigned' };
+        // control-flow/reassigned/alias/unparseable-mask/indexed-target: fail closed immediately,
+        // regardless of what was already accumulated above.
+        return verdict;
     }
-    return { kind: 'irrelevant' };
+    if (!touchedAny) {
+        return { kind: 'irrelevant' };
+    }
+    if (originVerdict && linkCount === 0) {
+        return originVerdict;
+    }
+    if (!originVerdict && linkCount === 1) {
+        return linkVerdict!;
+    }
+    // origin + link(s) in the same statement, or more than one link in the same statement: the
+    // current chain model carries exactly one verdict per statement, so this combination cannot
+    // be represented without inventing a new shape. Fail closed rather than fold left-to-right or
+    // pick one and drop the rest — see this function's doc comment.
+    return { kind: 'reassigned' };
 }
 
 interface ChainWalkResult {
