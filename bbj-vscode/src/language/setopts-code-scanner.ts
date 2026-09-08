@@ -15,6 +15,7 @@
 
 import { AstNode, CstNode } from 'langium';
 import {
+    isArrayElement,
     isCompoundStatement,
     isDefFunction,
     isElseStatement,
@@ -25,6 +26,7 @@ import {
     isKeywordStatement,
     isLetStatement,
     isLibVariable,
+    isMemberCall,
     isMethodCall,
     isMethodDecl,
     isOnGotoStatement,
@@ -66,10 +68,13 @@ export interface SetOptsChainEffect {
 /**
  * Why a chain was judged unsafe for edit-in-place (DISC-06's static-safety boundary). A chain
  * never reports `safe: true` unless the backward walk reached an `OPTS`-sourced origin through
- * only `IOR`/`AND` reassignments of the same variable — any other outcome resolves to exactly
- * one of these named reasons, never a silent false "safe".
+ * only `IOR`/`AND` reassignments of the same variable, each naming the tracked variable directly
+ * — never a byte-range or element accessor on it, such as `A$(1,1)` or `A$[1]` (the chain model
+ * carries no byte offset, so it cannot represent a partial mutation) — any other outcome resolves
+ * to exactly one of these named reasons, never a silent false "safe".
  */
-export type SetOptsUnsafeReason = 'control-flow' | 'reassigned' | 'alias' | 'unparseable-mask' | 'no-origin';
+export type SetOptsUnsafeReason =
+    | 'control-flow' | 'reassigned' | 'alias' | 'unparseable-mask' | 'indexed-target' | 'no-origin';
 
 /** The three DISC-05 hover shapes. */
 export type SetOptsCodeShape =
@@ -155,6 +160,43 @@ function symbolRefName(expr: AstNode | undefined): string | undefined {
     return expr && isSymbolRef(expr) ? expr.symbol.$refText?.toLowerCase() : undefined;
 }
 
+/**
+ * Bound on how many accessor-wrapper hops {@link indexedAccessRootName} unwraps before giving
+ * up — a defensive ceiling, not a tuned value, in the same style as {@link MAX_CONTAINER_HOPS}.
+ */
+const MAX_ACCESSOR_HOPS = 12;
+
+/**
+ * Walk inward through postfix accessor wrappers over a `SymbolRef` — `MethodCall` via its
+ * `method` (BBj's `A$(1,1)` byte-range/substring form), `ArrayElement` via its `receiver`
+ * (`A$[1]`), and `MemberCall` via its `receiver` (`A$.member`) — and return the lowercased
+ * `symbolRefName` of whatever the walk bottoms out on, but only when it unwrapped at least one
+ * accessor layer. A bare `SymbolRef` therefore returns `undefined` here — use
+ * {@link symbolRefName} for that case instead — keeping the two helpers strictly complementary
+ * so no call site can double-match the same expression. A match means the statement touches
+ * only part of the tracked variable, which the chain model cannot represent. Bounded by
+ * {@link MAX_ACCESSOR_HOPS}.
+ */
+function indexedAccessRootName(expr: AstNode | undefined): string | undefined {
+    let node: AstNode | undefined = expr;
+    let unwrapped = false;
+    let hops = 0;
+    while (node && hops < MAX_ACCESSOR_HOPS) {
+        if (isMethodCall(node)) {
+            node = node.method;
+        } else if (isArrayElement(node)) {
+            node = node.receiver;
+        } else if (isMemberCall(node)) {
+            node = node.receiver;
+        } else {
+            break;
+        }
+        unwrapped = true;
+        hops++;
+    }
+    return unwrapped ? symbolRefName(node) : undefined;
+}
+
 /** Resolve a call's target to `IOR`/`AND` (case-insensitive), or `undefined` for anything else. */
 function iorOrAndName(call: MethodCall): 'IOR' | 'AND' | undefined {
     const fn = resolveLibFunction(call);
@@ -238,7 +280,7 @@ function flattenStatements(statements: ReadonlyArray<AstNode>): AstNode[] {
 }
 
 type StatementVerdict =
-    | { kind: 'control-flow' | 'reassigned' | 'alias' | 'unparseable-mask' | 'irrelevant' }
+    | { kind: 'control-flow' | 'reassigned' | 'alias' | 'unparseable-mask' | 'indexed-target' | 'irrelevant' }
     | { kind: 'origin'; originNode: AstNode }
     | { kind: 'link'; link: SetOptsChainLink };
 
@@ -260,6 +302,13 @@ function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
     }
     for (const assignment of stmt.assignments) {
         if (symbolRefName(assignment.variable) !== trackedName) {
+            // A byte-range or element accessor on the tracked variable itself (e.g. `A$(1,1)=`)
+            // is not "a different variable" and must not be skipped as transparent — it touches
+            // only part of the variable, which this model cannot represent, so it fires
+            // regardless of what the assignment's own value is.
+            if (indexedAccessRootName(assignment.variable) === trackedName) {
+                return { kind: 'indexed-target' };
+            }
             continue;
         }
         const value = assignment.value;
@@ -333,6 +382,8 @@ function walkChain(statements: ReadonlyArray<AstNode>, anchorStatement: AstNode,
                 return { safe: false, unsafeReason: 'alias', linksNewestFirst };
             case 'unparseable-mask':
                 return { safe: false, unsafeReason: 'unparseable-mask', linksNewestFirst };
+            case 'indexed-target':
+                return { safe: false, unsafeReason: 'indexed-target', linksNewestFirst };
             case 'irrelevant':
                 break;
         }
@@ -385,6 +436,7 @@ export const UNSAFE_REASON_TEXT: Record<SetOptsUnsafeReason, string> = {
     reassigned: 'the variable is reassigned to something other than an IOR/AND of itself before this statement',
     alias: 'one of the IOR/AND reassignments operates on a different variable',
     'unparseable-mask': 'one of the IOR/AND masks in this chain is not a literal this decoder can read',
+    'indexed-target': 'one of the reassignments reads or writes a byte range or element of the variable, such as A$(1,1), rather than the whole variable',
     'no-origin': 'no `var$=OPTS` assignment was found in the enclosing block',
 };
 
