@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 7/7 plans executed (88-07 is a UAT gap-closure plan)
+**Plans**: 9 plans (7 executed; 88-08 and 88-09 are a second UAT gap-closure round for G-88-1 and G-88-2)
 
 Plans:
 **Wave 1**
@@ -375,6 +375,11 @@ Plans:
 **Gap closure** *(from UAT gap G-88-1; independent of the waves above, all of which are complete)*
 
 - [x] 88-07-PLAN.md — Byte-range accessor (`A$(1,1)`) chains classified as an explicit unsafe reason instead of a silent false `safe: true` with an empty effect, restoring the hover truth and the D-04 edit gate
+
+**Gap closure, round 2** *(from UAT gaps G-88-1 and G-88-2; both root-caused to a stale, un-rebuilt extension install that no source change can fix)*
+
+- [ ] 88-08-PLAN.md — Make `vsce package` rebuild `out/` before packaging, reinstall the VS Code extension, and prove the SHIPPED bundle serves the SETOPTS hover, both `bbj/composer/setopts/*` requests and prompt diagnostics/codeAction over a real LSP connection
+- [ ] 88-09-PLAN.md — Build the IntelliJ distributable and assert from inside it that the composer intention, its description resources and this phase's hover code ship; script the live retest; make the pre-UAT rebuild a standing QA step
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
