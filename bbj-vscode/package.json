@@ -663,7 +663,7 @@
   "main": "./out/extension.cjs",
   "scripts": {
     "prepare": "npm run langium:generate && npm run build",
-    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
+    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run build && npm run esbuild-base -- --minify && npm run lint",
     "build": "tsc -b tsconfig.json && node ./esbuild.mjs",
     "watch": "concurrently -n tsc,esbuild -c blue,yellow \"tsc -b tsconfig.json --watch\" \"node ./esbuild.mjs --watch\"",
     "lint": "eslint src test",

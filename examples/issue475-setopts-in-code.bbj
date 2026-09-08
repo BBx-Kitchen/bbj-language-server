@@ -1,0 +1,19 @@
+REM Group 1 -- reported reproduction #475a: a byte-range IOR reassignment on one comma/semicolon
+REM joined line. The closing statement's hover must name the byte-range reason, never guess.
+a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$
+
+REM Group 2 -- an absolute hex literal. Decodes directly from the string, no chain walk involved.
+SETOPTS $00C20240000000000000000000000000$
+
+REM Group 3 -- reported reproduction #475b: a byte-range AND reassignment across separate LET
+REM statements. Same unsafe byte-range reason as group 1, over separate physical lines.
+LET A$=OPTS
+LET A$(2,1)=AND(A$(2,1),$7F$)
+SETOPTS A$
+
+REM Group 4 -- canonical statically-safe whole-variable chain, over a different tracked variable
+REM than groups 1 and 3. Proves the editable decode path still works end-to-end.
+B$=OPTS
+B$=IOR(B$,$01$)
+B$=AND(B$,$FE$)
+SETOPTS B$
