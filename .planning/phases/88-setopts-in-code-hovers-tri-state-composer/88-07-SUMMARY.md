@@ -251,3 +251,14 @@ DISC-05 and DISC-06 are marked complete by this plan (see `requirements-complete
 both requirements' static-analysis and edit-gating deliverables are now code-complete and covered
 by executing tests; this is independent of G-88-1's live-hover human-verification gap, which
 tracks the separate packaging/installation issue.
+
+## Self-Check: PASSED
+
+- FOUND: `bbj-vscode/src/language/setopts-code-scanner.ts`
+- FOUND: `bbj-vscode/test/setopts-code-scanner.test.ts`
+- FOUND: `bbj-vscode/test/setopts-in-code-request.test.ts`
+- FOUND: `.planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-07-SUMMARY.md`
+- FOUND commit: 8424f901c7223203d99fa8fe0df32b11d9278658
+- FOUND commit: a44df25b85e9c3fd0cbd6780da1e7a12b0e2eef3
+- FOUND commit: 2fcabc6045c4d0c41b2122fcd6e764ee23a7ae1d
+- FOUND commit: f88b958d586bbc53b0e973fdb500178cac82416c
