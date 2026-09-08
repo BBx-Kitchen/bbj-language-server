@@ -96,9 +96,24 @@ blocked: 0
       issue: "matchStatement() misclassifies MethodCall-shaped (array/substring-indexed) assignment targets and IOR/AND first arguments as 'irrelevant' instead of a valid link or an explicit unsafe reason, producing a false safe:true verdict with empty links/effect"
     - path: "devcontainer VS Code extension install (/home/coder/.ext-test/extensions/basis-intl.bbj-lang-0.12.28)"
       issue: "installed bundle predates Phase 88 — needs rebuild + reinstall before further live UAT retesting (no source change)"
+  automated_evidence: |
+    88-08 rebuilt and reinstalled the VS Code extension (basis-intl.bbj-lang-0.12.28,
+    installedTimestamp 2026-09-08T17:01:55Z) and proved, over a real LSP connection to that
+    installed bundle, that all 5 hover assertions pass (absolute literal, IOR mask-call, AND
+    mask-call, the byte-range chain's named-unsafe-reason decode, and the canonical safe chain's
+    Sets/Clears) — the byte-range matchStatement bug this gap's root_cause names was already
+    fixed in Phase 88-07 (feat(88-07) commits a44df25b/f88b958d), before this gap-closure round
+    began. This plan's Task 1 additionally proved the IntelliJ distributable's bundled language
+    server (the sole hover implementation surface for IntelliJ, per D-01) carries all five Phase
+    88 hover symbols. Both are artifact-layer evidence only — neither drives a live editor's
+    rendered popup.
   missing:
-    - "matchStatement must classify a MethodCall-shaped assignment target/IOR-AND argument explicitly — either as a supported link (if byte-range accessors like A$(1,1) are meant to be tracked) or as a new/extended SetOptsUnsafeReason — never fall through to 'irrelevant'"
-    - "Rebuild and reinstall the VS Code extension (npm --prefix bbj-vscode run build + bbj-ext-install) before retesting hover"
+    - "Live-render check in VS Code: the hover popup actually appears for all four targets on
+      the installed build above (basis-intl.bbj-lang-0.12.28, installedTimestamp
+      2026-09-08T17:01:55Z)"
+    - "Live hover check in IntelliJ: the LSP4IJ hover popup actually appears for all four
+      targets, against the zip built by this plan's Task 1 (bbj-intellij-0.1.0.zip, sha256
+      cde1f2fe0d8af16b01d910ebd721f37a228351dd58e4b300bd55becdac1114d0)"
   debug_session: .planning/debug/g-88-1-hover-no-decode.md
 
 - gap_id: G-88-2
@@ -141,7 +156,28 @@ blocked: 0
       issue: "correct composer implementation, absent from the installed extension bundle used for UAT (packaging gap, not a code defect)"
     - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureSetoptsInCodeIntention.java"
       issue: "no hang mechanism found in source; installed-plugin freshness could not be verified from this devcontainer"
+  automated_evidence: |
+    88-08 rebuilt and reinstalled the VS Code extension and proved, over a real LSP connection to
+    the installed bundle, that all three composer entry points are registered in package.json's
+    contributes block and the compiled out/extension.cjs client bundle, that decodeInCode opens
+    the edit gate on the safe chain and keeps it shut with a named reason on the byte-range
+    chains, that composeTriState renders the canonical block, and that shared-server
+    diagnostics/codeAction latency on the reported snippet is well within budget (11082ms/30000ms,
+    205ms/15000ms) — eliminating a slow/blocked BBjCPL round trip as an explanation for the
+    IntelliJ hang. This plan's Task 1 built a fresh IntelliJ distributable
+    (bbj-intellij-0.1.0.zip, sha256
+    cde1f2fe0d8af16b01d910ebd721f37a228351dd58e4b300bd55becdac1114d0) and proved it registers
+    ConfigureSetoptsInCodeIntention, ships its intentionDescriptions/ resources, and contains the
+    SetoptsTriStateComposerDialog class — the artifact the tester would need to install no longer
+    has "no distributable zip that could have carried the feature" as an open question. None of
+    this drives a live IDE's lightbulb or Alt+Enter popup.
   missing:
-    - "Rebuild and reinstall both extensions (npm --prefix bbj-vscode run build + bbj-ext-install; cd bbj-intellij && ./gradlew buildPlugin) before retesting the composer in either IDE"
-    - "If the IntelliJ hang persists on a verified-fresh install, open a live-reproduction debug session on Alt+Enter's diagnostics-computation path for the SETOPTS test file"
+    - "Live composer invocation in VS Code through any of the three registered entry points
+      (Code Action lightbulb, Command Palette, editor context menu), against the installed build
+      basis-intl.bbj-lang-0.12.28 (installedTimestamp 2026-09-08T17:01:55Z)"
+    - "Live Alt+Enter invocation in IntelliJ against this plan's Task 1 build
+      (bbj-intellij-0.1.0.zip, sha256
+      cde1f2fe0d8af16b01d910ebd721f37a228351dd58e4b300bd55becdac1114d0)"
+    - "If the IntelliJ hang persists on this verified-fresh install, open a live-reproduction
+      debug session on Alt+Enter's diagnostics-computation path for the SETOPTS test file"
   debug_session: .planning/debug/g-88-2-composer-never-activates.md
