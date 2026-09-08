@@ -1,118 +1,105 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-fixed_at: 2026-09-07T23:18:45Z
+fixed_at: 2026-09-08T16:03:07Z
 review_path: .planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-REVIEW.md
-iteration: 2
-findings_in_scope: 4
-fixed: 4
+iteration: 1
+findings_in_scope: 1
+fixed: 1
 skipped: 0
 status: all_fixed
 ---
 
-# Phase 88: Code Review Fix Report (iteration 2)
+# Phase 88: Code Review Fix Report
 
-**Fixed at:** 2026-09-07T23:18:45Z
+**Fixed at:** 2026-09-08T16:03:07Z
 **Source review:** .planning/phases/88-setopts-in-code-hovers-tri-state-composer/88-REVIEW.md
-**Iteration:** 2
+**Iteration:** 1
 
 **Summary:**
-- Findings in scope: 4 (WR-A, WR-B, WR-C, IN-01 — this iteration's re-review findings; CR-01/WR-01/WR-02 from iteration 1 were already fixed and committed)
-- Fixed: 4
+- Findings in scope: 1
+- Fixed: 1
 - Skipped: 0
 
-All fixes were applied and verified inside an isolated git worktree
-(`gsd-reviewfix/88-2933479`, based on `main`), then fast-forwarded onto `main` on
-cleanup. Verification (tsc --noEmit, vitest, `./gradlew test`) all ran inside that
-same worktree — a symlinked `node_modules` and `src/language/generated` (both
-gitignored, unaffected by this) were used to reuse the main checkout's installed
-dependencies and generated AST for the VS Code side; these symlinks were removed
-before the worktree was fast-forwarded and torn down, so they leave no trace on
-`main`.
+**Verification ran in the isolated worktree** created for this fix run
+(`.claude/worktrees/rf-88-*`, `git worktree add -b gsd-reviewfix/88-*`), not the main checkout.
+`node_modules` and `src/language/generated` were symlinked in from the main checkout (plain
+symlinks, not junctions/reparse points — Linux host) so `npm run build`/`lint`/`vitest` could run
+without a fresh `npm install`. The commit itself was fast-forwarded into `main` in the main
+checkout by this agent's cleanup tail, so the fixed source is identical in both trees; only the
+*build/test run* happened in the worktree.
 
 ## Fixed Issues
 
-### WR-A: WR-02's word-boundary fix has no trailing boundary for the bare `SETOPTS` keyword
-
-**Files modified:** `bbj-vscode/src/setopts-in-code-ui.ts`, `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java`
-**Commit:** `17505b74`
-**Applied fix:**
-- TS: changed the candidate-line regex from `/\b(?:SETOPTS|IOR\(|AND\()/gi` to
-  `/\bSETOPTS\b|\bIOR\(|\bAND\(/gi` — the bare `SETOPTS` alternative now requires a
-  trailing word boundary, so `SETOPTSFOO`/`SETOPTSHELPER(` no longer match. `IOR(`/`AND(`
-  keep their existing (already-anchored-by-`(`) behavior.
-- Java: added a `hasIdentifierCharAfter` check (same char set as the pre-existing
-  `hasIdentifierCharBefore` at the time of this fix — sigils included) and gated it to
-  the `"setopts"` keyword specifically in `isCaretOnCall`'s loop condition, matching the
-  review's suggested code exactly. `ior(`/`and(` are unaffected (their literal `(`
-  already anchors the trailing edge).
-- Updated both functions' doc comments to describe the new trailing-boundary behavior.
-
-### WR-C: Divergent identifier-boundary definitions between the TS and Java word-boundary checks
-
-**Files modified:** `bbj-vscode/src/setopts-in-code-ui.ts`, `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java`
-**Commit:** `bc238b2d`
-**Applied fix:** Applied as a follow-up commit on top of WR-A (same two files, same
-region of code) to keep each finding's diff reviewable in isolation. Reconciled the two
-IDEs' identifier-boundary definition onto the canonical `\w`-based (`[A-Za-z0-9_]`) one
-that the TS regex already used — per the review's own assessment that "the TS behavior
-more closely matches how the lexer would actually split those tokens." Concretely:
-- Java: extracted a new `isIdentifierChar(char)` helper (letter/digit/underscore only,
-  no `$!%@` sigils) and rewrote `hasIdentifierCharBefore`/`hasIdentifierCharAfter` to
-  delegate to it, removing the sigil characters that previously made the Java heuristic
-  diverge from the TS `\b`.
-- TS: added a doc-comment paragraph on `setoptsInCodeCandidateLine` making the `\w`-based
-  definition and the sigil exclusion explicit, cross-referencing
-  `ComposerLauncher.isIdentifierChar` as the mirrored canonical definition on the Java
-  side (no behavior change on the TS side — it already used `\b`).
-
-### WR-B: `findAnchor` mis-scopes the backward walk when the target `SetOptsStatement` is itself inside a semicolon-joined `CompoundStatement`
+### CR-01: `matchStatement`'s per-assignment loop only evaluates the first matching assignment in a comma-chained statement, allowing a false "safe" chain verdict (and silently dropped bits)
 
 **Files modified:** `bbj-vscode/src/language/setopts-code-scanner.ts`, `bbj-vscode/test/setopts-code-scanner.test.ts`
-**Commit:** `3aea0872`
-**Applied fix:** Applied exactly as the review's suggested fix:
-- `findAnchor` no longer treats a `CompoundStatement` as a terminal container — the loop
-  condition became `if (statements && !isCompoundStatement(node))`, so climbing continues
-  through a `CompoundStatement` to the real top-level statement-list owner
-  (`Program`/`MethodDecl`/`DefFunction`).
-- `traceOptsChain` now passes `target` itself (not
-  `anchor.statements[anchor.anchorIndex]`) as the anchor statement to `walkChain`, since
-  `flattenStatements` already inlines a `CompoundStatement`'s children and `target` is
-  guaranteed to be present in the flattened array once `findAnchor` correctly climbs past
-  any enclosing `CompoundStatement`.
-- Updated `findAnchor`'s doc comment to explain why `CompoundStatement` must not be
-  terminal.
-- Added a regression test (`WR-B regression: the traced SetOptsStatement itself sitting
-  inside a semicolon-joined CompoundStatement still finds an OPTS origin on a preceding
-  line`) reproducing the review's exact repro case
-  (`'A$=OPTS\nA$=IOR(A$,"$08$") ; SETOPTS A$'`) and asserting `safe: true` with one `IOR`
-  link — this is a logic-bearing fix (a backward chain-walk scoping bug), so beyond the
-  standard tsc/re-read verification, its correctness is additionally pinned by this new
-  test, which was confirmed to fail against the pre-fix code before the fix landed (via
-  local `git stash`) and pass after. All 54 tests in
-  `test/setopts-code-scanner.test.ts` pass (up from 53 pre-fix).
+**Commit:** 694add52
 
-### IN-01: `setopts-in-code-ui.test.ts`'s substring-negative cases don't exercise the trailing-boundary gap (WR-A)
+**Applied fix:** Extracted the existing per-assignment classification body out of `matchStatement`
+into a new `matchAssignment(assignment, trackedName)` helper (unchanged logic, just moved).
+Rewrote `matchStatement`'s loop over `stmt.assignments` so it no longer returns on the first
+verdict it finds:
 
-**Files modified:** `bbj-vscode/test/setopts-in-code-ui.test.ts`
-**Commit:** `35301592`
-**Applied fix:** Added two cases to the negative `test.each` table:
-`['SETOPTSFOO', 'x = SETOPTSFOO(1)']` and `['SETOPTSHELPER(', 'x = SETOPTSHELPER(1)']`
-(the second matching the exact example from WR-A's reproduction). Both pass against the
-WR-A fix (committed first, in `17505b74`) and would have failed against the pre-fix
-regex, confirming the gap is now closed and regression-guarded.
+- Any disqualifying verdict (`control-flow` — pre-loop only, `reassigned`, `alias`,
+  `unparseable-mask`, `indexed-target`) from *any* assignment in the statement fails the whole
+  statement closed immediately, exactly as before — but now this check runs against *every*
+  assignment, not just the first one that happens to match the tracked variable.
+- `origin` and `link` verdicts are accumulated (not returned immediately) while the loop keeps
+  scanning every remaining assignment in the statement, so a later disqualifying assignment (e.g.
+  a byte-range mutation after an `A$=OPTS` origin in the same comma-chained statement) is now seen
+  and still wins.
+- After the loop: if the statement produced exactly one `origin` and no `link`, or exactly one
+  `link` and no `origin`, that single verdict is returned unchanged (matches prior single-
+  assignment behavior byte-for-byte — all pre-existing tests pass unmodified).
+- Any other combination — two origins in one statement, two links in one statement, or an origin
+  together with a link in one statement — cannot be represented by the existing
+  one-verdict-per-statement `StatementVerdict`/`ChainWalkResult` shape without inventing a new
+  multi-link-per-statement carrier. Per the task's explicit fail-closed instruction, this case now
+  returns `{ kind: 'reassigned' }` rather than folding left-to-right or guessing which verdict
+  "wins" — this can never produce a false `safe: true` or a silently-dropped mutation, it can only
+  ever make a chain *more* conservative than before.
 
-## Verification
+This is a semantically deliberate choice (not just syntax): rather than widening the data model to
+carry multiple same-statement links precisely (which would require re-deriving the correct
+intra-statement vs. inter-statement link ordering in `walkChain`'s backward-accumulate-then-reverse
+scheme — a nontrivial and risk-bearing change), the fix takes the narrower, lower-risk path the
+review itself endorsed: fail closed to an unsafe verdict for the ambiguous multi-link/origin+link
+case, and only return a single verdict when the statement contains no such ambiguity. **Because
+this is a semantic policy decision (how to resolve an inherently unrepresentable case), not a pure
+syntax fix, this fix is flagged `fixed: requires human verification`** per the fixer's own logic-bug
+verification-tier limitation — a human should confirm that resolving "origin + same-statement
+link(s)" and "multiple same-statement links" to `reassigned` (rather than widening the model to
+carry them precisely) is the intended long-term shape, even though it is provably safe (never a
+false "safe", never a silently dropped mutation) as written.
 
-- `cd bbj-vscode && npx vitest run test/setopts-code-scanner.test.ts test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-request.test.ts test/setopts-in-code-ui.test.ts` — **5 files passed, 172 tests passed, 0 failed** (ran inside the isolated worktree).
-- `cd bbj-intellij && ./gradlew test --offline --tests 'com.basis.bbj.intellij.composer.*'` — **BUILD SUCCESSFUL**, all 12 composer test suites (119 tests) passed with 0 failures/errors (ran inside the isolated worktree).
-- `npx tsc --noEmit -p tsconfig.json` — no errors attributable to any of the 4 modified/added TS files, checked individually after each edit.
+**Status: fixed: requires human verification**
+
+Added two regression tests to `bbj-vscode/test/setopts-code-scanner.test.ts`, both reproducing the
+exact cases from the review's `Findings` section:
+
+1. `A$=OPTS,A$(1,1)="Z"` / `SETOPTS A$` — now asserts `safe: false`, `unsafeReason: 'indexed-target'`,
+   `effect: { set: [], clear: [] }` (previously reported `safe: true` with an empty effect).
+2. `A$=OPTS` then `A$=IOR(A$,"$08$"),A$=IOR(A$,"$10$")` / `SETOPTS A$` — now asserts `safe: false`,
+   `unsafeReason: 'reassigned'` (previously reported `safe: true` with only the first `IOR` link in
+   `effect.set`, silently dropping the second).
+
+**Verification performed:**
+- `npm run build` (tsc -b + esbuild) — clean, no errors.
+- `npm run lint` (eslint src test) — clean, no errors/warnings.
+- `npx vitest run test/setopts-code-scanner.test.ts` — 64/64 passing (62 pre-existing + 2 new).
+- `npx vitest run test/setopts-code-scanner.test.ts test/setopts-in-code-request.test.ts test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-ui.test.ts` — 183/183 passing.
+
+No other files needed changes: `walkChain`, `ChainWalkResult`, `StatementVerdict`'s `'link'`/`'origin'`
+payload shapes, and every downstream consumer (`traceOptsChain`, `foldChainEffect`,
+`setopts-in-code-request.ts`, `bbj-hover.ts`) are untouched — the fix is fully contained inside
+`matchStatement`'s own control flow plus the new `matchAssignment` extraction.
 
 ## Skipped Issues
 
-None — all findings were fixed.
+None — the only in-scope finding was fixed.
 
 ---
 
-_Fixed: 2026-09-07T23:18:45Z_
+_Fixed: 2026-09-08T16:03:07Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 2_
+_Iteration: 1_
