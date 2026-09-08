@@ -339,6 +339,122 @@ describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code (#475
     });
 });
 
+/**
+ * Shared-server diagnostics and codeAction latency on the reported snippet (#475). The g-88-2
+ * debug session eliminated a hang inside the IntelliJ intention's own code and a standing LSP4IJ
+ * platform defect, leaving exactly one live alternative: a slow or blocked BBjCPL
+ * compile-diagnostics round trip specific to this snippet, which Phase 82's diagnostics-free UAT
+ * never exercised. IntelliJ's Alt+Enter action-collection phase drives textDocument/codeAction
+ * and waits on diagnostics — both served by the same shared language server this probe drives.
+ * This spawns its OWN server instance, separate from the describe block above, and deliberately
+ * does NOT send `compiler.trigger: 'off'` — the validator stays at its 'debounced' default, so
+ * the measurement reflects what a live IDE actually gets.
+ */
+describe.skipIf(!installPresent)('shared-server diagnostics and codeAction latency on the reported snippet (#475)', () => {
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    const stderr: string[] = [];
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    test('diagnostics and codeAction both resolve within budget, measured against the reported snippet', async () => {
+        const fixtureText = fs.readFileSync(FIXTURE_PATH, 'utf-8');
+        const fixtureUri = pathToFileURL(FIXTURE_PATH).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        // Registered BEFORE didOpen so no notification can be missed.
+        const diagnosticsBudgetMs = 30_000;
+        const diagnosticsStart = Date.now();
+        let diagnosticsElapsedMs: number | undefined;
+        const gotDiagnostics = new Promise<void>(resolve => {
+            connection.onNotification('textDocument/publishDiagnostics', (params: { uri?: string }) => {
+                if (params?.uri === fixtureUri && diagnosticsElapsedMs === undefined) {
+                    diagnosticsElapsedMs = Date.now() - diagnosticsStart;
+                    resolve();
+                }
+            });
+        });
+
+        await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: null,
+            workspaceFolders: null,
+            capabilities: {},
+        });
+        await connection.sendNotification('initialized', {});
+        // Deliberately NOT sending workspace/didChangeConfiguration here — the validator stays at
+        // its 'debounced' default so this measurement reflects what a live IDE actually gets.
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: fixtureUri,
+                languageId: 'bbj',
+                version: 1,
+                text: fixtureText,
+            },
+        });
+
+        await Promise.race([
+            gotDiagnostics,
+            new Promise(resolve => setTimeout(resolve, diagnosticsBudgetMs)),
+        ]);
+        if (diagnosticsElapsedMs === undefined) {
+            diagnosticsElapsedMs = Date.now() - diagnosticsStart;
+        }
+        expect(diagnosticsElapsedMs, `first publishDiagnostics for the fixture never arrived within ${diagnosticsBudgetMs}ms. stderr: ${stderr.join('') || '(empty)'}`).toBeLessThan(diagnosticsBudgetMs);
+
+        // Immediately after, over the full range of the line carrying the first reported
+        // reproduction, with an empty context.diagnostics and context.only omitted. A result of
+        // `null` or `[]` is a PASS for this probe — the point is that it returns at all.
+        const targetPos = findPosition(fixtureText, 'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$', 'a$');
+        const targetLineText = fixtureText.split('\n')[targetPos.line];
+
+        const codeActionBudgetMs = 15_000;
+        const codeActionStart = Date.now();
+        let codeActionElapsedMs: number | undefined;
+        let codeActionSettled = false;
+        const codeActionPromise = connection.sendRequest('textDocument/codeAction', {
+            textDocument: { uri: fixtureUri },
+            range: {
+                start: { line: targetPos.line, character: 0 },
+                end: { line: targetPos.line, character: targetLineText.length },
+            },
+            context: { diagnostics: [] },
+        }).then(() => {
+            codeActionElapsedMs = Date.now() - codeActionStart;
+            codeActionSettled = true;
+        });
+
+        await Promise.race([
+            codeActionPromise,
+            new Promise(resolve => setTimeout(resolve, codeActionBudgetMs)),
+        ]);
+        if (codeActionElapsedMs === undefined) {
+            codeActionElapsedMs = Date.now() - codeActionStart;
+        }
+        expect(codeActionSettled, `textDocument/codeAction on the reported snippet did not resolve within ${codeActionBudgetMs}ms. stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
+        expect(codeActionElapsedMs, `textDocument/codeAction on the reported snippet took ${codeActionElapsedMs}ms`).toBeLessThan(codeActionBudgetMs);
+
+        console.log(`shared-server latency probe: diagnostics=${diagnosticsElapsedMs}ms (budget ${diagnosticsBudgetMs}ms), codeAction=${codeActionElapsedMs}ms (budget ${codeActionBudgetMs}ms)`);
+    }, 120_000);
+});
+
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {
     // Visible skip rather than silent absence: a CI run (or any environment without the
     // ext-test rig) would otherwise appear to cover this without ever resolving an install.
