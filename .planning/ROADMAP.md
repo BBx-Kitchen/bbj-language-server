@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 6/6 plans executed
+**Plans**: 6/7 plans executed (88-07 is a UAT gap-closure plan)
 
 Plans:
 **Wave 1**
@@ -371,6 +371,10 @@ Plans:
 **Wave 5** *(blocked on Wave 4 completion)*
 
 - [x] 88-05-PLAN.md — IntelliJ tri-state composer dialog, `Kind.SETOPTS_IN_CODE` launch branch, lightbulb intention with resources, and the QA hand-check rows
+
+**Gap closure** *(from UAT gap G-88-1; independent of the waves above, all of which are complete)*
+
+- [ ] 88-07-PLAN.md — Byte-range accessor (`A$(1,1)`) chains classified as an explicit unsafe reason instead of a silent false `safe: true` with an empty effect, restoring the hover truth and the D-04 edit gate
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
