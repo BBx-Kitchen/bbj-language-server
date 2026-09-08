@@ -5,6 +5,10 @@ import * as path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { createMessageConnection, IPCMessageReader, IPCMessageWriter, MessageConnection } from 'vscode-jsonrpc/node';
+import {
+    SETOPTS_COMPOSE_TRISTATE_METHOD, SETOPTS_DECODE_IN_CODE_METHOD, SetOptsComposeTriStateParams,
+    SetOptsComposeTriStateResult, SetOptsInCodeDecodeParams, SetOptsInCodeDecodeResult,
+} from '../../src/language/setopts-in-code-request.js';
 
 /**
  * Spawns the VS Code extension bundle actually installed in `~/.ext-test/extensions` — not the
@@ -87,7 +91,7 @@ function findPosition(fullText: string, exactLine: string, token: string): { lin
     return { line: lineIdx, character: tokenIdx + Math.floor(token.length / 2) };
 }
 
-describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code hover on the freshly installed bundle (#475)', () => {
+describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code (#475)', () => {
     let child: ChildProcess;
     let connection: MessageConnection;
     let fixtureText: string;
@@ -174,60 +178,165 @@ describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code hover
         return result?.contents?.value;
     }
 
-    test('a. absolute literal hover decodes the byte vector', async () => {
-        const pos = findPosition(
-            fixtureText,
-            'SETOPTS $00C20240000000000000000000000000$',
-            '$00C20240000000000000000000000000$',
-        );
-        const value = await hoverMarkdown(pos);
-        expect(value, `expected a hover result, got: ${JSON.stringify(value)}. stderr: ${stderr.join('') || '(empty)'}`).toBeDefined();
-        expect(value).toMatch(/Byte \d+: /);
-        expect(value).not.toContain('(default settings)');
-    }, 60_000);
+    describe('SETOPTS-in-code hover decode on the freshly installed bundle', () => {
+        test('a. absolute literal hover decodes the byte vector', async () => {
+            const pos = findPosition(
+                fixtureText,
+                'SETOPTS $00C20240000000000000000000000000$',
+                '$00C20240000000000000000000000000$',
+            );
+            const value = await hoverMarkdown(pos);
+            expect(value, `expected a hover result, got: ${JSON.stringify(value)}. stderr: ${stderr.join('') || '(empty)'}`).toBeDefined();
+            expect(value).toMatch(/Byte \d+: /);
+            expect(value).not.toContain('(default settings)');
+        }, 60_000);
 
-    test('b. IOR mask-call hover names the options it sets', async () => {
-        const pos = findPosition(
-            fixtureText,
-            'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$',
-            'IOR',
-        );
-        const value = await hoverMarkdown(pos);
-        expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
-        expect(value).toContain('Sets these options:');
-    }, 60_000);
+        test('b. IOR mask-call hover names the options it sets', async () => {
+            const pos = findPosition(
+                fixtureText,
+                'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$',
+                'IOR',
+            );
+            const value = await hoverMarkdown(pos);
+            expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
+            expect(value).toContain('Sets these options:');
+        }, 60_000);
 
-    test('c. AND mask-call hover names the options it CLEARS, never as a set/raw mask', async () => {
-        const pos = findPosition(
-            fixtureText,
-            'LET A$(2,1)=AND(A$(2,1),$7F$)',
-            'AND',
-        );
-        const value = await hoverMarkdown(pos);
-        expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
-        expect(value).toContain('Clears these options:');
-        expect(value).not.toContain('Sets these options:');
-    }, 60_000);
+        test('c. AND mask-call hover names the options it CLEARS, never as a set/raw mask', async () => {
+            const pos = findPosition(
+                fixtureText,
+                'LET A$(2,1)=AND(A$(2,1),$7F$)',
+                'AND',
+            );
+            const value = await hoverMarkdown(pos);
+            expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
+            expect(value).toContain('Clears these options:');
+            expect(value).not.toContain('Sets these options:');
+        }, 60_000);
 
-    test('d. SETOPTS A$ closing the byte-range IOR reproduction names the unsafe byte-range reason', async () => {
-        const pos = findPosition(
-            fixtureText,
-            'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$',
-            'A$',
-        );
-        const value = await hoverMarkdown(pos);
-        expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
-        expect(value).toContain('cannot be determined statically');
-        expect(value).toContain('byte range');
-    }, 60_000);
+        test('d. SETOPTS A$ closing the byte-range IOR reproduction names the unsafe byte-range reason', async () => {
+            const pos = findPosition(
+                fixtureText,
+                'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$',
+                'A$',
+            );
+            const value = await hoverMarkdown(pos);
+            expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
+            expect(value).toContain('cannot be determined statically');
+            expect(value).toContain('byte range');
+        }, 60_000);
 
-    test('e. SETOPTS B$ closing the canonical safe chain still decodes Sets/Clears over the wire', async () => {
-        const pos = findPosition(fixtureText, 'SETOPTS B$', 'B$');
-        const value = await hoverMarkdown(pos);
-        expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
-        expect(value).toContain('Sets:');
-        expect(value).toContain('Clears:');
-    }, 60_000);
+        test('e. SETOPTS B$ closing the canonical safe chain still decodes Sets/Clears over the wire', async () => {
+            const pos = findPosition(fixtureText, 'SETOPTS B$', 'B$');
+            const value = await hoverMarkdown(pos);
+            expect(value, `expected a hover result, got: ${JSON.stringify(value)}`).toBeDefined();
+            expect(value).toContain('Sets:');
+            expect(value).toContain('Clears:');
+        }, 60_000);
+    });
+
+    /**
+     * Tri-state composer client entry points and server requests (#475, DISC-06). Two
+     * independent halves, because G-88-2 had two independent failure modes: the client-manifest
+     * checks invert the exact evidence that proved the installed bundle had zero occurrences of
+     * the composer's command id; the server-request checks prove decodeInCode/composeTriState
+     * answer correctly over the same live connection the hover tests above already hold, with
+     * the fixture already open.
+     */
+    describe('tri-state composer client registration and server requests', () => {
+        test('client manifest: contributes.commands registers bbj.composeSetoptsInCode', () => {
+            const pkg = JSON.parse(fs.readFileSync(install!.packageJsonPath, 'utf-8'));
+            const commands: Array<{ command?: string }> = pkg.contributes?.commands ?? [];
+            expect(commands.some(c => c.command === 'bbj.composeSetoptsInCode')).toBe(true);
+        });
+
+        test('client manifest: the editor/context menu registers bbj.composeSetoptsInCode', () => {
+            const pkg = JSON.parse(fs.readFileSync(install!.packageJsonPath, 'utf-8'));
+            const menuEntries: Array<{ command?: string }> = pkg.contributes?.menus?.['editor/context'] ?? [];
+            expect(menuEntries.some(m => m.command === 'bbj.composeSetoptsInCode')).toBe(true);
+        });
+
+        test('client manifest: activationEvents includes onCommand:bbj.composeSetoptsInCode', () => {
+            const pkg = JSON.parse(fs.readFileSync(install!.packageJsonPath, 'utf-8'));
+            const events: string[] = pkg.activationEvents ?? [];
+            expect(events).toContain('onCommand:bbj.composeSetoptsInCode');
+        });
+
+        test('client bundle: the compiled out/extension.cjs carries the command id literal', () => {
+            // Only string literals are safe to assert against a bundled/minified client — class
+            // and function identifiers (e.g. SetOptsInCodeActionProvider, setoptsInCodeCandidateLine)
+            // can be mangled by esbuild, so their absence in the bundle would be meaningless.
+            // 'bbj.composeSetoptsInCode' is the literal command id passed to
+            // vscode.commands.registerCommand, so it survives bundling/minification verbatim.
+            const bundle = fs.readFileSync(install!.extensionCjsPath, 'utf-8');
+            expect(bundle).toContain('bbj.composeSetoptsInCode');
+        });
+
+        test('decodeInCode opens the edit gate on the canonical safe chain (mode: chain, editable: true)', async () => {
+            const pos = findPosition(fixtureText, 'SETOPTS B$', 'B$');
+            const result = await connection.sendRequest(SETOPTS_DECODE_IN_CODE_METHOD, {
+                uri: fixtureUri, line: pos.line, character: pos.character,
+            } satisfies SetOptsInCodeDecodeParams) as SetOptsInCodeDecodeResult;
+            expect(result.found).toBe(true);
+            expect(result.editable).toBe(true);
+            expect(result.mode).toBe('chain');
+            expect(result.chain).toBeDefined();
+            expect(result.chain!.variableName).toBe('b$');
+            expect(result.chain!.startLine).toBeLessThan(result.chain!.endLine);
+            expect(result.initial).toBeDefined();
+            expect(result.initial!.entries.length).toBeGreaterThan(0);
+        }, 60_000);
+
+        test('decodeInCode keeps the edit gate shut on the reported byte-range chain, with a named reason', async () => {
+            const pos = findPosition(fixtureText, 'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$', 'A$');
+            const result = await connection.sendRequest(SETOPTS_DECODE_IN_CODE_METHOD, {
+                uri: fixtureUri, line: pos.line, character: pos.character,
+            } satisfies SetOptsInCodeDecodeParams) as SetOptsInCodeDecodeResult;
+            expect(result.found).toBe(true);
+            expect(result.editable).toBe(false);
+            expect(result.mode).toBe('chain');
+            expect(result.reason).toContain('byte range');
+            expect(result.chain).toBeUndefined();
+            expect(result.initial).toBeUndefined();
+        }, 60_000);
+
+        test('decodeInCode on a REM comment line finds no SETOPTS-in-code shape', async () => {
+            const lines = fixtureText.split('\n');
+            const remLineIdx = lines.findIndex(l => l.trim().startsWith('REM Group 4'));
+            expect(remLineIdx, 'expected to find the group 4 REM comment line').toBeGreaterThanOrEqual(0);
+            const result = await connection.sendRequest(SETOPTS_DECODE_IN_CODE_METHOD, {
+                uri: fixtureUri, line: remLineIdx, character: 5,
+            } satisfies SetOptsInCodeDecodeParams) as SetOptsInCodeDecodeResult;
+            expect(result.found).toBe(false);
+        }, 60_000);
+
+        test('composeTriState renders the canonical var$=OPTS / IOR / AND / SETOPTS var$ block shape', async () => {
+            // Derive the two option keys from the live catalog response (decodeInCode's own
+            // `initial` selection enumerates every catalog bit) rather than hardcoding a
+            // byte/mask pair, so a catalog rename cannot silently make this assertion vacuous.
+            const pos = findPosition(fixtureText, 'SETOPTS B$', 'B$');
+            const decode = await connection.sendRequest(SETOPTS_DECODE_IN_CODE_METHOD, {
+                uri: fixtureUri, line: pos.line, character: pos.character,
+            } satisfies SetOptsInCodeDecodeParams) as SetOptsInCodeDecodeResult;
+            expect(decode.initial).toBeDefined();
+            const entries = decode.initial!.entries;
+            expect(entries.length).toBeGreaterThanOrEqual(2);
+            const [first, second] = entries;
+
+            const composed = await connection.sendRequest(SETOPTS_COMPOSE_TRISTATE_METHOD, {
+                selection: {
+                    entries: [
+                        { byte: first.byte, mask: first.mask, state: 'set' },
+                        { byte: second.byte, mask: second.mask, state: 'clear' },
+                    ],
+                },
+            } satisfies SetOptsComposeTriStateParams) as SetOptsComposeTriStateResult;
+            expect(composed.text).toMatch(/=OPTS/);
+            expect(composed.text).toMatch(/IOR\(/);
+            expect(composed.text).toMatch(/AND\(/);
+            expect(composed.text).toMatch(/SETOPTS /);
+        }, 60_000);
+    });
 });
 
 test.skipIf(installPresent)('installed-extension e2e needs `bbj-ext-install` first', () => {
