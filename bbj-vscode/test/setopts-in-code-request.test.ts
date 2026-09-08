@@ -135,6 +135,22 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
         expect(result.initial).toBeUndefined();
     });
 
+    test('a byte-range indexed-target chain (reported reproduction) returns editable: false with mode "chain", a non-empty reason, and no chain/initial payload', async () => {
+        const source = 'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.found).toBe(true);
+        expect(result.editable).toBe(false);
+        expect(result.mode).toBe('chain');
+        expect(result.reason).toBeTruthy();
+        expect(result.chain).toBeUndefined();
+        expect(result.initial).toBeUndefined();
+    });
+
     test('a position with no SETOPTS shape nearby returns found: false, editable: false, mode: "none"', async () => {
         const source = 'PRINT "hello"';
         const document = await parseSource(source);

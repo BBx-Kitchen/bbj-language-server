@@ -272,6 +272,14 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('unparseable-mask');
     });
 
+    test('a byte-range assignment target (A$(1,1)=IOR(A$(1,1),...)) stops the walk with unsafeReason "indexed-target"', async () => {
+        const target = await parseAndFindSetOptsTarget('a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+        expect(shape.links).toEqual([]);
+    });
+
     test('no OPTS assignment anywhere in the enclosing statement array stops the walk with unsafeReason "no-origin"', async () => {
         const target = await parseAndFindSetOptsTarget('PRINT "hi"\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
@@ -492,6 +500,18 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
         expect(markdown).toContain('reassigned to something other than an IOR/AND of itself');
         expect(markdown).not.toContain('Sets: ');
         expect(markdown).not.toContain('editable');
+    });
+
+    test('a byte-range indexed-target chain states the value cannot be determined statically and names the byte-range reason', async () => {
+        const target = await parseAndFindSetOptsTarget('a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+        const markdown = setoptsHoverMarkdown(shape);
+        expect(markdown).toContain('cannot be determined statically');
+        expect(markdown).toContain('byte range or element');
+        expect(markdown).toContain('A$(1,1)');
+        expect(markdown).not.toContain('Sets: ');
     });
 
     test('every SetOptsUnsafeReason has a distinct, non-empty user-facing sentence', async () => {
