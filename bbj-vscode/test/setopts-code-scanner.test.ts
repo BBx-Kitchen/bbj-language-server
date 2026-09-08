@@ -8,7 +8,7 @@ import { Model, MethodCall, SetOptsStatement, isMethodCall, isSetOptsStatement }
 import { createBBjServices } from '../src/language/bbj-module.js';
 import {
     detectSetOptsShape, foldChainEffect, setoptsHoverMarkdown, setoptsHoverTarget, traceOptsChain,
-    type SetOptsUnsafeReason,
+    UNSAFE_REASON_TEXT, type SetOptsUnsafeReason,
 } from '../src/language/setopts-code-scanner.js';
 import { describeVector, parseVector } from '../src/setopts-catalog.js';
 import { initializeWorkspace } from './test-helper.js';
@@ -280,6 +280,49 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         expect(shape.links).toEqual([]);
     });
 
+    test('a LET-prefixed byte-range assignment target (second reported reproduction, AND) stops the walk with unsafeReason "indexed-target"', async () => {
+        const target = await parseAndFindSetOptsTarget('LET A$=OPTS\nLET A$(2,1)=AND(A$(2,1),$7F$)\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+    });
+
+    test('a bracket ArrayElement assignment target (A$[1]=IOR(A$[1],...)) stops the walk with unsafeReason "indexed-target"', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$[1]=IOR(A$[1],"$08$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+    });
+
+    test('a byte-range write of a non-IOR/AND value (A$(1,1)="x") stops the walk with unsafeReason "indexed-target"', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$(1,1)="x"\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+    });
+
+    test('a whole-variable target with a byte-range IOR argument (A$=IOR(A$(1,1),...)) stops the walk with unsafeReason "indexed-target", not "alias"', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nA$=IOR(A$(1,1),"$08$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('indexed-target');
+    });
+
+    test('GUARD: a byte-range mutation of an unrelated variable stays transparent to the walk', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nB$(1,1)=IOR(B$(1,1),"$08$")\nA$=IOR(A$,"$08$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(true);
+        expect(shape.links).toHaveLength(1);
+        expect(shape.effect.set).toEqual([{ byte: 1, mask: 0x08 }]);
+    });
+
+    test('GUARD: an IOR/AND call whose first argument is a genuinely different variable still reports "alias"', async () => {
+        const target = await parseAndFindSetOptsTarget('A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('alias');
+    });
+
     test('no OPTS assignment anywhere in the enclosing statement array stops the walk with unsafeReason "no-origin"', async () => {
         const target = await parseAndFindSetOptsTarget('PRINT "hi"\nSETOPTS A$');
         const shape = traceOptsChain(target)!;
@@ -520,8 +563,12 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
             ['A$=OPTS\nA$="hello"\nSETOPTS A$', 'reassigned'],
             ['A$=OPTS\nOTHER$="x"\nA$=IOR(OTHER$,"$08$")\nSETOPTS A$', 'alias'],
             ['A$=OPTS\nX$="$08$"\nA$=IOR(A$,X$)\nSETOPTS A$', 'unparseable-mask'],
+            ['LET A$=OPTS\nLET A$(2,1)=AND(A$(2,1),$7F$)\nSETOPTS A$', 'indexed-target'],
             ['PRINT "hi"\nSETOPTS A$', 'no-origin'],
         ];
+        // Ties this array's length to UNSAFE_REASON_TEXT's key count, so a future
+        // SetOptsUnsafeReason member fails this test until it gets both a sentence and a case.
+        expect(cases.length).toBe(Object.keys(UNSAFE_REASON_TEXT).length);
         const seen = new Set<string>();
         for (const [source, expectedReason] of cases) {
             const target = await parseAndFindSetOptsTarget(source);
