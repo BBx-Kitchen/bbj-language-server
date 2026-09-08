@@ -6,11 +6,17 @@ Comprehensive test coverage for all BBj Language Server features across both VS 
 **Estimated Time:** 30-45 minutes
 
 **Instructions:**
-1. Copy this file to `QA/test-runs/YYYY-MM-DD-full-test.md`
-2. Execute all tests
-3. Mark `[ ]` with `[x]` for PASS or `[FAIL]` for failures
-4. Rename file with `-PASS` or `-FAIL` suffix
-5. Document failures with evidence (see TESTING-GUIDE.md)
+1. Rebuild and reinstall both IDE integrations before executing any row below. For VS Code:
+   `npm --prefix bbj-vscode run build` then `bbj-ext-install` (or `npx vsce package` followed by
+   installing the resulting VSIX). For IntelliJ: `cd bbj-intellij && ./gradlew buildPlugin`, then
+   install the produced zip via Settings/Preferences > Plugins > gear icon > Install Plugin from
+   Disk. Running any row against a build older than the commit under test produces findings about
+   that old build, not about the code under test (see #475).
+2. Copy this file to `QA/test-runs/YYYY-MM-DD-full-test.md`
+3. Execute all tests
+4. Mark `[ ]` with `[x]` for PASS or `[FAIL]` for failures
+5. Rename file with `-PASS` or `-FAIL` suffix
+6. Document failures with evidence (see TESTING-GUIDE.md)
 
 ---
 
