@@ -330,6 +330,12 @@ function matchStatement(stmt: AstNode, trackedName: string): StatementVerdict {
                 return { kind: 'reassigned' };
             }
             if (symbolRefName(value.args[0]?.expression) !== trackedName) {
+                // A byte-range or element accessor on the tracked variable, passed as the
+                // IOR/AND call's own first argument (e.g. `IOR(A$(1,1),...)`), is not "a
+                // different variable" — `alias` keeps its meaning for a genuinely different one.
+                if (indexedAccessRootName(value.args[0]?.expression) === trackedName) {
+                    return { kind: 'indexed-target' };
+                }
                 return { kind: 'alias' };
             }
             const parsed = parseHexLiteral(value.args[1]?.expression);
