@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 88-setopts-in-code-hovers-tri-state-composer
 source: [88-VERIFICATION.md]
 started: 2026-09-07T23:45:00Z
-updated: 2026-09-08T00:20:00Z
+updated: 2026-09-08T01:00:00Z
 ---
 
 ## Current Test
@@ -72,8 +72,34 @@ blocked: 0
       SETOPTS A$
   severity: major
   test: 1
-  artifacts: []
-  missing: []
+  root_cause: |
+    Two independent causes.
+    (1) VS Code "no hover at all" is a stale/un-rebuilt extension install, not a code bug: the
+    installed extension (basis-intl.bbj-lang-0.12.28, installed 2026-09-07T19:13:51Z) predates
+    every Phase 88 hover commit and its bundled out/language/main.cjs contains none of the
+    Phase 88 SETOPTS hover symbols (setoptsHoverTarget, detectSetOptsShape, traceOptsChain,
+    setoptsHoverMarkdown, foldChainEffect) — a freshly rebuilt bbj-lang.vsix has all of them.
+    (2) IntelliJ's (and a rebuilt VS Code's) failure to decode the chain/IOR/AND case is a real
+    logic bug in setopts-code-scanner.ts's matchStatement(): it only recognizes an IOR/AND
+    reassignment as a chain link when both the assignment LHS and the call's first argument are
+    plain SymbolRef nodes. BBj's idiomatic byte-range accessor A$(1,1) — used in the reproduction
+    — parses as a MethodCall, not a SymbolRef, so matchStatement falls through to
+    { kind: 'irrelevant' }, which walkChain treats as fully transparent. The real mutation is
+    silently skipped and traceOptsChain reports safe:true with empty links/effect instead of an
+    unsafe verdict — violating the module's own documented ambiguity-must-be-unsafe invariant.
+    The user's separate design question (should IOR/AND hover show only what changes, not a
+    cumulative state) is not an open ambiguity: the single-call ("mask-call") hover shape already
+    does exactly that and works correctly even on the buggy array-indexed line; only the `chain`
+    shape (hovering SETOPTS var$) computes a cumulative effect, which is where the bug is.
+  artifacts:
+    - path: "bbj-vscode/src/language/setopts-code-scanner.ts"
+      issue: "matchStatement() misclassifies MethodCall-shaped (array/substring-indexed) assignment targets and IOR/AND first arguments as 'irrelevant' instead of a valid link or an explicit unsafe reason, producing a false safe:true verdict with empty links/effect"
+    - path: "devcontainer VS Code extension install (/home/coder/.ext-test/extensions/basis-intl.bbj-lang-0.12.28)"
+      issue: "installed bundle predates Phase 88 — needs rebuild + reinstall before further live UAT retesting (no source change)"
+  missing:
+    - "matchStatement must classify a MethodCall-shaped assignment target/IOR-AND argument explicitly — either as a supported link (if byte-range accessors like A$(1,1) are meant to be tracked) or as a new/extended SetOptsUnsafeReason — never fall through to 'irrelevant'"
+    - "Rebuild and reinstall the VS Code extension (npm --prefix bbj-vscode run build + bbj-ext-install) before retesting hover"
+  debug_session: .planning/debug/g-88-1-hover-no-decode.md
 
 - gap_id: G-88-2
   truth: "Invoking the tri-state composer (Code Action in VS Code, Alt+Enter lightbulb in IntelliJ) on a SETOPTS-shaped chain offers an editable option list and applies the chosen changes."
@@ -83,5 +109,39 @@ blocked: 0
     popup hanging forever, in VSCode no idea, nothing happens.
   severity: major
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: |
+    (1) VS Code "nothing happens" is PROVEN environment/packaging, not a code bug: the composer
+    (setopts-in-code-ui.ts + setopts-tristate-webview.ts: a RefactorRewrite Code Action provider,
+    the bbj.composeSetoptsInCode command, an editor context-menu entry, 33 passing tests) is fully
+    and correctly implemented in current source, but the same stale installed extension proven in
+    G-88-1 has zero occurrences of the composer's command ID or symbols in package.json's
+    contributes block or the compiled out/extension.cjs client bundle — there is no lightbulb, no
+    command, no menu entry to find because the installed bundle predates the feature entirely.
+    (2) IntelliJ's "Searching Content Actions..." hang is STRONGLY CORROBORATED as the same
+    stale-install class but not provable with certainty from this devcontainer (no IntelliJ
+    sandbox/install is accessible here — the tester runs IntelliJ on a separate host). Source
+    review of ConfigureSetoptsInCodeIntention.isAvailable()/generatePreview()/invoke() and the
+    server's decodeInCode/composeTriState handlers found no plausible hang mechanism (all
+    synchronous/bounded, or async only after selection — after the reported hang point). Phase 82
+    UAT (2026-09-05) already proved this exact Alt+Enter/LSP4IJ machinery is fast and reliable for
+    3 sibling composer intentions, ruling out a standing platform defect. No IntelliJ plugin zip
+    on disk has a timestamp consistent with being built and handed to the tester before this UAT
+    session. If a verified-fresh IntelliJ install still hangs, the next hypothesis is a slow/
+    blocked BBjCPL diagnostics round-trip specific to the SETOPTS test snippet — untested
+    territory not covered by Phase 82's diagnostics-free UAT code.
+    Secondary, non-blocking: by explicit Phase 88 design (88-06-SUMMARY.md decision D6), VS Code
+    ships no CodeLens for the in-code composer — only Code Action/Command Palette/context-menu
+    entry points — deliberately deferred to Phase 89. Adds to "how would I invoke it?" confusion
+    even post-rebuild, but doesn't explain the complete absence observed (fully explained by the
+    stale install).
+  artifacts:
+    - path: "bbj-vscode/src/setopts-in-code-ui.ts"
+      issue: "correct composer implementation, absent from the installed extension bundle used for UAT (packaging gap, not a code defect)"
+    - path: "bbj-vscode/src/setopts-tristate-webview.ts"
+      issue: "correct composer implementation, absent from the installed extension bundle used for UAT (packaging gap, not a code defect)"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureSetoptsInCodeIntention.java"
+      issue: "no hang mechanism found in source; installed-plugin freshness could not be verified from this devcontainer"
+  missing:
+    - "Rebuild and reinstall both extensions (npm --prefix bbj-vscode run build + bbj-ext-install; cd bbj-intellij && ./gradlew buildPlugin) before retesting the composer in either IDE"
+    - "If the IntelliJ hang persists on a verified-fresh install, open a live-reproduction debug session on Alt+Enter's diagnostics-computation path for the SETOPTS test file"
+  debug_session: .planning/debug/g-88-2-composer-never-activates.md
