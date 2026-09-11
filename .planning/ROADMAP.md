@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 11/13 plans executed (7 executed; 88-08 and 88-09 were a second UAT gap-closure round for G-88-1 and G-88-2; 88-10 through 88-13 are a third round for the diagnosed G-88-2 and G-88-3)
+**Plans**: 12/13 plans executed (7 executed; 88-08 and 88-09 were a second UAT gap-closure round for G-88-1 and G-88-2; 88-10 through 88-13 are a third round for the diagnosed G-88-2 and G-88-3)
 
 Plans:
 **Wave 1**
@@ -395,7 +395,7 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 88-12-PLAN.md — `textDocument/codeAction` answers within a bounded budget on hover's document state, the cold-ordering latency probe replaces 88-08's warm measurement, and IntelliJ gains an editor context-menu entry that bypasses intention search
+- [x] 88-12-PLAN.md — `textDocument/codeAction` answers within a bounded budget on hover's document state, the cold-ordering latency probe replaces 88-08's warm measurement, and IntelliJ gains an editor context-menu entry that bypasses intention search
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
