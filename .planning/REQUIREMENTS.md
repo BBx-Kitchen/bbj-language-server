@@ -17,8 +17,8 @@ Committed scope. Each maps to exactly one roadmap phase.
 - [ ] **DISC-02**: User is offered the MSGBOX composer when the options argument is an expression; a sum of constant Java static fields or integer literals pre-fills the composer, any other expression opens it in compose-and-replace mode (#648)
 - [ ] **DISC-03**: User can compose a CVS() call visually in both IDEs from the documented bit operations (1, 2, 4, 8, 16, 32, 64, 128; applied in ascending order) with the version-gated `chars` parameter, and can edit an existing literal-mask CVS() call in place (#649)
 - [x] **DISC-04**: User editing config.bbx in IntelliJ gets a visual SETOPTS composer equivalent to VS Code's existing one, served by a shared `bbj/composer/setopts/*` command layer that both IDEs use (#633)
-- [x] **DISC-05**: User hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable in BBj code, sees which options that line sets or clears, with AND masks shown as the logical cleared bits (#475, decode tier) — all three shapes (absolute literal, OPTS→IOR/AND chain, single IOR/AND call) landed across Plans 88-01/88-02
-- [x] **DISC-06**: User can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form, and can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape gets hover decode only, no edit action (#475, composer tiers)
+- [ ] **DISC-05**: User hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable in BBj code, sees which options that line sets or clears, with AND masks shown as the logical cleared bits (#475, decode tier) — all three shapes (absolute literal, OPTS→IOR/AND chain, single IOR/AND call) landed across Plans 88-01/88-02
+- [ ] **DISC-06**: User can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form, and can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape gets hover decode only, no edit action (#475, composer tiers)
 - [ ] **DISC-07**: User's malformed free-text in addWindow or addChildWindow composer fields is rejected before the insert is applied, with validity carried in the shared preview payload so both IDEs gate the same way (#623)
 - [ ] **DISC-08**: User's edits to the document during the MSGBOX QuickPick wizard never corrupt unrelated text: the target call is re-resolved immediately before the edit and the edit aborts on mismatch (#532)
 - [ ] **DISC-09**: User can open and close any of the four VS Code composers repeatedly without leaking message-handler listeners (#530)
@@ -98,8 +98,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DISC-02 | Phase 89 | Pending |
 | DISC-03 | Phase 89 | Pending |
 | DISC-04 | Phase 87 | Complete |
-| DISC-05 | Phase 88 | Complete |
-| DISC-06 | Phase 88 | Complete |
+| DISC-05 | Phase 88 | Gaps Found |
+| DISC-06 | Phase 88 | Gaps Found |
 | DISC-07 | Phase 90 | Pending |
 | DISC-08 | Phase 90 | Pending |
 | DISC-09 | Phase 90 | Pending |
