@@ -7,8 +7,8 @@ import { URI } from 'vscode-uri';
 import { createBBjServices } from '../src/language/bbj-module.js';
 import { Model } from '../src/language/generated/ast.js';
 import {
-    createComposeTriStateHandler, createDecodeInCodeHandler, SETOPTS_COMPOSE_TRISTATE_METHOD,
-    SETOPTS_DECODE_IN_CODE_METHOD, type SetOptsInCodeDeps,
+    createComposeTriStateHandler, createDecodeInCodeHandler, NOT_EDITABLE_REASON_TEXT,
+    SETOPTS_COMPOSE_TRISTATE_METHOD, SETOPTS_DECODE_IN_CODE_METHOD, type SetOptsInCodeDeps,
 } from '../src/language/setopts-in-code-request.js';
 import { detectSetOptsShape, setoptsHoverTarget, UNSAFE_REASON_TEXT } from '../src/language/setopts-code-scanner.js';
 import { findLeafNodeAtOffset } from '../src/language/bbj-validator.js';
@@ -145,6 +145,67 @@ describe('bbj/composer/setopts/decodeInCode', async () => {
         expect(result.reason).toBeTruthy();
         expect(result.chain).toBeUndefined();
         expect(result.initial).toBeUndefined();
+    });
+
+    /**
+     * A safe chain (per the scanner's own verdict) whose lone reassignment shares its physical
+     * line with the `SETOPTS` statement via `;`. The old origin/`SETOPTS`-line arithmetic yielded
+     * an empty `[1,1)` replace range while still reporting `editable: true`, so both writers would
+     * insert the newly composed lines into that empty gap and leave the original reassignment in
+     * place — silently changing the program's effective options vector. The edit gate must close
+     * here even though the decode verdict (asserted below) stays `safe: true`.
+     */
+    test('a safe chain whose reassignment shares a physical line with SETOPTS closes the edit gate (decode verdict unchanged)', async () => {
+        const source = 'A$=OPTS\nA$=IOR(A$,$08$) ; SETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.found).toBe(true);
+        expect(result.mode).toBe('chain');
+        expect(result.editable).toBe(false);
+        expect(result.reason).toBe(NOT_EDITABLE_REASON_TEXT['shared-line']);
+        expect(result.chain).toBeUndefined();
+        expect(result.initial).toBeUndefined();
+
+        // The decode verdict itself is untouched — only the edit gate closed.
+        const rootNode = document.parseResult.value.$cstNode!;
+        const leaf = findLeafNodeAtOffset(rootNode, variableOffset)!;
+        const target = setoptsHoverTarget(leaf)!;
+        const shape = detectSetOptsShape(target)!;
+        expect(shape).toMatchObject({ kind: 'chain', safe: true });
+        if (shape.kind === 'chain') {
+            expect(shape.links).toHaveLength(1);
+        }
+    });
+
+    /**
+     * The degenerate all-on-one-line variant: origin and `SETOPTS` share a line, zero
+     * reassignments. The old arithmetic (`originLine + 1` through the `SETOPTS` line) yielded an
+     * INVERTED range (`startLine === 1`, `endLine === 0`) here. No code path in the chain branch
+     * may ever hand a writer a `chain` whose `startLine` exceeds its `endLine` — the assertion
+     * below fails if a future change reintroduces that instead of the fail-closed verdict.
+     */
+    test('a degenerate chain with origin and SETOPTS on one physical line closes the edit gate, never an inverted range', async () => {
+        const source = 'A$=OPTS ; SETOPTS A$';
+        const document = await parseSource(source);
+        const variableOffset = source.lastIndexOf('SETOPTS A$') + 'SETOPTS '.length;
+        const handler = createDecodeInCodeHandler(stubDeps(document));
+
+        const result = handler(paramsAt(document, variableOffset));
+
+        expect(result.found).toBe(true);
+        expect(result.mode).toBe('chain');
+        expect(result.editable).toBe(false);
+        expect(result.reason).toBe(NOT_EDITABLE_REASON_TEXT['shared-line']);
+        expect(result.chain).toBeUndefined();
+        if (result.chain !== undefined) {
+            // Guard the exact regression this test exists to prevent: an inverted range.
+            expect((result.chain as { startLine: number; endLine: number }).startLine)
+                .toBeLessThanOrEqual((result.chain as { startLine: number; endLine: number }).endLine);
+        }
     });
 
     test('a position with no SETOPTS shape nearby returns found: false, editable: false, mode: "none"', async () => {
