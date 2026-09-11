@@ -383,16 +383,21 @@ Plans:
 
 **Gap closure, round 3** *(from the diagnosed UAT gaps G-88-2 — IntelliJ's Alt+Enter hangs on a timeout-free `textDocument/codeAction` wait — and G-88-3 — the composer generates invalid BBj hex literals; G-88-1 is resolved and out of scope)*
 
+This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code extension and install it with `bbj-ext-install`, which writes to `~/.ext-test` — outside every git worktree — so each is implicitly dependent on every earlier plan that modifies `bbj-vscode/src/`, regardless of file overlap.
+
 **Wave 1**
 
 - [ ] 88-10-PLAN.md — One BBj hex-literal formatter per host: the generated `IOR`/`AND` masks lose their spurious quotes, both in-place `SETOPTS` writers put a complete `$…$` literal back, and the tautological test oracle is replaced with literal expected strings
-- [ ] 88-12-PLAN.md — `textDocument/codeAction` answers within a bounded budget on hover's document state, the cold-ordering latency probe replaces 88-08's warm measurement, and IntelliJ gains an editor context-menu entry that bypasses intention search
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [ ] 88-11-PLAN.md — The decoder accepts only the grammar's own `HEX_STRING` token, the decode-side fixture corpus migrates to real BBj syntax, and the range-plus-formatter round trip is pinned
 
 **Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 88-12-PLAN.md — `textDocument/codeAction` answers within a bounded budget on hover's document state, the cold-ordering latency probe replaces 88-08's warm measurement, and IntelliJ gains an editor context-menu entry that bypasses intention search
+
+**Wave 4** *(blocked on Wave 3 completion)*
 
 - [ ] 88-13-PLAN.md — Rebuild and prove both distributables, correct the QA checklist's now-invalid sample syntax, script round two of the live retest, and narrow both gap records without resolving them
 
