@@ -138,6 +138,10 @@ async function handleComposeSetoptsInCode(
                 line: result.absolute.line,
                 hexRange: result.absolute.hexRange,
                 originalHex: result.absolute.hexDigits,
+                // hexRange spans the whole $…$ token (delimiters included), so the writer must
+                // put a complete literal back — bare digits here would delete the delimiters
+                // (G-88-3 manifestation 1).
+                hexSyntax: 'bbj-literal',
             },
         };
         openSetOptsComposerPanel(context, panelArg);

@@ -15,7 +15,7 @@
  */
 import * as vscode from 'vscode';
 import {
-    BYTE_GROUPS, SETOPTS_BITS, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
+    BYTE_GROUPS, SETOPTS_BITS, bbjHexLiteral, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
     parseVector, rawTail, setoptsPreview, SetOptsSelection, SetOptsVector,
 } from './setopts-catalog.js';
 
@@ -28,6 +28,16 @@ export interface SetOptsEditTarget {
     insertOffset?: number;
     /** The original hex digits — the lossless round-trip baseline. */
     originalHex?: string;
+    /**
+     * Which BBj hex syntax this target's file format expects (G-88-3). `'config-bare'` (the
+     * default, and what every caller gets unless it opts in) is config.bbx's own syntax (#474),
+     * where a bare run of hex digits — no `$…$` delimiters — is correct; this module was built
+     * for that format, so an unmarked caller can never silently get the wrong one for it.
+     * `'bbj-literal'` is required inside a BBj program (#475), where a bare hex run is not valid
+     * `SETOPTS`/`IOR`/`AND` argument syntax at all — only `setopts-in-code-ui.ts`'s absolute-mode
+     * branch sets this.
+     */
+    hexSyntax?: 'config-bare' | 'bbj-literal';
 }
 
 export interface SetOptsPanelArg {
@@ -87,12 +97,16 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
                 const edit = new vscode.WorkspaceEdit();
                 if (target) {
                     const uri = vscode.Uri.parse(target.uri);
+                    // One decision, two consumers: compute the text to write once, from
+                    // r.hexDigits and target.hexSyntax, and use it in both write branches below —
+                    // never a second inline conditional (G-88-3).
+                    const text = target.hexSyntax === 'bbj-literal' ? bbjHexLiteral(r.hexDigits) : r.hexDigits;
                     if (target.hexRange) {
                         edit.replace(uri,
                             new vscode.Range(target.line, target.hexRange[0], target.line, target.hexRange[1]),
-                            r.hexDigits);
+                            text);
                     } else if (target.insertOffset !== undefined) {
-                        edit.insert(uri, new vscode.Position(target.line, target.insertOffset), ` ${r.hexDigits}`);
+                        edit.insert(uri, new vscode.Position(target.line, target.insertOffset), ` ${text}`);
                     }
                 } else if (insertUri !== undefined && insertLine !== undefined) {
                     edit.insert(insertUri, new vscode.Position(insertLine, 0), `${r.line}\n`);
