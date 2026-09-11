@@ -22,6 +22,7 @@
  */
 import * as vscode from 'vscode';
 import type { SetOptsInCodeDecodeResult } from './language/setopts-in-code-request.js';
+import type { SetOptsTriState } from './setopts-catalog.js';
 
 /** Comfortably under a minute, bounding a re-decode that would otherwise hang the Apply forever. */
 export const STALE_EDIT_REDECODE_TIMEOUT_MS = 10_000;
@@ -75,8 +76,8 @@ function sameChain(
  * mirroring `DecodeEquality.sameSetoptsTriStateEntries`'s own documented rule.
  */
 function sameEntries(
-    a: ReadonlyArray<{ byte: number; mask: number; state: string }>,
-    b: ReadonlyArray<{ byte: number; mask: number; state: string }>,
+    a: ReadonlyArray<{ byte: number; mask: number; state: SetOptsTriState }>,
+    b: ReadonlyArray<{ byte: number; mask: number; state: SetOptsTriState }>,
 ): boolean {
     if (a.length !== b.length) {
         return false;
@@ -155,16 +156,18 @@ function withTimeout<T>(pending: Promise<T>, ms: number): Promise<T> {
  *    re-decode completing and the write starting, the VS Code counterpart of the reference
  *    guard's modification-stamp re-check inside its write command. A change refuses with
  *    {@link STALE_DOCUMENT_MESSAGE}.
- * 6. Apply, and resolve `true`.
+ * 6. Apply, and resolve whatever `vscode.workspace.applyEdit` itself resolved — `false` when the
+ *    edit could not actually be applied (a closed editor, a document that became read-only, an
+ *    out-of-range position) refuses with {@link STALE_CHECK_FAILED_MESSAGE} rather than reporting
+ *    success for a write that never happened.
  */
 export async function applyIfUnchanged(
     guard: SetOptsStaleEditGuard | undefined,
-    applyEdit: () => Thenable<unknown>,
+    applyEdit: () => Thenable<boolean>,
     timeoutMs: number = STALE_EDIT_REDECODE_TIMEOUT_MS,
 ): Promise<boolean> {
     if (guard === undefined) {
-        await applyEdit();
-        return true;
+        return await applyEdit();
     }
 
     const snapshotVersion = documentVersion(guard.uri);
@@ -191,6 +194,9 @@ export async function applyIfUnchanged(
         return false;
     }
 
-    await applyEdit();
-    return true;
+    const applied = await applyEdit();
+    if (!applied) {
+        vscode.window.showWarningMessage(STALE_CHECK_FAILED_MESSAGE);
+    }
+    return applied;
 }

@@ -127,7 +127,7 @@ describe('applyIfUnchanged (Task 1)', () => {
     });
 
     test('no guard supplied: applyEdit is called once, resolves true, showWarningMessage never called', async () => {
-        const applyEdit = vi.fn().mockResolvedValue(undefined);
+        const applyEdit = vi.fn().mockResolvedValue(true);
         const result = await applyIfUnchanged(undefined, applyEdit);
         expect(result).toBe(true);
         expect(applyEdit).toHaveBeenCalledTimes(1);
@@ -139,11 +139,33 @@ describe('applyIfUnchanged (Task 1)', () => {
         const captured = fakeDecode();
         const fresh = fakeDecode();
         const guard: SetOptsStaleEditGuard = { uri: 'file:///a.bbj', capturedDecode: captured, reDecode: vi.fn().mockResolvedValue(fresh) };
-        const applyEdit = vi.fn().mockResolvedValue(undefined);
+        const applyEdit = vi.fn().mockResolvedValue(true);
 
         const result = await applyIfUnchanged(guard, applyEdit);
 
         expect(result).toBe(true);
+        expect(applyEdit).toHaveBeenCalledTimes(1);
+        expect(showWarningMessageMock).not.toHaveBeenCalled();
+    });
+
+    test('applyEdit itself resolves false (edit could not be applied): warned with STALE_CHECK_FAILED_MESSAGE, result is false', async () => {
+        textDocuments.push(openDoc('file:///a.bbj', 7));
+        const captured = fakeDecode();
+        const fresh = fakeDecode();
+        const guard: SetOptsStaleEditGuard = { uri: 'file:///a.bbj', capturedDecode: captured, reDecode: vi.fn().mockResolvedValue(fresh) };
+        const applyEdit = vi.fn().mockResolvedValue(false);
+
+        const result = await applyIfUnchanged(guard, applyEdit);
+
+        expect(result).toBe(false);
+        expect(applyEdit).toHaveBeenCalledTimes(1);
+        expect(showWarningMessageMock).toHaveBeenCalledWith(STALE_CHECK_FAILED_MESSAGE);
+    });
+
+    test('no guard supplied and applyEdit resolves false: result is false, no warning (unguarded caller keeps no-message behavior)', async () => {
+        const applyEdit = vi.fn().mockResolvedValue(false);
+        const result = await applyIfUnchanged(undefined, applyEdit);
+        expect(result).toBe(false);
         expect(applyEdit).toHaveBeenCalledTimes(1);
         expect(showWarningMessageMock).not.toHaveBeenCalled();
     });
