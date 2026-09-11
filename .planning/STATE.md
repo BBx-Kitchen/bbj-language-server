@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
 current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
 status: executing
-stopped_at: "Completed 88-12-PLAN.md (gap-closure: bounded textDocument/codeAction handler on hover's DocumentState.Linked gate + 5000ms budget, cold-ordering probe confirms 7ms vs. pre-fix 56016ms hang; IntelliJ second non-intention composer entry point bbj.composeSetoptsInCode; G-88-2 still status:failed pending live IntelliJ retest in 88-13)"
-last_updated: "2026-09-11T10:45:30.494Z"
+stopped_at: "Completed 88-13-PLAN.md (gap-closure round shipped: rebuilt+reinstalled VS Code extension basis-intl.bbj-lang-0.12.28, rebuilt IntelliJ bbj-intellij-0.1.0.zip sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66; shipped-bundle e2e assertion + in-distributable class checks; QA checklist quoted-hover rows fixed + context-menu row added; 88-LIVE-RETEST.md rewritten round two; G-88-2/G-88-3 missing: narrowed to live-render residue, both still status:failed pending human retest)"
+last_updated: "2026-09-11T10:53:43.002Z"
 last_activity: 2026-09-11
 last_activity_desc: Phase 88 execution resumed (wave continue)
-state_head: c929fc66ff53c0fa5232b51fbd9360673abd3f64
+state_head: 45015c57acafbfa948fe1e7f1aa56c1f92fd063d
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 32
-  completed_plans: 31
+  completed_plans: 32
   percent: 44
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
 
@@ -170,6 +170,7 @@ Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
 | Phase 88 P10 | 25min | 3 tasks | 9 files |
 | Phase 88 P11 | 20min | 3 tasks | 4 files |
 | Phase 88 P12 | 20min | 3 tasks | 9 files |
+| Phase 88 P13 | 35min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -287,6 +288,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: 88-10 (gap-closure G-88-3): bbjHexLiteral/BbjHexLiteral.of is the one formatter per host deciding a BBj hex literal's $...$ delimiters; composeSetOptsBlock's IOR/AND lines and both hosts' absolute in-place writers now route through it; SetOptsEditTarget.hexSyntax discriminator (default config-bare) keeps the #474 config.bbx composer's bare-hex syntax unchanged and pinned by a direct test. G-88-3 stays status:failed pending plan 88-13's live BBjServices verification.
 - [Phase 88]: [Phase 88]: 88-11: parseHexLiteral now consults the StringLiteral's raw CST source text (not its converted value) to accept only the grammar's own anchored HEX_STRING shape, since BBjValueConverter makes a quoted "$08$" and a bare $08$ byte-identical by the time the AST value is read -- closes G-88-3's decode-side leniency that let the invalid composer output round-trip through the test corpus; decode-side fixture corpus migrated to real BBj syntax and a round-trip test proves hexRange + bbjHexLiteral compose. G-88-3 stays status:failed pending plan 88-13's live verification.
 - [Phase 88]: 88-12 (gap-closure G-88-2): textDocument/codeAction gated at DocumentState.Linked (hover's gate, not Validated) with a named 5000ms budget racing the state wait, overriding Langium's default registration after startLanguageServer(shared); a cold-ordering probe (workspace=repo root, codeAction issued immediately after didOpen) confirms the fix -- 7ms vs. the pre-fix 56016ms hang. IntelliJ gains a second, non-intention editor-context-menu entry point (bbj.composeSetoptsInCode) into the tri-state composer, calling the identical launcher the Alt+Enter intention uses. G-88-2 stays status:failed -- no IntelliJ sandbox exists in this devcontainer; plan 88-13 stages the live retest.
+- [Phase 88]: [Phase 88]: 88-13: rebuilt both distributables and proved this round's fixes ship (new shipped-bundle e2e assertion that composeTriState mask arguments are bare hex, never quoted; IntelliJ plugin jar proven to carry the new context-menu action + Java formatter + unchanged intention), corrected QA/FULL-TEST-CHECKLIST.md's now-invalid quoted hover sample syntax and added the IntelliJ context-menu row, rewrote 88-LIVE-RETEST.md as round two, and narrowed G-88-2/G-88-3's missing: lists to exactly the live-render residue -- both gaps stay status:failed pending the next human retest
 
 ### Tech Debt
 
@@ -353,8 +355,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-11T10:45:30.270Z
-Stopped at: Completed 88-12-PLAN.md (gap-closure: bounded textDocument/codeAction handler on hover's DocumentState.Linked gate + 5000ms budget, cold-ordering probe confirms 7ms vs. pre-fix 56016ms hang; IntelliJ second non-intention composer entry point bbj.composeSetoptsInCode; G-88-2 still status:failed pending live IntelliJ retest in 88-13)
+Last session: 2026-09-11T10:53:42.783Z
+Stopped at: Completed 88-13-PLAN.md (gap-closure round shipped: rebuilt+reinstalled VS Code extension basis-intl.bbj-lang-0.12.28, rebuilt IntelliJ bbj-intellij-0.1.0.zip sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66; shipped-bundle e2e assertion + in-distributable class checks; QA checklist quoted-hover rows fixed + context-menu row added; 88-LIVE-RETEST.md rewritten round two; G-88-2/G-88-3 missing: narrowed to live-render residue, both still status:failed pending human retest)
 Resume file: None
 
 Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
