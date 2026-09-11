@@ -348,7 +348,7 @@ Scope is the 25 v1 requirements derived from the 23 issues on GitHub milestone #
   3. A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented.
   4. Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke (research Pitfall 11).
 
-**Plans**: 13/13 plans executed (7 executed; 88-08 and 88-09 were a second UAT gap-closure round for G-88-1 and G-88-2; 88-10 through 88-13 are a third round for the diagnosed G-88-2 and G-88-3)
+**Plans**: 14 plans (13/13 executed; 88-14 planned, not yet executed — 7 original; 88-08 and 88-09 were a second UAT gap-closure round for G-88-1 and G-88-2; 88-10 through 88-13 a third round for the diagnosed G-88-2 and G-88-3; 88-14 a fourth round for the verification-found chain edit-range defect)
 
 Plans:
 **Wave 1**
@@ -400,6 +400,12 @@ This round runs fully sequentially. 88-12 and 88-13 each rebuild the VS Code ext
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 88-13-PLAN.md — Rebuild and prove both distributables, correct the QA checklist's now-invalid sample syntax, script round two of the live retest, and narrow both gap records without resolving them
+
+**Gap closure, round 4** *(from 88-VERIFICATION.md's own source trace: the chain edit-in-place replace range is computed from the origin's and `SETOPTS` statement's line numbers, so a safe chain whose reassignment shares a physical line via `;` is handed an empty or inverted range while still being reported editable. The two remaining live-IDE items — IntelliJ composer reachability and the live mask-width question — stay staged as human verification in `88-LIVE-RETEST.md` round two and are deliberately not planned here)*
+
+**Wave 1**
+
+- [ ] 88-14-PLAN.md — Anchor the chain edit-in-place region on the reassignment statements' own CST ranges, fail the edit gate closed with a named reason when the region is not a whole-line region the chain owns outright, and pin the whole line-sharing matrix at the edit-range layer
 
 ### Phase 89: CVS() Composer, MSGBOX Expressions & Composer Discoverability
 
