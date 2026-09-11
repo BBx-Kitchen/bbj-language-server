@@ -90,13 +90,25 @@ expected: |
   running so this check isolates the mask-width question from the known delimiter bug. Expected:
   the generated IOR/AND calls (16-byte/32-hex-digit full-width mask base) run without raising a
   BBj !ERROR — confirms 88-RESEARCH.md Assumption A2 against real BASIS runtime behavior.
-result: pass
+result: issue
+reported: |
+  Correction to the earlier "pass": !ERROR=17 (Strings must be the same length.) on
+  [5] opts$=AND(opts$,"$DFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF$") for the composer's generated
+  compose-new block:
+    opts$=OPTS
+    opts$=AND(opts$,"$DFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF$")
+    SETOPTS opts$
+  The problem is the double quotes: the mask is wrapped as a plain quoted string
+  "$DFFF...$" instead of BBj's bare $...$ hex-string literal, so the $ delimiter characters
+  are taken as literal text (making the operand longer than 16 bytes) instead of being decoded
+  as hex — hence the length mismatch against opts$.
+severity: blocker
 
 ## Summary
 
 total: 8
-passed: 3
-issues: 4
+passed: 2
+issues: 5
 pending: 0
 skipped: 1
 blocked: 0
@@ -239,14 +251,30 @@ blocked: 0
   debug_session: .planning/debug/g-88-2-composer-never-activates.md
 
 - gap_id: G-88-3
-  truth: "The tri-state composer's generated SETOPTS literal is valid BBj program syntax (dollar-delimited hex string), not config.bbx syntax (bare hex)."
+  truth: "Every mask/hex literal the tri-state composer generates uses valid BBj program syntax: a bare $...$ hex-string literal — never a bare unquoted hex string (config.bbx-only syntax) and never a $...$ hex literal wrapped in an extra pair of double quotes (which makes BBj treat the $ delimiters as literal text instead of decoding the hex, corrupting the operand's byte length)."
   status: failed
   reason: |
-    User reported (live retest, VS Code, Check 2): "It works but produces an invalid line:
-    SETOPTS 20C20240000000000000000000000000 only valid in config.bbx. In a program it needs to
-    be SETOPTS $20C20240000000000000000000000000$ . With that fixed, everything else is a pass"
-  severity: major
-  test: 6
+    Two manifestations found in live retest, both from the composer's mask-literal generation
+    code path:
+
+    (test 6, VS Code, Check 2) User reported: "It works but produces an invalid line: SETOPTS
+    20C20240000000000000000000000000 only valid in config.bbx. In a program it needs to be
+    SETOPTS $20C20240000000000000000000000000$ . With that fixed, everything else is a pass" —
+    the SETOPTS argument is missing its required $...$ wrapping entirely.
+
+    (test 8, VS Code, Check 3 — corrected after an initial mistaken "pass") User reported:
+    "!ERROR=17 (Strings must be the same length.) [5] opts$=AND(opts$,"$DFFFFFFFFFFFFFFFFFFFF
+    FFFFFFFFFFFFFFFFFF$") . for the generated block (opts$=OPTS / opts$=AND(opts$,"$DFFFF...
+    FFFFF$") / SETOPTS opts$) . The problem is the double quotes" — here the opposite defect:
+    the IOR/AND argument has an EXTRA pair of double quotes around the $...$ hex literal, so BBj
+    takes the $ characters as literal text (not a hex decode marker), producing an operand whose
+    decoded length no longer matches opts$'s 16 bytes.
+
+    Both point at the same underlying defect: the composer's mask-literal formatter does not
+    consistently emit BBj's bare $...$ hex-string literal syntax across every line kind it
+    generates (SETOPTS argument vs. IOR/AND argument).
+  severity: blocker
+  test: 8
   root_cause: ""
   artifacts: []
   missing: []
