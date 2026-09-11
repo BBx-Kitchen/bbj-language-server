@@ -155,4 +155,36 @@ class SetoptsInCodeSourceGuardTest {
                 "the not-editable branch must construct no edit -- no replaceString/insertString "
                         + "call between its guard check and its return (T-88-01)");
     }
+
+    /**
+     * G-88-3: two writers in the same class share one range/digits contract but must NOT share
+     * one syntax -- {@code openSetoptsInCodeAbsolute} edits a BBj-program literal (bare hex is
+     * invalid there), while {@code openSetopts} edits {@code config.bbx} (bare hex is the CORRECT
+     * syntax there, #474). Conflating the two is exactly how the defect arose; this guard pins
+     * each writer to its own file format, applied after comment stripping so this test class's
+     * own javadoc can never satisfy or break it.
+     */
+    @Test
+    void theInCodeWriterUsesBbjHexLiteralWhileTheConfigBbxWriterStaysBare() {
+        String text = withoutCommentLines(readSource(LAUNCHER_SOURCE));
+
+        int absoluteStart = text.indexOf("private static void openSetoptsInCodeAbsolute(");
+        int chainStart = text.indexOf("private static void openSetoptsInCodeChain(");
+        assertTrue(absoluteStart >= 0 && chainStart > absoluteStart,
+                "openSetoptsInCodeAbsolute(...) must exist and precede openSetoptsInCodeChain(...)");
+        String absoluteBody = text.substring(absoluteStart, chainStart);
+        assertTrue(absoluteBody.contains("BbjHexLiteral.of("),
+                "the BBj-program in-code writer (openSetoptsInCodeAbsolute) must route its "
+                        + "replacement text through BbjHexLiteral.of(...) -- a bare hex value there "
+                        + "deletes the $...$ delimiters (G-88-3 manifestation 1)");
+
+        int configStart = text.indexOf("private static void openSetopts(");
+        int inCodeDispatcherStart = text.indexOf("private static void openSetoptsInCode(");
+        assertTrue(configStart >= 0 && inCodeDispatcherStart > configStart,
+                "openSetopts(...) must exist and precede openSetoptsInCode(...)");
+        String configBody = text.substring(configStart, inCodeDispatcherStart);
+        assertFalse(configBody.contains("BbjHexLiteral.of("),
+                "the config.bbx writer (openSetopts, #474) must stay bare hex -- routing it "
+                        + "through BbjHexLiteral.of(...) would corrupt config.bbx's own correct syntax");
+    }
 }

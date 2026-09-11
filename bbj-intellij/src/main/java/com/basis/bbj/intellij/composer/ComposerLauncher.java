@@ -498,7 +498,12 @@ public final class ComposerLauncher {
                 () -> {
                     Document doc = editor.getDocument();
                     int ls = doc.getLineStartOffset(ed.line);
-                    doc.replaceString(ls + ed.hexRange[0], ls + ed.hexRange[1], hex);
+                    // ed.hexRange spans the whole $...$ token (delimiters included), so the
+                    // write must put a complete literal back -- a bare hex value here would
+                    // delete the delimiters and leave invalid BBj syntax behind (G-88-3
+                    // manifestation 1). Bare hex remains correct ONLY in openSetopts's
+                    // config.bbx writer above, which this call must never touch.
+                    doc.replaceString(ls + ed.hexRange[0], ls + ed.hexRange[1], BbjHexLiteral.of(hex));
                 });
     }
 
