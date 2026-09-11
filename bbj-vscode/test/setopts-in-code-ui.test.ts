@@ -72,6 +72,7 @@ import {
     openSetOptsTriStateComposerPanel, SetOptsInCodeRequestSender, SetOptsTriStatePanelArg, SetOptsTriStateTarget,
 } from '../src/setopts-tristate-webview.js';
 import { registerSetOptsInCodeComposer, setoptsInCodeCandidateLine } from '../src/setopts-in-code-ui.js';
+import { openSetOptsComposerPanel, SetOptsPanelArg } from '../src/setopts-composer-webview.js';
 
 interface FakePanel {
     webview: {
@@ -109,7 +110,7 @@ describe('setopts-tristate-webview.ts (Task 1)', () => {
     test('chain-replace range: apply on a non-empty [startLine, endLine) target replaces that range with the composed text + newline', async () => {
         const { panel, getHandler } = createFakePanel();
         createWebviewPanelMock.mockReturnValue(panel);
-        const composed = { lines: ['  opts$=IOR(opts$,"$8000000000000000$")'], text: '  opts$=IOR(opts$,"$8000000000000000$")' };
+        const composed = { lines: ['  opts$=IOR(opts$,$8000000000000000$)'], text: '  opts$=IOR(opts$,$8000000000000000$)' };
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue(composed);
         const target: SetOptsTriStateTarget = { uri: 'file:///a.bbj', startLine: 5, endLine: 7, indent: '  ', variableName: 'opts$' };
         const arg: SetOptsTriStatePanelArg = { target };
@@ -133,7 +134,7 @@ describe('setopts-tristate-webview.ts (Task 1)', () => {
     test('equal-line insert: apply on a target where startLine === endLine inserts at that position instead of replacing', async () => {
         const { panel, getHandler } = createFakePanel();
         createWebviewPanelMock.mockReturnValue(panel);
-        const composed = { lines: ['  opts$=AND(opts$,"$7FFFFFFFFFFFFFFF$")'], text: '  opts$=AND(opts$,"$7FFFFFFFFFFFFFFF$")' };
+        const composed = { lines: ['  opts$=AND(opts$,$7FFFFFFFFFFFFFFF$)'], text: '  opts$=AND(opts$,$7FFFFFFFFFFFFFFF$)' };
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue(composed);
         const target: SetOptsTriStateTarget = { uri: 'file:///b.bbj', startLine: 9, endLine: 9, indent: '  ', variableName: 'opts$' };
 
@@ -247,7 +248,7 @@ describe('setopts-tristate-webview.ts (Task 1)', () => {
     test('change forwards the form selection through the sender and posts the preview back', async () => {
         const { panel, getHandler } = createFakePanel();
         createWebviewPanelMock.mockReturnValue(panel);
-        const composed = { lines: ['opts$=IOR(opts$,"$8000000000000000$")'], text: 'opts$=IOR(opts$,"$8000000000000000$")' };
+        const composed = { lines: ['opts$=IOR(opts$,$8000000000000000$)'], text: 'opts$=IOR(opts$,$8000000000000000$)' };
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue(composed);
         const target: SetOptsTriStateTarget = { uri: 'file:///f.bbj', startLine: 1, endLine: 1, indent: '', variableName: 'opts$' };
 
@@ -344,6 +345,30 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
         expect(showInformationMessageMock).not.toHaveBeenCalled();
     });
 
+    test('mode: absolute, editable: true writes a complete $…$ literal on apply, never bare digits (G-88-3 manifestation 1)', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValue(panel);
+        const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
+            found: true, editable: true, mode: 'absolute',
+            absolute: { line: 2, hexRange: [8, 42], hexDigits: '00C20240000000000000000000000000' },
+        });
+        registerSetOptsInCodeComposer(fakeContext, sender);
+        const commandHandler = getRegisteredCommandHandler();
+
+        await commandHandler({ uri: 'file:///x.bbj', line: 2, character: 5 });
+        const panelHandler = getHandler()!;
+        await panelHandler({ type: 'ready' });
+        await panelHandler({ type: 'apply', payload: { checked: [], maskComma: '', maskDot: '', rawTail: '' } });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        const [, rangeArg, textArg] = edit.replace.mock.calls[0];
+        expect(rangeArg).toEqual(new FakeRange(2, 8, 2, 42));
+        // A complete BBj hex literal: starts and ends with a dollar sign, hex digits in between.
+        expect(textArg as string).toMatch(/^\$[0-9A-F]*\$$/);
+    });
+
     test('mode: chain, editable: true opens the tri-state panel with the chain edit-in-place target', async () => {
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
             found: true, editable: true, mode: 'chain',
@@ -438,6 +463,80 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
 
         expect(createWebviewPanelMock).not.toHaveBeenCalled();
         expect(showInformationMessageMock).toHaveBeenCalledWith(expect.stringContaining('language server unreachable'));
+    });
+});
+
+/**
+ * setopts-composer-webview.ts's own `hexSyntax` discriminator (Task 2, G-88-3 manifestation 1):
+ * these tests call `openSetOptsComposerPanel` directly, the same way `setopts-composer-ui.ts`
+ * (config.bbx, #474) does, rather than routing through `setopts-in-code-ui.ts`'s absolute branch —
+ * the point is to pin the writer's OWN default (bare, unmarked callers keep config.bbx's syntax)
+ * independently of who calls it.
+ */
+describe('setopts-composer-webview.ts hexSyntax discriminator (Task 2)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    test('a config.bbx edit target (no explicit hexSyntax — the default) writes bare digits with no delimiters (#474 regression guard)', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValue(panel);
+        const arg: SetOptsPanelArg = {
+            target: { uri: 'file:///barista.bbx-config', line: 0, hexRange: [8, 16], originalHex: '00C20240' },
+        };
+
+        openSetOptsComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        await handler({ type: 'ready' });
+        await handler({ type: 'apply', payload: { checked: [], maskComma: '', maskDot: '', rawTail: '' } });
+
+        expect(applyEditMock).toHaveBeenCalledTimes(1);
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        const [, , textArg] = edit.replace.mock.calls[0];
+        expect(textArg as string).not.toContain('$');
+        expect(textArg as string).toMatch(/^[0-9A-F]+$/);
+    });
+
+    test('a config.bbx insert target (insertOffset, bare SETOPTS keyword line) inserts a space plus bare digits, no delimiters', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValue(panel);
+        const arg: SetOptsPanelArg = {
+            target: { uri: 'file:///barista.bbx-config', line: 3, insertOffset: 7 },
+        };
+
+        openSetOptsComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        await handler({ type: 'ready' });
+        await handler({ type: 'apply', payload: { checked: [], maskComma: '', maskDot: '', rawTail: '' } });
+
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.insert).toHaveBeenCalledTimes(1);
+        const [, , textArg] = edit.insert.mock.calls[0];
+        expect(textArg as string).toMatch(/^ [0-9A-F]+$/);
+        expect(textArg as string).not.toContain('$');
+    });
+
+    test('a BBj-program absolute edit target with hexSyntax: "bbj-literal" writes a complete $…$ literal', async () => {
+        const { panel, getHandler } = createFakePanel();
+        createWebviewPanelMock.mockReturnValue(panel);
+        const arg: SetOptsPanelArg = {
+            target: {
+                uri: 'file:///x.bbj', line: 2, hexRange: [8, 42],
+                originalHex: '00C20240000000000000000000000000',
+                hexSyntax: 'bbj-literal',
+            },
+        };
+
+        openSetOptsComposerPanel(fakeContext, arg);
+        const handler = getHandler()!;
+        await handler({ type: 'ready' });
+        await handler({ type: 'apply', payload: { checked: [], maskComma: '', maskDot: '', rawTail: '' } });
+
+        const edit = applyEditMock.mock.calls[0][0] as InstanceType<typeof FakeWorkspaceEdit>;
+        expect(edit.replace).toHaveBeenCalledTimes(1);
+        const [, , textArg] = edit.replace.mock.calls[0];
+        expect(textArg as string).toMatch(/^\$[0-9A-F]*\$$/);
     });
 });
 
