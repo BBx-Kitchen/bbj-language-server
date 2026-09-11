@@ -24,6 +24,10 @@ import {
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = path.resolve(TEST_DIR, '../../../examples/issue475-setopts-in-code.bbj');
+/** The repository root, resolved from this file's own location -- never a hardcoded absolute
+ * path. Used by the cold-ordering probe below, which opens the WHOLE repo as its workspace (the
+ * same shape the tester's IntelliJ project used when the live probe measured a 56016ms hang). */
+const REPO_ROOT = path.resolve(TEST_DIR, '../../../');
 
 interface ExtensionsJsonEntry {
     identifier?: { id?: string };
@@ -340,17 +344,16 @@ describe.skipIf(!installPresent)('installed extension e2e: SETOPTS-in-code (#475
 });
 
 /**
- * Shared-server diagnostics and codeAction latency on the reported snippet (#475). The g-88-2
- * debug session eliminated a hang inside the IntelliJ intention's own code and a standing LSP4IJ
- * platform defect, leaving exactly one live alternative: a slow or blocked BBjCPL
- * compile-diagnostics round trip specific to this snippet, which Phase 82's diagnostics-free UAT
- * never exercised. IntelliJ's Alt+Enter action-collection phase drives textDocument/codeAction
- * and waits on diagnostics — both served by the same shared language server this probe drives.
- * This spawns its OWN server instance, separate from the describe block above, and deliberately
- * does NOT send `compiler.trigger: 'off'` — the validator stays at its 'debounced' default, so
- * the measurement reflects what a live IDE actually gets.
+ * Shared-server diagnostics and codeAction latency on the reported snippet (#475) — measured in
+ * the WARM ordering: `codeAction` is issued only after the first `publishDiagnostics` has already
+ * arrived (or the diagnostics budget elapsed), so the document is already built past the point
+ * `codeAction` needs. This is a useful data point on its own, but it is NOT the ordering
+ * Alt+Enter actually produces — see the cold-ordering probe below, which issues `codeAction`
+ * immediately after `didOpen` instead. This spawns its OWN server instance, separate from the
+ * describe block above, and deliberately does NOT send `compiler.trigger: 'off'` — the validator
+ * stays at its 'debounced' default, so the measurement reflects what a live IDE actually gets.
  */
-describe.skipIf(!installPresent)('shared-server diagnostics and codeAction latency on the reported snippet (#475)', () => {
+describe.skipIf(!installPresent)('shared-server diagnostics and codeAction latency on the reported snippet, WARM ordering (#475)', () => {
     let child: ChildProcess;
     let connection: MessageConnection;
     const stderr: string[] = [];
@@ -366,7 +369,7 @@ describe.skipIf(!installPresent)('shared-server diagnostics and codeAction laten
         }
     });
 
-    test('diagnostics and codeAction both resolve within budget, measured against the reported snippet', async () => {
+    test('WARM ordering: diagnostics and codeAction both resolve within budget, codeAction issued only after diagnostics', async () => {
         const fixtureText = fs.readFileSync(FIXTURE_PATH, 'utf-8');
         const fixtureUri = pathToFileURL(FIXTURE_PATH).toString();
 
@@ -452,6 +455,108 @@ describe.skipIf(!installPresent)('shared-server diagnostics and codeAction laten
         expect(codeActionElapsedMs, `textDocument/codeAction on the reported snippet took ${codeActionElapsedMs}ms`).toBeLessThan(codeActionBudgetMs);
 
         console.log(`shared-server latency probe: diagnostics=${diagnosticsElapsedMs}ms (budget ${diagnosticsBudgetMs}ms), codeAction=${codeActionElapsedMs}ms (budget ${codeActionBudgetMs}ms)`);
+    }, 120_000);
+});
+
+/**
+ * The COLD-ordering codeAction probe (#475) — this is the measurement the earlier warm "205ms /
+ * 15000ms" reading got wrong. `textDocument/codeAction` is issued IMMEDIATELY after `didOpen`,
+ * with no wait on diagnostics and no warm-up hover, reproducing the exact ordering Alt+Enter
+ * actually produces (IntelliJ's intention-search phase issues the request before the workspace
+ * build has any reason to have settled). The workspace is opened at the repository root, the same
+ * shape the tester's IntelliJ project used when a live probe against the pre-fix server measured
+ * a 56016ms hang. A `null` or empty result is a PASS here — the question this probe answers is
+ * whether the server replies at all within the cold budget, not what it replies with.
+ */
+describe.skipIf(!installPresent)('cold-ordering codeAction probe against the reinstalled bundle, workspace = repo root (#475)', () => {
+    let child: ChildProcess;
+    let connection: MessageConnection;
+    const stderr: string[] = [];
+
+    afterAll(() => {
+        connection?.dispose();
+        if (child && child.exitCode === null && child.pid !== undefined) {
+            try {
+                child.kill('SIGKILL');
+            } catch {
+                // already gone
+            }
+        }
+    });
+
+    test('codeAction issued immediately after didOpen, before any diagnostics, settles within the cold budget', async () => {
+        const fixtureText = fs.readFileSync(FIXTURE_PATH, 'utf-8');
+        const fixtureUri = pathToFileURL(FIXTURE_PATH).toString();
+        const repoRootUri = pathToFileURL(REPO_ROOT).toString();
+
+        child = spawn(process.execPath, [install!.serverPath, '--node-ipc', `--clientProcessId=${process.pid}`], {
+            stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        });
+        child.stderr?.on('data', chunk => stderr.push(String(chunk)));
+
+        connection = createMessageConnection(new IPCMessageReader(child), new IPCMessageWriter(child));
+        connection.listen();
+
+        // Whether diagnostics arrived before the codeAction reply, recorded rather than assumed —
+        // the listener is registered BEFORE didOpen so the ordering is actually observed.
+        let codeActionSettled = false;
+        let diagnosticsArrivedFirst = false;
+        connection.onNotification('textDocument/publishDiagnostics', (params: { uri?: string }) => {
+            if (params?.uri === fixtureUri && !codeActionSettled) {
+                diagnosticsArrivedFirst = true;
+            }
+        });
+
+        // rootUri/workspaceFolders = the repository root, matching the workspace the tester's
+        // IntelliJ project used (opening the whole bbj-language-server repo), not the scoped
+        // rootUri: null the other describe blocks in this file deliberately use.
+        await connection.sendRequest('initialize', {
+            processId: process.pid,
+            rootUri: repoRootUri,
+            workspaceFolders: [{ uri: repoRootUri, name: 'bbj-language-server' }],
+            capabilities: {},
+        });
+        await connection.sendNotification('initialized', {});
+
+        await connection.sendNotification('textDocument/didOpen', {
+            textDocument: {
+                uri: fixtureUri,
+                languageId: 'bbj',
+                version: 1,
+                text: fixtureText,
+            },
+        });
+
+        // IMMEDIATELY — no await on diagnostics, no warm-up hover — over the full range of the
+        // line carrying the first reported reproduction, with LSP4IJ's own exact parameters: an
+        // empty context.diagnostics and the Automatic trigger kind (numeric value 2).
+        const targetPos = findPosition(fixtureText, 'a$=OPTS; A$(1,1)=IOR(A$(1,1),$C2$); SETOPTS A$', 'a$');
+        const targetLineText = fixtureText.split('\n')[targetPos.line];
+
+        // Generous enough to be stable on a loaded machine, far below the pre-fix 56016ms hang —
+        // the point is the difference between "a few seconds" and "under a minute or never".
+        const coldBudgetMs = 20_000;
+        const start = Date.now();
+        const codeActionPromise = connection.sendRequest('textDocument/codeAction', {
+            textDocument: { uri: fixtureUri },
+            range: {
+                start: { line: targetPos.line, character: 0 },
+                end: { line: targetPos.line, character: targetLineText.length },
+            },
+            context: { diagnostics: [], triggerKind: 2 },
+        }).then(() => {
+            codeActionSettled = true;
+        });
+
+        await Promise.race([
+            codeActionPromise,
+            new Promise(resolve => setTimeout(resolve, coldBudgetMs)),
+        ]);
+        const elapsedMs = Date.now() - start;
+
+        console.log(`cold codeAction probe (workspace=repo root): elapsed=${elapsedMs}ms (budget ${coldBudgetMs}ms), diagnosticsArrivedFirst=${diagnosticsArrivedFirst}`);
+
+        expect(codeActionSettled, `textDocument/codeAction (cold ordering, workspace=repo root) did not settle within ${coldBudgetMs}ms. stderr: ${stderr.join('') || '(empty)'}`).toBe(true);
     }, 120_000);
 });
 
