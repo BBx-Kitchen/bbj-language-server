@@ -417,6 +417,22 @@ export function singleBitAndMask(byte: number, mask: number): string {
     return encodeVector(v);
 }
 
+/**
+ * The ONE place in this module (and the sole authority server-side) that decides how a BBj hex
+ * literal is spelled: a bare `$…$`-delimited run of hex digits, never wrapped in a pair of double
+ * quotes. Per `bbj.langium:949-950`, `STRING_LITERAL` (`"…"`) and `HEX_STRING` (`$…$`) are two
+ * SEPARATE terminals — wrapping a hex mask in quotes turns a 16-byte hex-decoded value into a
+ * 34-character plain string, which is exactly the `!ERROR=17 (Strings must be the same length.)`
+ * defect G-88-3 reproduced live (`opts$=AND(opts$,"$…$")` never hex-decodes). Every generated or
+ * rewritten BBj hex literal — both `composeSetOptsBlock` reassignment lines below, and every
+ * in-place writer that replaces a whole `$…$` token — must go through this function; no other line
+ * kind in this module (or its callers) may hand-roll its own delimiters. Its Java twin is
+ * `BbjHexLiteral.of` in `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/BbjHexLiteral.java`.
+ */
+export function bbjHexLiteral(digits: string): string {
+    return `$${digits}$`;
+}
+
 export interface ComposeSetOptsBlockInput {
     selection: SetOptsTriStateSelection;
     variable?: string;
@@ -452,9 +468,9 @@ export function composeSetOptsBlock(input: ComposeSetOptsBlockInput): ComposeSet
     for (const bit of SETOPTS_BITS) {
         const state = stateFor(bit);
         if (state === 'set') {
-            setLines.push(`${variable}=IOR(${variable},"$${singleBitIorMask(bit.byte, bit.mask)}$")`);
+            setLines.push(`${variable}=IOR(${variable},${bbjHexLiteral(singleBitIorMask(bit.byte, bit.mask))})`);
         } else if (state === 'clear') {
-            clearLines.push(`${variable}=AND(${variable},"$${singleBitAndMask(bit.byte, bit.mask)}$")`);
+            clearLines.push(`${variable}=AND(${variable},${bbjHexLiteral(singleBitAndMask(bit.byte, bit.mask))})`);
         }
     }
     const reassignments = [...setLines, ...clearLines];
