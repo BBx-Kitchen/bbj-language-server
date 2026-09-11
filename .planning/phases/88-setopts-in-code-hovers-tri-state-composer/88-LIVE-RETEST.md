@@ -1,9 +1,16 @@
-# Phase 88 Live Retest, Round Two: SETOPTS-in-Code Mask Literals & IntelliJ Reachability (G-88-2, G-88-3)
+# Phase 88 Live Retest, Round Two: SETOPTS-in-Code Mask Literals, IntelliJ Reachability & Stale-Edit Guard (G-88-2, G-88-3, plan 88-15 coverage item D9)
 
 This is a self-contained script. You should not need to open any other file to run it. It covers
-three checks against `examples/issue475-setopts-in-code.bbj`, in either or both IDEs, against a
+four checks against `examples/issue475-setopts-in-code.bbj`, in either or both IDEs, against a
 named build. A retest against any other build proves nothing — that exact ambiguity is what made
 round one's IntelliJ evidence merely corroborated rather than proven.
+
+**Check 4 was added after gap-closure plan 88-15 landed (VS Code stale-edit guard).** It needs a
+VS Code extension build newer than the `installedTimestamp` named below — that build predates
+88-15's commits. Rebuild and reinstall (`npm --prefix
+/home/coder/repos/bbj-language-server/bbj-vscode run build`, then `bbj-ext-install`) before running
+Check 4; Checks 1-3 remain valid against either build since none of them touch the files 88-15
+changed.
 
 ## Build identity to install
 
@@ -110,6 +117,30 @@ attempt before `AND()` ever saw two decoded operands, so a length or range error
 **NEW finding about the mask width**, not a return of the quoting defect. Report the exact
 `!ERROR` text and the offending line if one appears.
 
+## Check 4 — live observation of the SETOPTS stale-edit guard (VS Code)
+
+Requires the rebuilt/reinstalled extension noted at the top of this document (must postdate
+commit `1a6bdd42`).
+
+Open `examples/issue475-setopts-in-code.bbj`. Invoke the tri-state composer (or the absolute-literal
+composer) on either statically-safe shape so the panel opens beside the editor. **Without pressing
+Apply**, switch focus to the `.bbj` editor and make an edit near the target shape (e.g. insert a
+blank line directly above the chain, or above the `SETOPTS $...$` literal). Switch back to the
+composer panel and press **Apply**.
+
+**Expected:** the document is left completely unchanged by the Apply — nothing is written — and VS
+Code shows a warning: "The document changed while the SETOPTS composer was open. Nothing was
+changed — run the composer again to retry." The panel closes.
+
+**What this proves that automation could not:** 34 tests in `setopts-stale-edit-guard.test.ts`
+prove this exact mechanism against a mocked `vscode` API (mocked document versions, mocked
+`applyEdit`), including the case where `applyEdit` itself resolves `false`. Only a human editing a
+real file in a real editor and pressing a real Apply button confirms the warning actually appears
+and the write is actually skipped, end to end.
+
+**Failure signature to watch for:** the composed text is written anyway (either at the pre-edit
+position, corrupting whatever now occupies that range, or with no warning shown at all).
+
 ## Why these cannot be automated here
 
 Both facts below were probed directly in this devcontainer during planning, not assumed:
@@ -138,6 +169,9 @@ Check 2 — IntelliJ reachability, both doors
 Check 3 — live mask-width falsification (88-RESEARCH.md Assumption A2)
   Result:   [ PASS | FAIL | NOT RUN ] — notes:
 
+Check 4 — live observation of the SETOPTS stale-edit guard (VS Code, plan 88-15)
+  Result:   [ PASS | FAIL | NOT RUN ] — notes:
+
 Build installed:
   VS Code extension installedTimestamp:
   IntelliJ zip sha256:
@@ -145,4 +179,5 @@ Build installed:
 New symptoms (free text):
 ```
 
-Only these answers may move G-88-2 or G-88-3 off `status: failed` in `88-UAT.md`.
+Only these answers may move G-88-2 or G-88-3 off `status: failed` in `88-UAT.md`, or resolve plan
+88-15's coverage item D9.

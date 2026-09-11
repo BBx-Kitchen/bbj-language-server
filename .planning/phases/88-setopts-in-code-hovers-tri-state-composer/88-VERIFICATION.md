@@ -1,41 +1,34 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-verified: 2026-09-11T13:31:41Z
-status: gaps_found
-score: 2/4 ROADMAP truths fully verified (1 present-behavior-unverified, 1 FAILED — new CR-01)
+verified: 2026-09-11T17:05:00Z
+status: human_needed
+score: 3/4 ROADMAP truths fully verified (1 present-behavior-unverified — IntelliJ composer reachability)
 behavior_unverified: 1
 overrides_applied: 0
 re_verification:
   previous_status: gaps_found
-  previous_score: "2/4 ROADMAP truths verified (1 present-behavior-unverified, 1 FAILED — round-three CR-01, the chain edit-range line-arithmetic bug)"
+  previous_score: "2/4 ROADMAP truths verified (1 present-behavior-unverified, 1 FAILED — round-four's own fresh code review CR-01, the VS Code stale-edit-apply gap)"
   gaps_closed:
-    - "Round-three CR-01 (decodeInCode's chain edit-in-place range computed from origin/SETOPTS document line numbers, producing an empty [1,1) or inverted range for a safe chain sharing a physical line via ';') is fixed and independently confirmed: bbj-vscode/src/language/setopts-in-code-request.ts's chain branch is now anchored on the reassignment statements' own CST ranges (linkStatementNodes, exposed by setopts-code-scanner.ts's traceOptsChain/walkChain), requires each link to be a single-assignment LetStatement, and fails closed to a new named SetOptsNotEditableReason ('shared-line') with no chain/initial payload whenever the region cannot be expressed as a whole-line replace the chain owns outright. Read directly at setopts-in-code-request.ts:253-347 (unchanged from plan 88-14's own commits f7c1d204/f2e3ed77/3fb6be1b, confirmed by `git log`)."
-    - "10 new edit-range-layer tests in bbj-vscode/test/setopts-in-code-request.test.ts pin the exact shape the review traced (semicolon-shared line), its degenerate all-on-one-line variant, an unrelated statement sharing a line, a comma-joined reassignment, a LET-prefixed single reassignment (proves statement- not assignment-anchoring), a comment before/between reassignments, and a blank line between reassignments — independently re-run in this verification: 235 passed, 1 skipped across the 7-file Phase 88 targeted suite (matches 88-14-SUMMARY.md's claim exactly)."
-    - "Scanner's own decode verdict (traceOptsChain's safe/unsafe classification) is confirmed byte-identical: setopts-code-scanner.test.ts is unmodified by plan 88-14 (git diff --name-only confirms) and passes in full, so the hover-decode side (DISC-05) is unaffected by the edit-gate narrowing (DISC-06)."
-    - "Whole-suite regression sweep independently re-run in this verification (--maxWorkers=2): 1513 passed, 12 failed (11 in test/linking.test.ts + 1 in test/issue447-real-interop.test.ts, exactly the documented pre-existing java-interop drift baseline), 6 skipped — no new regression from plan 88-14's changes."
+    - "Round-four's fresh-code-review CR-01 (VS Code's two SETOPTS-in-code edit-in-place writers applied their edit using line/range values captured at decode time, with no re-decode or document-version check immediately before `vscode.workspace.applyEdit`) is fixed by plan 88-15: a new module `bbj-vscode/src/setopts-stale-edit-guard.ts` ports IntelliJ's `StaleEditGuard`/`DecodeEquality` contract to VS Code (`applyIfUnchanged`, `sameSetOptsInCodeDecode`), and both writers (`setopts-tristate-webview.ts`'s chain apply, `setopts-composer-webview.ts`'s absolute-literal apply) now route their `vscode.workspace.applyEdit` call through it. Confirmed by direct read of all three files at their current HEAD content (read in full in this verification session), not trusted from any SUMMARY."
+    - "Plan 88-15's own code review (`88-REVIEW.md`, standard depth, 6 files) found a further Critical finding (that review's own CR-01): `applyIfUnchanged` discarded `vscode.workspace.applyEdit`'s real success/failure boolean and unconditionally returned `true`, silently re-opening the same failure class the plan existed to close whenever the write itself could not actually apply (closed editor, read-only document, out-of-range position). This is fixed in commit `1a6bdd42` (independently confirmed: `applyIfUnchanged`'s final step now does `const applied = await applyEdit(); if (!applied) { vscode.window.showWarningMessage(STALE_CHECK_FAILED_MESSAGE); } return applied;`, and the unguarded early-return does `return await applyEdit();` instead of a hardcoded `true` — read directly at `bbj-vscode/src/setopts-stale-edit-guard.ts:164-202`). The review's one in-file Warning (`sameEntries`'s `state` parameter widened to `string`) is fixed in the same commit."
+    - "34 new tests in `bbj-vscode/test/setopts-stale-edit-guard.test.ts` independently re-run in this verification and passing: every one of the guard's own fail-closed branches (absent document, empty/rejected/timed-out re-decode, an in-flight version mutation, and now `applyEdit` itself resolving `false` on both the guarded and unguarded paths), the field-wise comparator in both directions (distinct-array-instance equality plus all twelve documented single-field differences and the reordered-entries case), both webviews' guarded-apply behavior against an unchanged and a changed document, the compose-new/config.bbx unguarded paths, and a source-level wiring assertion that every `vscode.workspace.applyEdit` call in both writer files is preceded by a guard call."
+    - "8-file Phase 88 targeted suite independently re-run in this session: 271 passed, 1 skipped (272) — exceeds the round-four baseline of 235/236 by exactly the 36 new/updated tests (34 new + 2 updated) plan 88-15 added."
+    - "Whole-suite regression sweep independently re-run in this session (`--maxWorkers=2`): 1549 passed, 12 failed, 6 skipped (1567) — the 12 failures are exactly the same 11 `test/linking.test.ts` + 1 `test/issue447-real-interop.test.ts` names as every prior round's documented pre-existing java-interop drift baseline; no thirteenth failure, no new file in the failure set."
+    - "`npm run build` and `npm run lint` independently re-run in this session: both exit 0."
+    - "Confirmed no file under `bbj-vscode/src/language/`, `bbj-intellij/`, `examples/` or `QA/` was touched by plan 88-15 (`git diff --name-only 487e1c8f..HEAD` on those paths is empty) — the server-side decode verdict (DISC-05) and the IntelliJ host's own guard are provably untouched by this round."
+    - "Register-check grep over the tracked diff of `bbj-vscode/src` and `bbj-vscode/test` since round four's completion, for `(CR|WR)-[0-9A-Z]+` or `G-88-[0-9]`, matches nothing — no leaked planning identifier."
   gaps_remaining:
-    - "G-88-2's IntelliJ live-render half (Alt+Enter and the editor-context-menu entry actually open the composer) — 88-LIVE-RETEST.md round two is written and ready but its verdict block is still blank; no human has re-run it. Unaffected by this round's plan (88-14 touched no client/writer file)."
-    - "G-88-3's actual purpose — 88-RESEARCH.md Assumption A2, the live BBjServices mask-width question — remains genuinely unanswered; 88-LIVE-RETEST.md's Check 3 is staged but unrun. Unaffected by this round's plan."
-  regressions:
-    - "NEW (found by this verification via the just-committed 88-REVIEW.md, not present in the prior round's gaps): a freshly-run standard-depth code review (88-REVIEW.md, reviewed 2026-09-11T13:22:27Z, committed as the HEAD commit ca077aa1 — i.e. AFTER plan 88-14 closed the round-three CR-01) found a *different* Critical finding, also labeled CR-01 by review-section numbering: the VS Code tri-state composer webview (bbj-vscode/src/setopts-tristate-webview.ts:116-134, and bbj-vscode/src/setopts-composer-webview.ts:94-117 reused by setopts-in-code-ui.ts's absolute-mode branch) applies its edit using `target.startLine`/`target.endLine`/`target.hexRange` line numbers captured at decode time, with no re-decode or document-version check before `vscode.workspace.applyEdit`, unlike IntelliJ's `StaleEditGuard` (confirmed independently: `ComposerLauncher.java` wires `StaleEditGuard` at three separate call sites — compose-new, absolute edit, chain edit — while grepping `bbj-vscode/src/*.ts` for `StaleEditGuard`/any document-version check on the SETOPTS composer paths returns nothing, and no test in `bbj-vscode/test/` exercises a document mutation between decode and apply). This asymmetry was already known and recorded as a Warning (WR-01) in the round-three verification's anti-pattern scan; the fresh, dedicated code review conducted after 88-14 independently re-examined it and classified it Critical. It is unfixed: `git diff ca077aa1..HEAD` on the affected files is empty (ca077aa1, the review commit, is HEAD)."
-gaps:
-  - truth: "A user can edit in place an absolute SETOPTS literal or a canonical var$=OPTS … SETOPTS var$ block; any other shape offers hover decode only, with no edit action presented (ROADMAP Success Criterion #3 / DISC-06)"
-    status: failed
-    reason: "The phase goal's own wording is 'can SAFELY compose or edit the two statically-safe shapes' — SC3 is specifically the safety-of-editing criterion, not merely 'an edit action exists'. 88-REVIEW.md's CR-01 (Critical, unfixed, confirmed present by direct source read in this verification) shows that VS Code's edit-in-place apply handlers for both statically-safe shapes (absolute literal via setopts-composer-webview.ts, and the chain via setopts-tristate-webview.ts) commit a whole-line/whole-token replace using line numbers captured at decode time, with no re-validation against the document's current state or version immediately before the write. If the user edits the document (e.g. inserts/deletes a line above the target) while the composer panel is open — which nothing prevents, since VS Code's webview is a non-modal ViewColumn.Beside panel, unlike IntelliJ's blocking DialogWrapper — apply silently replaces whatever now occupies that stale line range, corrupting or deleting code the chain/literal never owned. IntelliJ's equivalent edit paths are proven safe against exactly this scenario by a wired, tested StaleEditGuard; VS Code's are not. This is the identical failure mode SC3 exists to prevent (an edit corrupting code outside what the safe shape actually owns), just triggered by a race with the user's own concurrent typing instead of by wrong arithmetic."
-    artifacts:
-      - path: "bbj-vscode/src/setopts-tristate-webview.ts"
-        issue: "Lines 116-134 (apply handler): replaces [target.startLine, target.endLine) using line numbers captured at decode time with no re-decode/version check immediately before vscode.workspace.applyEdit"
-      - path: "bbj-vscode/src/setopts-composer-webview.ts"
-        issue: "Lines 94-117 (apply handler, absolute-literal path reused by setopts-in-code-ui.ts): replaces target.hexRange on target.line with the same no-revalidation pattern"
-    missing:
-      - "A staleness guard on the VS Code side equivalent to IntelliJ's StaleEditGuard: re-run decodeInCode (or at minimum compare the target vscode.TextDocument's version) immediately before applyEdit, and abort with a 'document changed, please retry' message on any mismatch, for both the absolute and chain edit-in-place paths"
-      - "Test coverage in bbj-vscode/test/ exercising a document mutation between decode and apply for at least one of the two edit paths, mirroring the IntelliJ *SourceGuardTest family already covering this scenario"
+    - "G-88-2's IntelliJ live-render half (Alt+Enter and the editor-context-menu entry actually open the composer) — 88-LIVE-RETEST.md round two is written and ready but its verdict block is still blank; no human has re-run it. Unaffected by plan 88-15 (touched no IntelliJ or server file)."
+    - "G-88-3's actual purpose — 88-RESEARCH.md Assumption A2, the live BBjServices mask-width question — remains genuinely unanswered; 88-LIVE-RETEST.md's Check 3 is staged but unrun. Unaffected by plan 88-15."
+    - "Plan 88-15's own coverage item D9 (a human editing the real .bbj file while the composer panel is open, then pressing Apply, observes the document-changed warning and no write in a live VS Code session) is staged but unrun — the mocked-host test suite proves the mechanism; only a human session confirms the end-user-visible effect."
+  regressions: []
+gaps: []
 deferred: []
 behavior_unverified_items:
   - truth: "A user can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form, invoked via the Code Action lightbulb/Command Palette/context menu in VS Code and Alt+Enter/context-menu in IntelliJ (ROADMAP Success Criterion #2 / DISC-06)"
     test: "Run 88-LIVE-RETEST.md (round two) Check 2 (IntelliJ's two reachability doors: Alt+Enter and the editor context-menu entry) against the build identities the document names (VS Code installedTimestamp 2026-09-11T10:47:24Z; IntelliJ zip sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66)."
     expected: "Either door opens the composer without the 'Searching for Context Actions...'/'Pull Docker Image' hang reported in 88-UAT.md test 7."
-    why_human: "No IntelliJ sandbox exists in this devcontainer — the server-side fix (bbj-code-action-handler.ts's bounded/DocumentState.Linked-gated codeAction, plus the new BbjComposeSetoptsInCodeAction context-menu entry) is proven correct at the unit/e2e/artifact layers, but whether Alt+Enter or the context menu actually opens the dialog in a live IntelliJ session is UI behavior only a human with that sandbox can observe. 88-LIVE-RETEST.md round two is written and ready but its verdict block is unfilled — unchanged since the prior verification round; plan 88-14 did not touch any client/writer file."
+    why_human: "No IntelliJ sandbox exists in this devcontainer — the server-side fix (bbj-code-action-handler.ts's bounded/DocumentState.Linked-gated codeAction, plus the BbjComposeSetoptsInCodeAction context-menu entry) is proven correct at the unit/e2e/artifact layers, but whether Alt+Enter or the context menu actually opens the dialog in a live IntelliJ session is UI behavior only a human with that sandbox can observe. 88-LIVE-RETEST.md round two is written and ready but its verdict block is unfilled — unchanged since the prior verification round; plan 88-15 did not touch any IntelliJ file."
 human_verification:
   - test: "88-LIVE-RETEST.md (round two) Check 2 — IntelliJ reachability, both doors (Alt+Enter and the editor context-menu entry) — against bbj-intellij-0.1.0.zip sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66."
     expected: "'Configure SETOPTS options in code…' appears via Alt+Enter and opens the composer within a reasonable time; the editor context-menu entry opens the same composer as a second, intention-search-independent door."
@@ -43,68 +36,69 @@ human_verification:
   - test: "88-LIVE-RETEST.md (round two) Check 3 — live mask-width falsification, 88-RESEARCH.md Assumption A2. Using the block composed in Check 1, run the program as GUI/BUI/DWC against a live BBjServices."
     expected: "The generated IOR/AND calls (16-byte/32-hex-digit full-width mask base) run without raising a BBj !ERROR — the quoting defect that aborted the original attempt is fixed (confirmed present in setopts-catalog.ts), so this question is now isolated and still open."
     why_human: "Headless BBj execution is confirmed blocked in this devcontainer (no display, no termcap file, no xvfb-run installed)."
+  - test: "Plan 88-15's own staged item (coverage D9): with the SETOPTS composer panel open on either statically-safe shape in a real VS Code window, edit the target .bbj document (e.g. insert a line above the chain) while the panel stays open, then press Apply."
+    expected: "The document is left unchanged, VS Code shows 'The document changed while the SETOPTS composer was open. Nothing was changed — run the composer again to retry.', and the panel closes — matching the mocked-host test's asserted sequence (resolve-and-snapshot, re-decode-and-compare, re-check-version, apply)."
+    why_human: "The full mechanism (guard module, both webviews' wiring, the field-wise comparator, the applyEdit success/failure surfacing) is proven end-to-end by 34 passing tests against a mocked `vscode` API in this verification session, but only a human pressing Apply in a live editor after a real edit confirms the end-user-visible effect matches the mocked behavior exactly."
 ---
 
 # Phase 88: SETOPTS-in-Code Hovers & Tri-State Composer Verification Report
 
 **Phase Goal:** Users working with SETOPTS/IOR/AND expressions directly in BBj code get accurate decode hovers everywhere, and can safely compose or edit the two statically-safe shapes.
-**Verified:** 2026-09-11T13:31:41Z
-**Status:** gaps_found
-**Re-verification:** Yes — fourth round, following gap-closure plan 88-14 (statement-anchored chain edit-region computation, closing the round-three CR-01 line-arithmetic defect)
+**Verified:** 2026-09-11T17:05:00Z
+**Status:** human_needed
+**Re-verification:** Yes — fifth round, following gap-closure plan 88-15 (VS Code stale-edit guard, closing round four's fresh-code-review CR-01)
 
-## Why this stays at `gaps_found`, not `passed` or `human_needed`
+## Why this moves from `gaps_found` to `human_needed`, not `passed`
 
-Plan 88-14 did exactly what it set out to do, and did it correctly: the round-three CR-01
-(`decodeInCode`'s chain edit-in-place range computed from document line numbers, producing an
-empty or inverted replace region for a safe chain sharing a physical line via `;`) is fixed. This
-verification independently re-read the new implementation
-(`bbj-vscode/src/language/setopts-in-code-request.ts:253-347`), confirmed it anchors the region on
-the reassignment statements' own CST ranges and fails closed with a new named
-`SetOptsNotEditableReason` (`'shared-line'`) exactly as designed, and independently re-ran both the
-7-file Phase 88 targeted suite (235 passed, 1 skipped — matches the SUMMARY's claim) and the
-whole-suite regression sweep (1513 passed, 12 failed — the exact, unchanged pre-existing
-java-interop baseline, 6 skipped). Ten new tests pin the full line-sharing/line-owning matrix
-(shared-line via `;`, the all-on-one-line degenerate case, an unrelated statement, a comma-joined
-reassignment, a `LET`-prefixed reassignment, comments before/between reassignments, a blank line).
-None of this is trusted from `88-14-SUMMARY.md` — every claim above was independently re-derived
-against the current source tree in this session.
+Round four's blocking finding — VS Code's two SETOPTS-in-code edit-in-place writers applying a
+stale, decode-time-captured range with no re-check immediately before `vscode.workspace.applyEdit`
+— is fixed by plan 88-15, and this verification independently re-derived that fact rather than
+trusting `88-15-SUMMARY.md`:
 
-This phase does not, however, move to `passed`, because a **standard-depth code review
-(`88-REVIEW.md`) was run against the current HEAD *after* plan 88-14 closed** and found a new
-Critical finding, itself labeled `CR-01` by that review's own section numbering (a different defect
-from the round-three `CR-01`, which is now fixed): VS Code's SETOPTS composer webviews
-(`setopts-tristate-webview.ts`'s chain apply handler and `setopts-composer-webview.ts`'s
-absolute-literal apply handler, the latter reused by `setopts-in-code-ui.ts`) apply their edit
-using line numbers captured at decode time, with no re-decode or document-version check
-immediately before `vscode.workspace.applyEdit` — unlike IntelliJ's `StaleEditGuard`, which this
-phase's own IntelliJ code wires at all three of its edit-in-place call sites (compose-new, absolute,
-chain) and which the IntelliJ `*SourceGuardTest` family explicitly covers.
+- Read `bbj-vscode/src/setopts-stale-edit-guard.ts` in full: it implements the ordered, fail-closed
+  `applyIfUnchanged` check (snapshot version -> bounded re-decode -> field-wise compare -> re-check
+  version -> apply) exactly as the plan and the IntelliJ reference contract specify.
+- Read `bbj-vscode/src/setopts-tristate-webview.ts` and `bbj-vscode/src/setopts-composer-webview.ts`
+  in full: both route their `vscode.workspace.applyEdit` call for an edit-in-place target through
+  `applyIfUnchanged(guard, ...)`, with the guard correctly scoped to `target !== undefined` only —
+  the compose-new/config.bbx paths remain unguarded, matching the plan's explicit scope boundary.
+- Read `bbj-vscode/src/setopts-in-code-ui.ts` in full: `handleComposeSetoptsInCode` hoists its
+  `decodeInCode` params and builds a `SetOptsStaleEditGuard` on both the `absolute` and `chain`
+  editable branches, never on the compose-new branch.
+- A fresh, dedicated code review of this round's own diff (`88-REVIEW.md`) found one further
+  Critical finding inside the new module itself (`applyIfUnchanged` discarding
+  `vscode.workspace.applyEdit`'s real success/failure boolean) plus one in-file Warning (a widened
+  parameter type). Both are fixed in commit `1a6bdd42`, independently confirmed present in the
+  current source and covered by two new tests (an `applyEdit`-resolves-`false` case on both the
+  guarded and unguarded paths).
+- Independently re-ran, in this verification session (not copied from any SUMMARY): the 8-file
+  Phase 88 targeted suite (271 passed, 1 skipped), the whole-suite sweep with `--maxWorkers=2`
+  (1549 passed, 12 failed — the exact, unchanged pre-existing 11 `test/linking.test.ts` + 1
+  `test/issue447-real-interop.test.ts` java-interop baseline, no thirteenth failure), `npm run
+  build` (clean), and `npm run lint` (clean).
+- Confirmed via `git diff --name-only 487e1c8f..HEAD` that no file under
+  `bbj-vscode/src/language/`, `bbj-intellij/`, `examples/` or `QA/` was touched by this round —
+  DISC-05's decode verdict and the IntelliJ host's own guard are provably untouched.
 
-**This verification treats that finding as a must-have gap, not an out-of-scope warning**, for one
-specific reason: ROADMAP Success Criterion #3 is not "an edit action exists for the two
-statically-safe shapes" — it is that a user "can **safely** compose or edit" them. The word
-"safely" is the entire point of distinguishing the two statically-safe shapes from every other
-shape (which gets hover-only, precisely because editing them cannot be done safely). A live code
-review — using the project's own standard review methodology — rated this defect Critical, and it
-touches exactly the two edit-in-place paths SC3 names, on exactly the one host (VS Code) that lacks
-the staleness protection the other host (IntelliJ) already has for the identical operation. It is
-also unfixed: `ca077aa1` (the review commit) is `HEAD`, and no follow-up commit touches either
-webview file. There is no override in this file's frontmatter accepting the deviation. Per the
-decision tree, a FAILED must-have routes the phase to `gaps_found` ahead of the still-legitimately-
-open human-verification items (IntelliJ live reachability, the live mask-width question), which
-remain correctly staged and unaffected by this round.
+This phase does not move to `passed`, however, because three items remain genuinely outside what
+this devcontainer can verify, and all three are pre-staged, scripted human-verification items, not
+gaps in the FAILED sense:
 
-**Counter-consideration recorded for the human decision-maker:** the round-three verification's own
-anti-pattern scan already knew about this exact asymmetry and classified it as a Warning (`WR-01`),
-not a blocker, reasoning it "compounds CR-01's risk surface" rather than independently failing the
-phase. The fresh, dedicated code review reached a different (Critical) severity call on the same
-underlying fact. Both readings are defensible; this verification follows the more recent, more
-formal source (a standard-depth review specifically scoped to this phase's changed files) and the
-literal wording of the ROADMAP success criterion, but flags the disagreement explicitly rather than
-silently picking one. If the project decides the narrow race-condition window (user must edit the
-document while the non-modal panel is open, between decode and apply) is an acceptable, documented
-risk for VS Code parity with IntelliJ, an override entry in this file's frontmatter is the
-mechanism to record that decision and move SC3 to `PASSED (override)`.
+1. **IntelliJ composer reachability** (Alt+Enter and the editor context-menu door) — `88-LIVE-RETEST.md`
+   round two Check 2, unaffected by plan 88-15 (it touched no IntelliJ file).
+2. **The live mask-width question** (`88-RESEARCH.md` Assumption A2) — `88-LIVE-RETEST.md` round two
+   Check 3, requires a live BBjServices run this devcontainer cannot provide.
+3. **The live end-to-end observation of plan 88-15's own guard** (its own `must_haves` backstop
+   truth / coverage item D9) — the mocked-host test suite proves the mechanism end to end, but only
+   a human pressing Apply in a real editor after a real edit confirms the end-user-visible effect
+   matches.
+
+Per this session's own dispatch instructions, these three route to `human_needed` rather than
+failing the phase, because every code-path, decode-side, and edit-in-place-safety must-have is
+otherwise verified in the codebase and its test suite — which the independent re-derivation above
+establishes. Per the standard decision tree, any non-empty human-verification set means the status
+is not `passed`; with no FAILED truth, no missing/stub artifact and no blocker anti-pattern, the
+correct status is `human_needed`.
 
 ## Goal Achievement
 
@@ -112,101 +106,114 @@ mechanism to record that decision and move SC3 to `PASSED (override)`.
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable, shows which options that line sets or clears, with AND masks shown as the logical cleared bits | ✓ VERIFIED | Unaffected by plan 88-14: `setopts-code-scanner.test.ts` is unmodified (`git diff --name-only` confirms) and passes in full; `88-UAT.md`'s G-88-1 is `status: resolved` via an actual live human retest in both IDEs (tests 4 and 5, both `result: pass`, 2026-09-11) |
-| 2 | A user can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Unaffected by plan 88-14 (no client/writer file touched). VS Code invocation live-confirmed in round-one retest (mask-quoting defect since fixed). IntelliJ invocation (Alt+Enter / context-menu door) still unconfirmed live — `88-LIVE-RETEST.md` round two staged but unrun — see Human Verification |
-| 3 | A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented | ✗ FAILED | Round-three's line-arithmetic defect is fixed and independently confirmed (see below). But `88-REVIEW.md`'s new CR-01 (Critical, unfixed) shows VS Code's edit-in-place apply for both statically-safe shapes has no staleness/re-decode guard, unlike IntelliJ's wired `StaleEditGuard` — the "safely" half of this criterion is not met on VS Code. See Gaps below and the reasoning above |
-| 4 | Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke | ✓ VERIFIED | Unchanged by plan 88-14: no document-change listener added; the chain-region computation runs once per `decodeInCode` request, scoped to the resolved leaf, not a per-keystroke walk (confirmed by direct read of the modified handler) |
+| 1 | Hovering a `SETOPTS` literal, or an `IOR`/`AND` line against an OPTS-derived variable, shows which options that line sets or clears, with AND masks shown as the logical cleared bits | ✓ VERIFIED | Unaffected by plan 88-15: `setopts-code-scanner.test.ts` and `bbj-hover.ts` are unmodified since round four (`git diff --name-only 487e1c8f..HEAD` confirms) and pass in full in this session's re-run; `88-UAT.md`'s G-88-1 remains `status: resolved` via a live human retest in both IDEs |
+| 2 | A user can generate a SETOPTS read-modify-write block from a tri-state Set/Clear/Leave form | ⚠️ PRESENT_BEHAVIOR_UNVERIFIED | Unaffected by plan 88-15 (no client entry-point or trigger-surface file touched). VS Code invocation is live-confirmed (round-one retest, mask-quoting defect since fixed). IntelliJ invocation (Alt+Enter / context-menu door) remains unconfirmed live — `88-LIVE-RETEST.md` round two staged but unrun — see Human Verification |
+| 3 | A user can edit in place an absolute `SETOPTS` literal or a canonical `var$=OPTS … SETOPTS var$` block; any other shape offers hover decode only, with no edit action presented | ✓ VERIFIED | Round-three's line-arithmetic defect (fixed by plan 88-14) and round-four's staleness-apply defect (fixed by plan 88-15, this round) are both independently confirmed fixed in this session by direct source read and by 34 passing behavioral tests against a mocked `vscode` API exercising the exact stale-document race condition on both edit-in-place paths. The one remaining piece — a human confirming the identical behavior in a live editor session — is staged as human verification (item 3 below) and does not gate this truth per this session's dispatch instructions, since the mechanism itself is proven by a passing behavioral test, not by presence alone |
+| 4 | Typing near a decoded SETOPTS line produces no visible input lag or CPU spike — decode results hook into the existing debounced document-build cycle rather than an independent full-document walk per keystroke | ✓ VERIFIED | Unchanged by plan 88-15: no document-change listener added, no per-keystroke request; the guard's one extra `decodeInCode` round trip runs once per Apply click, confirmed by direct read of `applyIfUnchanged`'s single `reDecode()` call site |
 
-**Score:** 2/4 ROADMAP truths fully verified; 1 present-and-wired but behavior-unverified (IntelliJ
-composer reachability, unaffected by this round); 1 FAILED (VS Code edit-in-place staleness gap,
-newly surfaced by this round's code review).
+**Score:** 3/4 ROADMAP truths fully verified; 1 present-and-wired but behavior-unverified (IntelliJ
+composer reachability for compose-new invocation, unaffected by this round).
 
 ### What Changed Since the Last Verification — Independently Re-Verified, Not Trusted from SUMMARY.md
 
-| Claim (from 88-14-SUMMARY.md) | Independently confirmed in this run |
+| Claim (from 88-15-SUMMARY.md / 88-REVIEW.md / 88-REVIEW-FIX.md) | Independently confirmed in this run |
 |---|---|
-| `decodeInCode`'s chain branch is now anchored on the reassignment statements' own CST ranges (`linkStatementNodes`), not origin/SETOPTS line arithmetic | ✓ Read `setopts-in-code-request.ts:253-347` directly: `startLine`/`endLine` are computed from `linkCsts` (the link statements' own CST offsets), with an explicit `regionOwnedExclusively` residue check and a `SetOptsNotEditableReason: 'shared-line'` fail-closed branch |
-| The shared-line chain (`A$=OPTS\nA$=IOR(A$,$08$) ; SETOPTS A$`, the exact round-three defect fixture) now returns `editable: false` with the named reason instead of an empty `[1,1)` range | ✓ `bbj-vscode/test/setopts-in-code-request.test.ts:169` asserts `result.reason === NOT_EDITABLE_REASON_TEXT['shared-line']` for this fixture; test independently re-run and passes |
-| The degenerate all-on-one-line chain never returns an inverted range | ✓ `bbj-vscode/test/setopts-in-code-request.test.ts:202` (line 191 test) asserts the same fail-closed reason for this fixture |
-| The scanner's own decode verdict (`traceOptsChain`) is byte-identical | ✓ `setopts-code-scanner.test.ts` unmodified by this round's commits (`git log` on the file shows no 88-14 commit) and passes in full |
-| Phase 88 targeted suite passes cleanly (235 passed, 1 skipped) | ✓ Independently re-run in this session: **235 passed, 1 skipped (236)** across the 7 targeted files |
-| Whole-suite regression sweep: 12 pre-existing failures, no new regressions | ✓ Independently re-run in this session (`--maxWorkers=2`): **1513 passed, 12 failed, 6 skipped (1531)** — the 12 failures are exactly `test/linking.test.ts` (11) + `test/issue447-real-interop.test.ts` (1), the documented pre-existing java-interop drift baseline |
-| No planning identifier leaked into tracked source/test files this round | ✓ `git diff --unified=0 f2e3ed77~1..3fb6be1b -- bbj-vscode/src bbj-vscode/test \| grep -nE '^\+.*((CR\|WR)-[0-9A-Z]+\|G-88-[0-9])'` matches nothing |
-| **NEW, not claimed by any SUMMARY, found by this verification's own reading of the just-committed `88-REVIEW.md`:** VS Code's SETOPTS composer apply handlers have no staleness guard, unlike IntelliJ's `StaleEditGuard` | ✓ `git log --oneline -3 -- .planning/phases/88-.../88-REVIEW.md` shows `ca077aa1` (this review) is `HEAD`; `git diff ca077aa1..HEAD` on the affected webview files is empty (unfixed); direct read of `setopts-tristate-webview.ts:116-134` and `setopts-composer-webview.ts:94-117` confirms no version/re-decode check; `grep -n StaleEditGuard bbj-vscode/src/*.ts` returns nothing; `ComposerLauncher.java` wires `StaleEditGuard` at three call sites (lines 220, 334, 391) |
+| A new module `setopts-stale-edit-guard.ts` ports IntelliJ's `StaleEditGuard`/`DecodeEquality` contract, exporting `STALE_EDIT_REDECODE_TIMEOUT_MS`, `STALE_DOCUMENT_MESSAGE`, `STALE_CHECK_FAILED_MESSAGE`, `SetOptsStaleEditGuard`, `sameSetOptsInCodeDecode`, `applyIfUnchanged` | ✓ Read the file in full: all six symbols present, `applyIfUnchanged`'s body matches the documented 6-step ordered contract exactly |
+| Both writers route their `applyEdit` call through the guard, scoped only to a `target`-present (edit-in-place) case | ✓ Read `setopts-tristate-webview.ts:144` and `setopts-composer-webview.ts:126` directly: both call `applyIfUnchanged(guard, () => vscode.workspace.applyEdit(edit))`; `guard` is `target !== undefined ? arg.guard : undefined` in both files |
+| `setopts-in-code-ui.ts` hoists its `decodeInCode` params and builds a guard on both editable branches, never on compose-new | ✓ Read `handleComposeSetoptsInCode` directly: `params` is declared once before the `try`, both `guard` objects close over the identical `params`, and the `!result.found` branch passes no guard |
+| Code review found and fixed CR-01 (`applyIfUnchanged` discarded `applyEdit`'s real boolean) and WR-02 (`sameEntries`'s widened `state` type) in commit `1a6bdd42` | ✓ `git show 1a6bdd42` confirms the exact diff described; direct read of the current file shows `const applied = await applyEdit(); if (!applied) { ...warn... } return applied;` and the unguarded branch `return await applyEdit();`, plus `sameEntries` typed on the concrete `SetOptsTriState` union |
+| 8-file targeted suite: 271 passed, 1 skipped (272) | ✓ Independently re-run in this session: **271 passed, 1 skipped (272)** |
+| Whole-suite sweep: 12 pre-existing failures only, no regression | ✓ Independently re-run in this session (`--maxWorkers=2`): **1549 passed, 12 failed, 6 skipped (1567)** — the 12 failures are exactly `test/linking.test.ts` (11) + `test/functional/issue447-real-interop.test.ts` (1), matching every prior round's documented baseline by name |
+| `npm run build` / `npm run lint` clean | ✓ Both independently re-run in this session: exit 0, no errors |
+| Exactly six tracked files under `bbj-vscode/` changed by plan 88-15; nothing under `bbj-vscode/src/language/`, `bbj-intellij/`, `examples/` or `QA/` touched | ✓ `git diff --stat 487e1c8f..HEAD -- bbj-vscode/src bbj-vscode/test` shows exactly the six files (`setopts-composer-webview.ts`, `setopts-in-code-ui.ts`, `setopts-stale-edit-guard.ts`, `setopts-tristate-webview.ts`, `setopts-in-code-ui.test.ts`, `setopts-stale-edit-guard.test.ts`); `git diff --name-only 487e1c8f..HEAD` on the four excluded paths is empty |
+| No leaked planning identifier in the round's source/test diff | ✓ `git diff --unified=0 487e1c8f..HEAD -- bbj-vscode/src bbj-vscode/test \| grep -nE '^\+.*((CR\|WR)-[0-9A-Z]+\|G-88-[0-9])'` matches nothing |
+| No debt marker (TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER) in any file this round touched | ✓ Direct grep over all six files: no matches |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |---|---|---|---|
-| `bbj-vscode/src/language/setopts-code-scanner.ts` (`linkStatementNodes`/`linkStatementsNewestFirst`) | Chain links' enclosing statements exposed for the edit-region computation, scanner verdict unchanged | ✓ VERIFIED | Read directly; `traceOptsChain` reverses and forwards `linkStatementNodes` on the safe-chain result only; `setopts-code-scanner.test.ts` unmodified and passing |
-| `bbj-vscode/src/language/setopts-in-code-request.ts` (`createDecodeInCodeHandler`, chain branch) | Statement-anchored, fail-closed edit-in-place region for every safe chain shape | ✓ VERIFIED | Round-three CR-01 confirmed fixed by direct read and by the new tests |
-| `bbj-vscode/test/setopts-in-code-request.test.ts` | Edit-range-layer coverage for the full line-sharing/line-owning matrix | ✓ VERIFIED | 10 new tests present, independently re-run and passing |
-| `bbj-vscode/src/setopts-tristate-webview.ts` / `bbj-vscode/src/setopts-composer-webview.ts` (apply handlers) | Edit application safe against a document that changed between decode and apply | ✗ GAP (new CR-01, 88-REVIEW.md) | No staleness/re-decode/version check before `applyEdit`, unlike IntelliJ's wired `StaleEditGuard`; confirmed present and unfixed by direct read |
+| `bbj-vscode/src/setopts-stale-edit-guard.ts` (new) | The ported, fail-closed pre-apply check, with `applyIfUnchanged` surfacing `applyEdit`'s real result | ✓ VERIFIED | Read in full; all six exported symbols present, six-step ordered body confirmed, `applyEdit`'s boolean now surfaced (post-fix) |
+| `bbj-vscode/src/setopts-tristate-webview.ts` (chain apply handler) | Routes its `applyEdit` through the guard, scoped to `target !== undefined` | ✓ VERIFIED | Read directly; `applyIfUnchanged(guard, () => vscode.workspace.applyEdit(edit))` at the sole apply call site |
+| `bbj-vscode/src/setopts-composer-webview.ts` (absolute-literal apply handler) | Same routing, same scoping, config.bbx callers untouched | ✓ VERIFIED | Read directly; identical pattern; `setopts-composer-ui.ts` (config.bbx caller) confirmed unmodified by this round |
+| `bbj-vscode/src/setopts-in-code-ui.ts` | Hoisted params, guard built on both editable branches only | ✓ VERIFIED | Read directly; matches design exactly |
+| `bbj-vscode/test/setopts-stale-edit-guard.test.ts` (new) | Full guard-level, webview-level, comparator and source-guard-wiring coverage | ✓ VERIFIED | 34 tests present, independently re-run and passing, including all 12 single-field-difference comparator cases via `test.each` |
 | `.planning/phases/88-.../88-LIVE-RETEST.md` (round two) | Self-contained scripted retest for G-88-2 (IntelliJ) and Check 3 (mask width) | ✓ VERIFIED (present, unrun) | Present; verdict block confirmed still blank |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |---|---|---|---|---|
-| `traceOptsChain`'s safe/`links` verdict | `decodeInCode`'s `editable`/`chain` payload | `linkStatementNodes`, statement-level CST anchoring | ✓ WIRED (fixed) | Confirmed by direct read and by the new test matrix; the safety verdict and the edit-range representability gate are now correctly layered, matching the review's own recommended fix |
-| `decodeInCode`'s `chain.startLine`/`chain.endLine` | VS Code's `setopts-tristate-webview.ts` apply handler | line-numbers passed through unchanged, applied with no re-validation | ⚠️ UNSAFE (new CR-01) | The handoff itself works (both writers already refuse an edit when `editable` is false), but the consuming writer trusts a potentially stale region with no re-check immediately before the write |
-| `decodeInCode`'s `absolute.hexRange`/`.line` | VS Code's `setopts-composer-webview.ts` apply handler | same pattern | ⚠️ UNSAFE (new CR-01) | Same defect class as above, on the absolute-literal edit path |
-| IntelliJ's `ComposerLauncher` edit paths (compose-new, absolute, chain) | `StaleEditGuard` | `guard.applyIfUnchanged`, re-decode-and-compare before write | ✓ WIRED | Confirmed at three call sites (`ComposerLauncher.java:220,334,391`); this is the parity IntelliJ has and VS Code lacks |
+| `decodeInCode`'s captured result + uri/line/character | `SetOptsStaleEditGuard.capturedDecode`/`reDecode` | `handleComposeSetoptsInCode`'s hoisted `params` object, closed over by both the capture request and the guard's `reDecode` | ✓ WIRED | Confirmed by direct read; the same object literal is used for both requests, so a re-check can never drift to a different position |
+| `SetOptsStaleEditGuard` | `vscode.workspace.applyEdit` | `applyIfUnchanged`, now surfacing the real boolean | ✓ WIRED (fixed) | Both webviews' apply handlers route through it; the guard's own final step no longer assumes success |
+| IntelliJ's `ComposerLauncher` edit paths (compose-new, absolute, chain) | `StaleEditGuard` | `guard.applyIfUnchanged`, re-decode-and-compare before write | ✓ WIRED | Confirmed untouched by this round (`git diff --name-only 487e1c8f..HEAD -- bbj-intellij/` is empty); this parity item, present since round four, still holds |
 
 ### Behavioral Spot-Checks / Test Execution (re-run fresh in this verification session)
 
 | Behavior | Command | Result | Status |
 |---|---|---|---|
-| Phase 88 targeted suite (7 files) | `npx vitest run test/setopts-code-scanner.test.ts test/setopts-in-code-request.test.ts test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-ui.test.ts test/functional/installed-extension-e2e.test.ts test/bbj-code-action-handler.test.ts` | 235 passed, 1 skipped (236) | ✓ PASS |
-| Whole-suite regression sweep | `npx vitest run --maxWorkers=2` | 1513 passed, 12 failed, 6 skipped (1531) — 12 failures = documented pre-existing java-interop drift | ✓ PASS (no new regression) |
-| Plan 88-14 commits exist and match SUMMARY | `git log --oneline -5 -- setopts-in-code-request.ts setopts-code-scanner.ts setopts-in-code-request.test.ts` | `f7c1d204`, `f2e3ed77`, `3fb6be1b` all present | ✓ PASS |
-| Register check over plan 88-14's diff | `git diff --unified=0 f2e3ed77~1..3fb6be1b -- bbj-vscode/src bbj-vscode/test \| grep -nE '^\+.*((CR\|WR)-[0-9A-Z]+\|G-88-[0-9])'` | No match (grep exit 1) | ✓ PASS |
-| Debt-marker scan on plan 88-14's 3 touched files | `grep -nE "TBD\|FIXME\|XXX\|TODO\|HACK\|PLACEHOLDER"` | No matches | ✓ PASS |
-| New CR-01 (staleness) confirmed unfixed | `git log --oneline -3 -- 88-REVIEW.md` (HEAD is the review commit); `grep -n StaleEditGuard bbj-vscode/src/*.ts` | Review commit is HEAD; no VS Code staleness guard found anywhere | ✗ CONFIRMS DEFECT |
+| Guard-level, webview-level, comparator and wiring suite | `npx vitest run test/setopts-stale-edit-guard.test.ts test/setopts-in-code-ui.test.ts test/setopts-in-code-request.test.ts` | 104 passed (104) | ✓ PASS |
+| Phase 88 targeted suite (8 files) | `npx vitest run test/setopts-code-scanner.test.ts test/setopts-in-code-request.test.ts test/hover.test.ts test/setopts-catalog.test.ts test/setopts-in-code-ui.test.ts test/functional/installed-extension-e2e.test.ts test/bbj-code-action-handler.test.ts test/setopts-stale-edit-guard.test.ts` | 271 passed, 1 skipped (272) | ✓ PASS |
+| Whole-suite regression sweep | `npx vitest run --maxWorkers=2` | 1549 passed, 12 failed, 6 skipped (1567) — 12 failures = documented pre-existing java-interop drift (`test/linking.test.ts` x11, `test/functional/issue447-real-interop.test.ts` x1) | ✓ PASS (no new regression) |
+| Type-check + bundle | `npm run build` | exit 0 | ✓ PASS |
+| Lint | `npm run lint` | exit 0 | ✓ PASS |
+| Plan 88-15's fix commit exists and matches the review's fix report | `git show 1a6bdd42 --stat` | `bbj-vscode/src/setopts-stale-edit-guard.ts` (+22/-10 net lines) and its test file modified, matches `88-REVIEW-FIX.md` | ✓ PASS |
+| Register check over the round's diff | `git diff --unified=0 487e1c8f..HEAD -- bbj-vscode/src bbj-vscode/test \| grep -nE '^\+.*((CR\|WR)-[0-9A-Z]+\|G-88-[0-9])'` | No match (grep exit 1) | ✓ PASS |
+| Debt-marker scan on the round's six touched files | `grep -nE "TBD\|FIXME\|XXX\|TODO\|HACK\|PLACEHOLDER"` | No matches | ✓ PASS |
+| No server-side / IntelliJ file touched | `git diff --name-only 487e1c8f..HEAD -- bbj-vscode/src/language/setopts-in-code-request.ts bbj-vscode/src/language/setopts-code-scanner.ts bbj-vscode/src/language/bbj-hover.ts bbj-intellij/` | No output | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plans | Description | Status | Evidence |
 |---|---|---|---|---|
-| DISC-05 | 88-01, 88-02, 88-07, 88-08, 88-09, 88-11, 88-14 | Hover decode for SETOPTS literal / IOR/AND-against-OPTS-derived-variable, AND masks as cleared bits | ✓ SATISFIED | Fully proven end-to-end including a live human retest in both IDEs; unaffected and unregressed by this round. `REQUIREMENTS.md` reads `Complete` for DISC-05 — accurate |
-| DISC-06 | 88-02 (oracle only), 88-03 through 88-14 | Tri-state compose-new + edit-in-place for the two statically-safe shapes, both IDEs, *safely* | ✗ BLOCKED | The round-three line-arithmetic defect is fixed, but the new CR-01 (VS Code staleness gap on both edit-in-place paths) is unfixed and touches exactly this requirement's "safely edit" contract; IntelliJ's live composer reachability (G-88-2) and the live mask-width question (G-88-3) also remain open, staged for human verification. `REQUIREMENTS.md` currently reads `Complete` for DISC-06 (set by plan 88-14's own commit) — **this should be reverted to `Gaps Found`**, the third time this exact premature-marking correction has been needed in this phase's history (previously corrected once in commit `a43a070a`/`1aceabc9` for the round-three CR-01, and now again for the new CR-01) |
+| DISC-05 | 88-01, 88-02, 88-07, 88-08, 88-09, 88-11, 88-14 | Hover decode for SETOPTS literal / IOR/AND-against-OPTS-derived-variable, AND masks as cleared bits | ✓ SATISFIED | Fully proven end-to-end including a live human retest in both IDEs; unaffected and unregressed by this round or any prior round since round four |
+| DISC-06 | 88-02 (oracle only), 88-03 through 88-15 | Tri-state compose-new + edit-in-place for the two statically-safe shapes, both IDEs, *safely* | ✓ SATISFIED (code + test layer; live confirmation staged) | The round-three line-arithmetic defect and round-four's staleness-apply defect are both fixed and independently confirmed in this session. What remains is live-session confirmation only: IntelliJ composer reachability (G-88-2) and the live end-to-end observation of the new guard, both staged in `88-LIVE-RETEST.md`/human verification below, plus the still-open live mask-width question (G-88-3, independent of DISC-06's "safely edit" clause) |
 
 No orphaned requirements — DISC-05 and DISC-06 are the only two mapped to Phase 88 in
-`REQUIREMENTS.md`, and both are claimed by plans in this phase's set (all 14 plans checked).
+`REQUIREMENTS.md`, and both are claimed by plans in this phase's full set (all 15 plans checked
+via each plan's `requirements:` frontmatter field).
 
-**Documentation-accuracy finding (not itself a code defect, but part of goal-achievement
-verification):** `REQUIREMENTS.md` lines 21 and 102 mark DISC-06 `[x]`/`Complete`, set by plan
-88-14's own commit `487e1c8f` (`docs(88-14): complete chain edit-in-place CST-anchoring
-gap-closure plan`). Plan 88-14 was correct that *its own* scoped defect was fixed, but the
-requirement itself is broader than that one plan's scope, and a fresh, independent code review
-completed and committed after that marking found a new, unfixed Critical defect squarely inside
-DISC-06's contract. This marking should be reverted to `Gaps Found` pending the staleness-guard
-fix (or an accepted override).
+**Documentation-accuracy finding (not a code defect, but part of goal-achievement verification):**
+`REQUIREMENTS.md` line 20/101 currently reads DISC-05 as `[ ]` / `Gaps Found`. This is stale: it was
+set by commit `76588b33` ("revert premature Complete requirements after gaps found"), which reverted
+*both* DISC-05 and DISC-06 back to `Gaps Found` after plan 88-14's own commit had marked both
+`Complete` — but DISC-05 was never actually in gap in that round or any other; only DISC-06 was.
+Round four's own `88-VERIFICATION.md` asserted "`REQUIREMENTS.md` reads `Complete` for DISC-05 —
+accurate", which was already inconsistent with the file's actual state 11 seconds after the revert
+commit landed in the same session. DISC-06, by contrast, correctly now reads `[x]` / `Complete`,
+set by plan 88-15's own completion commit (`283d36c6`) — and this verification confirms that marking
+is now accurate given the fixes above. **Recommendation:** flip DISC-05 back to `[x]` / `Complete`
+in `REQUIREMENTS.md` — it is unaffected by every round of this phase's gap closure and has been
+independently re-verified `✓ SATISFIED` in every round including this one.
 
 ### Anti-Patterns Found
 
 No blocker-level debt markers (TBD/FIXME/XXX/TODO/HACK/PLACEHOLDER) in any file touched by plan
-88-14 — confirmed by direct grep. No leaked planning identifiers in the round's source/test diff.
+88-15 — confirmed by direct grep. No leaked planning identifiers in the round's source/test diff.
 
-One Critical finding from `88-REVIEW.md`, confirmed still present and unfixed by this verification
-(detailed above as a gap): **CR-01** (VS Code staleness guard).
+`88-REVIEW.md`'s Critical finding (this round's own CR-01) is fixed and independently confirmed
+(detailed above). Carried forward from `88-REVIEW.md`, not independently re-verified fix status
+this round (no plan 88-15 commit touches these paths), restated since they inform risk context and
+are explicitly out of this round's scope per the plan's own objective:
 
-Carried forward from `88-REVIEW.md`, not independently re-verified fix status this round (no
-88-14 commit touches these paths) but restated since they inform risk context:
+- **WR-01** (this round's review numbering): no `try`/`catch` around the webviews' RPC-driven
+  `compose()` calls in `change`/`apply` — pre-existing since plan 88-06, per `88-REVIEW-FIX.md`'s
+  own `git blame` trace; not introduced by this round.
+- **IN-01**: CSP nonce generated with `Math.random()`, not a CSPRNG — pre-existing since plan 88-06.
+- **IN-02**: comparison helpers' duplicated `undefined`-guard pattern — purely stylistic, explicitly
+  flagged non-blocking by the reviewer.
 
-- **WR-01**: `matchStatement`'s control-flow disqualification list omits RETURN/BREAK/STOP/exit
-  statements, risking a false "safe" chain verdict in an unusual code shape.
-- **WR-02**: the new SETOPTS-in-code hover branch in `bbj-hover.ts` runs before the file's own
-  "never let a hover error surface as a failed LSP request" `try`/`catch`.
-- **WR-03**: `vscode:prepublish`'s minify step targets an orphaned bundle; the shipped extension
-  bundles stay unminified with source maps.
-- **WR-04**: `bbj-code-action-handler.ts`'s bounded budget swallows every failure into an
-  undifferentiated `null` with no diagnostic signal.
-- **IN-01/IN-02** (info): case-sensitive extension matching in `SetoptsInCodeActionAvailability`;
-  VS Code's compose-new applies a no-op edit on an all-Leave selection where IntelliJ early-returns.
+Carried forward from earlier rounds (`88-REVIEW.md` predecessor reports), still unaddressed and
+still non-blocking to this verification's status:
 
-None of WR-01 through WR-04 or IN-01/IN-02 independently block the phase goal; they are recorded
-for completeness and do not change this verification's status.
+- The scanner's control-flow disqualification list (RETURN/BREAK/STOP/exit statements).
+- The SETOPTS-in-code hover branch's try/catch placement in `bbj-hover.ts`.
+- The orphaned `vscode:prepublish` minify step.
+- The code-action handler's undifferentiated `null` on failure.
+- Case-sensitive extension matching; the all-Leave compose-new no-op edit.
+
+None of the above independently block the phase goal; they are recorded for completeness and do
+not change this verification's status.
 
 ### Human Verification Required
 
@@ -222,32 +229,37 @@ for completeness and do not change this verification's status.
    Expected: the generated `IOR`/`AND` calls run without a BBj `!ERROR`. Why human: headless BBj
    execution is confirmed blocked in this devcontainer.
 
+3. **Live observation of plan 88-15's own stale-edit guard (coverage item D9).** With the SETOPTS
+   composer panel open on either statically-safe shape in a real VS Code window, edit the target
+   `.bbj` document while the panel stays open, then press Apply. Expected: the document is left
+   unchanged, VS Code shows the document-changed warning, and the panel closes — matching the
+   mocked-host test suite's asserted sequence exactly. Why human: the mechanism is proven end to end
+   by 34 passing tests against a mocked `vscode` API in this verification session, but only a human
+   pressing Apply in a live editor after a real edit confirms the end-user-visible effect matches.
+
 ### Gaps Summary
 
-One blocker gap this round, found independently by this verification via a just-committed, fresh
-code review of the current HEAD (not carried forward from any prior UAT record, and distinct from
-the round-three gap this round's plan 88-14 correctly closed): **a new CR-01** — VS Code's
-SETOPTS-in-code composer apply handlers (both the absolute-literal and the chain edit-in-place
-paths) commit a whole-line/whole-token replace using line numbers captured at decode time, with no
-re-decode or document-version check immediately before the write, unlike IntelliJ's wired
-`StaleEditGuard`. This sits squarely inside ROADMAP Success Criterion #3 / DISC-06's "can **safely**
-… edit" contract — the round-three fix corrected the *arithmetic* that computes the region; this
-finding is about the *safety* of applying that region against a document that may have changed
-since it was computed. The reasoning for treating this as a must-have gap (rather than an
-out-of-scope warning) is spelled out above, along with the counter-consideration that a prior,
-less formal pass classified the same underlying asymmetry as a non-blocking Warning — an override
-in this file's frontmatter is available if the project decides otherwise.
+No blocking gaps this round. Round four's blocking finding (VS Code's SETOPTS composer apply
+handlers applying a stale, decode-time-captured range with no re-check before the write) is fixed
+by plan 88-15 and independently re-confirmed in this session by direct source read and by 34 fresh,
+passing behavioral tests exercising the exact race condition on both edit-in-place paths — not
+trusted from any SUMMARY. The one Critical finding this round's own code review found inside the
+new module (`applyIfUnchanged` discarding `applyEdit`'s real success/failure signal) is also fixed
+and independently confirmed present-and-correct in the current source.
 
-Two items remain correctly staged for human verification and are not gaps in the FAILED sense —
-present-and-wired-but-unobserved (IntelliJ composer reachability) or genuinely undecided pending a
-live runtime (the mask-width question) — both scripted in `88-LIVE-RETEST.md` round two, unaffected
-by this round's plan.
+Three items remain correctly staged for human verification and are not gaps in the FAILED sense:
+IntelliJ composer reachability (present-and-wired-but-unobserved), the live mask-width question
+(genuinely undecided pending a live runtime), and the live end-to-end observation of this round's
+own guard (mechanism proven by a mocked-host test suite, end-user-visible effect not yet confirmed
+live). All three are scripted and ready — two in `88-LIVE-RETEST.md` round two, one as this round's
+own staged coverage item D9 — and none is blocked on any further code change.
 
-One documentation-accuracy issue: `REQUIREMENTS.md` marks DISC-06 `Complete`; given the new CR-01
-and the still-open G-88-2/G-88-3 UAT records, it should read `Gaps Found` — the same self-correction
-pattern this phase's history has already applied twice.
+One documentation-accuracy issue, carried into this round unresolved from round four's own
+observation cycle: `REQUIREMENTS.md` marks DISC-05 `Gaps Found`, a stale leftover of an
+overly-broad revert commit that also (correctly, at the time) reverted DISC-06. DISC-05 has been
+`✓ SATISFIED` in every round of this phase including this one and should read `Complete`.
 
 ---
 
-_Verified: 2026-09-11T13:31:41Z_
+_Verified: 2026-09-11T17:05:00Z_
 _Verifier: Claude (gsd-verifier)_

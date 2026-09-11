@@ -1,14 +1,20 @@
 ---
-status: diagnosed
+status: testing
 phase: 88-setopts-in-code-hovers-tri-state-composer
 source: [88-VERIFICATION.md, 88-LIVE-RETEST.md]
 started: 2026-09-07T23:45:00Z
-updated: 2026-09-11T00:20:00Z
+updated: 2026-09-11T17:10:00Z
 ---
 
 ## Current Test
 
-[testing complete]
+number: 9
+name: Run 88-LIVE-RETEST.md round two, Checks 2-4 (IntelliJ reachability, live mask-width, and the new Check 4 — live observation of plan 88-15's stale-edit guard)
+expected: |
+  See 88-LIVE-RETEST.md for the full script. Checks 2 and 3 were staged before this session; Check 4
+  was added this session to cover plan 88-15's coverage item D9 (the VS Code stale-edit guard) and
+  needs a VS Code extension build newer than 1a6bdd42 — rebuild and reinstall before running it.
+awaiting: user response
 
 ## Tests
 
@@ -104,12 +110,20 @@ reported: |
   as hex — hence the length mismatch against opts$.
 severity: blocker
 
+### 9. Live retest round two — IntelliJ reachability, live mask-width, and the stale-edit guard (Checks 2-4 of 88-LIVE-RETEST.md)
+expected: |
+  See 88-LIVE-RETEST.md for the full script and verdict block. Check 2 (IntelliJ Alt+Enter and
+  editor-context-menu doors), Check 3 (live mask-width falsification against a real BBjServices),
+  and Check 4 (live observation of plan 88-15's stale-edit guard, added this session — requires
+  rebuilding/reinstalling the VS Code extension past commit 1a6bdd42 first).
+result: [pending]
+
 ## Summary
 
-total: 8
+total: 9
 passed: 2
 issues: 5
-pending: 0
+pending: 1
 skipped: 1
 blocked: 0
 
