@@ -1,8 +1,8 @@
 ---
 phase: 88-setopts-in-code-hovers-tri-state-composer
-reviewed: 2026-09-11T00:00:00Z
+reviewed: 2026-09-11T13:22:27Z
 depth: standard
-files_reviewed: 44
+files_reviewed: 46
 files_reviewed_list:
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/BbjComposeSetoptsInCodeAction.java
   - bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/SetoptsInCodeActionAvailability.java
@@ -52,134 +52,58 @@ files_reviewed_list:
   - QA/FULL-TEST-CHECKLIST.md
 findings:
   critical: 1
-  warning: 3
+  warning: 4
   info: 2
-  total: 6
+  total: 7
 status: issues_found
 ---
 
 # Phase 88: Code Review Report
 
-**Reviewed:** 2026-09-11
+**Reviewed:** 2026-09-11T13:22:27Z
 **Depth:** standard
-**Files Reviewed:** 44
+**Files Reviewed:** 46
 **Status:** issues_found
 
 ## Summary
 
-This phase adds a SETOPTS-in-code hover decoder (`setopts-code-scanner.ts`), a document-aware
-`decodeInCode`/`composeTriState` request pair (`setopts-in-code-request.ts`), a tri-state
-Set/Clear/Leave composer on both IDEs (`SetoptsTriStateComposerDialog.java` /
-`setopts-tristate-webview.ts`), and the associated IntelliJ action/intention wiring. The code is
-heavily documented, and the bulk of it — the pure catalog/vector arithmetic in
-`setopts-catalog.ts`, the AST-walking safety classifier in `setopts-code-scanner.ts`, the
-DTO/equality/JSON-boundary layer on the IntelliJ side, and the bounded code-action handler — is
-well tested and internally consistent; I traced the arithmetic (hex delimiters, full-width
-single-bit masks, fold/last-write-wins semantics, catalog-order codegen) by hand against the test
-suite and found no defect in that layer.
+This phase adds SETOPTS-in-code hover decode, a document-aware `decodeInCode`/`composeTriState`
+LSP request pair, a new tri-state Set/Clear/Leave composer on both IDEs, a second (non-intention)
+IntelliJ entry point, and a bounded `textDocument/codeAction` handler to stop IntelliJ's shared
+intention search from hanging.
 
-The one significant defect is architectural: the `decodeInCode` handler computes a safe chain's
-edit-in-place range purely from **document line numbers** (`originLine + 1` .. the `SETOPTS`
-statement's line), while the underlying chain-safety model operates at the **statement** level and
-explicitly supports (and is unit-tested for, at the hover layer) multiple statements joined by `;`
-on one physical source line. When a reassignment shares a line with the origin or the closing
-`SETOPTS` statement, the computed range silently excludes that reassignment from the "region to
-replace," so an edit-in-place duplicates or discards code instead of replacing it — while the
-server still reports `editable: true` and both IDE writers apply the edit unconditionally. This
-propagates identically to both `bbj-intellij/.../ComposerLauncher.java`'s
-`openSetoptsInCodeChain` and `bbj-vscode/.../setopts-tristate-webview.ts`'s `apply` handler,
-since both simply trust the server's `startLine`/`endLine`.
+The server-side scanner (`setopts-code-scanner.ts`) and the decode-gating module
+(`setopts-in-code-request.ts`) are unusually well fortified: the backward chain walk fails closed
+on every disqualifying shape the test suite enumerates, the edit-region computation has dedicated
+regression tests for shared lines, comma-joined statements, comments and blank lines, and the
+IntelliJ `StaleEditGuard` (pre-existing, reused correctly here) re-checks the document's
+modification stamp immediately before every guarded write. Test coverage across both platforms is
+extensive and exercises real edge cases rather than restating the happy path.
 
-I also found three lower-severity findings: the new VS Code tri-state chain composer applies its
-edit with no re-validation against document changes since decode (unlike its IntelliJ twin's
-`StaleEditGuard`), the region-deletion behavior above also silently drops any comment/blank line
-sitting between the origin and the first tracked reassignment, and the new `composeTriState`
-server handler performs no defensive validation of its `selection.entries` input.
+Two categories of issues remain. First, the VS Code side's new tri-state webview (and the
+absolute-mode webview it also drives) has no analog of the IntelliJ `StaleEditGuard`: unlike an
+IntelliJ `DialogWrapper`, the VS Code composer panel is a non-modal `ViewColumn.Beside` webview, so
+a user can keep editing the source document — including inserting/deleting lines above the
+captured range — for the entire time the panel is open, and `apply` blindly replaces
+`[startLine, endLine)` with no re-decode or version check. Second, the chain-safety scanner's
+control-flow disqualification list is incomplete (`RETURN`/`BREAK`/`STOP`/exit statements are
+treated as transparent rather than disqualifying), which is a real gap against the module's own
+documented "any ambiguity resolves toward unsafe" contract, even though it requires unusual code
+to trigger.
 
 ## Critical Issues
 
-### CR-01: Chain edit-in-place range is computed by line number, not statement — corrupts or duplicates code when a reassignment shares a line with the origin or `SETOPTS`
+### CR-01: VS Code SETOPTS-in-code composers apply edits with no re-decode/staleness guard, unlike the IntelliJ StaleEditGuard this phase's own IntelliJ side depends on
 
-**File:** `bbj-vscode/src/language/setopts-in-code-request.ts:182-200`
+**File:** `bbj-vscode/src/setopts-tristate-webview.ts:116-134` (also affects `bbj-vscode/src/setopts-composer-webview.ts:94-117`, reused by `bbj-vscode/src/setopts-in-code-ui.ts`'s new absolute-mode branch)
 
-**Issue:**
-
-```ts
-const setoptsCst = target.$cstNode;
-const originCst = shape.originNode?.$cstNode;
-...
-const endLine = document.textDocument.positionAt(setoptsCst.offset).line;
-const originLine = document.textDocument.positionAt(originCst.offset).line;
-const startLine = originLine + 1;
-...
-chain: { variableName: shape.variableName, startLine, endLine, indent: lineIndent(document, indentLine) },
-```
-
-`startLine`/`endLine` assume every reassignment in the chain occupies its own dedicated physical
-line strictly between the origin's line and the `SETOPTS` statement's line. But
-`setopts-code-scanner.ts`'s own safety walk (`matchStatement`/`walkChain`/`flattenStatements`)
-operates at the **statement** level and is explicitly tested to classify a chain as `safe: true`
-when a reassignment or the `SETOPTS` statement itself is joined to a neighboring statement with
-`;` on one physical line — see `bbj-vscode/test/setopts-code-scanner.test.ts:393-410` ("a
-CompoundStatement sibling is transparent" / "WR-B regression"). No equivalent test exists for the
-*edit-range computation* in `setopts-in-code-request.test.ts` or `setopts-in-code-ui.test.ts` —
-only well-separated-line chains are exercised there.
-
-Concretely, for the source:
-
-```
-A$=OPTS; A$=IOR(A$,$08$)
-SETOPTS A$
-```
-
-`traceOptsChain` correctly finds one `IOR` link and reports `safe: true` (both the origin and the
-link live on line 0, joined by `;`). But `decodeInCode` computes `originLine = 0`,
-`startLine = originLine + 1 = 1`, `endLine = 1` (the `SETOPTS` line) — an **empty** `[1, 1)`
-range. Both writers (`ComposerLauncher.openSetoptsInCodeChain` in
-`bbj-intellij/.../ComposerLauncher.java:517-549`, and the `apply` handler in
-`bbj-vscode/src/setopts-tristate-webview.ts:116-134`) trust this range unconditionally: they
-insert the newly composed `IOR`/`AND` lines at that empty point, but never touch or remove the
-original `A$=IOR(A$,$08$)` text that is still sitting on line 0 (before the origin — actually
-after `A$=OPTS;` on the same line). The result is a file that now contains **both** the old and
-the new reassignment, silently changing the effective SETOPTS vector from what either the old or
-the new selection alone would produce — exactly the kind of silent-corruption failure mode
-DISC-06's "never touch what you can't round-trip" rule is meant to prevent, except here it fires
-`editable: true` and touches it wrong instead of refusing.
-
-A second, more severe variant: when the origin and `SETOPTS` are themselves on the same single
-line with zero reassignments (e.g. `A$=OPTS; SETOPTS A$`), `originLine === endLine === 0`, so
-`startLine = originLine + 1 = 1` while `endLine = 0` — an **inverted** range
-(`startLine > endLine`). `vscode.Range`'s constructor silently swaps its two positions when
-constructed out of order, so the VS Code writer replaces the wrong span of text; on the IntelliJ
-side, `doc.getLineStartOffset(chain.startLine)` in `ComposerLauncher.java:544` is called with a
-line number that may not exist in a single-line document, which is a plausible runtime exception
-inside a `WriteCommandAction` (silently swallowed by IntelliJ, but the file is left in whatever
-partial state the aborted edit produced).
-
-**Fix:** Compute the replace region from the actual reassignment *statements'* CST ranges (the
-first and last chain-link node's own `$cstNode`), not from the origin/`SETOPTS` line numbers.
-When a chain has reassignments that do not each occupy an isolated line — i.e. any chain link or
-the origin/`SETOPTS` statement shares a line with another statement the walk touched — either
-compute a precise sub-line character range instead of a whole-line range, or fail closed
-(`editable: false`, with a new `SetOptsUnsafeReason` such as `'shared-line'`) the same way
-`indexed-target` already fails closed for a shape the model cannot precisely represent. At minimum,
-add a defensive check: `if (startLine > endLine) { return NOT_FOUND; }` before returning the
-`chain` payload, and add the missing test coverage for `A$=OPTS; A$=IOR(A$,$08$)\nSETOPTS A$`
-(and its all-single-line degenerate form) to `setopts-in-code-request.test.ts`.
-
-## Warnings
-
-### WR-01: VS Code's new tri-state chain composer applies its edit with no staleness re-validation, unlike its IntelliJ twin
-
-**File:** `bbj-vscode/src/setopts-tristate-webview.ts:116-134`
-
-**Issue:** The `apply` message handler recomputes the composed block text via `compose()` but
-applies it directly against the `startLine`/`endLine` captured at `decodeInCode` time, with no
-re-decode or modification-stamp check:
+**Issue:** The webview panel is created with `{ viewColumn: vscode.ViewColumn.Beside, preserveFocus: false }` — it does not block interaction with the source editor the way an IntelliJ `DialogWrapper` does. A user can keep typing in the `.bbj` file (adding/removing lines above the target, or editing the very lines the composer captured) for the whole time the panel is open. When `apply` fires:
 
 ```ts
 case 'apply': {
-    ...
+    if (!msg.payload) break;
+    const result = await compose(msg.payload);
+    const text = blockInsertText(result);
     const edit = new vscode.WorkspaceEdit();
     if (target) {
         const uri = vscode.Uri.parse(target.uri);
@@ -188,109 +112,111 @@ case 'apply': {
         } else {
             edit.replace(uri, new vscode.Range(target.startLine, 0, target.endLine, 0), text);
         }
+    } else if (insertUri !== undefined && insertLine !== undefined) {
+        edit.insert(insertUri, new vscode.Position(insertLine, 0), text);
     }
-    ...
     await vscode.workspace.applyEdit(edit);
 ```
 
-The IntelliJ side built a dedicated `StaleEditGuard` specifically for this class of risk and wires
-it through every SETOPTS-in-code edit path, including this exact chain-edit flow
-(`ComposerLauncher.openSetoptsInCodeChain`, `bbj-intellij/.../ComposerLauncher.java:533-549`,
-re-decoding and comparing via `DecodeEquality::sameSetoptsInCode` before writing). The VS Code
-panel is a webview with an async round trip to the user and to the language server before Apply is
-clicked, during which the user's document can change (typing above the target range, an auto-save
-reformat, etc.); `target.startLine`/`endLine` are never re-validated, so a stale apply can silently
-overwrite or corrupt unrelated lines. This same gap already existed for the older absolute-mode
-`setopts-composer-webview.ts`, but that panel only ever rewrites a single in-line token; this
-phase's new chain panel replaces a whole multi-line range, which is materially riskier under the
-same missing protection.
+`target.startLine`/`target.endLine` are the line numbers captured at decode time (before the panel opened) and are never re-validated against the document's current shape or version. If the document changed underneath — even just an unrelated edit above the chain that shifted line numbers by one — this silently replaces whatever now occupies `[startLine, endLine)` with the newly composed block, deleting or corrupting code the chain never owned. This is exactly the class of bug IntelliJ's `StaleEditGuard` (`#567`) was built to close, and this phase's own `SetoptsInCodeSourceGuardTest`/`ComposerLauncherChainSourceGuardTest` explicitly pin that both new IntelliJ edit paths (`openSetoptsInCodeAbsolute`, `openSetoptsInCodeChain`) go through it — but the VS Code implementation of the very same two edit paths (added by this phase) has no equivalent check, and no test exercises document mutation between decode and apply.
 
-**Fix:** Re-run `SETOPTS_DECODE_IN_CODE_METHOD` (or at minimum compare the target range's current
-text/line count against what was captured) immediately before constructing the `WorkspaceEdit` in
-the `apply` case, mirroring `ComposerLauncher`'s `StaleEditGuard`/`DecodeEquality.sameSetoptsInCode`
-pattern, and refuse the write with a user-visible message on mismatch.
+The blast radius is worse for the new multi-line chain path than the pre-existing single-token `hexRange` replace in `setopts-composer-webview.ts`, since a stale multi-line region replace can delete an entire block of unrelated code, not just overwrite one hex literal.
 
-### WR-02: A comment or blank line between the origin and the first reassignment is silently deleted by an edit-in-place
+**Fix:** Before applying, re-run `decodeInCode` (or at minimum compare `vscode.workspace.textDocuments`' version/line count for the target `uri`) and abort with a "document changed, please retry" message on any mismatch — mirroring `StaleEditGuard.applyIfUnchanged`'s re-decode-and-compare, and re-checking immediately before `applyEdit` the way the Java guard re-checks the modification stamp inside the write. At minimum, pass the originally-observed `vscode.TextDocument.version` through the panel and refuse to apply if `vscode.workspace.textDocuments.find(...).version` has changed.
 
-**File:** `bbj-vscode/src/language/setopts-in-code-request.ts:191` (root cause shared with CR-01)
+## Warnings
 
-**Issue:** `startLine = originLine + 1` assumes the line immediately after the origin statement is
-either the first reassignment or (with zero reassignments) the `SETOPTS` line itself. For:
+### WR-01: `matchStatement`'s control-flow disqualification list omits RETURN/BREAK/STOP/exit-style statements, risking a false "safe" chain verdict
 
-```
-A$=OPTS
-REM keep this
-A$=IOR(A$,$08$)
-SETOPTS A$
-```
+**File:** `bbj-vscode/src/language/setopts-code-scanner.ts:400-451`
 
-the walk still classifies the chain `safe: true` (a `REM` comment is not a statement the walker
-sees), but `startLine` = 1 (the `REM` line) and the whole `[1, 3)` range — including the comment —
-gets replaced by the freshly composed reassignment lines on Apply, deleting the comment with no
-warning. This is a narrower instance of the same statement-vs-line mismatch as CR-01.
+**Issue:** `matchStatement` disqualifies `IfStatement`/`ElseStatement`/`IfEndStatement`/`WhileStatement`/`WhileEndStatement`/`ForStatement`/`GotoStatement`/`OnGotoStatement`/`SwitchStatement`/`SwitchCase`/`UntilStatement`, and only the `'REPEAT'` variant of `KeywordStatement`, as `'control-flow'`. Every other `KeywordStatement` kind — `RETURN`, `BREAK`, `CONTINUE`, `STOP`, `END`, `ESCAPE`, `RETRY`, `FLOATINGPOINT`, `DENUM`, `ENDTRACE`, `BYE` — plus `ExitWithNumberStatement`/`ExitToStatement`/`SetErrorStatement` fall through to `!isLetStatement(stmt)` and are classified `'irrelevant'`, i.e. fully transparent to the backward walk.
 
-**Fix:** Once CR-01's range computation is anchored to the actual reassignment statements' own CST
-ranges rather than `originLine + 1`, this resolves naturally (the replaced region would start at
-the first reassignment statement, not at whatever the next line happens to be).
+A `RETURN`/`BREAK`/`STOP`/exit statement sitting physically between the `OPTS` origin and the traced `SETOPTS`/`IOR`/`AND` target means the target is not reliably reached by straight-line fallthrough from the origin (it is only reachable via a jump into the middle of the block, e.g. a different `GOSUB`/label entry). Treating it as transparent can produce a `safe: true` verdict — and a folded `effect`/prefill selection — that does not reflect what the traced variable's value actually is along the path the target is really reached by. This directly contradicts the module's own stated invariant: "Any ambiguity resolves toward an unsafe verdict, never toward a false 'link' or 'origin'" (see the doc comment on `matchStatement`), and `UNSAFE_REASON_TEXT`'s `control-flow` text already names "a conditional, loop, or GOTO/GOSUB" but not this case.
 
-### WR-03: `composeTriState`'s server handler performs no defensive validation of its `selection.entries` input
+**Fix:** Add `KeywordStatement` kinds other than a small allow-list (or simply every `KeywordStatement`/`ExitWithNumberStatement`/`ExitToStatement`/`SetErrorStatement`) to the `control-flow` branch of `matchStatement`, and add a `test.each` case for at least `RETURN` and `STOP` alongside the existing `controlFlowMarkers` table in `test/setopts-code-scanner.test.ts`.
 
-**File:** `bbj-vscode/src/language/setopts-in-code-request.ts:212-214`, `bbj-vscode/src/setopts-catalog.ts:459-483`
+### WR-02: New SETOPTS-in-code hover branch bypasses `bbj-hover.ts`'s own "never let a hover error surface as a failed LSP request" guarantee
 
-**Issue:** `createComposeTriStateHandler` is a bare pass-through:
+**File:** `bbj-vscode/src/language/bbj-hover.ts:38-49`
+
+**Issue:** The new branch:
 
 ```ts
-export function createComposeTriStateHandler(): (params: SetOptsComposeTriStateParams) => SetOptsComposeTriStateResult {
-    return (params: SetOptsComposeTriStateParams): SetOptsComposeTriStateResult => composeSetOptsBlock(params);
+if (cstNode && cstNode.offset + cstNode.length > offset) {
+    const setOptsTarget = setoptsHoverTarget(cstNode);
+    if (setOptsTarget) {
+        const shape = detectSetOptsShape(setOptsTarget);
+        if (shape) {
+            return { contents: { kind: 'markdown', value: setoptsHoverMarkdown(shape) } };
+        }
+    }
+    // Store reference context for inherited field detection
+    this.referenceCstNode = cstNode;
+    try {
+        return await super.getHoverContent(document, params);
+    } catch (e) {
+        logger.warn(...);
+        return undefined;
+    } finally {
+        this.referenceCstNode = undefined;
+    }
 }
 ```
 
-and `composeSetOptsBlock` immediately does `input.selection.entries.find(...)`. Every other
-`bbj/composer/*` handler in this codebase is reached only from the two trusted IDE clients, so this
-is not exploitable today, but it is also the only handler in this family with zero shape checking
-on its params — a malformed request (e.g. `{ "selection": {} }`, omitting `entries`) throws a raw
-`TypeError` out of the LSP request handler instead of failing gracefully like every neighboring
-handler in `setopts-in-code-request.ts` (`createDecodeInCodeHandler` returns `NOT_FOUND` for every
-malformed/missing-data case it can hit).
+runs entirely before the existing `try`/`catch` that the file's own comment says exists so "a hover computation error must never surface as a failed LSP request." Today `setoptsHoverTarget`/`detectSetOptsShape`/`setoptsHoverMarkdown` are internally defensive (every `.ref` access is wrapped in its own `try { } catch { }`), so this is not currently exploitable, but it is a structural gap: any future change to `setopts-code-scanner.ts` that introduces an uncaught throw (e.g. a new AST walk without its own guard) will re-surface as a failed `textDocument/hover` request — precisely the regression class this file's surrounding code was written to prevent.
 
-**Fix:** Guard `input.selection?.entries` and return an empty/default result (or throw a
-recognizable LSP error) rather than letting `Array.prototype.find` throw on `undefined`.
+**Fix:** Wrap the new branch in the same `try`/`catch`/`finally` as the rest of the method (or give it its own narrow `try`/`catch` that degrades to falling through to the existing declaration-resolution path on error).
+
+### WR-03: `vscode:prepublish`'s minify step targets an orphaned bundle; the shipped extension bundles stay unminified with source maps
+
+**File:** `bbj-vscode/package.json:666,673`
+
+**Issue:** This phase's diff changes:
+
+```diff
+-    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
++    "vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run build && npm run esbuild-base -- --minify && npm run lint",
+```
+
+Adding `npm run build` here is a real, welcome fix (it guarantees `out/extension.cjs` and `out/language/main.cjs` — the files `"main"` and the IntelliJ build actually load — are freshly built before packaging, rather than depending on the `prepare` lifecycle script having already run). However, the pre-existing `esbuild-base` step that still runs afterward is dead code relative to that goal:
+
+```json
+"esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+```
+
+This bundles only `src/extension.ts` (not `src/language/main.ts`) into `out/main.js`, a file nothing in `package.json` (`"main": "./out/extension.cjs"`) or the IntelliJ build ever loads. So `npm run esbuild-base -- --minify` produces an unused, minified orphan file, while the two bundles that are actually shipped and loaded — produced moments earlier by `npm run build` → `node ./esbuild.mjs` with no `--minify` flag — remain **unminified with `sourcemap: true`**. `.vscodeignore` excludes `src/`, `test/`, `node_modules`, etc., but not `out/**/*.map` or `out/main.js`, so both the source maps and the orphaned bundle ship inside the packaged VSIX.
+
+**Fix:** Either delete the now-redundant `esbuild-base -- --minify` step from `vscode:prepublish` (since `npm run build` already produces the real bundles), or replace it with a minified production build of the actual bundles (e.g. `node ./esbuild.mjs -- --minify` targeting the same `outdir`), and add `out/**/*.map` (and the unused `out/main.js` if `esbuild-base` is kept for any other reason) to `.vscodeignore`.
+
+### WR-04: `bbj-code-action-handler.ts`'s bounded budget swallows every failure into an undifferentiated `null`
+
+**File:** `bbj-vscode/src/language/bbj-code-action-handler.ts:79-118`
+
+**Issue:** `createBoundedCodeActionHandler` returns `null` for four structurally different outcomes — budget expiry, a rejected `waitForRequiredState`, a missing document, and a thrown/rejected `getCodeActions` — with no differentiation surfaced anywhere (no log line, no telemetry counter). This is a reasonable and deliberate trade-off given the design goal (never block IntelliJ's modal dialog), and is well covered by `bbj-code-action-handler.test.ts`, so this is not a functional defect. It is, however, a diagnosability gap: if `textDocument/codeAction` starts silently timing out in the field (the exact "56016ms hang" scenario the file's own comment references as motivation), there is currently no server-side signal distinguishing "budget expired" from "provider threw" from "document never reached Linked", which will make a recurrence of that exact incident harder to triage than it needs to be.
+
+**Fix:** Add a `logger.warn`/`logger.debug` call on the budget-expiry and provider-throw paths (mirroring the pattern already used elsewhere in this codebase, e.g. `bbj-hover.ts`'s `logger.warn` on a caught hover error), naming which of the four outcomes fired.
 
 ## Info
 
-### IN-01: `legend.innerHTML` with catalog-sourced interpolation in both webviews
+### IN-01: `SetoptsInCodeActionAvailability.isAvailable` matches extensions case-sensitively
 
-**File:** `bbj-vscode/src/setopts-tristate-webview.ts:246`, `bbj-vscode/src/setopts-composer-webview.ts:254` (pre-existing pattern, reused here)
+**File:** `bbj-intellij/src/main/java/com/basis/bbj/intellij/actions/SetoptsInCodeActionAvailability.java:21,34`
 
-**Issue:** `legend.innerHTML = 'Byte ' + byteNo + ' <span class="byte-no">— ' + groups[byteNo] + '</span>';`
-interpolates `groups[byteNo]` (from the server's static `BYTE_GROUPS` catalog) into `innerHTML`.
-Today's data source is a hardcoded compile-time constant, so this is not currently exploitable, but
-it is a pattern that silently becomes an XSS vector the moment any byte-group label ever becomes
-even partially server/data-driven (e.g. localized strings loaded from a file, or a future
-user-customizable catalog).
+**Issue:** `BBJ_SOURCE_EXTENSIONS = Set.of("bbj", "bbjt", "src", "bbx")` and `isAvailable` does `BBJ_SOURCE_EXTENSIONS.contains(extension)` — an exact, case-sensitive match against `VirtualFile.getExtension()`. IntelliJ's own `fileType` extension registration (`extensions="bbj;bbjt;src;bbx"` in `plugin.xml`) is typically matched case-insensitively by the platform's `FileTypeManager`. On a case-sensitive filesystem with an unusually-cased file (e.g. `Foo.BBJ`), IntelliJ may still classify the file as BBj while this action's `update()` hides the entry, diverging from the file type it is meant to track. Low likelihood in practice (BBj tooling conventionally lower-cases extensions) but worth a `toLowerCase()` normalization for parity with the platform's own matching, and a test case.
 
-**Fix:** Build the `<span>` with `document.createElement`/`textContent` instead of `innerHTML`,
-consistent with how every other dynamic label in the same file (`lbl.textContent = bit.label`) is
-already built.
+**Fix:** `BBJ_SOURCE_EXTENSIONS.contains(extension.toLowerCase(Locale.ROOT))` with a null-guard, plus a `SetoptsInCodeActionAvailabilityTest` case for a mixed-case extension.
 
-### IN-02: `vscode:prepublish` now runs the full TypeScript+esbuild `build` and then `esbuild-base --minify` again
+### IN-02: Compose-new applies an unconditional no-op `WorkspaceEdit` on VS Code when every option is left "Leave", unlike the IntelliJ path's early return
 
-**File:** `bbj-vscode/package.json` (diff line ~ `"vscode:prepublish"`)
+**File:** `bbj-vscode/src/setopts-tristate-webview.ts:116-134` vs `bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java:457-469`
 
-**Issue:**
-```diff
--"vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run esbuild-base -- --minify && npm run lint",
-+"vscode:prepublish": "shx cp ../LICENSE ./LICENSE  && npm run build && npm run esbuild-base -- --minify && npm run lint",
-```
-`npm run build` already runs `node ./esbuild.mjs` (a non-minified bundle) before the pipeline now
-runs `esbuild-base -- --minify` a second time, bundling twice on every publish. Likely intentional
-(to get a `tsc -b` type-check gate before packaging), but it is worth confirming that was the
-intent rather than an accidental leftover from merging a type-check step in — running `tsc -b`
-alone (without the redundant non-minified esbuild pass inside `build`) would achieve the same
-type-check gate without the duplicate bundle.
+**Issue:** IntelliJ's `openSetoptsInCodeComposeNew` explicitly early-returns without opening a write command when `text == null || text.isEmpty()`. The VS Code `apply` handler has no equivalent guard for the compose-new (no `target`) branch: `blockInsertText` can return `''` (`result.lines.length === 0`), and the handler still constructs `edit.insert(insertUri, ..., '')` and calls `vscode.workspace.applyEdit(edit)` unconditionally. The net effect is a harmless no-op edit (confirmed by this phase's own test, "all-Leave case: compose-new still inserts the two-line canonical block" — that test only exercises the non-empty case), but the two platforms now have observably different code paths for the same all-Leave input, which is worth aligning for future maintainers rather than relying on both happening to converge on "no visible effect."
+
+**Fix:** Mirror IntelliJ's guard: skip `applyEdit`/`panel.dispose()`'s edit branch (or at least skip constructing the edit) when `text` is empty and there is no `target`, for symmetry with the documented cross-platform "byte-for-byte the same call" convention this phase otherwise follows carefully (see `ComposerLauncher.java`'s own doc comment on that convention).
 
 ---
 
-_Reviewed: 2026-09-11_
+_Reviewed: 2026-09-11T13:22:27Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
