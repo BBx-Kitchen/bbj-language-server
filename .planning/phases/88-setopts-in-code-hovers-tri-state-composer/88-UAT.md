@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 88-setopts-in-code-hovers-tri-state-composer
-source: [88-VERIFICATION.md]
+source: [88-VERIFICATION.md, 88-LIVE-RETEST.md]
 started: 2026-09-07T23:45:00Z
-updated: 2026-09-08T01:00:00Z
+updated: 2026-09-11T00:10:00Z
 ---
 
 ## Current Test
@@ -45,11 +45,58 @@ expected: |
 result: skipped
 reason: "composer isn't working (blocked by Test 2 failure — the tri-state composer never activates in either IDE, so a live-BASIS compose-and-run check cannot proceed)"
 
+### 4. Live retest Check 1 — hover decode in VS Code
+expected: |
+  See Current Test above (examples/issue475-setopts-in-code.bbj, 4 hover targets + 1 byte-range
+  no-decode check, against the currently-installed basis-intl.bbj-lang-0.12.28).
+result: pass
+
+### 5. Live retest Check 1 — hover decode in IntelliJ
+expected: |
+  Same 5 hover targets in examples/issue475-setopts-in-code.bbj, in IntelliJ against a freshly
+  built bbj-intellij-0.1.0.zip (Settings > Plugins > gear icon > Install Plugin from Disk...,
+  restart when prompted). FAIL signature from last round: works for the literal but not the chain.
+result: pass
+
+### 6. Live retest Check 2 — tri-state composer in VS Code
+expected: |
+  In examples/issue475-setopts-in-code.bbj: (a) Ctrl+. lightbulb, Command Palette
+  "bbj.composeSetoptsInCode", and editor right-click context menu all offer the composer;
+  (b) invoking on the canonical safe chain (B$=OPTS ... SETOPTS B$) and editing only changes the
+  reassignment lines between OPTS origin and SETOPTS; (c) invoking on a line with no SETOPTS shape
+  composes and inserts a whole new var$=OPTS/IOR/AND/SETOPTS var$ block; (d) invoking on either
+  byte-range chain offers no edit and names why. FAIL signature from last round: lightbulb never
+  appears / nothing happens.
+result: issue
+reported: "It works but produces an invalid line: SETOPTS 20C20240000000000000000000000000 only valid in config.bbx. In a program it needs to be SETOPTS $20C20240000000000000000000000000$ . With that fixed, everything else is a pass"
+severity: major
+
+### 7. Live retest Check 2 — tri-state composer in IntelliJ
+expected: |
+  Same 4 behaviors as test 6, invoked via Alt+Enter on a SETOPTS-in-code line in IntelliJ against
+  the freshly built bbj-intellij-0.1.0.zip. FAIL signature from last round: "Searching Content
+  Actions..." popup hangs forever. If it still hangs, note how long and whether the file shows
+  visible diagnostics at that moment.
+result: issue
+reported: "hangs on \"Searching for Context Option...\" and \"Pull Docker Image\""
+severity: blocker
+
+### 8. Live retest Check 3 — live mask-width falsification
+expected: |
+  Using the VS Code composer (test 6 — the only one currently invokable end-to-end; IntelliJ's
+  still hangs per test 7), compose a new block with one option set to Set and one to Clear,
+  insert it, and run the program as GUI/BUI/DWC against a live BBjServices. Since test 6 found the
+  composer emits the bare-hex SETOPTS form (G-88-3), manually add the $...$ delimiters before
+  running so this check isolates the mask-width question from the known delimiter bug. Expected:
+  the generated IOR/AND calls (16-byte/32-hex-digit full-width mask base) run without raising a
+  BBj !ERROR — confirms 88-RESEARCH.md Assumption A2 against real BASIS runtime behavior.
+result: pass
+
 ## Summary
 
-total: 3
-passed: 0
-issues: 2
+total: 8
+passed: 3
+issues: 4
 pending: 0
 skipped: 1
 blocked: 0
@@ -122,8 +169,17 @@ blocked: 0
   reason: |
     User reported: how would I invoke it? In IntelliJ I just see a "Searching Content Actions..."
     popup hanging forever, in VSCode no idea, nothing happens.
-  severity: major
-  test: 2
+
+    RETESTED 2026-09-11 (live retest Check 2, test 7) against the freshly built
+    bbj-intellij-0.1.0.zip named in 88-LIVE-RETEST.md: the VS Code side of this gap is now fixed
+    (test 6 passed on entry points/edit/compose/no-edit). The IntelliJ side still reproduces:
+    user reports it "hangs on \"Searching for Context Option...\" and \"Pull Docker Image\"" — a
+    NEW clue not present in the original report. A Docker-pull step appearing during Alt+Enter
+    intention resolution is unexplained by anything in this gap's prior root-cause analysis (no
+    Docker interaction anywhere in ConfigureSetoptsInCodeIntention or the shared language server)
+    and needs fresh investigation, not a repeat of the prior diagnosis.
+  severity: blocker
+  test: 7
   root_cause: |
     (1) VS Code "nothing happens" is PROVEN environment/packaging, not a code bug: the composer
     (setopts-in-code-ui.ts + setopts-tristate-webview.ts: a RefactorRewrite Code Action provider,
@@ -181,3 +237,17 @@ blocked: 0
     - "If the IntelliJ hang persists on this verified-fresh install, open a live-reproduction
       debug session on Alt+Enter's diagnostics-computation path for the SETOPTS test file"
   debug_session: .planning/debug/g-88-2-composer-never-activates.md
+
+- gap_id: G-88-3
+  truth: "The tri-state composer's generated SETOPTS literal is valid BBj program syntax (dollar-delimited hex string), not config.bbx syntax (bare hex)."
+  status: failed
+  reason: |
+    User reported (live retest, VS Code, Check 2): "It works but produces an invalid line:
+    SETOPTS 20C20240000000000000000000000000 only valid in config.bbx. In a program it needs to
+    be SETOPTS $20C20240000000000000000000000000$ . With that fixed, everything else is a pass"
+  severity: major
+  test: 6
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
