@@ -1,9 +1,9 @@
 ---
 phase: "88"
 slug: "setopts-in-code-hovers-tri-state-composer"
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-09-07"
 ---
 
@@ -48,8 +48,38 @@ created: "2026-09-07"
 | 88-02-03 | 02 | 2 | Success Criterion 4 (perf) | — | No unbounded full-document walk per hover or keystroke (research Pitfall 11) | unit (timing) | new synthetic-large-file test, mirroring #505's convention | ❌ W0 | ⬜ pending |
 | 88-03-01 | 03 | 2 | DISC-06 | — | IntelliJ `IntentionAction` trigger (D-03) opens the tri-state dialog on a recognized safe shape; absent (not disabled) on an unsafe shape | unit/source guard | `cd bbj-intellij && ./gradlew test --tests "*.composer.*" --tests "*.actions.*"` | ❌ W0 | ⬜ pending |
 
-*Task IDs above are provisional — the planner assigns final plan/task numbering; this map is
-the requirement→test contract Wave 0 must satisfy, not a fixed schedule.*
+*Task IDs above are provisional — the planner assigned final plan/task numbering; the audit
+below cross-references the actual delivered map against the phase's requirements.*
+
+---
+
+## Validation Audit 2026-09-11
+
+The original per-task map above (drafted 2026-09-07, before planning finalized plan/task
+numbering) was never updated after execution — this audit reconciles it against what the
+completed phase (13 plans: 88-01 through 88-13, including the 88-07..88-13 gap-closure round)
+actually delivered.
+
+| Requirement | Behavior | Automated Command | Status |
+|---|---|---|---|
+| DISC-05 | Hover decode — absolute literal, safe `OPTS→IOR/AND` chain, single `IOR`/`AND` call | `npx vitest run test/hover.test.ts test/setopts-code-scanner.test.ts` | ✅ COVERED (88-01, 88-02, 88-07, 88-11) |
+| DISC-05 | Decoder narrowed to the grammar's actual hex-literal shape (no false-positive quoted-string decode) | `npx vitest run test/setopts-code-scanner.test.ts` | ✅ COVERED (88-11) |
+| DISC-05 | Installed-bundle e2e proof (real `--node-ipc` LSP process, real installed VSIX) | `npx vitest run test/functional/installed-extension-e2e.test.ts` | ✅ COVERED (88-08, 88-09, 88-12, 88-13) |
+| DISC-06 | Tri-state composer request/response contract (TS + Java) | `npx vitest run test/setopts-in-code-request.test.ts`; `./gradlew test --tests "*.composer.ComposerRequestContractTest" --tests "*.composer.ComposerModelsJsonBoundaryTest"` | ✅ COVERED (88-03, 88-04) |
+| DISC-06 | Canonical hex-literal spelling shared by composer + IntelliJ writers | `npx vitest run test/setopts-catalog.test.ts test/setopts-in-code-ui.test.ts`; `./gradlew test --tests "*.composer.BbjHexLiteralTest"` | ✅ COVERED (88-10) |
+| DISC-06 | VS Code Code Action entry point + IntelliJ intention/action entry points, source-guarded apart from config.bbx's own SETOPTS UI | `npx vitest run test/bbj-code-action-handler.test.ts test/setopts-in-code-ui.test.ts`; `./gradlew test --tests "*.composer.SetoptsInCodeSourceGuardTest" --tests "*.actions.SetoptsInCodeActionAvailabilityTest" --tests "*.actions.BbjComposeSetoptsInCodeActionSourceGuardTest"` | ✅ COVERED (88-05, 88-06, 88-12) |
+| DISC-06 (perf) | Bounded Code Action handler — no unbounded diagnostics wait (G-88-2's server-side root cause) | `npx vitest run test/bbj-code-action-handler.test.ts` | ✅ COVERED (88-12; cold-ordering probe measured 7ms vs. pre-fix 56016ms) |
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | — |
+| Escalated | 2 (pre-existing, unchanged by this audit — see Manual-Only) |
+
+Every requirement traces to a green automated test; no MISSING or PARTIAL entries. The two
+Manual-Only rows below (unchanged from the original draft) remain the only non-automatable
+surface — both are staged as scripted human checks in `88-LIVE-RETEST.md` per 88-13's own
+output, not new gaps this audit introduces.
 
 ---
 
@@ -86,11 +116,11 @@ the requirement→test contract Wave 0 must satisfy, not a fixed schedule.*
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 120s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none found)
+- [x] No watch-mode flags
+- [x] Feedback latency < 120s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-09-11
