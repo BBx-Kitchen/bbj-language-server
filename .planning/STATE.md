@@ -5,16 +5,16 @@ milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
 current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
 status: executing
-stopped_at: "Completed 88-10-PLAN.md (gap-closure: composer hex-literal syntax, G-88-3 codegen half fixed; live verification pending 88-13)"
-last_updated: "2026-09-11T10:07:02.605Z"
+stopped_at: "Completed 88-11-PLAN.md (gap-closure: decoder narrowed to grammar's HEX_STRING terminal, fixture corpus migrated to real BBj syntax, absolute-edit round-trip test added; G-88-3 still pending live verification in 88-13)"
+last_updated: "2026-09-11T10:26:44.285Z"
 last_activity: 2026-09-11
 last_activity_desc: Phase 88 execution resumed (wave continue)
-state_head: ab331ca932bfe728ad561425b48edfc9a7223764
+state_head: a93aefe02458ab112d40ce11b022f76a9e623ad1
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 44
 ---
 
@@ -35,7 +35,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 ## Current Position
 
 Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
 
@@ -168,6 +168,7 @@ Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
 | Phase 88 P05 | 25min | 3 tasks | 13 files |
 | Phase 88 P07 | 20min | 2 tasks | 3 files |
 | Phase 88 P10 | 25min | 3 tasks | 9 files |
+| Phase 88 P11 | 20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -283,6 +284,7 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 - [Phase 88]: [Phase 88]: 88-05: SetoptsTriStateComposerDialog reuses SetoptsComposerDialog's exact skeleton (ComposerFlow+PreviewDebouncer+CR-01 gating) with a ButtonGroup-backed Set/Clear/Leave radio row replacing the checkbox, and a read-only block preview replacing the mask-character/raw-tail region; ComposerLauncher.Kind.SETOPTS_IN_CODE routes absolute/chain/compose-new/not-editable to the right dialog and guarded write; DISC-06 (#475) closed -- both IDE halves (88-06 VS Code, 88-05 IntelliJ) now exist
 - [Phase 88]: [Phase 88]: 88-07: SetOptsUnsafeReason 'indexed-target' plus indexedAccessRootName classify byte-range/element accessor mutations (A$(1,1)=, A$[1]=, or as an IOR/AND argument) as unsafe instead of silently transparent, closing the false-safe/empty-effect defect at G-88-1's code half (live-hover retest still pending, G-88-1 stays status:failed)
 - [Phase 88]: 88-10 (gap-closure G-88-3): bbjHexLiteral/BbjHexLiteral.of is the one formatter per host deciding a BBj hex literal's $...$ delimiters; composeSetOptsBlock's IOR/AND lines and both hosts' absolute in-place writers now route through it; SetOptsEditTarget.hexSyntax discriminator (default config-bare) keeps the #474 config.bbx composer's bare-hex syntax unchanged and pinned by a direct test. G-88-3 stays status:failed pending plan 88-13's live BBjServices verification.
+- [Phase 88]: [Phase 88]: 88-11: parseHexLiteral now consults the StringLiteral's raw CST source text (not its converted value) to accept only the grammar's own anchored HEX_STRING shape, since BBjValueConverter makes a quoted "$08$" and a bare $08$ byte-identical by the time the AST value is read -- closes G-88-3's decode-side leniency that let the invalid composer output round-trip through the test corpus; decode-side fixture corpus migrated to real BBj syntax and a round-trip test proves hexRange + bbjHexLiteral compose. G-88-3 stays status:failed pending plan 88-13's live verification.
 
 ### Tech Debt
 
@@ -349,8 +351,8 @@ mechanisms for advisories that are still unpublished. Standing decisions that st
 
 ## Session Continuity
 
-Last session: 2026-09-11T10:07:02.400Z
-Stopped at: Completed 88-10-PLAN.md (gap-closure: composer hex-literal syntax, G-88-3 codegen half fixed; live verification pending 88-13)
+Last session: 2026-09-11T10:26:44.056Z
+Stopped at: Completed 88-11-PLAN.md (gap-closure: decoder narrowed to grammar's HEX_STRING terminal, fixture corpus migrated to real BBj syntax, absolute-edit round-trip test added; G-88-3 still pending live verification in 88-13)
 Resume file: None
 
 Next: `/gsd-discuss-phase 88` or `/gsd-plan-phase 88` to start SETOPTS-in-Code Hovers &
