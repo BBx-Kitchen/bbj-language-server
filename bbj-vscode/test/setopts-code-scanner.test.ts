@@ -81,6 +81,31 @@ describe('setopts-code-scanner: absolute SETOPTS shape detection (88-01)', async
         });
     });
 
+    /**
+     * D-02 narrowing (plan 88-11, gap closure G-88-3): a quoted `STRING_LITERAL` is never a
+     * decodable hex literal, even when its content looks like one -- BBj itself never
+     * hex-decodes it. `parseHexLiteral` must consult the raw CST source text (the only place a
+     * `STRING_LITERAL` and a `HEX_STRING` remain distinguishable) rather than the converted
+     * value, which the value converter has already made byte-identical for both terminals.
+     */
+    test('detectSetOptsShape returns no shape for a quoted absolute hex literal ("$08004020$") -- BBj never hex-decodes a STRING_LITERAL', async () => {
+        const { leaf } = await parseAndFindLeaf('SETOPTS "$08004020$"', '$08004020$');
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
+    test('detectSetOptsShape returns no shape for a quoted plain hex string with no $ delimiters at all ("08004020")', async () => {
+        const { leaf } = await parseAndFindLeaf('SETOPTS "08004020"', '08004020');
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
+    test('detectSetOptsShape returns no shape for the empty hex literal $$ (unaffected by the terminal-shape narrowing)', async () => {
+        const { leaf } = await parseAndFindLeaf('SETOPTS $$', '$$');
+        const target = setoptsHoverTarget(leaf)!;
+        expect(detectSetOptsShape(target)).toBeUndefined();
+    });
+
     test('setoptsHoverMarkdown renders the SETOPTS header, uppercase hex digits, and describeVector output', () => {
         const vector = parseVector('08004020')!;
         const markdown = setoptsHoverMarkdown({ kind: 'absolute', hexDigits: '08004020', vector });
@@ -288,6 +313,17 @@ describe('setopts-code-scanner: OPTS→IOR/AND chain walk (88-02, DISC-05/DISC-0
         const shape = traceOptsChain(target)!;
         expect(shape.safe).toBe(false);
         expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('unparseable-mask');
+    });
+
+    /** D-02 narrowing (plan 88-11): a quoted mask literal is a plain string, never a hex decode,
+     * so a chain built on one must never be folded to a false "safe" -- reported unsafe with the
+     * same unparseable-mask reason a genuinely non-literal mask (a variable) already gets. */
+    test('a chain reassignment whose single mask literal is quoted ("$08$") is reported unsafe with unsafeReason "unparseable-mask", never safe with a folded effect', async () => {
+        const target = await parseAndFindSetOptsTarget('Z$=OPTS\nZ$=IOR(Z$,"$08$")\nSETOPTS Z$');
+        const shape = traceOptsChain(target)!;
+        expect(shape.safe).toBe(false);
+        expect(shape.unsafeReason).toBe<SetOptsUnsafeReason>('unparseable-mask');
+        expect(shape.effect).toEqual({ set: [], clear: [] });
     });
 
     test('a byte-range assignment target (A$(1,1)=IOR(A$(1,1),...)) stops the walk with unsafeReason "indexed-target"', async () => {
@@ -617,6 +653,19 @@ describe('setoptsHoverMarkdown: chain and mask-call shapes (88-02, DISC-05)', as
         expect(markdown).toContain('__AND($F7$)__');
         expect(markdown).toContain('Clears these options: Byte 1: Console mode in public programs');
         expect(markdown).not.toContain('Sets these options');
+    });
+
+    /** D-02 narrowing (plan 88-11): the mask-call decode site consults the same raw-source-text
+     * shape test as the absolute and chain-link sites. */
+    test('detectSetOptsShape decodes a bare IOR mask-call argument (HEX_STRING form)', async () => {
+        const target = await parseAndFindCallTarget('A$=IOR(A$,$08$)', 'IOR');
+        const shape = detectSetOptsShape(target)!;
+        expect(shape).toMatchObject({ kind: 'mask-call', fnName: 'IOR', maskHex: '08' });
+    });
+
+    test('detectSetOptsShape returns no shape for a quoted IOR mask-call argument ("$08$") -- not a HEX_STRING token', async () => {
+        const target = await parseAndFindCallTarget('A$=IOR(A$,"$08$")', 'IOR');
+        expect(detectSetOptsShape(target)).toBeUndefined();
     });
 });
 
