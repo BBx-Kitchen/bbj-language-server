@@ -49,9 +49,11 @@ vi.mock('vscode', () => ({
         createWebviewPanel: createWebviewPanelMock,
         activeTextEditor: undefined,
         showInformationMessage: showInformationMessageMock,
+        showWarningMessage: vi.fn(),
     },
     workspace: {
         applyEdit: applyEditMock,
+        textDocuments: [],
     },
     commands: {
         registerCommand: registerCommandMock,
@@ -355,6 +357,13 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
         registerSetOptsInCodeComposer(fakeContext, sender);
         const commandHandler = getRegisteredCommandHandler();
 
+        // A guard now sits in front of this write (plan 88-15): the target document must be
+        // open, with a version, for the pre-apply re-decode to be judged against — the same
+        // set-then-restore pattern this file already uses for `activeTextEditor`.
+        const vscodeModule = await import('vscode');
+        const workspaceMock = vscodeModule.workspace as unknown as { textDocuments: unknown[] };
+        workspaceMock.textDocuments.push({ uri: { toString: () => 'file:///x.bbj' }, version: 1 });
+
         await commandHandler({ uri: 'file:///x.bbj', line: 2, character: 5 });
         const panelHandler = getHandler()!;
         await panelHandler({ type: 'ready' });
@@ -367,6 +376,8 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
         expect(rangeArg).toEqual(new FakeRange(2, 8, 2, 42));
         // A complete BBj hex literal: starts and ends with a dollar sign, hex digits in between.
         expect(textArg as string).toMatch(/^\$[0-9A-F]*\$$/);
+
+        workspaceMock.textDocuments.length = 0;
     });
 
     test('mode: chain, editable: true opens the tri-state panel with the chain edit-in-place target', async () => {
