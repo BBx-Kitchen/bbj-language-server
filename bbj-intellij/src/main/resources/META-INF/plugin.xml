@@ -87,6 +87,16 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
         </action>
 
+        <!-- A second, non-intention door into the SETOPTS-in-code composer (#475, G-88-2 gap
+             closure): reaches the same launcher as ConfigureSetoptsInCodeIntention's Alt+Enter
+             lightbulb without entering IntelliJ's shared, single-modal intention search. -->
+        <action id="bbj.composeSetoptsInCode"
+                class="com.basis.bbj.intellij.actions.BbjComposeSetoptsInCodeAction"
+                text="Configure SETOPTS Options in Code…"
+                description="Visually compose or edit a SETOPTS-in-code block at the caret">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
         <!-- BBj Compile Action -->
         <action id="bbj.compile"
                 class="com.basis.bbj.intellij.actions.BbjCompileAction"
