@@ -25,6 +25,7 @@ import {
 import {
     SETOPTS_COMPOSE_TRISTATE_METHOD, SetOptsComposeTriStateParams, SetOptsComposeTriStateResult,
 } from './language/setopts-in-code-request.js';
+import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 
 /**
  * Forwards a JSON-RPC request to the language server. Declared here (rather than in
@@ -54,6 +55,12 @@ export interface SetOptsTriStatePanelArg {
     target?: SetOptsTriStateTarget;
     /** Prefill selection — e.g. the chain's current folded effect. Defaults every bit to Leave. */
     initial?: SetOptsTriStateSelection;
+    /**
+     * Present only for an edit-in-place target: the pre-apply check that runs immediately before
+     * the write. The compose-new path deliberately does not carry one — it has no captured range
+     * that can go stale.
+     */
+    guard?: SetOptsStaleEditGuard;
 }
 
 /** The raw form state the webview reports: one Set/Clear/Leave entry per rendered catalog bit. */
@@ -68,6 +75,9 @@ export function openSetOptsTriStateComposerPanel(
 ): void {
     const target = arg.target;
     const editMode = !!target;
+    // A guard is meaningless without a captured range to re-check — only the edit-in-place
+    // branch ever carries one, even if a caller mistakenly set `guard` alongside no `target`.
+    const guard = target !== undefined ? arg.guard : undefined;
 
     let insertUri: vscode.Uri | undefined;
     let insertLine: number | undefined;
@@ -128,7 +138,10 @@ export function openSetOptsTriStateComposerPanel(
                 } else if (insertUri !== undefined && insertLine !== undefined) {
                     edit.insert(insertUri, new vscode.Position(insertLine, 0), text);
                 }
-                await vscode.workspace.applyEdit(edit);
+                // panel.dispose() runs afterwards on every path, aborted or not — the user is
+                // told what happened (when refused) and re-runs the composer, the same
+                // disposition the other host's dialog has.
+                await applyIfUnchanged(guard, () => vscode.workspace.applyEdit(edit));
                 panel.dispose();
                 break;
             }

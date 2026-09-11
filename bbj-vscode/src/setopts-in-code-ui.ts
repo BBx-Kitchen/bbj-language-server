@@ -26,6 +26,7 @@ import {
 import {
     SETOPTS_DECODE_IN_CODE_METHOD, SetOptsInCodeDecodeParams, SetOptsInCodeDecodeResult,
 } from './language/setopts-in-code-request.js';
+import type { SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 
 const BBJ = { language: 'bbj' } as const;
 
@@ -123,8 +124,11 @@ async function handleComposeSetoptsInCode(
     }
 
     let result: SetOptsInCodeDecodeResult;
+    // Hoisted out of the try block: the single source of truth for the position both the capture
+    // request above and, later, the stale-edit guard's re-check use — a re-check can never
+    // accidentally ask about a different position than the capture did.
+    const params: SetOptsInCodeDecodeParams = { uri: target.uri, line: target.line, character: target.character };
     try {
-        const params: SetOptsInCodeDecodeParams = { uri: target.uri, line: target.line, character: target.character };
         result = await send(SETOPTS_DECODE_IN_CODE_METHOD, params) as SetOptsInCodeDecodeResult;
     } catch (error) {
         vscode.window.showInformationMessage(`SETOPTS composer failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -132,6 +136,11 @@ async function handleComposeSetoptsInCode(
     }
 
     if (result.mode === 'absolute' && result.editable && result.absolute) {
+        const guard: SetOptsStaleEditGuard = {
+            uri: target.uri,
+            capturedDecode: result,
+            reDecode: async () => await send(SETOPTS_DECODE_IN_CODE_METHOD, params) as SetOptsInCodeDecodeResult,
+        };
         const panelArg: SetOptsPanelArg = {
             target: {
                 uri: target.uri,
@@ -142,12 +151,18 @@ async function handleComposeSetoptsInCode(
                 // put a complete literal back — bare digits here would delete the delimiters.
                 hexSyntax: 'bbj-literal',
             },
+            guard,
         };
         openSetOptsComposerPanel(context, panelArg);
         return;
     }
 
     if (result.mode === 'chain' && result.editable && result.chain) {
+        const guard: SetOptsStaleEditGuard = {
+            uri: target.uri,
+            capturedDecode: result,
+            reDecode: async () => await send(SETOPTS_DECODE_IN_CODE_METHOD, params) as SetOptsInCodeDecodeResult,
+        };
         const chainTarget: SetOptsTriStateTarget = {
             uri: target.uri,
             startLine: result.chain.startLine,
@@ -155,13 +170,14 @@ async function handleComposeSetoptsInCode(
             indent: result.chain.indent,
             variableName: result.chain.variableName,
         };
-        const panelArg: SetOptsTriStatePanelArg = { target: chainTarget, initial: result.initial };
+        const panelArg: SetOptsTriStatePanelArg = { target: chainTarget, initial: result.initial, guard };
         openSetOptsTriStateComposerPanel(context, panelArg, send);
         return;
     }
 
     if (!result.found) {
-        // No SETOPTS-in-code shape near the cursor — compose a brand new block instead.
+        // No SETOPTS-in-code shape near the cursor — compose a brand new block instead. No
+        // captured range exists yet for this branch, so no guard is built or passed here.
         openSetOptsTriStateComposerPanel(context, {}, send);
         return;
     }

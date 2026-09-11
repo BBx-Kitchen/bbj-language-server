@@ -18,6 +18,7 @@ import {
     BYTE_GROUPS, SETOPTS_BITS, bbjHexLiteral, getBit, maskChar, MASK_COMMA_BYTE, MASK_DOT_BYTE,
     parseVector, rawTail, setoptsPreview, SetOptsSelection, SetOptsVector,
 } from './setopts-catalog.js';
+import { applyIfUnchanged, type SetOptsStaleEditGuard } from './setopts-stale-edit-guard.js';
 
 export interface SetOptsEditTarget {
     uri: string;
@@ -43,6 +44,13 @@ export interface SetOptsEditTarget {
 export interface SetOptsPanelArg {
     /** Present = EDIT a SETOPTS line in place. Absent = insert a NEW line at the cursor. */
     target?: SetOptsEditTarget;
+    /**
+     * Present only for the in-code absolute edit-in-place caller — the pre-apply check that runs
+     * immediately before the write. The config.bbx callers in `setopts-composer-ui.ts` pass none
+     * and keep their current unguarded behaviour, because this panel serves both formats from
+     * one module. Wired in `openSetOptsComposerPanel` by plan 88-15 Task 2.
+     */
+    guard?: SetOptsStaleEditGuard;
 }
 
 /** The raw form state the webview reports; mirrors {@link SetOptsSelection} with string bit ids. */
@@ -56,6 +64,9 @@ interface PanelSelection {
 export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: SetOptsPanelArg): void {
     const target = arg.target;
     const editMode = !!target;
+    // A guard is meaningless without a captured range to re-check — only the in-code absolute
+    // edit-in-place caller ever carries one; every config.bbx caller passes none.
+    const guard = target !== undefined ? arg.guard : undefined;
     const original: SetOptsVector | undefined = target?.originalHex ? parseVector(target.originalHex) : undefined;
 
     let insertUri: vscode.Uri | undefined;
@@ -111,7 +122,8 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
                 } else if (insertUri !== undefined && insertLine !== undefined) {
                     edit.insert(insertUri, new vscode.Position(insertLine, 0), `${r.line}\n`);
                 }
-                await vscode.workspace.applyEdit(edit);
+                // panel.dispose() runs afterwards on every path, aborted or not.
+                await applyIfUnchanged(guard, () => vscode.workspace.applyEdit(edit));
                 panel.dispose();
                 break;
             }
