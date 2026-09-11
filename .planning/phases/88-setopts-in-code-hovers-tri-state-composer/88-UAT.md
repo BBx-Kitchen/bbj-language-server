@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 88-setopts-in-code-hovers-tri-state-composer
 source: [88-VERIFICATION.md, 88-LIVE-RETEST.md]
 started: 2026-09-07T23:45:00Z
-updated: 2026-09-11T00:10:00Z
+updated: 2026-09-11T00:20:00Z
 ---
 
 ## Current Test
@@ -195,62 +195,66 @@ blocked: 0
   severity: blocker
   test: 7
   root_cause: |
-    (1) VS Code "nothing happens" is PROVEN environment/packaging, not a code bug: the composer
-    (setopts-in-code-ui.ts + setopts-tristate-webview.ts: a RefactorRewrite Code Action provider,
-    the bbj.composeSetoptsInCode command, an editor context-menu entry, 33 passing tests) is fully
-    and correctly implemented in current source, but the same stale installed extension proven in
-    G-88-1 has zero occurrences of the composer's command ID or symbols in package.json's
-    contributes block or the compiled out/extension.cjs client bundle — there is no lightbulb, no
-    command, no menu entry to find because the installed bundle predates the feature entirely.
-    (2) IntelliJ's "Searching Content Actions..." hang is STRONGLY CORROBORATED as the same
-    stale-install class but not provable with certainty from this devcontainer (no IntelliJ
-    sandbox/install is accessible here — the tester runs IntelliJ on a separate host). Source
-    review of ConfigureSetoptsInCodeIntention.isAvailable()/generatePreview()/invoke() and the
-    server's decodeInCode/composeTriState handlers found no plausible hang mechanism (all
-    synchronous/bounded, or async only after selection — after the reported hang point). Phase 82
-    UAT (2026-09-05) already proved this exact Alt+Enter/LSP4IJ machinery is fast and reliable for
-    3 sibling composer intentions, ruling out a standing platform defect. No IntelliJ plugin zip
-    on disk has a timestamp consistent with being built and handed to the tester before this UAT
-    session. If a verified-fresh IntelliJ install still hangs, the next hypothesis is a slow/
-    blocked BBjCPL diagnostics round-trip specific to the SETOPTS test snippet — untested
-    territory not covered by Phase 82's diagnostics-free UAT code.
-    Secondary, non-blocking: by explicit Phase 88 design (88-06-SUMMARY.md decision D6), VS Code
-    ships no CodeLens for the in-code composer — only Code Action/Command Palette/context-menu
-    entry points — deliberately deferred to Phase 89. Adds to "how would I invoke it?" confusion
-    even post-rebuild, but doesn't explain the complete absence observed (fully explained by the
-    stale install).
+    VS Code side: RESOLVED — test 6 confirms all three entry points/edit/compose/no-edit now work
+    against the rebuilt extension (superseded the prior "stale install" finding below).
+
+    IntelliJ side (RE-DIAGNOSED 2026-09-11 against the fresh bbj-intellij-0.1.0.zip, with the new
+    "Pull Docker Image" clue): Alt+Enter runs IntelliJ's `ShowIntentionActionsHandler` — ONE
+    modal, EDT-blocking `ProgressManager.runProcessWithProgressSynchronously(...,
+    "Searching for Context Actions...", true, project)` that evaluates every applicable intention
+    for the caret across every installed plugin, not just BBj's. LSP4IJ 0.21.0 registers 20
+    all-language `LSPIntentionActionN` intentions; their `isAvailable()` calls
+    `ProgressIndicatorUtils.awaitWithCheckCanceled(Future)` — the single-arg, NO-TIMEOUT overload
+    — waiting on the BBj server's `textDocument/codeAction` response. Langium gates
+    `addCodeActionHandler` at `DocumentState.Validated`, a strictly later, no-timeout gate than
+    hover's `DocumentState.Linked` (which is why hover — test 5 — passes and Alt+Enter — test 7 —
+    hangs on the exact same build). A live probe against the tester's own workspace (whole
+    bbj-language-server repo open, java-interop unreachable) measured hover at 53434ms and
+    codeAction at 56016ms, with stderr showing `Java class resolution chain timed out after
+    30000ms` — 88-08's reassuring "205ms/15000ms" measurement ran on an already-Validated
+    document and never reproduced the actual Alt+Enter ordering, so it wrongly cleared this path.
+    ConfigureSetoptsInCodeIntention itself is NOT at fault — it is never reached because the
+    modal freezes on an earlier, unrelated LSP4IJ intention first.
+    The "Pull Docker Image" sighting is EXCLUSIONARY, not causal: IntelliJ's bundled Docker
+    plugin (`DockerPullIntention`) is also registered with no `<language>` restriction, so it too
+    is evaluated on every Alt+Enter in any file type — but its `isAvailable()` needs a
+    `DockerImagePsiReference` (contributed only for UAST/YAML/Dockerfile) and does zero I/O. Its
+    only in-project trigger is this repo's own `.devcontainer/devcontainer.json`
+    (`mcr.microsoft.com/devcontainers/typescript-node:20`), unrelated to Phase 88 — it just proves
+    the hang sits in IntelliJ's shared, cross-plugin intention-search phase where a foreign
+    plugin's item can appear at all.
+    Why VS Code passed and IntelliJ hung against identical server behavior: VS Code's composer is
+    a client-side `vscode.languages.registerCodeActionsProvider` in the extension host
+    (setopts-in-code-ui.ts:75) that never calls the server's `textDocument/codeAction`; IntelliJ's
+    is a genuine `IntentionAction` evaluated in the same blocking modal batch as LSP4IJ's generic
+    LSP intention.
   artifacts:
-    - path: "bbj-vscode/src/setopts-in-code-ui.ts"
-      issue: "correct composer implementation, absent from the installed extension bundle used for UAT (packaging gap, not a code defect)"
-    - path: "bbj-vscode/src/setopts-tristate-webview.ts"
-      issue: "correct composer implementation, absent from the installed extension bundle used for UAT (packaging gap, not a code defect)"
+    - path: "bbj-vscode/src/language/bbj-module.ts (+ Langium's addCodeActionHandler default)"
+      issue: "textDocument/codeAction is gated at DocumentState.Validated with no timeout, while hover is gated at the much-earlier Linked state — the asymmetry that makes hover work and Alt+Enter hang when workspace validation is slow/stuck"
+    - path: "bbj-vscode/src/language/bbj-code-action-provider.ts"
+      issue: "correct in itself, but its response is gated behind the whole workspace validation cycle (and can further await a slow/unreachable java-interop round trip)"
+    - path: "bbj-intellij/src/main/resources/META-INF/plugin.xml"
+      issue: "depends on com.redhat.devtools.lsp4ij, which registers 20 all-language LSPIntentionActionN intentions that block Alt+Enter on any slow LSP codeAction response — no Docker dependency anywhere, confirming the Docker sighting is a foreign plugin's item, not a BBj-side cause"
     - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ConfigureSetoptsInCodeIntention.java"
-      issue: "no hang mechanism found in source; installed-plugin freshness could not be verified from this devcontainer"
+      issue: "confirmed NOT at fault — structurally identical to 3 working Phase 82 sibling intentions; simply never reached because an earlier LSP4IJ intention freezes the shared modal first"
   automated_evidence: |
     88-08 rebuilt and reinstalled the VS Code extension and proved, over a real LSP connection to
     the installed bundle, that all three composer entry points are registered in package.json's
     contributes block and the compiled out/extension.cjs client bundle, that decodeInCode opens
     the edit gate on the safe chain and keeps it shut with a named reason on the byte-range
-    chains, that composeTriState renders the canonical block, and that shared-server
-    diagnostics/codeAction latency on the reported snippet is well within budget (11082ms/30000ms,
-    205ms/15000ms) — eliminating a slow/blocked BBjCPL round trip as an explanation for the
-    IntelliJ hang. This plan's Task 1 built a fresh IntelliJ distributable
-    (bbj-intellij-0.1.0.zip, sha256
-    cde1f2fe0d8af16b01d910ebd721f37a228351dd58e4b300bd55becdac1114d0) and proved it registers
-    ConfigureSetoptsInCodeIntention, ships its intentionDescriptions/ resources, and contains the
-    SetoptsTriStateComposerDialog class — the artifact the tester would need to install no longer
-    has "no distributable zip that could have carried the feature" as an open question. None of
-    this drives a live IDE's lightbulb or Alt+Enter popup.
+    chains, that composeTriState renders the canonical block. Its "205ms/15000ms" codeAction
+    latency measurement is now known to have run in the wrong ordering (on an already-Validated
+    document) and must be re-run cold before it can be trusted as a clearance for this path.
   missing:
-    - "Live composer invocation in VS Code through any of the three registered entry points
-      (Code Action lightbulb, Command Palette, editor context menu), against the installed build
-      basis-intl.bbj-lang-0.12.28 (installedTimestamp 2026-09-08T17:01:55Z)"
-    - "Live Alt+Enter invocation in IntelliJ against this plan's Task 1 build
-      (bbj-intellij-0.1.0.zip, sha256
-      cde1f2fe0d8af16b01d910ebd721f37a228351dd58e4b300bd55becdac1114d0)"
-    - "If the IntelliJ hang persists on this verified-fresh install, open a live-reproduction
-      debug session on Alt+Enter's diagnostics-computation path for the SETOPTS test file"
-  debug_session: .planning/debug/g-88-2-composer-never-activates.md
+    - "A fix that decouples the IntelliJ composer entry point from LSP4IJ's blocking, no-timeout
+      textDocument/codeAction wait — e.g. bound the wait, relax/lower the BBj codeAction handler's
+      required document state, answer null fast when the workspace hasn't settled, and/or add a
+      non-intention IntelliJ entry point (editor action/context-menu, bypassing
+      ShowIntentionActionsHandler) so the composer is reachable even while intention-search is
+      blocked on an unrelated slow intention"
+    - "Re-run 88-08's codeAction latency gate in the correct COLD ordering (fresh didOpen, before
+      DocumentState.Validated) rather than the warm/already-validated ordering it used"
+  debug_session: .planning/debug/g-88-2-docker-pull-hang.md (supersedes .planning/debug/g-88-2-composer-never-activates.md for the IntelliJ side; the VS Code finding there stands, now confirmed fixed)
 
 - gap_id: G-88-3
   truth: "Every mask/hex literal the tri-state composer generates uses valid BBj program syntax: a bare $...$ hex-string literal — never a bare unquoted hex string (config.bbx-only syntax) and never a $...$ hex literal wrapped in an extra pair of double quotes (which makes BBj treat the $ delimiters as literal text instead of decoding the hex, corrupting the operand's byte length)."
@@ -277,7 +281,63 @@ blocked: 0
     generates (SETOPTS argument vs. IOR/AND argument).
   severity: blocker
   test: 8
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: |
+    Two independent defects sharing one design omission: there is no shared BBj-hex-literal
+    formatter, so each generated line kind hand-rolls its own (wrong) literal syntax.
+
+    (1) IOR/AND argument — a single-site template typo, setopts-catalog.ts:455/457:
+      setLines.push(`${variable}=IOR(${variable},"$${singleBitIorMask(bit.byte, bit.mask)}$")`)
+      clearLines.push(`${variable}=AND(${variable},"$${singleBitAndMask(bit.byte, bit.mask)}$")`)
+    The `,"$` … `$")` wraps the hex literal in double quotes. bbj.langium:949-950 declares
+    STRING_LITERAL (`"([^"]|"{2})*"`) and HEX_STRING (`\$[0-9a-fA-F]*\$`) as two distinct
+    terminals, so `"$BFFF...$"` lexes as a plain 34-character string that is never hex-decoded —
+    AND() then compares that against opts$'s 16 decoded bytes, raising !ERROR=17. Reproduced
+    in-process against the production function: emits exactly `opts$=AND(opts$,"$BFFF...FFFF$")`.
+
+    (2) SETOPTS argument — a two-condition contract mismatch (AND-gate: neither condition alone
+    is a bug). setopts-in-code-request.ts:162 derives `hexRange` from the StringLiteral's CST
+    node, so it spans the $ delimiters, while the sibling `hexDigits` field has them stripped.
+    setopts-composer-webview.ts:91-93's writer replaces that range with bare `hexDigits` — because
+    that writer was built for config.bbx (#474), where bare hex IS correct syntax, and 88-06
+    (cfe9bed0) routed BBj-program absolute mode into it unchanged. Delimiters in, bare digits out
+    → the $...$ wrapper is deleted. Reproduced in-process: emits exactly
+    `SETOPTS 20C20240000000000000000000000000` — character-for-character the UAT's bad line.
+
+    Why it shipped un-caught: the only test asserting exact composer output
+    (setopts-catalog.test.ts:343-344) builds its expectation by re-evaluating the same template
+    literal as production — a tautological oracle that cannot fail on the delimiter form. Sibling
+    tests use only toContain('IOR'). parseHexLiteral (setopts-code-scanner.ts:141-156) also
+    accepts the invalid quoted form as readily as the correct one, so the bug round-tripped
+    cleanly through decode-side tests too (setopts-in-code-request.test.ts:55,91,166).
+    Stale-install ruled out (the class that explained G-88-1/G-88-2): reported output matches
+    current HEAD exactly. Mask values/widths ruled out: exactly 32 hex digits, one bit off the
+    0x00/0xFF base — correct; test 8's actual purpose (88-RESEARCH.md Assumption A2) remains
+    UNVERIFIED because the quoting defect aborted the run before AND() ever saw two decoded
+    operands.
+  artifacts:
+    - path: "bbj-vscode/src/setopts-catalog.ts"
+      issue: "lines 455/457: spurious double quotes around the $...$ hex literal in generated IOR/AND set/clear lines — server-side, so it hits both IDEs"
+    - path: "bbj-vscode/src/language/setopts-in-code-request.ts"
+      issue: "line 162: hexRange spans the $...$ delimiters while the sibling hexDigits field strips them — an undocumented, inconsistent contract between the two fields"
+    - path: "bbj-vscode/src/setopts-composer-webview.ts"
+      issue: "lines 91-93: the config.bbx-only bare-hex writer (#474) is reused unchanged for BBj-program absolute-mode SETOPTS syntax (routed here by 88-06 cfe9bed0), deleting the required $...$ wrapper"
+    - path: "bbj-intellij/src/main/java/com/basis/bbj/intellij/composer/ComposerLauncher.java"
+      issue: "line 501: independently duplicates manifestation (1) on the IntelliJ side — currently masked by G-88-2's hang, so untested live, but will surface once G-88-2 is fixed"
+    - path: "bbj-vscode/test/setopts-catalog.test.ts"
+      issue: "lines 343-344: tautological oracle (expectation built from the same production template literal) — cannot catch this class of bug"
+    - path: "bbj-vscode/test/setopts-in-code-request.test.ts"
+      issue: "lines 55/91/166 fixtures use the invalid double-quoted form; line 87 pins the delimiter-inclusive hexRange contract — a fix narrowing hexRange must update this"
+  missing:
+    - "One shared bbjHexLiteral(digits) => `$${digits}$` formatter in setopts-catalog.ts, routed
+      through by every generated line kind (SETOPTS argument, IOR argument, AND argument) —
+      remove the spurious quotes at setopts-catalog.ts:455/457"
+    - "Pick exactly one side of the hexRange/hexDigits contract mismatch — either narrow hexRange
+      to the digits only (updating setopts-in-code-request.test.ts:87) or have
+      setopts-composer-webview.ts's writer re-emit the $...$ wrapper — never both"
+    - "Harden setopts-catalog.test.ts's oracle with literal expected strings (never the production
+      template) plus boundary neighbors; tighten parseHexLiteral to reject the double-quoted form
+      so invalid fixtures fail loudly instead of round-tripping"
+    - "Fix ComposerLauncher.java:501's independent IntelliJ-side duplicate of manifestation (1)"
+    - "Re-run the live mask-width falsification (test 8 / 88-RESEARCH.md Assumption A2) after the
+      quoting fix — it was never actually answered; the defect aborted the run first"
+  debug_session: .planning/debug/g-88-3-composer-mask-literal-quoting.md
