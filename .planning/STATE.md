@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v4.3
 milestone_name: Polish & Quality (Phases 84-92) — IN PROGRESS
 current_phase: 88
-current_phase_name: SETOPTS-in-Code Hovers & Tri-State Composer
+current_phase_name: setopts-in-code-hovers-tri-state-composer
 status: executing
 stopped_at: "Completed 88-13-PLAN.md (gap-closure round shipped: rebuilt+reinstalled VS Code extension basis-intl.bbj-lang-0.12.28, rebuilt IntelliJ bbj-intellij-0.1.0.zip sha256 e76f76824dcb4f706e454b8465fa069c941b0e1ef5ee9d6fb8e8ca84ce51cc66; shipped-bundle e2e assertion + in-distributable class checks; QA checklist quoted-hover rows fixed + context-menu row added; 88-LIVE-RETEST.md rewritten round two; G-88-2/G-88-3 missing: narrowed to live-render residue, both still status:failed pending human retest)"
-last_updated: "2026-09-11T10:53:43.002Z"
+last_updated: "2026-09-11T12:39:34.300Z"
 last_activity: 2026-09-11
 last_activity_desc: Phase 88 execution resumed (wave continue)
-state_head: 45015c57acafbfa948fe1e7f1aa56c1f92fd063d
+state_head: c78f842b15710bf9bb1cb281e77c620c64841fa4
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 32
+  total_plans: 33
   completed_plans: 32
   percent: 44
 ---
@@ -34,7 +34,7 @@ See: .planning/PROJECT.md (updated 2026-09-07)
 
 ## Current Position
 
-Phase: 88 (SETOPTS-in-Code Hovers & Tri-State Composer) — EXECUTING
+Phase: 88 (setopts-in-code-hovers-tri-state-composer) — READY TO EXECUTE
 Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-09-11 — Phase 88 execution resumed (wave continue)
