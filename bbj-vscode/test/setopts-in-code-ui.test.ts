@@ -345,7 +345,7 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
         expect(showInformationMessageMock).not.toHaveBeenCalled();
     });
 
-    test('mode: absolute, editable: true writes a complete $…$ literal on apply, never bare digits (G-88-3 manifestation 1)', async () => {
+    test('mode: absolute, editable: true writes a complete $…$ literal on apply, never bare digits', async () => {
         const { panel, getHandler } = createFakePanel();
         createWebviewPanelMock.mockReturnValue(panel);
         const sender: SetOptsInCodeRequestSender = vi.fn().mockResolvedValue({
@@ -467,7 +467,7 @@ describe('registerSetOptsInCodeComposer / command routing (Task 2)', () => {
 });
 
 /**
- * setopts-composer-webview.ts's own `hexSyntax` discriminator (Task 2, G-88-3 manifestation 1):
+ * setopts-composer-webview.ts's own `hexSyntax` discriminator:
  * these tests call `openSetOptsComposerPanel` directly, the same way `setopts-composer-ui.ts`
  * (config.bbx, #474) does, rather than routing through `setopts-in-code-ui.ts`'s absolute branch —
  * the point is to pin the writer's OWN default (bare, unmarked callers keep config.bbx's syntax)

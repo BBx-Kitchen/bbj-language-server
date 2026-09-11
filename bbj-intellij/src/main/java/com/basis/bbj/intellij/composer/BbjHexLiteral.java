@@ -1,8 +1,8 @@
 package com.basis.bbj.intellij.composer;
 
 /**
- * The Java twin of {@code bbj-vscode/src/setopts-catalog.ts}'s {@code bbjHexLiteral} (G-88-3):
- * the ONE place on this host that decides how a BBj hex literal is spelled.
+ * The Java twin of {@code bbj-vscode/src/setopts-catalog.ts}'s {@code bbjHexLiteral}: the ONE
+ * place on this host that decides how a BBj hex literal is spelled.
  * <p>
  * BBj's grammar declares {@code STRING_LITERAL} ({@code "…"}) and {@code HEX_STRING}
  * ({@code $…$}) as two SEPARATE terminals ({@code bbj.langium:949-950}) -- wrapping a hex value

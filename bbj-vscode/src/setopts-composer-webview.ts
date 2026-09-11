@@ -29,7 +29,7 @@ export interface SetOptsEditTarget {
     /** The original hex digits — the lossless round-trip baseline. */
     originalHex?: string;
     /**
-     * Which BBj hex syntax this target's file format expects (G-88-3). `'config-bare'` (the
+     * Which BBj hex syntax this target's file format expects. `'config-bare'` (the
      * default, and what every caller gets unless it opts in) is config.bbx's own syntax (#474),
      * where a bare run of hex digits — no `$…$` delimiters — is correct; this module was built
      * for that format, so an unmarked caller can never silently get the wrong one for it.
@@ -99,7 +99,7 @@ export function openSetOptsComposerPanel(context: vscode.ExtensionContext, arg: 
                     const uri = vscode.Uri.parse(target.uri);
                     // One decision, two consumers: compute the text to write once, from
                     // r.hexDigits and target.hexSyntax, and use it in both write branches below —
-                    // never a second inline conditional (G-88-3).
+                    // never a second inline conditional.
                     const text = target.hexSyntax === 'bbj-literal' ? bbjHexLiteral(r.hexDigits) : r.hexDigits;
                     if (target.hexRange) {
                         edit.replace(uri,

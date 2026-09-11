@@ -423,7 +423,8 @@ export function singleBitAndMask(byte: number, mask: number): string {
  * quotes. Per `bbj.langium:949-950`, `STRING_LITERAL` (`"…"`) and `HEX_STRING` (`$…$`) are two
  * SEPARATE terminals — wrapping a hex mask in quotes turns a 16-byte hex-decoded value into a
  * 34-character plain string, which is exactly the `!ERROR=17 (Strings must be the same length.)`
- * defect G-88-3 reproduced live (`opts$=AND(opts$,"$…$")` never hex-decodes). Every generated or
+ * defect reproduced live against a real BBjServices run (`opts$=AND(opts$,"$…$")` never
+ * hex-decodes). Every generated or
  * rewritten BBj hex literal — both `composeSetOptsBlock` reassignment lines below, and every
  * in-place writer that replaces a whole `$…$` token — must go through this function; no other line
  * kind in this module (or its callers) may hand-roll its own delimiters. Its Java twin is

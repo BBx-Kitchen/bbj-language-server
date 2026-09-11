@@ -324,7 +324,7 @@ describe('singleBitIorMask / singleBitAndMask (full-width masks)', () => {
     });
 });
 
-describe('bbjHexLiteral (G-88-3: the one formatter that decides a BBj hex literal\'s delimiters)', () => {
+describe('bbjHexLiteral (the one formatter that decides a BBj hex literal\'s delimiters)', () => {
     test('wraps digits in a dollar sign on each side, nothing else', () => {
         expect(bbjHexLiteral('08')).toBe('$08$');
     });
@@ -354,7 +354,7 @@ describe('composeSetOptsBlock', () => {
         // Expected lines are LITERAL strings, cross-checked against the sibling mask-value tests
         // above (`singleBitIorMask(1, 0x08)` and `singleBitAndMask(2, 0x20)`), never built by
         // re-evaluating composeSetOptsBlock's own production template — that tautology (re-running
-        // the exact code under test to build its own expectation) is what let G-88-3's `"$…$"`
+        // the exact code under test to build its own expectation) is what let a previous `"$…$"`
         // double-quote defect ship past this file with 33 previously-passing tests.
         const selection = selectionOf([
             { byte: byte1Bit08.byte, mask: byte1Bit08.mask, state: 'set' },

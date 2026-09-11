@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 /**
  * Behavioural coverage for {@link BbjHexLiteral#of(String)}, the Java twin of
- * {@code bbj-vscode/src/setopts-catalog.ts}'s {@code bbjHexLiteral} (G-88-3). A pure value test --
- * no IntelliJ fixture, no {@code Application} -- since the class has no platform dependency.
+ * {@code bbj-vscode/src/setopts-catalog.ts}'s {@code bbjHexLiteral}. A pure value test -- no
+ * IntelliJ fixture, no {@code Application} -- since the class has no platform dependency.
  */
 class BbjHexLiteralTest {
 

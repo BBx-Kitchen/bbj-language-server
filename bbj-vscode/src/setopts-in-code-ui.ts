@@ -139,8 +139,7 @@ async function handleComposeSetoptsInCode(
                 hexRange: result.absolute.hexRange,
                 originalHex: result.absolute.hexDigits,
                 // hexRange spans the whole $…$ token (delimiters included), so the writer must
-                // put a complete literal back — bare digits here would delete the delimiters
-                // (G-88-3 manifestation 1).
+                // put a complete literal back — bare digits here would delete the delimiters.
                 hexSyntax: 'bbj-literal',
             },
         };

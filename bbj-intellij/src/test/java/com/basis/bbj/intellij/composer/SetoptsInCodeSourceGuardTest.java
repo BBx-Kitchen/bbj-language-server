@@ -157,8 +157,8 @@ class SetoptsInCodeSourceGuardTest {
     }
 
     /**
-     * G-88-3: two writers in the same class share one range/digits contract but must NOT share
-     * one syntax -- {@code openSetoptsInCodeAbsolute} edits a BBj-program literal (bare hex is
+     * Two writers in the same class share one range/digits contract but must NOT share one
+     * syntax -- {@code openSetoptsInCodeAbsolute} edits a BBj-program literal (bare hex is
      * invalid there), while {@code openSetopts} edits {@code config.bbx} (bare hex is the CORRECT
      * syntax there, #474). Conflating the two is exactly how the defect arose; this guard pins
      * each writer to its own file format, applied after comment stripping so this test class's
@@ -176,7 +176,7 @@ class SetoptsInCodeSourceGuardTest {
         assertTrue(absoluteBody.contains("BbjHexLiteral.of("),
                 "the BBj-program in-code writer (openSetoptsInCodeAbsolute) must route its "
                         + "replacement text through BbjHexLiteral.of(...) -- a bare hex value there "
-                        + "deletes the $...$ delimiters (G-88-3 manifestation 1)");
+                        + "deletes the $...$ delimiters");
 
         int configStart = text.indexOf("private static void openSetopts(");
         int inCodeDispatcherStart = text.indexOf("private static void openSetoptsInCode(");
